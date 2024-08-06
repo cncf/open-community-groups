@@ -1,0 +1,12 @@
+# Build tern
+FROM golang:1.22.5-alpine3.20 AS tern
+RUN apk --no-cache add git
+RUN go install github.com/jackc/tern@latest
+
+# Build final image
+FROM alpine:3.20.2
+RUN addgroup -S fellowship && adduser -S fellowship -G fellowship
+USER fellowship
+WORKDIR /home/fellowship
+COPY --from=tern /go/bin/tern /usr/local/bin
+COPY database/migrations .
