@@ -5,8 +5,8 @@ RUN go install github.com/jackc/tern@latest
 
 # Build final image
 FROM alpine:3.20.2
-RUN addgroup -S fellowship && adduser -S fellowship -G fellowship
-USER fellowship
-WORKDIR /home/fellowship
+RUN addgroup -S ocg && adduser -S ocg -G ocg
+USER ocg
+WORKDIR /home/ocg
 COPY --from=tern /go/bin/tern /usr/local/bin
 COPY database/migrations .

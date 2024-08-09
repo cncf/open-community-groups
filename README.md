@@ -1,6 +1,6 @@
-# Fellowship
+# Open Community Groups
 
-**Fellowship** is an open source events platform for communities and organizations.
+**Open Community Groups** is an open source events platform for communities and organizations.
 
 ## Contributing
 
@@ -12,4 +12,4 @@ This project follows the [CNCF Code of Conduct](https://github.com/cncf/foundati
 
 ## License
 
-Fellowship is an Open Source project licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+Open Community Groups is an Open Source project licensed under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
