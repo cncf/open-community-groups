@@ -74,6 +74,7 @@ create table "group" (
     wechat_url text,
     youtube_url text,
     extra_links jsonb,
+    tags text[],
     community_id uuid not null references community,
     region_id uuid not null references region,
     group_site_layout_id text not null references group_site_layout default 'default',
