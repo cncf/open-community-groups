@@ -14,6 +14,7 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod db;
+mod handlers;
 mod router;
 
 #[derive(Debug, Parser)]

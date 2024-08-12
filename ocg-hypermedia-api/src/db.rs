@@ -11,13 +11,13 @@ pub(crate) type DynDB = Arc<dyn DB + Send + Sync>;
 
 /// DB implementation backed by PostgreSQL.
 pub(crate) struct PgDB {
-    pool: Pool,
+    _pool: Pool,
 }
 
 impl PgDB {
     /// Create a new PgDB instance.
     pub(crate) fn new(pool: Pool) -> Self {
-        Self { pool }
+        Self { _pool: pool }
     }
 }
 
