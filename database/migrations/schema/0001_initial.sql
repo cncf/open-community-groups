@@ -57,6 +57,7 @@ create table "group" (
     name text not null,
     slug text not null,
     description text not null,
+    icon_url text,
     active boolean default true not null,
     country text,
     city text,
@@ -114,9 +115,10 @@ create table event (
     longitude double precision,
     tags text[],
     capacity int check (capacity > 0),
+    postponed boolean default false not null,
+    cancelled boolean default false not null,
     group_id uuid not null references "group",
     kind text not null references event_kind,
-    unique (name, group_id),
     unique (slug, group_id)
 );
 
@@ -138,8 +140,8 @@ create table session (
     title text not null,
     description text not null,
     location text,
-    starts_at timestamptz not null,
-    ends_at timestamptz not null,
+    starts_at timestamptz,
+    ends_at timestamptz,
     streaming_url text,
     recording_url text,
     kind text not null references session_kind,
