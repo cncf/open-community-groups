@@ -25,7 +25,7 @@ pub(crate) fn setup(db: DynDB) -> Router {
         .route("/", get(group::index))
         .nest("/event/:event_slug", event_router);
 
-    // Setup main router
+    // Setup main router (includes community site endpoints)
     Router::new()
         .route("/", get(community::index))
         .route("/explore", get(community::explore))

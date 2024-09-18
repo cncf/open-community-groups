@@ -9,12 +9,12 @@ use figment::{
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Hypermedia API configuration.
+/// Server configuration.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct Config {
     pub db: DbConfig,
     pub log: LogConfig,
-    pub server: ServerConfig,
+    pub server: HttpServerConfig,
 }
 
 impl Config {
@@ -33,6 +33,12 @@ impl Config {
     }
 }
 
+/// Http server configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct HttpServerConfig {
+    pub addr: String,
+}
+
 /// Logs configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct LogConfig {
@@ -45,10 +51,4 @@ pub(crate) struct LogConfig {
 pub(crate) enum LogFormat {
     Json,
     Pretty,
-}
-
-/// Server configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) struct ServerConfig {
-    pub addr: String,
 }
