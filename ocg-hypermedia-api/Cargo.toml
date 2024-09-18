@@ -10,6 +10,7 @@ rust-version.workspace = true
 anyhow = { workspace = true }
 askama = { workspace = true }
 askama_axum = { workspace = true }
+async-trait = { workspace = true }
 axum = { workspace = true }
 cached = { workspace = true }
 clap = { workspace = true }

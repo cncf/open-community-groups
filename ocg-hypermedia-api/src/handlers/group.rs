@@ -1,6 +1,6 @@
 //! This module defines the HTTP handlers for the group site.
 
-use super::extractor::Community;
+use super::extractor::CommunityId;
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::extract::Path;
@@ -14,10 +14,10 @@ pub(crate) struct Index {}
 /// Handler that returns the index document.
 #[allow(clippy::unused_async)]
 pub(crate) async fn index(
-    Community(community): Community,
+    CommunityId(community_id): CommunityId,
     Path(group_slug): Path<String>,
 ) -> impl IntoResponse {
-    debug!("community: {}, group: {}", community, group_slug);
+    debug!("community_id: {}, group: {}", community_id, group_slug);
 
     Index {}
 }
