@@ -3,7 +3,8 @@
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 
-/// Trait that defines some operations a DB implementation must support.
+/// Abstraction layer over the database. Trait that defines some operations a
+/// DB implementation must support.
 pub(crate) trait DB {}
 
 /// Type alias to represent a DB trait object.

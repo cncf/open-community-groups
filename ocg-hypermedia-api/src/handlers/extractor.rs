@@ -48,7 +48,12 @@ impl FromRequestParts<router::State> for Community {
 //     result = true
 // )]
 #[allow(clippy::unnecessary_wraps, clippy::needless_pass_by_value)]
-fn lookup_community(_db: DynDB, _host: &str) -> Result<Option<String>> {
+fn lookup_community(_db: DynDB, host: &str) -> Result<Option<String>> {
+    if host.is_empty() {
+        return Ok(None);
+    }
+
     // TODO(tegioz): query database to get the community
+
     Ok(Some("cncf".to_string()))
 }

@@ -13,8 +13,8 @@ askama_axum = { workspace = true }
 axum = { workspace = true }
 cached = { workspace = true }
 clap = { workspace = true }
-config = { workspace = true }
 deadpool-postgres = { workspace = true }
+figment = { workspace = true }
 openssl = { workspace = true }
 postgres-openssl = { workspace = true }
 serde = { workspace = true }

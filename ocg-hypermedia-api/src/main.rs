@@ -3,16 +3,17 @@
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use config::{Config, File};
+use config::{Config, LogFormat};
 use db::PgDB;
-use deadpool_postgres::{Config as DbConfig, Runtime};
+use deadpool_postgres::Runtime;
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, signal};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
+mod config;
 mod db;
 mod handlers;
 mod router;
@@ -22,45 +23,36 @@ mod router;
 struct Args {
     /// Config file path
     #[clap(short, long)]
-    config: PathBuf,
+    config_file: Option<PathBuf>,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Args::parse();
-
     // Setup configuration
-    let cfg = Config::builder()
-        .set_default("log.format", "pretty")?
-        .set_default("server.addr", "127.0.0.1:9000")?
-        .add_source(File::from(args.config))
-        .build()
-        .context("error setting up configuration")?;
-    validate_config(&cfg).context("error validating configuration")?;
+    let args = Args::parse();
+    let cfg = Config::new(&args.config_file).context("error setting up configuration")?;
 
     // Setup logging
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var("RUST_LOG", "ocg_hypermedia_api=debug");
     }
-    let s = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env());
-    match cfg.get_string("log.format").as_deref() {
-        Ok("json") => s.json().init(),
-        _ => s.init(),
+    let ts = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env());
+    match cfg.log.format {
+        LogFormat::Json => ts.json().init(),
+        LogFormat::Pretty => ts.init(),
     };
 
     // Setup database
     let builder = SslConnector::builder(SslMethod::tls())?;
     let connector = MakeTlsConnector::new(builder.build());
-    let db_cfg: DbConfig = cfg.get("db")?;
-    let pool = db_cfg.create_pool(Some(Runtime::Tokio1), connector)?;
+    let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
 
     // Setup and launch HTTP server
     let router = router::setup(db);
-    let addr: SocketAddr = cfg.get_string("server.addr")?.parse()?;
-    let listener = TcpListener::bind(addr).await?;
+    let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
-    info!(%addr, "listening");
+    info!(%cfg.server.addr, "listening");
     if let Err(err) = axum::serve(listener, router)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -68,14 +60,7 @@ async fn main() -> Result<()> {
         error!(?err, "server error");
         return Err(err.into());
     }
-
-    Ok(())
-}
-
-/// Check if the configuration provided is valid.
-fn validate_config(cfg: &Config) -> Result<()> {
-    // Required fields
-    cfg.get_string("server.addr")?;
+    info!("server stopped");
 
     Ok(())
 }
