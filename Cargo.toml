@@ -12,7 +12,7 @@ rust-version = "1.81"
 
 [workspace.dependencies]
 anyhow = "1.0.89"
-askama = "0.12.1"
+askama = { version = "0.12.1", features = ["serde-json"] }
 askama_axum = "0.4.0"
 async-trait = "0.1.82"
 axum = { version = "0.7.5", features = ["macros"] }
