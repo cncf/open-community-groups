@@ -1,0 +1,124 @@
+<div
+  class="text-xl uppercase border-solid border-0 border-b pb-2 mb-4 border-gray-500"
+>
+  Filters
+</div>
+<!-- TODO - get data - fix query -->
+<form
+  hx-history-elt
+  hx-post="/explore"
+  hx-trigger="change"
+  hx-replace-url="true"
+  hx-vals='{"option": "events"}'
+  hx-trigger="change input"
+>
+  <!-- Kind -->
+  <div class="mt-5">
+    <div
+      for="kind"
+      class="uppercase font-medium text-xs text-gray-700 leading-8"
+    >
+      Kind
+    </div>
+    <div class="relative flex gap-x-3 mb-2">
+      <div class="flex h-6 items-center">
+        <input
+          id="in-person"
+          name="in-person"
+          type="checkbox"
+          class="h-4 w-4 rounded border-gray-300 text-primary-700 focus:ring-primary-700"
+        />
+      </div>
+      <div class="text-sm leading-6">
+        <label for="in-person" class="font-medium text-gray-900"
+          >In person</label
+        >
+        <p class="text-gray-500 text-xs">
+          Lorem ipsum dolor sit amet, consectetur adipiscing...
+        </p>
+      </div>
+    </div>
+    <div class="relative flex gap-x-3 mb-2">
+      <div class="flex h-6 items-center">
+        <input
+          id="virtual"
+          name="virtual"
+          type="checkbox"
+          class="h-4 w-4 rounded border-gray-300 text-primary-700 focus:ring-primary-700"
+        />
+      </div>
+      <div class="text-sm leading-6">
+        <label for="virtual" class="font-medium text-gray-900">Virtual</label>
+        <p class="text-gray-500 text-xs">
+          Lorem ipsum dolor sit amet, consectetur adipiscing...
+        </p>
+      </div>
+    </div>
+    <div class="relative flex gap-x-3 mb-2">
+      <div class="flex h-6 items-center">
+        <input
+          id="hybrid"
+          name="hybrid"
+          type="checkbox"
+          class="h-4 w-4 rounded border-gray-300 text-primary-700 focus:ring-primary-700"
+        />
+      </div>
+      <div class="text-sm leading-6">
+        <label for="in-person" class="font-medium text-gray-900">Hybrid</label>
+        <p class="text-gray-500 text-xs">
+          Lorem ipsum dolor sit amet, consectetur adipiscing...
+        </p>
+      </div>
+    </div>
+  </div>
+  <!-- End kind -->
+
+  <!-- Areas -->
+  <div class="mt-5">
+    <label
+      for="small"
+      class="uppercase font-medium text-xs text-gray-700 leading-8"
+      >Area</label
+    >
+    <select
+      id="region"
+      class="block w-full p-2 mb-6 text-sm text-gray-900 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+    >
+      <option selected>Choose a region</option>
+      <option value="NA">North America</option>
+      <option value="CA">Central and South America</option>
+      <option value="EU">Europe</option>
+      <option value="AF">Africa</option>
+      <option value="AS">Asia</option>
+      <option value="OC">Oceania</option>
+      <option value="VI">Virtual</option>
+      <option value="CNCF">CNCF Hosted projects</option>
+      <option value="CO">Community Days</option>
+      <option value="TAG">Technical Advisory Groups</option>
+    </select>
+  </div>
+  <!-- End areas -->
+
+  <!-- Distance -->
+  <div class="mt-5">
+    <label
+      for="small"
+      class="uppercase font-medium text-xs text-gray-700 leading-8"
+      >Proximity</label
+    >
+    <select
+      id="proximity"
+      class="block w-full p-2 mb-6 text-sm text-gray-900 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
+    >
+      <option selected>Choose proximity</option>
+      <option value="any">Any distance</option>
+      <option value="2">2 miles</option>
+      <option value="5">5 miles</option>
+      <option value="10">10 miles</option>
+      <option value="30">30 miles</option>
+      <option value="50">50 miles</option>
+      <option value="100">100 miles</option>
+    </select>
+  </div>
+  <!-- End Distance -->
+</form>
