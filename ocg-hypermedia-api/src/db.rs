@@ -54,7 +54,7 @@ impl DB for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "
+                r#"
                 select json_strip_nulls(json_build_object(
                     'community', json_build_object(
                         'banners_urls', banners_urls,
@@ -75,11 +75,24 @@ impl DB for PgDB {
                         'twitter_url', twitter_url,
                         'wechat_url', wechat_url,
                         'youtube_url', youtube_url
-                    )
+                    ),
+                    'groups', (
+                        select json_agg(json_build_object(
+                            'city', city,
+                            'country', country,
+                            'icon_url', icon_url,
+                            'name', name,
+                            'slug', slug
+                        ))
+                        from "group"
+                        where community_id = $1
+                    ),
+                    'upcoming_near_events', '[]'::jsonb,
+                    'upcoming_online_events', '[]'::jsonb
                 )) as json_data
                 from community
                 where community_id = $1
-                ",
+                "#,
                 &[&community_id],
             )
             .await?;

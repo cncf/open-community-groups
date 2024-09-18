@@ -19,8 +19,10 @@ use tracing::{debug, error};
 #[allow(dead_code)]
 pub(crate) struct Index {
     pub community: IndexCommunity,
+    pub groups: Vec<IndexGroup>,
 }
 
+/// Community information used in the community index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct IndexCommunity {
     pub banners_urls: Option<Vec<String>>,
@@ -41,6 +43,16 @@ pub(crate) struct IndexCommunity {
     pub twitter_url: Option<String>,
     pub wechat_url: Option<String>,
     pub youtube_url: Option<String>,
+}
+
+/// Group information used in the community index.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct IndexGroup {
+    pub city: String,
+    pub country: String,
+    pub icon_url: Option<String>,
+    pub name: String,
+    pub slug: String,
 }
 
 /// Handler that returns the index document.
