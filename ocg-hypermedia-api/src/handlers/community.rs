@@ -9,15 +9,20 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Display};
 use tracing::{debug, error};
 
 /// Index document template.
-#[derive(Debug, Clone, Template, Serialize)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/index.html")]
 #[allow(dead_code)]
 pub(crate) struct Index {
+    pub community: IndexCommunity,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct IndexCommunity {
     pub banners_urls: Option<Vec<String>>,
     pub copyright_notice: Option<String>,
     pub description: Option<String>,
