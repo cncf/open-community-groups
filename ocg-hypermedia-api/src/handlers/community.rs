@@ -1,11 +1,10 @@
 //! This module defines the HTTP handlers for the community site.
 
-use std::collections::HashMap;
-
 use super::extractor::Community;
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::extract::Query;
+use std::collections::HashMap;
 use tracing::debug;
 
 /// Index document template.
@@ -25,6 +24,7 @@ pub(crate) async fn index(Community(community): Community) -> impl IntoResponse 
 #[derive(Debug, Clone, Template)]
 #[template(path = "community/explore.html")]
 pub(crate) struct Explore {
+    #[allow(dead_code)]
     params: HashMap<String, String>,
 }
 

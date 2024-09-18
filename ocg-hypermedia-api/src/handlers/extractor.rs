@@ -7,7 +7,6 @@ use axum::{
     extract::FromRequestParts,
     http::{header::HOST, request::Parts, StatusCode},
 };
-use cached::proc_macro::cached;
 
 /// Custom extractor to get the community from the host header in the request.
 pub(crate) struct Community(pub String);
@@ -41,13 +40,14 @@ impl FromRequestParts<router::State> for Community {
 }
 
 /// Lookup the community in the database using the host provided.
-#[cached(
-    time = 86400,
-    key = "String",
-    convert = r#"{ String::from(_host) }"#,
-    sync_writes = true,
-    result = true
-)]
+// #[cached(
+//     time = 86400,
+//     key = "String",
+//     convert = r#"{ String::from(_host) }"#,
+//     sync_writes = true,
+//     result = true
+// )]
+#[allow(clippy::unnecessary_wraps, clippy::needless_pass_by_value)]
 fn lookup_community(_db: DynDB, _host: &str) -> Result<Option<String>> {
     // TODO(tegioz): query database to get the community
     Ok(Some("cncf".to_string()))
