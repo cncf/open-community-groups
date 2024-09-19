@@ -104,6 +104,8 @@ create table event (
     title text not null,
     slug text not null,
     description text not null,
+    starts_at timestamptz,
+    ends_at timestamptz,
     icon_url text,
     banner_url text,
     photos_urls text[],
@@ -118,12 +120,12 @@ create table event (
     postponed boolean default false not null,
     cancelled boolean default false not null,
     group_id uuid not null references "group",
-    kind text not null references event_kind,
+    event_kind_id text not null references event_kind,
     unique (slug, group_id)
 );
 
 create index event_group_id_idx on event (group_id);
-create index event_kind_idx on event (kind);
+create index event_event_kind_id_idx on event (event_kind_id);
 
 create table session_kind (
     session_kind_id text primary key,
@@ -144,12 +146,12 @@ create table session (
     ends_at timestamptz,
     streaming_url text,
     recording_url text,
-    kind text not null references session_kind,
+    session_kind_id text not null references session_kind,
     event_id uuid not null references event
 );
 
 create index session_event_id_idx on session (event_id);
-create index session_kind_idx on session (kind);
+create index session_session_kind_id_idx on session (session_kind_id);
 
 create table "user" (
     user_id uuid primary key default gen_random_uuid(),

@@ -10,7 +10,8 @@ use axum::{
     http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Debug};
+use time::OffsetDateTime;
 use tracing::{debug, error};
 
 /// Index document template.
@@ -20,6 +21,8 @@ use tracing::{debug, error};
 pub(crate) struct Index {
     pub community: IndexCommunity,
     pub groups: Vec<IndexGroup>,
+    pub upcoming_in_person_events: Vec<IndexEvent>,
+    pub upcoming_online_events: Vec<IndexEvent>,
 }
 
 /// Community information used in the community index.
@@ -52,7 +55,18 @@ pub(crate) struct IndexGroup {
     pub country: String,
     pub icon_url: Option<String>,
     pub name: String,
+    pub region_name: String,
     pub slug: String,
+}
+
+/// Event information used in the community index.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct IndexEvent {
+    pub group_name: String,
+    pub icon_url: Option<String>,
+    pub slug: String,
+    pub starts_at: OffsetDateTime,
+    pub title: String,
 }
 
 /// Handler that returns the index document.
@@ -111,8 +125,8 @@ pub(crate) async fn groups(CommunityId(_community): CommunityId) -> impl IntoRes
 #[allow(clippy::needless_pass_by_value)]
 fn internal_error<E>(err: E) -> StatusCode
 where
-    E: Into<Error> + Display,
+    E: Into<Error> + Debug,
 {
-    error!(%err);
+    error!(?err);
     StatusCode::INTERNAL_SERVER_ERROR
 }
