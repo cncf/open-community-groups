@@ -14,6 +14,50 @@ use std::{collections::HashMap, fmt::Debug};
 use time::OffsetDateTime;
 use tracing::{debug, error};
 
+/// Handler that returns the index document.
+#[allow(clippy::unused_async)]
+pub(crate) async fn index(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+) -> impl IntoResponse {
+    db.get_community_index_data(community_id)
+        .await
+        .map_err(internal_error)
+}
+
+/// Handler that returns the explore page.
+#[allow(clippy::unused_async)]
+pub(crate) async fn explore(
+    CommunityId(community_id): CommunityId,
+    Query(params): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    debug!("community_id: {}, params: {:?}", community_id, params);
+
+    Explore { params }
+}
+
+/// Handler that returns the explore events section.
+#[allow(clippy::unused_async)]
+pub(crate) async fn explore_events(CommunityId(_community_id): CommunityId) -> impl IntoResponse {
+    ExploreEvents {}
+}
+
+/// Handler that returns the explore groups section.
+#[allow(clippy::unused_async)]
+pub(crate) async fn explore_groups(CommunityId(_community): CommunityId) -> impl IntoResponse {
+    ExploreGroups {}
+}
+
+/// Helper for mapping any error into a `500 Internal Server Error` response.
+#[allow(clippy::needless_pass_by_value)]
+fn internal_error<E>(err: E) -> StatusCode
+where
+    E: Into<Error> + Debug,
+{
+    error!(?err);
+    StatusCode::INTERNAL_SERVER_ERROR
+}
+
 /// Index document template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/index.html")]
@@ -69,17 +113,6 @@ pub(crate) struct IndexEvent {
     pub title: String,
 }
 
-/// Handler that returns the index document.
-#[allow(clippy::unused_async)]
-pub(crate) async fn index(
-    State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
-) -> impl IntoResponse {
-    db.get_community_index_data(community_id)
-        .await
-        .map_err(internal_error)
-}
-
 /// Explore page template.
 #[derive(Debug, Clone, Template)]
 #[template(path = "community/explore.html")]
@@ -88,45 +121,12 @@ pub(crate) struct Explore {
     pub params: HashMap<String, String>,
 }
 
-/// Handler that returns the explore page.
-#[allow(clippy::unused_async)]
-pub(crate) async fn explore(
-    CommunityId(community_id): CommunityId,
-    Query(params): Query<HashMap<String, String>>,
-) -> impl IntoResponse {
-    debug!("community_id: {}, params: {:?}", community_id, params);
-
-    Explore { params }
-}
-
 /// Explore events section template.
 #[derive(Debug, Clone, Template)]
-#[template(path = "community/events.html")]
-pub(crate) struct Events {}
-
-/// Handler that returns the explore events section.
-#[allow(clippy::unused_async)]
-pub(crate) async fn events(CommunityId(_community_id): CommunityId) -> impl IntoResponse {
-    Events {}
-}
+#[template(path = "community/explore_events.html")]
+pub(crate) struct ExploreEvents {}
 
 /// Explore groups section template.
 #[derive(Debug, Clone, Template)]
-#[template(path = "community/groups.html")]
-pub(crate) struct Groups {}
-
-/// Handler that returns the explore groups section.
-#[allow(clippy::unused_async)]
-pub(crate) async fn groups(CommunityId(_community): CommunityId) -> impl IntoResponse {
-    Groups {}
-}
-
-/// Helper for mapping any error into a `500 Internal Server Error` response.
-#[allow(clippy::needless_pass_by_value)]
-fn internal_error<E>(err: E) -> StatusCode
-where
-    E: Into<Error> + Debug,
-{
-    error!(?err);
-    StatusCode::INTERNAL_SERVER_ERROR
-}
+#[template(path = "community/explore_groups.html")]
+pub(crate) struct ExploreGroups {}
