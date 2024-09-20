@@ -11,14 +11,15 @@
       <h1
         class="mb-4 text-4xl font-extrabold tracking-tight leading-none text-white md:text-5xl lg:text-6xl"
       >
-        CNCF
+        {{ community.display_name }}
       </h1>
-      <p
-        class="mb-8 text-lg font-normal text-gray-300 lg:text-xl sm:px-16 lg:px-48"
-      >
-        The Cloud Native Computing Foundation (CNCF) hosts critical components of
-        the global technology infrastructure, including Kubernetes and Prometheus.
-      </p>
+      {% if let Some(description) = self.community.description %}
+        <p
+          class="mb-8 text-lg font-normal text-gray-300 lg:text-xl sm:px-16 lg:px-48"
+        >
+          {{ description }}
+        </p>
+      {% endif %}
       <div
         class="flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0"
       >
@@ -57,7 +58,7 @@
   <div class="my-10 pb-10 border-0 border-b">
     <div class="grid-1 grid grid-cols-2 gap4 content-center mb-6">
       <div class="uppercase text-2xl tracking-wide font-bold leading-10">
-        Upcoming near events
+        Upcoming in person events
       </div>
       <div class="justify-self-end">
         <a
@@ -68,7 +69,59 @@
         </a>
       </div>
     </div>
-    {% include "index_events_list.html" %}
+    <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+      {% for event in upcoming_in_person_events %}
+        <div
+          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+        >
+          <a href="#">
+            {% if let Some(icon_url) = event.icon_url %}
+              <img
+                class="rounded-t-lg"
+                src="{{ icon_url }}"
+                alt="Event {{ event.title }}"
+              />
+            {% else %}
+              <img
+                class="rounded-t-lg"
+                src="https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg"
+                alt="Placeholder image"
+              />
+            {% endif %}
+          </a>
+          <div class="flex flex-col p-5 h-36">
+            <a href="#" class="grow">
+              <h5
+                class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
+              >
+                {{ event.title }}
+              </h5>
+            </a>
+            <a
+              href="#"
+              class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              More info
+              <svg
+                class="rtl:rotate-180 w-3.5 h-3.5 ms-2"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 14 10"
+              >
+                <path
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M1 5h12m0 0L9 1m4 4L9 9"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   </div>
 
   <div class="my-10 pb-10 border-0 border-b">
@@ -85,7 +138,59 @@
         </a>
       </div>
     </div>
-    {% include "index_events_list.html" %}
+    <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+      {% for event in upcoming_online_events %}
+        <div
+          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+        >
+          <a href="#">
+            {% if let Some(icon_url) = event.icon_url %}
+              <img
+                class="rounded-t-lg"
+                src="{{ icon_url }}"
+                alt="Event {{ event.title }}"
+              />
+            {% else %}
+              <img
+                class="rounded-t-lg"
+                src="https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg"
+                alt="Placeholder image"
+              />
+            {% endif %}
+          </a>
+          <div class="flex flex-col p-5 h-36">
+            <a href="#" class="grow">
+              <h5
+                class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
+              >
+                {{ event.title }}
+              </h5>
+            </a>
+            <a
+              href="#"
+              class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              More info
+              <svg
+                class="rtl:rotate-180 w-3.5 h-3.5 ms-2"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 14 10"
+              >
+                <path
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M1 5h12m0 0L9 1m4 4L9 9"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   </div>
 
   <div class="my-10">
@@ -98,10 +203,62 @@
           href="#"
           class="inline-flex items-center px-3 py-2 text-md font-medium uppercase text-center text-white bg-primary-500 rounded-lg hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
         >
-          See more events
+          See more community groups
         </a>
       </div>
     </div>
-    {% include "index_events_list.html" %}
+    <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+      {% for group in groups %}
+        <div
+          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+        >
+          <a href="#">
+            {% if let Some(icon_url) = group.icon_url %}
+              <img
+                class="rounded-t-lg"
+                src="{{ icon_url }}"
+                alt="Group {{ group.name }}"
+              />
+            {% else %}
+              <img
+                class="rounded-t-lg"
+                src="https://feedalpha.com/wp-content/uploads/2021/08/shutterstock_1712684425-1.jpg"
+                alt="Placeholder image"
+              />
+            {% endif %}
+          </a>
+          <div class="flex flex-col p-5 h-36">
+            <a href="#" class="grow">
+              <h5
+                class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
+              >
+                {{ group.name }}
+              </h5>
+            </a>
+            <a
+              href="#"
+              class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+            >
+              More info
+              <svg
+                class="rtl:rotate-180 w-3.5 h-3.5 ms-2"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 14 10"
+              >
+                <path
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M1 5h12m0 0L9 1m4 4L9 9"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   </div>
 {% endblock %}
