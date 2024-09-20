@@ -2,8 +2,8 @@
 <footer
   class="flex-none bg-gray-950 text-center text-white text-surface/75 lg:text-left"
 >
-  <div class="px-6 sm:px-8 lg:px-12">
-    <div class="py-10 text-center md:text-left">
+  <div class="px-8 py-6 lg:px-16 lg:py-12">
+    <div class="pb-10 text-center md:text-left">
       <div class="grid-1 grid gap-8 grid-cols-2">
         {% if let Some(footer_logo_url) = self.community.footer_logo_url %}
         <div>
@@ -67,7 +67,7 @@
     </div>
 
     <!--Copyright section-->
-    <div class="py-10 border-solid border-0 border-t border-gray-500 text-xs">
+    <div class="pt-10 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
         <p class="mb-4">
           {{ copyright_notice }}
