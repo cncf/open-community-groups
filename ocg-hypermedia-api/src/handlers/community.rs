@@ -107,12 +107,14 @@ pub(crate) struct IndexGroup {
 /// Event information used in the community index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct IndexEvent {
+    pub city: Option<String>,
     pub group_name: String,
     pub icon_url: Option<String>,
     pub slug: String,
     #[serde(with = "time::serde::iso8601")]
     pub starts_at: OffsetDateTime,
     pub title: String,
+    pub venue_name: Option<String>,
 }
 
 /// Explore page template.
