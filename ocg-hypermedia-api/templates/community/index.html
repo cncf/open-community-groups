@@ -66,7 +66,7 @@
           </a>
           <a
             href="#"
-            class="inline-flex justify-center hover:text-primary-500 bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+            class="inline-flex justify-center bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 hover:border-primary-700 hover:text-primary-700"
           >
             Groups
           </a>
@@ -80,67 +80,46 @@
 {% block content %}
   <!-- Events -->
   <div class="my-10 pb-10 border-0 border-b">
-    <div class="grid-1 grid grid-cols-2 gap4 content-center mb-6">
-      <div class="uppercase text-2xl tracking-wide font-bold leading-10">
-        Upcoming in person events
+    <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
+        Upcoming events
       </div>
       <div class="justify-self-end">
         <a
           href="#"
-          class="inline-flex items-center px-3 py-2 text-md font-medium uppercase text-center text-white bg-primary-500 rounded-lg hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+          class="inline-flex justify-center bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 hover:border-primary-700 hover:text-primary-700"
         >
           See more events
         </a>
       </div>
     </div>
-    <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid-1 grid gap-10 my-10 md:grid-cols-2 xl:grid-cols-3">
       {% for event in upcoming_in_person_events %}
-        <div
-          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
-        >
-          <a href="#">
-            {% if let Some(icon_url) = event.icon_url %}
-              <img
-                class="rounded-t-lg"
-                src="{{ icon_url }}"
-                alt="Event {{ event.title }}"
-              />
-            {% else %}
-              <img
-                class="rounded-t-lg"
-                src="https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg"
-                alt="Placeholder image"
-              />
-            {% endif %}
-          </a>
-          <div class="flex flex-col p-5 h-36">
-            <div class="grow">
-              <h5
-                class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
-              >
-                {{ event.title }}
-              </h5>
-            </div>
-            <a
-              href="#"
-              class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-            >
-              More info
-              <svg
-                class="rtl:rotate-180 w-3.5 h-3.5 ms-2"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 10"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M1 5h12m0 0L9 1m4 4L9 9"
-                />
-              </svg>
+        <div class="flex flex-1 flex-row items-center">
+          <div
+            class="h-24 min-w-24 lg:h-[120px] lg:min-w-[120px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
+            style="
+              background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+            "
+          ></div>
+          <div class="min-w-0 pl-4 content-center">
+            <a class="w-full cursor-pointer hover:no-underline" href="#">
+              <div class="truncate leading-3">
+                <span class="text-xs font-semibold tracking-wide text-gray-500 uppercase">{{ event.group_name }}</span>
+              </div>
+              <h2 class="font-semibold line-clamp-1 lg:line-clamp-2 lg:h-[48px] mb-2">{{ event.title }}</h2>
+              {% if let Some(city) = event.city %}
+                <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2">
+                  <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
+                  <div class="truncate text-gray-700 text-xs uppercase">
+                    {{ city }}
+                  </div>
+                </div>
+              {% endif %}
+              <div class="flex flex-row items-center leading-4 pt-1">
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+                <span class="text-gray-700 text-xs uppercase truncate">{{ event.starts_at }}</span>
+              </div>
             </a>
           </div>
         </div>
@@ -149,67 +128,46 @@
   </div>
 
   <div class="my-10 pb-10 border-0 border-b">
-    <div class="grid-1 grid grid-cols-2 gap4 content-center mb-6">
-      <div class="uppercase text-2xl tracking-wide font-bold leading-10">
+    <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
         Upcoming online events
       </div>
       <div class="justify-self-end">
         <a
           href="#"
-          class="inline-flex items-center px-3 py-2 text-md font-medium uppercase text-center text-white bg-primary-500 rounded-lg hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+          class="inline-flex justify-center bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 hover:border-primary-700 hover:text-primary-700"
         >
           See more events
         </a>
       </div>
     </div>
-    <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid-1 grid gap-10 my-10 md:grid-cols-2 xl:grid-cols-3">
       {% for event in upcoming_online_events %}
-        <div
-          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
-        >
-          <a href="#">
-            {% if let Some(icon_url) = event.icon_url %}
-              <img
-                class="rounded-t-lg"
-                src="{{ icon_url }}"
-                alt="Event {{ event.title }}"
-              />
-            {% else %}
-              <img
-                class="rounded-t-lg"
-                src="https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg"
-                alt="Placeholder image"
-              />
-            {% endif %}
-          </a>
-          <div class="flex flex-col p-5 h-36">
-            <a href="#" class="grow">
-              <h5
-                class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
-              >
-                {{ event.title }}
-              </h5>
-            </a>
-            <a
-              href="#"
-              class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-            >
-              More info
-              <svg
-                class="rtl:rotate-180 w-3.5 h-3.5 ms-2"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 10"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M1 5h12m0 0L9 1m4 4L9 9"
-                />
-              </svg>
+        <div class="flex flex-1 flex-row items-center">
+          <div
+            class="h-24 min-w-24 lg:h-[120px] lg:min-w-[120px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
+            style="
+              background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+            "
+          ></div>
+          <div class="min-w-0 pl-4 content-center">
+            <a class="w-full cursor-pointer hover:no-underline" href="#">
+              <div class="truncate leading-3">
+                <span class="text-xs font-semibold tracking-wide text-gray-500 uppercase">{{ event.group_name }}</span>
+              </div>
+              <h2 class="font-semibold line-clamp-1 lg:line-clamp-2 lg:h-[48px] mb-2">{{ event.title }}</h2>
+              {% if let Some(city) = event.city %}
+                <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2">
+                  <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
+                  <div class="truncate text-gray-700 text-xs uppercase">
+                    {{ city }}
+                  </div>
+                </div>
+              {% endif %}
+              <div class="flex flex-row items-center leading-4 pt-1">
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+                <span class="text-gray-700 text-xs uppercase truncate">{{ event.starts_at }}</span>
+              </div>
             </a>
           </div>
         </div>
@@ -218,14 +176,14 @@
   </div>
 
   <div class="my-10">
-    <div class="grid-1 grid grid-cols-2 gap4 content-center mb-6">
-      <div class="uppercase text-2xl tracking-wide font-bold leading-10">
+    <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
         Discover community groups
       </div>
       <div class="justify-self-end">
         <a
           href="#"
-          class="inline-flex items-center px-3 py-2 text-md font-medium uppercase text-center text-white bg-primary-500 rounded-lg hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800"
+          class="inline-flex justify-center bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 hover:border-primary-700 hover:text-primary-700"
         >
           See more community groups
         </a>
