@@ -38,17 +38,28 @@ returns json as $$
         ),
         'upcoming_in_person_events', (
             select coalesce(json_agg(json_build_object(
+                'city', coalesce(event_city, group_city),
                 'group_name', group_name,
                 'icon_url', icon_url,
                 'slug', slug,
                 'starts_at', starts_at,
-                'title', title
+                'title', title,
+                'venue', venue
             )), '[]')
             from (
-                select g.name as group_name, e.icon_url, e.slug, e.starts_at, e.title
+                select
+                    e.city as event_city,
+                    g.city as group_city,
+                    g.name as group_name,
+                    e.icon_url,
+                    e.slug,
+                    e.starts_at,
+                    e.title,
+                    e.venue
                 from event e
                 join "group" g using (group_id)
                 where g.community_id = $1
+                and e.icon_url is not null
                 and e.starts_at > now()
                 and e.cancelled = false
                 and e.postponed = false
@@ -59,17 +70,28 @@ returns json as $$
         ),
         'upcoming_online_events', (
             select coalesce(json_agg(json_build_object(
+                'city', coalesce(event_city, group_city),
                 'group_name', group_name,
                 'icon_url', icon_url,
                 'slug', slug,
                 'starts_at', starts_at,
-                'title', title
+                'title', title,
+                'venue', venue
             )), '[]')
             from (
-                select g.name as group_name, e.icon_url, e.slug, e.starts_at, e.title
+                select
+                    e.city as event_city,
+                    g.city as group_city,
+                    g.name as group_name,
+                    e.icon_url,
+                    e.slug,
+                    e.starts_at,
+                    e.title,
+                    e.venue
                 from event e
                 join "group" g using (group_id)
                 where g.community_id = $1
+                and e.icon_url is not null
                 and e.starts_at > now()
                 and e.cancelled = false
                 and e.postponed = false

@@ -73,6 +73,7 @@ pub(crate) struct Index {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct IndexCommunity {
     pub display_name: String,
+    pub header_logo_url: String,
     pub title: String,
     pub description: String,
     pub banners_urls: Option<Vec<String>>,
@@ -82,7 +83,6 @@ pub(crate) struct IndexCommunity {
     pub flickr_url: Option<String>,
     pub footer_logo_url: Option<String>,
     pub github_url: Option<String>,
-    pub header_logo_url: Option<String>,
     pub homepage_url: Option<String>,
     pub instagram_url: Option<String>,
     pub linkedin_url: Option<String>,
@@ -96,12 +96,12 @@ pub(crate) struct IndexCommunity {
 /// Group information used in the community index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct IndexGroup {
-    pub city: String,
-    pub country: String,
-    pub icon_url: Option<String>,
     pub name: String,
     pub region_name: String,
     pub slug: String,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub icon_url: Option<String>,
 }
 
 /// Event information used in the community index.
