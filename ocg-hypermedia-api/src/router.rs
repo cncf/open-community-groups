@@ -5,7 +5,7 @@ use crate::{
     db::DynDB,
     handlers::{community, event, group},
 };
-use axum::{extract::FromRef, response::IntoResponse, routing::get, Router};
+use axum::{extract::FromRef, http::StatusCode, response::IntoResponse, routing::get, Router};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
@@ -39,5 +39,5 @@ pub(crate) fn setup(db: DynDB) -> Router {
 
 /// Handler that takes care of health check requests.
 async fn health_check() -> impl IntoResponse {
-    ""
+    StatusCode::OK
 }

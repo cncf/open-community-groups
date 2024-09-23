@@ -18,6 +18,7 @@ returns json as $$
             'linkedin_url', linkedin_url,
             'photos_urls', photos_urls,
             'slack_url', slack_url,
+            'title', title,
             'twitter_url', twitter_url,
             'wechat_url', wechat_url,
             'youtube_url', youtube_url

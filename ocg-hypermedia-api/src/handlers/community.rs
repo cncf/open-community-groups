@@ -72,10 +72,11 @@ pub(crate) struct Index {
 /// Community information used in the community index.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct IndexCommunity {
+    pub display_name: String,
+    pub title: String,
+    pub description: String,
     pub banners_urls: Option<Vec<String>>,
     pub copyright_notice: Option<String>,
-    pub description: Option<String>,
-    pub display_name: String,
     pub extra_links: Option<HashMap<String, String>>,
     pub facebook_url: Option<String>,
     pub flickr_url: Option<String>,

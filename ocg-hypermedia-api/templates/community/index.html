@@ -13,13 +13,11 @@
       >
         {{ community.display_name }}
       </h1>
-      {% if let Some(description) = self.community.description %}
-        <p
-          class="mb-8 text-lg font-normal text-gray-300 lg:text-xl sm:px-16 lg:px-48"
-        >
-          {{ description }}
-        </p>
-      {% endif %}
+      <p
+        class="mb-8 text-lg font-normal text-gray-300 lg:text-xl sm:px-16 lg:px-48"
+      >
+        {{ community.description }}
+      </p>
       <div
         class="flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0"
       >
