@@ -23,7 +23,7 @@ returns json as $$
             'wechat_url', wechat_url,
             'youtube_url', youtube_url
         ),
-        'groups', (
+        'recently_added_groups', (
             select coalesce(json_agg(json_build_object(
                 'city', g.city,
                 'country', g.country,
@@ -35,6 +35,8 @@ returns json as $$
             from "group" g
             join region r using (region_id)
             where g.community_id = $1
+            order by created_at desc
+            limit 9
         ),
         'upcoming_in_person_events', (
             select coalesce(json_agg(json_build_object(
@@ -63,7 +65,7 @@ returns json as $$
                 and e.postponed = false
                 and e.event_kind_id = 'in-person'
                 order by e.starts_at asc
-                limit 10
+                limit 9
             ) events
         ),
         'upcoming_online_events', (
@@ -93,7 +95,7 @@ returns json as $$
                 and e.postponed = false
                 and e.event_kind_id = 'virtual'
                 order by e.starts_at asc
-                limit 10
+                limit 9
             ) events
         )
     )) as json_data

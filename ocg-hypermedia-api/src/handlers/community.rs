@@ -64,7 +64,7 @@ where
 #[allow(dead_code)]
 pub(crate) struct Index {
     pub community: IndexCommunity,
-    pub groups: Vec<IndexGroup>,
+    pub recently_added_groups: Vec<IndexGroup>,
     pub upcoming_in_person_events: Vec<IndexEvent>,
     pub upcoming_online_events: Vec<IndexEvent>,
 }
