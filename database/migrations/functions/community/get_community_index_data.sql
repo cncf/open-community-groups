@@ -42,7 +42,7 @@ returns json as $$
                 'group_name', group_name,
                 'icon_url', icon_url,
                 'slug', slug,
-                'starts_at', starts_at,
+                'starts_at', floor(extract(epoch from starts_at)),
                 'title', title
             )), '[]')
             from (
@@ -72,7 +72,7 @@ returns json as $$
                 'group_name', group_name,
                 'icon_url', icon_url,
                 'slug', slug,
-                'starts_at', starts_at,
+                'starts_at', floor(extract(epoch from starts_at)),
                 'title', title
             )), '[]')
             from (

@@ -9,9 +9,9 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
 };
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
-use time::OffsetDateTime;
 use tracing::{debug, error};
 
 /// Handler that returns the index document.
@@ -111,8 +111,8 @@ pub(crate) struct IndexEvent {
     pub group_name: String,
     pub icon_url: Option<String>,
     pub slug: String,
-    #[serde(with = "time::serde::iso8601")]
-    pub starts_at: OffsetDateTime,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub starts_at: DateTime<Utc>,
     pub title: String,
 }
 
