@@ -114,7 +114,6 @@ pub(crate) struct IndexEvent {
     #[serde(with = "time::serde::iso8601")]
     pub starts_at: OffsetDateTime,
     pub title: String,
-    pub venue_name: Option<String>,
 }
 
 /// Explore page template.

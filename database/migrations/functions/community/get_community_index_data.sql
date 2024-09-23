@@ -43,8 +43,7 @@ returns json as $$
                 'icon_url', icon_url,
                 'slug', slug,
                 'starts_at', starts_at,
-                'title', title,
-                'venue', venue
+                'title', title
             )), '[]')
             from (
                 select
@@ -54,8 +53,7 @@ returns json as $$
                     e.icon_url,
                     e.slug,
                     e.starts_at,
-                    e.title,
-                    e.venue
+                    e.title
                 from event e
                 join "group" g using (group_id)
                 where g.community_id = $1
@@ -75,8 +73,7 @@ returns json as $$
                 'icon_url', icon_url,
                 'slug', slug,
                 'starts_at', starts_at,
-                'title', title,
-                'venue', venue
+                'title', title
             )), '[]')
             from (
                 select
@@ -86,8 +83,7 @@ returns json as $$
                     e.icon_url,
                     e.slug,
                     e.starts_at,
-                    e.title,
-                    e.venue
+                    e.title
                 from event e
                 join "group" g using (group_id)
                 where g.community_id = $1
