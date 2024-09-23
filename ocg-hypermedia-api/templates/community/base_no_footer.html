@@ -17,6 +17,7 @@
           extend: {
             colors: {
               primary: {
+                50: "#fef9fc",
                 100: "#fbe8f4",
                 300: "#ee93cc",
                 500: "#D62293",
@@ -32,16 +33,6 @@
   <body class="h-full bg-white" hx-boost="true">
     <div class="min-h-full flex flex-col">
       {% include "header.html" %}
-
-      <header class="flex-none bg-gray-100 border-y shadow">
-        <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1
-            class="text-2xl font-semibold tracking-tight text-gray-900 tracking-wide"
-          >
-            {% block title %}{{ title }}{% endblock %}
-          </h1>
-        </div>
-      </header>
 
       {% block subheader %}
         <div></div>

@@ -1,57 +1,83 @@
 {% extends "base.html" %}
 
 {% block title %}Community site index page{% endblock %}
+{% block headerColor %}gray-100{% endblock %}
+
+{% block jumbotron %}
+  <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <!-- Jumbotron -->
+    <section
+      class="relative"
+    >
+      <div class="relative z-10 max-w-screen-xl pb-10 md:pb-20">
+        <h1
+          class="mb-4 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl"
+        >
+          {{self.community.title }}
+        </h1>
+        <p
+          class="mb-8 text-md font-normal text-gray-700 lg:text-lg"
+        >
+          {{ self.community.description }}
+        </p>
+        <div>
+          <form class="mb-6">
+            <div class="relative">
+              <svg
+                class="absolute top-3 left-3 w-6 h-6 text-primary-500"
+                aria-hidden="true"
+                stroke="currentColor"
+                fill="none"
+                stroke-width="1.5"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                height="1em"
+                width="1em"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                ></path>
+              </svg>
+              <input
+                  type="text"
+                  id="search"
+                  name="q"
+                  class="w-[100%] lg:w-[50%] rounded-full border border-primary-500 text-gray-900 placeholder-gray-400 focus:ring-primary-700 focus:border-primary-700  block flex-1 min-w-0 w-60 text-md p-2.5 ps-12"
+                  placeholder="Search groups and events"
+                  hx-get="/explore"
+                  hx-push-url="false"
+                  hx-trigger="change, keyup delay:200ms changed"
+                />
+            </div>
+          </form>
+        </div>
+        <div
+          class="flex flex-row"
+        >
+          <a
+            href="/explore"
+            class="inline-flex justify-center items-center py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4"
+            hx-boost="false"
+          >
+            Events
+          </a>
+          <a
+            href="#"
+            class="inline-flex justify-center hover:text-primary-500 bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+          >
+            Groups
+          </a>
+        </div>
+      </div>
+      <div class="absolute top-[70%] right-0 h-[75%] w-[90%] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] md:w-[75%] md:top-[65%]"></div>
+    </section>
+  </div>
+{% endblock %}
 
 {% block content %}
-  <!-- Jumbotron -->
-  <section
-    class="my-10 bg-center bg-no-repeat bg-[url('https://events19.linuxfoundation.org/wp-content/uploads/2018/07/32433210658_bf252576ae_o.jpg')] bg-gray-700 bg-blend-multiply"
-  >
-    <div class="px-4 mx-auto max-w-screen-xl text-center py-24 lg:py-56">
-      <h1
-        class="mb-4 text-4xl font-extrabold tracking-tight leading-none text-white md:text-5xl lg:text-6xl"
-      >
-        {{ community.display_name }}
-      </h1>
-      <p
-        class="mb-8 text-lg font-normal text-gray-300 lg:text-xl sm:px-16 lg:px-48"
-      >
-        {{ community.description }}
-      </p>
-      <div
-        class="flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0"
-      >
-        <a
-          href="/explore"
-          class="inline-flex justify-center items-center py-3 px-5 text-base font-medium text-center text-white rounded-lg bg-primary-500 hover:bg-primary-700 focus:ring-4"
-        >
-          Events
-          <svg
-            class="w-3.5 h-3.5 ms-2 rtl:rotate-180"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 14 10"
-          >
-            <path
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M1 5h12m0 0L9 1m4 4L9 9"
-            />
-          </svg>
-        </a>
-        <a
-          href="#"
-          class="inline-flex justify-center hover:text-gray-900 items-center py-3 px-5 sm:ms-4 text-base font-medium text-center text-white rounded-lg border border-white hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
-        >
-          Groups
-        </a>
-      </div>
-    </div>
-  </section>
-
   <!-- Events -->
   <div class="my-10 pb-10 border-0 border-b">
     <div class="grid-1 grid grid-cols-2 gap4 content-center mb-6">
@@ -88,13 +114,13 @@
             {% endif %}
           </a>
           <div class="flex flex-col p-5 h-36">
-            <a href="#" class="grow">
+            <div class="grow">
               <h5
                 class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
               >
                 {{ event.title }}
               </h5>
-            </a>
+            </div>
             <a
               href="#"
               class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
@@ -207,10 +233,10 @@
     </div>
     <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
       {% for group in groups %}
-        <div
-          class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
-        >
-          <a href="#">
+        <a href="/groups/{{ group.slug }}" hx-boost="false">
+          <div
+            class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+          >
             {% if let Some(icon_url) = group.icon_url %}
               <img
                 class="rounded-t-lg"
@@ -224,38 +250,18 @@
                 alt="Placeholder image"
               />
             {% endif %}
-          </a>
-          <div class="flex flex-col p-5 h-36">
-            <a href="#" class="grow">
-              <h5
-                class="mb-2 text-xl font-bold line-clamp-2 tracking-tight text-gray-900 dark:text-white"
-              >
-                {{ group.name }}
-              </h5>
-            </a>
-            <a
-              href="#"
-              class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-            >
-              More info
-              <svg
-                class="rtl:rotate-180 w-3.5 h-3.5 ms-2"
-                aria-hidden="true"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 14 10"
-              >
-                <path
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M1 5h12m0 0L9 1m4 4L9 9"
-                />
-              </svg>
-            </a>
+            <div class="flex flex-col p-5 h-36">
+              <div class="grow">
+                <h5
+                  class="mb-2 text-xl font-bold truncate tracking-tight text-gray-900 dark:text-white"
+                >
+                  {{ group.name }}
+                </h5>
+                <div class="text-gray-700 text-xs uppercase truncate">{{ group.city }}, {{ group.country }}</div>
+              </div>
+            </div>
           </div>
-        </div>
+        </a>
       {% endfor %}
     </div>
   </div>

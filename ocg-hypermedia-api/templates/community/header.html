@@ -1,137 +1,83 @@
-<nav class="flex-none bg-transparent">
-  <div class="px-4 sm:px-6 lg:px-8">
-    <div class="flex h-16 items-center justify-between">
-      <div class="flex md:hidden">
-        <button
-          type="button"
-          class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-primary-500 rounded-full md:hidden hover:bg-primary-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-          onclick="toggleNavbarMobile()"
-        >
-          <span class="sr-only">Open menu</span>
-          <svg
-            class="w-5 h-5"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 17 14"
-          >
-            <path
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M1 1h15M1 7h15M1 13h15"
-            />
+<header>
+  <nav class="flex items-center justify-between h-24 px-4 sm:px-6 lg:px-8">
+    <div class="flex lg:flex-1">
+      <a href="#" class="-m-1.5 p-1.5">
+        <img
+          class="h-10 w-50"
+          src="https://res.cloudinary.com/startup-grind/image/upload/dpr_2.0,fl_sanitize/v1/gcs/platform-data-cncf/contentbuilder/community-logo.svg"
+          alt="Logo"
+        />
+      </a>
+    </div>
+    <div class="flex lg:hidden">
+      <button type="button" class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700" onclick="toggleNavbarMobile()">
+        <span class="sr-only">Open main menu</span>
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+    </div>
+    <div class="hidden lg:flex lg:gap-x-8">
+      <a
+        href="/"
+        class="px-3 pb-2 border-0 border-b-2 border-primary-500 text-md font-semibold tracking-widest text-primary-500 uppercase"
+        aria-current="page"
+        >Home</a>
+      <a
+        href="/explore"
+        class="px-3 pb-2 border-0 border-primary-500 text-md font-semibold tracking-widest text-primary-500 uppercase hover:border-b-2 hover:border-primary-300"
+        >Explore</a
+      >
+    </div>
+    <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
+      <a
+        href="#"
+        class="inline-flex justify-center bg-white items-center py-2 px-5 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 focus:ring-4 focus:ring-gray-400"
+      >
+        Sign up
+      </a>
+      <a
+        href="#"
+        class="inline-flex justify-center items-center py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4"
+      >
+        Log in
+      </a>
+    </div>
+  </nav>
+  <!-- Mobile menu, show/hide based on menu open state. -->
+  <div class="hidden lg:hidden" role="dialog" aria-modal="true" id="navbar-mobile">
+    <!-- Background backdrop, show/hide based on slide-over state. -->
+    <div class="hidden fixed inset-0 z-10" id="backdrop-backdrop"></div>
+    <div class="fixed inset-y-0 right-0 z-10 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
+      <div class="flex items-center justify-between">
+        <button type="button" class="-m-2.5 rounded-md p-2.5 text-gray-700" onclick="toggleNavbarMobile()">
+          <span class="sr-only">Close menu</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          <img
-            class="h-10 w-50"
-            src="https://res.cloudinary.com/startup-grind/image/upload/dpr_2.0,fl_sanitize/v1/gcs/platform-data-cncf/contentbuilder/community-logo.svg"
-            alt="Logo"
-          />
-        </div>
-        <div class="hidden md:block">
-          <div class="ml-10 flex items-baseline space-x-4">
-            <a
-              href="#"
-              class="px-3 pb-2 border-0 border-b-2 border-primary-500 text-md font-semibold tracking-widest text-primary-500 uppercase"
-              aria-current="page"
-              >Explore</a
-            >
-            <a
-              href="#"
-              class="px-3 pb-2 border-0 border-primary-500 text-md font-semibold tracking-widest text-primary-500 uppercase hover:border-b-2 hover:border-primary-300"
-              >New group</a
-            >
+      <div class="mt-6 flow-root">
+        <div class="-my-6 divide-y divide-gray-500/10">
+          <div class="space-y-2 py-6">
+            <a href="#" class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50">Home</a>
+            <a href="#" class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50">Explore</a>
+          </div>
+          <div class="py-6">
+            <a href="#" class="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50">Sign up</a>
+            <a href="#" class="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50">Log in</a>
           </div>
         </div>
-      </div>
-      <div
-        class="flex items-center md:order-2 space-x-3 md:space-x-0 rtl:space-x-reverse"
-      >
-        <form class="hidden mr-10 lg:flex">
-          <div class="flex">
-            <span
-              class="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200 border border-e-0 border-gray-300 rounded-s-md dark:bg-gray-600 dark:text-gray-400 dark:border-gray-600"
-            >
-              <svg
-                class="w-4 h-4 text-gray-500 dark:text-gray-400"
-                aria-hidden="true"
-                stroke="currentColor"
-                fill="none"
-                stroke-width="1.5"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                height="1em"
-                width="1em"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                ></path>
-              </svg>
-            </span>
-            <!-- TODO - fix url -->
-            <input
-              type="text"
-              id="search"
-              name="q"
-              class="rounded-none rounded-e-lg bg-gray-50 border border-gray-300 text-gray-900 focus:ring-primary-500 focus:border-primary-500 block flex-1 min-w-0 w-60 text-sm p-1.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-primary-500 dark:focus:border-primary-500"
-              placeholder="Search groups and events"
-              hx-get="/explore"
-              hx-push-url="false"
-              hx-trigger="change, keyup delay:200ms changed"
-            />
-          </div>
-        </form>
-        <button
-          type="button"
-          class="flex text-sm bg-gray-200 border border-2 border-gray-800 rounded-full md:me-0 focus:ring-4 focus:ring-gray-300 dark:focus:ring-gray-600"
-          id="user-menu-button"
-          aria-expanded="false"
-          data-dropdown-toggle="user-dropdown"
-          data-dropdown-placement="bottom"
-        >
-          <span class="sr-only">Open user menu</span>
-          <img
-            class="w-8 h-y8 rounded-full"
-            src="https://www.cncf.io/wp-content/uploads/2023/04/Phippy-300x300.jpg"
-            alt="user photo"
-          />
-        </button>
       </div>
     </div>
   </div>
-  <div class="hidden w-full md:hidden md:w-auto" id="navbar-mobile">
-    <ul
-      class="font-medium flex flex-col p-4 mb-4 mx-4 md:p-0 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700"
-    >
-      <li>
-        <a
-          href="/explore"
-          class="block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500"
-          aria-current="page"
-          >Explore</a
-        >
-      </li>
-      <li>
-        <a
-          href="#"
-          class="block py-2 px-3 text-gray-900 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
-          >New group</a
-        >
-      </li>
-    </ul>
-  </div>
-</nav>
+</header>
+
 <script>
   const toggleNavbarMobile = () => {
     const navbarMobile = document.getElementById("navbar-mobile");
     navbarMobile.classList.toggle("hidden");
+    const navbarBackdrop = document.getElementById("navbar-backdrop");
+    navbarBackdrop.classList.toggle("hidden");
   };
 </script>
