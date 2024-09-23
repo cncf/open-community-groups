@@ -4,7 +4,7 @@
       <a href="#" class="-m-1.5 p-1.5">
         <img
           class="h-10 w-50"
-          src="https://res.cloudinary.com/startup-grind/image/upload/dpr_2.0,fl_sanitize/v1/gcs/platform-data-cncf/contentbuilder/community-logo.svg"
+          src="{{ self.community.header_logo_url }}"
           alt="Logo"
         />
       </a>
@@ -44,9 +44,9 @@
       </a>
     </div>
   </nav>
-  <!-- Mobile menu, show/hide based on menu open state. -->
+
+  <!-- Slider -->
   <div class="hidden lg:hidden" role="dialog" aria-modal="true" id="navbar-mobile">
-    <!-- Background backdrop, show/hide based on slide-over state. -->
     <div class="hidden fixed inset-0 z-10" id="backdrop-backdrop"></div>
     <div class="fixed inset-y-0 right-0 z-10 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
       <div class="flex items-center justify-between">
