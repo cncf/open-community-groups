@@ -1,7 +1,7 @@
 //! This module defines an abstraction layer over the database.
 
-use crate::handlers::community::{self, Index};
-use anyhow::{Context, Result};
+use crate::handlers::community::{self, Explore, Index};
+use anyhow::Result;
 use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
@@ -47,8 +47,8 @@ impl DB for PgDB {
                 &[&community_id],
             )
             .await?;
-        let explore =
-            serde_json::from_value(row.get(0)).context("error deserializing explore data")?;
+        let json_data: serde_json::Value = row.get(0);
+        let explore = Explore::try_from(json_data)?;
 
         Ok(explore)
     }
@@ -76,8 +76,8 @@ impl DB for PgDB {
                 &[&community_id],
             )
             .await?;
-        let json: serde_json::Value = row.get(0);
-        let index = Index::try_from(json)?;
+        let json_data: serde_json::Value = row.get(0);
+        let index = Index::try_from(json_data)?;
 
         Ok(index)
     }

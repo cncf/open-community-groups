@@ -83,10 +83,10 @@ pub(crate) struct Index {
 impl TryFrom<serde_json::Value> for Index {
     type Error = Error;
 
-    fn try_from(json: serde_json::Value) -> Result<Self> {
+    fn try_from(json_data: serde_json::Value) -> Result<Self> {
         // Deserialize JSON data
         let mut index: Index =
-            serde_json::from_value(json).context("error deserializing index json data")?;
+            serde_json::from_value(json_data).context("error deserializing index json data")?;
 
         // Convert some markdown content to HTML
         index.community.description = markdown::to_html(&index.community.description);
@@ -129,6 +129,18 @@ pub(crate) struct Explore {
     pub community: Community,
     #[serde(default)]
     pub params: HashMap<String, String>,
+}
+
+impl TryFrom<serde_json::Value> for Explore {
+    type Error = Error;
+
+    fn try_from(json_data: serde_json::Value) -> Result<Self> {
+        // Deserialize JSON data
+        let explore: Explore =
+            serde_json::from_value(json_data).context("error deserializing explore json data")?;
+
+        Ok(explore)
+    }
 }
 
 /// Explore events section template.
