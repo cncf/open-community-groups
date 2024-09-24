@@ -2,7 +2,7 @@
 
 use super::extractor::CommunityId;
 use crate::db::DynDB;
-use anyhow::Error;
+use anyhow::{Error, Result};
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
@@ -22,10 +22,13 @@ use tracing::error;
 pub(crate) async fn index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-) -> impl IntoResponse {
-    db.get_community_index_data(community_id)
+) -> Result<impl IntoResponse, StatusCode> {
+    let index = db
+        .get_community_index_data(community_id)
         .await
-        .map_err(internal_error)
+        .map_err(internal_error)?;
+
+    Ok(index)
 }
 
 /// Handler that returns the explore page.
@@ -33,11 +36,16 @@ pub(crate) async fn index(
 pub(crate) async fn explore(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Query(_params): Query<HashMap<String, String>>,
-) -> impl IntoResponse {
-    db.get_community_explore_data(community_id)
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let mut explore = db
+        .get_community_explore_data(community_id)
         .await
-        .map_err(internal_error)
+        .map_err(internal_error)?;
+
+    explore.params = params;
+
+    Ok(explore)
 }
 
 /// Handler that returns the explore events section.
@@ -102,6 +110,7 @@ pub(crate) struct IndexEvent {
 #[allow(dead_code)]
 pub(crate) struct Explore {
     pub community: Community,
+    #[serde(default)]
     pub params: HashMap<String, String>,
 }
 
