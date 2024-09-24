@@ -10,7 +10,8 @@ returns json as $$
                 'icon_url', icon_url,
                 'name', name,
                 'region_name', region_name,
-                'slug', slug
+                'slug', slug,
+                'state', state
             )), '[]')
             from (
                 select
@@ -19,7 +20,8 @@ returns json as $$
                     g.icon_url,
                     g.name,
                     r.name as region_name,
-                    g.slug
+                    g.slug,
+                    g.state
                 from "group" g
                 join region r using (region_id)
                 where g.community_id = $1
@@ -29,21 +31,22 @@ returns json as $$
         ),
         'upcoming_in_person_events', (
             select coalesce(json_agg(json_build_object(
-                'city', coalesce(event_city, group_city),
+                'city', city,
                 'group_name', group_name,
                 'icon_url', icon_url,
                 'slug', slug,
                 'starts_at', floor(extract(epoch from starts_at)),
+                'state', state,
                 'title', title
             )), '[]')
             from (
                 select
-                    e.city as event_city,
-                    g.city as group_city,
+                    e.city,
                     g.name as group_name,
                     e.icon_url,
                     e.slug,
                     e.starts_at,
+                    e.state,
                     e.title
                 from event e
                 join "group" g using (group_id)
@@ -59,21 +62,22 @@ returns json as $$
         ),
         'upcoming_online_events', (
             select coalesce(json_agg(json_build_object(
-                'city', coalesce(event_city, group_city),
+                'city', city,
                 'group_name', group_name,
                 'icon_url', icon_url,
                 'slug', slug,
                 'starts_at', floor(extract(epoch from starts_at)),
+                'state', state,
                 'title', title
             )), '[]')
             from (
                 select
-                    e.city as event_city,
-                    g.city as group_city,
+                    e.city,
                     g.name as group_name,
                     e.icon_url,
                     e.slug,
                     e.starts_at,
+                    e.state,
                     e.title
                 from event e
                 join "group" g using (group_id)
