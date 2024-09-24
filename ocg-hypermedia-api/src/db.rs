@@ -11,6 +11,9 @@ use uuid::Uuid;
 /// DB implementation must support.
 #[async_trait]
 pub(crate) trait DB {
+    /// Get data for the community explore template.
+    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<community::Explore>;
+
     /// Get the community id from the host provided.
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
@@ -35,6 +38,21 @@ impl PgDB {
 
 #[async_trait]
 impl DB for PgDB {
+    /// [DB::get_community_explore_data]
+    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<community::Explore> {
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_community_explore_data($1::uuid)",
+                &[&community_id],
+            )
+            .await?;
+        let explore =
+            serde_json::from_value(row.get(0)).context("error deserializing explore data")?;
+
+        Ok(explore)
+    }
+
     /// [DB::get_community_name]
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>> {
         let db = self.pool.get().await?;

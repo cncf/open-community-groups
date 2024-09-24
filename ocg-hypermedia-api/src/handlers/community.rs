@@ -15,7 +15,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     fmt::Debug,
 };
-use tracing::{debug, error};
+use tracing::error;
 
 /// Handler that returns the index document.
 #[allow(clippy::unused_async)]
@@ -31,12 +31,13 @@ pub(crate) async fn index(
 /// Handler that returns the explore page.
 #[allow(clippy::unused_async)]
 pub(crate) async fn explore(
+    State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Query(params): Query<HashMap<String, String>>,
+    Query(_params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    debug!("community_id: {}, params: {:?}", community_id, params);
-
-    Explore { params }
+    db.get_community_explore_data(community_id)
+        .await
+        .map_err(internal_error)
 }
 
 /// Handler that returns the explore events section.
@@ -66,34 +67,10 @@ where
 #[template(path = "community/index.html")]
 #[allow(dead_code)]
 pub(crate) struct Index {
-    pub community: IndexCommunity,
+    pub community: Community,
     pub recently_added_groups: Vec<IndexGroup>,
     pub upcoming_in_person_events: Vec<IndexEvent>,
     pub upcoming_online_events: Vec<IndexEvent>,
-}
-
-/// Community information used in the community index.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct IndexCommunity {
-    pub display_name: String,
-    pub header_logo_url: String,
-    pub title: String,
-    pub description: String,
-    pub banners_urls: Option<Vec<String>>,
-    pub copyright_notice: Option<String>,
-    pub extra_links: Option<BTreeMap<String, String>>,
-    pub facebook_url: Option<String>,
-    pub flickr_url: Option<String>,
-    pub footer_logo_url: Option<String>,
-    pub github_url: Option<String>,
-    pub homepage_url: Option<String>,
-    pub instagram_url: Option<String>,
-    pub linkedin_url: Option<String>,
-    pub photos_urls: Option<Vec<String>>,
-    pub slack_url: Option<String>,
-    pub twitter_url: Option<String>,
-    pub wechat_url: Option<String>,
-    pub youtube_url: Option<String>,
 }
 
 /// Group information used in the community index.
@@ -120,19 +97,44 @@ pub(crate) struct IndexEvent {
 }
 
 /// Explore page template.
-#[derive(Debug, Clone, Template)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore.html")]
 #[allow(dead_code)]
 pub(crate) struct Explore {
+    pub community: Community,
     pub params: HashMap<String, String>,
 }
 
 /// Explore events section template.
-#[derive(Debug, Clone, Template)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore_events.html")]
 pub(crate) struct ExploreEvents {}
 
 /// Explore groups section template.
-#[derive(Debug, Clone, Template)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore_groups.html")]
 pub(crate) struct ExploreGroups {}
+
+/// Community information used in the community index.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Community {
+    pub display_name: String,
+    pub header_logo_url: String,
+    pub title: String,
+    pub description: String,
+    pub banners_urls: Option<Vec<String>>,
+    pub copyright_notice: Option<String>,
+    pub extra_links: Option<BTreeMap<String, String>>,
+    pub facebook_url: Option<String>,
+    pub flickr_url: Option<String>,
+    pub footer_logo_url: Option<String>,
+    pub github_url: Option<String>,
+    pub homepage_url: Option<String>,
+    pub instagram_url: Option<String>,
+    pub linkedin_url: Option<String>,
+    pub photos_urls: Option<Vec<String>>,
+    pub slack_url: Option<String>,
+    pub twitter_url: Option<String>,
+    pub wechat_url: Option<String>,
+    pub youtube_url: Option<String>,
+}
