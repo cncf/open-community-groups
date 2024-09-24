@@ -2,7 +2,7 @@
 create or replace function get_community_data(p_community_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
-        'banners_urls', banners_urls,
+        'as_banner_url', ad_banner_url,
         'copyright_notice', copyright_notice,
         'description', description,
         'display_name', display_name,
@@ -15,6 +15,7 @@ returns json as $$
         'homepage_url', homepage_url,
         'instagram_url', instagram_url,
         'linkedin_url', linkedin_url,
+        'new_group_details', new_group_details,
         'photos_urls', photos_urls,
         'slack_url', slack_url,
         'title', title,
