@@ -1,3 +1,4 @@
+{% import "macros.html" as macros %}
 <header>
   <nav class="flex items-center justify-between p-4 sm:p-6 lg:p-8">
     <div class="flex lg:flex-1">
@@ -18,35 +19,13 @@
       </button>
     </div>
     <div class="hidden lg:flex lg:gap-x-8">
-      <a
-        href="/"
-        class="px-3 pb-1 border-0 border-b-2 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase"
-        aria-current="page"
-        >Home</a>
-      <a
-        href="/explore"
-        class="px-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-b-2 hover:border-primary-300"
-        >Explore</a
-      >
-      <a
-        href="#"
-        class="px-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-b-2 hover:border-primary-300"
-        >New group</a
-      >
+      {% call macros::header_link("Home", "/", true, "") %}
+      {% call macros::header_link("Explore", "/explore", false, "") %}
+      {% call macros::header_link("New group", "#", false, "") %}
     </div>
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      <a
-        href="#"
-        class="inline-flex justify-center bg-white items-center py-2 px-5 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
-      >
-        Sign up
-      </a>
-      <a
-        href="#"
-        class="inline-flex justify-center items-center py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4"
-      >
-        Log in
-      </a>
+      {% call macros::secondary_button("Sign up", "() => console.log('hola')", "") %}
+      {% call macros::primary_button("Log in", "() => console.log('hola')", "") %}
     </div>
   </nav>
 
