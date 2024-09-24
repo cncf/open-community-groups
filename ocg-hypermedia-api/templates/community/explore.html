@@ -1,7 +1,58 @@
-{% extends "base_no_footer.html" %}
+{% extends "base.html" %}
 
 {% block title %}Community site explore page{% endblock %}
-{% block headerColor %}white{% endblock %}
+{% block headerColor %}gray-100{% endblock %}
+
+{% block jumbotron %}
+  <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <!-- Jumbotron -->
+    <section
+      class="relative"
+    >
+      <div class="relative max-w-screen-xl">
+        <h1
+          class="mb-10 text-xl font-bold tracking-tight leading-none text-center md:text-2xl lg:text-4xl xl:text-5xl"
+        >
+          {{self.community.title }}
+        </h1>
+        <div>
+          <form class="mb-6">
+            <div class="relative w-[100%] lg:w-[50%] mx-auto">
+              <svg
+                class="absolute top-3 left-3 w-6 h-6 text-primary-500"
+                aria-hidden="true"
+                stroke="currentColor"
+                fill="none"
+                stroke-width="1.5"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                height="1em"
+                width="1em"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                ></path>
+              </svg>
+              <input
+                  type="text"
+                  id="search"
+                  name="q"
+                  class="w-[100%] rounded-full border border-primary-500 text-gray-900 placeholder-gray-400 focus:ring-primary-300 focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-12"
+                  placeholder="Search groups and events"
+                  hx-get="/explore"
+                  hx-push-url="false"
+                  hx-trigger="change, keyup delay:200ms changed"
+                />
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}
 
 {% block content %}
   <div class="flex flex-row mb-10">
@@ -27,55 +78,6 @@
         </svg>
       </button>
     </div>
-
-    <!-- <div class="inline-flex" role="group">
-      <button
-        type="button"
-        class="inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-lg hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-gray-500 focus:bg-primary-500 focus:text-white dark:border-white dark:text-white dark:hover:text-white dark:hover:bg-primary-700 dark:focus:bg-primary-700"
-        hx-get="/explore/events"
-        hx-replace-url="/explore?option=events"
-        hx-target="#content"
-        hx-swap="innerHtml"
-      >
-        <svg
-          class="w-3 h-3 me-2"
-          aria-hidden="true"
-          stroke="currentColor"
-          fill="currentColor"
-          stroke-width="0"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M19 4h-2V2h-2v2H9V2H7v2H5c-1.103 0-2 .897-2 2v14c0 1.103.897 2 2 2h14c1.103 0 2-.897 2-2V6c0-1.103-.897-2-2-2zm-1 15h-6v-6h6v6zm1-10H5V7h14v2z"
-          ></path>
-        </svg>
-        Events
-      </button>
-      <button
-        type="button"
-        class="inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-lg hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-gray-500 focus:bg-primary-500 focus:text-white dark:border-white dark:text-white dark:hover:text-white dark:hover:bg-primary-700 dark:focus:bg-primary-700"
-        hx-get="/explore/groups"
-        hx-replace-url="/explore?option=groups"
-        hx-target="#content"
-        hx-swap="innerHtml"
-      >
-        <svg
-          class="w-3 h-3 me-2"
-          aria-hidden="true"
-          xmlns="http://www.w3.org/2000/svg"
-          stroke="currentColor"
-          fill="currentColor"
-          stroke-width="0"
-          viewBox="0 0 20 20"
-        >
-          <path
-            d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM1.49 15.326a.78.78 0 0 1-.358-.442 3 3 0 0 1 4.308-3.516 6.484 6.484 0 0 0-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 0 1-2.07-.655ZM16.44 15.98a4.97 4.97 0 0 0 2.07-.654.78.78 0 0 0 .357-.442 3 3 0 0 0-4.308-3.517 6.484 6.484 0 0 1 1.907 3.96 2.32 2.32 0 0 1-.026.654ZM18 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM5.304 16.19a.844.844 0 0 1-.277-.71 5 5 0 0 1 9.947 0 .843.843 0 0 1-.277.71A6.975 6.975 0 0 1 10 18a6.974 6.974 0 0 1-4.696-1.81Z"
-          ></path>
-        </svg>
-        Groups
-      </button>
-    </div> -->
   </div>
 
   <div

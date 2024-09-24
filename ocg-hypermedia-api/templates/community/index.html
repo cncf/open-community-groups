@@ -29,7 +29,7 @@
         </div>
         <div>
           <form class="mb-6">
-            <div class="relative">
+            <div class="relative w-[100%] lg:w-[50%]">
               <svg
                 class="absolute top-3 left-3 w-6 h-6 text-primary-500"
                 aria-hidden="true"
@@ -52,7 +52,7 @@
                   type="text"
                   id="search"
                   name="q"
-                  class="w-[100%] lg:w-[50%] rounded-full border border-primary-500 text-gray-900 placeholder-gray-400 focus:ring-primary-300 focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-12"
+                  class="w-[100%] rounded-full border border-primary-500 text-gray-900 placeholder-gray-400 focus:ring-primary-300 focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-12"
                   placeholder="Search groups and events"
                   hx-get="/explore"
                   hx-push-url="false"
@@ -61,17 +61,13 @@
             </div>
           </form>
         </div>
-        <div
-          class="flex flex-row"
+        <a
+          href="/explore"
+          class="inline-flex justify-center items-center py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4"
+          hx-boost="false"
         >
-          <a
-            href="/explore"
-            class="inline-flex justify-center items-center py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4"
-            hx-boost="false"
-          >
-            Explore all
-          </a>
-        </div>
+          Explore all
+        </a>
       </div>
       <div class="absolute top-[70%] right-0 h-[75%] w-[90%] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] md:w-[75%] lg:h-[90%] md:top-[65%]"></div>
     </section>

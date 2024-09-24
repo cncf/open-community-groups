@@ -1,7 +1,7 @@
 <!-- Drawer filters -->
 <div
   id="drawer-filters"
-  class="fixed top-0 left-0 z-40 h-screen p-5 overflow-y-auto transition-transform -translate-x-full bg-white w-80 border border-r drop-shadow-lg dark:bg-gray-800"
+  class="fixed top-0 left-0 z-40 h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border border-r drop-shadow-lg dark:bg-gray-800"
   tabindex="-1"
   aria-labelledby="drawer-label"
 >
@@ -42,7 +42,7 @@
 <!-- End drawer filters -->
 
 <div class="flex flex-wrap">
-  <div class="hidden w-1/4 lg:block bg-gray-50 border rounded-lg p-3">
+  <div class="hidden w-1/4 lg:block bg-gray-50 bg-opacity-50 border rounded-lg">
     {% block filters %}
       <div></div>
     {% endblock %}
