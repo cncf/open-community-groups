@@ -11,7 +11,10 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Debug};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
+};
 use tracing::{debug, error};
 
 /// Handler that returns the index document.
@@ -78,7 +81,7 @@ pub(crate) struct IndexCommunity {
     pub description: String,
     pub banners_urls: Option<Vec<String>>,
     pub copyright_notice: Option<String>,
-    pub extra_links: Option<HashMap<String, String>>,
+    pub extra_links: Option<BTreeMap<String, String>>,
     pub facebook_url: Option<String>,
     pub flickr_url: Option<String>,
     pub footer_logo_url: Option<String>,
