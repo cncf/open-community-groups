@@ -2,7 +2,7 @@
 
 use super::extractor::CommunityId;
 use crate::db::DynDB;
-use anyhow::{Error, Result};
+use anyhow::{Context, Error, Result};
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
@@ -42,7 +42,6 @@ pub(crate) async fn explore(
         .get_community_explore_data(community_id)
         .await
         .map_err(internal_error)?;
-
     explore.params = params;
 
     Ok(explore)
@@ -79,6 +78,24 @@ pub(crate) struct Index {
     pub recently_added_groups: Vec<IndexGroup>,
     pub upcoming_in_person_events: Vec<IndexEvent>,
     pub upcoming_online_events: Vec<IndexEvent>,
+}
+
+impl TryFrom<serde_json::Value> for Index {
+    type Error = Error;
+
+    fn try_from(json: serde_json::Value) -> Result<Self> {
+        // Deserialize JSON data
+        let mut index: Index =
+            serde_json::from_value(json).context("error deserializing index json data")?;
+
+        // Convert some markdown content to HTML
+        index.community.description = markdown::to_html(&index.community.description);
+        if let Some(copyright_notice) = &index.community.copyright_notice {
+            index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
+        }
+
+        Ok(index)
+    }
 }
 
 /// Group information used in the community index.

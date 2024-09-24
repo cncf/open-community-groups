@@ -21,6 +21,7 @@ clap = { version = "4.5.17", features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 deadpool-postgres = { version = "0.14.0", features = ["serde"] }
 figment = { version = "0.10.19", features = ["yaml", "env"] }
+markdown = "1.0.0-alpha.21"
 openssl = { version = "0.10.66", features = ["vendored"] }
 postgres-openssl = "0.5.0"
 serde = { version = "1.0.210", features = ["derive"] }

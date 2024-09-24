@@ -79,7 +79,7 @@
     <div class="pt-10 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
         <p class="mb-4">
-          {{ copyright_notice }}
+          {{ copyright_notice|safe }}
         </p>
       {% else %}
         <p class="mb-4">
