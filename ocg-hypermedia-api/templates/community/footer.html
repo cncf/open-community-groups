@@ -67,10 +67,10 @@
     </div>
 
     {% if let Some(extra_links) = self.community.extra_links %}
-      <div class="text-sm uppercase text-gray-300">Quick links:</div>
+      <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
       <div class="pb-10 pt-2">
         {% for (name, url) in extra_links %}
-          {% if !loop.first %}<span class="px-3 text-gray-300">·</span>{% endif %}<a href="{{ url }}" class="font-bold tracking-wider text-white hover:text-primary-500" target="_blank" rel="noopener noreferrer">{{ name }}</a>
+          {% if !loop.first %}<span class="px-3 text-gray-300">·</span>{% endif %}<a href="{{ url }}" class="tracking-wider text-sm text-white hover:text-primary-500" target="_blank" rel="noopener noreferrer">{{ name }}</a>
         {% endfor %}
       </div>
     {% endif %}

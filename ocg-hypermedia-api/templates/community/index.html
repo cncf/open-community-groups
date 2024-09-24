@@ -72,67 +72,70 @@
 {% endblock %}
 
 {% block content %}
-  <!-- Events in-person -->
-  {% call events("Upcoming in-person events", "/events", upcoming_in_person_events) %}
+  <div class="pt-10">
+    <!-- Events in-person -->
+    {% call events("Upcoming in-person events", "/events", upcoming_in_person_events) %}
 
-  <div class="pb-10">
-    <a rel="noopener noreferrer" class="hidden mx-auto my-12 border-4 border-gray-300 w-[75%] md:flex" href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/?utm_source=landscape&amp;utm_medium=homepage&amp;utm_campaign=KubeCon-NA-2024&amp;utm_content=slim-bar" target="_blank" aria-label="Open external link">
-      <img class="h-auto max-w-[100%]" src="https://cncf.github.io/banners/events/Kubecon-NA-2400x300.png" title="Kubecon 2024 NA">
-    </a>
-  </div>
+    <!-- Events online -->
+    {% call events("Upcoming online events", "/events", upcoming_online_events) %}
 
-  <!-- Events online -->
-  {% call events("Upcoming online events", "/events", upcoming_online_events) %}
-
-  <div class="my-10">
-    <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
-      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
-        Discover community groups
-      </div>
-      <div class="justify-self-end">
-        <a
-          href="#"
-          class="inline-flex justify-center bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 hover:border-primary-700 hover:text-primary-700"
-        >
-          See more community groups
-        </a>
-      </div>
+    <div class="pb-10">
+      <a rel="noopener noreferrer" class="hidden mx-auto my-10 border-4 border-gray-100 w-[75%] md:flex" href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/?utm_source=landscape&amp;utm_medium=homepage&amp;utm_campaign=KubeCon-NA-2024&amp;utm_content=slim-bar" target="_blank" aria-label="Open external link">
+        <img class="h-auto max-w-[100%]" src="https://cncf.github.io/banners/events/Kubecon-NA-2400x300.png" title="Kubecon 2024 NA">
+      </a>
     </div>
-    <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-      {% for group in recently_added_groups %}
-        <a href="/groups/{{ group.slug }}" hx-boost="false">
-          <div
-            class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+
+    <div class="my-10">
+      <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
+          Discover community groups
+        </div>
+        <div class="justify-self-end">
+          <a
+            href="#"
+            class="inline-flex justify-center bg-white items-center py-2 px-5 ms-2 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-gray-100 hover:border-primary-700 hover:text-primary-700"
           >
-            {% if let Some(icon_url) = group.icon_url %}
-              <img
-                class="rounded-t-lg"
-                src="{{ icon_url }}"
-                alt="Group {{ group.name }}"
-              />
-            {% else %}
-              <img
-                class="rounded-t-lg"
-                src="https://feedalpha.com/wp-content/uploads/2021/08/shutterstock_1712684425-1.jpg"
-                alt="Placeholder image"
-              />
-            {% endif %}
-            <div class="flex flex-col p-5 h-36">
-              <div class="grow">
-                <h5
-                  class="mb-2 text-xl font-bold truncate tracking-tight text-gray-900 dark:text-white"
-                >
-                  {{ group.name }}
-                </h5>
-                <div class="text-gray-700 text-xs uppercase truncate">CITY, COUNTRY</div>
+            See more community groups
+          </a>
+        </div>
+      </div>
+      <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+        {% for group in recently_added_groups %}
+          <a href="/groups/{{ group.slug }}" hx-boost="false">
+            <div
+              class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+            >
+              {% if let Some(icon_url) = group.icon_url %}
+                <img
+                  class="rounded-t-lg"
+                  src="{{ icon_url }}"
+                  alt="Group {{ group.name }}"
+                />
+              {% else %}
+                <img
+                  class="rounded-t-lg"
+                  src="https://feedalpha.com/wp-content/uploads/2021/08/shutterstock_1712684425-1.jpg"
+                  alt="Placeholder image"
+                />
+              {% endif %}
+              <div class="flex flex-col p-5 h-36">
+                <div class="grow">
+                  <h5
+                    class="mb-2 text-xl font-bold truncate tracking-tight text-gray-900 dark:text-white"
+                  >
+                    {{ group.name }}
+                  </h5>
+                  <div class="text-gray-700 text-xs uppercase truncate">CITY, COUNTRY</div>
+                </div>
               </div>
             </div>
-          </div>
-        </a>
-      {% endfor %}
+          </a>
+        {% endfor %}
+      </div>
     </div>
   </div>
 {% endblock %}
+
 
 {% macro events(title, link, events) %}
   <div class="my-10 pb-10">
