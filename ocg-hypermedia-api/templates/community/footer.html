@@ -1,4 +1,10 @@
 <!-- Footer container -->
+<style>
+  .copyright a {
+    color: white;
+    font-weight: 600;
+  }
+</style>
 <footer
   class="flex-none bg-gray-950 text-center text-white text-surface/75 lg:text-left"
 >
@@ -78,9 +84,9 @@
     <!--Copyright section-->
     <div class="pt-10 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
-        <p class="mb-4">
+        <div class="mb-4 copyright">
           {{ copyright_notice|safe }}
-        </p>
+        </div>
       {% else %}
         <p class="mb-4">
           Copyright © 2024 The Linux Foundation®. All rights reserved. The Linux

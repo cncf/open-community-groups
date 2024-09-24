@@ -4,6 +4,12 @@
 {% block headerColor %}gray-100{% endblock %}
 
 {% block jumbotron %}
+  <style>
+    .description a {
+      color: #D62293;
+      font-weight: 600;
+    }
+  </style>
   <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <!-- Jumbotron -->
     <section
@@ -15,11 +21,12 @@
         >
           {{self.community.title }}
         </h1>
-        <p
-          class="mb-8 font-normal text-gray-600"
+        <div
+          id=""
+          class="mb-8 font-normal text-gray-600 description"
         >
           {{ self.community.description|safe }}
-        </p>
+        </div>
         <div>
           <form class="mb-6">
             <div class="relative">
