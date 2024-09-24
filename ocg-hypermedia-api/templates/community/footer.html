@@ -66,6 +66,15 @@
       </div>
     </div>
 
+    {% if let Some(extra_links) = self.community.extra_links %}
+      <div class="text-sm uppercase text-gray-300">Quick links:</div>
+      <div class="pb-10 pt-2">
+        {% for (name, url) in extra_links %}
+          {% if !loop.first %}<span class="px-3 text-gray-300">·</span>{% endif %}<a href="{{ url }}" class="font-bold tracking-wider text-white hover:text-primary-500" target="_blank" rel="noopener noreferrer">{{ name }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     <!--Copyright section-->
     <div class="pt-10 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
@@ -78,14 +87,10 @@
           Foundation has registered trademarks and uses trademarks. For a list of
           trademarks of The Linux Foundation, please see our Trademark Usage page.
           Linux is a registered trademark of Linus Torvalds. Privacy Policy and
-          Terms of Use. This website contains data received from Crunchbase. This
-          data is not licensed pursuant to the Apache License. It is subject to
-          Crunchbase's Data Access Terms, available at
-          https://data.crunchbase.com/docs/terms, and is only permitted to be used
-          with Linux Foundation landscape projects.
+          Terms of Use.
         </p>
       {% endif %}
-      <p>Powered by <span class="text-bold">CNCF Open Community Groups</span>.</p>
+      <p>Powered by <a href="https://github.com/cncf/open-community-groups" class="font-bold text-white" target="_blank" rel="noopener noreferrer">CNCF Open Community Groups</a>.</p>
     </div>
   </div>
 </footer>
