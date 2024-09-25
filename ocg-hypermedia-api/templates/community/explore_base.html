@@ -33,6 +33,14 @@
   {% block filters %}
     <div></div>
   {% endblock %}
+
+  <div class="text-end p-5 border-t">
+    <button
+      class="py-1 px-3 text-sm font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4"
+    >
+      Clear all
+    </button>
+  </div>
 </div>
 <div
   id="drawer-backdrop"
@@ -41,7 +49,7 @@
 ></div>
 <!-- End drawer filters -->
 
-<div class="flex flex-wrap">
+<div class="flex items-start">
   <div class="hidden w-1/4 lg:block bg-gray-50 bg-opacity-50 border rounded-lg">
     {% block filters %}
       <div></div>

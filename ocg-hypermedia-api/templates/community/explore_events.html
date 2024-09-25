@@ -1,3 +1,4 @@
+{% import "macros.html" as macros %}
 {% extends "explore_base.html" %}
 
 {% block filters %}
@@ -6,6 +7,35 @@
 
 {% block content %}
   <div class="bg-gray-50 bg-opacity-50 border rounded-lg mb-10 p-5">
+    <div class="flex items-center mb-6">
+      <!-- Mobile filters button -->
+      <div class="flex lg:hidden">
+        <button
+          class="h-10 w-10 mr-5 inline-flex justify-center items-center bg-primary-500 text-white text-lg rounded-full p-2 hover:bg-primary-700"
+          onclick="openFilters()"
+        >
+          <svg
+            class="w-4 h-4"
+            stroke="currentColor"
+            fill="none"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            height="1em"
+            width="1em"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+        </button>
+      </div>
+
+      <div class="grow">
+        {% call macros::search_bar("w-[100%] lg:w-[65%]") %}
+      </div>
+    </div>
+
     <div class="flex justify-between items-center w-full">
       <div>
         <span class="font-medium">1 - 20</span> <span class="italic text-sm text-gray-500">of 178 results</span>

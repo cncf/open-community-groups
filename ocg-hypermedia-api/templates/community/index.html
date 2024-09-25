@@ -29,7 +29,7 @@
           {{ self.community.description|safe }}
         </div>
         <div>
-          {% call macros::search_bar("0") %}
+          {% call macros::search_bar("w-[100%] lg:w-[50%] mb-6") %}
         </div>
         {% call macros::primary_link("Explore all", "/explore", "") %}
       </div>
@@ -58,7 +58,7 @@
           Discover community groups
         </div>
         <div class="justify-self-end">
-          {% call macros::primary_link("See more community groups", "", "ms-2 sm:ms-4") %}
+          {% call macros::primary_link("See all groups", "", "ms-2 sm:ms-4") %}
         </div>
       </div>
       <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">

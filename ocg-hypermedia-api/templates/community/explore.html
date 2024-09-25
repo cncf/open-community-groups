@@ -4,52 +4,7 @@
 {% block title %}Community site explore page{% endblock %}
 {% block headerColor %}gray-100{% endblock %}
 
-{% block jumbotron %}
-  <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-    <!-- Jumbotron -->
-    <section
-      class="relative"
-    >
-      <div class="relative max-w-screen-xl">
-        <h1
-          class="mb-10 text-xl font-bold tracking-tight leading-none text-center md:text-2xl lg:text-4xl xl:text-5xl"
-        >
-          {{self.community.title }}
-        </h1>
-        <div>
-          {% call macros::search_bar("auto") %}
-        </div>
-      </div>
-    </section>
-  </div>
-{% endblock %}
-
 {% block content %}
-  <div class="flex flex-row mb-10">
-    <!-- Mobile filters button -->
-    <div class="flex lg:hidden">
-      <button
-        class="h-10 w-10 mr-5 inline-flex justify-center items-center bg-primary-500 text-white text-lg rounded-full p-2 hover:bg-primary-700"
-        onclick="openFilters()"
-      >
-        <svg
-          class="w-4 h-4"
-          stroke="currentColor"
-          fill="none"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          height="1em"
-          width="1em"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-      </button>
-    </div>
-  </div>
-
   <div
     id="content"
     hx-get="/explore/events"

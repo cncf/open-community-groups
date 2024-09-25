@@ -58,7 +58,7 @@
 
     {% if let Some(extra_links) = self.community.extra_links %}
       <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
-      <div class="pb-10 pt-2">
+      <div class="pb-8 pt-2">
         {% for (name, url) in extra_links %}
           {% if !loop.first %}<span class="px-3 text-gray-300">·</span>{% endif %}{% call macros::extra_link(name, url) %}
         {% endfor %}
@@ -66,7 +66,7 @@
     {% endif %}
 
     <!--Copyright section-->
-    <div class="pt-10 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
+    <div class="pt-8 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
         <div class="mb-4 copyright">
           {{ copyright_notice|safe }}

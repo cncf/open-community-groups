@@ -84,9 +84,9 @@
 {% endmacro %}
 
 <!-- Search bar -->
-{% macro search_bar(margin) %}
-  <form class="mb-6">
-    <div class="relative w-[100%] lg:w-[50%] mx-{{ margin }}">
+{% macro search_bar(container_styles) %}
+  <form>
+    <div class="relative {{ container_styles }}">
       <svg
         class="absolute top-3 left-3 w-6 h-6 text-primary-500"
         aria-hidden="true"
@@ -127,7 +127,7 @@
         {{ title }}
       </div>
       <div class="justify-self-end">
-        {% call primary_link("See more events", link, "ms-2 sm:ms-4") %}
+        {% call primary_link("See all events", link, "ms-2 sm:ms-4") %}
       </div>
     </div>
     <div class="grid-1 grid gap-12 my-10 md:grid-cols-2 xl:grid-cols-3">
