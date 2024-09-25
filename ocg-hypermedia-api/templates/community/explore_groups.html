@@ -4,6 +4,29 @@
 {% endblock %}
 
 {% block content %}
+  <div class="bg-gray-50 bg-opacity-50 border rounded-lg mb-10 p-5">
+    <div class="flex justify-between items-center w-full">
+      <div>
+        <span class="font-medium">1 - 20</span> <span class="italic text-sm text-gray-500">of 178 results</span>
+      </div>
+      <div class="flex items-center">
+        <label
+          for="sort"
+          class="uppercase font-medium text-xs text-gray-500 leading-8 me-3"
+          >Sort by</label
+        >
+        <select
+          id="sort"
+          class="block w-40 py-2 px-3 text-sm text-gray-900 border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
+        >
+          <option value="al" selected>Alphabetically</option>
+          <option value="date">Date</option>
+          <option value="prox">Proximity</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
   <!-- Cards -->
   <div class="flex flex-col divide-y">
     <!-- Card -->
