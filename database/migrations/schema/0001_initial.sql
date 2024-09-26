@@ -140,7 +140,6 @@ create table session_kind (
 
 insert into session_kind values ('in-person', 'In-Person');
 insert into session_kind values ('virtual', 'Virtual');
-insert into session_kind values ('hybrid', 'Hybrid');
 
 create table session (
     session_id uuid primary key default gen_random_uuid(),
