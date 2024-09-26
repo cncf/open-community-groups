@@ -22,11 +22,13 @@ use tracing::error;
 pub(crate) async fn index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let index = db
+    let mut index = db
         .get_community_index_data(community_id)
         .await
         .map_err(internal_error)?;
+    index.params = params;
 
     Ok(index)
 }
@@ -75,6 +77,8 @@ where
 #[allow(dead_code)]
 pub(crate) struct Index {
     pub community: Community,
+    #[serde(default)]
+    pub params: HashMap<String, String>,
     pub recently_added_groups: Vec<IndexGroup>,
     pub upcoming_in_person_events: Vec<IndexEvent>,
     pub upcoming_online_events: Vec<IndexEvent>,
