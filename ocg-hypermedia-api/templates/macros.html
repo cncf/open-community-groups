@@ -39,6 +39,16 @@
   </a>
 {% endmacro %}
 
+<!-- Header button -->
+{% macro header_button(content, action, extra_styles) %}
+  <button
+    class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles }}"
+    onclick="{{ action }}"
+  >
+    {{ content }}
+  </button>
+{% endmacro %}
+
 <!-- Icon link -->
 {% macro social_icon_link(href, kind) %}
   <a
@@ -121,19 +131,24 @@
 
 <!-- Events list -->
 {% macro events_list(title, link, events) %}
-  <div class="my-5 pb-5">
+  <div class="my-8 pb-5">
     <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
       <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
         {{ title }}
       </div>
-      <div class="justify-self-end">
-        {% call primary_link("See all events", link, "ms-2 sm:ms-4") %}
+      <div class="hidden justify-self-end lg:flex">
+        {% call primary_link("See all events", link, "ms-4") %}
       </div>
     </div>
-    <div class="grid-1 grid gap-12 my-10 md:grid-cols-2 xl:grid-cols-3">
-      {% for event in events %}
-        {% call events_list_item(event) %}
-      {% endfor %}
+    <div class="my-10">
+      <div class="grid-1 grid gap-12 md:grid-cols-2 xl:grid-cols-3">
+        {% for event in events %}
+          {% call events_list_item(event) %}
+        {% endfor %}
+      </div>
+      <div class="block mt-10 lg:hidden lg:mt-0">
+        {% call primary_link("See all events", link, "") %}
+      </div>
     </div>
   </div>
 {% endmacro %}
@@ -157,7 +172,7 @@
           <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2">
             <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
             <div class="truncate text-gray-700 text-xs uppercase">
-              {{ city }}
+              {{ city }}{% if let Some(state) = event.state %}, {{ state }} {% endif %}
             </div>
           </div>
         {% endif %}

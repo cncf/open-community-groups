@@ -20,13 +20,13 @@
         <h1
           class="mb-4 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl"
         >
-          {{self.community.title }}
+          {{community.title }}
         </h1>
         <div
           id=""
           class="mb-8 font-normal text-gray-600 description"
         >
-          {{ self.community.description|safe }}
+          {{ community.description|safe }}
         </div>
         <div>
           {% call macros::search_bar("w-[100%] lg:w-[50%] mb-6") %}
@@ -39,33 +39,36 @@
 {% endblock %}
 
 {% block content %}
-  <div class="pt-5">
+  <div class="pt-8">
     <!-- Events in-person -->
     {% call macros::events_list("Upcoming in-person events", "/events", upcoming_in_person_events) %}
 
     <!-- Events online -->
     {% call macros::events_list("Upcoming online events", "/events", upcoming_online_events) %}
 
-    <div class="pb-5">
-      <a rel="noopener noreferrer" class="hidden mx-auto my-5 border-4 border-gray-100 w-[75%] md:flex" href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/?utm_source=landscape&amp;utm_medium=homepage&amp;utm_campaign=KubeCon-NA-2024&amp;utm_content=slim-bar" target="_blank" aria-label="Open external link">
-        <img class="h-auto max-w-[100%]" src="https://cncf.github.io/banners/events/Kubecon-NA-2400x300.png" title="Kubecon 2024 NA">
-      </a>
-    </div>
+    <!-- Banner -->
+    {% if let Some(ad_banner_url) = community.ad_banner_url %}
+      <div class="pb-5">
+        <a rel="noopener noreferrer" class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex" href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/?utm_source=landscape&amp;utm_medium=homepage&amp;utm_campaign=KubeCon-NA-2024&amp;utm_content=slim-bar" target="_blank" aria-label="Open external link">
+          <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
+        </a>
+      </div>
+    {% endif %}
 
-    <div class="my-5">
+    <div class="my-8">
       <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
         <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
           Discover community groups
         </div>
-        <div class="justify-self-end">
-          {% call macros::primary_link("See all groups", "", "ms-2 sm:ms-4") %}
+        <div class="hidden justify-self-end lg:flex">
+          {% call macros::primary_link("See all groups", "", "ms-4") %}
         </div>
       </div>
       <div class="grid-1 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
         {% for group in recently_added_groups %}
           <a href="/groups/{{ group.slug }}" hx-boost="false">
             <div
-              class="max-w-sm bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"
+              class="max-w-sm bg-white border border-gray-200 rounded-lg shadow"
             >
               {% if let Some(icon_url) = group.icon_url %}
                 <img
@@ -83,16 +86,21 @@
               <div class="flex flex-col p-5 h-36">
                 <div class="grow">
                   <h5
-                    class="mb-2 text-xl font-bold truncate tracking-tight text-gray-900 dark:text-white"
+                    class="mb-2 text-xl font-bold truncate tracking-tight text-gray-900"
                   >
                     {{ group.name }}
                   </h5>
-                  <div class="text-gray-700 text-xs uppercase truncate">CITY, COUNTRY</div>
+                  {% if let Some(city) = group.city %}
+                    <div class="text-gray-700 text-xs uppercase truncate">{{ city }}{% if let Some(state) = group.state %}, {{ state }} {% endif %}</div>
+                  {% endif %}
                 </div>
               </div>
             </div>
           </a>
         {% endfor %}
+      </div>
+      <div class="block mt-10 lg:hidden lg:mt-0">
+        {% call macros::primary_link("See all groups", "", "") %}
       </div>
     </div>
   </div>
