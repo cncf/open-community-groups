@@ -1,7 +1,7 @@
 <!-- Primary button -->
 {% macro primary_button(content, onclick, extra_styles) %}
   <button
-    class="py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 {{ extra_styles }}"
+    class="py-1.5 px-5 h-[40px] text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 {{ extra_styles }}"
     onclick="{{ onclick }}"
   >
     {{ content }}
@@ -11,7 +11,7 @@
 <!-- Primary link -->
 {% macro primary_link(content, href, extra_styles) %}
   <a
-    class="py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 {{ extra_styles }}"
+    class="inline-block py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 {{ extra_styles }}"
     href="{{ href }}"
     hx-boost="false"
   >
@@ -22,7 +22,7 @@
 <!-- Secondary button -->
 {% macro secondary_button(content, onclick, extra_styles) %}
   <button
-    class="bg-white items-center py-2 px-5 sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 {{ extra_styles }}"
+    class="bg-white items-center py-1.5 px-5 h-[40px] sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 {{ extra_styles }}"
     onclick="{{ onclick }}"
   >
     {{ content }}
