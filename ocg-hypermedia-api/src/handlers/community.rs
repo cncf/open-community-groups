@@ -162,6 +162,7 @@ pub(crate) struct Community {
     pub header_logo_url: String,
     pub title: String,
     pub description: String,
+    pub ad_banner_link_url: Option<String>,
     pub ad_banner_url: Option<String>,
     pub copyright_notice: Option<String>,
     pub extra_links: Option<BTreeMap<String, String>>,

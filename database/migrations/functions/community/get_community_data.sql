@@ -2,7 +2,8 @@
 create or replace function get_community_data(p_community_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
-        'as_banner_url', ad_banner_url,
+        'ad_banner_link_url', ad_banner_link_url,
+        'ad_banner_url', ad_banner_url,
         'copyright_notice', copyright_notice,
         'description', description,
         'display_name', display_name,

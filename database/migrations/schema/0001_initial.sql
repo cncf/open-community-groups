@@ -16,6 +16,7 @@ create table community (
     host text not null unique,
     name text not null unique,
     title text not null,
+    ad_banner_link_url text,
     ad_banner_url text,
     copyright_notice text,
     extra_links jsonb,
@@ -98,7 +99,6 @@ create table event_kind (
 
 insert into event_kind values ('in-person', 'In Person');
 insert into event_kind values ('virtual', 'Virtual');
-insert into event_kind values ('hybrid', 'Hybrid');
 
 create table event (
     event_id uuid primary key default gen_random_uuid(),
