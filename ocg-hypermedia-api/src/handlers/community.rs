@@ -120,6 +120,7 @@ pub(crate) struct IndexGroup {
     pub name: String,
     pub region_name: String,
     pub slug: String,
+
     pub city: Option<String>,
     pub country: Option<String>,
     pub icon_url: Option<String>,
@@ -130,10 +131,12 @@ pub(crate) struct IndexGroup {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct IndexEvent {
     pub group_name: String,
+    pub group_slug: String,
     pub slug: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub starts_at: DateTime<Utc>,
     pub title: String,
+
     pub city: Option<String>,
     pub icon_url: Option<String>,
     pub state: Option<String>,
@@ -181,6 +184,7 @@ pub(crate) struct Community {
     pub header_logo_url: String,
     pub title: String,
     pub description: String,
+
     pub ad_banner_link_url: Option<String>,
     pub ad_banner_url: Option<String>,
     pub copyright_notice: Option<String>,

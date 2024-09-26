@@ -32,22 +32,24 @@ returns json as $$
         'upcoming_in_person_events', (
             select coalesce(json_agg(json_build_object(
                 'city', city,
-                'group_name', group_name,
                 'icon_url', icon_url,
-                'slug', slug,
+                'slug', event_slug,
                 'starts_at', floor(extract(epoch from starts_at)),
                 'state', state,
-                'title', title
+                'title', title,
+                'group_name', group_name,
+                'group_slug', group_slug
             )), '[]')
             from (
                 select
                     e.city,
-                    g.name as group_name,
                     e.icon_url,
-                    e.slug,
+                    e.slug as event_slug,
                     e.starts_at,
                     e.state,
-                    e.title
+                    e.title,
+                    g.name as group_name,
+                    g.slug as group_slug
                 from event e
                 join "group" g using (group_id)
                 where g.community_id = $1
@@ -63,22 +65,24 @@ returns json as $$
         'upcoming_online_events', (
             select coalesce(json_agg(json_build_object(
                 'city', city,
-                'group_name', group_name,
                 'icon_url', icon_url,
-                'slug', slug,
+                'slug', event_slug,
                 'starts_at', floor(extract(epoch from starts_at)),
                 'state', state,
-                'title', title
+                'title', title,
+                'group_name', group_name,
+                'group_slug', group_slug
             )), '[]')
             from (
                 select
                     e.city,
-                    g.name as group_name,
                     e.icon_url,
-                    e.slug,
+                    e.slug as event_slug,
                     e.starts_at,
                     e.state,
-                    e.title
+                    e.title,
+                    g.name as group_name,
+                    g.slug as group_slug
                 from event e
                 join "group" g using (group_id)
                 where g.community_id = $1
