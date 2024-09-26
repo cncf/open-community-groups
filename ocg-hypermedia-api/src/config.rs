@@ -23,9 +23,11 @@ impl Config {
         let mut figment = Figment::new()
             .merge(Serialized::default("log.format", "json"))
             .merge(Serialized::default("server.addr", "127.0.0.1:9000"));
+
         if let Some(config_file) = config_file {
             figment = figment.merge(Yaml::file(config_file));
         }
+
         figment
             .merge(Env::prefixed("OCG_").split("__"))
             .extract()

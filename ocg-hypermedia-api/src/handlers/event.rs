@@ -6,9 +6,8 @@ use askama_axum::IntoResponse;
 use axum::extract::Path;
 use tracing::debug;
 
-/// Handler that returns the index document.
-#[allow(clippy::unused_async)]
-pub(crate) async fn index(
+/// Handler that returns the home page.
+pub(crate) async fn home(
     CommunityId(community_id): CommunityId,
     Path((group_slug, event_slug)): Path<(String, String)>,
 ) -> impl IntoResponse {
@@ -17,9 +16,9 @@ pub(crate) async fn index(
         community_id, group_slug, event_slug
     );
 
-    Index {}
+    Home {}
 }
-/// Template for the index document.
+/// Home page template.
 #[derive(Debug, Clone, Template)]
-#[template(path = "event/index.html")]
-pub(crate) struct Index {}
+#[template(path = "event/home.html")]
+pub(crate) struct Home {}
