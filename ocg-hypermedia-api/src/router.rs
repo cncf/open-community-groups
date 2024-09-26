@@ -17,22 +17,14 @@ pub(crate) struct State {
 
 /// Setup router.
 pub(crate) fn setup(db: DynDB) -> Router {
-    // Setup event page router
-    let event_router = Router::new().route("/", get(event::home));
-
-    // Setup group site router
-    let group_router = Router::new()
-        .route("/", get(group::home))
-        .nest("/event/:event_slug", event_router);
-
-    // Setup main router (includes community site endpoints)
     Router::new()
         .route("/", get(community::home))
         .route("/explore", get(community::explore))
         .route("/explore/events", get(community::explore_events))
         .route("/explore/groups", get(community::explore_groups))
         .route("/health-check", get(health_check))
-        .nest("/group/:group_slug", group_router)
+        .route("/group/:group_slug", get(group::home))
+        .route("/group/:group_slug/event/:event_slug", get(event::home))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(State { db })
 }
