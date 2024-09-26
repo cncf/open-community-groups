@@ -36,9 +36,9 @@
       };
     </script>
   </head>
-  <body class="h-full bg-white" hx-boost="true">
+  <body class="h-full {% block bg_color %}bg-white{% endblock %}" hx-boost="true">
     <div class="min-h-full flex flex-col">
-      <div class="bg-{% block headerColor %}{{ headerColor }}{% endblock %}">
+      <div class="{% block headerColor %}{{ headerColor }}{% endblock %}">
         {% include "header.html" %}
         {% block jumbotron %}
           <div></div>

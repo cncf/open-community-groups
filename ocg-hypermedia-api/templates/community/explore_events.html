@@ -6,8 +6,8 @@
 {% endblock %}
 
 {% block content %}
-  <div class="bg-gray-50 bg-opacity-50 border rounded-lg mb-10 p-5">
-    <div class="flex items-center mb-6">
+  <div class="bg-white border rounded-lg mb-10 py-5">
+    <div class="flex items-center mb-6 px-5">
       <!-- Mobile filters button -->
       <div class="flex lg:hidden">
         <button
@@ -30,159 +30,30 @@
           </svg>
         </button>
       </div>
+      <!-- End mobile filters button -->
 
-      <div class="grow">
-        {% call macros::search_bar("w-[100%] lg:w-[65%]") %}
+      <div class="grow flex items-center justify-between">
+        <div class="w-2/3">
+          {% call macros::search_bar("w-[100%] lg:w-[90%]") %}
+        </div>
+        <div class="flex items-center">
+          <label
+            for="sort"
+            class="uppercase font-medium text-xs text-gray-500 leading-8 me-3"
+            >Sort by</label
+          >
+          <select
+            id="sort"
+            class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="al" selected>Alphabetically</option>
+            <option value="date">Date</option>
+            <option value="prox">Proximity</option>
+          </select>
+        </div>
       </div>
     </div>
 
-    <div class="flex justify-between items-center w-full">
-      <div>
-        <span class="font-medium">1 - 20</span> <span class="italic text-sm text-gray-500">of 178 results</span>
-      </div>
-      <div class="flex items-center">
-        <label
-          for="sort"
-          class="uppercase font-medium text-xs text-gray-500 leading-8 me-3"
-          >Sort by</label
-        >
-        <select
-          id="sort"
-          class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
-        >
-          <option value="al" selected>Alphabetically</option>
-          <option value="date">Date</option>
-          <option value="prox">Proximity</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cards -->
-  <div class="flex flex-col divide-y">
-    <!-- Card -->
-    <div class="flex flex-1 flex-row pb-5">
-      <div
-        class="h-20 min-w-24 lg:h-40 lg:min-w-48 my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-        style="
-          background-image: url(https://res.cloudinary.com/startup-grind/image/upload/c_fill,w_500,h_500,g_center/c_fill,dpr_2.0,f_auto,g_center,q_auto:good/v1/gcs/platform-data-cncf/events/KCD-logo-2024_MX3uvI8.png);
-        "
-      ></div>
-      <div class="min-w-0 pl-8 content-center">
-        <a class="w-full cursor-pointer hover:no-underline" href="#">
-          <div class="pb-2 lg:pb-3">
-            <span class="text-xs font-bold uppercase">Sep 24, 2024</span>
-            <span class="px-2">·</span>
-            <span class="text-gray-700 text-xs uppercase">Washington DC, US</span>
-          </div>
-          <h2 class="font-semibold truncate">KCD Washington DC 2024</h2>
-          <div class="text-sm">
-            <p class="truncate text-gray-500 italic">Cloud Native DC</p>
-          </div>
-          <div class="pt-2 lg:pt-3">
-            <span
-              class="bg-primary-500 text-white text-xs uppercase font-medium px-2.5 py-0.5 rounded-full"
-              >in-person</span
-            >
-          </div>
-        </a>
-      </div>
-    </div>
-    <!-- End card -->
-
-    <!-- Card -->
-    <div class="flex flex-1 flex-row py-5">
-      <div
-        class="h-20 min-w-24 lg:h-40 lg:min-w-48 my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-        style="
-          background-image: url(https://res.cloudinary.com/startup-grind/image/upload/c_fill,w_500,h_500,g_center/c_fill,dpr_2.0,f_auto,g_center,q_auto:good/v1/gcs/platform-data-cncf/events/Final%20Book%20Club_nZawzhS.png);
-        "
-      ></div>
-      <div class="min-w-0 pl-8 content-center">
-        <a class="w-full cursor-pointer hover:no-underline" href="#">
-          <div class="pb-2 lg:pb-3">
-            <span class="text-xs font-bold uppercase">Nov 21, 2024</span>
-          </div>
-          <h2 class="font-semibold truncate">
-            Fridays Virtual Meetup (Edge Computing with Kubernetes by Sergio
-            Méndez, US timezone)
-          </h2>
-          <div class="text-sm">
-            <p class="truncate text-gray-500 italic">Cloud Native DC</p>
-          </div>
-          <div class="pt-2 lg:pt-3">
-            <span
-              class="bg-primary-500 text-white text-xs uppercase font-medium px-2.5 py-0.5 rounded-full"
-              >virtual</span
-            >
-          </div>
-        </a>
-      </div>
-    </div>
-    <!-- End card -->
-
-    <!-- Card -->
-    <div class="flex flex-1 flex-row py-5">
-      <div
-        class="h-20 min-w-24 lg:h-40 lg:min-w-48 my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-        style="
-          background-image: url(https://res.cloudinary.com/startup-grind/image/upload/c_fill,w_500,h_500,g_center/c_fill,dpr_2.0,f_auto,g_center,q_auto:good/v1/gcs/platform-data-cncf/events/01_weWJ45T.png);
-        "
-      ></div>
-      <div class="min-w-0 pl-8 content-center">
-        <a class="w-full cursor-pointer hover:no-underline" href="#">
-          <div class="pb-2 lg:pb-3">
-            <span class="text-xs font-bold uppercase">Sep 7, 2024</span>
-            <span class="px-2">·</span>
-            <span class="text-gray-700 text-xs uppercase">Budapest, EU</span>
-          </div>
-          <h2 class="font-semibold truncate">Cloud Native Beer</h2>
-          <div class="text-sm">
-            <p class="truncate text-gray-500 italic">Cloud Native Budapest</p>
-          </div>
-          <div class="pt-2 lg:pt-3">
-            <span
-              class="bg-primary-500 text-white text-xs uppercase font-medium px-2.5 py-0.5 rounded-full"
-              >in-person</span
-            >
-          </div>
-        </a>
-      </div>
-    </div>
-    <!-- End card -->
-
-    <!-- Card -->
-    <div class="flex flex-1 flex-row pt-5">
-      <div
-        class="h-20 min-w-24 lg:h-40 lg:min-w-48 my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-        style="
-          background-image: url(https://res.cloudinary.com/startup-grind/image/upload/c_fill,w_500,h_500,g_center/c_fill,dpr_2.0,f_auto,g_center,q_auto:good/v1/gcs/platform-data-cncf/events/nyck8s-avatar-youtube_NswnCrT.png);
-        "
-      ></div>
-      <div class="min-w-0 pl-8 content-center">
-        <a class="w-full cursor-pointer hover:no-underline" href="#">
-          <div class="pb-2 lg:pb-3">
-            <span class="text-xs font-bold uppercase">Aug 28, 2024</span>
-            <span class="px-2">·</span>
-            <span class="text-gray-700 text-xs uppercase">New York, US</span>
-          </div>
-          <h2 class="font-semibold truncate">
-            Learn the Helm Code Base and PR Review Process - Greenpoint, BK
-          </h2>
-          <div class="text-sm">
-            <p class="truncate text-gray-500 italic">
-              New York Kubernetes Meetup
-            </p>
-          </div>
-          <div class="pt-2 lg:pt-3">
-            <span
-              class="bg-primary-500 text-white text-xs uppercase font-medium px-2.5 py-0.5 rounded-full"
-              >in-person</span
-            >
-          </div>
-        </a>
-      </div>
-    </div>
-    <!-- End card -->
+    <div class="min-h-[750px]"></div>
   </div>
 {% endblock %}

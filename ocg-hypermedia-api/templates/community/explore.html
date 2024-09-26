@@ -1,9 +1,18 @@
 {% import "macros.html" as macros %}
 {% extends "base.html" %}
 
-{% block headerColor %}gray-100{% endblock %}
+{% block headerColor %}bg-transparent{% endblock %}
+{% block bg_color %}bg-gray-50 bg-opacity-50{% endblock %}
 
 {% block content %}
+  <div class="text-center pt-5">
+    <h1
+      class="mb-4 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl"
+    >
+      Explore Cloud Native community groups and events
+    </h1>
+  </div>
+
   <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <div
       id="content"
