@@ -6,7 +6,7 @@ use anyhow::{Context, Error, Result};
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
-    extract::{Query, State},
+    extract::{Query, Request, State},
     http::StatusCode,
 };
 use chrono::{DateTime, Utc};
@@ -23,12 +23,15 @@ pub(crate) async fn index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Query(params): Query<HashMap<String, String>>,
+    request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut index = db
         .get_community_index_data(community_id)
         .await
         .map_err(internal_error)?;
+
     index.params = params;
+    index.path = request.uri().path().to_string();
 
     Ok(index)
 }
@@ -39,12 +42,15 @@ pub(crate) async fn explore(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Query(params): Query<HashMap<String, String>>,
+    request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut explore = db
         .get_community_explore_data(community_id)
         .await
         .map_err(internal_error)?;
+
     explore.params = params;
+    explore.path = request.uri().path().to_string();
 
     Ok(explore)
 }
@@ -77,11 +83,14 @@ where
 #[allow(dead_code)]
 pub(crate) struct Index {
     pub community: Community,
-    #[serde(default)]
-    pub params: HashMap<String, String>,
     pub recently_added_groups: Vec<IndexGroup>,
     pub upcoming_in_person_events: Vec<IndexEvent>,
     pub upcoming_online_events: Vec<IndexEvent>,
+
+    #[serde(default)]
+    pub params: HashMap<String, String>,
+    #[serde(default)]
+    pub path: String,
 }
 
 impl TryFrom<serde_json::Value> for Index {
@@ -92,7 +101,7 @@ impl TryFrom<serde_json::Value> for Index {
         let mut index: Index =
             serde_json::from_value(json_data).context("error deserializing index json data")?;
 
-        // Convert some markdown content to HTML
+        // Convert markdown content in some fields to HTML
         index.community.description = markdown::to_html(&index.community.description);
         if let Some(copyright_notice) = &index.community.copyright_notice {
             index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
@@ -136,8 +145,11 @@ pub(crate) struct IndexEvent {
 #[allow(dead_code)]
 pub(crate) struct Explore {
     pub community: Community,
+
     #[serde(default)]
     pub params: HashMap<String, String>,
+    #[serde(default)]
+    pub path: String,
 }
 
 impl TryFrom<serde_json::Value> for Explore {
