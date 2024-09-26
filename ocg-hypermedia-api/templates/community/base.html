@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
-    <base target="_blank">
+    <!-- <base target="_blank"> -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ community.display_name }} community groups</title>
@@ -36,7 +36,7 @@
       };
     </script>
   </head>
-  <body class="h-full {% block bg_color %}bg-white{% endblock %}" hx-boost="true">
+  <body class="h-full {% block bg_color %}bg-white{% endblock %}">
     <div class="min-h-full flex flex-col">
       <div class="{% block headerColor %}{{ headerColor }}{% endblock %}">
         {% include "header.html" %}

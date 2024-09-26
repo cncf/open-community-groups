@@ -6,8 +6,8 @@
 {% endblock %}
 
 {% block content %}
-  <div class="bg-white border rounded-lg mb-10 py-5">
-    <div class="flex items-center mb-6 px-5">
+  <div class="bg-white border rounded-lg mb-10 py-7">
+    <div class="flex items-center mb-6 px-7">
       <!-- Mobile filters button -->
       <div class="flex lg:hidden">
         <button
@@ -34,21 +34,19 @@
 
       <div class="grow flex items-center justify-between">
         <div class="w-2/3">
-          {% call macros::search_bar("w-[100%] lg:w-[90%]") %}
+          {% call macros::search_bar("", "w-[100%] lg:w-[90%]") %}
         </div>
         <div class="flex items-center">
           <label
             for="sort"
-            class="uppercase font-medium text-xs text-gray-500 leading-8 me-3"
+            class="font-semibold text-xs text-gray-700 leading-6 me-3"
             >Sort by</label
           >
           <select
             id="sort"
             class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
           >
-            <option value="al" selected>Alphabetically</option>
-            <option value="date">Date</option>
-            <option value="prox">Proximity</option>
+            <option value="date" selected>Date</option>
           </select>
         </div>
       </div>

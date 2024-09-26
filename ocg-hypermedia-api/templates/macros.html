@@ -14,7 +14,6 @@
   <a
     class="inline-block py-2 px-5 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 {{ extra_styles }}"
     href="{{ href }}"
-    hx-boost="false"
   >
     {{ content }}
 </a>
@@ -24,7 +23,7 @@
 <!-- Secondary button -->
 {% macro secondary_button(content, onclick, extra_styles) %}
   <button
-    class="bg-white items-center py-1.5 px-5 h-[40px] sm:ms-4 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 {{ extra_styles }}"
+    class="bg-white items-center py-1.5 px-5 h-[40px] text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 {{ extra_styles }}"
     onclick="{{ onclick }}"
   >
     {{ content }}
@@ -101,7 +100,7 @@
 <!-- End extra link -->
 
 <!-- Search bar -->
-{% macro search_bar(container_styles) %}
+{% macro search_bar(placeholder, container_styles) %}
   <form>
     <div class="relative {{ container_styles }}">
       <svg
@@ -127,7 +126,7 @@
           id="search"
           name="q"
           class="w-[100%] rounded-full border border-primary-500 text-gray-900 placeholder-gray-400 focus:ring-primary-300 focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-12"
-          placeholder="Search groups and events"
+          placeholder="{{ placeholder}}"
           hx-get="/explore"
           hx-push-url="false"
           hx-trigger="change, keyup delay:200ms changed"
