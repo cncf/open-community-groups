@@ -49,9 +49,15 @@
     <!-- Banner -->
     {% if let Some(ad_banner_url) = community.ad_banner_url %}
       <div class="pb-5">
-        <a rel="noopener noreferrer" class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex" href="https://events.linuxfoundation.org/kubecon-cloudnativecon-north-america/?utm_source=landscape&amp;utm_medium=homepage&amp;utm_campaign=KubeCon-NA-2024&amp;utm_content=slim-bar" target="_blank" aria-label="Open external link">
-          <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
-        </a>
+        {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
+          <a rel="noopener noreferrer" class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">
+            <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
+          </a>
+        {% else %}
+          <div class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex">
+            <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
+          </div>
+        {% endif %}
       </div>
     {% endif %}
 

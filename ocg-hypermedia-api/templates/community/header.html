@@ -1,15 +1,29 @@
 {% import "macros.html" as macros %}
+
+<!DOCTYPE html>
 <header>
   <nav class="flex items-center justify-between p-4 sm:p-6 lg:p-8">
+    <!-- Logo -->
     <div class="flex lg:flex-1">
-      <a href="#" class="-m-1.5 p-1.5">
-        <img
-          class="h-10 w-50"
-          src="{{ self.community.header_logo_url }}"
-          alt="Logo"
-        />
-      </a>
+      {% if path == "/" %}
+        <div class="-m-1.5 p-1.5">
+          <img
+            class="h-10 w-50"
+            src="{{ self.community.header_logo_url }}"
+            alt="Logo"
+          />
+        </div>
+      {% else %}
+        <a href="/" class="-m-1.5 p-1.5">
+          <img
+            class="h-10 w-50"
+            src="{{ self.community.header_logo_url }}"
+            alt="Logo"
+          />
+        </a>
+      {% endif %}
     </div>
+    <!-- End logo -->
     <div class="flex lg:hidden">
       <button type="button" class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700" onclick="toggleNavbarMobile()">
         <span class="sr-only">Open main menu</span>
