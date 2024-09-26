@@ -40,10 +40,10 @@
 <!-- End secondary button -->
 
 <!-- Header link -->
-{% macro header_link(content, href, active, extra_styles) %}
+{% macro header_link(content, href, current_path, extra_styles) %}
   <a
     href="{{ href }}"
-    class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {% if active %}border-b-2{% else %}hover:border-b-2 hover:border-primary-300{% endif %} {{ extra_styles }}"
+    class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {% if current_path == href %}border-b-2{% else %}hover:border-b-2 hover:border-primary-300{% endif %} {{ extra_styles }}"
   >
     {{ content }}
   </a>

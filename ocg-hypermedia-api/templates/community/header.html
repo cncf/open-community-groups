@@ -33,8 +33,8 @@
       </button>
     </div>
     <div class="hidden lg:flex lg:gap-x-8">
-      {% call macros::header_link("Home", "/", true, "") %}
-      {% call macros::header_link("Explore", "/explore", false, "") %}
+      {% call macros::header_link("Home", "/", path, "") %}
+      {% call macros::header_link("Explore", "/explore", path, "") %}
       {% if let Some(new_group_details) = self.community.new_group_details %}
         {% call macros::header_button("New group", "updateModalStatus('new-group-modal')", "") %}
       {% endif %}
