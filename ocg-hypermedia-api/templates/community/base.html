@@ -4,7 +4,7 @@
     <base target="_blank">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}{{ title }}{% endblock %}</title>
+    <title>{{ community.display_name }} community groups</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script
@@ -46,11 +46,9 @@
       </div>
 
       <main class="grow z-[1]">
-        <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          {% block content %}
-            <p>Placeholder content</p>
-          {% endblock %}
-        </div>
+        {% block content %}
+          <p>Placeholder content</p>
+        {% endblock %}
       </main>
 
       {% include "footer.html" %}
