@@ -49,7 +49,7 @@
 
       <!-- Banner -->
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
-        <div class="pb-5">
+        <div class="pb-16">
           {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
             <a rel="noopener noreferrer" class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">
               <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
@@ -61,33 +61,32 @@
           {% endif %}
         </div>
       {% endif %}
-    </div>
-  </div>
+      <!-- End banner -->
 
-  <!-- Community groups -->
-  <div class="bg-gray-50 py-10">
-    <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
+      <!-- Recently added groups -->
+      <div class="flex items-center justify-between mb-6">
         <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
           Recently added groups
         </div>
         <div class="hidden justify-self-end lg:flex">
-          {% call macros::primary_link("See all groups", "", "ms-4") %}
+          {% call macros::secondary_link("See all groups", "", "ms-4") %}
         </div>
       </div>
-      <div class="mt-10">
+      <div class="my-10">
         <div class="grid-1 grid gap-12 md:grid-cols-2 xl:grid-cols-3">
           {% for group in recently_added_groups %}
             {% call macros::groups_list_item(group) %}
           {% endfor %}
         </div>
         <div class="block mt-10 lg:hidden lg:mt-0">
-          {% call macros::primary_link("See all groups", "", "") %}
+          {% call macros::secondary_link("See all groups", "", "") %}
         </div>
       </div>
+      <!-- End recentry added groups -->
     </div>
   </div>
-  <!-- End community groups -->
+
+  {% include "home_gallery.html" %}
 {% endblock %}
 
 

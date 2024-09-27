@@ -39,6 +39,17 @@
 {% endmacro %}
 <!-- End secondary button -->
 
+<!-- Secondary link -->
+{% macro secondary_link(content, href, extra_styles) %}
+  <a
+    class="inline-block bg-white items-center py-2 px-5 text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 {{ extra_styles }}"
+    href="{{ href }}"
+  >
+    {{ content }}
+</a>
+{% endmacro %}
+<!-- End secondary link -->
+
 <!-- Header link -->
 {% macro header_link(content, href, current_path, extra_styles) %}
   <a
@@ -147,12 +158,12 @@
 <!-- Events list -->
 {% macro events_list(title, link, events) %}
   <div class="my-8 pb-5">
-    <div class="grid-1 grid grid-cols-2 gap4 items-center mb-6">
+    <div class="flex items-center justify-between mb-6">
       <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
         {{ title }}
       </div>
       <div class="hidden justify-self-end lg:flex">
-        {% call primary_link("See all events", link, "ms-4") %}
+        {% call secondary_link("See all events", link, "ms-4") %}
       </div>
     </div>
     <div class="my-10">
@@ -162,7 +173,7 @@
         {% endfor %}
       </div>
       <div class="block mt-10 lg:hidden lg:mt-0">
-        {% call primary_link("See all events", link, "") %}
+        {% call secondary_link("See all events", link, "") %}
       </div>
     </div>
   </div>
