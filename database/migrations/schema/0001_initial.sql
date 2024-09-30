@@ -115,6 +115,7 @@ create table event (
     banner_url text,
     capacity int check (capacity > 0),
     city text,
+    country text,
     icon_url text,
     latitude double precision,
     longitude double precision,

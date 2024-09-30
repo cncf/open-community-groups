@@ -54,13 +54,29 @@ pub(crate) async fn explore(
 }
 
 /// Handler that returns the explore events section.
-pub(crate) async fn explore_events(CommunityId(_community_id): CommunityId) -> impl IntoResponse {
-    ExploreEvents {}
+pub(crate) async fn explore_events(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+) -> Result<impl IntoResponse, StatusCode> {
+    let events = db
+        .search_community_events(community_id)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(ExploreEvents { events })
 }
 
 /// Handler that returns the explore groups section.
-pub(crate) async fn explore_groups(CommunityId(_community): CommunityId) -> impl IntoResponse {
-    ExploreGroups {}
+pub(crate) async fn explore_groups(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+) -> Result<impl IntoResponse, StatusCode> {
+    let groups = db
+        .search_community_groups(community_id)
+        .await
+        .map_err(internal_error)?;
+
+    Ok(ExploreGroups { groups })
 }
 
 /// Helper for mapping any error into a `500 Internal Server Error` response.
@@ -164,12 +180,54 @@ impl TryFrom<serde_json::Value> for Explore {
 /// Explore events section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore_events.html")]
-pub(crate) struct ExploreEvents {}
+pub(crate) struct ExploreEvents {
+    pub events: Vec<ExploreEvent>,
+}
+
+/// Event information used in the community explore page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ExploreEvent {
+    pub cancelled: bool,
+    pub description: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub ends_at: DateTime<Utc>,
+    pub event_kind_id: String,
+    pub group_name: String,
+    pub group_slug: String,
+    pub postponed: bool,
+    pub slug: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub starts_at: DateTime<Utc>,
+    pub title: String,
+
+    pub address: Option<String>,
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub icon_url: Option<String>,
+    pub state: Option<String>,
+    pub venue: Option<String>,
+}
 
 /// Explore groups section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore_groups.html")]
-pub(crate) struct ExploreGroups {}
+pub(crate) struct ExploreGroups {
+    pub groups: Vec<ExploreGroup>,
+}
+
+/// Group information used in the community explore page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ExploreGroup {
+    pub description: String,
+    pub name: String,
+    pub region_name: String,
+    pub slug: String,
+
+    pub city: Option<String>,
+    pub country: Option<String>,
+    pub icon_url: Option<String>,
+    pub state: Option<String>,
+}
 
 /// Community information used in some community pages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
