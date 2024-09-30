@@ -77,7 +77,8 @@
 
 <!-- New group modal -->
 {% if let Some(new_group_details) = self.community.new_group_details %}
-<div id="new-group-modal" tabindex="-1" aria-hidden="true" data-modal-placement="center-center" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+<div id="new-group-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
+  <div class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
   <div class="relative p-4 w-full max-w-2xl max-h-full">
     <div class="relative bg-white rounded-lg shadow">
       <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
@@ -92,10 +93,10 @@
         </button>
       </div>
       <div class="p-4 md:p-5 space-y-4">
-        {{ new_group_details }}
+        {{ new_group_details|safe }}
       </div>
-      <div class="flex items-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-        {% call macros::primary_button("Create group", "updateModalStatus('new-group-modal')", "") %}
+      <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
+        {% call macros::secondary_button("Create group", "", "updateModalStatus('new-group-modal')", "") %}
       </div>
     </div>
   </div>
