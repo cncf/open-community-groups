@@ -204,6 +204,7 @@ pub(crate) struct ExploreEvent {
     pub city: Option<String>,
     pub country: Option<String>,
     pub icon_url: Option<String>,
+    pub postal_code: Option<String>,
     pub state: Option<String>,
     pub venue: Option<String>,
 }
