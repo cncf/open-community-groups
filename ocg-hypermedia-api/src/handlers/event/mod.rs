@@ -6,6 +6,8 @@ use axum::extract::Path;
 use templates::Home;
 use tracing::debug;
 
+pub(crate) mod templates;
+
 /// Handler that returns the home page.
 pub(crate) async fn home(
     CommunityId(community_id): CommunityId,
@@ -17,13 +19,4 @@ pub(crate) async fn home(
     );
 
     Home {}
-}
-
-pub(crate) mod templates {
-    use askama::Template;
-
-    /// Home page template.
-    #[derive(Debug, Clone, Template)]
-    #[template(path = "event/home.html")]
-    pub(crate) struct Home {}
 }
