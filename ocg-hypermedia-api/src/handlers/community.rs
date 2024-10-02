@@ -2,7 +2,7 @@
 
 use super::extractor::CommunityId;
 use crate::db::DynDB;
-use anyhow::{Context, Error, Result};
+use anyhow::{Error, Result};
 use askama_axum::IntoResponse;
 use axum::{
     extract::{Query, Request, State},
@@ -61,11 +61,7 @@ pub(crate) async fn explore_events(
         .search_community_events(community_id)
         .await
         .map_err(internal_error)?;
-    let template = ExploreEvents {
-        events: serde_json::from_str(&json_data)
-            .context("error deserializing community events json data")
-            .map_err(internal_error)?,
-    };
+    let template = ExploreEvents::try_from(json_data).map_err(internal_error)?;
 
     Ok(template)
 }
@@ -79,11 +75,7 @@ pub(crate) async fn explore_groups(
         .search_community_groups(community_id)
         .await
         .map_err(internal_error)?;
-    let template = ExploreGroups {
-        groups: serde_json::from_str(&json_data)
-            .context("error deserializing community groups json data")
-            .map_err(internal_error)?,
-    };
+    let template = ExploreGroups::try_from(json_data).map_err(internal_error)?;
 
     Ok(template)
 }
@@ -197,6 +189,24 @@ pub(crate) mod templates {
         pub events: Vec<ExploreEvent>,
     }
 
+    impl TryFrom<JsonString> for ExploreEvents {
+        type Error = Error;
+
+        fn try_from(json_data: JsonString) -> Result<Self> {
+            let mut explore_events = ExploreEvents {
+                events: serde_json::from_str(&json_data)
+                    .context("error deserializing events json data")?,
+            };
+
+            // Convert markdown content in some fields to HTML
+            for event in &mut explore_events.events {
+                event.description = markdown::to_html(&event.description);
+            }
+
+            Ok(explore_events)
+        }
+    }
+
     /// Event information used in the community explore page.
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub(crate) struct ExploreEvent {
@@ -227,6 +237,24 @@ pub(crate) mod templates {
     #[template(path = "community/explore_groups.html")]
     pub(crate) struct ExploreGroups {
         pub groups: Vec<ExploreGroup>,
+    }
+
+    impl TryFrom<JsonString> for ExploreGroups {
+        type Error = Error;
+
+        fn try_from(json_data: JsonString) -> Result<Self> {
+            let mut explore_groups = ExploreGroups {
+                groups: serde_json::from_str(&json_data)
+                    .context("error deserializing groups json data")?,
+            };
+
+            // Convert markdown content in some fields to HTML
+            for group in &mut explore_groups.groups {
+                group.description = markdown::to_html(&group.description);
+            }
+
+            Ok(explore_groups)
+        }
     }
 
     /// Group information used in the community explore page.

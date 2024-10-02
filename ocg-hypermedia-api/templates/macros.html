@@ -291,7 +291,7 @@
           </div>
 
           <div class="text-[0.825rem] text-gray-500 line-clamp-2 h-[38px] my-2">
-            {{ event.description }}
+            {{ event.description|safe }}
           </div>
 
           <div class="hidden md:block">
@@ -368,7 +368,7 @@
         </div>
 
         <div class="text-[0.825rem] text-gray-500 line-clamp-1 h-[24px] md:line-clamp-2 md:h-[38px] my-2">
-          {{ group.description }}
+          {{ group.description|safe }}
         </div>
 
         <div class="flex flex-row leading-4 pt-1 lg:pt-2">
