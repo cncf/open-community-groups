@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 /// Explore page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore.html")]
+#[template(path = "community/explore/index.html")]
 pub(crate) struct Explore {
     pub community: Community,
     #[serde(default)]
@@ -33,7 +33,7 @@ impl TryFrom<JsonString> for Explore {
 
 /// Explore events section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore_events.html")]
+#[template(path = "community/explore/events.html")]
 pub(crate) struct Events {
     pub events: Vec<Event>,
 }
@@ -113,7 +113,7 @@ impl Event {
 
 /// Explore groups section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore_groups.html")]
+#[template(path = "community/explore/groups.html")]
 pub(crate) struct Groups {
     pub groups: Vec<Group>,
 }
