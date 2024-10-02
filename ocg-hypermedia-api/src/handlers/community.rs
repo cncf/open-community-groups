@@ -3,18 +3,13 @@
 use super::extractor::CommunityId;
 use crate::db::DynDB;
 use anyhow::{Context, Error, Result};
-use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
     extract::{Query, Request, State},
     http::StatusCode,
 };
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, HashMap},
-    fmt::Debug,
-};
+use std::{collections::HashMap, fmt::Debug};
+use templates::{Explore, ExploreEvents, ExploreGroups, Home};
 use tracing::error;
 
 /// Handler that returns the home page.
@@ -24,15 +19,17 @@ pub(crate) async fn home(
     Query(params): Query<HashMap<String, String>>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let home = Home {
+    let json_data = db
+        .get_community_home_data(community_id)
+        .await
+        .map_err(internal_error)?;
+    let template = Home {
         params,
         path: request.uri().path().to_string(),
-        ..db.get_community_home_data(community_id)
-            .await
-            .map_err(internal_error)?
+        ..Home::try_from(json_data).map_err(internal_error)?
     };
 
-    Ok(home)
+    Ok(template)
 }
 
 /// Handler that returns the explore page.
@@ -42,15 +39,17 @@ pub(crate) async fn explore(
     Query(params): Query<HashMap<String, String>>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let explore = Explore {
+    let json_data = db
+        .get_community_explore_data(community_id)
+        .await
+        .map_err(internal_error)?;
+    let template = Explore {
         params,
         path: request.uri().path().to_string(),
-        ..db.get_community_explore_data(community_id)
-            .await
-            .map_err(internal_error)?
+        ..Explore::try_from(json_data).map_err(internal_error)?
     };
 
-    Ok(explore)
+    Ok(template)
 }
 
 /// Handler that returns the explore events section.
@@ -58,12 +57,17 @@ pub(crate) async fn explore_events(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let events = db
+    let json_data = db
         .search_community_events(community_id)
         .await
         .map_err(internal_error)?;
+    let template = ExploreEvents {
+        events: serde_json::from_str(&json_data)
+            .context("error deserializing community events json data")
+            .map_err(internal_error)?,
+    };
 
-    Ok(ExploreEvents { events })
+    Ok(template)
 }
 
 /// Handler that returns the explore groups section.
@@ -71,12 +75,17 @@ pub(crate) async fn explore_groups(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let groups = db
+    let json_data = db
         .search_community_groups(community_id)
         .await
         .map_err(internal_error)?;
+    let template = ExploreGroups {
+        groups: serde_json::from_str(&json_data)
+            .context("error deserializing community groups json data")
+            .map_err(internal_error)?,
+    };
 
-    Ok(ExploreGroups { groups })
+    Ok(template)
 }
 
 /// Helper for mapping any error into a `500 Internal Server Error` response.
@@ -89,170 +98,175 @@ where
     StatusCode::INTERNAL_SERVER_ERROR
 }
 
-/// Home page template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/home.html")]
-#[allow(dead_code)]
-pub(crate) struct Home {
-    #[serde(default)]
-    pub params: HashMap<String, String>,
-    #[serde(default)]
-    pub path: String,
+pub(crate) mod templates {
+    use crate::db::JsonString;
+    use anyhow::{Context, Error, Result};
+    use askama::Template;
+    use chrono::{DateTime, Utc};
+    use serde::{Deserialize, Serialize};
+    use std::collections::{BTreeMap, HashMap};
 
-    pub community: Community,
-    pub recently_added_groups: Vec<HomeGroup>,
-    pub upcoming_in_person_events: Vec<HomeEvent>,
-    pub upcoming_online_events: Vec<HomeEvent>,
-}
-
-impl TryFrom<serde_json::Value> for Home {
-    type Error = Error;
-
-    fn try_from(json_data: serde_json::Value) -> Result<Self> {
-        let mut home: Home =
-            serde_json::from_value(json_data).context("error deserializing home json data")?;
-
-        // Convert markdown content in some fields to HTML
-        home.community.description = markdown::to_html(&home.community.description);
-        if let Some(copyright_notice) = &home.community.copyright_notice {
-            home.community.copyright_notice = Some(markdown::to_html(copyright_notice));
-        }
-        if let Some(new_group_details) = &home.community.new_group_details {
-            home.community.new_group_details = Some(markdown::to_html(new_group_details));
-        }
-
-        Ok(home)
+    /// Home page template.
+    #[derive(Debug, Clone, Template, Serialize, Deserialize)]
+    #[template(path = "community/home.html")]
+    pub(crate) struct Home {
+        pub community: Community,
+        #[serde(default)]
+        pub params: HashMap<String, String>,
+        #[serde(default)]
+        pub path: String,
+        pub recently_added_groups: Vec<HomeGroup>,
+        pub upcoming_in_person_events: Vec<HomeEvent>,
+        pub upcoming_online_events: Vec<HomeEvent>,
     }
-}
 
-/// Event information used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct HomeEvent {
-    pub group_name: String,
-    pub group_slug: String,
-    pub slug: String,
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub starts_at: DateTime<Utc>,
-    pub title: String,
+    impl TryFrom<JsonString> for Home {
+        type Error = Error;
 
-    pub city: Option<String>,
-    pub icon_url: Option<String>,
-    pub state: Option<String>,
-}
+        fn try_from(json_data: JsonString) -> Result<Self> {
+            let mut home: Home = serde_json::from_str(&json_data)
+                .context("error deserializing home template json data")?;
 
-/// Group information used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct HomeGroup {
-    pub name: String,
-    pub region_name: String,
-    pub slug: String,
+            // Convert markdown content in some fields to HTML
+            home.community.description = markdown::to_html(&home.community.description);
+            if let Some(copyright_notice) = &home.community.copyright_notice {
+                home.community.copyright_notice = Some(markdown::to_html(copyright_notice));
+            }
+            if let Some(new_group_details) = &home.community.new_group_details {
+                home.community.new_group_details = Some(markdown::to_html(new_group_details));
+            }
 
-    pub city: Option<String>,
-    pub country: Option<String>,
-    pub icon_url: Option<String>,
-    pub state: Option<String>,
-}
-
-/// Explore page template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore.html")]
-#[allow(dead_code)]
-pub(crate) struct Explore {
-    #[serde(default)]
-    pub params: HashMap<String, String>,
-    #[serde(default)]
-    pub path: String,
-
-    pub community: Community,
-}
-
-impl TryFrom<serde_json::Value> for Explore {
-    type Error = Error;
-
-    fn try_from(json_data: serde_json::Value) -> Result<Self> {
-        let explore: Explore =
-            serde_json::from_value(json_data).context("error deserializing explore json data")?;
-
-        Ok(explore)
+            Ok(home)
+        }
     }
-}
 
-/// Explore events section template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore_events.html")]
-pub(crate) struct ExploreEvents {
-    pub events: Vec<ExploreEvent>,
-}
+    /// Event information used in the community home page.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub(crate) struct HomeEvent {
+        pub group_name: String,
+        pub group_slug: String,
+        pub slug: String,
+        #[serde(with = "chrono::serde::ts_seconds")]
+        pub starts_at: DateTime<Utc>,
+        pub title: String,
 
-/// Event information used in the community explore page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct ExploreEvent {
-    pub cancelled: bool,
-    pub description: String,
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub ends_at: DateTime<Utc>,
-    pub event_kind_id: String,
-    pub group_name: String,
-    pub group_slug: String,
-    pub postponed: bool,
-    pub slug: String,
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub starts_at: DateTime<Utc>,
-    pub title: String,
+        pub city: Option<String>,
+        pub icon_url: Option<String>,
+        pub state: Option<String>,
+    }
 
-    pub address: Option<String>,
-    pub city: Option<String>,
-    pub country: Option<String>,
-    pub icon_url: Option<String>,
-    pub postal_code: Option<String>,
-    pub state: Option<String>,
-    pub venue: Option<String>,
-}
+    /// Group information used in the community home page.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub(crate) struct HomeGroup {
+        pub name: String,
+        pub region_name: String,
+        pub slug: String,
 
-/// Explore groups section template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore_groups.html")]
-pub(crate) struct ExploreGroups {
-    pub groups: Vec<ExploreGroup>,
-}
+        pub city: Option<String>,
+        pub country: Option<String>,
+        pub icon_url: Option<String>,
+        pub state: Option<String>,
+    }
 
-/// Group information used in the community explore page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct ExploreGroup {
-    pub description: String,
-    pub name: String,
-    pub region_name: String,
-    pub slug: String,
+    /// Explore page template.
+    #[derive(Debug, Clone, Template, Serialize, Deserialize)]
+    #[template(path = "community/explore.html")]
+    pub(crate) struct Explore {
+        pub community: Community,
+        #[serde(default)]
+        pub params: HashMap<String, String>,
+        #[serde(default)]
+        pub path: String,
+    }
 
-    pub city: Option<String>,
-    pub country: Option<String>,
-    pub icon_url: Option<String>,
-    pub state: Option<String>,
-}
+    impl TryFrom<JsonString> for Explore {
+        type Error = Error;
 
-/// Community information used in some community pages.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Community {
-    pub display_name: String,
-    pub header_logo_url: String,
-    pub title: String,
-    pub description: String,
+        fn try_from(json_data: JsonString) -> Result<Self> {
+            let explore: Explore = serde_json::from_str(&json_data)
+                .context("error deserializing explore template json data")?;
 
-    pub ad_banner_link_url: Option<String>,
-    pub ad_banner_url: Option<String>,
-    pub copyright_notice: Option<String>,
-    pub extra_links: Option<BTreeMap<String, String>>,
-    pub facebook_url: Option<String>,
-    pub flickr_url: Option<String>,
-    pub footer_logo_url: Option<String>,
-    pub github_url: Option<String>,
-    pub homepage_url: Option<String>,
-    pub instagram_url: Option<String>,
-    pub linkedin_url: Option<String>,
-    pub new_group_details: Option<String>,
-    pub photos_urls: Option<Vec<String>>,
-    pub slack_url: Option<String>,
-    pub twitter_url: Option<String>,
-    pub wechat_url: Option<String>,
-    pub youtube_url: Option<String>,
+            Ok(explore)
+        }
+    }
+
+    /// Explore events section template.
+    #[derive(Debug, Clone, Template, Serialize, Deserialize)]
+    #[template(path = "community/explore_events.html")]
+    pub(crate) struct ExploreEvents {
+        pub events: Vec<ExploreEvent>,
+    }
+
+    /// Event information used in the community explore page.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub(crate) struct ExploreEvent {
+        pub cancelled: bool,
+        pub description: String,
+        #[serde(with = "chrono::serde::ts_seconds")]
+        pub ends_at: DateTime<Utc>,
+        pub event_kind_id: String,
+        pub group_name: String,
+        pub group_slug: String,
+        pub postponed: bool,
+        pub slug: String,
+        #[serde(with = "chrono::serde::ts_seconds")]
+        pub starts_at: DateTime<Utc>,
+        pub title: String,
+
+        pub address: Option<String>,
+        pub city: Option<String>,
+        pub country: Option<String>,
+        pub icon_url: Option<String>,
+        pub postal_code: Option<String>,
+        pub state: Option<String>,
+        pub venue: Option<String>,
+    }
+
+    /// Explore groups section template.
+    #[derive(Debug, Clone, Template, Serialize, Deserialize)]
+    #[template(path = "community/explore_groups.html")]
+    pub(crate) struct ExploreGroups {
+        pub groups: Vec<ExploreGroup>,
+    }
+
+    /// Group information used in the community explore page.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub(crate) struct ExploreGroup {
+        pub description: String,
+        pub name: String,
+        pub region_name: String,
+        pub slug: String,
+
+        pub city: Option<String>,
+        pub country: Option<String>,
+        pub icon_url: Option<String>,
+        pub state: Option<String>,
+    }
+
+    /// Community information used in some community pages.
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub(crate) struct Community {
+        pub display_name: String,
+        pub header_logo_url: String,
+        pub title: String,
+        pub description: String,
+
+        pub ad_banner_link_url: Option<String>,
+        pub ad_banner_url: Option<String>,
+        pub copyright_notice: Option<String>,
+        pub extra_links: Option<BTreeMap<String, String>>,
+        pub facebook_url: Option<String>,
+        pub flickr_url: Option<String>,
+        pub footer_logo_url: Option<String>,
+        pub github_url: Option<String>,
+        pub homepage_url: Option<String>,
+        pub instagram_url: Option<String>,
+        pub linkedin_url: Option<String>,
+        pub new_group_details: Option<String>,
+        pub photos_urls: Option<Vec<String>>,
+        pub slack_url: Option<String>,
+        pub twitter_url: Option<String>,
+        pub wechat_url: Option<String>,
+        pub youtube_url: Option<String>,
+    }
 }

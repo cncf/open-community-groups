@@ -1,11 +1,13 @@
 //! This module defines an abstraction layer over the database.
 
-use crate::handlers::community;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
+
+/// Type alias to represent a string of json data.
+pub(crate) type JsonString = String;
 
 /// Abstraction layer over the database. Trait that defines some operations a
 /// DB implementation must support.
@@ -15,22 +17,16 @@ pub(crate) trait DB {
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
     /// Get data for the community home template.
-    async fn get_community_home_data(&self, community_id: Uuid) -> Result<community::Home>;
+    async fn get_community_home_data(&self, community_id: Uuid) -> Result<JsonString>;
 
     /// Get data for the community explore template.
-    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<community::Explore>;
+    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<JsonString>;
 
     /// Search community events that match the criteria provided.
-    async fn search_community_events(
-        &self,
-        community_id: Uuid,
-    ) -> Result<Vec<community::ExploreEvent>>;
+    async fn search_community_events(&self, community_id: Uuid) -> Result<JsonString>;
 
     /// Search community groups that match the criteria provided.
-    async fn search_community_groups(
-        &self,
-        community_id: Uuid,
-    ) -> Result<Vec<community::ExploreGroup>>;
+    async fn search_community_groups(&self, community_id: Uuid) -> Result<JsonString>;
 }
 
 /// Type alias to represent a DB trait object.
@@ -65,61 +61,58 @@ impl DB for PgDB {
     }
 
     /// [DB::get_community_home_data]
-    async fn get_community_home_data(&self, community_id: Uuid) -> Result<community::Home> {
+    async fn get_community_home_data(&self, community_id: Uuid) -> Result<JsonString> {
         let db = self.pool.get().await?;
-        let json_data: serde_json::Value = db
-            .query_one("select get_community_home_data($1::uuid)", &[&community_id])
-            .await?
-            .get(0);
-        let home = community::Home::try_from(json_data)?;
-
-        Ok(home)
-    }
-
-    /// [DB::get_community_explore_data]
-    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<community::Explore> {
-        let db = self.pool.get().await?;
-        let json_data: serde_json::Value = db
+        let json_data = db
             .query_one(
-                "select get_community_explore_data($1::uuid)",
+                "select get_community_home_data($1::uuid)::text",
                 &[&community_id],
             )
             .await?
             .get(0);
-        let explore = community::Explore::try_from(json_data)?;
 
-        Ok(explore)
+        Ok(json_data)
+    }
+
+    /// [DB::get_community_explore_data]
+    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<JsonString> {
+        let db = self.pool.get().await?;
+        let json_data = db
+            .query_one(
+                "select get_community_explore_data($1::uuid)::text",
+                &[&community_id],
+            )
+            .await?
+            .get(0);
+
+        Ok(json_data)
     }
 
     /// [DB::search_community_events]
-    async fn search_community_events(
-        &self,
-        community_id: Uuid,
-    ) -> Result<Vec<community::ExploreEvent>> {
+    async fn search_community_events(&self, community_id: Uuid) -> Result<JsonString> {
         let db = self.pool.get().await?;
-        let json_data: serde_json::Value = db
-            .query_one("select search_community_events($1::uuid)", &[&community_id])
+        let json_data = db
+            .query_one(
+                "select search_community_events($1::uuid)::text",
+                &[&community_id],
+            )
             .await?
             .get(0);
-        let events = serde_json::from_value(json_data)
-            .context("error deserializing community events json data")?;
 
-        Ok(events)
+        Ok(json_data)
     }
 
     /// [DB::search_community_groups]
-    async fn search_community_groups(
-        &self,
-        community_id: Uuid,
-    ) -> Result<Vec<community::ExploreGroup>> {
+    async fn search_community_groups(&self, community_id: Uuid) -> Result<JsonString> {
         let db = self.pool.get().await?;
-        let json_data: serde_json::Value = db
-            .query_one("select search_community_groups($1::uuid)", &[&community_id])
+        let json_data = db
+            .query_one(
+                "select search_community_groups($1::uuid)::text",
+                &[&community_id],
+            )
             .await?
             .get(0);
-        let groups = serde_json::from_value(json_data)
-            .context("error deserializing community groups json data")?;
 
-        Ok(groups)
+        Ok(json_data)
     }
 }

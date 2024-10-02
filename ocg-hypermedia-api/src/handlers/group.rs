@@ -1,9 +1,9 @@
 //! This module defines the HTTP handlers for the group site.
 
 use super::extractor::CommunityId;
-use askama::Template;
 use askama_axum::IntoResponse;
 use axum::extract::Path;
+use templates::Home;
 use tracing::debug;
 
 /// Handler that returns the home page.
@@ -16,7 +16,11 @@ pub(crate) async fn home(
     Home {}
 }
 
-/// Home page template.
-#[derive(Debug, Clone, Template)]
-#[template(path = "group/home.html")]
-pub(crate) struct Home {}
+pub(crate) mod templates {
+    use askama::Template;
+
+    /// Home page template.
+    #[derive(Debug, Clone, Template)]
+    #[template(path = "group/home.html")]
+    pub(crate) struct Home {}
+}
