@@ -1,4 +1,4 @@
-{% import "macros.html" as macros %}
+{% import "common.html" as common %}
 {% extends "explore_base.html" %}
 
 {% block filters %}
@@ -34,7 +34,7 @@
 
       <div class="grow flex items-center justify-center">
         <div class="w-full">
-          {% call macros::search_bar("", "w-full mx-auto md:w-3/4") %}
+          {% call common::search_bar("", "w-full mx-auto md:w-3/4") %}
         </div>
       </div>
     </div>
@@ -54,7 +54,7 @@
         </select>
       </div>
       <div>
-        {% call macros::secondary_button("<span class='hidden md:block'>Browse in map</span><span class='block md:hidden'>Map</span>", "map", "() => console.log('hola')", "") %}
+        {% call common::secondary_button("<span class='hidden md:block'>Browse in map</span><span class='block md:hidden'>Map</span>", "map", "() => console.log('hola')", "") %}
       </div>
     </div>
     <div class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">1 - {{ events.len() }} of {{ events.len() }} results</div>
@@ -62,9 +62,80 @@
     <!-- Cards -->
     <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7">
       {% for event in events %}
-        {% call macros::event_card(event) %}
+        {% call event_card(event) %}
       {% endfor %}
     </div>
     <!-- End cards -->
   </div>
 {% endblock %}
+
+<!-- Event card -->
+{% macro event_card(event) %}
+  <div class="p-5 md:p-7">
+    <div class="flex flex-1 flex-row items-stretch">
+      <!-- Event icon -->
+      <div
+        class="h-24 min-w-24 md:h-[150px] md:min-w-[150px] md:my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
+        style="
+          background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+        "
+      ></div>
+      <!-- End event icon -->
+
+      <div class="min-w-0 pl-4 content-center">
+        <div class="flex flex-col justify-between h-full">
+          <div>
+            <!-- Event group -->
+            <div class="truncate leading-3">
+              <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ event.group_name }}</span>
+            </div>
+            <!-- End event group -->
+
+            <!--  -->
+            <h2 class="font-semibold truncate">{{ event.title }}</h2>
+          </div>
+
+          <!-- Event description on desktop -->
+          <div class="hidden relative text-xs text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2 md:block">
+            {{ event.description|safe }}
+            <div class="absolute w-20 h-4 bottom-0 right-0 bg-gradient-to-r from-transparent to-50% to-white"></div>
+          </div>
+          <!-- End event description on desktop -->
+
+          <div>
+            <!-- Event location -->
+            <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[24px]">
+              {% if let Some(location) = event.location() %}
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
+                <div class="truncate text-gray-700 text-xs uppercase">{{ location }}</div>
+              {% endif %}
+            </div>
+            <!-- End event location -->
+
+            <!-- Event date -->
+            <div class="flex items-center pt-2">
+              <div class="flex flex-row items-center leading-4">
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+                <span class="truncate text-gray-700 text-xs uppercase">{{ event.starts_at.format("%A, %B %e, %G · %I:%M %p %Z") }}</span>
+              </div>
+              {% if event.postponed %}
+                <span class="ms-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
+              {% endif %}
+              <span class="ms-3 border text-gray-500 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">{{ event.event_kind_id }}</span>
+            </div>
+            <!-- End event date -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event description on mobile -->
+    <div class="block md:hidden">
+      <div class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">
+        {{ event.description|safe }}
+      </div>
+    </div>
+    <!-- End event description on mobile -->
+  </div>
+{% endmacro %}
+<!-- End event card -->

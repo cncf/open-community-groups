@@ -1,4 +1,4 @@
-{% import "macros.html" as macros %}
+{% import "common.html" as common %}
 
 <!DOCTYPE html>
 <header>
@@ -33,15 +33,15 @@
       </button>
     </div>
     <div class="hidden lg:flex lg:gap-x-8">
-      {% call macros::header_link("Home", "/", path, "") %}
-      {% call macros::header_link("Explore", "/explore", path, "") %}
+      {% call link("Home", "/", path, "") %}
+      {% call link("Explore", "/explore", path, "") %}
       {% if let Some(new_group_details) = self.community.new_group_details %}
-        {% call macros::header_button("New group", "updateModalStatus('new-group-modal')", "") %}
+        {% call button("New group", "updateModalStatus('new-group-modal')", "") %}
       {% endif %}
     </div>
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      {% call macros::secondary_button("Sign up", "", "() => console.log('hola')", "") %}
-      {% call macros::primary_button("Log in", "() => console.log('hola')", "") %}
+      {% call common::secondary_button("Sign up", "", "() => console.log('hola')", "") %}
+      {% call common::primary_button("Log in", "() => console.log('hola')", "") %}
     </div>
   </nav>
 
@@ -60,13 +60,13 @@
       <div class="mt-6 flow-root">
         <div class="-my-6 divide-y divide-gray-500/10">
           <div class="space-y-2 py-6">
-            {% call macros::header_mobile_link("Home", "/", "") %}
-            {% call macros::header_mobile_link("Explore", "/explore", "") %}
-            {% call macros::header_mobile_button("New group", "updateModalStatus('new-group-modal')", "") %}
+            {% call mobile_link("Home", "/", "") %}
+            {% call mobile_link("Explore", "/explore", "") %}
+            {% call mobile_button("New group", "updateModalStatus('new-group-modal')", "") %}
           </div>
           <div class="py-6">
-            {% call macros::header_mobile_link("Sign up", "#", "") %}
-            {% call macros::header_mobile_link("Login in", "#", "") %}
+            {% call mobile_link("Sign up", "#", "") %}
+            {% call mobile_link("Login in", "#", "") %}
           </div>
         </div>
       </div>
@@ -81,6 +81,7 @@
   <div class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
   <div class="relative p-4 w-full max-w-2xl max-h-full">
     <div class="relative bg-white rounded-lg shadow">
+      <!-- Modal header -->
       <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
         <h3 class="text-xl font-semibold text-gray-900">
           New group
@@ -92,12 +93,19 @@
           <span class="sr-only">Close modal</span>
         </button>
       </div>
+      <!-- End modal header -->
+
+      <!-- Modal content -->
       <div class="p-4 md:p-5 space-y-4">
         {{ new_group_details|safe }}
       </div>
+      <!-- End modal content -->
+
+      <!-- Modal footer -->
       <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-        {% call macros::secondary_button("Create group", "", "updateModalStatus('new-group-modal')", "") %}
+        {% call common::secondary_button("Create group", "", "updateModalStatus('new-group-modal')", "") %}
       </div>
+      <!-- End modal footer -->
     </div>
   </div>
 </div>
@@ -121,3 +129,47 @@
     }
   };
 </script>
+
+<!-- Link -->
+{% macro link(content, href, current_path, extra_styles) %}
+  <a
+    href="{{ href }}"
+    class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {% if current_path == href %}border-b-2{% else %}hover:border-b-2 hover:border-primary-300{% endif %} {{ extra_styles }}"
+  >
+    {{ content }}
+  </a>
+{% endmacro %}
+<!-- End link -->
+
+<!-- Button -->
+{% macro button(content, action, extra_styles) %}
+  <button
+    class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles }}"
+    onclick="{{ action }}"
+  >
+    {{ content }}
+  </button>
+{% endmacro %}
+<!-- End button -->
+
+<!-- Mobile link -->
+{% macro mobile_link(content, href, extra_styles) %}
+  <a
+    href="{{ href }}"
+    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}"
+  >
+    {{ content }}
+  </a>
+{% endmacro %}
+<!-- End mobile link -->
+
+<!-- Mobile button -->
+{% macro mobile_button(content, action, extra_styles) %}
+  <button
+    onclick="{{ action }}"
+    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}"
+  >
+    {{ content }}
+</button>
+{% endmacro %}
+<!-- End mobile button -->
