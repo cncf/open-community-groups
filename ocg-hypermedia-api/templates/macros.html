@@ -273,6 +273,7 @@
 
 <!-- Event card on explore -->
 {% macro event_card(event) %}
+  {% let end_date_time = event.ends_at.format("%I:%M %p") %}
   <div class="p-5 md:p-7">
     <div class="flex flex-1 flex-row items-stretch">
       <div
@@ -290,17 +291,17 @@
             <h2 class="font-semibold truncate">{{ event.title }}</h2>
           </div>
 
-          <div class="text-[0.825rem] text-gray-500 line-clamp-2 h-[38px] my-2">
+          <div class="hidden relative text-xs text-gray-500 leading-[1.15rem] line-clamp-2 h-[35px] md:my-2 md:block">
             {{ event.description|safe }}
+            <div class="absolute w-20 h-4 bottom-0 right-0 bg-gradient-to-r from-transparent to-white"></div>
           </div>
 
-          <div class="hidden md:block">
+          <div>
             <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[24px]">
               {% if event.event_kind_id == "in-person" %}
                 <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
-                <div class="truncate text-black text-xs font-medium">
+                <div class="truncate text-gray-700 text-xs uppercase">
                   {% if let Some(venue) = event.venue %}{{ venue }}, {% endif %}
-                  {% if let Some(address) = event.address %}{{ address }}, {% endif %}
                   {% if let Some(city) = event.city %}{{ city }}{% endif %}
                   <span class="uppercase">{% if let Some(state) = event.state %}, {{ state }}{% endif %}{% if let Some(country) = event.country %}, {{ country }}{% endif %}</span>
                 </div>
@@ -309,7 +310,7 @@
             <div class="flex items-center pt-2">
               <div class="flex flex-row items-center leading-4">
                 <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
-                <span class="text-black text-xs font-medium truncate">{{ event.starts_at.format("%A, %B %e, %G - %I:%M %p %Z") }}</span>
+                <span class="truncate text-gray-700 text-xs uppercase">{{ event.starts_at.format("%A, %B %e, %G · %I:%M %p %Z") }}</span>
               </div>
               {% if event.postponed %}
                 <span class="ms-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
@@ -320,29 +321,9 @@
         </div>
       </div>
     </div>
-    <div class="flex flex-col md:hidden">
-      <div class="flex flex-row items-center leading-4 pt-4">
-        {% if event.event_kind_id == "in-person" %}
-          <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
-          <div class="truncate text-black text-xs font-medium">
-            {% if let Some(venue) = event.venue %}{{ venue }}, {% endif %}
-            {% if let Some(address) = event.address %}{{ address }}, {% endif %}
-            {% if let Some(city) = event.city %}{{ city }}{% endif %}
-            <span class="uppercase">{% if let Some(state) = event.state %}, {{ state }}{% endif %}{% if let Some(country) = event.country %}, {{ country }}{% endif %}</span>
-          </div>
-        {% endif %}
-      </div>
-      <div class="pt-2">
-        <div class="flex flex-row items-center leading-4">
-          <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
-          <span class="text-black text-xs font-medium truncate">{{ event.starts_at.format("%a, %b %e, %g - %I:%M %p %Z") }}</span>
-        </div>
-      </div>
-      <div class="pt-2">
-        {% if event.postponed %}
-          <span class="me-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
-        {% endif %}
-        <span class="me-3 border text-gray-500 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">{{ event.event_kind_id }}</span>
+    <div class="block md:hidden">
+      <div class="text-xs text-gray-500 leading-[1.15rem] line-clamp-2 mt-3">
+        {{ event.description|safe }}
       </div>
     </div>
   </div>
@@ -367,7 +348,7 @@
           <h2 class="font-semibold truncate">{{ group.name }}</h2>
         </div>
 
-        <div class="text-[0.825rem] text-gray-500 line-clamp-1 h-[24px] md:line-clamp-2 md:h-[38px] my-2">
+        <div class="text-xs text-gray-500 line-clamp-1 h-[24px] md:line-clamp-2 md:h-[38px] my-2">
           {{ group.description|safe }}
         </div>
 
