@@ -33,7 +33,7 @@
         {% else %}
           <span></span>
       {% endmatch %}
-      {{ content }}
+      {{ content|safe }}
     </div>
   </button>
 {% endmacro %}
@@ -273,49 +273,76 @@
 
 <!-- Event card on explore -->
 {% macro event_card(event) %}
-  <div class="flex flex-1 flex-row items-stretch p-7">
-    <div
-      class="h-28 min-w-28 lg:h-[150px] lg:min-w-[150px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-      style="
-        background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
-      "
-    ></div>
-    <div class="min-w-0 pl-4 content-center">
-      <div class="flex flex-col justify-between h-full">
-        <div>
-          <div class="truncate leading-3">
-            <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ event.group_name }}</span>
-          </div>
-          <h2 class="font-semibold truncate">{{ event.title }}</h2>
-        </div>
-
-        <div class="text-[0.825rem] text-gray-500 line-clamp-2 h-[36px] my-2">
-          {{ event.description }}
-        </div>
-
-        <div>
-          <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[24px]">
-            {% if event.event_kind_id == "in-person" %}
-              <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
-              <div class="truncate text-black text-xs font-medium">
-                {% if let Some(venue) = event.venue %}{{ venue }}, {% endif %}
-                {% if let Some(address) = event.address %}{{ address }}, {% endif %}
-                {% if let Some(city) = event.city %}{{ city }}{% endif %}
-                <span class="uppercase">{% if let Some(state) = event.state %}, {{ state }}{% endif %}{% if let Some(country) = event.country %}, {{ country }}{% endif %}</span>
-              </div>
-            {% endif %}
-          </div>
-          <div class="flex items-center pt-2">
-            <div class="flex flex-row items-center leading-4">
-              <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
-              <span class="text-black text-xs font-medium truncate">{{ event.starts_at.format("%A, %B %e, %G - %I:%M %p %Z") }}</span>
+  <div class="p-5 md:p-7">
+    <div class="flex flex-1 flex-row items-stretch">
+      <div
+        class="h-24 min-w-24 md:h-[150px] md:min-w-[150px] md:my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
+        style="
+          background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+        "
+      ></div>
+      <div class="min-w-0 pl-4 content-center">
+        <div class="flex flex-col justify-between h-full">
+          <div>
+            <div class="truncate leading-3">
+              <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ event.group_name }}</span>
             </div>
-            {% if event.postponed %}
-              <span class="ms-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
-            {% endif %}
-            <span class="ms-3 border text-gray-500 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">{{ event.event_kind_id }}</span>
+            <h2 class="font-semibold truncate">{{ event.title }}</h2>
+          </div>
+
+          <div class="text-[0.825rem] text-gray-500 line-clamp-2 h-[38px] my-2">
+            {{ event.description }}
+          </div>
+
+          <div class="hidden md:block">
+            <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[24px]">
+              {% if event.event_kind_id == "in-person" %}
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
+                <div class="truncate text-black text-xs font-medium">
+                  {% if let Some(venue) = event.venue %}{{ venue }}, {% endif %}
+                  {% if let Some(address) = event.address %}{{ address }}, {% endif %}
+                  {% if let Some(city) = event.city %}{{ city }}{% endif %}
+                  <span class="uppercase">{% if let Some(state) = event.state %}, {{ state }}{% endif %}{% if let Some(country) = event.country %}, {{ country }}{% endif %}</span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="flex items-center pt-2">
+              <div class="flex flex-row items-center leading-4">
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+                <span class="text-black text-xs font-medium truncate">{{ event.starts_at.format("%A, %B %e, %G - %I:%M %p %Z") }}</span>
+              </div>
+              {% if event.postponed %}
+                <span class="ms-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
+              {% endif %}
+              <span class="ms-3 border text-gray-500 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">{{ event.event_kind_id }}</span>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="flex flex-col md:hidden">
+      <div class="flex flex-row items-center leading-4 pt-4">
+        {% if event.event_kind_id == "in-person" %}
+          <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
+          <div class="truncate text-black text-xs font-medium">
+            {% if let Some(venue) = event.venue %}{{ venue }}, {% endif %}
+            {% if let Some(address) = event.address %}{{ address }}, {% endif %}
+            {% if let Some(city) = event.city %}{{ city }}{% endif %}
+            <span class="uppercase">{% if let Some(state) = event.state %}, {{ state }}{% endif %}{% if let Some(country) = event.country %}, {{ country }}{% endif %}</span>
+          </div>
+        {% endif %}
+      </div>
+      <div class="pt-2">
+        <div class="flex flex-row items-center leading-4">
+          <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+          <span class="text-black text-xs font-medium truncate">{{ event.starts_at.format("%a, %b %e, %g - %I:%M %p %Z") }}</span>
+        </div>
+      </div>
+      <div class="pt-2">
+        {% if event.postponed %}
+          <span class="me-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
+        {% endif %}
+        <span class="me-3 border text-gray-500 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">{{ event.event_kind_id }}</span>
       </div>
     </div>
   </div>
@@ -324,9 +351,9 @@
 
 <!-- Group card on explore -->
 {% macro group_card(group) %}
-  <div class="flex flex-1 flex-row items-stretch p-7">
+  <div class="flex flex-1 flex-row items-stretch p-5 md:p-7">
     <div
-      class="h-28 min-w-28 lg:h-[140px] lg:min-w-[140px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
+      class="h-24 min-w-24 md:h-[140px] md:min-w-[140px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
       style="
         background-image: url({% if let Some(icon_url) = group.icon_url %}{{ icon_url }}{% else %}https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png{% endif %});
       "
@@ -340,7 +367,7 @@
           <h2 class="font-semibold truncate">{{ group.name }}</h2>
         </div>
 
-        <div class="text-[0.825rem] text-gray-500 line-clamp-2 h-[36px] my-2">
+        <div class="text-[0.825rem] text-gray-500 line-clamp-1 h-[24px] md:line-clamp-2 md:h-[38px] my-2">
           {{ group.description }}
         </div>
 

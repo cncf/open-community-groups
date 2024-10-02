@@ -6,8 +6,8 @@
 {% endblock %}
 
 {% block content %}
-  <div class="bg-white border rounded-lg mb-10 pt-7">
-    <div class="flex items-center mb-10 px-7">
+  <div class="bg-white border rounded-lg mb-10 pt-5 md:pt-7">
+    <div class="flex items-center mb-10 px-5 md:px-7">
       <!-- Mobile filters button -->
       <div class="flex lg:hidden">
         <button
@@ -34,13 +34,13 @@
 
       <div class="grow flex items-center justify-center">
         <div class="w-full">
-          {% call macros::search_bar("", "w-3/4 mx-auto") %}
+          {% call macros::search_bar("", "w-full mx-auto md:w-3/4") %}
         </div>
       </div>
     </div>
-    <div class="flex items-center justify-between px-7">
-      <div class="font-semibold text-sm text-black">1 - 5 of 5 results</div>
-      <div class="flex items-center">
+    <div class="flex items-end justify-between px-5 md:items-center md:px-7">
+      <div class="hidden font-semibold text-sm text-black md:flex">1 - {{ groups.len() }} of {{ groups.len() }} results</div>
+      <div class="flex flex-col items-start sm:items-center sm:flex-row">
         <label
           for="sort"
           class="font-semibold text-filterTitle text-black leading-6 me-3"
@@ -54,12 +54,13 @@
         </select>
       </div>
       <div>
-        {% call macros::secondary_button("Browse in map", "map", "() => console.log('hola')", "") %}
+        {% call macros::secondary_button("<span class='hidden md:block'>Browse in map</span><span class='block md:hidden'>Map</span>", "map", "() => console.log('hola')", "") %}
       </div>
     </div>
+    <div class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">1 - {{ groups.len() }} of {{ groups.len() }} results</div>
 
     <!-- Cards -->
-    <div class="flex flex-col divide-y mt-7 border-t border-gray-100">
+    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7">
       {% for group in groups %}
         {% call macros::group_card(group) %}
       {% endfor %}

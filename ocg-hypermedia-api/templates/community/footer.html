@@ -58,9 +58,9 @@
 
     {% if let Some(extra_links) = self.community.extra_links %}
       <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
-      <div class="pb-8 pt-2">
+      <div class="pb-8 pt-2 text-sm md:text-base">
         {% for (name, url) in extra_links %}
-          {% if !loop.first %}<span class="px-3 text-gray-300">·</span>{% endif %}{% call macros::extra_link(name, url) %}
+          {% if !loop.first %}<span class="px-2 text-gray-300 md:px-3">·</span>{% endif %}{% call macros::extra_link(name, url) %}
         {% endfor %}
       </div>
     {% endif %}
