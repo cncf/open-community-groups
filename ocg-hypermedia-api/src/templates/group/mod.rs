@@ -1,3 +1,5 @@
+//! This module defines the templates for the group site.
+
 use askama::Template;
 
 /// Home page template.

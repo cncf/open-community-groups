@@ -1,3 +1,5 @@
+//! This module defines the templates for the event page.
+
 use askama::Template;
 
 /// Home page template.

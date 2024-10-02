@@ -1,71 +1,13 @@
+//! This module defines some templates and types used in the explore page of
+//! the community site.
+
+use super::common::Community;
 use crate::db::JsonString;
 use anyhow::{Context, Error, Result};
 use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
-
-/// Home page template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/home.html")]
-pub(crate) struct Home {
-    pub community: Community,
-    #[serde(default)]
-    pub params: HashMap<String, String>,
-    #[serde(default)]
-    pub path: String,
-    pub recently_added_groups: Vec<HomeGroup>,
-    pub upcoming_in_person_events: Vec<HomeEvent>,
-    pub upcoming_online_events: Vec<HomeEvent>,
-}
-
-impl TryFrom<JsonString> for Home {
-    type Error = Error;
-
-    fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut home: Home = serde_json::from_str(&json_data)
-            .context("error deserializing home template json data")?;
-
-        // Convert markdown content in some fields to HTML
-        home.community.description = markdown::to_html(&home.community.description);
-        if let Some(copyright_notice) = &home.community.copyright_notice {
-            home.community.copyright_notice = Some(markdown::to_html(copyright_notice));
-        }
-        if let Some(new_group_details) = &home.community.new_group_details {
-            home.community.new_group_details = Some(markdown::to_html(new_group_details));
-        }
-
-        Ok(home)
-    }
-}
-
-/// Event information used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct HomeEvent {
-    pub group_name: String,
-    pub group_slug: String,
-    pub slug: String,
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub starts_at: DateTime<Utc>,
-    pub title: String,
-
-    pub city: Option<String>,
-    pub icon_url: Option<String>,
-    pub state: Option<String>,
-}
-
-/// Group information used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct HomeGroup {
-    pub name: String,
-    pub region_name: String,
-    pub slug: String,
-
-    pub city: Option<String>,
-    pub country: Option<String>,
-    pub icon_url: Option<String>,
-    pub state: Option<String>,
-}
+use std::collections::HashMap;
 
 /// Explore page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -92,15 +34,15 @@ impl TryFrom<JsonString> for Explore {
 /// Explore events section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore_events.html")]
-pub(crate) struct ExploreEvents {
-    pub events: Vec<ExploreEvent>,
+pub(crate) struct Events {
+    pub events: Vec<Event>,
 }
 
-impl TryFrom<JsonString> for ExploreEvents {
+impl TryFrom<JsonString> for Events {
     type Error = Error;
 
     fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut explore_events = ExploreEvents {
+        let mut explore_events = Events {
             events: serde_json::from_str(&json_data)
                 .context("error deserializing events json data")?,
         };
@@ -116,7 +58,7 @@ impl TryFrom<JsonString> for ExploreEvents {
 
 /// Event information used in the community explore page.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct ExploreEvent {
+pub(crate) struct Event {
     pub cancelled: bool,
     pub description: String,
     pub event_kind_id: String,
@@ -135,10 +77,11 @@ pub(crate) struct ExploreEvent {
     pub venue: Option<String>,
 }
 
-impl ExploreEvent {
+impl Event {
     /// Returns the location of the event.
     pub fn location(&self) -> Option<String> {
         let mut location = String::new();
+
         if let Some(venue) = &self.venue {
             location.push_str(venue);
         }
@@ -160,26 +103,26 @@ impl ExploreEvent {
             }
             location.push_str(country);
         }
-        if location.is_empty() {
-            None
-        } else {
-            Some(location)
+
+        if !location.is_empty() {
+            return Some(location);
         }
+        None
     }
 }
 
 /// Explore groups section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore_groups.html")]
-pub(crate) struct ExploreGroups {
-    pub groups: Vec<ExploreGroup>,
+pub(crate) struct Groups {
+    pub groups: Vec<Group>,
 }
 
-impl TryFrom<JsonString> for ExploreGroups {
+impl TryFrom<JsonString> for Groups {
     type Error = Error;
 
     fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut explore_groups = ExploreGroups {
+        let mut explore_groups = Groups {
             groups: serde_json::from_str(&json_data)
                 .context("error deserializing groups json data")?,
         };
@@ -195,7 +138,7 @@ impl TryFrom<JsonString> for ExploreGroups {
 
 /// Group information used in the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct ExploreGroup {
+pub(crate) struct Group {
     pub description: String,
     pub name: String,
     pub region_name: String,
@@ -207,40 +150,13 @@ pub(crate) struct ExploreGroup {
     pub state: Option<String>,
 }
 
-/// Community information used in some community pages.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Community {
-    pub display_name: String,
-    pub header_logo_url: String,
-    pub title: String,
-    pub description: String,
-
-    pub ad_banner_link_url: Option<String>,
-    pub ad_banner_url: Option<String>,
-    pub copyright_notice: Option<String>,
-    pub extra_links: Option<BTreeMap<String, String>>,
-    pub facebook_url: Option<String>,
-    pub flickr_url: Option<String>,
-    pub footer_logo_url: Option<String>,
-    pub github_url: Option<String>,
-    pub homepage_url: Option<String>,
-    pub instagram_url: Option<String>,
-    pub linkedin_url: Option<String>,
-    pub new_group_details: Option<String>,
-    pub photos_urls: Option<Vec<String>>,
-    pub slack_url: Option<String>,
-    pub twitter_url: Option<String>,
-    pub wechat_url: Option<String>,
-    pub youtube_url: Option<String>,
-}
-
 #[cfg(test)]
 mod tests {
-    use super::ExploreEvent;
+    use super::Event;
 
     #[test]
     fn explore_event_location() {
-        let event = ExploreEvent {
+        let event = Event {
             city: Some("City".to_string()),
             country: Some("Country".to_string()),
             state: Some("State".to_string()),
@@ -252,7 +168,7 @@ mod tests {
             Some("Venue, City, State, Country".to_string())
         );
 
-        let event = ExploreEvent {
+        let event = Event {
             city: Some("City".to_string()),
             country: Some("Country".to_string()),
             state: Some("State".to_string()),
@@ -260,21 +176,21 @@ mod tests {
         };
         assert_eq!(event.location(), Some("City, State, Country".to_string()));
 
-        let event = ExploreEvent {
+        let event = Event {
             country: Some("Country".to_string()),
             venue: Some("Venue".to_string()),
             ..Default::default()
         };
         assert_eq!(event.location(), Some("Venue, Country".to_string()));
 
-        let event = ExploreEvent {
+        let event = Event {
             city: Some("City".to_string()),
             venue: Some("Venue".to_string()),
             ..Default::default()
         };
         assert_eq!(event.location(), Some("Venue, City".to_string()));
 
-        let event = ExploreEvent::default();
+        let event = Event::default();
         assert_eq!(event.location(), None);
     }
 }

@@ -1,7 +1,13 @@
 //! This module defines the HTTP handlers for the community site.
 
-use super::extractor::CommunityId;
-use crate::db::DynDB;
+use super::extractors::CommunityId;
+use crate::{
+    db::DynDB,
+    templates::community::{
+        explore::{self, Explore},
+        home::Home,
+    },
+};
 use anyhow::{Error, Result};
 use askama_axum::IntoResponse;
 use axum::{
@@ -9,10 +15,7 @@ use axum::{
     http::StatusCode,
 };
 use std::{collections::HashMap, fmt::Debug};
-use templates::{Explore, ExploreEvents, ExploreGroups, Home};
 use tracing::error;
-
-pub(crate) mod templates;
 
 /// Handler that returns the home page.
 pub(crate) async fn home(
@@ -63,7 +66,7 @@ pub(crate) async fn explore_events(
         .search_community_events(community_id)
         .await
         .map_err(internal_error)?;
-    let template = ExploreEvents::try_from(json_data).map_err(internal_error)?;
+    let template = explore::Events::try_from(json_data).map_err(internal_error)?;
 
     Ok(template)
 }
@@ -77,7 +80,7 @@ pub(crate) async fn explore_groups(
         .search_community_groups(community_id)
         .await
         .map_err(internal_error)?;
-    let template = ExploreGroups::try_from(json_data).map_err(internal_error)?;
+    let template = explore::Groups::try_from(json_data).map_err(internal_error)?;
 
     Ok(template)
 }

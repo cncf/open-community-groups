@@ -1,5 +1,4 @@
 #![warn(clippy::all, clippy::pedantic)]
-#![allow(clippy::doc_markdown, clippy::similar_names)]
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -17,6 +16,7 @@ mod config;
 mod db;
 mod handlers;
 mod router;
+mod templates;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
