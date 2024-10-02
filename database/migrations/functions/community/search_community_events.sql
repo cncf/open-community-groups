@@ -2,15 +2,12 @@
 create or replace function search_community_events(p_community_id uuid)
 returns json as $$
     select coalesce(json_agg(json_build_object(
-        'address', address,
         'cancelled', cancelled,
         'city', city,
         'country', country,
         'description', description,
-        'ends_at', floor(extract(epoch from ends_at)),
         'event_kind_id', event_kind_id,
         'icon_url', icon_url,
-        'postal_code', postal_code,
         'postponed', postponed,
         'slug', event_slug,
         'starts_at', floor(extract(epoch from starts_at)),
@@ -22,15 +19,12 @@ returns json as $$
     )), '[]') as json_data
     from (
         select
-            e.address,
             e.cancelled,
             e.city,
             e.country,
             e.description,
-            e.ends_at,
             e.event_kind_id,
             e.icon_url,
-            e.postal_code,
             e.postponed,
             e.slug as event_slug,
             e.starts_at,

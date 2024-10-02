@@ -208,12 +208,10 @@ pub(crate) mod templates {
     }
 
     /// Event information used in the community explore page.
-    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[derive(Debug, Clone, Default, Serialize, Deserialize)]
     pub(crate) struct ExploreEvent {
         pub cancelled: bool,
         pub description: String,
-        #[serde(with = "chrono::serde::ts_seconds")]
-        pub ends_at: DateTime<Utc>,
         pub event_kind_id: String,
         pub group_name: String,
         pub group_slug: String,
@@ -223,13 +221,44 @@ pub(crate) mod templates {
         pub starts_at: DateTime<Utc>,
         pub title: String,
 
-        pub address: Option<String>,
         pub city: Option<String>,
         pub country: Option<String>,
         pub icon_url: Option<String>,
-        pub postal_code: Option<String>,
         pub state: Option<String>,
         pub venue: Option<String>,
+    }
+
+    impl ExploreEvent {
+        /// Returns the location of the event.
+        pub fn location(&self) -> Option<String> {
+            let mut location = String::new();
+            if let Some(venue) = &self.venue {
+                location.push_str(venue);
+            }
+            if let Some(city) = &self.city {
+                if !location.is_empty() {
+                    location.push_str(", ");
+                }
+                location.push_str(city);
+            }
+            if let Some(state) = &self.state {
+                if !location.is_empty() {
+                    location.push_str(", ");
+                }
+                location.push_str(state);
+            }
+            if let Some(country) = &self.country {
+                if !location.is_empty() {
+                    location.push_str(", ");
+                }
+                location.push_str(country);
+            }
+            if location.is_empty() {
+                None
+            } else {
+                Some(location)
+            }
+        }
     }
 
     /// Explore groups section template.
@@ -296,5 +325,50 @@ pub(crate) mod templates {
         pub twitter_url: Option<String>,
         pub wechat_url: Option<String>,
         pub youtube_url: Option<String>,
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::ExploreEvent;
+
+        #[test]
+        fn explore_event_location() {
+            let event = ExploreEvent {
+                city: Some("City".to_string()),
+                country: Some("Country".to_string()),
+                state: Some("State".to_string()),
+                venue: Some("Venue".to_string()),
+                ..Default::default()
+            };
+            assert_eq!(
+                event.location(),
+                Some("Venue, City, State, Country".to_string())
+            );
+
+            let event = ExploreEvent {
+                city: Some("City".to_string()),
+                country: Some("Country".to_string()),
+                state: Some("State".to_string()),
+                ..Default::default()
+            };
+            assert_eq!(event.location(), Some("City, State, Country".to_string()));
+
+            let event = ExploreEvent {
+                country: Some("Country".to_string()),
+                venue: Some("Venue".to_string()),
+                ..Default::default()
+            };
+            assert_eq!(event.location(), Some("Venue, Country".to_string()));
+
+            let event = ExploreEvent {
+                city: Some("City".to_string()),
+                venue: Some("Venue".to_string()),
+                ..Default::default()
+            };
+            assert_eq!(event.location(), Some("Venue, City".to_string()));
+
+            let event = ExploreEvent::default();
+            assert_eq!(event.location(), None);
+        }
     }
 }
