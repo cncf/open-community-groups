@@ -72,11 +72,33 @@
 {% endmacro %}
 <!-- End header button -->
 
+<!-- Header mobile link -->
+{% macro header_mobile_link(content, href, extra_styles) %}
+  <a
+    href="{{ href }}"
+    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}"
+  >
+    {{ content }}
+  </a>
+{% endmacro %}
+<!-- End header mobile link -->
+
+<!-- Header mobile button -->
+{% macro header_mobile_button(content, action, extra_styles) %}
+  <button
+    onclick="{{ action }}"
+    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}"
+  >
+    {{ content }}
+</button>
+{% endmacro %}
+<!-- End header mobile button -->
+
 <!-- Icon link -->
 {% macro social_icon_link(href, kind) %}
   <a
     href="{{ href }}"
-    class="me-6 [&>svg]:h-8 [&>svg]:w-8 content-center hover:text-primary-500"
+    class="ms-0 [&>svg]:h-8 [&>svg]:w-8 md:ms-6 content-center hover:text-primary-500"
     target="_blank"
     rel="noopener noreferrer"
   >
@@ -157,7 +179,7 @@
 
 <!-- Events list -->
 {% macro events_list(title, link, events) %}
-  <div class="my-8 pb-5">
+  <div class="my-5 pb-5 sm:my-8">
     <div class="flex items-center justify-between mb-6">
       <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
         {{ title }}
@@ -167,7 +189,7 @@
       </div>
     </div>
     <div class="my-10">
-      <div class="grid-1 grid gap-12 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
         {% for event in events %}
           {% call events_list_item(event) %}
         {% endfor %}

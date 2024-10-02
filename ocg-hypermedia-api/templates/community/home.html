@@ -10,11 +10,9 @@
       font-weight: 600;
     }
   </style>
-  <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+  <div class="relative container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <!-- Jumbotron -->
-    <section
-      class="relative"
-    >
+    <section>
       <div class="relative z-10 max-w-screen-xl pb-10 md:pb-20">
         <h1
           class="mb-4 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl"
@@ -32,7 +30,7 @@
         </div>
         {% call macros::primary_link("Explore all", "/explore", "") %}
       </div>
-      <div class="absolute top-[70%] right-0 h-[75%] w-[90%] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] md:w-[75%] lg:h-[90%] md:top-[65%]"></div>
+      <div class="absolute bottom-[-80px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] sm:w-[540px] md:w-[710px] lg:w-[820px] xl:w-[960px] sm:bottom-[-110px] md:bottom-[-140px] lg:bottom-[-190px] xl:bottom-[-230px]"></div>
     </section>
     <!-- End jumbotron -->
   </div>
@@ -40,7 +38,7 @@
 
 {% block content %}
   <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-    <div class="pt-8">
+    <div class="pt-4 md:pt-8">
       <!-- Events in-person -->
       {% call macros::events_list("Upcoming in-person events", "/events", upcoming_in_person_events) %}
 
@@ -49,13 +47,13 @@
 
       <!-- Banner -->
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
-        <div class="pb-16">
+        <div class="hidden pb-16 md:flex">
           {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
-            <a rel="noopener noreferrer" class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">
+            <a rel="noopener noreferrer" class="mx-auto my-8 border-4 border-gray-100 w-[75%]" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">
               <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
             </a>
           {% else %}
-            <div class="hidden mx-auto my-8 border-4 border-gray-100 w-[75%] md:flex">
+            <div class="mx-auto my-8 border-4 border-gray-100 w-[75%]">
               <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
             </div>
           {% endif %}
@@ -73,7 +71,7 @@
         </div>
       </div>
       <div class="my-10">
-        <div class="grid-1 grid gap-12 md:grid-cols-2 xl:grid-cols-3">
+        <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
           {% for group in recently_added_groups %}
             {% call macros::groups_list_item(group) %}
           {% endfor %}
