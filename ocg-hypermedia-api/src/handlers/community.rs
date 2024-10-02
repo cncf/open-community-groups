@@ -18,7 +18,6 @@ use tracing::error;
 pub(crate) async fn home_index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Query(params): Query<HashMap<String, String>>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     let json_data = db
@@ -26,7 +25,6 @@ pub(crate) async fn home_index(
         .await
         .map_err(internal_error)?;
     let template = home::Index {
-        params,
         path: request.uri().path().to_string(),
         ..home::Index::try_from(json_data).map_err(internal_error)?
     };
@@ -46,7 +44,7 @@ pub(crate) async fn explore_index(
         .await
         .map_err(internal_error)?;
     let template = explore::Index {
-        params,
+        entity: params.get("entity").into(),
         path: request.uri().path().to_string(),
         ..explore::Index::try_from(json_data).map_err(internal_error)?
     };

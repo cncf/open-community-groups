@@ -7,7 +7,6 @@ use anyhow::{Context, Error, Result};
 use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Explore index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -15,7 +14,7 @@ use std::collections::HashMap;
 pub(crate) struct Index {
     pub community: Community,
     #[serde(default)]
-    pub params: HashMap<String, String>,
+    pub entity: Entity,
     #[serde(default)]
     pub path: String,
 }
@@ -28,6 +27,23 @@ impl TryFrom<JsonString> for Index {
             .context("error deserializing explore template json data")?;
 
         Ok(explore)
+    }
+}
+
+/// Tab to display in the explore page (events or groups).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) enum Entity {
+    #[default]
+    Events,
+    Groups,
+}
+
+impl From<Option<&String>> for Entity {
+    fn from(entity: Option<&String>) -> Self {
+        match entity.map(String::as_str) {
+            Some("groups") => Entity::Groups,
+            _ => Entity::Events,
+        }
     }
 }
 

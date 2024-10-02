@@ -7,15 +7,12 @@ use anyhow::{Context, Error, Result};
 use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Home index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/index.html")]
 pub(crate) struct Index {
     pub community: Community,
-    #[serde(default)]
-    pub params: HashMap<String, String>,
     #[serde(default)]
     pub path: String,
     pub recently_added_groups: Vec<Group>,
