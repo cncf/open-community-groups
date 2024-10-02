@@ -9,10 +9,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Explore page template.
+/// Explore index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/index.html")]
-pub(crate) struct Explore {
+pub(crate) struct Index {
     pub community: Community,
     #[serde(default)]
     pub params: HashMap<String, String>,
@@ -20,11 +20,11 @@ pub(crate) struct Explore {
     pub path: String,
 }
 
-impl TryFrom<JsonString> for Explore {
+impl TryFrom<JsonString> for Index {
     type Error = Error;
 
     fn try_from(json_data: JsonString) -> Result<Self> {
-        let explore: Explore = serde_json::from_str(&json_data)
+        let explore: Index = serde_json::from_str(&json_data)
             .context("error deserializing explore template json data")?;
 
         Ok(explore)
@@ -61,9 +61,9 @@ impl TryFrom<JsonString> for Events {
 pub(crate) struct Event {
     pub cancelled: bool,
     pub description: String,
-    pub event_kind_id: String,
     pub group_name: String,
     pub group_slug: String,
+    pub kind_id: String,
     pub postponed: bool,
     pub slug: String,
     #[serde(with = "chrono::serde::ts_seconds")]

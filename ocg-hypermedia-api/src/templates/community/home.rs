@@ -9,10 +9,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Home page template.
+/// Home index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/index.html")]
-pub(crate) struct Home {
+pub(crate) struct Index {
     pub community: Community,
     #[serde(default)]
     pub params: HashMap<String, String>,
@@ -23,12 +23,12 @@ pub(crate) struct Home {
     pub upcoming_online_events: Vec<Event>,
 }
 
-impl TryFrom<JsonString> for Home {
+impl TryFrom<JsonString> for Index {
     type Error = Error;
 
     fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut home: Home = serde_json::from_str(&json_data)
-            .context("error deserializing home template json data")?;
+        let mut home: Index = serde_json::from_str(&json_data)
+            .context("error deserializing home index template json data")?;
 
         // Convert markdown content in some fields to HTML
         home.community.description = markdown::to_html(&home.community.description);

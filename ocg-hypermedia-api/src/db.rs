@@ -16,11 +16,11 @@ pub(crate) trait DB {
     /// Get the community id from the host provided.
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
-    /// Get data for the community home template.
-    async fn get_community_home_data(&self, community_id: Uuid) -> Result<JsonString>;
+    /// Get data for the community home index template.
+    async fn get_community_home_index_data(&self, community_id: Uuid) -> Result<JsonString>;
 
-    /// Get data for the community explore template.
-    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<JsonString>;
+    /// Get data for the community explore index template.
+    async fn get_community_explore_index_data(&self, community_id: Uuid) -> Result<JsonString>;
 
     /// Search community events that match the criteria provided.
     async fn search_community_events(&self, community_id: Uuid) -> Result<JsonString>;
@@ -60,12 +60,12 @@ impl DB for PgDB {
         Ok(community_id)
     }
 
-    /// [DB::get_community_home_data]
-    async fn get_community_home_data(&self, community_id: Uuid) -> Result<JsonString> {
+    /// [DB::get_community_home_index_data]
+    async fn get_community_home_index_data(&self, community_id: Uuid) -> Result<JsonString> {
         let db = self.pool.get().await?;
         let json_data = db
             .query_one(
-                "select get_community_home_data($1::uuid)::text",
+                "select get_community_home_index_data($1::uuid)::text",
                 &[&community_id],
             )
             .await?
@@ -74,12 +74,12 @@ impl DB for PgDB {
         Ok(json_data)
     }
 
-    /// [DB::get_community_explore_data]
-    async fn get_community_explore_data(&self, community_id: Uuid) -> Result<JsonString> {
+    /// [DB::get_community_explore_index_data]
+    async fn get_community_explore_index_data(&self, community_id: Uuid) -> Result<JsonString> {
         let db = self.pool.get().await?;
         let json_data = db
             .query_one(
-                "select get_community_explore_data($1::uuid)::text",
+                "select get_community_explore_index_data($1::uuid)::text",
                 &[&community_id],
             )
             .await?

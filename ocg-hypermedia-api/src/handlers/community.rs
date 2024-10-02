@@ -3,10 +3,7 @@
 use super::extractors::CommunityId;
 use crate::{
     db::DynDB,
-    templates::community::{
-        explore::{self, Explore},
-        home::Home,
-    },
+    templates::community::{explore, home},
 };
 use anyhow::{Error, Result};
 use askama_axum::IntoResponse;
@@ -17,47 +14,47 @@ use axum::{
 use std::{collections::HashMap, fmt::Debug};
 use tracing::error;
 
-/// Handler that returns the home page.
-pub(crate) async fn home(
+/// Handler that returns the home index page.
+pub(crate) async fn home_index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Query(params): Query<HashMap<String, String>>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     let json_data = db
-        .get_community_home_data(community_id)
+        .get_community_home_index_data(community_id)
         .await
         .map_err(internal_error)?;
-    let template = Home {
+    let template = home::Index {
         params,
         path: request.uri().path().to_string(),
-        ..Home::try_from(json_data).map_err(internal_error)?
+        ..home::Index::try_from(json_data).map_err(internal_error)?
     };
 
     Ok(template)
 }
 
-/// Handler that returns the explore page.
-pub(crate) async fn explore(
+/// Handler that returns the explore index page.
+pub(crate) async fn explore_index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Query(params): Query<HashMap<String, String>>,
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     let json_data = db
-        .get_community_explore_data(community_id)
+        .get_community_explore_index_data(community_id)
         .await
         .map_err(internal_error)?;
-    let template = Explore {
+    let template = explore::Index {
         params,
         path: request.uri().path().to_string(),
-        ..Explore::try_from(json_data).map_err(internal_error)?
+        ..explore::Index::try_from(json_data).map_err(internal_error)?
     };
 
     Ok(template)
 }
 
-/// Handler that returns the explore events section.
+/// Handler that returns the events section of the explore page.
 pub(crate) async fn explore_events(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -71,7 +68,7 @@ pub(crate) async fn explore_events(
     Ok(template)
 }
 
-/// Handler that returns the explore groups section.
+/// Handler that returns the groups section of the explore page.
 pub(crate) async fn explore_groups(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,

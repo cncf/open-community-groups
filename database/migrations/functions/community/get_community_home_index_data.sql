@@ -1,5 +1,5 @@
--- Returns the information needed to render the community home page.
-create or replace function get_community_home_data(p_community_id uuid)
+-- Returns the information needed to render the community home index page.
+create or replace function get_community_home_index_data(p_community_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
         'community', (select get_community_data(p_community_id)),
