@@ -17,6 +17,9 @@ pub(crate) struct Index {
     pub entity: Entity,
     #[serde(default)]
     pub path: String,
+
+    pub events: Option<Events>,
+    pub groups: Option<Groups>,
 }
 
 impl TryFrom<JsonString> for Index {
@@ -31,7 +34,7 @@ impl TryFrom<JsonString> for Index {
 }
 
 /// Tab to display in the explore page (events or groups).
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Entity {
     #[default]
     Events,
