@@ -55,18 +55,22 @@ pub(crate) async fn explore_index(
     // Attach events or groups data to the template
     match entity {
         explore::Entity::Events => {
-            let json_data = db
+            let filters = serde_html_form::from_str(request.uri().query().unwrap_or_default())
+                .map_err(internal_error)?;
+            let events_json = db
                 .search_community_events(community_id)
                 .await
                 .map_err(internal_error)?;
-            template.events = Some(explore::Events::try_from(json_data).map_err(internal_error)?);
+            template.events_section =
+                Some(explore::EventsSection::new(filters, &events_json).map_err(internal_error)?);
         }
         explore::Entity::Groups => {
-            let json_data = db
+            let groups_json = db
                 .search_community_groups(community_id)
                 .await
                 .map_err(internal_error)?;
-            template.groups = Some(explore::Groups::try_from(json_data).map_err(internal_error)?);
+            template.groups_section =
+                Some(explore::GroupsSection::new(&groups_json).map_err(internal_error)?);
         }
     }
 
@@ -77,13 +81,16 @@ pub(crate) async fn explore_index(
 pub(crate) async fn explore_events(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
+    request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare events section template
-    let json_data = db
+    let filters = serde_html_form::from_str(request.uri().query().unwrap_or_default())
+        .map_err(internal_error)?;
+    let events_json = db
         .search_community_events(community_id)
         .await
         .map_err(internal_error)?;
-    let template = explore::Events::try_from(json_data).map_err(internal_error)?;
+    let template = explore::EventsSection::new(filters, &events_json).map_err(internal_error)?;
 
     Ok(template)
 }
@@ -94,11 +101,11 @@ pub(crate) async fn explore_groups(
     CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare groups section template
-    let json_data = db
+    let groups_json = db
         .search_community_groups(community_id)
         .await
         .map_err(internal_error)?;
-    let template = explore::Groups::try_from(json_data).map_err(internal_error)?;
+    let template = explore::GroupsSection::new(&groups_json).map_err(internal_error)?;
 
     Ok(template)
 }

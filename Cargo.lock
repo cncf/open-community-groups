@@ -1132,6 +1132,7 @@ dependencies = [
  "openssl",
  "postgres-openssl",
  "serde",
+ "serde_html_form",
  "serde_json",
  "serde_qs",
  "tokio",
@@ -1537,6 +1538,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8de514ef58196f1fc96dcaef80fe6170a1ce6215df9687a93fe8300e773fefc5"
+dependencies = [
+ "form_urlencoded",
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

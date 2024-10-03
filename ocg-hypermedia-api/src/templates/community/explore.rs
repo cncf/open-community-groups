@@ -18,8 +18,8 @@ pub(crate) struct Index {
     #[serde(default)]
     pub path: String,
 
-    pub events: Option<Events>,
-    pub groups: Option<Groups>,
+    pub events_section: Option<EventsSection>,
+    pub groups_section: Option<GroupsSection>,
 }
 
 impl TryFrom<JsonString> for Index {
@@ -33,7 +33,7 @@ impl TryFrom<JsonString> for Index {
     }
 }
 
-/// Tab to display in the explore page (events or groups).
+/// Entity to display in the explore page (events or groups).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Entity {
     #[default]
@@ -53,26 +53,60 @@ impl From<Option<&String>> for Entity {
 /// Explore events section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events.html")]
-pub(crate) struct Events {
+pub(crate) struct EventsSection {
     pub events: Vec<Event>,
+    pub filters: EventsFilters,
 }
 
-impl TryFrom<JsonString> for Events {
-    type Error = Error;
-
-    fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut explore_events = Events {
-            events: serde_json::from_str(&json_data)
-                .context("error deserializing events json data")?,
+impl EventsSection {
+    /// Create a new `EventsSection` instance.
+    pub(crate) fn new(filters: EventsFilters, events_json: &JsonString) -> Result<Self> {
+        let mut section = EventsSection {
+            events: serde_json::from_str(events_json)?,
+            filters,
         };
 
         // Convert markdown content in some fields to HTML
-        for event in &mut explore_events.events {
+        for event in &mut section.events {
             event.description = markdown::to_html(&event.description);
         }
 
-        Ok(explore_events)
+        Ok(section)
     }
+}
+
+/// Filters used in the events section of the community explore page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventsFilters {
+    #[serde(default)]
+    distance: Vec<String>,
+    #[serde(default)]
+    kind: Vec<EventKind>,
+    #[serde(default)]
+    region: Vec<String>,
+
+    date_from: Option<String>,
+    date_to: Option<String>,
+}
+
+impl Default for EventsFilters {
+    fn default() -> Self {
+        EventsFilters {
+            date_from: None,
+            date_to: None,
+            distance: Vec::new(),
+            kind: vec![EventKind::InPerson, EventKind::Virtual],
+            region: Vec::new(),
+        }
+    }
+}
+
+/// Event kind (in-person or virtual).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+enum EventKind {
+    InPerson,
+    Virtual,
 }
 
 /// Event information used in the community explore page.
@@ -133,25 +167,23 @@ impl Event {
 /// Explore groups section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups.html")]
-pub(crate) struct Groups {
+pub(crate) struct GroupsSection {
     pub groups: Vec<Group>,
 }
 
-impl TryFrom<JsonString> for Groups {
-    type Error = Error;
-
-    fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut explore_groups = Groups {
-            groups: serde_json::from_str(&json_data)
-                .context("error deserializing groups json data")?,
+impl GroupsSection {
+    /// Create a new `GroupsSection` instance.
+    pub(crate) fn new(groups_json: &JsonString) -> Result<Self> {
+        let mut section = GroupsSection {
+            groups: serde_json::from_str(groups_json)?,
         };
 
         // Convert markdown content in some fields to HTML
-        for group in &mut explore_groups.groups {
+        for group in &mut section.groups {
             group.description = markdown::to_html(&group.description);
         }
 
-        Ok(explore_groups)
+        Ok(section)
     }
 }
 
