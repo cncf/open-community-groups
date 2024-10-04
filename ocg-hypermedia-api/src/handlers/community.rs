@@ -3,7 +3,10 @@
 use super::extractors::CommunityId;
 use crate::{
     db::DynDB,
-    templates::community::{explore, home},
+    templates::community::{
+        explore::{self, EventsFilters},
+        home,
+    },
 };
 use anyhow::{Error, Result};
 use askama_axum::IntoResponse;
@@ -52,10 +55,10 @@ pub(crate) async fn explore_index(
         ..explore::Index::try_from(json_data).map_err(internal_error)?
     };
 
-    // Attach events or groups data to the template
+    // Attach events or groups section template to the index template
     match entity {
         explore::Entity::Events => {
-            let filters = serde_html_form::from_str(request.uri().query().unwrap_or_default())
+            let filters = EventsFilters::try_from_query(request.uri().query().unwrap_or_default())
                 .map_err(internal_error)?;
             let events_json = db
                 .search_community_events(community_id)

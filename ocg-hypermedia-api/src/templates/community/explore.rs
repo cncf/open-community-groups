@@ -89,15 +89,17 @@ pub(crate) struct EventsFilters {
     date_to: Option<String>,
 }
 
-impl Default for EventsFilters {
-    fn default() -> Self {
-        EventsFilters {
-            date_from: None,
-            date_to: None,
-            distance: Vec::new(),
-            kind: vec![EventKind::InPerson, EventKind::Virtual],
-            region: Vec::new(),
+impl EventsFilters {
+    /// Create a new `EventsFilters` instance from the query string provided.
+    pub(crate) fn try_from_query(query: &str) -> Result<Self> {
+        let mut filters: EventsFilters = serde_html_form::from_str(query)?;
+
+        // Use all event kinds if none are provided
+        if filters.kind.is_empty() {
+            filters.kind = vec![EventKind::InPerson, EventKind::Virtual];
         }
+
+        Ok(filters)
     }
 }
 
