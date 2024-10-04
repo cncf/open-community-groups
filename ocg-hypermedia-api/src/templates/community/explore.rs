@@ -62,10 +62,10 @@ pub(crate) struct EventsSection {
 
 impl EventsSection {
     /// Create a new `EventsSection` instance.
-    pub(crate) fn new(filters: EventsFilters, events_json: &JsonString) -> Result<Self> {
+    pub(crate) fn new(filters: &EventsFilters, events_json: &JsonString) -> Result<Self> {
         let mut section = EventsSection {
             events: serde_json::from_str(events_json)?,
-            filters,
+            filters: filters.clone(),
         };
 
         // Convert markdown content in some fields to HTML
@@ -178,10 +178,10 @@ pub(crate) struct GroupsSection {
 
 impl GroupsSection {
     /// Create a new `GroupsSection` instance.
-    pub(crate) fn new(filters: GroupsFilters, groups_json: &JsonString) -> Result<Self> {
+    pub(crate) fn new(filters: &GroupsFilters, groups_json: &JsonString) -> Result<Self> {
         let mut section = GroupsSection {
             groups: serde_json::from_str(groups_json)?,
-            filters,
+            filters: filters.clone(),
         };
 
         // Convert markdown content in some fields to HTML

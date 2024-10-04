@@ -65,7 +65,7 @@ pub(crate) async fn explore_index(
                 .await
                 .map_err(internal_error)?;
             template.events_section =
-                Some(explore::EventsSection::new(filters, &events_json).map_err(internal_error)?);
+                Some(explore::EventsSection::new(&filters, &events_json).map_err(internal_error)?);
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form).map_err(internal_error)?;
@@ -74,7 +74,7 @@ pub(crate) async fn explore_index(
                 .await
                 .map_err(internal_error)?;
             template.groups_section =
-                Some(explore::GroupsSection::new(filters, &groups_json).map_err(internal_error)?);
+                Some(explore::GroupsSection::new(&filters, &groups_json).map_err(internal_error)?);
         }
     }
 
@@ -93,9 +93,16 @@ pub(crate) async fn explore_events(
         .search_community_events(community_id)
         .await
         .map_err(internal_error)?;
-    let template = explore::EventsSection::new(filters, &events_json).map_err(internal_error)?;
+    let template = explore::EventsSection::new(&filters, &events_json).map_err(internal_error)?;
 
-    Ok(template)
+    // Prepare response headers
+    let filters_params = serde_html_form::to_string(&filters).map_err(internal_error)?;
+    let headers = [(
+        "HX-Push-Url",
+        format!("/explore?entity=events&{filters_params}"),
+    )];
+
+    Ok((headers, template))
 }
 
 /// Handler that returns the groups section of the explore page.
@@ -110,9 +117,16 @@ pub(crate) async fn explore_groups(
         .search_community_groups(community_id)
         .await
         .map_err(internal_error)?;
-    let template = explore::GroupsSection::new(filters, &groups_json).map_err(internal_error)?;
+    let template = explore::GroupsSection::new(&filters, &groups_json).map_err(internal_error)?;
 
-    Ok(template)
+    // Prepare response headers
+    let filters_params = serde_html_form::to_string(&filters).map_err(internal_error)?;
+    let headers = [(
+        "HX-Push-Url",
+        format!("/explore?entity=groups&{filters_params}"),
+    )];
+
+    Ok((headers, template))
 }
 
 /// Helper for mapping any error into a `500 Internal Server Error` response.
