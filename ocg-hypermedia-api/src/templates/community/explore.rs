@@ -8,6 +8,7 @@ use askama::Template;
 use axum::body::Bytes;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 
 /// Explore index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -53,7 +54,7 @@ impl From<Option<&String>> for Entity {
 
 /// Explore events section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/events.html")]
+#[template(path = "community/explore/events/section.html")]
 pub(crate) struct EventsSection {
     pub events: Vec<Event>,
     pub filters: EventsFilters,
@@ -169,7 +170,7 @@ impl Event {
 
 /// Explore groups section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/groups.html")]
+#[template(path = "community/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
     pub groups: Vec<Group>,
     pub filters: GroupsFilters,
