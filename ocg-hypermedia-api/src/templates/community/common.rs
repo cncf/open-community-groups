@@ -11,6 +11,7 @@ pub(crate) struct Community {
     pub header_logo_url: String,
     pub title: String,
     pub description: String,
+    pub regions: Vec<String>,
 
     pub ad_banner_link_url: Option<String>,
     pub ad_banner_url: Option<String>,
