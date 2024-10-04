@@ -171,13 +171,15 @@ impl Event {
 #[template(path = "community/explore/groups.html")]
 pub(crate) struct GroupsSection {
     pub groups: Vec<Group>,
+    pub filters: GroupsFilters,
 }
 
 impl GroupsSection {
     /// Create a new `GroupsSection` instance.
-    pub(crate) fn new(groups_json: &JsonString) -> Result<Self> {
+    pub(crate) fn new(filters: GroupsFilters, groups_json: &JsonString) -> Result<Self> {
         let mut section = GroupsSection {
             groups: serde_json::from_str(groups_json)?,
+            filters,
         };
 
         // Convert markdown content in some fields to HTML
@@ -186,6 +188,24 @@ impl GroupsSection {
         }
 
         Ok(section)
+    }
+}
+
+/// Filters used in the groups section of the community explore page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupsFilters {
+    #[serde(default)]
+    distance: Vec<String>,
+    #[serde(default)]
+    region: Vec<String>,
+}
+
+impl GroupsFilters {
+    /// Create a new `GroupsFilters` instance from the query string provided.
+    pub(crate) fn try_from_query(query: &str) -> Result<Self> {
+        let filters: GroupsFilters = serde_html_form::from_str(query)?;
+
+        Ok(filters)
     }
 }
 

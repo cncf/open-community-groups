@@ -4,7 +4,7 @@ use super::extractors::CommunityId;
 use crate::{
     db::DynDB,
     templates::community::{
-        explore::{self, EventsFilters},
+        explore::{self, EventsFilters, GroupsFilters},
         home,
     },
 };
@@ -68,12 +68,14 @@ pub(crate) async fn explore_index(
                 Some(explore::EventsSection::new(filters, &events_json).map_err(internal_error)?);
         }
         explore::Entity::Groups => {
+            let filters = GroupsFilters::try_from_query(request.uri().query().unwrap_or_default())
+                .map_err(internal_error)?;
             let groups_json = db
                 .search_community_groups(community_id)
                 .await
                 .map_err(internal_error)?;
             template.groups_section =
-                Some(explore::GroupsSection::new(&groups_json).map_err(internal_error)?);
+                Some(explore::GroupsSection::new(filters, &groups_json).map_err(internal_error)?);
         }
     }
 
@@ -87,7 +89,7 @@ pub(crate) async fn explore_events(
     request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare events section template
-    let filters = serde_html_form::from_str(request.uri().query().unwrap_or_default())
+    let filters = EventsFilters::try_from_query(request.uri().query().unwrap_or_default())
         .map_err(internal_error)?;
     let events_json = db
         .search_community_events(community_id)
@@ -102,13 +104,16 @@ pub(crate) async fn explore_events(
 pub(crate) async fn explore_groups(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
+    request: Request,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare groups section template
+    let filters = GroupsFilters::try_from_query(request.uri().query().unwrap_or_default())
+        .map_err(internal_error)?;
     let groups_json = db
         .search_community_groups(community_id)
         .await
         .map_err(internal_error)?;
-    let template = explore::GroupsSection::new(&groups_json).map_err(internal_error)?;
+    let template = explore::GroupsSection::new(filters, &groups_json).map_err(internal_error)?;
 
     Ok(template)
 }
