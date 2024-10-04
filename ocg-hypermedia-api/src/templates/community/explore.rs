@@ -5,6 +5,7 @@ use super::common::Community;
 use crate::db::JsonString;
 use anyhow::{Context, Error, Result};
 use askama::Template;
+use axum::body::Bytes;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -90,9 +91,9 @@ pub(crate) struct EventsFilters {
 }
 
 impl EventsFilters {
-    /// Create a new `EventsFilters` instance from the query string provided.
-    pub(crate) fn try_from_query(query: &str) -> Result<Self> {
-        let mut filters: EventsFilters = serde_html_form::from_str(query)?;
+    /// Create a new `EventsFilters` instance from the form provided.
+    pub(crate) fn try_from_form(form: &Bytes) -> Result<Self> {
+        let mut filters: EventsFilters = serde_html_form::from_bytes(form)?;
 
         // Use all event kinds if none are provided
         if filters.kind.is_empty() {
@@ -201,9 +202,9 @@ pub(crate) struct GroupsFilters {
 }
 
 impl GroupsFilters {
-    /// Create a new `GroupsFilters` instance from the query string provided.
-    pub(crate) fn try_from_query(query: &str) -> Result<Self> {
-        let filters: GroupsFilters = serde_html_form::from_str(query)?;
+    /// Create a new `GroupsFilters` instance from the form provided.
+    pub(crate) fn try_from_form(form: &Bytes) -> Result<Self> {
+        let filters: GroupsFilters = serde_html_form::from_bytes(form)?;
 
         Ok(filters)
     }

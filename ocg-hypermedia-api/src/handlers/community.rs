@@ -11,8 +11,8 @@ use crate::{
 use anyhow::{Error, Result};
 use askama_axum::IntoResponse;
 use axum::{
-    extract::{Query, Request, State},
-    http::StatusCode,
+    extract::{Query, RawForm, State},
+    http::{StatusCode, Uri},
 };
 use std::{collections::HashMap, fmt::Debug};
 use tracing::error;
@@ -21,7 +21,7 @@ use tracing::error;
 pub(crate) async fn home_index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    request: Request,
+    uri: Uri,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare home index template
     let json_data = db
@@ -29,7 +29,7 @@ pub(crate) async fn home_index(
         .await
         .map_err(internal_error)?;
     let template = home::Index {
-        path: request.uri().path().to_string(),
+        path: uri.path().to_string(),
         ..home::Index::try_from(json_data).map_err(internal_error)?
     };
 
@@ -41,7 +41,8 @@ pub(crate) async fn explore_index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Query(params): Query<HashMap<String, String>>,
-    request: Request,
+    uri: Uri,
+    RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare explore index template
     let entity: explore::Entity = params.get("entity").into();
@@ -51,15 +52,14 @@ pub(crate) async fn explore_index(
         .map_err(internal_error)?;
     let mut template = explore::Index {
         entity: entity.clone(),
-        path: request.uri().path().to_string(),
+        path: uri.path().to_string(),
         ..explore::Index::try_from(json_data).map_err(internal_error)?
     };
 
     // Attach events or groups section template to the index template
     match entity {
         explore::Entity::Events => {
-            let filters = EventsFilters::try_from_query(request.uri().query().unwrap_or_default())
-                .map_err(internal_error)?;
+            let filters = EventsFilters::try_from_form(&form).map_err(internal_error)?;
             let events_json = db
                 .search_community_events(community_id)
                 .await
@@ -68,8 +68,7 @@ pub(crate) async fn explore_index(
                 Some(explore::EventsSection::new(filters, &events_json).map_err(internal_error)?);
         }
         explore::Entity::Groups => {
-            let filters = GroupsFilters::try_from_query(request.uri().query().unwrap_or_default())
-                .map_err(internal_error)?;
+            let filters = GroupsFilters::try_from_form(&form).map_err(internal_error)?;
             let groups_json = db
                 .search_community_groups(community_id)
                 .await
@@ -86,11 +85,10 @@ pub(crate) async fn explore_index(
 pub(crate) async fn explore_events(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    request: Request,
+    RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare events section template
-    let filters = EventsFilters::try_from_query(request.uri().query().unwrap_or_default())
-        .map_err(internal_error)?;
+    let filters = EventsFilters::try_from_form(&form).map_err(internal_error)?;
     let events_json = db
         .search_community_events(community_id)
         .await
@@ -104,11 +102,10 @@ pub(crate) async fn explore_events(
 pub(crate) async fn explore_groups(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    request: Request,
+    RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, StatusCode> {
     // Prepare groups section template
-    let filters = GroupsFilters::try_from_query(request.uri().query().unwrap_or_default())
-        .map_err(internal_error)?;
+    let filters = GroupsFilters::try_from_form(&form).map_err(internal_error)?;
     let groups_json = db
         .search_community_groups(community_id)
         .await
