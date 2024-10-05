@@ -112,24 +112,6 @@
 <!-- End new group modal -->
 {% endif %}
 
-<script>
-  const toggleNavbarMobile = () => {
-    const navbarMobile = document.getElementById("navbar-mobile");
-    navbarMobile.classList.toggle("hidden");
-    const navbarBackdrop = document.getElementById("navbar-backdrop");
-    navbarBackdrop.classList.toggle("hidden");
-  };
-
-  const updateModalStatus = (modalId) => {
-    const modal = document.getElementById(modalId);
-    if (modal.classList.contains("hidden")) {
-      modal.classList.remove("hidden");
-    } else {
-      modal.classList.add("hidden");
-    }
-  };
-</script>
-
 <!-- Link -->
 {% macro link(content, href, current_path, extra_styles) %}
   <a

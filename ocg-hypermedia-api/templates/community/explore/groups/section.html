@@ -1,7 +1,9 @@
 {% import "common.html" as common %}
 {% extends "community/explore/base.html" %}
 
-<!-- Filters  -->
+{% block filters %}
+  {% include "community/explore/groups/filters.html" %}
+{% endblock %}
 
 {% block content %}
   <div class="bg-white border rounded-lg mb-10 pt-5 md:pt-7">

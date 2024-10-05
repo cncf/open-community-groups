@@ -71,53 +71,5 @@
       </div>
     </div>
     <!-- End modal full page -->
-
-    <script>
-      const toggleFullModal = (modalId) => {
-        const modal = document.getElementById(modalId);
-        modal.classList.toggle('opacity-0');
-        modal.classList.toggle('pointer-events-none');
-      };
-
-      const updateActiveCarouselItem = (direction) => {
-        const carouselItems = document.querySelectorAll('#gallery [data-carousel-item]');
-        let activeItem = 0;
-        carouselItems.forEach((item, index) => {
-          if (item.dataset.carouselItem === 'active') {
-            activeItem = index;
-          }
-        });
-        let activeItemIndex = activeItem;
-        if (direction === 'next') {
-          activeItemIndex = activeItem + 1;
-          if (activeItemIndex >= carouselItems.length) {
-            activeItemIndex = 0;
-          }
-        } else if (direction === 'prev') {
-          activeItemIndex = activeItem - 1;
-          if (activeItemIndex < 0) {
-            activeItemIndex = carouselItems.length - 1;
-          }
-        }
-
-        carouselItems.forEach((item, index) => {
-          if (index === activeItemIndex) {
-            item.classList.remove('hidden');
-            item.classList.remove('translate-x-full');
-            item.classList.remove('z-10');
-            item.classList.add('translate-x-0');
-            item.classList.add('z-30');
-            item.dataset.carouselItem = 'active';
-          } else {
-            item.classList.add('hidden');
-            item.classList.add('translate-x-full');
-            item.classList.add('z-10');
-            item.classList.remove('translate-x-0');
-            item.classList.remove('z-30');
-            item.dataset.carouselItem = '';
-          }
-        });
-      };
-    </script>
   {% endif %}
 {% endif %}
