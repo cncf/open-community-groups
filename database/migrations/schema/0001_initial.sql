@@ -42,8 +42,11 @@ create table region (
     region_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
     name text not null check (name <> ''),
+    normalized_name text not null check (normalized_name <> '')
+        generated always as (regexp_replace(lower(name), '[^\w]+', '-')) stored,
     community_id uuid not null references community,
-    unique (name, community_id)
+    unique (name, community_id),
+    unique (normalized_name, community_id)
 );
 
 create index region_community_id_idx on region (community_id);

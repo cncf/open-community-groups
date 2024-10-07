@@ -96,6 +96,10 @@ impl EventsFilters {
     pub(crate) fn try_from_form(form: &Bytes) -> Result<Self> {
         let mut filters: EventsFilters = serde_html_form::from_bytes(form)?;
 
+        // Clean up entries that are empty strings
+        filters.distance.retain(|v| !v.is_empty());
+        filters.region.retain(|v| !v.is_empty());
+
         // Use all event kinds if none are provided
         if filters.kind.is_empty() {
             filters.kind = vec![EventKind::InPerson, EventKind::Virtual];
@@ -205,7 +209,11 @@ pub(crate) struct GroupsFilters {
 impl GroupsFilters {
     /// Create a new `GroupsFilters` instance from the form provided.
     pub(crate) fn try_from_form(form: &Bytes) -> Result<Self> {
-        let filters: GroupsFilters = serde_html_form::from_bytes(form)?;
+        let mut filters: GroupsFilters = serde_html_form::from_bytes(form)?;
+
+        // Clean up entries that are empty strings
+        filters.distance.retain(|v| !v.is_empty());
+        filters.region.retain(|v| !v.is_empty());
 
         Ok(filters)
     }

@@ -61,7 +61,7 @@ pub(crate) async fn explore_index(
         explore::Entity::Events => {
             let filters = EventsFilters::try_from_form(&form).map_err(internal_error)?;
             let events_json = db
-                .search_community_events(community_id)
+                .search_community_events(community_id, &filters)
                 .await
                 .map_err(internal_error)?;
             template.events_section =
@@ -70,7 +70,7 @@ pub(crate) async fn explore_index(
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form).map_err(internal_error)?;
             let groups_json = db
-                .search_community_groups(community_id)
+                .search_community_groups(community_id, &filters)
                 .await
                 .map_err(internal_error)?;
             template.groups_section =
@@ -90,17 +90,18 @@ pub(crate) async fn explore_events(
     // Prepare events section template
     let filters = EventsFilters::try_from_form(&form).map_err(internal_error)?;
     let events_json = db
-        .search_community_events(community_id)
+        .search_community_events(community_id, &filters)
         .await
         .map_err(internal_error)?;
     let template = explore::EventsSection::new(&filters, &events_json).map_err(internal_error)?;
 
     // Prepare response headers
     let filters_params = serde_html_form::to_string(&filters).map_err(internal_error)?;
-    let headers = [(
-        "HX-Push-Url",
-        format!("/explore?entity=events&{filters_params}"),
-    )];
+    let mut hx_push_url = "/explore?entity=events".to_string();
+    if !filters_params.is_empty() {
+        hx_push_url.push_str(&format!("&{filters_params}"));
+    }
+    let headers = [("HX-Push-Url", hx_push_url)];
 
     Ok((headers, template))
 }
@@ -114,17 +115,18 @@ pub(crate) async fn explore_groups(
     // Prepare groups section template
     let filters = GroupsFilters::try_from_form(&form).map_err(internal_error)?;
     let groups_json = db
-        .search_community_groups(community_id)
+        .search_community_groups(community_id, &filters)
         .await
         .map_err(internal_error)?;
     let template = explore::GroupsSection::new(&filters, &groups_json).map_err(internal_error)?;
 
     // Prepare response headers
     let filters_params = serde_html_form::to_string(&filters).map_err(internal_error)?;
-    let headers = [(
-        "HX-Push-Url",
-        format!("/explore?entity=groups&{filters_params}"),
-    )];
+    let mut hx_push_url = "/explore?entity=groups".to_string();
+    if !filters_params.is_empty() {
+        hx_push_url.push_str(&format!("&{filters_params}"));
+    }
+    let headers = [("HX-Push-Url", hx_push_url)];
 
     Ok((headers, template))
 }

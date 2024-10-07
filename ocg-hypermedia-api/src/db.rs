@@ -4,7 +4,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
+use tokio_postgres::types::Json;
 use uuid::Uuid;
+
+use crate::templates::community::explore::{EventsFilters, GroupsFilters};
 
 /// Type alias to represent a string of json data.
 pub(crate) type JsonString = String;
@@ -23,10 +26,18 @@ pub(crate) trait DB {
     async fn get_community_explore_index_data(&self, community_id: Uuid) -> Result<JsonString>;
 
     /// Search community events that match the criteria provided.
-    async fn search_community_events(&self, community_id: Uuid) -> Result<JsonString>;
+    async fn search_community_events(
+        &self,
+        community_id: Uuid,
+        filters: &EventsFilters,
+    ) -> Result<JsonString>;
 
     /// Search community groups that match the criteria provided.
-    async fn search_community_groups(&self, community_id: Uuid) -> Result<JsonString>;
+    async fn search_community_groups(
+        &self,
+        community_id: Uuid,
+        filters: &GroupsFilters,
+    ) -> Result<JsonString>;
 }
 
 /// Type alias to represent a DB trait object.
@@ -89,12 +100,16 @@ impl DB for PgDB {
     }
 
     /// [DB::search_community_events]
-    async fn search_community_events(&self, community_id: Uuid) -> Result<JsonString> {
+    async fn search_community_events(
+        &self,
+        community_id: Uuid,
+        filters: &EventsFilters,
+    ) -> Result<JsonString> {
         let db = self.pool.get().await?;
         let json_data = db
             .query_one(
-                "select search_community_events($1::uuid)::text",
-                &[&community_id],
+                "select search_community_events($1::uuid, $2::jsonb)::text",
+                &[&community_id, &Json(filters)],
             )
             .await?
             .get(0);
@@ -103,12 +118,16 @@ impl DB for PgDB {
     }
 
     /// [DB::search_community_groups]
-    async fn search_community_groups(&self, community_id: Uuid) -> Result<JsonString> {
+    async fn search_community_groups(
+        &self,
+        community_id: Uuid,
+        filters: &GroupsFilters,
+    ) -> Result<JsonString> {
         let db = self.pool.get().await?;
         let json_data = db
             .query_one(
-                "select search_community_groups($1::uuid)::text",
-                &[&community_id],
+                "select search_community_groups($1::uuid, $2::jsonb)::text",
+                &[&community_id, &Json(filters)],
             )
             .await?
             .get(0);
