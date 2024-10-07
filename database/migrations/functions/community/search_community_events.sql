@@ -6,6 +6,7 @@ declare
     v_region text[];
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
+    v_tsquery_with_prefix_matching tsquery;
 begin
     -- Prepare filters
     if p_filters ? 'kind' then
@@ -15,6 +16,18 @@ begin
     if p_filters ? 'region' then
         select array_agg(lower(e::text)) into v_region
         from jsonb_array_elements_text(p_filters->'region') e;
+    end if;
+    if p_filters ? 'ts_query' then
+        select ts_rewrite(
+            websearch_to_tsquery(p_filters->>'ts_query'),
+            format('
+                select
+                    to_tsquery(lexeme),
+                    to_tsquery(lexeme || '':*'')
+                from unnest(tsvector_to_array(to_tsvector(%L))) as lexeme
+                ', p_filters->>'ts_query'
+            )
+        ) into v_tsquery_with_prefix_matching;
     end if;
 
     return query
@@ -66,7 +79,10 @@ begin
         and
             case when v_date_to is not null then
             e.starts_at <= v_date_to else true end
-        and e.starts_at > now()
+        and
+            case when v_tsquery_with_prefix_matching is not null then
+                v_tsquery_with_prefix_matching @@ e.tsdoc
+            else true end
         order by e.starts_at asc
     ) events;
 end

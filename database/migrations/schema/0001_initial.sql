@@ -1,5 +1,8 @@
 create extension pgcrypto;
 
+create or replace function i_array_to_string(text[], text)
+returns text language sql immutable as $$select array_to_string($1, $2)$$;
+
 create table community_site_layout (
     community_site_layout_id text primary key
 );
@@ -64,6 +67,15 @@ create table "group" (
     description text not null check (description <> ''),
     name text not null check (name <> ''),
     slug text not null check (slug <> ''),
+    tsdoc tsvector not null
+        generated always as (
+            setweight(to_tsvector('simple', name), 'A') ||
+            setweight(to_tsvector('simple', slug), 'A') ||
+            setweight(to_tsvector('simple', i_array_to_string(coalesce(tags, '{}'), ' ')), 'B') ||
+            setweight(to_tsvector('simple', coalesce(city, '')), 'C') ||
+            setweight(to_tsvector('simple', coalesce(state, '')), 'C') ||
+            setweight(to_tsvector('simple', coalesce(country, '')), 'C')
+        ) stored,
     banners_urls text[],
     city text check (city <> ''),
     country text check (country <> ''),
@@ -94,6 +106,7 @@ create table "group" (
 create index group_community_id_idx on "group" (community_id);
 create index group_region_id_idx on "group" (region_id);
 create index group_group_site_layout_id_idx on "group" (group_site_layout_id);
+create index group_tsdoc_idx on "group" using gin (tsdoc);
 
 create table event_kind (
     event_kind_id text primary key,
@@ -111,6 +124,15 @@ create table event (
     ends_at timestamptz not null,
     postponed boolean default false not null,
     published boolean default false not null,
+    tsdoc tsvector not null
+        generated always as (
+            setweight(to_tsvector('simple', title), 'A') ||
+            setweight(to_tsvector('simple', slug), 'A') ||
+            setweight(to_tsvector('simple', i_array_to_string(coalesce(tags, '{}'), ' ')), 'B') ||
+            setweight(to_tsvector('simple', coalesce(city, '')), 'C') ||
+            setweight(to_tsvector('simple', coalesce(state, '')), 'C') ||
+            setweight(to_tsvector('simple', coalesce(country, '')), 'C')
+        ) stored,
     title text not null check (title <> ''),
     slug text not null check (slug <> ''),
     starts_at timestamptz not null,
@@ -136,6 +158,7 @@ create table event (
 
 create index event_group_id_idx on event (group_id);
 create index event_event_kind_id_idx on event (event_kind_id);
+create index event_tsdoc_idx on event using gin (tsdoc);
 
 create table session_kind (
     session_kind_id text primary key,

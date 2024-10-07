@@ -89,6 +89,7 @@ pub(crate) struct EventsFilters {
 
     date_from: Option<String>,
     date_to: Option<String>,
+    ts_query: Option<String>,
 }
 
 impl EventsFilters {
@@ -204,6 +205,8 @@ pub(crate) struct GroupsFilters {
     distance: Vec<String>,
     #[serde(default)]
     region: Vec<String>,
+
+    ts_query: Option<String>,
 }
 
 impl GroupsFilters {
