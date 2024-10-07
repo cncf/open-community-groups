@@ -105,11 +105,56 @@
         }
       };
 
+
+
       // Gallery
-      const toggleFullModal = (modalId) => {
+      const openFullModal = (modalId, activeIndex) => {
         const modal = document.getElementById(modalId);
-        modal.classList.toggle('opacity-0');
-        modal.classList.toggle('pointer-events-none');
+        activateImageInCarousel(activeIndex - 1);
+
+        modal.classList.remove('opacity-0');
+        modal.classList.remove('pointer-events-none');
+        modal.dataset.modal = 'active';
+
+        document.addEventListener('mousedown', onFullModalClick);
+      };
+
+      const closeFullModal = (modalId) => {
+        const modal = document.getElementById(modalId);
+        modal.classList.add('opacity-0');
+        modal.classList.add('pointer-events-none');
+        modal.dataset.modal = '';
+
+        document.removeEventListener('mousedown', onFullModalClick);
+      };
+
+      const onFullModalClick = (e) => {
+        const activeModal = document.querySelector(".modal[data-modal='active']");
+
+        if (e.target.parentElement.tagName !== 'BUTTON' && !['IMG', 'BUTTON'].includes(e.target.tagName)) {
+          closeFullModal(activeModal.id);
+        }
+      };
+
+      const activateImageInCarousel = (index) => {
+        const carouselItems = document.querySelectorAll('#gallery [data-carousel-item]');
+        carouselItems.forEach((item, i) => {
+          if (i === index) {
+            item.classList.remove('hidden');
+            item.classList.remove('translate-x-full');
+            item.classList.remove('z-10');
+            item.classList.add('translate-x-0');
+            item.classList.add('z-30');
+            item.dataset.carouselItem = 'active';
+          } else {
+            item.classList.add('hidden');
+            item.classList.add('translate-x-full');
+            item.classList.add('z-10');
+            item.classList.remove('translate-x-0');
+            item.classList.remove('z-30');
+            item.dataset.carouselItem = '';
+          }
+        });
       };
 
       const updateActiveCarouselItem = (direction) => {
@@ -133,23 +178,7 @@
           }
         }
 
-        carouselItems.forEach((item, index) => {
-          if (index === activeItemIndex) {
-            item.classList.remove('hidden');
-            item.classList.remove('translate-x-full');
-            item.classList.remove('z-10');
-            item.classList.add('translate-x-0');
-            item.classList.add('z-30');
-            item.dataset.carouselItem = 'active';
-          } else {
-            item.classList.add('hidden');
-            item.classList.add('translate-x-full');
-            item.classList.add('z-10');
-            item.classList.remove('translate-x-0');
-            item.classList.remove('z-30');
-            item.dataset.carouselItem = '';
-          }
-        });
+        activateImageInCarousel(activeItemIndex);
       };
     </script>
   </body>
