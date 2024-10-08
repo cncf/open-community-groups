@@ -28,10 +28,16 @@ impl TryFrom<JsonString> for Index {
     type Error = Error;
 
     fn try_from(json_data: JsonString) -> Result<Self> {
-        let explore: Index = serde_json::from_str(&json_data)
+        let mut index: Index = serde_json::from_str(&json_data)
             .context("error deserializing explore template json data")?;
 
-        Ok(explore)
+        // Convert markdown content in some fields to HTML
+        index.community.description = markdown::to_html(&index.community.description);
+        if let Some(copyright_notice) = &index.community.copyright_notice {
+            index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
+        }
+
+        Ok(index)
     }
 }
 

@@ -24,19 +24,19 @@ impl TryFrom<JsonString> for Index {
     type Error = Error;
 
     fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut home: Index = serde_json::from_str(&json_data)
+        let mut index: Index = serde_json::from_str(&json_data)
             .context("error deserializing home index template json data")?;
 
         // Convert markdown content in some fields to HTML
-        home.community.description = markdown::to_html(&home.community.description);
-        if let Some(copyright_notice) = &home.community.copyright_notice {
-            home.community.copyright_notice = Some(markdown::to_html(copyright_notice));
+        index.community.description = markdown::to_html(&index.community.description);
+        if let Some(copyright_notice) = &index.community.copyright_notice {
+            index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
         }
-        if let Some(new_group_details) = &home.community.new_group_details {
-            home.community.new_group_details = Some(markdown::to_html(new_group_details));
+        if let Some(new_group_details) = &index.community.new_group_details {
+            index.community.new_group_details = Some(markdown::to_html(new_group_details));
         }
 
-        Ok(home)
+        Ok(index)
     }
 }
 

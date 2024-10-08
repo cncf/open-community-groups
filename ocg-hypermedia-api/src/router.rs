@@ -29,8 +29,8 @@ pub(crate) fn setup(db: DynDB) -> Router {
         .route("/explore/events", post(community::explore_events))
         .route("/explore/groups", post(community::explore_groups))
         .route("/health-check", get(health_check))
-        .route("/group/:group_slug", get(group::home))
-        .route("/group/:group_slug/event/:event_slug", get(event::home))
+        .route("/group/:group_slug", get(group::index))
+        .route("/group/:group_slug/event/:event_slug", get(event::index))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(State { db })
 }

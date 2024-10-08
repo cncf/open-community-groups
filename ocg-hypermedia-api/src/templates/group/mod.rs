@@ -2,7 +2,7 @@
 
 use askama::Template;
 
-/// Home page template.
+/// Group index page template.
 #[derive(Debug, Clone, Template)]
-#[template(path = "group/home.html")]
-pub(crate) struct Home {}
+#[template(path = "group/index.html")]
+pub(crate) struct Index {}

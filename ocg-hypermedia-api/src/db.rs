@@ -1,13 +1,12 @@
 //! This module defines an abstraction layer over the database.
 
+use crate::templates::community::explore::{EventsFilters, GroupsFilters};
 use anyhow::Result;
 use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use tokio_postgres::types::Json;
 use uuid::Uuid;
-
-use crate::templates::community::explore::{EventsFilters, GroupsFilters};
 
 /// Type alias to represent a string of json data.
 pub(crate) type JsonString = String;

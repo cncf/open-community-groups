@@ -2,7 +2,7 @@
 
 use askama::Template;
 
-/// Home page template.
+/// Event index page template.
 #[derive(Debug, Clone, Template)]
-#[template(path = "event/home.html")]
-pub(crate) struct Home {}
+#[template(path = "event/index.html")]
+pub(crate) struct Index {}
