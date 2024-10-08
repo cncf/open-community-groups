@@ -1,3 +1,5 @@
+{% import "common.html" as common %}
+
 <!-- Drawer filters -->
 
 <div class="flex items-start">
@@ -8,8 +10,61 @@
   </div>
 
   <div class="relative w-full lg:w-3/4 lg:pl-10">
-    {% block content %}
-      <div></div>
-    {% endblock %}
+    <div class="bg-white border rounded-lg mb-10 pt-5 md:pt-7">
+      <div class="flex items-center mb-10 px-5 md:px-7">
+        <!-- Mobile filters button -->
+        <div class="flex lg:hidden">
+          <button
+            class="h-10 w-10 mr-5 inline-flex justify-center items-center bg-primary-500 text-white text-lg rounded-full p-2 hover:bg-primary-700"
+            onclick="openFilters()"
+          >
+            <svg
+              class="w-4 h-4"
+              stroke="currentColor"
+              fill="none"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              height="1em"
+              width="1em"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </button>
+        </div>
+        <!-- End mobile filters button -->
+
+        <div class="grow flex items-center justify-center">
+          <div class="w-full">
+            {% call common::search_bar("", "w-full mx-auto md:w-3/4") %}
+          </div>
+        </div>
+      </div>
+      <div class="flex items-end justify-between px-5 md:items-center md:px-7">
+        <div class="hidden font-semibold text-sm text-black w-[175px] md:flex">{% block results %}{% endblock %}</div>
+        <div class="flex flex-col items-start sm:items-center sm:flex-row">
+          <label
+            for="sort"
+            class="font-semibold text-filterTitle text-black leading-6 me-3"
+            >Sort by</label
+          >
+          <select
+            id="sort"
+            class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="date" selected>Date</option>
+          </select>
+        </div>
+        <div>
+          {% call common::secondary_button("<span class='hidden md:block'>Browse in map</span><span class='block md:hidden'>Map</span>", "map", "() => console.log('hola')", "") %}
+        </div>
+      </div>
+      <div class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
+      {% block content %}
+        <div></div>
+      {% endblock %}
+    </div>
   </div>
 </div>
