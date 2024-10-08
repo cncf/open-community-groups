@@ -36,6 +36,9 @@ impl TryFrom<JsonString> for Index {
         if let Some(copyright_notice) = &index.community.copyright_notice {
             index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
         }
+        if let Some(new_group_details) = &index.community.new_group_details {
+            index.community.new_group_details = Some(markdown::to_html(new_group_details));
+        }
 
         Ok(index)
     }
@@ -64,6 +67,7 @@ impl From<Option<&String>> for Entity {
 pub(crate) struct EventsSection {
     pub events: Vec<Event>,
     pub filters: EventsFilters,
+    // pub filters_options: EventsFiltersOptions,
 }
 
 impl EventsSection {
