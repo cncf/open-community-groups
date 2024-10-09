@@ -9,6 +9,10 @@
   1 - {{ events.len() }} of {{ events.len() }} results
 {% endblock %}
 
+{% block searchbar %}
+  {% call common::search_bar("Search events", "w-full mx-auto md:w-3/4") %}
+{% endblock %}
+
 {% block content %}
   <!-- Cards -->
   <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7">
