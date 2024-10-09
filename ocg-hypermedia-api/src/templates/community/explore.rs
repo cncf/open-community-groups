@@ -44,6 +44,7 @@ impl From<Option<&String>> for Entity {
 #[template(path = "community/explore/events/section.html")]
 pub(crate) struct EventsSection {
     pub filters: EventsFilters,
+    pub filters_options: EventsFiltersOptions,
     pub events: Vec<Event>,
 }
 
@@ -86,6 +87,21 @@ impl EventsFilters {
 enum EventKind {
     InPerson,
     Virtual,
+}
+
+/// Options available for the events filters.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct EventsFiltersOptions {
+    pub regions: Vec<FilterOption>,
+}
+
+impl EventsFiltersOptions {
+    /// Try to create a `EventsFiltersOptions` instance from a JSON string.
+    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
+        let filters_options: EventsFiltersOptions = serde_json::from_str(data)?;
+
+        Ok(filters_options)
+    }
 }
 
 /// Event information used in the community explore page.
@@ -213,6 +229,13 @@ impl Group {
 
         Ok(groups)
     }
+}
+
+/// Filter option details.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct FilterOption {
+    pub name: String,
+    pub value: String,
 }
 
 #[cfg(test)]

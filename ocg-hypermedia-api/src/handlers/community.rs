@@ -69,8 +69,15 @@ pub(crate) async fn explore_index(
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::try_from_form(&form)?;
-            let events = db.search_community_events(community_id, &filters).await?;
-            template.events_section = Some(explore::EventsSection { filters, events });
+            let (filters_options, events) = tokio::try_join!(
+                db.get_community_events_filters_options(community_id),
+                db.search_community_events(community_id, &filters)
+            )?;
+            template.events_section = Some(explore::EventsSection {
+                filters,
+                filters_options,
+                events,
+            });
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form)?;
@@ -91,8 +98,15 @@ pub(crate) async fn explore_events(
     // Prepare events section template
     let filters = EventsFilters::try_from_form(&form)?;
     let filters_params = serde_html_form::to_string(&filters)?;
-    let events = db.search_community_events(community_id, &filters).await?;
-    let template = explore::EventsSection { filters, events };
+    let (filters_options, events) = tokio::try_join!(
+        db.get_community_events_filters_options(community_id),
+        db.search_community_events(community_id, &filters)
+    )?;
+    let template = explore::EventsSection {
+        filters,
+        filters_options,
+        events,
+    };
 
     // Prepare response headers
     let mut hx_push_url = "/explore?entity=events".to_string();

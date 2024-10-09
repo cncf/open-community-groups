@@ -18,11 +18,6 @@ returns json as $$
         'linkedin_url', linkedin_url,
         'new_group_details', new_group_details,
         'photos_urls', photos_urls,
-        'regions', (
-            select to_json(array_agg(name))
-            from region
-            where community_id = p_community_id
-        ),
         'slack_url', slack_url,
         'title', title,
         'twitter_url', twitter_url,

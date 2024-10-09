@@ -22,6 +22,12 @@ pub(crate) trait DB {
     /// Get community data.
     async fn get_community(&self, community_id: Uuid) -> Result<Community>;
 
+    /// Get community events filters options.
+    async fn get_community_events_filters_options(
+        &self,
+        community_id: Uuid,
+    ) -> Result<explore::EventsFiltersOptions>;
+
     /// Get the community id from the host provided.
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
@@ -76,6 +82,24 @@ impl DB for PgDB {
         let community = Community::try_from_json(&data)?;
 
         Ok(community)
+    }
+
+    /// [DB::get_community_events_filters_options]
+    async fn get_community_events_filters_options(
+        &self,
+        community_id: Uuid,
+    ) -> Result<explore::EventsFiltersOptions> {
+        let db = self.pool.get().await?;
+        let data: JsonString = db
+            .query_one(
+                "select get_community_events_filters_options($1::uuid)::text",
+                &[&community_id],
+            )
+            .await?
+            .get(0);
+        let filters_options = explore::EventsFiltersOptions::try_from_json(&data)?;
+
+        Ok(filters_options)
     }
 
     /// [DB::get_community_id]
