@@ -5,7 +5,7 @@ returns json as $$
         'regions', (
             select coalesce(json_agg(json_build_object(
                 'name', r.name,
-                'normalized_name', r.normalized_name
+                'value', r.normalized_name
             )), '[]')
             from region r
             where community_id = p_community_id
