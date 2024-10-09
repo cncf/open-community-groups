@@ -44,7 +44,7 @@ impl From<Option<&String>> for Entity {
 #[template(path = "community/explore/events/section.html")]
 pub(crate) struct EventsSection {
     pub filters: EventsFilters,
-    pub filters_options: EventsFiltersOptions,
+    pub filters_options: FiltersOptions,
     pub events: Vec<Event>,
 }
 
@@ -87,21 +87,6 @@ impl EventsFilters {
 enum EventKind {
     InPerson,
     Virtual,
-}
-
-/// Options available for the events filters.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct EventsFiltersOptions {
-    pub regions: Vec<FilterOption>,
-}
-
-impl EventsFiltersOptions {
-    /// Try to create a `EventsFiltersOptions` instance from a JSON string.
-    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
-        let filters_options: EventsFiltersOptions = serde_json::from_str(data)?;
-
-        Ok(filters_options)
-    }
 }
 
 /// Event information used in the community explore page.
@@ -176,7 +161,7 @@ impl Event {
 #[template(path = "community/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
     pub filters: GroupsFilters,
-    pub filters_options: GroupsFiltersOptions,
+    pub filters_options: FiltersOptions,
     pub groups: Vec<Group>,
 }
 
@@ -201,21 +186,6 @@ impl GroupsFilters {
         filters.region.retain(|v| !v.is_empty());
 
         Ok(filters)
-    }
-}
-
-/// Options available for the groups filters.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupsFiltersOptions {
-    pub regions: Vec<FilterOption>,
-}
-
-impl GroupsFiltersOptions {
-    /// Try to create a `GroupsFiltersOptions` instance from a JSON string.
-    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
-        let filters_options: GroupsFiltersOptions = serde_json::from_str(data)?;
-
-        Ok(filters_options)
     }
 }
 
@@ -244,6 +214,22 @@ impl Group {
         }
 
         Ok(groups)
+    }
+}
+
+/// Filters options available.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct FiltersOptions {
+    pub distance: Vec<FilterOption>,
+    pub region: Vec<FilterOption>,
+}
+
+impl FiltersOptions {
+    /// Try to create a `FiltersOptions` instance from a JSON string.
+    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
+        let filters_options: FiltersOptions = serde_json::from_str(data)?;
+
+        Ok(filters_options)
     }
 }
 

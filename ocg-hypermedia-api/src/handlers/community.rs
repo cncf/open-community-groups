@@ -70,7 +70,7 @@ pub(crate) async fn explore_index(
         explore::Entity::Events => {
             let filters = EventsFilters::try_from_form(&form)?;
             let (filters_options, events) = tokio::try_join!(
-                db.get_community_events_filters_options(community_id),
+                db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
             )?;
             template.events_section = Some(explore::EventsSection {
@@ -82,7 +82,7 @@ pub(crate) async fn explore_index(
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form)?;
             let (filters_options, groups) = tokio::try_join!(
-                db.get_community_groups_filters_options(community_id),
+                db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
             )?;
             template.groups_section = Some(explore::GroupsSection {
@@ -106,7 +106,7 @@ pub(crate) async fn explore_events(
     let filters = EventsFilters::try_from_form(&form)?;
     let filters_params = serde_html_form::to_string(&filters)?;
     let (filters_options, events) = tokio::try_join!(
-        db.get_community_events_filters_options(community_id),
+        db.get_community_filters_options(community_id),
         db.search_community_events(community_id, &filters)
     )?;
     let template = explore::EventsSection {
@@ -135,7 +135,7 @@ pub(crate) async fn explore_groups(
     let filters = GroupsFilters::try_from_form(&form)?;
     let filters_params = serde_html_form::to_string(&filters)?;
     let (filters_options, groups) = tokio::try_join!(
-        db.get_community_groups_filters_options(community_id),
+        db.get_community_filters_options(community_id),
         db.search_community_groups(community_id, &filters)
     )?;
     let template = explore::GroupsSection {

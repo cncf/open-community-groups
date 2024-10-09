@@ -1,6 +1,5 @@
 {{ template "community/get_community.sql" }}
-{{ template "community/get_community_events_filters_options.sql" }}
-{{ template "community/get_community_groups_filters_options.sql" }}
+{{ template "community/get_community_filters_options.sql" }}
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_upcoming_in_person_events.sql" }}
 {{ template "community/get_community_upcoming_virtual_events.sql" }}

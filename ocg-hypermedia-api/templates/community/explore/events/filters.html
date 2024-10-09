@@ -58,7 +58,7 @@
     </div>
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       {% call macros::input_label_any("region", filters.region) %}
-      {% for region in filters_options.regions %}
+      {% for region in filters_options.region %}
         {% call macros::input_label("region", region.name, region.value, filters.region) %}
       {% endfor %}
     </ul>
