@@ -28,12 +28,9 @@
     </div>
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       {% call macros::input_label_any("region", filters.region) %}
-      {% call macros::input_label("region", "North America", "north-america", filters.region) %}
-      {% call macros::input_label("region", "South America", "south-america", filters.region) %}
-      {% call macros::input_label("region", "Europe", "europe", filters.region) %}
-      {% call macros::input_label("region", "Asia", "asia", filters.region) %}
-      {% call macros::input_label("region", "Africa", "africa", filters.region) %}
-      {% call macros::input_label("region", "Oceania", "oceania", filters.region) %}
+      {% for region in filters_options.region %}
+        {% call macros::input_label("region", region.name, region.value, filters.region) %}
+      {% endfor %}
     </ul>
     <div class="mt-4 -mb-1.5">
       <button type="button" class="text-gray-500 hover:text-gray-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium text-xs">
@@ -54,12 +51,9 @@
     </div>
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       {% call macros::input_label_any("distance", filters.distance) %}
-      {% call macros::input_label("distance", "2 miles", "2m", filters.distance) %}
-      {% call macros::input_label("distance", "5 miles", "5m", filters.distance) %}
-      {% call macros::input_label("distance", "10 miles", "10m", filters.distance) %}
-      {% call macros::input_label("distance", "25 miles", "25m", filters.distance) %}
-      {% call macros::input_label("distance", "50 miles", "50m", filters.distance) %}
-      {% call macros::input_label("distance", "100 miles", "100m", filters.distance) %}
+      {% for distance in filters_options.distance %}
+        {% call macros::input_label("distance", distance.name, distance.value, filters.distance) %}
+      {% endfor %}
     </ul>
   </div>
   <!-- End distance -->
