@@ -40,10 +40,10 @@
   <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
     <div class="pt-4 md:pt-8">
       <!-- Events in-person -->
-      {% call events_list("Upcoming in-person events", "/events", upcoming_in_person_events) %}
+      {% call events_list("Upcoming in-person events", "/explore?entity=events&kind=in-person", upcoming_in_person_events) %}
 
       <!-- Events online -->
-      {% call events_list("Upcoming online events", "/events", upcoming_online_events) %}
+      {% call events_list("Upcoming online events", "/explore?entity=events&kind=virtual", upcoming_online_events) %}
 
       <!-- Banner -->
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
@@ -67,7 +67,7 @@
           Recently added groups
         </div>
         <div class="hidden justify-self-end lg:flex">
-          {% call common::secondary_link("See all groups", "", "ms-4") %}
+          {% call common::secondary_link("See all groups", "/explore?entity=groups", "ms-4") %}
         </div>
       </div>
       <div class="my-10">
