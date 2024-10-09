@@ -1,5 +1,5 @@
 -- Returns some information about the community provided.
-create or replace function get_community_data(p_community_id uuid)
+create or replace function get_community(p_community_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
         'ad_banner_link_url', ad_banner_link_url,

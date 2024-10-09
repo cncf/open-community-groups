@@ -3,7 +3,7 @@
 
 use super::common::Community;
 use crate::db::JsonString;
-use anyhow::{Context, Error, Result};
+use anyhow::Result;
 use askama::Template;
 use axum::body::Bytes;
 use chrono::{DateTime, Utc};
@@ -15,33 +15,11 @@ use std::borrow::Borrow;
 #[template(path = "community/explore/index.html")]
 pub(crate) struct Index {
     pub community: Community,
-    #[serde(default)]
     pub entity: Entity,
-    #[serde(default)]
     pub path: String,
 
     pub events_section: Option<EventsSection>,
     pub groups_section: Option<GroupsSection>,
-}
-
-impl TryFrom<JsonString> for Index {
-    type Error = Error;
-
-    fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut index: Index = serde_json::from_str(&json_data)
-            .context("error deserializing explore template json data")?;
-
-        // Convert markdown content in some fields to HTML
-        index.community.description = markdown::to_html(&index.community.description);
-        if let Some(copyright_notice) = &index.community.copyright_notice {
-            index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
-        }
-        if let Some(new_group_details) = &index.community.new_group_details {
-            index.community.new_group_details = Some(markdown::to_html(new_group_details));
-        }
-
-        Ok(index)
-    }
 }
 
 /// Entity to display in the explore page (events or groups).
@@ -65,26 +43,8 @@ impl From<Option<&String>> for Entity {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/section.html")]
 pub(crate) struct EventsSection {
-    pub events: Vec<Event>,
     pub filters: EventsFilters,
-    // pub filters_options: EventsFiltersOptions,
-}
-
-impl EventsSection {
-    /// Create a new `EventsSection` instance.
-    pub(crate) fn new(filters: &EventsFilters, events_json: &JsonString) -> Result<Self> {
-        let mut section = EventsSection {
-            events: serde_json::from_str(events_json)?,
-            filters: filters.clone(),
-        };
-
-        // Convert markdown content in some fields to HTML
-        for event in &mut section.events {
-            event.description = markdown::to_html(&event.description);
-        }
-
-        Ok(section)
-    }
+    pub events: Vec<Event>,
 }
 
 /// Filters used in the events section of the community explore page.
@@ -181,31 +141,26 @@ impl Event {
         }
         None
     }
+
+    /// Try to create a vector of `Event` instances from a JSON string.
+    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+        let mut events: Vec<Self> = serde_json::from_str(data)?;
+
+        // Convert markdown content in some fields to HTML
+        for event in &mut events {
+            event.description = markdown::to_html(&event.description);
+        }
+
+        Ok(events)
+    }
 }
 
 /// Explore groups section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
-    pub groups: Vec<Group>,
     pub filters: GroupsFilters,
-}
-
-impl GroupsSection {
-    /// Create a new `GroupsSection` instance.
-    pub(crate) fn new(filters: &GroupsFilters, groups_json: &JsonString) -> Result<Self> {
-        let mut section = GroupsSection {
-            groups: serde_json::from_str(groups_json)?,
-            filters: filters.clone(),
-        };
-
-        // Convert markdown content in some fields to HTML
-        for group in &mut section.groups {
-            group.description = markdown::to_html(&group.description);
-        }
-
-        Ok(section)
-    }
+    pub groups: Vec<Group>,
 }
 
 /// Filters used in the groups section of the community explore page.
@@ -246,6 +201,20 @@ pub(crate) struct Group {
     pub state: Option<String>,
 }
 
+impl Group {
+    /// Try to create a vector of `Group` instances from a JSON string.
+    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+        let mut groups: Vec<Self> = serde_json::from_str(data)?;
+
+        // Convert markdown content in some fields to HTML
+        for group in &mut groups {
+            group.description = markdown::to_html(&group.description);
+        }
+
+        Ok(groups)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Event;
@@ -259,10 +228,7 @@ mod tests {
             venue: Some("Venue".to_string()),
             ..Default::default()
         };
-        assert_eq!(
-            event.location(),
-            Some("Venue, City, State, Country".to_string())
-        );
+        assert_eq!(event.location(), Some("Venue, City, State, Country".to_string()));
 
         let event = Event {
             city: Some("City".to_string()),

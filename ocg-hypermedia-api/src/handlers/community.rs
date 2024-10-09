@@ -23,10 +23,24 @@ pub(crate) async fn home_index(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare home index template
-    let json_data = db.get_community_home_index_data(community_id).await?;
+    #[rustfmt::skip]
+    let (
+        community,
+        recently_added_groups,
+        upcoming_in_person_events,
+        upcoming_virtual_events
+    ) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_community_recently_added_groups(community_id),
+        db.get_community_upcoming_in_person_events(community_id),
+        db.get_community_upcoming_virtual_events(community_id),
+    )?;
     let template = home::Index {
+        community,
         path: uri.path().to_string(),
-        ..home::Index::try_from(json_data)?
+        recently_added_groups,
+        upcoming_in_person_events,
+        upcoming_virtual_events,
     };
 
     Ok(template)
@@ -41,25 +55,27 @@ pub(crate) async fn explore_index(
     RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare explore index template
+    let community = db.get_community(community_id).await?;
     let entity: explore::Entity = params.get("entity").into();
-    let json_data = db.get_community_explore_index_data(community_id).await?;
     let mut template = explore::Index {
+        community,
         entity: entity.clone(),
         path: uri.path().to_string(),
-        ..explore::Index::try_from(json_data)?
+        events_section: None,
+        groups_section: None,
     };
 
     // Attach events or groups section template to the index template
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::try_from_form(&form)?;
-            let events_json = db.search_community_events(community_id, &filters).await?;
-            template.events_section = Some(explore::EventsSection::new(&filters, &events_json)?);
+            let events = db.search_community_events(community_id, &filters).await?;
+            template.events_section = Some(explore::EventsSection { filters, events });
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form)?;
-            let groups_json = db.search_community_groups(community_id, &filters).await?;
-            template.groups_section = Some(explore::GroupsSection::new(&filters, &groups_json)?);
+            let groups = db.search_community_groups(community_id, &filters).await?;
+            template.groups_section = Some(explore::GroupsSection { filters, groups });
         }
     }
 
@@ -74,11 +90,11 @@ pub(crate) async fn explore_events(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
     let filters = EventsFilters::try_from_form(&form)?;
-    let events_json = db.search_community_events(community_id, &filters).await?;
-    let template = explore::EventsSection::new(&filters, &events_json)?;
+    let filters_params = serde_html_form::to_string(&filters)?;
+    let events = db.search_community_events(community_id, &filters).await?;
+    let template = explore::EventsSection { filters, events };
 
     // Prepare response headers
-    let filters_params = serde_html_form::to_string(&filters)?;
     let mut hx_push_url = "/explore?entity=events".to_string();
     if !filters_params.is_empty() {
         hx_push_url.push_str(&format!("&{filters_params}"));
@@ -96,11 +112,11 @@ pub(crate) async fn explore_groups(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::try_from_form(&form)?;
-    let groups_json = db.search_community_groups(community_id, &filters).await?;
-    let template = explore::GroupsSection::new(&filters, &groups_json)?;
+    let filters_params = serde_html_form::to_string(&filters)?;
+    let groups = db.search_community_groups(community_id, &filters).await?;
+    let template = explore::GroupsSection { filters, groups };
 
     // Prepare response headers
-    let filters_params = serde_html_form::to_string(&filters)?;
     let mut hx_push_url = "/explore?entity=groups".to_string();
     if !filters_params.is_empty() {
         hx_push_url.push_str(&format!("&{filters_params}"));

@@ -1,6 +1,8 @@
 //! This module defines some templates and types used in some pages of the
 //! community site.
 
+use crate::db::JsonString;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -30,4 +32,22 @@ pub(crate) struct Community {
     pub twitter_url: Option<String>,
     pub wechat_url: Option<String>,
     pub youtube_url: Option<String>,
+}
+
+impl Community {
+    /// Try to create a `Community` instance from a JSON string.
+    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
+        let mut community: Community = serde_json::from_str(data)?;
+
+        // Convert markdown content in some fields to HTML
+        community.description = markdown::to_html(&community.description);
+        if let Some(copyright_notice) = &community.copyright_notice {
+            community.copyright_notice = Some(markdown::to_html(copyright_notice));
+        }
+        if let Some(new_group_details) = &community.new_group_details {
+            community.new_group_details = Some(markdown::to_html(new_group_details));
+        }
+
+        Ok(community)
+    }
 }

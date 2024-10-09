@@ -3,7 +3,7 @@
 
 use super::common::Community;
 use crate::db::JsonString;
-use anyhow::{Context, Error, Result};
+use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -13,31 +13,10 @@ use serde::{Deserialize, Serialize};
 #[template(path = "community/home/index.html")]
 pub(crate) struct Index {
     pub community: Community,
-    #[serde(default)]
     pub path: String,
     pub recently_added_groups: Vec<Group>,
     pub upcoming_in_person_events: Vec<Event>,
-    pub upcoming_online_events: Vec<Event>,
-}
-
-impl TryFrom<JsonString> for Index {
-    type Error = Error;
-
-    fn try_from(json_data: JsonString) -> Result<Self> {
-        let mut index: Index = serde_json::from_str(&json_data)
-            .context("error deserializing home index template json data")?;
-
-        // Convert markdown content in some fields to HTML
-        index.community.description = markdown::to_html(&index.community.description);
-        if let Some(copyright_notice) = &index.community.copyright_notice {
-            index.community.copyright_notice = Some(markdown::to_html(copyright_notice));
-        }
-        if let Some(new_group_details) = &index.community.new_group_details {
-            index.community.new_group_details = Some(markdown::to_html(new_group_details));
-        }
-
-        Ok(index)
-    }
+    pub upcoming_virtual_events: Vec<Event>,
 }
 
 /// Event information used in the community home page.
@@ -55,6 +34,15 @@ pub(crate) struct Event {
     pub state: Option<String>,
 }
 
+impl Event {
+    /// Try to create a vector of `Event` instances from a JSON string.
+    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+        let events: Vec<Self> = serde_json::from_str(data)?;
+
+        Ok(events)
+    }
+}
+
 /// Group information used in the community home page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Group {
@@ -66,4 +54,13 @@ pub(crate) struct Group {
     pub country: Option<String>,
     pub icon_url: Option<String>,
     pub state: Option<String>,
+}
+
+impl Group {
+    /// Try to create a vector of `Group` instances from a JSON string.
+    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+        let groups: Vec<Self> = serde_json::from_str(data)?;
+
+        Ok(groups)
+    }
 }

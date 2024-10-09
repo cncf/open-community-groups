@@ -17,10 +17,7 @@ pub(crate) struct CommunityId(pub Uuid);
 impl FromRequestParts<router::State> for CommunityId {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &router::State,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
         // Extract host from the request headers
         let Some(host_header) = parts.headers.get(HOST) else {
             return Err((StatusCode::BAD_REQUEST, "missing host header"));

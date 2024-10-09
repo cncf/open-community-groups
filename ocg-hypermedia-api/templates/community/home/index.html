@@ -43,7 +43,7 @@
       {% call events_list("Upcoming in-person events", "/explore?entity=events&kind=in-person", upcoming_in_person_events) %}
 
       <!-- Events online -->
-      {% call events_list("Upcoming online events", "/explore?entity=events&kind=virtual", upcoming_online_events) %}
+      {% call events_list("Upcoming virtual events", "/explore?entity=events&kind=virtual", upcoming_virtual_events) %}
 
       <!-- Banner -->
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
