@@ -90,8 +90,16 @@
       };
 
       const resetFilters = (formName) => {
-        const form = document.forms[formName];
-        form.reset();
+        const form = document.getElementById(formName);
+        document.querySelectorAll(`#${formName} input[type=checkbox]`).forEach(el => el.checked = false);
+        document.querySelectorAll(`#${formName} input[value='']`).forEach(el => el.checked = true);
+        document.querySelectorAll(`#${formName} input[type=date]`).forEach(el => el.value = '');
+
+        if (formName === 'events-form') {
+          document.querySelectorAll(`#${formName} input[name=kind]`).forEach(el => el.checked = true);
+        }
+
+        htmx.trigger(form, "change");
       };
 
       const updateAnyValue = (name) => {
@@ -105,7 +113,11 @@
         }
       };
 
-
+      const cleanInputField = (id) => {
+        const input = document.getElementById(id);
+        input.value = '';
+        htmx.trigger(input.closest('form'), "change");
+      };
 
       // Gallery
       const openFullModal = (modalId, activeIndex) => {

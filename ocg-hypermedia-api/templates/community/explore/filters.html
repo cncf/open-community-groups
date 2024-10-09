@@ -7,7 +7,7 @@
       Filters
     </div>
     <button
-      class="hidden bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 lg:flex hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+      class="hidden bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 lg:flex hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-0"
       onclick="resetFilters(`{{ form_name }}`)"
     >
       Reset
@@ -93,3 +93,17 @@
   </li>
 {% endmacro %}
 <!-- End input label any -->
+
+<!-- Input date -->
+{% macro input_date(name, label, value) %}
+  <div class="w-full">
+    <div class="text-[10px] uppercase leading-4 text-gray-500 mb-1">{{ label }}:</div>
+    <div class="relative w-[75%]">
+      <input id="{{ name }}" name="{{ name }}" value="{% if let Some(date) = value %}{{ date }}{% endif %}" type="date" class="inline-flex bg-white border border-gray-200 text-[0.825rem] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-gray-50" placeholder="Date {{ label }}">
+      <button onclick="cleanInputField('{{ name }}')" class="absolute right-2 top-3 {% if let Some(date) = value %}visible{% else %}invisible{% endif %}">
+        <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+      </button>
+    </div>
+  </div>
+{% endmacro %}
+<!-- End input date -->
