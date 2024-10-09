@@ -81,8 +81,15 @@ pub(crate) async fn explore_index(
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form)?;
-            let groups = db.search_community_groups(community_id, &filters).await?;
-            template.groups_section = Some(explore::GroupsSection { filters, groups });
+            let (filters_options, groups) = tokio::try_join!(
+                db.get_community_groups_filters_options(community_id),
+                db.search_community_groups(community_id, &filters)
+            )?;
+            template.groups_section = Some(explore::GroupsSection {
+                filters,
+                filters_options,
+                groups,
+            });
         }
     }
 
@@ -127,8 +134,15 @@ pub(crate) async fn explore_groups(
     // Prepare groups section template
     let filters = GroupsFilters::try_from_form(&form)?;
     let filters_params = serde_html_form::to_string(&filters)?;
-    let groups = db.search_community_groups(community_id, &filters).await?;
-    let template = explore::GroupsSection { filters, groups };
+    let (filters_options, groups) = tokio::try_join!(
+        db.get_community_groups_filters_options(community_id),
+        db.search_community_groups(community_id, &filters)
+    )?;
+    let template = explore::GroupsSection {
+        filters,
+        filters_options,
+        groups,
+    };
 
     // Prepare response headers
     let mut hx_push_url = "/explore?entity=groups".to_string();

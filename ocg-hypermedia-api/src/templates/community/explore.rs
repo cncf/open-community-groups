@@ -176,6 +176,7 @@ impl Event {
 #[template(path = "community/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
     pub filters: GroupsFilters,
+    pub filters_options: GroupsFiltersOptions,
     pub groups: Vec<Group>,
 }
 
@@ -200,6 +201,21 @@ impl GroupsFilters {
         filters.region.retain(|v| !v.is_empty());
 
         Ok(filters)
+    }
+}
+
+/// Options available for the groups filters.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupsFiltersOptions {
+    pub regions: Vec<FilterOption>,
+}
+
+impl GroupsFiltersOptions {
+    /// Try to create a `GroupsFiltersOptions` instance from a JSON string.
+    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
+        let filters_options: GroupsFiltersOptions = serde_json::from_str(data)?;
+
+        Ok(filters_options)
     }
 }
 
