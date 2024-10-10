@@ -1,7 +1,9 @@
 -- Returns the community groups that match the filters provided.
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
-returns setof json as $$
+returns table(groups json, total_count bigint) as $$
 declare
+    v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
     v_tsquery_with_prefix_matching tsquery;
 begin
@@ -23,20 +25,12 @@ begin
         ) into v_tsquery_with_prefix_matching;
     end if;
 
-    return query select coalesce(json_agg(json_build_object(
-        'city', city,
-        'country', country,
-        'description', description,
-        'icon_url', icon_url,
-        'name', name,
-        'region_name', region_name,
-        'slug', slug,
-        'state', state
-    )), '[]') as json_data
-    from (
+    return query
+    with filtered_groups as (
         select
             g.city,
             g.country,
+            g.created_at,
             g.description,
             g.icon_url,
             g.name,
@@ -45,7 +39,7 @@ begin
             r.name as region_name
         from "group" g
         join region r using (region_id)
-        where g.community_id = $1
+        where g.community_id = p_community_id
         and
             case when cardinality(v_region) > 0 then
             r.normalized_name = any(v_region) else true end
@@ -53,7 +47,29 @@ begin
             case when v_tsquery_with_prefix_matching is not null then
                 v_tsquery_with_prefix_matching @@ g.tsdoc
             else true end
-        order by g.created_at desc
-    ) groups;
+    )
+    select
+        (
+            select coalesce(json_agg(json_build_object(
+                'city', city,
+                'country', country,
+                'description', description,
+                'icon_url', icon_url,
+                'name', name,
+                'region_name', region_name,
+                'slug', slug,
+                'state', state
+            )), '[]')
+            from (
+                select *
+                from filtered_groups
+                order by created_at desc
+                limit v_limit
+                offset v_offset
+            ) filtered_groups_page
+        ),
+        (
+            select count(*) from filtered_groups
+        );
 end
 $$ language plpgsql;

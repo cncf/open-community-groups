@@ -1,11 +1,13 @@
 -- Returns the community events that match the filters provided.
 create or replace function search_community_events(p_community_id uuid, p_filters jsonb)
-returns setof json as $$
+returns table(events json, total_count bigint) as $$
 declare
-    v_kind text[];
-    v_region text[];
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
+    v_kind text[];
+    v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_offset int := coalesce((p_filters->>'offset')::int, 0);
+    v_region text[];
     v_tsquery_with_prefix_matching tsquery;
 begin
     -- Prepare filters
@@ -31,23 +33,7 @@ begin
     end if;
 
     return query
-    select coalesce(json_agg(json_build_object(
-        'cancelled', cancelled,
-        'city', city,
-        'country', country,
-        'description', description,
-        'icon_url', icon_url,
-        'kind_id', event_kind_id,
-        'postponed', postponed,
-        'slug', event_slug,
-        'starts_at', floor(extract(epoch from starts_at)),
-        'state', state,
-        'title', title,
-        'venue', venue,
-        'group_name', group_name,
-        'group_slug', group_slug
-    )), '[]') as json_data
-    from (
+    with filtered_events as (
         select
             e.cancelled,
             e.city,
@@ -66,7 +52,7 @@ begin
         from event e
         join "group" g using (group_id)
         join region r using (region_id)
-        where g.community_id = $1
+        where g.community_id = p_community_id
         and
             case when cardinality(v_kind) > 0 then
             e.event_kind_id = any(v_kind) else true end
@@ -83,7 +69,35 @@ begin
             case when v_tsquery_with_prefix_matching is not null then
                 v_tsquery_with_prefix_matching @@ e.tsdoc
             else true end
-        order by e.starts_at asc
-    ) events;
+    )
+    select
+        (
+            select coalesce(json_agg(json_build_object(
+                'cancelled', cancelled,
+                'city', city,
+                'country', country,
+                'description', description,
+                'icon_url', icon_url,
+                'kind_id', event_kind_id,
+                'postponed', postponed,
+                'slug', event_slug,
+                'starts_at', floor(extract(epoch from starts_at)),
+                'state', state,
+                'title', title,
+                'venue', venue,
+                'group_name', group_name,
+                'group_slug', group_slug
+            )), '[]')
+            from (
+                select *
+                from filtered_events
+                order by starts_at asc
+                limit v_limit
+                offset v_offset
+            ) filtered_events_page
+        ),
+        (
+            select count(*) from filtered_events
+        );
 end
 $$ language plpgsql;

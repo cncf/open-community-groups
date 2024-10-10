@@ -69,7 +69,7 @@ pub(crate) async fn explore_index(
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::try_from_form(&form)?;
-            let (filters_options, events) = tokio::try_join!(
+            let (filters_options, (events, total_count)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
             )?;
@@ -77,11 +77,12 @@ pub(crate) async fn explore_index(
                 filters,
                 filters_options,
                 events,
+                total_count,
             });
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::try_from_form(&form)?;
-            let (filters_options, groups) = tokio::try_join!(
+            let (filters_options, (groups, total_count)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
             )?;
@@ -89,6 +90,7 @@ pub(crate) async fn explore_index(
                 filters,
                 filters_options,
                 groups,
+                total_count,
             });
         }
     }
@@ -105,7 +107,7 @@ pub(crate) async fn explore_events(
     // Prepare events section template
     let filters = EventsFilters::try_from_form(&form)?;
     let filters_params = serde_html_form::to_string(&filters)?;
-    let (filters_options, events) = tokio::try_join!(
+    let (filters_options, (events, total_count)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_events(community_id, &filters)
     )?;
@@ -113,6 +115,7 @@ pub(crate) async fn explore_events(
         filters,
         filters_options,
         events,
+        total_count,
     };
 
     // Prepare response headers
@@ -134,7 +137,7 @@ pub(crate) async fn explore_groups(
     // Prepare groups section template
     let filters = GroupsFilters::try_from_form(&form)?;
     let filters_params = serde_html_form::to_string(&filters)?;
-    let (filters_options, groups) = tokio::try_join!(
+    let (filters_options, (groups, total_count)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_groups(community_id, &filters)
     )?;
@@ -142,6 +145,7 @@ pub(crate) async fn explore_groups(
         filters,
         filters_options,
         groups,
+        total_count,
     };
 
     // Prepare response headers

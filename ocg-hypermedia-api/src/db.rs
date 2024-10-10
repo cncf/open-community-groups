@@ -12,8 +12,8 @@ use std::sync::Arc;
 use tokio_postgres::types::Json;
 use uuid::Uuid;
 
-/// Type alias to represent a string of json data.
-pub(crate) type JsonString = String;
+/// Type alias to represent the total count .
+pub(crate) type TotalCount = i64;
 
 /// Abstraction layer over the database. Trait that defines some operations a
 /// DB implementation must support.
@@ -43,14 +43,14 @@ pub(crate) trait DB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<Vec<explore::Event>>;
+    ) -> Result<(Vec<explore::Event>, TotalCount)>;
 
     /// Search community groups that match the criteria provided.
     async fn search_community_groups(
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<Vec<explore::Group>>;
+    ) -> Result<(Vec<explore::Group>, TotalCount)>;
 }
 
 /// Type alias to represent a DB trait object.
@@ -73,11 +73,10 @@ impl DB for PgDB {
     /// [DB::get_community]
     async fn get_community(&self, community_id: Uuid) -> Result<Community> {
         let db = self.pool.get().await?;
-        let data: JsonString = db
+        let row = db
             .query_one("select get_community($1::uuid)::text", &[&community_id])
-            .await?
-            .get(0);
-        let community = Community::try_from_json(&data)?;
+            .await?;
+        let community = Community::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(community)
     }
@@ -85,14 +84,13 @@ impl DB for PgDB {
     /// [DB::get_community_filters_options]
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions> {
         let db = self.pool.get().await?;
-        let data: JsonString = db
+        let row = db
             .query_one(
                 "select get_community_filters_options($1::uuid)::text",
                 &[&community_id],
             )
-            .await?
-            .get(0);
-        let filters_options = explore::FiltersOptions::try_from_json(&data)?;
+            .await?;
+        let filters_options = explore::FiltersOptions::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(filters_options)
     }
@@ -114,14 +112,13 @@ impl DB for PgDB {
     /// [DB::get_community_recently_added_groups]
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<home::Group>> {
         let db = self.pool.get().await?;
-        let data: JsonString = db
+        let row = db
             .query_one(
                 "select get_community_recently_added_groups($1::uuid)::text",
                 &[&community_id],
             )
-            .await?
-            .get(0);
-        let groups = home::Group::try_new_vec_from_json(&data)?;
+            .await?;
+        let groups = home::Group::try_new_vec_from_json(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }
@@ -133,14 +130,13 @@ impl DB for PgDB {
         event_kind: EventKind,
     ) -> Result<Vec<home::Event>> {
         let db = self.pool.get().await?;
-        let data: JsonString = db
+        let row = db
             .query_one(
                 "select get_community_upcoming_in_person_events($1::uuid, $2::text)::text",
                 &[&community_id, &event_kind.to_string()],
             )
-            .await?
-            .get(0);
-        let events = home::Event::try_new_vec_from_json(&data)?;
+            .await?;
+        let events = home::Event::try_new_vec_from_json(&row.get::<_, String>(0))?;
 
         Ok(events)
     }
@@ -150,18 +146,18 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<Vec<explore::Event>> {
+    ) -> Result<(Vec<explore::Event>, TotalCount)> {
         let db = self.pool.get().await?;
-        let data: JsonString = db
+        let row = db
             .query_one(
-                "select search_community_events($1::uuid, $2::jsonb)::text",
+                "select events::text, total_count from search_community_events($1::uuid, $2::jsonb)",
                 &[&community_id, &Json(filters)],
             )
-            .await?
-            .get(0);
-        let events = explore::Event::try_new_vec_from_json(&data)?;
+            .await?;
+        let events = explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?;
+        let total_count: TotalCount = row.get("total_count");
 
-        Ok(events)
+        Ok((events, total_count))
     }
 
     /// [DB::search_community_groups]
@@ -169,17 +165,17 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<Vec<explore::Group>> {
+    ) -> Result<(Vec<explore::Group>, TotalCount)> {
         let db = self.pool.get().await?;
-        let data: JsonString = db
+        let row = db
             .query_one(
-                "select search_community_groups($1::uuid, $2::jsonb)::text",
+                "select groups::text, total_count from search_community_groups($1::uuid, $2::jsonb)",
                 &[&community_id, &Json(filters)],
             )
-            .await?
-            .get(0);
-        let groups = explore::Group::try_new_vec_from_json(&data)?;
+            .await?;
+        let groups = explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?;
+        let total_count: TotalCount = row.get("total_count");
 
-        Ok(groups)
+        Ok((groups, total_count))
     }
 }

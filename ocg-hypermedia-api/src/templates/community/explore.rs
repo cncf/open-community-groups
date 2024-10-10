@@ -2,7 +2,7 @@
 //! the community site.
 
 use super::common::Community;
-use crate::db::JsonString;
+use crate::db::TotalCount;
 use anyhow::Result;
 use askama::Template;
 use axum::body::Bytes;
@@ -49,21 +49,24 @@ pub(crate) struct EventsSection {
     pub filters: EventsFilters,
     pub filters_options: FiltersOptions,
     pub events: Vec<Event>,
+    pub total_count: TotalCount,
 }
 
 /// Filters used in the events section of the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
     #[serde(default)]
-    distance: Vec<String>,
+    pub distance: Vec<String>,
     #[serde(default)]
-    kind: Vec<EventKind>,
+    pub kind: Vec<EventKind>,
     #[serde(default)]
-    region: Vec<String>,
+    pub region: Vec<String>,
 
-    date_from: Option<String>,
-    date_to: Option<String>,
-    ts_query: Option<String>,
+    pub date_from: Option<String>,
+    pub date_to: Option<String>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub ts_query: Option<String>,
 }
 
 impl EventsFilters {
@@ -156,7 +159,7 @@ impl Event {
     }
 
     /// Try to create a vector of `Event` instances from a JSON string.
-    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let mut events: Vec<Self> = serde_json::from_str(data)?;
 
         // Convert markdown content in some fields to HTML
@@ -175,17 +178,20 @@ pub(crate) struct GroupsSection {
     pub filters: GroupsFilters,
     pub filters_options: FiltersOptions,
     pub groups: Vec<Group>,
+    pub total_count: TotalCount,
 }
 
 /// Filters used in the groups section of the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
     #[serde(default)]
-    distance: Vec<String>,
+    pub distance: Vec<String>,
     #[serde(default)]
-    region: Vec<String>,
+    pub region: Vec<String>,
 
-    ts_query: Option<String>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub ts_query: Option<String>,
 }
 
 impl GroupsFilters {
@@ -217,7 +223,7 @@ pub(crate) struct Group {
 
 impl Group {
     /// Try to create a vector of `Group` instances from a JSON string.
-    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let mut groups: Vec<Self> = serde_json::from_str(data)?;
 
         // Convert markdown content in some fields to HTML
@@ -238,7 +244,7 @@ pub(crate) struct FiltersOptions {
 
 impl FiltersOptions {
     /// Try to create a `FiltersOptions` instance from a JSON string.
-    pub(crate) fn try_from_json(data: &JsonString) -> Result<Self> {
+    pub(crate) fn try_from_json(data: &str) -> Result<Self> {
         let filters_options: FiltersOptions = serde_json::from_str(data)?;
 
         Ok(filters_options)

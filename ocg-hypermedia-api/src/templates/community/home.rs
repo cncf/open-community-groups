@@ -2,7 +2,6 @@
 //! community site.
 
 use super::common::Community;
-use crate::db::JsonString;
 use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
@@ -36,7 +35,7 @@ pub(crate) struct Event {
 
 impl Event {
     /// Try to create a vector of `Event` instances from a JSON string.
-    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let events: Vec<Self> = serde_json::from_str(data)?;
 
         Ok(events)
@@ -58,7 +57,7 @@ pub(crate) struct Group {
 
 impl Group {
     /// Try to create a vector of `Group` instances from a JSON string.
-    pub(crate) fn try_new_vec_from_json(data: &JsonString) -> Result<Vec<Self>> {
+    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let groups: Vec<Self> = serde_json::from_str(data)?;
 
         Ok(groups)
