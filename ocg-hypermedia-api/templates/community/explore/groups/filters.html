@@ -13,48 +13,10 @@
   hx-boost="true"
 >
   <!-- Regions -->
-  <div class="px-6 py-7 pt-5 border-b border-gray-100">
-    <div class="flex justify-between items-center">
-      <div
-        class="font-semibold text-filterTitle text-black leading-6"
-      >
-        Region
-      </div>
-      <div>
-        <button type="button" class="text-gray-700 border hover:bg-gray-700 hover:text-white focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
-          <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 137.4c12.5-12.5 32.8-12.5 45.3 0l160 160c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L224 205.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l160-160z"></path></svg>
-        </button>
-      </div>
-    </div>
-    <ul class="flex flex-wrap w-full gap-3 mt-3">
-      {% call macros::input_label_any("region", filters.region) %}
-      {% for region in filters_options.region %}
-        {% call macros::input_label("checkbox", "region", region.name, region.value, filters.region) %}
-      {% endfor %}
-    </ul>
-    <div class="mt-4 -mb-1.5">
-      <button type="button" class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
-        + Show more
-      </button>
-    </div>
-  </div>
+  {% call macros::collapsible_filter("Region", filters_options.region, "region", "checkbox", filters.region) %}
   <!-- End Regions -->
 
   <!-- Distance -->
-  <div class="px-6 py-7 pt-5 border-b border-gray-100">
-    <div class="flex justify-between items-center">
-      <div
-        class="font-semibold text-filterTitle text-black leading-6"
-      >
-        Distance
-      </div>
-    </div>
-    <ul class="flex flex-wrap w-full gap-3 mt-3">
-      {% call macros::input_label_any("distance", filters.distance) %}
-      {% for distance in filters_options.distance %}
-        {% call macros::input_label("radio", "distance", distance.name, distance.value, filters.distance) %}
-      {% endfor %}
-    </ul>
-  </div>
+  {% call macros::collapsible_filter("Distance", filters_options.distance, "distance", "radio", filters.distance) %}
   <!-- End distance -->
 </form>
