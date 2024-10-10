@@ -4,7 +4,7 @@ use super::{error::HandlerError, extractors::CommunityId};
 use crate::{
     db::DynDB,
     templates::community::{
-        explore::{self, EventsFilters, GroupsFilters},
+        explore::{self, EventKind, EventsFilters, GroupsFilters},
         home,
     },
 };
@@ -32,8 +32,8 @@ pub(crate) async fn home_index(
     ) = tokio::try_join!(
         db.get_community(community_id),
         db.get_community_recently_added_groups(community_id),
-        db.get_community_upcoming_in_person_events(community_id),
-        db.get_community_upcoming_virtual_events(community_id),
+        db.get_community_upcoming_events(community_id, EventKind::InPerson),
+        db.get_community_upcoming_events(community_id, EventKind::Virtual),
     )?;
     let template = home::Index {
         community,

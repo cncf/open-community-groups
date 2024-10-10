@@ -8,7 +8,10 @@ use askama::Template;
 use axum::body::Bytes;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
+use std::{
+    borrow::Borrow,
+    fmt::{self, Display, Formatter},
+};
 
 /// Explore index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -84,9 +87,18 @@ impl EventsFilters {
 /// Event kind (in-person or virtual).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-enum EventKind {
+pub(crate) enum EventKind {
     InPerson,
     Virtual,
+}
+
+impl Display for EventKind {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            EventKind::InPerson => write!(f, "in-person"),
+            EventKind::Virtual => write!(f, "virtual"),
+        }
+    }
 }
 
 /// Event information used in the community explore page.

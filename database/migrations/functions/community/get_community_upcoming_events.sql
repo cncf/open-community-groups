@@ -1,5 +1,5 @@
--- Returns the community's upcoming virtual events.
-create or replace function get_community_upcoming_virtual_events(p_community_id uuid)
+-- Returns the community's upcoming events.
+create or replace function get_community_upcoming_in_person_events(p_community_id uuid, p_event_kind_id text)
 returns json as $$
     select coalesce(json_agg(json_build_object(
         'city', city,
@@ -23,12 +23,12 @@ returns json as $$
             g.slug as group_slug
         from event e
         join "group" g using (group_id)
-        where g.community_id = $1
+        where g.community_id = p_community_id
+        and e.event_kind_id = p_event_kind_id
         and e.icon_url is not null
         and e.starts_at > now()
         and e.cancelled = false
         and e.postponed = false
-        and e.event_kind_id = 'virtual'
         order by e.starts_at asc
         limit 9
     ) events;

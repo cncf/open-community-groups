@@ -2,7 +2,7 @@
 
 use crate::templates::community::{
     common::Community,
-    explore::{self, EventsFilters, GroupsFilters},
+    explore::{self, EventKind, EventsFilters, GroupsFilters},
     home,
 };
 use anyhow::Result;
@@ -31,11 +31,12 @@ pub(crate) trait DB {
     /// Get the groups recently added to the community.
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<home::Group>>;
 
-    /// Get the upcoming in-person events in the community.
-    async fn get_community_upcoming_in_person_events(&self, community_id: Uuid) -> Result<Vec<home::Event>>;
-
-    /// Get the upcoming virtual events in the community.
-    async fn get_community_upcoming_virtual_events(&self, community_id: Uuid) -> Result<Vec<home::Event>>;
+    /// Get the community upcoming events.
+    async fn get_community_upcoming_events(
+        &self,
+        community_id: Uuid,
+        event_kind: EventKind,
+    ) -> Result<Vec<home::Event>>;
 
     /// Search community events that match the criteria provided.
     async fn search_community_events(
@@ -125,28 +126,17 @@ impl DB for PgDB {
         Ok(groups)
     }
 
-    /// [DB::get_community_upcoming_in_person_events]
-    async fn get_community_upcoming_in_person_events(&self, community_id: Uuid) -> Result<Vec<home::Event>> {
+    /// [DB::get_community_upcoming_events]
+    async fn get_community_upcoming_events(
+        &self,
+        community_id: Uuid,
+        event_kind: EventKind,
+    ) -> Result<Vec<home::Event>> {
         let db = self.pool.get().await?;
         let data: JsonString = db
             .query_one(
-                "select get_community_upcoming_in_person_events($1::uuid)::text",
-                &[&community_id],
-            )
-            .await?
-            .get(0);
-        let events = home::Event::try_new_vec_from_json(&data)?;
-
-        Ok(events)
-    }
-
-    /// [DB::get_community_upcoming_virtual_events]
-    async fn get_community_upcoming_virtual_events(&self, community_id: Uuid) -> Result<Vec<home::Event>> {
-        let db = self.pool.get().await?;
-        let data: JsonString = db
-            .query_one(
-                "select get_community_upcoming_virtual_events($1::uuid)::text",
-                &[&community_id],
+                "select get_community_upcoming_in_person_events($1::uuid, $2::text)::text",
+                &[&community_id, &event_kind.to_string()],
             )
             .await?
             .get(0);

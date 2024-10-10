@@ -1,4 +1,4 @@
--- Returns the community's recently added groups.
+-- Returns the groups recently added to the community.
 create or replace function get_community_recently_added_groups(p_community_id uuid)
 returns json as $$
     select coalesce(json_agg(json_build_object(
