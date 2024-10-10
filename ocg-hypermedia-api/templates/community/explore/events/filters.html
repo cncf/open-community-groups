@@ -60,7 +60,7 @@
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       {% call macros::input_label_any("region", filters.region) %}
       {% for region in filters_options.region %}
-        {% call macros::input_label("region", region.name, region.value, filters.region) %}
+        {% call macros::input_label("checkbox", "region", region.name, region.value, filters.region) %}
       {% endfor %}
     </ul>
     <div class="mt-4 -mb-1.5">
@@ -83,7 +83,7 @@
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       {% call macros::input_label_any("distance", filters.distance) %}
       {% for distance in filters_options.distance %}
-        {% call macros::input_label("distance", distance.name, distance.value, filters.distance) %}
+        {% call macros::input_label("radio", "distance", distance.name, distance.value, filters.distance) %}
       {% endfor %}
     </ul>
   </div>

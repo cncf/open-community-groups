@@ -73,9 +73,9 @@
 <!-- End Entity => Events/Groups -->
 
 <!-- Input label -->
-{% macro input_label(name, label, value, filters_selected) %}
+{% macro input_label(inputType, name, label, value, filters_selected) %}
   <li>
-    <input type="checkbox" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if filters_selected.contains(value.to_string().borrow()) %}checked{% endif %}>
+    <input type="{{ inputType }}" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if filters_selected.contains(value.to_string().borrow()) %}checked{% endif %}>
     <label for="{{ value }}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.825rem] text-center text-nowrap">{{ label }}</div>
     </label>
