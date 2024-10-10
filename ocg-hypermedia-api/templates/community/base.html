@@ -99,7 +99,7 @@
           document.querySelectorAll(`#${formName} input[name=kind]`).forEach(el => el.checked = true);
         }
 
-        htmx.trigger(form, "change");
+        triggerChangeOnForm(form.id);
       };
 
       const updateAnyValue = (name) => {
@@ -113,10 +113,28 @@
         }
       };
 
-      const cleanInputField = (id) => {
+      const cleanInputField = (id, formId) => {
         const input = document.getElementById(id);
         input.value = '';
-        htmx.trigger(input.closest('form'), "change");
+
+        let form = input.closest('form');
+        if (formId) {
+          form = document.getElementById(formId);
+        }
+
+        triggerChangeOnForm(form.id);
+      };
+
+      const triggerChangeOnForm = (formId) => {
+        const form = document.getElementById(formId);
+        htmx.trigger(form, "change");
+      };
+
+      const loadExplorePageWithTsQuery = () => {
+        const input = document.getElementById('ts_query');
+        if (input.value !== '') {
+          document.location.href = `/explore?ts_query=${input.value}`;
+        }
       };
 
       // Gallery

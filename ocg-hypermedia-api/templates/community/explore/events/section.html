@@ -10,7 +10,11 @@
 {% endblock %}
 
 {% block searchbar %}
-  {% call common::search_bar("Search events", "w-full mx-auto md:w-3/4") %}
+  {% if let Some(ts_query) = filters.ts_query %}
+    {% call common::search_bar("Search events", ts_query, "events-form", "w-full md:w-3/4", "justify-center") %}
+  {% else %}
+    {% call common::search_bar("Search events", "", "events-form", "w-full md:w-3/4", "justify-center") %}
+  {% endif %}
 {% endblock %}
 
 {% block content %}
