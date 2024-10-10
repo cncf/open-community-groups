@@ -11,7 +11,7 @@ use crate::{
 use anyhow::Result;
 use askama_axum::IntoResponse;
 use axum::{
-    extract::{Query, RawForm, State},
+    extract::{Query, RawQuery, State},
     http::Uri,
 };
 use std::collections::HashMap;
@@ -50,13 +50,13 @@ pub(crate) async fn home_index(
 pub(crate) async fn explore_index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Query(params): Query<HashMap<String, String>>,
+    Query(query): Query<HashMap<String, String>>,
+    RawQuery(raw_query): RawQuery,
     uri: Uri,
-    RawForm(form): RawForm,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare explore index template
     let community = db.get_community(community_id).await?;
-    let entity: explore::Entity = params.get("entity").into();
+    let entity: explore::Entity = query.get("entity").into();
     let mut template = explore::Index {
         community,
         entity: entity.clone(),
@@ -68,7 +68,7 @@ pub(crate) async fn explore_index(
     // Attach events or groups section template to the index template
     match entity {
         explore::Entity::Events => {
-            let filters = EventsFilters::try_from_form(&form)?;
+            let filters = EventsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
             let (filters_options, (events, total_count)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
@@ -81,7 +81,7 @@ pub(crate) async fn explore_index(
             });
         }
         explore::Entity::Groups => {
-            let filters = GroupsFilters::try_from_form(&form)?;
+            let filters = GroupsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
             let (filters_options, (groups, total_count)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
@@ -102,10 +102,10 @@ pub(crate) async fn explore_index(
 pub(crate) async fn explore_events(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    RawForm(form): RawForm,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
-    let filters = EventsFilters::try_from_form(&form)?;
+    let filters = EventsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
     let filters_params = serde_html_form::to_string(&filters)?;
     let (filters_options, (events, total_count)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
@@ -132,10 +132,10 @@ pub(crate) async fn explore_events(
 pub(crate) async fn explore_groups(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    RawForm(form): RawForm,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
-    let filters = GroupsFilters::try_from_form(&form)?;
+    let filters = GroupsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
     let filters_params = serde_html_form::to_string(&filters)?;
     let (filters_options, (groups, total_count)) = tokio::try_join!(
         db.get_community_filters_options(community_id),

@@ -5,13 +5,7 @@ use crate::{
     db::DynDB,
     handlers::{community, event, group},
 };
-use axum::{
-    extract::FromRef,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
-    Router,
-};
+use axum::{extract::FromRef, http::StatusCode, response::IntoResponse, routing::get, Router};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
@@ -26,8 +20,8 @@ pub(crate) fn setup(db: DynDB) -> Router {
     Router::new()
         .route("/", get(community::home_index))
         .route("/explore", get(community::explore_index))
-        .route("/explore/events", post(community::explore_events))
-        .route("/explore/groups", post(community::explore_groups))
+        .route("/explore/events", get(community::explore_events))
+        .route("/explore/groups", get(community::explore_groups))
         .route("/health-check", get(health_check))
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))

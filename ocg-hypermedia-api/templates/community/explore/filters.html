@@ -23,7 +23,7 @@
       {% if selected == Entity::Groups %}
         <li class="w-full">
           <button
-            hx-post='/explore/events'
+            hx-get='/explore/events'
             hx-trigger="click"
             hx-target="#entity-section"
             htmx-indicator="#spinner-entity-section"
@@ -54,7 +54,7 @@
         </li>
         <li class="w-full">
           <button
-              hx-post='/explore/groups'
+              hx-get='/explore/groups'
               hx-trigger="click"
               hx-target="#entity-section"
               htmx-indicator="#spinner-entity-section"

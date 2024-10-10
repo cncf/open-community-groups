@@ -5,7 +5,6 @@ use super::common::Community;
 use crate::db::TotalCount;
 use anyhow::Result;
 use askama::Template;
-use axum::body::Bytes;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -70,9 +69,10 @@ pub(crate) struct EventsFilters {
 }
 
 impl EventsFilters {
-    /// Create a new `EventsFilters` instance from the form provided.
-    pub(crate) fn try_from_form(form: &Bytes) -> Result<Self> {
-        let mut filters: EventsFilters = serde_html_form::from_bytes(form)?;
+    /// Create a new `EventsFilters` instance from the raw query string
+    /// provided.
+    pub(crate) fn try_from_raw_query(raw_query: &str) -> Result<Self> {
+        let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
         filters.distance.retain(|v| !v.is_empty());
@@ -195,9 +195,10 @@ pub(crate) struct GroupsFilters {
 }
 
 impl GroupsFilters {
-    /// Create a new `GroupsFilters` instance from the form provided.
-    pub(crate) fn try_from_form(form: &Bytes) -> Result<Self> {
-        let mut filters: GroupsFilters = serde_html_form::from_bytes(form)?;
+    /// Create a new `GroupsFilters` instance from the raw query string
+    /// provided.
+    pub(crate) fn try_from_raw_query(raw_query: &str) -> Result<Self> {
+        let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
         filters.distance.retain(|v| !v.is_empty());
