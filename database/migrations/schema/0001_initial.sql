@@ -129,6 +129,7 @@ create table event (
             setweight(to_tsvector('simple', title), 'A') ||
             setweight(to_tsvector('simple', slug), 'A') ||
             setweight(to_tsvector('simple', i_array_to_string(coalesce(tags, '{}'), ' ')), 'B') ||
+            setweight(to_tsvector('simple', coalesce(venue, '')), 'C') ||
             setweight(to_tsvector('simple', coalesce(city, '')), 'C') ||
             setweight(to_tsvector('simple', coalesce(state, '')), 'C') ||
             setweight(to_tsvector('simple', coalesce(country, '')), 'C')
