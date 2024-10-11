@@ -78,11 +78,6 @@ impl EventsFilters {
         filters.distance.retain(|v| !v.is_empty());
         filters.region.retain(|v| !v.is_empty());
 
-        // Use all event kinds if none are provided
-        if filters.kind.is_empty() {
-            filters.kind = vec![EventKind::InPerson, EventKind::Virtual];
-        }
-
         Ok(filters)
     }
 }
