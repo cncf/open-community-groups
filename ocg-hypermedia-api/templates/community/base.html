@@ -117,12 +117,12 @@
         const input = document.getElementById(id);
         input.value = '';
 
-        let form = input.closest('form');
         if (formId) {
-          form = document.getElementById(formId);
+          triggerChangeOnForm(formId);
+        } else {
+          let form = input.closest('form');
+          triggerChangeOnForm(form.id);
         }
-
-        triggerChangeOnForm(form.id);
       };
 
       const triggerChangeOnForm = (formId) => {
@@ -134,6 +134,19 @@
         const input = document.getElementById('ts_query');
         if (input.value !== '') {
           document.location.href = `/explore?ts_query=${input.value}`;
+        }
+      };
+
+      const onSearchKeyDown = (e, formId) => {
+        if (e.key === 'Enter') {
+          if (formId === '') {
+            const value = e.currentTarget.value;
+            if (value !== '') {
+              document.location.href = `/explore?ts_query=${value}`;
+            }
+          } else {
+            triggerChangeOnForm(formId);
+          }
         }
       };
 
