@@ -11,9 +11,9 @@
 
 {% block searchbar %}
   {% if let Some(ts_query) = filters.ts_query %}
-    {% call common::search_bar("Search groups", ts_query, "groups-form", "w-full md:w-3/4", "justify-center") %}
+    {% call common::search_bar("Search groups by name, location or tags", ts_query, "groups-form", "w-full md:w-3/4", "justify-center") %}
   {% else %}
-    {% call common::search_bar("Search groups", "", "groups-form", "w-full md:w-3/4", "justify-center") %}
+    {% call common::search_bar("Search groups by name, location or tags", "", "groups-form", "w-full md:w-3/4", "justify-center") %}
   {% endif %}
 {% endblock %}
 

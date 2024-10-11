@@ -67,7 +67,7 @@
           Recently added groups
         </div>
         <div class="hidden justify-self-end lg:flex">
-          {% call common::secondary_link("See all groups", "/explore?entity=groups", "ms-4") %}
+          {% call common::secondary_link("See all groups", "/explore?entity=groups", "ms-4", false) %}
         </div>
       </div>
       <div class="my-10">
@@ -77,7 +77,7 @@
           {% endfor %}
         </div>
         <div class="block mt-10 lg:hidden lg:mt-0">
-          {% call common::secondary_link("See all groups", "/explore?entity=groups", "") %}
+          {% call common::secondary_link("See all groups", "/explore?entity=groups", "", false) %}
         </div>
       </div>
       <!-- End recentry added groups -->
@@ -99,7 +99,7 @@
 
       <!-- See all events on desktop -->
       <div class="hidden justify-self-end lg:flex">
-        {% call common::secondary_link("See all events", link, "ms-4") %}
+        {% call common::secondary_link("See all events", link, "ms-4", false) %}
       </div>
       <!-- End see all events on desktop -->
     </div>
@@ -114,7 +114,7 @@
 
       <!-- See all events on mobile -->
       <div class="block mt-10 lg:hidden lg:mt-0">
-        {% call common::secondary_link("See all events", link, "") %}
+        {% call common::secondary_link("See all events", link, "", false) %}
       </div>
       <!-- See all events on mobile -->
     </div>

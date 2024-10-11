@@ -40,7 +40,7 @@
       {% endif %}
     </div>
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      {% call common::secondary_button("Sign up", "", "() => console.log('hola')", "") %}
+      {% call common::secondary_button("Sign up", "", "() => console.log('hola')", "", false) %}
       {% call common::primary_button("Log in", "() => console.log('hola')", "", false) %}
     </div>
   </nav>
@@ -103,7 +103,7 @@
 
       <!-- Modal footer -->
       <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-        {% call common::secondary_button("Create group", "", "updateModalStatus('new-group-modal')", "") %}
+        {% call common::secondary_button("Create group", "", "updateModalStatus('new-group-modal')", "", false) %}
       </div>
       <!-- End modal footer -->
     </div>

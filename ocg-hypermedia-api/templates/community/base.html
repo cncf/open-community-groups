@@ -94,10 +94,7 @@
         document.querySelectorAll(`#${formName} input[type=checkbox]`).forEach(el => el.checked = false);
         document.querySelectorAll(`#${formName} input[value='']`).forEach(el => el.checked = true);
         document.querySelectorAll(`#${formName} input[type=date]`).forEach(el => el.value = '');
-
-        if (formName === 'events-form') {
-          document.querySelectorAll(`#${formName} input[name=kind]`).forEach(el => el.checked = true);
-        }
+        document.querySelector('input[name="ts_query"]').value = '';
 
         triggerChangeOnForm(form.id);
       };
