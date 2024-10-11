@@ -137,6 +137,23 @@
         }
       };
 
+      // Collapsible filter
+      const updateCollapsibleFilterStatus = (id, max_visible_items_number) => {
+        const filter = document.getElementById(id);
+        if (filter.classList.contains('collapsed')) {
+          filter.classList.remove('collapsed');
+          document.querySelectorAll(`#${id} li`).forEach(el => el.classList.remove('hidden'));
+        } else {
+          filter.classList.add('collapsed');
+          document.querySelectorAll(`#${id} li`).forEach((el, index) => {
+            // Hide all items after the max_visible_items_number (add 1 to include the "Any" option)
+            if (index >= max_visible_items_number + 1) {
+              el.classList.add('hidden');
+            }
+          });
+        }
+      }
+
       // Gallery
       const openFullModal = (modalId, activeIndex) => {
         const modal = document.getElementById(modalId);
