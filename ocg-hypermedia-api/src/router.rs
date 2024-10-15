@@ -18,10 +18,10 @@ pub(crate) struct State {
 /// Setup router.
 pub(crate) fn setup(db: DynDB) -> Router {
     Router::new()
-        .route("/", get(community::home_index))
-        .route("/explore", get(community::explore_index))
-        .route("/explore/events", get(community::explore_events))
-        .route("/explore/groups", get(community::explore_groups))
+        .route("/", get(community::home::index))
+        .route("/explore", get(community::explore::index))
+        .route("/explore/events/section", get(community::explore::events_section))
+        .route("/explore/groups/section", get(community::explore::groups_section))
         .route("/health-check", get(health_check))
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))

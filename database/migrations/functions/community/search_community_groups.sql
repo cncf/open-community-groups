@@ -1,6 +1,6 @@
 -- Returns the community groups that match the filters provided.
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
-returns table(groups json, total_count bigint) as $$
+returns table(groups json, total bigint) as $$
 declare
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_offset int := coalesce((p_filters->>'offset')::int, 0);

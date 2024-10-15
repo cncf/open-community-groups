@@ -1,6 +1,6 @@
 -- Returns the community events that match the filters provided.
 create or replace function search_community_events(p_community_id uuid, p_filters jsonb)
-returns table(events json, total_count bigint) as $$
+returns table(events json, total bigint) as $$
 declare
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');

@@ -6,7 +6,8 @@
 {% endblock %}
 
 {% block results %}
-  1 - {{ groups.len() }} of {{ groups.len() }} results
+  {% set limit = 10 %}
+  {% if let Some(offset) = filters.offset %}{{ offset + 1 }} - {% if (offset + limit) > results_section.groups.len() %}{{ results_section.total }}{% else %}{{ limit + offset }}{% endif %}{% else %}1 - {{ results_section.groups.len() }}{% endif %} of {{ results_section.total }} results
 {% endblock %}
 
 {% block searchbar %}
@@ -18,66 +19,6 @@
 {% endblock %}
 
 {% block content %}
-  <!-- Cards -->
-  <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7">
-    {% if groups.len() == 0 %}
-      {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
-    {% endif %}
-
-    {% for group in groups %}
-      {% call group_card(group) %}
-    {% endfor %}
-  </div>
-  <!-- End cards -->
+  {{ results_section|safe }}
 {% endblock %}
 
-<!-- Group card -->
-{% macro group_card(group) %}
-  <div class="flex flex-1 flex-row items-stretch p-5 md:p-7">
-    <!-- Group icon -->
-    <div
-      class="h-24 min-w-24 md:h-[140px] md:min-w-[140px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-      style="
-        background-image: url({% if let Some(icon_url) = group.icon_url %}{{ icon_url }}{% else %}https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png{% endif %});
-      "
-    ></div>
-    <!-- End group icon -->
-
-    <div class="min-w-0 pl-4 content-center">
-      <div class="flex flex-col justify-between h-full">
-        <div>
-          <!-- Group region -->
-          <div class="truncate leading-3">
-            <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ group.region_name }}</span>
-          </div>
-          <!-- End group region -->
-
-          <!-- Group name -->
-          <h2 class="font-semibold truncate">{{ group.name }}</h2>
-          <!-- End group name -->
-        </div>
-
-        <!-- Group description -->
-        <div class="relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2">
-          {{ group.description|safe }}
-        </div>
-        <!-- End group description -->
-
-        <!-- Group location -->
-        <div class="flex flex-row leading-4 pt-1 lg:pt-2">
-          {% if let Some(city) = group.city %}
-            <svg class="mt-0.5 w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
-            <div class="truncate text-gray-700 text-xs uppercase">
-                {{ city }}{% if let Some(state) = group.state %}, {{ state }} {% endif %}
-              {% if let Some(country) = group.country %}
-                  , {{ country }}
-              {% endif %}
-            </div>
-          {% endif %}
-        </div>
-        <!-- End group location -->
-      </div>
-    </div>
-  </div>
-{% endmacro %}
-<!-- End group card -->

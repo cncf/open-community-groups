@@ -13,7 +13,7 @@ use tokio_postgres::types::Json;
 use uuid::Uuid;
 
 /// Type alias to represent the total count .
-pub(crate) type TotalCount = i64;
+pub(crate) type Total = i64;
 
 /// Abstraction layer over the database. Trait that defines some operations a
 /// DB implementation must support.
@@ -43,14 +43,14 @@ pub(crate) trait DB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<(Vec<explore::Event>, TotalCount)>;
+    ) -> Result<(Vec<explore::Event>, Total)>;
 
     /// Search community groups that match the criteria provided.
     async fn search_community_groups(
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<(Vec<explore::Group>, TotalCount)>;
+    ) -> Result<(Vec<explore::Group>, Total)>;
 }
 
 /// Type alias to represent a DB trait object.
@@ -146,18 +146,18 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<(Vec<explore::Event>, TotalCount)> {
+    ) -> Result<(Vec<explore::Event>, Total)> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select events::text, total_count from search_community_events($1::uuid, $2::jsonb)",
+                "select events::text, total from search_community_events($1::uuid, $2::jsonb)",
                 &[&community_id, &Json(filters)],
             )
             .await?;
         let events = explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?;
-        let total_count: TotalCount = row.get("total_count");
+        let total: Total = row.get("total");
 
-        Ok((events, total_count))
+        Ok((events, total))
     }
 
     /// [DB::search_community_groups]
@@ -165,17 +165,17 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<(Vec<explore::Group>, TotalCount)> {
+    ) -> Result<(Vec<explore::Group>, Total)> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select groups::text, total_count from search_community_groups($1::uuid, $2::jsonb)",
+                "select groups::text, total from search_community_groups($1::uuid, $2::jsonb)",
                 &[&community_id, &Json(filters)],
             )
             .await?;
         let groups = explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?;
-        let total_count: TotalCount = row.get("total_count");
+        let total: Total = row.get("total");
 
-        Ok((groups, total_count))
+        Ok((groups, total))
     }
 }

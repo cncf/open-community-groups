@@ -2,7 +2,6 @@
 //! the community site.
 
 use super::common::Community;
-use crate::db::TotalCount;
 use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
@@ -47,8 +46,16 @@ impl From<Option<&String>> for Entity {
 pub(crate) struct EventsSection {
     pub filters: EventsFilters,
     pub filters_options: FiltersOptions,
+    pub results_section: EventsResultsSection,
+}
+
+/// Events results section template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/results.html")]
+pub(crate) struct EventsResultsSection {
     pub events: Vec<Event>,
-    pub total_count: TotalCount,
+    pub offset: Option<usize>,
+    pub total: i64,
 }
 
 /// Filters used in the events section of the community explore page.
@@ -172,8 +179,16 @@ impl Event {
 pub(crate) struct GroupsSection {
     pub filters: GroupsFilters,
     pub filters_options: FiltersOptions,
+    pub results_section: GroupsResultsSection,
+}
+
+/// Groups results section template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/groups/results.html")]
+pub(crate) struct GroupsResultsSection {
     pub groups: Vec<Group>,
-    pub total_count: TotalCount,
+    pub offset: Option<usize>,
+    pub total: i64,
 }
 
 /// Filters used in the groups section of the community explore page.
