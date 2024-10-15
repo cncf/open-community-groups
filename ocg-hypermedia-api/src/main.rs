@@ -1,4 +1,9 @@
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap
+)]
 
 use anyhow::{Context, Result};
 use clap::Parser;

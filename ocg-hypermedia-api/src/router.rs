@@ -20,8 +20,16 @@ pub(crate) fn setup(db: DynDB) -> Router {
     Router::new()
         .route("/", get(community::home::index))
         .route("/explore", get(community::explore::index))
-        .route("/explore/events/section", get(community::explore::events_section))
-        .route("/explore/groups/section", get(community::explore::groups_section))
+        .route("/explore/events-section", get(community::explore::events_section))
+        .route(
+            "/explore/events-results-section",
+            get(community::explore::events_results_section),
+        )
+        .route("/explore/groups-section", get(community::explore::groups_section))
+        .route(
+            "/explore/groups-results-section",
+            get(community::explore::groups_results_section),
+        )
         .route("/health-check", get(health_check))
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))

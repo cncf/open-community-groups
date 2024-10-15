@@ -4,7 +4,7 @@
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::explore::{self, EventsFilters, GroupsFilters},
+    templates::community::explore::{self, EventsFilters, GroupsFilters, NavigationLinks},
 };
 use anyhow::Result;
 use askama_axum::IntoResponse;
@@ -43,10 +43,11 @@ pub(crate) async fn index(
             )?;
             let offset = filters.offset;
             template.events_section = Some(explore::EventsSection {
-                filters,
+                filters: filters.clone(),
                 filters_options,
                 results_section: explore::EventsResultsSection {
                     events,
+                    navigation_links: NavigationLinks::from_events_filters(&filters, total as usize)?,
                     offset,
                     total,
                 },
@@ -60,10 +61,11 @@ pub(crate) async fn index(
             )?;
             let offset = filters.offset;
             template.groups_section = Some(explore::GroupsSection {
-                filters,
+                filters: filters.clone(),
                 filters_options,
                 results_section: explore::GroupsResultsSection {
                     groups,
+                    navigation_links: NavigationLinks::from_groups_filters(&filters, total as usize)?,
                     offset,
                     total,
                 },
@@ -74,8 +76,7 @@ pub(crate) async fn index(
     Ok(template)
 }
 
-/// Handler that returns the events section (filters + events) of the explore
-/// page.
+/// Handler that returns the events section of the explore page.
 pub(crate) async fn events_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -92,24 +93,47 @@ pub(crate) async fn events_section(
         filters_options,
         results_section: explore::EventsResultsSection {
             events,
+            navigation_links: NavigationLinks::from_events_filters(&filters, total as usize)?,
             offset: filters.offset,
             total,
         },
     };
 
     // Prepare response headers
-    let filters_params = serde_html_form::to_string(&filters)?;
-    let mut hx_push_url = "/explore?entity=events".to_string();
-    if !filters_params.is_empty() {
-        hx_push_url.push_str(&format!("&{filters_params}"));
-    }
-    let headers = [("HX-Push-Url", hx_push_url)];
+    let headers = [(
+        "HX-Push-Url",
+        explore::build_url("/explore?entity=events", &filters)?,
+    )];
 
     Ok((headers, template))
 }
 
-/// Handler that returns the groups section (filters + groups) of the explore
-/// page.
+/// Handler that returns the events results section of the explore page.
+pub(crate) async fn events_results_section(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    RawQuery(raw_query): RawQuery,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare events results section template
+    let filters = EventsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+    let (events, total) = db.search_community_events(community_id, &filters).await?;
+    let template = explore::EventsResultsSection {
+        events,
+        navigation_links: NavigationLinks::from_events_filters(&filters, total as usize)?,
+        offset: filters.offset,
+        total,
+    };
+
+    // Prepare response headers
+    let headers = [(
+        "HX-Push-Url",
+        explore::build_url("/explore?entity=events", &filters)?,
+    )];
+
+    Ok((headers, template))
+}
+
+/// Handler that returns the groups section of the explore page.
 pub(crate) async fn groups_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -126,18 +150,42 @@ pub(crate) async fn groups_section(
         filters_options,
         results_section: explore::GroupsResultsSection {
             groups,
+            navigation_links: NavigationLinks::from_groups_filters(&filters, total as usize)?,
             offset: filters.offset,
             total,
         },
     };
 
     // Prepare response headers
-    let filters_params = serde_html_form::to_string(&filters)?;
-    let mut hx_push_url = "/explore?entity=groups".to_string();
-    if !filters_params.is_empty() {
-        hx_push_url.push_str(&format!("&{filters_params}"));
-    }
-    let headers = [("HX-Push-Url", hx_push_url)];
+    let headers = [(
+        "HX-Push-Url",
+        explore::build_url("/explore?entity=groups", &filters)?,
+    )];
+
+    Ok((headers, template))
+}
+
+/// Handler that returns the groups results section of the explore page.
+pub(crate) async fn groups_results_section(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    RawQuery(raw_query): RawQuery,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare groups section template
+    let filters = GroupsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+    let (groups, total) = db.search_community_groups(community_id, &filters).await?;
+    let template = explore::GroupsResultsSection {
+        groups,
+        navigation_links: NavigationLinks::from_groups_filters(&filters, total as usize)?,
+        offset: filters.offset,
+        total,
+    };
+
+    // Prepare response headers
+    let headers = [(
+        "HX-Push-Url",
+        explore::build_url("/explore?entity=groups", &filters)?,
+    )];
 
     Ok((headers, template))
 }

@@ -5,7 +5,7 @@ use super::common::Community;
 use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{ser, Deserialize, Serialize};
 use std::{
     borrow::Borrow,
     fmt::{self, Display, Formatter},
@@ -40,6 +40,15 @@ impl From<Option<&String>> for Entity {
     }
 }
 
+impl Display for Entity {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            Entity::Events => write!(f, "events"),
+            Entity::Groups => write!(f, "groups"),
+        }
+    }
+}
+
 /// Explore events section template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/section.html")]
@@ -54,6 +63,7 @@ pub(crate) struct EventsSection {
 #[template(path = "community/explore/events/results.html")]
 pub(crate) struct EventsResultsSection {
     pub events: Vec<Event>,
+    pub navigation_links: NavigationLinks,
     pub offset: Option<usize>,
     pub total: i64,
 }
@@ -187,6 +197,7 @@ pub(crate) struct GroupsSection {
 #[template(path = "community/explore/groups/results.html")]
 pub(crate) struct GroupsResultsSection {
     pub groups: Vec<Group>,
+    pub navigation_links: NavigationLinks,
     pub offset: Option<usize>,
     pub total: i64,
 }
@@ -267,6 +278,147 @@ impl FiltersOptions {
 pub(crate) struct FilterOption {
     pub name: String,
     pub value: String,
+}
+
+/// Results navigation links.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct NavigationLinks {
+    pub first: Option<NavigationLink>,
+    pub last: Option<NavigationLink>,
+    pub next: Option<NavigationLink>,
+    pub prev: Option<NavigationLink>,
+}
+
+impl NavigationLinks {
+    /// Create a new `NavigationLinks`instance from the events filters provided.
+    pub(crate) fn from_events_filters(filters: &EventsFilters, total: usize) -> Result<Self> {
+        let mut links = NavigationLinks::default();
+
+        let offsets = NavigationLinksOffsets::new(filters.offset, filters.limit, total);
+        let entity = Entity::Events;
+        let mut filters = filters.clone();
+
+        if let Some(first_offset) = offsets.first {
+            filters.offset = Some(first_offset);
+            links.first = Some(NavigationLink::new(&entity, &filters)?);
+        }
+        if let Some(last_offset) = offsets.last {
+            filters.offset = Some(last_offset);
+            links.last = Some(NavigationLink::new(&entity, &filters)?);
+        }
+        if let Some(next_offset) = offsets.next {
+            filters.offset = Some(next_offset);
+            links.next = Some(NavigationLink::new(&entity, &filters)?);
+        }
+        if let Some(prev_offset) = offsets.prev {
+            filters.offset = Some(prev_offset);
+            links.prev = Some(NavigationLink::new(&entity, &filters)?);
+        }
+
+        Ok(links)
+    }
+
+    /// Create a new `NavigationLinks`instance from the groups filters provided.
+    pub(crate) fn from_groups_filters(filters: &GroupsFilters, total: usize) -> Result<Self> {
+        let mut links = NavigationLinks::default();
+
+        let offsets = NavigationLinksOffsets::new(filters.offset, filters.limit, total);
+        let entity = Entity::Groups;
+        let mut filters = filters.clone();
+
+        if let Some(first_offset) = offsets.first {
+            filters.offset = Some(first_offset);
+            links.first = Some(NavigationLink::new(&entity, &filters)?);
+        }
+        if let Some(last_offset) = offsets.last {
+            filters.offset = Some(last_offset);
+            links.last = Some(NavigationLink::new(&entity, &filters)?);
+        }
+        if let Some(next_offset) = offsets.next {
+            filters.offset = Some(next_offset);
+            links.next = Some(NavigationLink::new(&entity, &filters)?);
+        }
+        if let Some(prev_offset) = offsets.prev {
+            filters.offset = Some(prev_offset);
+            links.prev = Some(NavigationLink::new(&entity, &filters)?);
+        }
+
+        Ok(links)
+    }
+}
+
+/// Navigation link.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct NavigationLink {
+    pub hx_url: String,
+    pub url: String,
+}
+
+impl NavigationLink {
+    /// Create a new `NavigationLink` instance from the filters provided.
+    pub(crate) fn new<T>(entity: &Entity, filters: &T) -> Result<Self>
+    where
+        T: ser::Serialize + Clone,
+    {
+        let link = NavigationLink {
+            hx_url: build_url(&format!("/explore/{entity}-results-section?"), &filters)?,
+            url: build_url(&format!("/explore?entity={entity}"), &filters)?,
+        };
+        Ok(link)
+    }
+}
+
+/// Navigation links offsets.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct NavigationLinksOffsets {
+    first: Option<usize>,
+    last: Option<usize>,
+    next: Option<usize>,
+    prev: Option<usize>,
+}
+
+impl NavigationLinksOffsets {
+    /// Create a new `NavigationLinksOffsets` instance.
+    fn new(offset: Option<usize>, limit: Option<usize>, total: usize) -> Self {
+        let mut offsets = NavigationLinksOffsets::default();
+
+        // Use default offset and limit values if not provided
+        let offset = offset.unwrap_or(0);
+        let limit = limit.unwrap_or(10);
+
+        // There are more results going backwards
+        if offset > 0 {
+            // First
+            offsets.first = Some(0);
+
+            // Previous
+            offsets.prev = Some(offset - limit);
+        }
+
+        // There are more results going forward
+        if total as i64 - (offset + limit) as i64 > 0 {
+            // Next
+            offsets.next = Some(offset + limit);
+
+            // Last
+            offsets.last = Some(total - (total % limit));
+        }
+
+        offsets
+    }
+}
+
+/// Build URL that includes the filters as query parameters.
+pub(crate) fn build_url<T>(base_url: &str, filters: &T) -> Result<String>
+where
+    T: ser::Serialize,
+{
+    let mut url = base_url.to_string();
+    let filters_params = serde_html_form::to_string(filters)?;
+    if !filters_params.is_empty() {
+        url.push_str(&format!("&{filters_params}"));
+    }
+    Ok(url)
 }
 
 #[cfg(test)]
