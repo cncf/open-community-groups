@@ -68,7 +68,7 @@ pub(crate) struct EventsResultsSection {
     pub events: Vec<Event>,
     pub navigation_links: NavigationLinks,
     pub offset: Option<usize>,
-    pub total: i64,
+    pub total: usize,
 }
 
 /// Filters used in the events section of the community explore page.
@@ -202,7 +202,7 @@ pub(crate) struct GroupsResultsSection {
     pub groups: Vec<Group>,
     pub navigation_links: NavigationLinks,
     pub offset: Option<usize>,
-    pub total: i64,
+    pub total: usize,
 }
 
 /// Filters used in the groups section of the community explore page.
@@ -398,16 +398,20 @@ impl NavigationLinksOffsets {
             offsets.first = Some(0);
 
             // Previous
-            offsets.prev = Some(offset - limit);
+            offsets.prev = Some(offset.saturating_sub(limit));
         }
 
         // There are more results going forward
-        if total as i64 - (offset + limit) as i64 > 0 {
+        if total.saturating_sub(offset + limit) > 0 {
             // Next
             offsets.next = Some(offset + limit);
 
             // Last
-            offsets.last = Some(total - limit + (total % limit));
+            offsets.last = if total % limit == 0 {
+                Some(total - limit)
+            } else {
+                Some(total - (total % limit))
+            };
         }
 
         offsets
@@ -618,6 +622,62 @@ mod tests {
                 last: Some(40),
                 next: Some(30),
                 prev: Some(10),
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case11() {
+        let offsets = NavigationLinksOffsets::new(Some(2), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: Some(0),
+                last: Some(10),
+                next: Some(12),
+                prev: Some(0),
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case12() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: None,
+                next: None,
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case13() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 11);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: Some(10),
+                next: Some(10),
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case14() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 21);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: Some(20),
+                next: Some(10),
+                prev: None,
             }
         );
     }

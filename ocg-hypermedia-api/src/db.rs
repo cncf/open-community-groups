@@ -13,7 +13,7 @@ use tokio_postgres::types::Json;
 use uuid::Uuid;
 
 /// Type alias to represent the total count .
-pub(crate) type Total = i64;
+pub(crate) type Total = usize;
 
 /// Abstraction layer over the database. Trait that defines some operations a
 /// DB implementation must support.
@@ -155,7 +155,8 @@ impl DB for PgDB {
             )
             .await?;
         let events = explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?;
-        let total: Total = row.get("total");
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let total: Total = row.get::<_, i64>("total") as usize;
 
         Ok((events, total))
     }
@@ -174,7 +175,8 @@ impl DB for PgDB {
             )
             .await?;
         let groups = explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?;
-        let total: Total = row.get("total");
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let total: Total = row.get::<_, i64>("total") as usize;
 
         Ok((groups, total))
     }

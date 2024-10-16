@@ -47,7 +47,7 @@ pub(crate) async fn index(
                 filters_options,
                 results_section: explore::EventsResultsSection {
                     events,
-                    navigation_links: NavigationLinks::from_events_filters(&filters, total as usize)?,
+                    navigation_links: NavigationLinks::from_events_filters(&filters, total)?,
                     offset,
                     total,
                 },
@@ -65,7 +65,7 @@ pub(crate) async fn index(
                 filters_options,
                 results_section: explore::GroupsResultsSection {
                     groups,
-                    navigation_links: NavigationLinks::from_groups_filters(&filters, total as usize)?,
+                    navigation_links: NavigationLinks::from_groups_filters(&filters, total)?,
                     offset,
                     total,
                 },
@@ -93,7 +93,7 @@ pub(crate) async fn events_section(
         filters_options,
         results_section: explore::EventsResultsSection {
             events,
-            navigation_links: NavigationLinks::from_events_filters(&filters, total as usize)?,
+            navigation_links: NavigationLinks::from_events_filters(&filters, total)?,
             offset: filters.offset,
             total,
         },
@@ -119,7 +119,7 @@ pub(crate) async fn events_results_section(
     let (events, total) = db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
         events,
-        navigation_links: NavigationLinks::from_events_filters(&filters, total as usize)?,
+        navigation_links: NavigationLinks::from_events_filters(&filters, total)?,
         offset: filters.offset,
         total,
     };
@@ -150,7 +150,7 @@ pub(crate) async fn groups_section(
         filters_options,
         results_section: explore::GroupsResultsSection {
             groups,
-            navigation_links: NavigationLinks::from_groups_filters(&filters, total as usize)?,
+            navigation_links: NavigationLinks::from_groups_filters(&filters, total)?,
             offset: filters.offset,
             total,
         },
@@ -176,7 +176,7 @@ pub(crate) async fn groups_results_section(
     let (groups, total) = db.search_community_groups(community_id, &filters).await?;
     let template = explore::GroupsResultsSection {
         groups,
-        navigation_links: NavigationLinks::from_groups_filters(&filters, total as usize)?,
+        navigation_links: NavigationLinks::from_groups_filters(&filters, total)?,
         offset: filters.offset,
         total,
     };
