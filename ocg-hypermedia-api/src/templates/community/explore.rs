@@ -11,6 +11,9 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 
+/// Default pagination limit.
+const DEFAULT_PAGINATION_LIMIT: usize = 10;
+
 /// Explore index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/index.html")]
@@ -290,7 +293,7 @@ pub(crate) struct NavigationLinks {
 }
 
 impl NavigationLinks {
-    /// Create a new `NavigationLinks`instance from the events filters provided.
+    /// Create a new `NavigationLinks` instance from the events filters provided.
     pub(crate) fn from_events_filters(filters: &EventsFilters, total: usize) -> Result<Self> {
         let mut links = NavigationLinks::default();
 
@@ -318,7 +321,7 @@ impl NavigationLinks {
         Ok(links)
     }
 
-    /// Create a new `NavigationLinks`instance from the groups filters provided.
+    /// Create a new `NavigationLinks` instance from the groups filters provided.
     pub(crate) fn from_groups_filters(filters: &GroupsFilters, total: usize) -> Result<Self> {
         let mut links = NavigationLinks::default();
 
@@ -371,8 +374,8 @@ impl NavigationLink {
     }
 }
 
-/// Navigation links offsets.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Offsets used to build the navigation links.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 struct NavigationLinksOffsets {
     first: Option<usize>,
     last: Option<usize>,
@@ -387,7 +390,7 @@ impl NavigationLinksOffsets {
 
         // Use default offset and limit values if not provided
         let offset = offset.unwrap_or(0);
-        let limit = limit.unwrap_or(10);
+        let limit = limit.unwrap_or(DEFAULT_PAGINATION_LIMIT);
 
         // There are more results going backwards
         if offset > 0 {
@@ -404,7 +407,7 @@ impl NavigationLinksOffsets {
             offsets.next = Some(offset + limit);
 
             // Last
-            offsets.last = Some(total - (total % limit));
+            offsets.last = Some(total - limit + (total % limit));
         }
 
         offsets
@@ -426,10 +429,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::Event;
+    use crate::templates::community::explore::DEFAULT_PAGINATION_LIMIT;
+
+    use super::{Event, NavigationLinksOffsets};
 
     #[test]
-    fn explore_event_location() {
+    fn explore_event_location_case1() {
         let event = Event {
             city: Some("City".to_string()),
             country: Some("Country".to_string()),
@@ -438,7 +443,10 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(event.location(), Some("Venue, City, State, Country".to_string()));
+    }
 
+    #[test]
+    fn explore_event_location_case2() {
         let event = Event {
             city: Some("City".to_string()),
             country: Some("Country".to_string()),
@@ -446,22 +454,171 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(event.location(), Some("City, State, Country".to_string()));
+    }
 
+    #[test]
+    fn explore_event_location_case3() {
         let event = Event {
             country: Some("Country".to_string()),
             venue: Some("Venue".to_string()),
             ..Default::default()
         };
         assert_eq!(event.location(), Some("Venue, Country".to_string()));
+    }
 
+    #[test]
+    fn explore_event_location_case4() {
         let event = Event {
             city: Some("City".to_string()),
             venue: Some("Venue".to_string()),
             ..Default::default()
         };
         assert_eq!(event.location(), Some("Venue, City".to_string()));
+    }
 
+    #[test]
+    fn explore_event_location_case5() {
         let event = Event::default();
         assert_eq!(event.location(), None);
+    }
+
+    #[test]
+    fn navigation_links_offsets_case1() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: Some(10),
+                next: Some(10),
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case2() {
+        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: Some(0),
+                last: None,
+                next: None,
+                prev: Some(0),
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case3() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: Some(10),
+                next: Some(10),
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case4() {
+        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 15);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: Some(0),
+                last: None,
+                next: None,
+                prev: Some(0),
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case5() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 10);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: None,
+                next: None,
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case6() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: None,
+                next: None,
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case7() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 0);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: None,
+                next: None,
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case8() {
+        let offsets = NavigationLinksOffsets::new(None, Some(10), 15);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: Some(10),
+                next: Some(10),
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case9() {
+        let offsets = NavigationLinksOffsets::new(None, None, 15);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: None,
+                last: Some(DEFAULT_PAGINATION_LIMIT),
+                next: Some(DEFAULT_PAGINATION_LIMIT),
+                prev: None,
+            }
+        );
+    }
+
+    #[test]
+    fn navigation_links_offsets_case10() {
+        let offsets = NavigationLinksOffsets::new(Some(20), Some(10), 50);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
+                first: Some(0),
+                last: Some(40),
+                next: Some(30),
+                prev: Some(10),
+            }
+        );
     }
 }
