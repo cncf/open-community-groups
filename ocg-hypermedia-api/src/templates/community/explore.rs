@@ -361,7 +361,10 @@ impl NavigationLink {
         T: ser::Serialize + Clone,
     {
         let link = NavigationLink {
-            hx_url: build_url(&format!("/explore/{entity}-results-section?"), &filters)?,
+            hx_url: build_url(
+                &format!("/explore/{entity}-results-section?entity={entity}"),
+                &filters,
+            )?,
             url: build_url(&format!("/explore?entity={entity}"), &filters)?,
         };
         Ok(link)

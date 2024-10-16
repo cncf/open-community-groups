@@ -6,8 +6,7 @@
 {% endblock %}
 
 {% block results %}
-  {% set limit = 10 %}
-  {% if let Some(offset) = filters.offset %}{{ offset + 1 }} - {% if (offset + limit) > results_section.events.len() %}{{ results_section.total }}{% else %}{{ limit + offset }}{% endif %}{% else %}1 - {{ results_section.events.len() }}{% endif %} of {{ results_section.total }} results
+  {% call common::results_legend(results_section.total, results_section.events.len(), filters.offset) %}
 {% endblock %}
 
 {% block searchbar %}

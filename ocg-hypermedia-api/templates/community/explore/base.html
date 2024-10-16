@@ -10,7 +10,7 @@
   </div>
 
   <div class="relative w-full lg:w-3/4 lg:pl-10 self-stretch">
-    <div class="bg-white border rounded-lg mb-10 pt-5 md:pt-7 h-full">
+    <div class="flex flex-col bg-white border rounded-lg pt-5 md:pt-7 h-full">
       <div class="flex items-center mb-10 px-5 md:px-7">
         <!-- Mobile filters button -->
         <div class="flex lg:hidden">
@@ -43,7 +43,7 @@
         </div>
       </div>
       <div class="flex items-end justify-between px-5 md:items-center md:px-7">
-        <div class="hidden font-semibold text-sm text-black w-[175px] md:flex">{% block results %}{% endblock %}</div>
+        <div id="results" class="hidden font-semibold text-sm text-black w-[175px] md:flex">{% block results %}{% endblock %}</div>
         <div class="flex flex-col items-start sm:items-center sm:flex-row">
           <label
             for="sort"
@@ -61,10 +61,13 @@
           {% call common::secondary_button("<span class='hidden md:block'>Browse in map</span><span class='block md:hidden'>Map</span>", "map", "() => console.log('hola')", "", false) %}
         </div>
       </div>
-      <div class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
-      {% block content %}
-        <div></div>
-      {% endblock %}
+      <div id="results-mobile" class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
+
+      <div id="cards-list" class="flex flex-col justify-between grow">
+        {% block content %}
+          <div></div>
+        {% endblock %}
+      </div>
     </div>
   </div>
 </div>

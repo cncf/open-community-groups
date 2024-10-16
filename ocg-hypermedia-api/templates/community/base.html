@@ -165,6 +165,14 @@
         }
       }
 
+      // Explore - results
+      const updateResults = (content) => {
+        const results = document.getElementById('results');
+        results.innerHTML = content;
+        const resultsMobile = document.getElementById('results-mobile');
+        resultsMobile.innerHTML = content;
+      };
+
       // Gallery
       const openFullModal = (modalId, activeIndex) => {
         const modal = document.getElementById(modalId);
