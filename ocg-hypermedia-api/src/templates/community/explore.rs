@@ -102,6 +102,20 @@ impl EventsFilters {
     }
 }
 
+impl Pagination for EventsFilters {
+    fn limit(&self) -> Option<usize> {
+        self.limit
+    }
+
+    fn offset(&self) -> Option<usize> {
+        self.offset
+    }
+
+    fn set_offset(&mut self, offset: Option<usize>) {
+        self.offset = offset;
+    }
+}
+
 /// Event kind (in-person or virtual).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -232,6 +246,20 @@ impl GroupsFilters {
     }
 }
 
+impl Pagination for GroupsFilters {
+    fn limit(&self) -> Option<usize> {
+        self.limit
+    }
+
+    fn offset(&self) -> Option<usize> {
+        self.offset
+    }
+
+    fn set_offset(&mut self, offset: Option<usize>) {
+        self.offset = offset;
+    }
+}
+
 /// Group information used in the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Group {
@@ -293,57 +321,31 @@ pub(crate) struct NavigationLinks {
 }
 
 impl NavigationLinks {
-    /// Create a new `NavigationLinks` instance from the events filters provided.
-    pub(crate) fn from_events_filters(filters: &EventsFilters, total: usize) -> Result<Self> {
+    /// Create a new `NavigationLinks` instance from the filters provided.
+    pub(crate) fn from_filters<T>(entity: &Entity, filters: &T, total: usize) -> Result<Self>
+    where
+        T: ser::Serialize + Clone + Pagination,
+    {
         let mut links = NavigationLinks::default();
 
-        let offsets = NavigationLinksOffsets::new(filters.offset, filters.limit, total);
-        let entity = Entity::Events;
+        let offsets = NavigationLinksOffsets::new(filters.offset(), filters.limit(), total);
         let mut filters = filters.clone();
 
         if let Some(first_offset) = offsets.first {
-            filters.offset = Some(first_offset);
-            links.first = Some(NavigationLink::new(&entity, &filters)?);
+            filters.set_offset(Some(first_offset));
+            links.first = Some(NavigationLink::new(entity, &filters)?);
         }
         if let Some(last_offset) = offsets.last {
-            filters.offset = Some(last_offset);
-            links.last = Some(NavigationLink::new(&entity, &filters)?);
+            filters.set_offset(Some(last_offset));
+            links.last = Some(NavigationLink::new(entity, &filters)?);
         }
         if let Some(next_offset) = offsets.next {
-            filters.offset = Some(next_offset);
-            links.next = Some(NavigationLink::new(&entity, &filters)?);
+            filters.set_offset(Some(next_offset));
+            links.next = Some(NavigationLink::new(entity, &filters)?);
         }
         if let Some(prev_offset) = offsets.prev {
-            filters.offset = Some(prev_offset);
-            links.prev = Some(NavigationLink::new(&entity, &filters)?);
-        }
-
-        Ok(links)
-    }
-
-    /// Create a new `NavigationLinks` instance from the groups filters provided.
-    pub(crate) fn from_groups_filters(filters: &GroupsFilters, total: usize) -> Result<Self> {
-        let mut links = NavigationLinks::default();
-
-        let offsets = NavigationLinksOffsets::new(filters.offset, filters.limit, total);
-        let entity = Entity::Groups;
-        let mut filters = filters.clone();
-
-        if let Some(first_offset) = offsets.first {
-            filters.offset = Some(first_offset);
-            links.first = Some(NavigationLink::new(&entity, &filters)?);
-        }
-        if let Some(last_offset) = offsets.last {
-            filters.offset = Some(last_offset);
-            links.last = Some(NavigationLink::new(&entity, &filters)?);
-        }
-        if let Some(next_offset) = offsets.next {
-            filters.offset = Some(next_offset);
-            links.next = Some(NavigationLink::new(&entity, &filters)?);
-        }
-        if let Some(prev_offset) = offsets.prev {
-            filters.offset = Some(prev_offset);
-            links.prev = Some(NavigationLink::new(&entity, &filters)?);
+            filters.set_offset(Some(prev_offset));
+            links.prev = Some(NavigationLink::new(entity, &filters)?);
         }
 
         Ok(links)
@@ -415,6 +417,18 @@ impl NavigationLinksOffsets {
 
         offsets
     }
+}
+
+/// Pagination trait.
+pub(crate) trait Pagination {
+    /// Get the limit value.
+    fn limit(&self) -> Option<usize>;
+
+    /// Get the offset value.
+    fn offset(&self) -> Option<usize>;
+
+    /// Set the offset value.
+    fn set_offset(&mut self, offset: Option<usize>);
 }
 
 /// Build URL that includes the filters as query parameters.
