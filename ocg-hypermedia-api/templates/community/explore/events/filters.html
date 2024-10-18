@@ -44,12 +44,14 @@
   <!-- End type -->
 
   <!-- Regions -->
-  {% call macros::collapsible_filter("Region", filters_options.region, "region", "checkbox", filters.region) %}
+  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region) %}
   <!-- End Regions -->
 
-  <!-- Distance -->
-  {% call macros::collapsible_filter("Distance", filters_options.distance, "distance", "radio", filters.distance) %}
-  <!-- End distance -->
+  {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+    <!-- Distance -->
+    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance) %}
+    <!-- End distance -->
+  {% endif %}
 
   <!-- Date -->
   <div class="px-6 py-7 pt-5">
@@ -61,8 +63,8 @@
       </div>
     </div>
     <div class="flex flex-wrap gap-3 items-center mt-3">
-      {% call macros::input_date("date_from", "from", filters.date_from) %}
-      {% call macros::input_date("date_to", "to", filters.date_to) %}
+      {% call macros::date_input("date_from", "from", filters.date_from) %}
+      {% call macros::date_input("date_to", "to", filters.date_to) %}
     </div>
   </div>
   <!-- End date -->

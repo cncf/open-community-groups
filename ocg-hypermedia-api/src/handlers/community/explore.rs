@@ -10,7 +10,7 @@ use anyhow::Result;
 use askama_axum::IntoResponse;
 use axum::{
     extract::{Query, RawQuery, State},
-    http::Uri,
+    http::{HeaderMap, Uri},
 };
 use std::collections::HashMap;
 
@@ -20,6 +20,7 @@ pub(crate) async fn index(
     CommunityId(community_id): CommunityId,
     Query(query): Query<HashMap<String, String>>,
     RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare explore index template
@@ -36,12 +37,13 @@ pub(crate) async fn index(
     // Attach events or groups section template to the index template
     match entity {
         explore::Entity::Events => {
-            let filters = EventsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+            let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let (filters_options, (events, total)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
             )?;
             let offset = filters.offset;
+
             template.events_section = Some(explore::EventsSection {
                 filters: filters.clone(),
                 filters_options,
@@ -54,12 +56,13 @@ pub(crate) async fn index(
             });
         }
         explore::Entity::Groups => {
-            let filters = GroupsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+            let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let (filters_options, (groups, total)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
             )?;
             let offset = filters.offset;
+
             template.groups_section = Some(explore::GroupsSection {
                 filters: filters.clone(),
                 filters_options,
@@ -81,9 +84,10 @@ pub(crate) async fn events_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
-    let filters = EventsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let (filters_options, (events, total)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_events(community_id, &filters)
@@ -113,9 +117,10 @@ pub(crate) async fn events_results_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
-    let filters = EventsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let (events, total) = db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
         events,
@@ -138,9 +143,10 @@ pub(crate) async fn groups_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
-    let filters = GroupsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let (filters_options, (groups, total)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_groups(community_id, &filters)
@@ -170,9 +176,10 @@ pub(crate) async fn groups_results_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
-    let filters = GroupsFilters::try_from_raw_query(&raw_query.unwrap_or_default())?;
+    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let (groups, total) = db.search_community_groups(community_id, &filters).await?;
     let template = explore::GroupsResultsSection {
         groups,

@@ -1,4 +1,5 @@
 create extension pgcrypto;
+create extension postgis;
 
 create or replace function i_array_to_string(text[], text)
 returns text language sql immutable as $$select array_to_string($1, $2)$$;
@@ -86,9 +87,8 @@ create table "group" (
     homepage_url text check (homepage_url <> ''),
     icon_url text check (icon_url <> ''),
     instagram_url text check (instagram_url <> ''),
-    latitude double precision,
     linkedin_url text check (linkedin_url <> ''),
-    longitude double precision,
+    location geography(point,4326),
     photos_urls text[],
     slack_url text check (slack_url <> ''),
     state text check (state <> ''),
@@ -107,6 +107,7 @@ create index group_community_id_idx on "group" (community_id);
 create index group_region_id_idx on "group" (region_id);
 create index group_group_site_layout_id_idx on "group" (group_site_layout_id);
 create index group_tsdoc_idx on "group" using gin (tsdoc);
+create index group_location_idx on "group" using gist (location);
 
 create table event_kind (
     event_kind_id text primary key,
@@ -143,8 +144,7 @@ create table event (
     city text check (city <> ''),
     country text check (country <> ''),
     icon_url text check (icon_url <> ''),
-    latitude double precision,
-    longitude double precision,
+    location geography(point,4326),
     photos_urls text[],
     postal_code text check (postal_code <> ''),
     recording_url text check (recording_url <> ''),
@@ -160,6 +160,7 @@ create table event (
 create index event_group_id_idx on event (group_id);
 create index event_event_kind_id_idx on event (event_kind_id);
 create index event_tsdoc_idx on event using gin (tsdoc);
+create index event_location_idx on event using gist (location);
 
 create table session_kind (
     session_kind_id text primary key,

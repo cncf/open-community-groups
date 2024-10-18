@@ -72,30 +72,34 @@
 {% endmacro %}
 <!-- End Entity => Events/Groups -->
 
-<!-- Input label -->
-{% macro input_label(input_type, name, label, value, filters_selected, styles) %}
+<!-- Checkbox input -->
+{% macro checkbox_input(name, label, value, active_filters, styles) %}
   <li data-item="input-item" class="{{ styles }}">
-    <input type="{{ input_type }}" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if filters_selected.contains(value.to_string().borrow()) %}checked{% endif %}>
+    <input type="checkbox" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if active_filters.contains(value.to_string().borrow()) %}checked{% endif %}>
     <label for="{{ value }}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.825rem] text-center text-nowrap">{{ label }}</div>
     </label>
   </li>
 {% endmacro %}
-<!-- End input label -->
+<!-- End checkbox input-->
 
-<!-- Input label any -->
-{% macro input_label_any(name, filters_selected) %}
-  <li>
-    <input type="checkbox" name="{{ name }}" value="" id="any-{{name}}" class="hidden peer" {% if filters_selected.is_empty() %}checked{% endif %}>
-    <label for="any-{{name}}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50" onclick="updateAnyValue('{{ name }}')">
-      <div class="text-[0.825rem] text-center text-nowrap">Any</div>
+<!-- Radio input -->
+{% macro radio_input(name, label, value, active_filter, styles) %}
+  <li data-item="input-item" class="{{ styles }}">
+    {% if let Some(active) = active_filter %}
+      <input type="radio" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if active.to_string() == value %}checked{% endif %}>
+    {% else %}
+      <input type="radio" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer">
+    {% endif %}
+    <label for="{{ value }}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+      <div class="text-[0.825rem] text-center text-nowrap">{{ label }}</div>
     </label>
   </li>
 {% endmacro %}
-<!-- End input label any -->
+<!-- End radio input-->
 
 <!-- Input date -->
-{% macro input_date(name, label, value) %}
+{% macro date_input(name, label, value) %}
   <div class="w-full">
     <div class="text-[10px] uppercase leading-4 text-gray-500 mb-1">{{ label }}:</div>
     <div class="relative w-[75%]">
@@ -108,45 +112,91 @@
 {% endmacro %}
 <!-- End input date -->
 
+<!-- Collapsible header -->
+{% macro collapsible_header(title, label, items_length, max_visible_items_number) %}
+  <div class="flex justify-between items-center">
+    <div class="font-semibold text-filterTitle text-black leading-6">
+      {{ title }}
+    </div>
+    <div>
+      {% if items_length > max_visible_items_number %}
+        <button type="button" onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}', {{ max_visible_items_number }})" class="text-gray-700 border hover:bg-gray-700 hover:text-white focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
+          <span class="hidden group-[.collapsed]:block">
+            <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 374.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 306.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"></path></svg>
+          </span>
+          <span class="block group-[.collapsed]:hidden">
+            <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 137.4c12.5-12.5 32.8-12.5 45.3 0l160 160c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L224 205.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l160-160z"></path></svg>
+          </span>
+        </button>
+      {% endif %}
+    </div>
+  </div>
+{% endmacro %}
+<!-- End collapsible header -->
+
+<!-- Collapsible footer -->
+{% macro collapsible_footer(label, items_length, max_visible_items_number) %}
+  {% if items_length > max_visible_items_number %}
+    <div class="mt-4 -mb-1.5">
+      <button onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}', {{ max_visible_items_number }})" type="button" class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
+        <span class="hidden group-[.collapsed]:block">+ Show more</span>
+        <span class="block group-[.collapsed]:hidden">- Show less</span>
+      </button>
+    </div>
+  {% endif %}
+{% endmacro %}
+<!-- End collapsible footer -->
+
 <!-- Collapsible filter -->
-{% macro collapsible_filter(title, options, label, input_type, active_filters) %}
+{% macro collapsible_filter_checkboxes(title, options, label, active_filters) %}
   {% let max_visible_items_number = 5 %}
   <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed">
-    <div class="flex justify-between items-center">
-      <div class="font-semibold text-filterTitle text-black leading-6">
-        {{ title }}
-      </div>
-      <div>
-        {% if options.len() > max_visible_items_number %}
-          <button type="button" onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}', {{ max_visible_items_number }})" class="text-gray-700 border hover:bg-gray-700 hover:text-white focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
-            <span class="hidden group-[.collapsed]:block">
-              <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 374.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 306.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"></path></svg>
-            </span>
-            <span class="block group-[.collapsed]:hidden">
-              <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 137.4c12.5-12.5 32.8-12.5 45.3 0l160 160c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L224 205.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l160-160z"></path></svg>
-            </span>
-          </button>
-        {% endif %}
-      </div>
-    </div>
+    {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
     <ul class="flex flex-wrap w-full gap-3 mt-3">
-      {% call input_label_any(label, active_filters) %}
+      <li>
+        <input type="checkbox" name="any" value="" id="any-{{label}}" class="hidden peer" {% if active_filters.is_empty() %}checked{% endif %}>
+        <label for="any-{{label}}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50" onclick="updateAnyValue('{{ label }}')">
+          <div class="text-[0.825rem] text-center text-nowrap">Any</div>
+        </label>
+      </li>
       {% for option in options %}
         {% if loop.index <= max_visible_items_number %}
-          {% call input_label(input_type, label, option.name, option.value, active_filters, "") %}
+          {% call checkbox_input(label, option.name, option.value, active_filters, "") %}
         {% else %}
-          {% call input_label(input_type, label, option.name, option.value, active_filters, "hidden") %}
+          {% call checkbox_input(label, option.name, option.value, active_filters, "hidden") %}
         {% endif %}
       {% endfor %}
     </ul>
-    {% if options.len() > max_visible_items_number %}
-      <div class="mt-4 -mb-1.5">
-        <button onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}', {{ max_visible_items_number }})" type="button" class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
-          <span class="hidden group-[.collapsed]:block">+ Show more</span>
-          <span class="block group-[.collapsed]:hidden">- Show less</span>
-        </button>
-      </div>
-    {% endif %}
+    {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
+  </div>
+{% endmacro %}
+<!-- End collapsible filter -->
+
+<!-- Collapsible filter with radios -->
+{% macro collapsible_filter_radios(title, options, label, active_filter) %}
+  {% let max_visible_items_number = 5 %}
+  <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed">
+    {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
+    <ul class="flex flex-wrap w-full gap-3 mt-3">
+      <li>
+        {% if let Some(selected) = active_filter %}
+          <input type="radio" name="any" value="" id="any-{{label}}" class="hidden peer">
+        {% else %}
+          <input type="radio" name="any" value="" id="any-{{label}}" class="hidden peer" checked>
+        {% endif %}
+        <label for="any-{{label}}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50" onclick="updateAnyValue('{{ label }}', true)">
+          <div class="text-[0.825rem] text-center text-nowrap">Any</div>
+        </label>
+      </li>
+      {% for option in options %}
+        {% if loop.index <= max_visible_items_number %}
+          {% call radio_input(label, option.name, option.value, active_filter, "") %}
+        {% else %}
+          {% call radio_input(label, option.name, option.value, active_filter, "hidden") %}
+        {% endif %}
+      {% endfor %}
+    </ul>
+    {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
   </div>
 {% endmacro %}
 <!-- End collapsible filter -->

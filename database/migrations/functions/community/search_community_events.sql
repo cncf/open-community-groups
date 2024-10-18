@@ -4,13 +4,19 @@ returns table(events json, total bigint) as $$
 declare
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
+    v_distance real;
     v_kind text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
     v_tsquery_with_prefix_matching tsquery;
+    v_user_location geography;
 begin
     -- Prepare filters
+    if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
+        v_distance := (p_filters->>'distance')::real;
+        v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
+    end if;
     if p_filters ? 'kind' then
         select array_agg(e::text) into v_kind
         from jsonb_array_elements_text(p_filters->'kind') e;
@@ -65,6 +71,9 @@ begin
         and
             case when v_date_to is not null then
             e.starts_at <= v_date_to else true end
+        and
+            case when v_distance is not null and v_user_location is not null then
+            st_dwithin(v_user_location, e.location, v_distance) else true end
         and
             case when v_tsquery_with_prefix_matching is not null then
                 v_tsquery_with_prefix_matching @@ e.tsdoc

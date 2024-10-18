@@ -2,14 +2,17 @@
 //! the community site.
 
 use super::common::Community;
+use crate::templates::helpers::extract_location;
 use anyhow::Result;
 use askama::Template;
+use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
 use serde::{ser, Deserialize, Serialize};
 use std::{
     borrow::Borrow,
     fmt::{self, Display, Formatter},
 };
+use tracing::trace;
 
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
@@ -75,30 +78,45 @@ pub(crate) struct EventsResultsSection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
     #[serde(default)]
-    pub distance: Vec<String>,
-    #[serde(default)]
     pub kind: Vec<EventKind>,
     #[serde(default)]
     pub region: Vec<String>,
 
     pub date_from: Option<String>,
     pub date_to: Option<String>,
+    pub distance: Option<u64>,
+    pub latitude: Option<f64>,
     pub limit: Option<usize>,
+    pub longitude: Option<f64>,
     pub offset: Option<usize>,
     pub ts_query: Option<String>,
 }
 
 impl EventsFilters {
     /// Create a new `EventsFilters` instance from the raw query string
-    /// provided.
-    pub(crate) fn try_from_raw_query(raw_query: &str) -> Result<Self> {
+    /// and headers provided.
+    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
         let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
-        filters.distance.retain(|v| !v.is_empty());
         filters.region.retain(|v| !v.is_empty());
 
+        // Populate the latitude and longitude fields from the headers provided
+        (filters.latitude, filters.longitude) = extract_location(headers);
+
+        trace!("{:?}", filters);
         Ok(filters)
+    }
+}
+
+impl ToRawQuery for EventsFilters {
+    fn to_raw_query(&self) -> Result<String> {
+        // Reset some filters we don't want to include in the query string
+        let mut filters = self.clone();
+        filters.latitude = None;
+        filters.longitude = None;
+
+        serde_html_form::to_string(&filters).map_err(anyhow::Error::from)
     }
 }
 
@@ -223,26 +241,41 @@ pub(crate) struct GroupsResultsSection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
     #[serde(default)]
-    pub distance: Vec<String>,
-    #[serde(default)]
     pub region: Vec<String>,
 
+    pub distance: Option<f64>,
+    pub latitude: Option<f64>,
     pub limit: Option<usize>,
+    pub longitude: Option<f64>,
     pub offset: Option<usize>,
     pub ts_query: Option<String>,
 }
 
 impl GroupsFilters {
     /// Create a new `GroupsFilters` instance from the raw query string
-    /// provided.
-    pub(crate) fn try_from_raw_query(raw_query: &str) -> Result<Self> {
+    /// and headers provided.
+    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
         let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
-        filters.distance.retain(|v| !v.is_empty());
         filters.region.retain(|v| !v.is_empty());
 
+        // Populate the latitude and longitude fields from the headers provided.
+        (filters.latitude, filters.longitude) = extract_location(headers);
+
+        trace!("{:?}", filters);
         Ok(filters)
+    }
+}
+
+impl ToRawQuery for GroupsFilters {
+    fn to_raw_query(&self) -> Result<String> {
+        // Reset some filters we don't want to include in the query string
+        let mut filters = self.clone();
+        filters.latitude = None;
+        filters.longitude = None;
+
+        serde_html_form::to_string(&filters).map_err(anyhow::Error::from)
     }
 }
 
@@ -324,7 +357,7 @@ impl NavigationLinks {
     /// Create a new `NavigationLinks` instance from the filters provided.
     pub(crate) fn from_filters<T>(entity: &Entity, filters: &T, total: usize) -> Result<Self>
     where
-        T: ser::Serialize + Clone + Pagination,
+        T: ser::Serialize + Clone + ToRawQuery + Pagination,
     {
         let mut links = NavigationLinks::default();
 
@@ -363,14 +396,14 @@ impl NavigationLink {
     /// Create a new `NavigationLink` instance from the filters provided.
     pub(crate) fn new<T>(entity: &Entity, filters: &T) -> Result<Self>
     where
-        T: ser::Serialize + Clone,
+        T: ser::Serialize + ToRawQuery,
     {
         let base_hx_url = format!("/explore/{entity}-results-section");
         let base_url = format!("/explore?entity={entity}");
 
         Ok(NavigationLink {
-            hx_url: build_url(&base_hx_url, &filters)?,
-            url: build_url(&base_url, &filters)?,
+            hx_url: build_url(&base_hx_url, filters)?,
+            url: build_url(&base_url, filters)?,
         })
     }
 }
@@ -419,26 +452,14 @@ impl NavigationLinksOffsets {
     }
 }
 
-/// Pagination trait.
-pub(crate) trait Pagination {
-    /// Get the limit value.
-    fn limit(&self) -> Option<usize>;
-
-    /// Get the offset value.
-    fn offset(&self) -> Option<usize>;
-
-    /// Set the offset value.
-    fn set_offset(&mut self, offset: Option<usize>);
-}
-
 /// Build URL that includes the filters as query parameters.
 pub(crate) fn build_url<T>(base_url: &str, filters: &T) -> Result<String>
 where
-    T: ser::Serialize,
+    T: ser::Serialize + ToRawQuery,
 {
     let mut url = base_url.to_string();
     let sep = get_url_filters_separator(&url);
-    let filters_params = serde_html_form::to_string(filters)?;
+    let filters_params = filters.to_raw_query()?;
     if !filters_params.is_empty() {
         url.push_str(&format!("{sep}{filters_params}"));
     }
@@ -458,10 +479,27 @@ fn get_url_filters_separator(url: &str) -> &str {
     }
 }
 
+/// Trait to convert a type to a raw query string.
+pub(crate) trait ToRawQuery {
+    /// Convert the type to a raw query string.
+    fn to_raw_query(&self) -> Result<String>;
+}
+
+/// Trait to get and set some pagination values.
+pub(crate) trait Pagination {
+    /// Get the limit value.
+    fn limit(&self) -> Option<usize>;
+
+    /// Get the offset value.
+    fn offset(&self) -> Option<usize>;
+
+    /// Set the offset value.
+    fn set_offset(&mut self, offset: Option<usize>);
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{get_url_filters_separator, Event, NavigationLinksOffsets};
-    use crate::templates::community::explore::DEFAULT_PAGINATION_LIMIT;
+    use super::{get_url_filters_separator, Event, NavigationLinksOffsets, DEFAULT_PAGINATION_LIMIT};
 
     macro_rules! explore_event_location_tests {
         ($(

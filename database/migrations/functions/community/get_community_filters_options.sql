@@ -4,28 +4,24 @@ returns json as $$
     select json_build_object(
         'distance', json_build_array(
             json_build_object(
-                'name', '2 miles',
-                'value', '2 miles'
+                'name', '10 km',
+                'value', '10000'
             ),
             json_build_object(
-                'name', '5 miles',
-                'value', '5 miles'
+                'name', '50 km',
+                'value', '50000'
             ),
             json_build_object(
-                'name', '10 miles',
-                'value', '10 miles'
+                'name', '100 km',
+                'value', '100000'
             ),
             json_build_object(
-                'name', '25 miles',
-                'value', '25 miles'
+                'name', '500 km',
+                'value', '500000'
             ),
             json_build_object(
-                'name', '50 miles',
-                'value', '50 miles'
-            ),
-            json_build_object(
-                'name', '100 miles',
-                'value', '100 miles'
+                'name', '1000 km',
+                'value', '1000000'
             )
         ),
         'region', (

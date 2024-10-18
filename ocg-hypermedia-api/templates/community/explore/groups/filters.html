@@ -13,10 +13,12 @@
   hx-boost="true"
 >
   <!-- Regions -->
-  {% call macros::collapsible_filter("Region", filters_options.region, "region", "checkbox", filters.region) %}
+  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region) %}
   <!-- End Regions -->
 
-  <!-- Distance -->
-  {% call macros::collapsible_filter("Distance", filters_options.distance, "distance", "radio", filters.distance) %}
-  <!-- End distance -->
+  {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+    <!-- Distance -->
+    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance) %}
+    <!-- End distance -->
+  {% endif %}
 </form>

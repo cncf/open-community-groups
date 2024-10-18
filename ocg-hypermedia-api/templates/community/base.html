@@ -92,6 +92,7 @@
       const resetFilters = (formName) => {
         const form = document.getElementById(formName);
         document.querySelectorAll(`#${formName} input[type=checkbox]`).forEach(el => el.checked = false);
+        document.querySelectorAll(`#${formName} input[type=radio]`).forEach(el => el.checked = false);
         document.querySelectorAll(`#${formName} input[value='']`).forEach(el => el.checked = true);
         document.querySelectorAll(`#${formName} input[type=date]`).forEach(el => el.value = '');
         document.querySelector('input[name="ts_query"]').value = '';
@@ -99,14 +100,18 @@
         triggerChangeOnForm(form.id);
       };
 
-      const updateAnyValue = (name) => {
+      const updateAnyValue = (name, triggerChange) => {
         const anyInput = document.getElementById(`any-${name}`);
         if (!anyInput.isChecked) {
-          anyInput.checked = true;
           const inputs = document.querySelectorAll(`input[name='${name}']:checked`);
           inputs.forEach((input) => {
             input.checked = false;
           });
+          anyInput.checked = true;
+          if (triggerChange) {
+            const form = anyInput.closest('form');
+            triggerChangeOnForm(form.id);
+          }
         }
       };
 
