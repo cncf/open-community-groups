@@ -6,7 +6,9 @@
 {% endblock %}
 
 {% block results %}
-  {% call common::results_legend(results_section.total, results_section.events.len(), filters.offset) %}
+  {% if results_section.events.len() > 0 %}
+    {% call common::results_legend(results_section.total, results_section.events.len(), filters.offset) %}
+  {% endif %}
 {% endblock %}
 
 {% block searchbar %}
