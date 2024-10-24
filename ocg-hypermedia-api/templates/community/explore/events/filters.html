@@ -44,12 +44,12 @@
   <!-- End type -->
 
   <!-- Regions -->
-  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region) %}
+  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, 5) %}
   <!-- End Regions -->
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
     <!-- Distance -->
-    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance) %}
+    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, 5) %}
     <!-- End distance -->
   {% endif %}
 

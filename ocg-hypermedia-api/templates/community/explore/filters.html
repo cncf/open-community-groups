@@ -148,8 +148,7 @@
 <!-- End collapsible footer -->
 
 <!-- Collapsible filter -->
-{% macro collapsible_filter_checkboxes(title, options, label, active_filters) %}
-  {% let max_visible_items_number = 5 %}
+{% macro collapsible_filter_checkboxes(title, options, label, active_filters, max_visible_items_number) %}
   <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed">
     {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
     <ul class="flex flex-wrap w-full gap-3 mt-3">
@@ -173,8 +172,7 @@
 <!-- End collapsible filter -->
 
 <!-- Collapsible filter with radios -->
-{% macro collapsible_filter_radios(title, options, label, active_filter) %}
-  {% let max_visible_items_number = 5 %}
+{% macro collapsible_filter_radios(title, options, label, active_filter, max_visible_items_number) %}
   <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed">
     {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
     <ul class="flex flex-wrap w-full gap-3 mt-3">
