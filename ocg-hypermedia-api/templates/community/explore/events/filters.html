@@ -10,7 +10,7 @@
   hx-trigger="change"
   hx-target="#entity-section"
   hx-include="[name='ts_query']"
-  htmx-indicator="#spinner-entity-section"
+  hx-on::before-request="showSpinner()"
   hx-boost="true"
 >
   <!-- Type -->

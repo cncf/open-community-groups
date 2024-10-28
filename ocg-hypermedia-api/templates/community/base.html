@@ -155,7 +155,6 @@
         }
       };
 
-      // on load
       const checkVisibleFilters = () => {
         const collapsibleItems = document.querySelectorAll('[data-collapsible-item]');
         collapsibleItems.forEach(item => {
@@ -165,6 +164,17 @@
             updateCollapsibleFilterStatus(`collapsible-${filter}`);
           }
         });
+      };
+
+      // Spinner
+      const showSpinner = () => {
+        const spinner = document.getElementById('spinner-entity-section');
+        spinner.classList.remove('hidden');
+      };
+
+      const hideSpinner = () => {
+        const spinner = document.getElementById('spinner-entity-section');
+        spinner.classList.add('hidden');
       };
 
       // Collapsible filter

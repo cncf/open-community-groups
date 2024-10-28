@@ -1,7 +1,7 @@
 <div class="flex items-end justify-center py-8">
   <div hx-boost="true" class="inline-flex" role="group">
     {% if let Some(first) = navigation_links.first %}
-      <a href="{{ first.url }}" hx-get="{{ first.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+      <a href="{{ first.url }}" hx-get="{{ first.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" hx-on::before-request="showSpinner()" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         <svg class="me-2 h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M17.59 18 19 16.59 14.42 12 19 7.41 17.59 6l-6 6z"></path><path d="m11 18 1.41-1.41L7.83 12l4.58-4.59L11 6l-6 6z"></path></svg>
         First
       </a>
@@ -12,7 +12,7 @@
       </button>
     {% endif %}
     {% if let Some(prev) = navigation_links.prev %}
-      <a href="{{ prev.url }}" hx-get="{{ prev.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="curosr-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+      <a href="{{ prev.url }}" hx-get="{{ prev.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" hx-on::before-request="showSpinner()" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         <svg class="me-2 h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"></path></svg>
         Prev
       </a>
@@ -23,7 +23,7 @@
       </button>
     {% endif %}
     {% if let Some(next) = navigation_links.next %}
-      <a href="{{ next.url }}" hx-get="{{ next.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+      <a href="{{ next.url }}" hx-get="{{ next.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" hx-on::before-request="showSpinner()" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         Next
         <svg class="ms-2 h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg>
       </a>
@@ -34,7 +34,7 @@
       </button>
     {% endif %}
     {% if let Some(last) = navigation_links.last %}
-      <a href="{{ last.url }}" hx-get="{{ last.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+      <a href="{{ last.url }}" hx-get="{{ last.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" hx-on::before-request="showSpinner()" class="cursor-pointer inline-flex items-center px-4 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         Last
         <svg class="ms-2 h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M6.41 6 5 7.41 9.58 12 5 16.59 6.41 18l6-6z"></path><path d="m13 6-1.41 1.41L16.17 12l-4.58 4.59L13 18l6-6z"></path></svg>      </a>
     {% else %}
