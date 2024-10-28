@@ -58,6 +58,8 @@
     </div>
 
     <script>
+      const COLLAPSIBLE_FILTERS = ['region', 'distance'];
+
       const toggleNavbarMobile = () => {
         const navbarMobile = document.getElementById("navbar-mobile");
         navbarMobile.classList.toggle("hidden");
@@ -153,17 +155,31 @@
         }
       };
 
+      // on load
+      const checkVisibleFilters = () => {
+        const collapsibleItems = document.querySelectorAll('[data-collapsible-item]');
+        collapsibleItems.forEach(item => {
+          const filter = item.id.replace('collapsible-', '');
+          const hiddenCheckedOptions = item.querySelectorAll('li.hidden input:checked');
+          if (hiddenCheckedOptions.length > 0) {
+            updateCollapsibleFilterStatus(`collapsible-${filter}`);
+          }
+        });
+      };
+
       // Collapsible filter
-      const updateCollapsibleFilterStatus = (id, max_visible_items_number) => {
+      const updateCollapsibleFilterStatus = (id) => {
         const filter = document.getElementById(id);
-        if (filter.classList.contains('collapsed')) {
+        const maxItems = filter.dataset.maxItems;
+        const isCollapsed = filter.classList.contains('collapsed');
+        if (isCollapsed) {
           filter.classList.remove('collapsed');
-          document.querySelectorAll(`#${id} li`).forEach(el => el.classList.remove('hidden'));
+          filter.querySelectorAll('li').forEach(el => el.classList.remove('hidden'));
         } else {
           filter.classList.add('collapsed');
-          document.querySelectorAll(`#${id} li`).forEach((el, index) => {
+          filter.querySelectorAll('li[data-input-item]').forEach((el, index) => {
             // Hide all items after the max_visible_items_number (add 1 to include the "Any" option)
-            if (index >= max_visible_items_number + 1) {
+            if (index >= maxItems) {
               el.classList.add('hidden');
             }
           });
@@ -251,6 +267,11 @@
 
         activateImageInCarousel(activeItemIndex);
       };
+
+      // Check visible filters on explore page
+      {% if path == "/explore" %}
+        checkVisibleFilters();
+      {% endif %}
     </script>
   </body>
 </html>

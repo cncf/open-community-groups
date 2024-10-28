@@ -74,7 +74,7 @@
 
 <!-- Checkbox input -->
 {% macro checkbox_input(name, label, value, active_filters, styles) %}
-  <li data-item="input-item" class="{{ styles }}">
+  <li data-input-item="true" class="{{ styles }}">
     <input type="checkbox" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if active_filters.contains(value.to_string().borrow()) %}checked{% endif %}>
     <label for="{{ value }}" class="inline-flex items-center justify-between w-full p-2 text-gray-500 bg-white border rounded-lg cursor-pointer peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.825rem] text-center text-nowrap">{{ label }}</div>
@@ -85,7 +85,7 @@
 
 <!-- Radio input -->
 {% macro radio_input(name, label, value, active_filter, styles) %}
-  <li data-item="input-item" class="{{ styles }}">
+  <li data-input-item="true" class="{{ styles }}">
     {% if let Some(active) = active_filter %}
       <input type="radio" name="{{ name }}" id="{{ value }}" value="{{ value }}" class="hidden peer" {% if active.to_string() == value %}checked{% endif %}>
     {% else %}
@@ -138,7 +138,7 @@
 {% macro collapsible_footer(label, items_length, max_visible_items_number) %}
   {% if items_length > max_visible_items_number %}
     <div class="mt-4 -mb-1.5">
-      <button onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}', {{ max_visible_items_number }})" type="button" class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
+      <button onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}')" type="button" class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
         <span class="hidden group-[.collapsed]:block">+ Show more</span>
         <span class="block group-[.collapsed]:hidden">- Show less</span>
       </button>
@@ -149,7 +149,7 @@
 
 <!-- Collapsible filter -->
 {% macro collapsible_filter_checkboxes(title, options, label, active_filters, max_visible_items_number) %}
-  <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed">
+  <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed" data-collapsible-item="true" data-max-items="{{ max_visible_items_number }}">
     {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       <li>
@@ -173,7 +173,7 @@
 
 <!-- Collapsible filter with radios -->
 {% macro collapsible_filter_radios(title, options, label, active_filter, max_visible_items_number) %}
-  <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed">
+  <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed" data-collapsible-item="true" data-max-items="{{ max_visible_items_number }}">
     {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
     <ul class="flex flex-wrap w-full gap-3 mt-3">
       <li>
