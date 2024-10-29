@@ -19,6 +19,7 @@ returns json as $$
         'new_group_details', new_group_details,
         'photos_urls', photos_urls,
         'slack_url', slack_url,
+        'theme', theme,
         'title', title,
         'twitter_url', twitter_url,
         'wechat_url', wechat_url,

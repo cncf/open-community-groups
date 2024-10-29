@@ -34,6 +34,7 @@ create table community (
     new_group_details text check (new_group_details <> ''),
     photos_urls text[],
     slack_url text check (slack_url <> ''),
+    theme jsonb,
     twitter_url text check (twitter_url <> ''),
     wechat_url text check (wechat_url <> ''),
     youtube_url text check (youtube_url <> ''),

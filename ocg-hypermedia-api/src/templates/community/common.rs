@@ -27,6 +27,7 @@ pub(crate) struct Community {
     pub new_group_details: Option<String>,
     pub photos_urls: Option<Vec<String>>,
     pub slack_url: Option<String>,
+    pub theme: Option<Theme>,
     pub twitter_url: Option<String>,
     pub wechat_url: Option<String>,
     pub youtube_url: Option<String>,
@@ -48,4 +49,10 @@ impl Community {
 
         Ok(community)
     }
+}
+
+/// Theme information used to customize the selected layout.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Theme {
+    pub primary_color: String,
 }
