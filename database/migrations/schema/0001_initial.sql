@@ -43,6 +43,17 @@ create table community (
 
 create index community_community_site_layout_id_idx on community (community_site_layout_id);
 
+create table category (
+    category_id uuid primary key default gen_random_uuid(),
+    created_at timestamptz default current_timestamp not null,
+    name text not null check (name <> ''),
+    normalized_name text not null check (normalized_name <> '')
+        generated always as (regexp_replace(lower(name), '[^\w]+', '-')) stored,
+    community_id uuid not null references community,
+    unique (name, community_id),
+    unique (normalized_name, community_id)
+);
+
 create table region (
     region_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -99,12 +110,14 @@ create table "group" (
     youtube_url text check (youtube_url <> ''),
     community_id uuid not null references community,
     group_site_layout_id text not null references group_site_layout default 'default',
+    category_id uuid not null references category,
     region_id uuid not null references region,
     unique (name, community_id),
     unique (slug, community_id)
 );
 
 create index group_community_id_idx on "group" (community_id);
+create index group_category_id_idx on "group" (category_id);
 create index group_region_id_idx on "group" (region_id);
 create index group_group_site_layout_id_idx on "group" (group_site_layout_id);
 create index group_tsdoc_idx on "group" using gin (tsdoc);
