@@ -89,6 +89,7 @@ pub(crate) struct EventsFilters {
     pub limit: Option<usize>,
     pub longitude: Option<f64>,
     pub offset: Option<usize>,
+    pub sort_by: Option<String>,
     pub ts_query: Option<String>,
 }
 
@@ -248,6 +249,7 @@ pub(crate) struct GroupsFilters {
     pub limit: Option<usize>,
     pub longitude: Option<f64>,
     pub offset: Option<usize>,
+    pub sort_by: Option<String>,
     pub ts_query: Option<String>,
 }
 

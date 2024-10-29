@@ -4,17 +4,18 @@ returns table(events json, total bigint) as $$
 declare
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
-    v_distance real;
+    v_max_distance real;
     v_kind text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
+    v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
     v_tsquery_with_prefix_matching tsquery;
     v_user_location geography;
 begin
     -- Prepare filters
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
-        v_distance := (p_filters->>'distance')::real;
+        v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
     end if;
     if p_filters ? 'kind' then
@@ -54,7 +55,8 @@ begin
             e.title,
             e.venue,
             g.name as group_name,
-            g.slug as group_slug
+            g.slug as group_slug,
+            st_distance(e.location, v_user_location) as distance
         from event e
         join "group" g using (group_id)
         join region r using (region_id)
@@ -72,8 +74,8 @@ begin
             case when v_date_to is not null then
             e.starts_at <= v_date_to else true end
         and
-            case when v_distance is not null and v_user_location is not null then
-            st_dwithin(v_user_location, e.location, v_distance) else true end
+            case when v_max_distance is not null and v_user_location is not null then
+            st_dwithin(v_user_location, e.location, v_max_distance) else true end
         and
             case when v_tsquery_with_prefix_matching is not null then
                 v_tsquery_with_prefix_matching @@ e.tsdoc
@@ -100,7 +102,10 @@ begin
             from (
                 select *
                 from filtered_events
-                order by starts_at asc
+                order by
+                    (case when v_sort_by = 'date' then starts_at end) asc,
+                    (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
+                    starts_at asc
                 limit v_limit
                 offset v_offset
             ) filtered_events_page

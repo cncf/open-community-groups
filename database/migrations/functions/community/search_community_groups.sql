@@ -2,16 +2,17 @@
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
 returns table(groups json, total bigint) as $$
 declare
-    v_distance real;
+    v_max_distance real;
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
+    v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
     v_tsquery_with_prefix_matching tsquery;
     v_user_location geography;
 begin
     -- Prepare filters
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
-        v_distance := (p_filters->>'distance')::real;
+        v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
     end if;
     if p_filters ? 'region' then
@@ -42,13 +43,14 @@ begin
             g.name,
             g.slug,
             g.state,
-            r.name as region_name
+            r.name as region_name,
+            st_distance(g.location, v_user_location) as distance
         from "group" g
         join region r using (region_id)
         where g.community_id = p_community_id
         and
-            case when v_distance is not null and v_user_location is not null then
-            st_dwithin(v_user_location, g.location, v_distance) else true end
+            case when v_max_distance is not null and v_user_location is not null then
+            st_dwithin(v_user_location, g.location, v_max_distance) else true end
         and
             case when cardinality(v_region) > 0 then
             r.normalized_name = any(v_region) else true end
@@ -72,7 +74,10 @@ begin
             from (
                 select *
                 from filtered_groups
-                order by created_at desc
+                order by
+                    (case when v_sort_by = 'date' then created_at end) desc,
+                    (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
+                    created_at desc
                 limit v_limit
                 offset v_offset
             ) filtered_groups_page
