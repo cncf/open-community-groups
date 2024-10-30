@@ -35,7 +35,13 @@
         <div>
           <!-- Group region -->
           <div class="truncate leading-3">
-            <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ group.region_name }}</span>
+            <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">
+              {% if let Some(region_name) = group.region_name %}
+                {{ region_name }}
+              {% else %}
+                {{ group.category_name }}
+              {% endif %}
+            </span>
           </div>
           <!-- End group region -->
 

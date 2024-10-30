@@ -298,14 +298,15 @@ impl Pagination for GroupsFilters {
 /// Group information used in the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Group {
+    pub category_name: String,
     pub description: String,
     pub name: String,
-    pub region_name: String,
     pub slug: String,
 
     pub city: Option<String>,
     pub country: Option<String>,
     pub icon_url: Option<String>,
+    pub region_name: Option<String>,
     pub state: Option<String>,
 }
 

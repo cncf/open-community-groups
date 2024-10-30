@@ -59,7 +59,7 @@ begin
             st_distance(e.location, v_user_location) as distance
         from event e
         join "group" g using (group_id)
-        join region r using (region_id)
+        left join region r using (region_id)
         where g.community_id = p_community_id
         and
             case when cardinality(v_kind) > 0 then

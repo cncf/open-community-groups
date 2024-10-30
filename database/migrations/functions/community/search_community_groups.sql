@@ -43,10 +43,12 @@ begin
             g.name,
             g.slug,
             g.state,
+            c.name as category_name,
             r.name as region_name,
             st_distance(g.location, v_user_location) as distance
         from "group" g
-        join region r using (region_id)
+        join category c using (category_id)
+        left join region r using (region_id)
         where g.community_id = p_community_id
         and
             case when v_max_distance is not null and v_user_location is not null then
@@ -62,6 +64,7 @@ begin
     select
         (
             select coalesce(json_agg(json_build_object(
+                'category_name', category_name,
                 'city', city,
                 'country', country,
                 'description', description,

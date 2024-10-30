@@ -111,7 +111,7 @@ create table "group" (
     community_id uuid not null references community,
     group_site_layout_id text not null references group_site_layout default 'default',
     category_id uuid not null references category,
-    region_id uuid not null references region,
+    region_id uuid references region,
     unique (name, community_id),
     unique (slug, community_id)
 );
