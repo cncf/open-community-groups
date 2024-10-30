@@ -64,19 +64,11 @@ pub(crate) struct EventsSection {
     pub results_section: EventsResultsSection,
 }
 
-/// Events results section template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/events/results.html")]
-pub(crate) struct EventsResultsSection {
-    pub events: Vec<Event>,
-    pub navigation_links: NavigationLinks,
-    pub offset: Option<usize>,
-    pub total: usize,
-}
-
 /// Filters used in the events section of the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
+    #[serde(default)]
+    pub category: Vec<String>,
     #[serde(default)]
     pub kind: Vec<EventKind>,
     #[serde(default)]
@@ -100,6 +92,7 @@ impl EventsFilters {
         let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
+        filters.category.retain(|c| !c.is_empty());
         filters.region.retain(|v| !v.is_empty());
 
         // Populate the latitude and longitude fields from the headers provided
@@ -133,6 +126,16 @@ impl Pagination for EventsFilters {
     fn set_offset(&mut self, offset: Option<usize>) {
         self.offset = offset;
     }
+}
+
+/// Events results section template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/results.html")]
+pub(crate) struct EventsResultsSection {
+    pub events: Vec<Event>,
+    pub navigation_links: NavigationLinks,
+    pub offset: Option<usize>,
+    pub total: usize,
 }
 
 /// Event kind (in-person or virtual).
@@ -228,19 +231,11 @@ pub(crate) struct GroupsSection {
     pub results_section: GroupsResultsSection,
 }
 
-/// Groups results section template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/groups/results.html")]
-pub(crate) struct GroupsResultsSection {
-    pub groups: Vec<Group>,
-    pub navigation_links: NavigationLinks,
-    pub offset: Option<usize>,
-    pub total: usize,
-}
-
 /// Filters used in the groups section of the community explore page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
+    #[serde(default)]
+    pub category: Vec<String>,
     #[serde(default)]
     pub region: Vec<String>,
 
@@ -260,6 +255,7 @@ impl GroupsFilters {
         let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
+        filters.category.retain(|c| !c.is_empty());
         filters.region.retain(|v| !v.is_empty());
 
         // Populate the latitude and longitude fields from the headers provided.
@@ -293,6 +289,16 @@ impl Pagination for GroupsFilters {
     fn set_offset(&mut self, offset: Option<usize>) {
         self.offset = offset;
     }
+}
+
+/// Groups results section template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/groups/results.html")]
+pub(crate) struct GroupsResultsSection {
+    pub groups: Vec<Group>,
+    pub navigation_links: NavigationLinks,
+    pub offset: Option<usize>,
+    pub total: usize,
 }
 
 /// Group information used in the community explore page.

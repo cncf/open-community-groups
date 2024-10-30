@@ -2,8 +2,9 @@
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
 returns table(groups json, total bigint) as $$
 declare
-    v_max_distance real;
+    v_category text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_max_distance real;
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
@@ -11,6 +12,10 @@ declare
     v_user_location geography;
 begin
     -- Prepare filters
+    if p_filters ? 'category' then
+        select array_agg(lower(e::text)) into v_category
+        from jsonb_array_elements_text(p_filters->'category') e;
+    end if;
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
@@ -50,6 +55,9 @@ begin
         join category c using (category_id)
         left join region r using (region_id)
         where g.community_id = p_community_id
+        and
+            case when cardinality(v_category) > 0 then
+            c.normalized_name = any(v_category) else true end
         and
             case when v_max_distance is not null and v_user_location is not null then
             st_dwithin(v_user_location, g.location, v_max_distance) else true end

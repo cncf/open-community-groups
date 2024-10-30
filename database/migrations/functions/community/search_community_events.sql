@@ -2,11 +2,12 @@
 create or replace function search_community_events(p_community_id uuid, p_filters jsonb)
 returns table(events json, total bigint) as $$
 declare
+    v_category text[];
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
-    v_max_distance real;
     v_kind text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_max_distance real;
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
@@ -14,6 +15,10 @@ declare
     v_user_location geography;
 begin
     -- Prepare filters
+    if p_filters ? 'category' then
+        select array_agg(lower(e::text)) into v_category
+        from jsonb_array_elements_text(p_filters->'category') e;
+    end if;
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
@@ -59,8 +64,12 @@ begin
             st_distance(e.location, v_user_location) as distance
         from event e
         join "group" g using (group_id)
+        join category c using (category_id)
         left join region r using (region_id)
         where g.community_id = p_community_id
+        and
+            case when cardinality(v_category) > 0 then
+            c.normalized_name = any(v_category) else true end
         and
             case when cardinality(v_kind) > 0 then
             e.event_kind_id = any(v_kind) else true end
