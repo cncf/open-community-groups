@@ -333,6 +333,7 @@ impl Group {
 /// Filters options available.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
+    pub category: Vec<FilterOption>,
     pub distance: Vec<FilterOption>,
     pub region: Vec<FilterOption>,
 }

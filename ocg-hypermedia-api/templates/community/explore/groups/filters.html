@@ -12,6 +12,10 @@
   hx-on::before-request="showSpinner()"
   hx-boost="true"
 >
+  <!-- Category -->
+  {% call macros::collapsible_filter_checkboxes("Category", filters_options.category, "category", filters.category, 5) %}
+  <!-- End Category -->
+
   <!-- Regions -->
   {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, 5) %}
   <!-- End Regions -->
