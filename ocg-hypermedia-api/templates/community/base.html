@@ -6,26 +6,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ community.display_name }} community groups</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <!-- tailwind -->
+    <script type="text/javascript" src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <!-- chroma -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chroma-js@3.1.1/dist/chroma.min.cjs"></script>
+    <!-- htmx -->
     <script
+      type="text/javascript"
       src="https://unpkg.com/htmx.org@2.0.2"
       integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
       crossorigin="anonymous"
     ></script>
     <script>
+      let default_colors = {
+        primary: {
+          50: "#fdf4fa",
+          100: "#fbe9f4",
+          300: "#eb91c9",
+          500: "#d62293",
+          700: "#ab1b76",
+          900: "#6b114a"
+        },
+      };
+
+      const calculatePalette = (hexColor) => {
+        let color = hexColor.replace("#", "");
+        if (color.length === 3) {
+          color = color
+            .split("")
+            .map((char) => char + char)
+            .join("");
+        }
+
+        const r = parseInt(color.slice(0, 2), 16);
+        const g = parseInt(color.slice(2, 4), 16);
+        const b = parseInt(color.slice(4, 6), 16);
+
+        const getTint = (percentage) => {
+          const tintR = Math.round(Math.min(255, r + (255 - r) * percentage));
+          const tintG = Math.round(Math.min(255, g + (255 - g) * percentage));
+          const tintB = Math.round(Math.min(255, b + (255 - b) * percentage));
+
+          return rgbToHex(tintR, tintG, tintB);
+        }
+
+        const getShade = (percentage) => {
+          const shadeR = Math.round(Math.max(0, r - r * percentage));
+          const shadeG = Math.round(Math.max(0, g - g * percentage));
+          const shadeB = Math.round(Math.max(0, b - b * percentage));
+
+          return rgbToHex(shadeR, shadeG, shadeB);
+        };
+
+        const rgbToHex = (r, g, b) => {
+          return `#${[r, g, b]
+            .map(x => x.toString(16).padStart(2, '0'))
+            .join('')}`;
+        };
+
+        return {
+          50: getTint(0.95),
+          100: getTint(0.9),
+          300: getTint(0.5),
+          500: hexColor,
+          700: getShade(0.2),
+          900: getShade(0.5),
+        };
+      };
+
+      {% if let Some(theme) = community.theme %}
+        default_colors = {
+          primary: calculatePalette("{{ theme.primary_color }}"),
+        };
+      {% endif %}
+
       tailwind.config = {
         theme: {
           extend: {
-            colors: {
-              primary: {
-                50: "#fef9fc",
-                100: "#fbe8f4",
-                300: "#ee93cc",
-                500: "#D62293",
-                700: "#b41d7c",
-                900: "#70124d",
-              },
-            },
+            colors: {...default_colors},
             fontSize: {
               filterTitle: '0.8rem',
             },
