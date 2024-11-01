@@ -168,13 +168,13 @@
 
       // Spinner
       const showSpinner = () => {
-        const spinner = document.getElementById('spinner-entity-section');
-        spinner.classList.remove('hidden');
+        const content = document.getElementById('explore-content');
+        content.classList.add('is-loading');
       };
 
       const hideSpinner = () => {
-        const spinner = document.getElementById('spinner-entity-section');
-        spinner.classList.add('hidden');
+        const content = document.getElementById('explore-content');
+        content.classList.remove('is-loading');
       };
 
       // Collapsible filter
