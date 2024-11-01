@@ -188,7 +188,7 @@
     <div class="min-w-0 pl-4 content-center h-full">
       <a class="flex flex-col justify-between w-full h-full cursor-pointer hover:no-underline" href="#">
         <div>
-          <!-- Event group -->
+          <!-- Category or region -->
           <div class="truncate leading-3">
             <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">
               {% if let Some(region_name) = group.region_name %}
@@ -198,30 +198,30 @@
               {% endif %}
             </span>
           </div>
-          <!-- End event group -->
+          <!-- End category or region -->
 
-          <!-- Event title -->
+          <!-- Group title -->
           <h2 class="font-semibold line-clamp-1 lg:line-clamp-2 lg:h-[48px] mb-2">{{ group.name }}</h2>
-          <!-- End event title -->
+          <!-- End group title -->
         </div>
 
-        <!-- Event location -->
+        <!-- Group location -->
         {% if let Some(city) = group.city %}
           <div class="flex flex-row leading-4 pt-1 lg:pt-2">
             <svg class="mt-0.5 w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
             <div>
               <div class="truncate text-gray-700 text-xs uppercase">
                 {{ city }}{% if let Some(state) = group.state %}, {{ state }} {% endif %}
-              </div>
-              {% if let Some(country) = group.country %}
-                <div class="truncate text-gray-700 text-xs uppercase">
-                  {{ country }}
-                </div>
+                {% if let Some(country) = group.country %}
+                <span>
+                  , {{ country }}
+                </span>
               {% endif %}
+              </div>
             </div>
           </div>
         {% endif %}
-        <!-- End event location -->
+        <!-- End group location -->
       </a>
     </div>
   </div>
