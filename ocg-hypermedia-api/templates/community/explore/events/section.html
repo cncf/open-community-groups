@@ -5,6 +5,8 @@
   {% include "community/explore/events/filters.html" %}
 {% endblock %}
 
+{% block section %}events{% endblock %}
+
 {% block results %}
   {% if results_section.events.len() > 0 %}
     {% call common::results_legend(results_section.total, results_section.events.len(), filters.offset) %}

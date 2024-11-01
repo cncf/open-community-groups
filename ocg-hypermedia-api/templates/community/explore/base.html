@@ -46,15 +46,28 @@
         <div id="results" class="hidden font-semibold text-sm text-black w-[175px] md:flex">{% block results %}{% endblock %}</div>
         <div class="flex flex-col items-start sm:items-center sm:flex-row">
           <label
-            for="sort"
+            for="sort_by"
             class="font-semibold text-filterTitle text-black leading-6 me-3"
             >Sort by</label
           >
+
           <select
-            id="sort"
+            id="sort_by"
+            name="sort_by"
             class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
+            onchange="triggerChangeOnForm('{% block section %}{% endblock %}-form')"
           >
+          {% if let Some(sort_by) = filters.sort_by %}
+            <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
+            {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+              <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
+            {% endif %}
+          {% else %}
             <option value="date" selected>Date</option>
+            {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+              <option value="distance">Distance</option>
+            {% endif %}
+          {% endif %}
           </select>
         </div>
         <div>
