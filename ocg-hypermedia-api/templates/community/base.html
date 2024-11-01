@@ -29,55 +29,55 @@
         },
       };
 
-      const calculatePalette = (hexColor) => {
-        let color = hexColor.replace("#", "");
-        if (color.length === 3) {
-          color = color
-            .split("")
-            .map((char) => char + char)
-            .join("");
-        }
-
-        const r = parseInt(color.slice(0, 2), 16);
-        const g = parseInt(color.slice(2, 4), 16);
-        const b = parseInt(color.slice(4, 6), 16);
-
-        const getTint = (percentage) => {
-          const tintR = Math.round(Math.min(255, r + (255 - r) * percentage));
-          const tintG = Math.round(Math.min(255, g + (255 - g) * percentage));
-          const tintB = Math.round(Math.min(255, b + (255 - b) * percentage));
-
-          return rgbToHex(tintR, tintG, tintB);
-        }
-
-        const getShade = (percentage) => {
-          const shadeR = Math.round(Math.max(0, r - r * percentage));
-          const shadeG = Math.round(Math.max(0, g - g * percentage));
-          const shadeB = Math.round(Math.max(0, b - b * percentage));
-
-          return rgbToHex(shadeR, shadeG, shadeB);
-        };
-
-        const rgbToHex = (r, g, b) => {
-          return `#${[r, g, b]
-            .map(x => x.toString(16).padStart(2, '0'))
-            .join('')}`;
-        };
-
-        return {
-          50: getTint(0.95),
-          100: getTint(0.9),
-          300: getTint(0.5),
-          500: hexColor,
-          700: getShade(0.2),
-          900: getShade(0.5),
-        };
-      };
-
       {% if let Some(theme) = community.theme %}
+        const calculatePalette = (hexColor) => {
+          let color = hexColor.replace("#", "");
+          if (color.length === 3) {
+            color = color
+              .split("")
+              .map((char) => char + char)
+              .join("");
+          }
+
+          const r = parseInt(color.slice(0, 2), 16);
+          const g = parseInt(color.slice(2, 4), 16);
+          const b = parseInt(color.slice(4, 6), 16);
+
+          const getTint = (percentage) => {
+            const tintR = Math.round(Math.min(255, r + (255 - r) * percentage));
+            const tintG = Math.round(Math.min(255, g + (255 - g) * percentage));
+            const tintB = Math.round(Math.min(255, b + (255 - b) * percentage));
+
+            return rgbToHex(tintR, tintG, tintB);
+          }
+
+          const getShade = (percentage) => {
+            const shadeR = Math.round(Math.max(0, r - r * percentage));
+            const shadeG = Math.round(Math.max(0, g - g * percentage));
+            const shadeB = Math.round(Math.max(0, b - b * percentage));
+
+            return rgbToHex(shadeR, shadeG, shadeB);
+          };
+
+          const rgbToHex = (r, g, b) => {
+            return `#${[r, g, b]
+              .map(x => x.toString(16).padStart(2, '0'))
+              .join('')}`;
+          };
+
+          return {
+            50: getTint(0.95),
+            100: getTint(0.9),
+            300: getTint(0.5),
+            500: hexColor,
+            700: getShade(0.2),
+            900: getShade(0.5),
+          };
+        };
+
         default_colors = {
           primary: calculatePalette("{{ theme.primary_color }}"),
-        };
+        }
       {% endif %}
 
       tailwind.config = {
