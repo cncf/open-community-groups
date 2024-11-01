@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ community.display_name }} community groups</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        --ocg-primary: #d62293;
+      }
+    </style>
     <!-- tailwind -->
     <script type="text/javascript" src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <!-- htmx -->
@@ -28,6 +33,13 @@
       };
 
       {% if let Some(theme) = community.theme %}
+        const overWritePrimaryColor = () => {
+          const r = document.querySelector(':root');
+          r.style.setProperty('--ocg-primary', '{{ theme.primary_color }}');
+        };
+
+        overWritePrimaryColor();
+
         const calculatePalette = (hexColor) => {
           let color = hexColor.replace("#", "");
           if (color.length === 3) {
