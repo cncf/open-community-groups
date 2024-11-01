@@ -70,8 +70,23 @@
           {% endif %}
           </select>
         </div>
-        <div>
-          {% call common::secondary_button("<span class='hidden md:block'>Browse in map</span><span class='block md:hidden'>Map</span>", "map", "() => console.log('hola')", "", false) %}
+        <div class="flex flex-col items-start sm:items-center sm:flex-row">
+          <label
+            for="view_mode"
+            class="font-semibold text-filterTitle text-black leading-6 me-3"
+            >View mode</label
+          >
+          <select
+            id="view_mode"
+            name="view_mode"
+            class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="grid" selected>Grid</option>
+            {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+              <option value="map">Map</option>
+            {% endif %}
+            <option value="calendar">Calendar</option>
+          </select>
         </div>
       </div>
       <div id="results-mobile" class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
