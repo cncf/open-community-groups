@@ -7,8 +7,7 @@ use crate::{
     templates::community::{explore::EventKind, home},
 };
 use anyhow::Result;
-use askama_axum::IntoResponse;
-use axum::{extract::State, http::Uri};
+use axum::{extract::State, http::Uri, response::IntoResponse};
 
 /// Handler that returns the home index page.
 pub(crate) async fn index(

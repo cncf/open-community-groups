@@ -3,7 +3,7 @@
 
 use super::common::Community;
 use anyhow::Result;
-use askama::Template;
+use askama_axum::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

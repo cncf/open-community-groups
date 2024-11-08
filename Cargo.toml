@@ -11,12 +11,12 @@ edition = "2021"
 rust-version = "1.81"
 
 [workspace.dependencies]
-anyhow = "1.0.92"
+anyhow = "1.0.93"
 askama = { version = "0.12.1", features = ["serde-json"] }
 askama_axum = "0.4.0"
 async-trait = "0.1.83"
 axum = { version = "0.7.7", features = ["macros"] }
-cached = { version = "0.53.1", features = ["async"] }
+cached = { version = "0.54.0", features = ["async"] }
 clap = { version = "4.5.20", features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"] }
 deadpool-postgres = { version = "0.14.0", features = ["serde"] }
@@ -28,7 +28,7 @@ serde = { version = "1.0.214", features = ["derive"] }
 serde_html_form = "0.2.6"
 serde_json = "1.0.132"
 serde_qs = "0.13.0"
-tokio = { version = "1.41.0", features = [
+tokio = { version = "1.41.1", features = [
     "macros",
     "process",
     "rt-multi-thread",

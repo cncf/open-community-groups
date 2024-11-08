@@ -7,10 +7,10 @@ use crate::{
     templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
 };
 use anyhow::Result;
-use askama_axum::IntoResponse;
 use axum::{
     extract::{Query, RawQuery, State},
     http::{HeaderMap, Uri},
+    response::IntoResponse,
 };
 use std::collections::HashMap;
 

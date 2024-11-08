@@ -2,8 +2,7 @@
 
 use super::extractors::CommunityId;
 use crate::templates::group::Index;
-use askama_axum::IntoResponse;
-use axum::extract::Path;
+use axum::{extract::Path, response::IntoResponse};
 use tracing::debug;
 
 /// Handler that returns the group index page.

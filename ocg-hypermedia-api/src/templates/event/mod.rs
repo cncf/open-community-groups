@@ -1,6 +1,6 @@
 //! This module defines the templates for the event page.
 
-use askama::Template;
+use askama_axum::Template;
 
 /// Event index page template.
 #[derive(Debug, Clone, Template)]

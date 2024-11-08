@@ -4,7 +4,7 @@
 use super::common::Community;
 use crate::templates::helpers::extract_location;
 use anyhow::Result;
-use askama::Template;
+use askama_axum::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
 use serde::{ser, Deserialize, Serialize};
