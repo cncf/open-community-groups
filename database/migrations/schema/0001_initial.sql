@@ -48,7 +48,7 @@ create table category (
     created_at timestamptz default current_timestamp not null,
     name text not null check (name <> ''),
     normalized_name text not null check (normalized_name <> '')
-        generated always as (regexp_replace(lower(name), '[^\w]+', '-')) stored,
+        generated always as (regexp_replace(lower(name), '[^\w]+', '-', 'g')) stored,
     community_id uuid not null references community,
     unique (name, community_id),
     unique (normalized_name, community_id)
@@ -59,7 +59,7 @@ create table region (
     created_at timestamptz default current_timestamp not null,
     name text not null check (name <> ''),
     normalized_name text not null check (normalized_name <> '')
-        generated always as (regexp_replace(lower(name), '[^\w]+', '-')) stored,
+        generated always as (regexp_replace(lower(name), '[^\w]+', '-', 'g')) stored,
     community_id uuid not null references community,
     unique (name, community_id),
     unique (normalized_name, community_id)
