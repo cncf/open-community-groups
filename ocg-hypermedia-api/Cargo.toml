@@ -17,7 +17,6 @@ clap = { workspace = true }
 chrono = { workspace = true }
 deadpool-postgres = { workspace = true }
 figment = { workspace = true }
-markdown = { workspace = true }
 openssl = { workspace = true }
 postgres-openssl = { workspace = true }
 serde = { workspace = true }

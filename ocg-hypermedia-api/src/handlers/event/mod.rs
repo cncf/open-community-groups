@@ -1,9 +1,11 @@
 //! This module defines the HTTP handlers for the event page.
 
-use super::extractors::CommunityId;
-use crate::templates::event::Index;
 use axum::{extract::Path, response::IntoResponse};
 use tracing::debug;
+
+use crate::templates::event::Index;
+
+use super::extractors::CommunityId;
 
 /// Handler that returns the event index page.
 pub(crate) async fn index(

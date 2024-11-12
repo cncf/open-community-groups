@@ -13,15 +13,16 @@ returns json as $$
         'footer_logo_url', footer_logo_url,
         'github_url', github_url,
         'header_logo_url', header_logo_url,
-        'homepage_url', homepage_url,
         'instagram_url', instagram_url,
         'linkedin_url', linkedin_url,
+        'name', name,
         'new_group_details', new_group_details,
         'photos_urls', photos_urls,
         'slack_url', slack_url,
         'theme', theme,
         'title', title,
         'twitter_url', twitter_url,
+        'website_url', website_url,
         'wechat_url', wechat_url,
         'youtube_url', youtube_url
     )) as json_data

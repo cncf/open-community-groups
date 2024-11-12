@@ -1,16 +1,18 @@
 //! This module defines an abstraction layer over the database.
 
+use std::sync::Arc;
+
+use anyhow::Result;
+use async_trait::async_trait;
+use deadpool_postgres::Pool;
+use tokio_postgres::types::Json;
+use uuid::Uuid;
+
 use crate::templates::community::{
     common::Community,
     explore::{self, EventKind, EventsFilters, GroupsFilters},
     home,
 };
-use anyhow::Result;
-use async_trait::async_trait;
-use deadpool_postgres::Pool;
-use std::sync::Arc;
-use tokio_postgres::types::Json;
-use uuid::Uuid;
 
 /// Type alias to represent the total count .
 pub(crate) type Total = usize;
@@ -35,7 +37,7 @@ pub(crate) trait DB {
     async fn get_community_upcoming_events(
         &self,
         community_id: Uuid,
-        event_kind: EventKind,
+        event_kinds: Vec<EventKind>,
     ) -> Result<Vec<home::Event>>;
 
     /// Search community events that match the criteria provided.
@@ -127,13 +129,14 @@ impl DB for PgDB {
     async fn get_community_upcoming_events(
         &self,
         community_id: Uuid,
-        event_kind: EventKind,
+        event_kinds: Vec<EventKind>,
     ) -> Result<Vec<home::Event>> {
+        let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_community_upcoming_in_person_events($1::uuid, $2::text)::text",
-                &[&community_id, &event_kind.to_string()],
+                "select get_community_upcoming_events($1::uuid, $2::text[])::text",
+                &[&community_id, &event_kinds],
             )
             .await?;
         let events = home::Event::try_new_vec_from_json(&row.get::<_, String>(0))?;

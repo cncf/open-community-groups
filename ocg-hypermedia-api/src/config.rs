@@ -1,5 +1,7 @@
 //! This module defines some types to represent the configuration.
 
+use std::path::PathBuf;
+
 use anyhow::Result;
 use deadpool_postgres::Config as DbConfig;
 use figment::{
@@ -7,7 +9,6 @@ use figment::{
     Figment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 /// Server configuration.
 #[derive(Debug, Clone, Deserialize, Serialize)]

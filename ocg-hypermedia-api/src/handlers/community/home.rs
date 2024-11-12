@@ -1,13 +1,14 @@
 //! This module defines the HTTP handlers for the home page of the community
 //! site.
 
+use anyhow::Result;
+use axum::{extract::State, http::Uri, response::IntoResponse};
+
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::community::{explore::EventKind, home},
 };
-use anyhow::Result;
-use axum::{extract::State, http::Uri, response::IntoResponse};
 
 /// Handler that returns the home index page.
 pub(crate) async fn index(
@@ -25,8 +26,8 @@ pub(crate) async fn index(
     ) = tokio::try_join!(
         db.get_community(community_id),
         db.get_community_recently_added_groups(community_id),
-        db.get_community_upcoming_events(community_id, EventKind::InPerson),
-        db.get_community_upcoming_events(community_id, EventKind::Virtual),
+        db.get_community_upcoming_events(community_id, vec![EventKind::InPerson, EventKind::Hybrid]),
+        db.get_community_upcoming_events(community_id, vec![EventKind::Virtual, EventKind::Hybrid]),
     )?;
     let template = home::Index {
         community,

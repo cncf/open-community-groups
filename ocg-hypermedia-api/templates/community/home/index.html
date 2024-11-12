@@ -129,7 +129,7 @@
     <div
       class="h-24 min-w-24 lg:h-[120px] lg:min-w-[120px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
       style="
-        background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+        background-image: url({% if let Some(logo_url) = event.logo_url %}{{ logo_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
       "
     ></div>
     <!-- End event icon -->
@@ -144,27 +144,38 @@
           <!-- End event group -->
 
           <!-- Event title -->
-          <h2 class="font-semibold line-clamp-1 lg:line-clamp-2 lg:h-[48px] mb-2">{{ event.title }}</h2>
+          <h2 class="font-semibold line-clamp-1 lg:line-clamp-2 lg:h-[48px] mb-2">{{ event.name }}</h2>
           <!-- End event title -->
         </div>
 
         <div>
           <!-- Event location -->
-          {% if let Some(city) = event.city %}
+          {% if let Some(venue_city) = event.venue_city %}
             <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2">
               <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
               <div class="truncate text-gray-700 text-xs uppercase">
-                {{ city }}{% if let Some(state) = event.state %}, {{ state }} {% endif %}
+                {{ venue_city }}{% if let Some(group_state) = event.group_state %}, {{ group_state }} {% endif %}
               </div>
             </div>
+          {% else %}
+            {% if let Some(group_city) = event.group_city %}
+              <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2">
+                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
+                <div class="truncate text-gray-700 text-xs uppercase">
+                  {{ group_city }}{% if let Some(group_state) = event.group_state %}, {{ group_state }} {% endif %}
+                </div>
+              </div>
+            {% endif %}
           {% endif %}
           <!-- End event location -->
 
           <!-- Event date -->
-          <div class="flex flex-row items-center leading-4 pt-1">
-            <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
-            <span class="text-gray-700 text-xs uppercase truncate">{{ event.starts_at.format("%B %d · %I:%M %p %Z") }}</span>
-          </div>
+          {% if let Some(starts_at) = event.starts_at %}
+            <div class="flex flex-row items-center leading-4 pt-1">
+              <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+              <span class="text-gray-700 text-xs uppercase truncate">{{ starts_at.format("%B %d · %I:%M %p %Z") }}</span>
+            </div>
+          {% endif %}
           <!-- End event date -->
         </div>
       </a>
@@ -180,7 +191,7 @@
     <div
       class="h-24 min-w-24 lg:h-[120px] lg:min-w-[120px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
       style="
-        background-image: url({% if let Some(icon_url) = group.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+        background-image: url({% if let Some(logo_url) = group.logo_url %}{{ logo_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
       "
     ></div>
     <!-- End group icon -->
@@ -209,19 +220,24 @@
         {% if let Some(city) = group.city %}
           <div class="flex flex-row leading-4 pt-1 lg:pt-2">
             <svg class="mt-0.5 w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
-            <div>
-              <div class="truncate text-gray-700 text-xs uppercase">
-                {{ city }}{% if let Some(state) = group.state %}, {{ state }} {% endif %}
-                {% if let Some(country) = group.country %}
-                <span>
-                  , {{ country }}
-                </span>
+            <div class="truncate text-gray-700 text-xs uppercase">
+              {{ city }}{% if let Some(state) = group.state %}, {{ state }} {% endif %}
+              {% if let Some(country_name) = group.country_name %}
+              <span>
+                , {{ country_name }}
+              </span>
               {% endif %}
-              </div>
             </div>
           </div>
         {% endif %}
         <!-- End group location -->
+
+        <!-- Group creation date -->
+        <div class="flex flex-row items-center leading-4 pt-1">
+          <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+          <span class="text-gray-700 text-xs uppercase truncate">{{ group.created_at.format("%B %d · %I:%M %p %Z") }}</span>
+        </div>
+        <!-- End group creation date -->
       </a>
     </div>
   </div>

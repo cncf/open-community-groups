@@ -1,18 +1,21 @@
 //! This module defines some templates and types used in the explore page of
 //! the community site.
 
-use super::common::Community;
-use crate::templates::helpers::extract_location;
+use std::{
+    borrow::Borrow,
+    fmt::{self, Display, Formatter},
+};
+
 use anyhow::Result;
 use askama_axum::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
 use serde::{ser, Deserialize, Serialize};
-use std::{
-    borrow::Borrow,
-    fmt::{self, Display, Formatter},
-};
 use tracing::trace;
+
+use crate::templates::helpers::extract_location;
+
+use super::common::Community;
 
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
@@ -68,7 +71,9 @@ pub(crate) struct EventsSection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
     #[serde(default)]
-    pub category: Vec<String>,
+    pub event_category: Vec<String>,
+    #[serde(default)]
+    pub group_category: Vec<String>,
     #[serde(default)]
     pub kind: Vec<EventKind>,
     #[serde(default)]
@@ -92,8 +97,9 @@ impl EventsFilters {
         let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
-        filters.category.retain(|c| !c.is_empty());
-        filters.region.retain(|v| !v.is_empty());
+        filters.event_category.retain(|c| !c.is_empty());
+        filters.group_category.retain(|c| !c.is_empty());
+        filters.region.retain(|r| !r.is_empty());
 
         // Populate the latitude and longitude fields from the headers provided
         (filters.latitude, filters.longitude) = extract_location(headers);
@@ -142,6 +148,7 @@ pub(crate) struct EventsResultsSection {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum EventKind {
+    Hybrid,
     InPerson,
     Virtual,
 }
@@ -149,6 +156,7 @@ pub(crate) enum EventKind {
 impl Display for EventKind {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            EventKind::Hybrid => write!(f, "hybrid"),
             EventKind::InPerson => write!(f, "in-person"),
             EventKind::Virtual => write!(f, "virtual"),
         }
@@ -158,50 +166,48 @@ impl Display for EventKind {
 /// Event information used in the community explore page.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Event {
-    pub cancelled: bool,
+    pub canceled: bool,
     pub description: String,
     pub group_name: String,
     pub group_slug: String,
     pub kind_id: String,
-    pub postponed: bool,
+    pub name: String,
     pub slug: String,
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub starts_at: DateTime<Utc>,
-    pub title: String,
 
-    pub city: Option<String>,
-    pub country: Option<String>,
-    pub icon_url: Option<String>,
-    pub state: Option<String>,
-    pub venue: Option<String>,
+    pub group_city: Option<String>,
+    pub group_country_code: Option<String>,
+    pub group_country_name: Option<String>,
+    pub group_state: Option<String>,
+    pub logo_url: Option<String>,
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+    pub venue_address: Option<String>,
+    pub venue_city: Option<String>,
+    pub venue_name: Option<String>,
 }
 
 impl Event {
     /// Returns the location of the event.
     pub fn location(&self) -> Option<String> {
         let mut location = String::new();
+        let mut location_push = |value: &Option<String>| {
+            if let Some(value) = value {
+                if !location.is_empty() {
+                    location.push_str(", ");
+                }
+                location.push_str(value);
+            }
+        };
 
-        if let Some(venue) = &self.venue {
-            location.push_str(venue);
+        location_push(&self.venue_name);
+        location_push(&self.venue_address);
+        if self.venue_city.is_some() {
+            location_push(&self.venue_city);
+        } else if self.group_city.is_some() {
+            location_push(&self.group_city);
         }
-        if let Some(city) = &self.city {
-            if !location.is_empty() {
-                location.push_str(", ");
-            }
-            location.push_str(city);
-        }
-        if let Some(state) = &self.state {
-            if !location.is_empty() {
-                location.push_str(", ");
-            }
-            location.push_str(state);
-        }
-        if let Some(country) = &self.country {
-            if !location.is_empty() {
-                location.push_str(", ");
-            }
-            location.push_str(country);
-        }
+        location_push(&self.group_state);
+        location_push(&self.group_country_name);
 
         if !location.is_empty() {
             return Some(location);
@@ -211,13 +217,7 @@ impl Event {
 
     /// Try to create a vector of `Event` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut events: Vec<Self> = serde_json::from_str(data)?;
-
-        // Convert markdown content in some fields to HTML
-        for event in &mut events {
-            event.description = markdown::to_html(&event.description);
-        }
-
+        let events: Vec<Self> = serde_json::from_str(data)?;
         Ok(events)
     }
 }
@@ -235,7 +235,7 @@ pub(crate) struct GroupsSection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
     #[serde(default)]
-    pub category: Vec<String>,
+    pub group_category: Vec<String>,
     #[serde(default)]
     pub region: Vec<String>,
 
@@ -255,8 +255,8 @@ impl GroupsFilters {
         let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
 
         // Clean up entries that are empty strings
-        filters.category.retain(|c| !c.is_empty());
-        filters.region.retain(|v| !v.is_empty());
+        filters.group_category.retain(|c| !c.is_empty());
+        filters.region.retain(|r| !r.is_empty());
 
         // Populate the latitude and longitude fields from the headers provided.
         (filters.latitude, filters.longitude) = extract_location(headers);
@@ -305,13 +305,16 @@ pub(crate) struct GroupsResultsSection {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Group {
     pub category_name: String,
-    pub description: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
     pub name: String,
     pub slug: String,
 
     pub city: Option<String>,
-    pub country: Option<String>,
-    pub icon_url: Option<String>,
+    pub country_code: Option<String>,
+    pub country_name: Option<String>,
+    pub description: Option<String>,
+    pub logo_url: Option<String>,
     pub region_name: Option<String>,
     pub state: Option<String>,
 }
@@ -319,13 +322,7 @@ pub(crate) struct Group {
 impl Group {
     /// Try to create a vector of `Group` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut groups: Vec<Self> = serde_json::from_str(data)?;
-
-        // Convert markdown content in some fields to HTML
-        for group in &mut groups {
-            group.description = markdown::to_html(&group.description);
-        }
-
+        let groups: Vec<Self> = serde_json::from_str(data)?;
         Ok(groups)
     }
 }
@@ -333,7 +330,8 @@ impl Group {
 /// Filters options available.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
-    pub category: Vec<FilterOption>,
+    pub event_category: Vec<FilterOption>,
+    pub group_category: Vec<FilterOption>,
     pub distance: Vec<FilterOption>,
     pub region: Vec<FilterOption>,
 }
@@ -530,44 +528,68 @@ mod tests {
     explore_event_location_tests! {
         explore_event_location_1: {
             event: Event {
-                city: Some("City".to_string()),
-                country: Some("Country".to_string()),
-                state: Some("State".to_string()),
-                venue: Some("Venue".to_string()),
+                group_city: Some("group city".to_string()),
+                group_country_name: Some("group country".to_string()),
+                group_state: Some("group state".to_string()),
+                venue_address: Some("venue address".to_string()),
+                venue_city: Some("venue city".to_string()),
+                venue_name: Some("venue name".to_string()),
                 ..Default::default()
             },
-            expected_location: Some("Venue, City, State, Country".to_string())
+            expected_location: Some("venue name, venue address, venue city, group state, group country".to_string())
         },
 
         explore_event_location_2: {
             event: Event {
-                city: Some("City".to_string()),
-                country: Some("Country".to_string()),
-                state: Some("State".to_string()),
+                group_city: Some("group city".to_string()),
+                group_country_name: Some("group country".to_string()),
+                group_state: Some("group state".to_string()),
+                venue_address: Some("venue address".to_string()),
+                venue_city: Some("venue city".to_string()),
                 ..Default::default()
             },
-            expected_location: Some("City, State, Country".to_string())
+            expected_location: Some("venue address, venue city, group state, group country".to_string())
         },
 
         explore_event_location_3: {
             event: Event {
-                country: Some("Country".to_string()),
-                venue: Some("Venue".to_string()),
+                group_city: Some("group city".to_string()),
+                group_country_name: Some("group country".to_string()),
+                group_state: Some("group state".to_string()),
+                venue_city: Some("venue city".to_string()),
                 ..Default::default()
             },
-            expected_location: Some("Venue, Country".to_string())
+            expected_location: Some("venue city, group state, group country".to_string())
         },
 
         explore_event_location_4: {
             event: Event {
-                city: Some("City".to_string()),
-                venue: Some("Venue".to_string()),
+                group_city: Some("group city".to_string()),
+                group_country_name: Some("group country".to_string()),
+                group_state: Some("group state".to_string()),
                 ..Default::default()
             },
-            expected_location: Some("Venue, City".to_string())
+            expected_location: Some("group city, group state, group country".to_string())
         },
 
         explore_event_location_5: {
+            event: Event {
+                group_country_name: Some("group country".to_string()),
+                group_state: Some("group state".to_string()),
+                ..Default::default()
+            },
+            expected_location: Some("group state, group country".to_string())
+        },
+
+        explore_event_location_6: {
+            event: Event {
+                group_country_name: Some("group country".to_string()),
+                ..Default::default()
+            },
+            expected_location: Some("group country".to_string())
+        },
+
+        explore_event_location_7: {
             event: Event::default(),
             expected_location: None
         },

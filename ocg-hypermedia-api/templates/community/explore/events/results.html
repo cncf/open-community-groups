@@ -26,7 +26,7 @@
       <div
         class="h-24 min-w-24 md:h-[150px] md:min-w-[150px] md:my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
         style="
-          background-image: url({% if let Some(icon_url) = event.icon_url %}{{ icon_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
+          background-image: url({% if let Some(logo_url) = event.logo_url %}{{ logo_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
         "
       ></div>
       <!-- End event icon -->
@@ -40,8 +40,9 @@
             </div>
             <!-- End event group -->
 
-            <!--  -->
-            <h2 class="font-semibold truncate">{{ event.title }}</h2>
+            <!-- Event name -->
+            <h2 class="font-semibold truncate">{{ event.name }}</h2>
+            <!-- End event name -->
           </div>
 
           <!-- Event description on desktop -->
@@ -62,12 +63,14 @@
 
             <!-- Event date -->
             <div class="flex items-center pt-1">
-              <div class="flex flex-row items-center leading-4">
-                <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
-                <span class="truncate text-gray-700 text-xs uppercase">{{ event.starts_at.format("%A, %B %e, %G · %I:%M %p %Z") }}</span>
-              </div>
-              {% if event.postponed %}
-                <span class="ms-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Postponed</span>
+              {% if let Some(starts_at) = event.starts_at %}
+                <div class="flex flex-row items-center leading-4">
+                  <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
+                  <span class="truncate text-gray-700 text-xs uppercase">{{ starts_at.format("%A, %B %e, %G · %I:%M %p %Z") }}</span>
+                </div>
+              {% endif %}
+              {% if event.canceled %}
+                <span class="ms-3 border text-red-500 border-red-300 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">Canceled</span>
               {% endif %}
               <span class="ms-3 border text-gray-500 text-[10px] uppercase font-medium px-2.5 py-0.5 rounded-full">{{ event.kind_id }}</span>
             </div>

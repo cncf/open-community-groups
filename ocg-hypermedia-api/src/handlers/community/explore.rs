@@ -1,18 +1,20 @@
 //! This module defines the HTTP handlers for the explore page of the community
 //! site.
 
-use crate::{
-    db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
-};
+use std::collections::HashMap;
+
 use anyhow::Result;
 use axum::{
     extract::{Query, RawQuery, State},
     http::{HeaderMap, Uri},
     response::IntoResponse,
 };
-use std::collections::HashMap;
+
+use crate::{
+    db::DynDB,
+    handlers::{error::HandlerError, extractors::CommunityId},
+    templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
+};
 
 /// Handler that returns the explore index page.
 pub(crate) async fn index(

@@ -1,13 +1,14 @@
 //! This module defines the router used to dispatch HTTP requests to the
 //! corresponding handler.
 
+use axum::{extract::FromRef, http::StatusCode, response::IntoResponse, routing::get, Router};
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+
 use crate::{
     db::DynDB,
     handlers::{community, event, group},
 };
-use axum::{extract::FromRef, http::StatusCode, response::IntoResponse, routing::get, Router};
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
 
 /// Router's state.
 #[derive(Clone, FromRef)]

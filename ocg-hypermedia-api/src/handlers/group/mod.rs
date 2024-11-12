@@ -1,9 +1,11 @@
 //! This module defines the HTTP handlers for the group site.
 
-use super::extractors::CommunityId;
-use crate::templates::group::Index;
 use axum::{extract::Path, response::IntoResponse};
 use tracing::debug;
+
+use crate::templates::group::Index;
+
+use super::extractors::CommunityId;
 
 /// Handler that returns the group index page.
 pub(crate) async fn index(

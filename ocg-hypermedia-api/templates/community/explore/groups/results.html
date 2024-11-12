@@ -25,7 +25,7 @@
     <div
       class="h-24 min-w-24 md:h-[140px] md:min-w-[140px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
       style="
-        background-image: url({% if let Some(icon_url) = group.icon_url %}{{ icon_url }}{% else %}https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png{% endif %});
+        background-image: url({% if let Some(logo_url) = group.logo_url %}{{ logo_url }}{% else %}https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png{% endif %});
       "
     ></div>
     <!-- End group icon -->
@@ -50,11 +50,13 @@
           <!-- End group name -->
         </div>
 
-        <!-- Group description -->
-        <div class="relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2">
-          {{ group.description|safe }}
-        </div>
-        <!-- End group description -->
+        {% if let Some(description) = group.description %}
+          <!-- Group description -->
+          <div class="relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2">
+            {{ description|safe }}
+          </div>
+          <!-- End group description -->
+        {% endif %}
 
         <!-- Group location -->
         <div class="flex flex-row leading-4 pt-1 lg:pt-2">
@@ -62,8 +64,8 @@
             <svg class="mt-0.5 w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
             <div class="truncate text-gray-700 text-xs uppercase">
                 {{ city }}{% if let Some(state) = group.state %}, {{ state }} {% endif %}
-              {% if let Some(country) = group.country %}
-                  , {{ country }}
+              {% if let Some(country_name) = group.country_name %}
+                  , {{ country_name }}
               {% endif %}
             </div>
           {% endif %}

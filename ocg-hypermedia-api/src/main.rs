@@ -1,5 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 
+use std::{path::PathBuf, sync::Arc};
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use config::{Config, LogFormat};
@@ -7,7 +9,6 @@ use db::PgDB;
 use deadpool_postgres::Runtime;
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
-use std::{path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, signal};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;

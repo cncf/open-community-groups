@@ -1,6 +1,5 @@
 //! Custom extractors for handlers.
 
-use crate::{db::DynDB, router};
 use anyhow::Result;
 use axum::{
     async_trait,
@@ -9,6 +8,8 @@ use axum::{
 };
 use cached::proc_macro::cached;
 use uuid::Uuid;
+
+use crate::{db::DynDB, router};
 
 /// Custom extractor to get the community id from the request's host header.
 pub(crate) struct CommunityId(pub Uuid);

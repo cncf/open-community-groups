@@ -2,7 +2,7 @@
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
 returns table(groups json, total bigint) as $$
 declare
-    v_category text[];
+    v_group_category text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_max_distance real;
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
@@ -12,13 +12,13 @@ declare
     v_user_location geography;
 begin
     -- Prepare filters
-    if p_filters ? 'category' then
-        select array_agg(lower(e::text)) into v_category
-        from jsonb_array_elements_text(p_filters->'category') e;
-    end if;
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
+    end if;
+    if p_filters ? 'group_category' then
+        select array_agg(lower(e::text)) into v_group_category
+        from jsonb_array_elements_text(p_filters->'group_category') e;
     end if;
     if p_filters ? 'region' then
         select array_agg(lower(e::text)) into v_region
@@ -41,23 +41,25 @@ begin
     with filtered_groups as (
         select
             g.city,
-            g.country,
+            g.country_code,
+            g.country_name,
             g.created_at,
             g.description,
-            g.icon_url,
+            g.logo_url,
             g.name,
             g.slug,
             g.state,
-            c.name as category_name,
+            gc.name as category_name,
             r.name as region_name,
             st_distance(g.location, v_user_location) as distance
         from "group" g
-        join category c using (category_id)
+        join group_category gc using (group_category_id)
         left join region r using (region_id)
         where g.community_id = p_community_id
+        and g.active = true
         and
-            case when cardinality(v_category) > 0 then
-            c.normalized_name = any(v_category) else true end
+            case when cardinality(v_group_category) > 0 then
+            gc.normalized_name = any(v_group_category) else true end
         and
             case when v_max_distance is not null and v_user_location is not null then
             st_dwithin(v_user_location, g.location, v_max_distance) else true end
@@ -74,9 +76,11 @@ begin
             select coalesce(json_agg(json_build_object(
                 'category_name', category_name,
                 'city', city,
-                'country', country,
+                'country_code', country_code,
+                'country_name', country_name,
+                'created_at', floor(extract(epoch from created_at)),
                 'description', description,
-                'icon_url', icon_url,
+                'logo_url', logo_url,
                 'name', name,
                 'region_name', region_name,
                 'slug', slug,
