@@ -138,8 +138,8 @@
       <a class="flex flex-col justify-between w-full h-full cursor-pointer hover:no-underline" href="#">
         <div>
           <!-- Event group -->
-          <div class="truncate leading-3">
-            <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">{{ event.group_name }}</span>
+          <div class="truncate leading-3 text-gray-400">
+            <span class="text-xs font-semibold tracking-wide uppercase">{{ event.group_name }}</span>
           </div>
           <!-- End event group -->
 
@@ -200,8 +200,8 @@
       <a class="flex flex-col justify-between w-full h-full cursor-pointer hover:no-underline" href="#">
         <div>
           <!-- Category or region -->
-          <div class="truncate leading-3">
-            <span class="text-xs font-semibold tracking-wide text-gray-400 uppercase">
+          <div class="truncate leading-3 text-gray-400">
+            <span class="text-xs font-semibold tracking-wide uppercase">
               {% if let Some(region_name) = group.region_name %}
                 {{ region_name }}
               {% else %}
