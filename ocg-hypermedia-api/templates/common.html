@@ -133,3 +133,14 @@
 <!-- Results -->
 {% macro results_legend(total, items_number, offset_value) %}{% if let Some(offset) = offset_value %}{{ offset + 1 }} - {{ items_number + offset }}{% else %}1 - {{ items_number }}{% endif %} of {{ total }} results{% endmacro %}
 <!-- End results -->
+
+<!-- Logo -->
+  {% macro logo(logo_url, kind, classes) %}
+    <div
+      class="h-24 min-w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
+      style='
+        background-image: url({% if let Some(url) = logo_url %}{{ url }}{% else %}{% if kind == "event" %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% else %}https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png{% endif %}{% endif %});
+      '>
+    </div>
+  {% endmacro %}
+<!-- End logo -->

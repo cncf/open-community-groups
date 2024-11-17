@@ -23,12 +23,7 @@
   <div class="p-5 md:p-7">
     <div class="flex flex-1 flex-row items-stretch">
       <!-- Event icon -->
-      <div
-        class="h-24 min-w-24 md:h-[150px] md:min-w-[150px] md:my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-        style="
-          background-image: url({% if let Some(logo_url) = event.logo_url %}{{ logo_url }}{% else %}https://img.freepik.com/free-photo/people-taking-part-high-protocol-event_23-2150951233.jpg{% endif %});
-        "
-      ></div>
+      {% call common::logo(event.logo_url, "event", "md:h-[150px] md:min-w-[150px]") %}
       <!-- End event icon -->
 
       <div class="min-w-0 pl-4 content-center">

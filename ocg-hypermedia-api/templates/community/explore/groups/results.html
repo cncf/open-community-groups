@@ -22,12 +22,7 @@
 {% macro group_card(group) %}
   <div class="flex flex-1 flex-row items-stretch p-5 md:p-7">
     <!-- Group icon -->
-    <div
-      class="h-24 min-w-24 md:h-[140px] md:min-w-[140px] my-auto bg-no-repeat bg-center bg-cover rounded-lg border"
-      style="
-        background-image: url({% if let Some(logo_url) = group.logo_url %}{{ logo_url }}{% else %}https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png{% endif %});
-      "
-    ></div>
+    {% call common::logo(group.logo_url, "group", "md:h-[140px] md:min-w-[140px]") %}
     <!-- End group icon -->
 
     <div class="min-w-0 pl-4 content-center">
