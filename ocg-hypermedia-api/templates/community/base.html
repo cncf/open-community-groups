@@ -32,11 +32,7 @@
         },
       };
 
-      let placeholder_colors = [
-        "#d62293", "#0086ff", "#93eaff"
-      ];
-
-      const hexColorToRGB = (hexColor) => {
+      const hexToRGB = (hexColor) => {
         let color = hexColor.replace("#", "");
         if (color.length === 3) {
           color = color
@@ -68,7 +64,7 @@
         overWritePrimaryColor();
 
         const calculatePalette = (hexColor) => {
-          const [r, g, b] = {...hexColorToRGB(hexColor)};
+          const {r, g, b} = {...hexToRGB(hexColor)};
 
           const getTint = (percentage) => {
             const tintR = Math.round(Math.min(255, r + (255 - r) * percentage));
@@ -100,12 +96,6 @@
           primary: calculatePalette("{{ theme.primary_color }}"),
         }
       {% endif %}
-
-      // Prepare colors for empty event images
-      let img_colors = [];
-      placeholder_colors.forEach(color => {
-        img_colors.push(`rgba(${hexColorToRGB(color).r}, ${hexColorToRGB(color).g}, ${hexColorToRGB(color).b}, 0.6)`);
-      });
 
       tailwind.config = {
         theme: {
@@ -349,6 +339,17 @@
       const randomIntFromInterval = (min, max) => {
         return Math.floor(Math.random() * (max - min + 1) + min);
       };
+
+      let placeholder_colors = [
+        "#d62293", "#0086ff", "#93eaff"
+      ];
+
+      // Prepare colors for empty event images
+      let img_colors = [];
+      placeholder_colors.forEach(color => {
+        const {r, g, b} = {...hexToRGB(color)};
+        img_colors.push(`rgba(${r}, ${g}, ${b}, 0.6)`);
+      });
 
       const fillEmptyImages = () => {
         const getRandomOverlayColor = () => {
