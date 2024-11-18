@@ -31,6 +31,6 @@ returns json as $$
         where g.community_id = p_community_id
         and g.active = true
         order by g.created_at desc
-        limit 12
+        limit 9
     ) groups;
 $$ language sql;

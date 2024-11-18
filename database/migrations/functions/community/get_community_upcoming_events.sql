@@ -35,6 +35,6 @@ returns json as $$
         and e.starts_at > now()
         and e.canceled = false
         order by e.starts_at asc
-        limit 12
+        limit 9
     ) events;
 $$ language sql;
