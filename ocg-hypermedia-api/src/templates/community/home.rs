@@ -4,6 +4,7 @@
 use anyhow::Result;
 use askama_axum::Template;
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
 use super::common::Community;
@@ -27,6 +28,7 @@ pub(crate) struct Event {
     pub kind_id: String,
     pub name: String,
     pub slug: String,
+    pub timezone: Tz,
 
     pub group_city: Option<String>,
     pub group_state: Option<String>,

@@ -19,6 +19,7 @@ axum = { version = "0.7.7", features = ["macros"] }
 cached = { version = "0.54.0", features = ["async"] }
 clap = { version = "4.5.20", features = ["derive"] }
 chrono = { version = "0.4.38", features = ["serde"] }
+chrono-tz = { version = "0.10.0", features = ["serde"] }
 deadpool-postgres = { version = "0.14.0", features = ["serde"] }
 figment = { version = "0.10.19", features = ["yaml", "env"] }
 openssl = { version = "0.10.68", features = ["vendored"] }

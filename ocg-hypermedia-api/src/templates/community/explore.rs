@@ -10,6 +10,7 @@ use anyhow::Result;
 use askama_axum::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Months, Utc};
+use chrono_tz::Tz;
 use serde::{ser, Deserialize, Serialize};
 use tracing::trace;
 
@@ -183,6 +184,7 @@ pub(crate) struct Event {
     pub kind_id: String,
     pub name: String,
     pub slug: String,
+    pub timezone: Tz,
 
     pub group_city: Option<String>,
     pub group_country_code: Option<String>,

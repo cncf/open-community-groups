@@ -11,6 +11,7 @@ returns json as $$
         'name', name,
         'slug', slug,
         'starts_at', floor(extract(epoch from starts_at)),
+        'timezone', timezone,
         'venue_city', venue_city
     )), '[]')
     from (
@@ -20,6 +21,7 @@ returns json as $$
             e.name,
             e.slug,
             e.starts_at,
+            e.timezone,
             e.venue_city,
             g.city as group_city,
             g.name as group_name,
