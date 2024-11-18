@@ -9,7 +9,7 @@ use std::{
 use anyhow::Result;
 use askama_axum::Template;
 use axum::http::HeaderMap;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Months, Utc};
 use serde::{ser, Deserialize, Serialize};
 use tracing::trace;
 
@@ -100,6 +100,16 @@ impl EventsFilters {
         filters.event_category.retain(|c| !c.is_empty());
         filters.group_category.retain(|c| !c.is_empty());
         filters.region.retain(|r| !r.is_empty());
+
+        // Add default date range if not provided
+        if filters.date_from.is_none() {
+            filters.date_from = Some(Utc::now().date_naive().to_string());
+        }
+        if filters.date_to.is_none() {
+            if let Some(date_to) = Utc::now().date_naive().checked_add_months(Months::new(12)) {
+                filters.date_to = Some(date_to.to_string());
+            }
+        }
 
         // Populate the latitude and longitude fields from the headers provided
         (filters.latitude, filters.longitude) = extract_location(headers);
