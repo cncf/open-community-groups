@@ -24,6 +24,7 @@ pub(crate) struct Index {
 pub(crate) struct Event {
     pub group_name: String,
     pub group_slug: String,
+    pub kind_id: String,
     pub name: String,
     pub slug: String,
 

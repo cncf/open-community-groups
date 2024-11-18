@@ -6,6 +6,7 @@ returns json as $$
         'group_name', group_name,
         'group_slug', group_slug,
         'group_state', group_state,
+        'kind_id', event_kind_id,
         'logo_url', logo_url,
         'name', name,
         'slug', slug,
@@ -14,6 +15,7 @@ returns json as $$
     )), '[]')
     from (
         select
+            e.event_kind_id,
             e.logo_url,
             e.name,
             e.slug,
