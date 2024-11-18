@@ -32,6 +32,33 @@
         },
       };
 
+      let placeholder_colors = [
+        "#d62293", "#0086ff", "#93eaff"
+      ];
+
+      const hexColorToRGB = (hexColor) => {
+        let color = hexColor.replace("#", "");
+        if (color.length === 3) {
+          color = color
+            .split("")
+            .map((char) => char + char)
+            .join("");
+        }
+
+        const r = parseInt(color.slice(0, 2), 16);
+        const g = parseInt(color.slice(2, 4), 16);
+        const b = parseInt(color.slice(4, 6), 16);
+
+        return {r: r, g: g, b: b};
+      };
+
+      const rgbToHex = (r, g, b) => {
+        return `#${[r, g, b]
+          .map(x => x.toString(16).padStart(2, '0'))
+          .join('')}`;
+      };
+
+      // When theme is available, overwrite primary color
       {% if let Some(theme) = community.theme %}
         const overWritePrimaryColor = () => {
           const r = document.querySelector(':root');
@@ -41,17 +68,7 @@
         overWritePrimaryColor();
 
         const calculatePalette = (hexColor) => {
-          let color = hexColor.replace("#", "");
-          if (color.length === 3) {
-            color = color
-              .split("")
-              .map((char) => char + char)
-              .join("");
-          }
-
-          const r = parseInt(color.slice(0, 2), 16);
-          const g = parseInt(color.slice(2, 4), 16);
-          const b = parseInt(color.slice(4, 6), 16);
+          const [r, g, b] = {...hexColorToRGB(hexColor)};
 
           const getTint = (percentage) => {
             const tintR = Math.round(Math.min(255, r + (255 - r) * percentage));
@@ -69,12 +86,6 @@
             return rgbToHex(shadeR, shadeG, shadeB);
           };
 
-          const rgbToHex = (r, g, b) => {
-            return `#${[r, g, b]
-              .map(x => x.toString(16).padStart(2, '0'))
-              .join('')}`;
-          };
-
           return {
             50: getTint(0.95),
             100: getTint(0.9),
@@ -89,6 +100,12 @@
           primary: calculatePalette("{{ theme.primary_color }}"),
         }
       {% endif %}
+
+      // Prepare colors for empty event images
+      let img_colors = [];
+      placeholder_colors.forEach(color => {
+        img_colors.push(`rgba(${hexColorToRGB(color).r}, ${hexColorToRGB(color).g}, ${hexColorToRGB(color).b}, 0.6)`);
+      });
 
       tailwind.config = {
         theme: {
@@ -108,23 +125,6 @@
     </script>
   </head>
   <body class="h-full {% block bg_color %}bg-white{% endblock %}">
-    <div class="min-h-full flex flex-col">
-      <div class="{% block headerColor %}{{ headerColor }}{% endblock %}">
-        {% include "community/header.html" %}
-        {% block jumbotron %}
-          <div></div>
-        {% endblock %}
-      </div>
-
-      <main class="grow z-[1]">
-        {% block content %}
-          <p>Placeholder content</p>
-        {% endblock %}
-      </main>
-
-      {% include "community/footer.html" %}
-    </div>
-
     <script>
       const COLLAPSIBLE_FILTERS = ['region', 'distance'];
 
@@ -346,10 +346,45 @@
         activateImageInCarousel(activeItemIndex);
       };
 
-      // Check visible filters on explore page
+      const randomIntFromInterval = (min, max) => {
+        return Math.floor(Math.random() * (max - min + 1) + min);
+      };
+
+      const fillEmptyImages = () => {
+        const getRandomOverlayColor = () => {
+          return img_colors[randomIntFromInterval(0, img_colors.length - 1)];
+        }
+
+        const eventImages = document.querySelectorAll('[data-placeholder-image-event]');
+        eventImages.forEach((image) => {
+          image.style.backgroundImage = `linear-gradient(to bottom, rgba(255, 255, 255, 0.6), ${getRandomOverlayColor()}), url(https://img.freepik.com/freephoto/people-taking-part-high-protocol-event_23-2150951233.jpg)`;
+        });
+      };
+    </script>
+    <div class="min-h-full flex flex-col">
+      <div class="{% block headerColor %}{{ headerColor }}{% endblock %}">
+        {% include "community/header.html" %}
+        {% block jumbotron %}
+          <div></div>
+        {% endblock %}
+      </div>
+
+      <main class="grow z-[1]">
+        {% block content %}
+          <p>Placeholder content</p>
+        {% endblock %}
+      </main>
+
+      {% include "community/footer.html" %}
+    </div>
+
+    <script>
       {% if path == "/explore" %}
+        // Check visible filters on explore page
         checkVisibleFilters();
       {% endif %}
+
+      fillEmptyImages();
     </script>
   </body>
 </html>

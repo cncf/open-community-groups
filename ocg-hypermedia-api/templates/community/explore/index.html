@@ -45,7 +45,7 @@
       </div>
     </div>
 
-    <div id="entity-section" class="relative" hx-on::after-settle="checkVisibleFilters()" hx-on::after-swap="hideSpinner()">
+    <div id="entity-section" class="relative" hx-on::after-settle="checkVisibleFilters();fillEmptyImages();" hx-on::after-swap="hideSpinner()">
       {% match entity %}
       {% when Entity::Groups %}
         <!-- Groups -->
