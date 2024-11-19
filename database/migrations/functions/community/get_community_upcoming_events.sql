@@ -34,7 +34,7 @@ returns json as $$
         and e.event_kind_id = any(p_event_kind_ids)
         and (g.city is not null or e.venue_city is not null)
         and e.starts_at is not null
-        and e.starts_at >= now()
+        and e.starts_at > now()
         and e.canceled = false
         order by e.starts_at asc
         limit 9
