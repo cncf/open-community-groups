@@ -135,7 +135,7 @@
 <!-- End results -->
 
 <!-- Logo -->
-  {% macro logo(logo_url, kind, classes) %}
+  {% macro logo(logo_url, name, title, classes) %}
     {% if let Some(url) = logo_url %}
       <div
         class="h-24 min-w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
@@ -144,20 +144,16 @@
         '>
       </div>
     {% else %}
-      {% if kind == "event" %}
-        <div
-          class="h-24 min-w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
-          data-placeholder-image-{{ kind }}="true"
-        >
+      <div
+        class="relative h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
+      >
+        <div class="relative h-full w-full flex place-items-center p-2 text-xs font-semibold uppercase z-10">
+          <p class="w-full text-ellipsis overflow-hidden text-center">
+            {{ name }}
+          </p>
         </div>
-      {% else %}
-        <div
-          class="h-24 min-w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
-          style='
-            background-image: url(https://raw.githubusercontent.com/cncf/artwork/refs/heads/main/other/cncf/icon/color/cncf-icon-color.png);
-          '>
-        </div>
-      {% endif %}
+        <div data-placeholder-logo="true" data-placeholder-name="{{ title }}" class="absolute w-full h-full top-0" style="mask-image: url(/static/images/placeholder_cncf.png);mask-mode: alpha;mask-size: cover;"></div>
+      </div>
     {% endif %}
   {% endmacro %}
 <!-- End logo -->

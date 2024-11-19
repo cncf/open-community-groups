@@ -336,29 +336,36 @@
         activateImageInCarousel(activeItemIndex);
       };
 
-      const randomIntFromInterval = (min, max) => {
-        return Math.floor(Math.random() * (max - min + 1) + min);
-      };
-
-      let placeholder_colors = [
-        "#d62293", "#0086ff", "#93eaff"
-      ];
+      let placeholder_colors = ["#e2e2df", "#d2d2cf", "#f7d9c4", "#faedcb", "#c9e4de", "#c6def1", "#dbcdf0", "#f2c6de", "#f9c6c9"];
 
       // Prepare colors for empty event images
       let img_colors = [];
       placeholder_colors.forEach(color => {
         const {r, g, b} = {...hexToRGB(color)};
-        img_colors.push(`rgba(${r}, ${g}, ${b}, 0.6)`);
+        img_colors.push(`rgba(${r}, ${g}, ${b}, 0.8)`);
       });
 
       const fillEmptyImages = () => {
-        const getRandomOverlayColor = () => {
-          return img_colors[randomIntFromInterval(0, img_colors.length - 1)];
+        const hashCode = (str) => {
+          let hash = 0;
+          if (str.length === 0) return hash;
+          for (let i = 0; i < str.length; i++) {
+            const chr = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + chr;
+            hash |= 0; // Convert to 32bit integer
+          }
+          return Math.abs(hash);
         }
 
-        const eventImages = document.querySelectorAll('[data-placeholder-image-event]');
-        eventImages.forEach((image) => {
-          image.style.backgroundImage = `linear-gradient(to bottom, rgba(255, 255, 255, 0.6), ${getRandomOverlayColor()}), url(https://img.freepik.com/freephoto/people-taking-part-high-protocol-event_23-2150951233.jpg)`;
+        const getBackgroundColor = (name) => {
+          const hash = hashCode(name);
+          return img_colors[hash % img_colors.length];
+        }
+
+        const emptyLogos = document.querySelectorAll('[data-placeholder-logo]');
+        emptyLogos.forEach((image) => {
+          const name = image.dataset.placeholderName;
+          image.style.backgroundColor = getBackgroundColor(name);
         });
       };
     </script>

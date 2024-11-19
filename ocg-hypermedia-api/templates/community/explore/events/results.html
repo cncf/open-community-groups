@@ -23,7 +23,7 @@
   <div class="p-5 md:p-7">
     <div class="flex flex-1 flex-row items-stretch">
       <!-- Event icon -->
-      {% call common::logo(event.logo_url, "event", "md:h-[150px] md:min-w-[150px]") %}
+      {% call common::logo(event.logo_url, event.group_name, event.name, "md:h-[150px] md:min-w-[150px]") %}
       <!-- End event icon -->
 
       <div class="min-w-0 pl-4 content-center">

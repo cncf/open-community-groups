@@ -22,7 +22,7 @@
 {% macro group_card(group) %}
   <div class="flex flex-1 flex-row items-stretch p-5 md:p-7">
     <!-- Group icon -->
-    {% call common::logo(group.logo_url, "group", "md:h-[140px] md:min-w-[140px]") %}
+    {% call common::logo(group.logo_url, group.name, group.name, "md:h-[140px] md:min-w-[140px]") %}
     <!-- End group icon -->
 
     <div class="min-w-0 pl-4 content-center">
