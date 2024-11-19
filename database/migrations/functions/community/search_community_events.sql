@@ -109,7 +109,7 @@ begin
             select coalesce(json_agg(json_build_object(
                 'canceled', canceled,
                 'description', description,
-                'kind_id', event_kind_id,
+                'kind', event_kind_id,
                 'logo_url', logo_url,
                 'name', name,
                 'slug', slug,

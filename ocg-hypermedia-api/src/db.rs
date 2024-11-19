@@ -9,8 +9,8 @@ use tokio_postgres::types::Json;
 use uuid::Uuid;
 
 use crate::templates::community::{
-    common::Community,
-    explore::{self, EventKind, EventsFilters, GroupsFilters},
+    common::{Community, EventKind},
+    explore::{self, EventsFilters, GroupsFilters},
     home,
 };
 

@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
-use super::common::Community;
+use super::common::{Community, EventKind};
 
 /// Home index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -25,7 +25,7 @@ pub(crate) struct Index {
 pub(crate) struct Event {
     pub group_name: String,
     pub group_slug: String,
-    pub kind_id: String,
+    pub kind: EventKind,
     pub name: String,
     pub slug: String,
     pub timezone: Tz,

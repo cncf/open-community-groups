@@ -6,7 +6,7 @@ returns json as $$
         'group_name', group_name,
         'group_slug', group_slug,
         'group_state', group_state,
-        'kind_id', event_kind_id,
+        'kind', event_kind_id,
         'logo_url', logo_url,
         'name', name,
         'slug', slug,

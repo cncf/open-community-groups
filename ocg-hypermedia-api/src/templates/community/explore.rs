@@ -16,7 +16,7 @@ use tracing::trace;
 
 use crate::templates::helpers::extract_location;
 
-use super::common::Community;
+use super::common::{Community, EventKind};
 
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
@@ -102,7 +102,7 @@ impl EventsFilters {
         filters.group_category.retain(|c| !c.is_empty());
         filters.region.retain(|r| !r.is_empty());
 
-        // Add default date range if not provided
+        // Add default date range if not provided (now -> 12 months from now)
         if filters.date_from.is_none() {
             filters.date_from = Some(Utc::now().date_naive().to_string());
         }
@@ -155,25 +155,6 @@ pub(crate) struct EventsResultsSection {
     pub total: usize,
 }
 
-/// Event kind (in-person or virtual).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum EventKind {
-    Hybrid,
-    InPerson,
-    Virtual,
-}
-
-impl Display for EventKind {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            EventKind::Hybrid => write!(f, "hybrid"),
-            EventKind::InPerson => write!(f, "in-person"),
-            EventKind::Virtual => write!(f, "virtual"),
-        }
-    }
-}
-
 /// Event information used in the community explore page.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Event {
@@ -181,7 +162,7 @@ pub(crate) struct Event {
     pub description: String,
     pub group_name: String,
     pub group_slug: String,
-    pub kind_id: String,
+    pub kind: EventKind,
     pub name: String,
     pub slug: String,
     pub timezone: Tz,

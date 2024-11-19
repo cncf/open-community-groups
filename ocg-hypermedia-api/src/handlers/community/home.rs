@@ -8,7 +8,7 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::{explore::EventKind, home},
+    templates::community::{common::EventKind, home},
 };
 
 /// Handler that returns the home index page.
