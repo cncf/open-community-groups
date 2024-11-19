@@ -41,14 +41,14 @@
           <!-- End group region -->
 
           <!-- Group name -->
-          <h2 class="font-semibold truncate">{{ group.name }}</h2>
+          <h2 class="font-semibold truncate">{{ group.name|demoji }}</h2>
           <!-- End group name -->
         </div>
 
         {% if let Some(description) = group.description %}
           <!-- Group description -->
           <div class="relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2">
-            {{ description|safe }}
+            {{ description|demoji|safe }}
           </div>
           <!-- End group description -->
         {% endif %}

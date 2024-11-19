@@ -36,13 +36,13 @@
             <!-- End event group -->
 
             <!-- Event name -->
-            <h2 class="font-semibold truncate">{{ event.name }}</h2>
+            <h2 class="font-semibold truncate">{{ event.name|demoji }}</h2>
             <!-- End event name -->
           </div>
 
           <!-- Event description on desktop -->
           <div class="hidden relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2 md:block">
-            {{ event.description|safe }}
+            {{ event.description|demoji|safe }}
           </div>
           <!-- End event description on desktop -->
 

@@ -43,6 +43,12 @@ impl Community {
     }
 }
 
+/// Theme information used to customize the selected layout.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Theme {
+    pub primary_color: String,
+}
+
 /// Event kind (in-person, virtual or hybrid).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -61,10 +67,4 @@ impl std::fmt::Display for EventKind {
             EventKind::Virtual => write!(f, "virtual"),
         }
     }
-}
-
-/// Theme information used to customize the selected layout.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Theme {
-    pub primary_color: String,
 }

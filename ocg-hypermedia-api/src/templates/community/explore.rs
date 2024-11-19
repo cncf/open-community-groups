@@ -14,7 +14,7 @@ use chrono_tz::Tz;
 use serde::{ser, Deserialize, Serialize};
 use tracing::trace;
 
-use crate::templates::helpers::extract_location;
+use crate::templates::{filters, helpers::extract_location};
 
 use super::common::{Community, EventKind};
 

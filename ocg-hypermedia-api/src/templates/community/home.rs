@@ -7,6 +7,8 @@ use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
+use crate::templates::filters;
+
 use super::common::{Community, EventKind};
 
 /// Home index page template.
