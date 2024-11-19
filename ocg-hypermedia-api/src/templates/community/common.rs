@@ -67,5 +67,4 @@ impl std::fmt::Display for EventKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Theme {
     pub primary_color: String,
-    pub placeholders_colors: Option<Vec<String>>,
 }
