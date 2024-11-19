@@ -26,7 +26,7 @@
           {{ community.description|safe }}
         </div>
         <div>
-          {% call common::search_bar("Search groups and events", "", "", "w-[100%] lg:w-[50%]", "mb-6") %}
+          {% call common::search_bar("Search groups and events", "", "", "w-[100%] lg:w-[50%]", "mb-6", true) %}
         </div>
         {% call common::primary_link("Explore all", "/explore", "", false) %}
       </div>
