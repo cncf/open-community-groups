@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
     let db = Arc::new(PgDB::new(pool));
 
     // Setup and launch HTTP server
-    let router = router::setup(db);
+    let router = router::setup(&cfg.server.static_dir, db)?;
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");

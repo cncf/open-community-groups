@@ -40,6 +40,7 @@ impl Config {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HttpServerConfig {
     pub addr: String,
+    pub static_dir: PathBuf,
 }
 
 /// Logs configuration.
