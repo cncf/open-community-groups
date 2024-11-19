@@ -34,10 +34,14 @@ async fn main() -> Result<()> {
     let cfg = Config::new(&args.config_file).context("error setting up configuration")?;
 
     // Setup logging
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "ocg_hypermedia_api=debug");
-    }
-    let ts = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env());
+    let ts =
+        tracing_subscriber::fmt().with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+            format!(
+                "{}=debug,tower_http=debug,axum::rejection=trace",
+                env!("CARGO_CRATE_NAME")
+            )
+            .into()
+        }));
     match cfg.log.format {
         LogFormat::Json => ts.json().init(),
         LogFormat::Pretty => ts.init(),

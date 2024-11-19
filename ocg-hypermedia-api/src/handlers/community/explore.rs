@@ -9,6 +9,7 @@ use axum::{
     http::{HeaderMap, Uri},
     response::IntoResponse,
 };
+use tracing::instrument;
 
 use crate::{
     db::DynDB,
@@ -17,6 +18,7 @@ use crate::{
 };
 
 /// Handler that returns the explore index page.
+#[instrument(skip_all, err)]
 pub(crate) async fn index(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -82,6 +84,7 @@ pub(crate) async fn index(
 }
 
 /// Handler that returns the events section of the explore page.
+#[instrument(skip_all, err)]
 pub(crate) async fn events_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -115,6 +118,7 @@ pub(crate) async fn events_section(
 }
 
 /// Handler that returns the events results section of the explore page.
+#[instrument(skip_all, err)]
 pub(crate) async fn events_results_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -141,6 +145,7 @@ pub(crate) async fn events_results_section(
 }
 
 /// Handler that returns the groups section of the explore page.
+#[instrument(skip_all, err)]
 pub(crate) async fn groups_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
@@ -174,6 +179,7 @@ pub(crate) async fn groups_section(
 }
 
 /// Handler that returns the groups results section of the explore page.
+#[instrument(skip_all, err)]
 pub(crate) async fn groups_results_section(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
