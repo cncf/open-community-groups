@@ -53,7 +53,7 @@ begin
     with filtered_events as (
         select
             e.canceled,
-            e.description,
+            e.description_short,
             e.event_kind_id,
             e.logo_url,
             e.name,
@@ -108,7 +108,7 @@ begin
         (
             select coalesce(json_agg(json_build_object(
                 'canceled', canceled,
-                'description', description,
+                'description_short', description_short,
                 'kind', event_kind_id,
                 'logo_url', logo_url,
                 'name', name,

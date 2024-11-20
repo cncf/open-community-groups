@@ -159,7 +159,6 @@ pub(crate) struct EventsResultsSection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Event {
     pub canceled: bool,
-    pub description: String,
     pub group_name: String,
     pub group_slug: String,
     pub kind: EventKind,
@@ -167,6 +166,7 @@ pub(crate) struct Event {
     pub slug: String,
     pub timezone: Tz,
 
+    pub description_short: Option<String>,
     pub group_city: Option<String>,
     pub group_country_code: Option<String>,
     pub group_country_name: Option<String>,
