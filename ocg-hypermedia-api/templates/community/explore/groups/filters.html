@@ -14,16 +14,16 @@
   hx-boost="true"
 >
   <!-- Group category -->
-  {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, 5) %}
+  {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, "rows", 4) %}
   <!-- End Group category -->
 
   <!-- Regions -->
-  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, 5) %}
+  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
   <!-- End Regions -->
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
     <!-- Distance -->
-    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, 5) %}
+    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, "cols", 5) %}
     <!-- End distance -->
   {% endif %}
 </form>
