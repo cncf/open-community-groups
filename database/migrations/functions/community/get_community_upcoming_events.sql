@@ -3,6 +3,8 @@ create or replace function get_community_upcoming_events(p_community_id uuid, p_
 returns json as $$
     select coalesce(json_agg(json_build_object(
         'group_city', group_city,
+        'group_country_code', country_code,
+        'group_country_name', country_name,
         'group_name', group_name,
         'group_slug', group_slug,
         'group_state', group_state,
@@ -24,6 +26,8 @@ returns json as $$
             e.timezone,
             e.venue_city,
             g.city as group_city,
+            g.country_code,
+            g.country_name,
             g.name as group_name,
             g.slug as group_slug,
             g.state as group_state

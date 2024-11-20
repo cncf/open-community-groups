@@ -7,7 +7,10 @@ use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
-use crate::templates::filters;
+use crate::templates::{
+    filters,
+    helpers::{build_location, LocationParts},
+};
 
 use super::common::{Community, EventKind};
 
@@ -33,6 +36,8 @@ pub(crate) struct Event {
     pub timezone: Tz,
 
     pub group_city: Option<String>,
+    pub group_country_code: Option<String>,
+    pub group_country_name: Option<String>,
     pub group_state: Option<String>,
     pub logo_url: Option<String>,
     #[serde(with = "chrono::serde::ts_seconds_option")]
@@ -41,6 +46,18 @@ pub(crate) struct Event {
 }
 
 impl Event {
+    /// Returns the location of the event.
+    pub fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(&self.group_city)
+            .group_country_code(&self.group_country_code)
+            .group_country_name(&self.group_country_name)
+            .group_state(&self.group_state)
+            .venue_city(&self.venue_city);
+
+        build_location(max_len, &parts)
+    }
+
     /// Try to create a vector of `Event` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let events: Vec<Self> = serde_json::from_str(data)?;
@@ -67,6 +84,17 @@ pub(crate) struct Group {
 }
 
 impl Group {
+    /// Returns the location of the event.
+    pub fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(&self.city)
+            .group_country_code(&self.country_code)
+            .group_country_name(&self.country_name)
+            .group_state(&self.state);
+
+        build_location(max_len, &parts)
+    }
+
     /// Try to create a vector of `Group` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let groups: Vec<Self> = serde_json::from_str(data)?;

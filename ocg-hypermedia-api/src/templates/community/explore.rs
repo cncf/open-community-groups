@@ -14,7 +14,10 @@ use chrono_tz::Tz;
 use serde::{ser, Deserialize, Serialize};
 use tracing::trace;
 
-use crate::templates::{filters, helpers::extract_location};
+use crate::templates::{
+    filters,
+    helpers::{build_location, extract_location, LocationParts},
+};
 
 use super::common::{Community, EventKind};
 
@@ -181,31 +184,17 @@ pub(crate) struct Event {
 
 impl Event {
     /// Returns the location of the event.
-    pub fn location(&self) -> Option<String> {
-        let mut location = String::new();
-        let mut location_push = |value: &Option<String>| {
-            if let Some(value) = value {
-                if !location.is_empty() {
-                    location.push_str(", ");
-                }
-                location.push_str(value);
-            }
-        };
+    pub fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(&self.group_city)
+            .group_country_code(&self.group_country_code)
+            .group_country_name(&self.group_country_name)
+            .group_state(&self.group_state)
+            .venue_address(&self.venue_address)
+            .venue_city(&self.venue_city)
+            .venue_name(&self.venue_name);
 
-        location_push(&self.venue_name);
-        location_push(&self.venue_address);
-        if self.venue_city.is_some() {
-            location_push(&self.venue_city);
-        } else if self.group_city.is_some() {
-            location_push(&self.group_city);
-        }
-        location_push(&self.group_state);
-        location_push(&self.group_country_name);
-
-        if !location.is_empty() {
-            return Some(location);
-        }
-        None
+        build_location(max_len, &parts)
     }
 
     /// Try to create a vector of `Event` instances from a JSON string.
@@ -500,93 +489,7 @@ pub(crate) trait Pagination {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_url_filters_separator, Event, NavigationLinksOffsets, DEFAULT_PAGINATION_LIMIT};
-
-    macro_rules! explore_event_location_tests {
-        ($(
-            $name:ident: {
-                event: $event:expr,
-                expected_location: $expected_location:expr
-            }
-        ,)*) => {
-        $(
-            #[test]
-            fn $name() {
-                assert_eq!($event.location(), $expected_location);
-            }
-        )*
-        }
-    }
-
-    explore_event_location_tests! {
-        explore_event_location_1: {
-            event: Event {
-                group_city: Some("group city".to_string()),
-                group_country_name: Some("group country".to_string()),
-                group_state: Some("group state".to_string()),
-                venue_address: Some("venue address".to_string()),
-                venue_city: Some("venue city".to_string()),
-                venue_name: Some("venue name".to_string()),
-                ..Default::default()
-            },
-            expected_location: Some("venue name, venue address, venue city, group state, group country".to_string())
-        },
-
-        explore_event_location_2: {
-            event: Event {
-                group_city: Some("group city".to_string()),
-                group_country_name: Some("group country".to_string()),
-                group_state: Some("group state".to_string()),
-                venue_address: Some("venue address".to_string()),
-                venue_city: Some("venue city".to_string()),
-                ..Default::default()
-            },
-            expected_location: Some("venue address, venue city, group state, group country".to_string())
-        },
-
-        explore_event_location_3: {
-            event: Event {
-                group_city: Some("group city".to_string()),
-                group_country_name: Some("group country".to_string()),
-                group_state: Some("group state".to_string()),
-                venue_city: Some("venue city".to_string()),
-                ..Default::default()
-            },
-            expected_location: Some("venue city, group state, group country".to_string())
-        },
-
-        explore_event_location_4: {
-            event: Event {
-                group_city: Some("group city".to_string()),
-                group_country_name: Some("group country".to_string()),
-                group_state: Some("group state".to_string()),
-                ..Default::default()
-            },
-            expected_location: Some("group city, group state, group country".to_string())
-        },
-
-        explore_event_location_5: {
-            event: Event {
-                group_country_name: Some("group country".to_string()),
-                group_state: Some("group state".to_string()),
-                ..Default::default()
-            },
-            expected_location: Some("group state, group country".to_string())
-        },
-
-        explore_event_location_6: {
-            event: Event {
-                group_country_name: Some("group country".to_string()),
-                ..Default::default()
-            },
-            expected_location: Some("group country".to_string())
-        },
-
-        explore_event_location_7: {
-            event: Event::default(),
-            expected_location: None
-        },
-    }
+    use super::{get_url_filters_separator, NavigationLinksOffsets, DEFAULT_PAGINATION_LIMIT};
 
     macro_rules! navigation_links_offsets_tests {
         ($(
