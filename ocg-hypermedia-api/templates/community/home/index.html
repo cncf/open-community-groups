@@ -129,11 +129,6 @@
       <!-- Event icon -->
       {% call common::logo(event.logo_url, event.group_name, event.name, "md:h-[120px] md:min-w-[120px]") %}
       <!-- End event icon -->
-      {% if event.kind == EventKind::Hybrid %}
-        <div class="absolute flex justify-center top-3 m-auto left-0 right-0">
-          <div class="font-bold text-gray-700 uppercase px-3 bg-white/50 rounded-lg text-[0.65rem]">Hybrid</div>
-        </div>
-      {% endif %}
     </div>
 
     <div class="min-w-0 pl-4 content-center h-full">
