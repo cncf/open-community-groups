@@ -47,7 +47,7 @@ pub(crate) struct Event {
 
 impl Event {
     /// Returns the location of the event.
-    pub fn location(&self, max_len: usize) -> Option<String> {
+    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(&self.group_city)
             .group_country_code(&self.group_country_code)
@@ -85,7 +85,7 @@ pub(crate) struct Group {
 
 impl Group {
     /// Returns the location of the event.
-    pub fn location(&self, max_len: usize) -> Option<String> {
+    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(&self.city)
             .group_country_code(&self.country_code)

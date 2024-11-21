@@ -184,7 +184,7 @@ pub(crate) struct Event {
 
 impl Event {
     /// Returns the location of the event.
-    pub fn location(&self, max_len: usize) -> Option<String> {
+    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(&self.group_city)
             .group_country_code(&self.group_country_code)
@@ -302,6 +302,17 @@ pub(crate) struct Group {
 }
 
 impl Group {
+    /// Returns the location of the group.
+    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(&self.city)
+            .group_country_code(&self.country_code)
+            .group_country_name(&self.country_name)
+            .group_state(&self.state);
+
+        build_location(max_len, &parts)
+    }
+
     /// Try to create a vector of `Group` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let groups: Vec<Self> = serde_json::from_str(data)?;
