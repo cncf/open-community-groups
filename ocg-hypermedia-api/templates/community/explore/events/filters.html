@@ -55,6 +55,10 @@
   </div>
   <!-- End type -->
 
+  <!-- Regions -->
+  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
+  <!-- End Regions -->
+
   <!-- Group category -->
   {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, "rows", 4) %}
   <!-- End Group category -->
@@ -62,10 +66,6 @@
   <!-- Event category -->
   {% call macros::collapsible_filter_checkboxes("Event category", filters_options.event_category, "event_category", filters.event_category, "rows", 4) %}
   <!-- End event category -->
-
-  <!-- Regions -->
-  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
-  <!-- End Regions -->
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
     <!-- Distance -->
