@@ -345,6 +345,8 @@
         img_colors.push(`rgba(${r}, ${g}, ${b}, 0.3)`);
       });
 
+      const LOGO_REGEX = /upload.*\/v1/;
+
       const fillEmptyImages = () => {
         const hashCode = (str) => {
           let hash = 0;
@@ -361,6 +363,12 @@
           const hash = hashCode(name);
           return img_colors[hash % img_colors.length];
         }
+
+        const logos = document.querySelectorAll('[data-logo]');
+        logos.forEach((image) => {
+          const bgImage = image.style.backgroundImage;
+          image.style.backgroundImage = bgImage.replace(LOGO_REGEX, 'upload/c_scale,w_300/v1');
+        });
 
         const emptyLogos = document.querySelectorAll('[data-placeholder-logo]');
         emptyLogos.forEach((image) => {
