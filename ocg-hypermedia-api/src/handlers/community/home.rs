@@ -20,11 +20,12 @@ pub(crate) async fn index(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare home index template
     #[rustfmt::skip]
-    let (community, recently_added_groups, upcoming_in_person_events, upcoming_virtual_events) = tokio::try_join!(
+    let (community, recently_added_groups, upcoming_in_person_events, upcoming_virtual_events, stats) = tokio::try_join!(
         db.get_community(community_id),
         db.get_community_recently_added_groups(community_id),
         db.get_community_upcoming_events(community_id, vec![EventKind::InPerson, EventKind::Hybrid]),
         db.get_community_upcoming_events(community_id, vec![EventKind::Virtual, EventKind::Hybrid]),
+        db.get_community_home_stats(community_id),
     )?;
     let template = home::Index {
         community,
@@ -32,6 +33,7 @@ pub(crate) async fn index(
         recently_added_groups,
         upcoming_in_person_events,
         upcoming_virtual_events,
+        stats,
     };
 
     Ok(template)

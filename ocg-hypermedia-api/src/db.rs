@@ -27,6 +27,9 @@ pub(crate) trait DB {
     /// Get filters options used in the community explore page.
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions>;
 
+    /// Get some stats for the community home page.
+    async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats>;
+
     /// Get the community id from the host provided.
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
@@ -95,6 +98,20 @@ impl DB for PgDB {
         let filters_options = explore::FiltersOptions::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(filters_options)
+    }
+
+    /// [DB::get_community_home_stats]
+    async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats> {
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_community_home_stats($1::uuid)::text",
+                &[&community_id],
+            )
+            .await?;
+        let stats = home::Stats::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(stats)
     }
 
     /// [DB::get_community_id]

@@ -23,6 +23,7 @@ pub(crate) struct Index {
     pub recently_added_groups: Vec<Group>,
     pub upcoming_in_person_events: Vec<Event>,
     pub upcoming_virtual_events: Vec<Event>,
+    pub stats: Stats,
 }
 
 /// Event information used in the community home page.
@@ -99,5 +100,22 @@ impl Group {
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let groups: Vec<Self> = serde_json::from_str(data)?;
         Ok(groups)
+    }
+}
+
+/// Some stats used in the community home page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Stats {
+    groups: i64,
+    groups_members: i64,
+    events: i64,
+    events_attendees: i64,
+}
+
+impl Stats {
+    /// Try to create a `Stats` instance from a JSON string.
+    pub(crate) fn try_from_json(data: &str) -> Result<Self> {
+        let stats: Stats = serde_json::from_str(data)?;
+        Ok(stats)
     }
 }
