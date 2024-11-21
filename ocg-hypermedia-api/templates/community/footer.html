@@ -88,7 +88,8 @@
   <a
     href="{{ url }}"
     class="tracking-wider text-sm text-white hover:text-primary-500"
-    target="_blank" rel="noopener noreferrer"
+    target='{% if url.starts_with("/") %}_self{% else %}_blank{% endif %}'
+    rel="noopener noreferrer"
   >
     {{ content }}
   </a>
