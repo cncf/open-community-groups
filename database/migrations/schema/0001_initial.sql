@@ -48,6 +48,7 @@ create table "user" (
     user_id uuid primary key default gen_random_uuid(),
     email text not null unique check (email <> ''),
     created_at timestamptz default current_timestamp not null,
+    community_id uuid not null references community,
 
     auth_providers jsonb,
     bio text check (bio <> ''),
@@ -65,6 +66,8 @@ create table "user" (
     twitter_url text check (twitter_url <> ''),
     website_url text check (website_url <> '')
 );
+
+create index user_community_id_idx on "user" (community_id);
 
 create table region (
     region_id uuid primary key default gen_random_uuid(),
