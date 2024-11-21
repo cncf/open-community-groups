@@ -140,14 +140,14 @@
   {% macro logo(logo_url, name, title, classes) %}
     {% if let Some(url) = logo_url %}
       <div
-        class="h-24 min-w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
+        class="h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
         style='
           background-image: url({{ url }});
         '>
       </div>
     {% else %}
       <div
-        class="relative h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-cover {{ classes }}"
+        class="relative h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
       >
         <div class="relative h-full w-full flex place-items-center p-2 text-[0.78rem] text-gray-600 font-bold leading-5 capitalize z-10">
           <p class="w-full text-ellipsis overflow-hidden text-center">
