@@ -44,7 +44,9 @@ begin
             g.country_code,
             g.country_name,
             g.created_at,
-            g.description,
+            case when g.description like '%PLEASE ADD A DESCRIPTION HERE%' then null else
+                replace(regexp_replace(substring(g.description for 500), E'<[^>]+>', '', 'gi'), '&nbsp;', ' ')
+            end as description,
             g.logo_url,
             g.name,
             g.slug,
