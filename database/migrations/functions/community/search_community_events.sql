@@ -54,6 +54,7 @@ begin
         select
             e.canceled,
             e.description_short,
+            e.ends_at,
             e.event_kind_id,
             e.logo_url,
             e.name,
@@ -69,6 +70,9 @@ begin
             g.name as group_name,
             g.slug as group_slug,
             g.state as group_state,
+            gc.name as group_category_name,
+            st_y(g.location::geometry) as latitude,
+            st_x(g.location::geometry) as longitude,
             st_distance(g.location, v_user_location) as distance
         from event e
         join "group" g using (group_id)
@@ -109,7 +113,10 @@ begin
             select coalesce(json_agg(json_build_object(
                 'canceled', canceled,
                 'description_short', description_short,
+                'ends_at', floor(extract(epoch from ends_at)),
                 'kind', event_kind_id,
+                'latitude', latitude,
+                'longitude', longitude,
                 'logo_url', logo_url,
                 'name', name,
                 'slug', slug,
@@ -118,6 +125,7 @@ begin
                 'venue_address', venue_address,
                 'venue_city', venue_city,
                 'venue_name', venue_name,
+                'group_category_name', group_category_name,
                 'group_city', group_city,
                 'group_country_code', group_country_code,
                 'group_country_name', group_country_name,

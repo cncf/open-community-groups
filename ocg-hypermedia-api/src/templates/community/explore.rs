@@ -162,6 +162,7 @@ pub(crate) struct EventsResultsSection {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Event {
     pub canceled: bool,
+    pub group_category_name: String,
     pub group_name: String,
     pub group_slug: String,
     pub kind: EventKind,
@@ -169,16 +170,37 @@ pub(crate) struct Event {
     pub slug: String,
     pub timezone: Tz,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description_short: Option<String>,
+    #[serde(
+        with = "chrono::serde::ts_seconds_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub ends_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_city: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_country_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_country_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_state: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub longitude: Option<f64>,
+    #[serde(
+        with = "chrono::serde::ts_seconds_option",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub starts_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_city: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_name: Option<String>,
 }
 

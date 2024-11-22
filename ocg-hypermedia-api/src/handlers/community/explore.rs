@@ -204,3 +204,18 @@ pub(crate) async fn groups_results_section(
 
     Ok((headers, template))
 }
+
+/// Handler that returns the events search results.
+#[instrument(skip_all, err)]
+pub(crate) async fn search_events(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, HandlerError> {
+    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let (events, _) = db.search_community_events(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&events)?;
+
+    Ok(json_data)
+}

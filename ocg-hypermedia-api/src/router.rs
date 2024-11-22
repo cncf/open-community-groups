@@ -43,6 +43,7 @@ pub(crate) fn setup(static_dir: &Path, db: DynDB) -> Result<Router> {
             "/explore/groups-results-section",
             get(community::explore::groups_results_section),
         )
+        .route("/explore/events/search", get(community::explore::search_events))
         .route("/health-check", get(health_check))
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))
