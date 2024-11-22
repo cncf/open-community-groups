@@ -48,7 +48,7 @@
         {% if let Some(description) = group.description %}
           <!-- Group description -->
           <div class="relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2">
-            {{ description|demoji|safe }}
+            {{ description|demoji }}
           </div>
           <!-- End group description -->
         {% endif %}
