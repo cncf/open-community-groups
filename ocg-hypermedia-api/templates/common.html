@@ -137,13 +137,12 @@
 <!-- End results -->
 
 <!-- Logo -->
-  {% macro logo(logo_url, name, title, classes) %}
+  {% macro logo(logo_url, name, title, classes, size) %}
     {% if let Some(url) = logo_url %}
       <div
-        data-logo="true"
         class="h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
         style='
-          background-image: url({{ url }});
+          background-image: url({{ url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", format!("c_scale,w_{}", size * 2) ) }});
         '>
       </div>
     {% else %}
