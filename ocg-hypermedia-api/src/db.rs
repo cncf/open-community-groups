@@ -46,14 +46,14 @@ pub(crate) trait DB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<(Vec<explore::Event>, Option<BBox>, Total)>;
+    ) -> Result<SearchCommunityEventsOutput>;
 
     /// Search community groups that match the criteria provided.
     async fn search_community_groups(
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<(Vec<explore::Group>, Option<BBox>, Total)>;
+    ) -> Result<SearchCommunityGroupsOutput>;
 }
 
 /// Type alias to represent a DB trait object.
@@ -164,7 +164,7 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<(Vec<explore::Event>, Option<BBox>, Total)> {
+    ) -> Result<SearchCommunityEventsOutput> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -176,16 +176,18 @@ impl DB for PgDB {
             )
             .await?;
 
-        let events = explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?;
-        let bbox = if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-            serde_json::from_str(&bbox)?
-        } else {
-            None
-        };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let total: Total = row.get::<_, i64>("total") as usize;
+        let output = SearchCommunityEventsOutput {
+            events: explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?,
+            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
+                serde_json::from_str(&bbox)?
+            } else {
+                None
+            },
+            total: row.get::<_, i64>("total") as usize,
+        };
 
-        Ok((events, bbox, total))
+        Ok(output)
     }
 
     /// [DB::search_community_groups]
@@ -193,7 +195,7 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<(Vec<explore::Group>, Option<BBox>, Total)> {
+    ) -> Result<SearchCommunityGroupsOutput> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -205,17 +207,35 @@ impl DB for PgDB {
             )
             .await?;
 
-        let groups = explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?;
-        let bbox = if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-            serde_json::from_str(&bbox)?
-        } else {
-            None
-        };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let total: Total = row.get::<_, i64>("total") as usize;
+        let output = SearchCommunityGroupsOutput {
+            groups: explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?,
+            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
+                serde_json::from_str(&bbox)?
+            } else {
+                None
+            },
+            total: row.get::<_, i64>("total") as usize,
+        };
 
-        Ok((groups, bbox, total))
+        Ok(output)
     }
+}
+
+/// Search community events results.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct SearchCommunityEventsOutput {
+    pub events: Vec<explore::Event>,
+    pub bbox: Option<BBox>,
+    pub total: Total,
+}
+
+/// Search community groups results.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct SearchCommunityGroupsOutput {
+    pub groups: Vec<explore::Group>,
+    pub bbox: Option<BBox>,
+    pub total: Total,
 }
 
 /// Bounding box coordinates.

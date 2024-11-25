@@ -9,11 +9,10 @@ use axum::{
     http::{HeaderMap, Uri},
     response::IntoResponse,
 };
-use serde_json::json;
 use tracing::instrument;
 
 use crate::{
-    db::DynDB,
+    db::{DynDB, SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
 };
@@ -43,7 +42,14 @@ pub(crate) async fn index(
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (filters_options, (events, _bbox, total)) = tokio::try_join!(
+            let (
+                filters_options,
+                SearchCommunityEventsOutput {
+                    events,
+                    bbox: _,
+                    total,
+                },
+            ) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
             )?;
@@ -62,7 +68,14 @@ pub(crate) async fn index(
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (filters_options, (groups, _bbox, total)) = tokio::try_join!(
+            let (
+                filters_options,
+                SearchCommunityGroupsOutput {
+                    groups,
+                    bbox: _,
+                    total,
+                },
+            ) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
             )?;
@@ -94,7 +107,14 @@ pub(crate) async fn events_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (filters_options, (events, _bbox, total)) = tokio::try_join!(
+    let (
+        filters_options,
+        SearchCommunityEventsOutput {
+            events,
+            bbox: _,
+            total,
+        },
+    ) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_events(community_id, &filters)
     )?;
@@ -128,7 +148,11 @@ pub(crate) async fn events_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (events, _bbox, total) = db.search_community_events(community_id, &filters).await?;
+    let SearchCommunityEventsOutput {
+        events,
+        bbox: _,
+        total,
+    } = db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
         events,
         navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
@@ -155,7 +179,14 @@ pub(crate) async fn groups_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (filters_options, (groups, _bbox, total)) = tokio::try_join!(
+    let (
+        filters_options,
+        SearchCommunityGroupsOutput {
+            groups,
+            bbox: _,
+            total,
+        },
+    ) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_groups(community_id, &filters)
     )?;
@@ -189,7 +220,11 @@ pub(crate) async fn groups_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (groups, _bbox, total) = db.search_community_groups(community_id, &filters).await?;
+    let SearchCommunityGroupsOutput {
+        groups,
+        bbox: _,
+        total,
+    } = db.search_community_groups(community_id, &filters).await?;
     let template = explore::GroupsResultsSection {
         groups,
         navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
@@ -215,12 +250,8 @@ pub(crate) async fn search_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (events, bbox, total) = db.search_community_events(community_id, &filters).await?;
-    let json_data = serde_json::to_string(&json!({
-        "bbox": bbox,
-        "events": events,
-        "total": total,
-    }))?;
+    let search_events_output = db.search_community_events(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&search_events_output)?;
 
     Ok(json_data)
 }
@@ -234,12 +265,8 @@ pub(crate) async fn search_groups(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (groups, bbox, total) = db.search_community_groups(community_id, &filters).await?;
-    let json_data = serde_json::to_string(&json!({
-        "bbox": bbox,
-        "groups": groups,
-        "total": total,
-    }))?;
+    let search_groups_output = db.search_community_groups(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&search_groups_output)?;
 
     Ok(json_data)
 }
