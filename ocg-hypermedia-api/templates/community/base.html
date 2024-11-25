@@ -134,6 +134,10 @@
         }
       };
 
+      const formatDate = (date) => {
+        date.toISOString().split('T')[0]
+      }
+
       // Filters
       const openFilters = () => {
         const drawer = document.getElementById("drawer-filters");
@@ -154,6 +158,10 @@
         document.querySelectorAll(`#${formName} input[type=checkbox]`).forEach(el => el.checked = false);
         document.querySelectorAll(`#${formName} input[type=radio]`).forEach(el => el.checked = false);
         document.querySelectorAll(`#${formName} input[value='']`).forEach(el => el.checked = true);
+        document.querySelector('input[name=date_from]').value = formatDate(new Date());
+        const aYearFromNow = new Date();
+        aYearFromNow.setFullYear(aYearFromNow.getFullYear() + 1);
+        document.querySelector('input[name=date_to]').value = formatDate(aYearFromNow);
         document.querySelectorAll(`#${formName} input[type=date]`).forEach(el => el.value = '');
         document.querySelector('input[name="ts_query"]').value = '';
 
