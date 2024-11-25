@@ -2,6 +2,7 @@
 create or replace function search_community_events(p_community_id uuid, p_filters jsonb)
 returns table(events json, total bigint) as $$
 declare
+    v_bbox geometry;
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
     v_event_category text[];
@@ -16,6 +17,15 @@ declare
     v_user_location geography;
 begin
     -- Prepare filters
+    if p_filters ? 'bbox_ne_lat' and p_filters ? 'bbox_ne_lon' and p_filters ? 'bbox_sw_lat' and p_filters ? 'bbox_sw_lon' then
+        v_bbox := st_makeenvelope(
+            (p_filters->>'bbox_sw_lon')::real,
+            (p_filters->>'bbox_sw_lat')::real,
+            (p_filters->>'bbox_ne_lon')::real,
+            (p_filters->>'bbox_ne_lat')::real,
+            4326
+        );
+    end if;
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
@@ -82,6 +92,9 @@ begin
         where g.community_id = p_community_id
         and g.active = true
         and e.published = true
+        and
+            case when v_bbox is not null then
+            st_intersects(g.location, v_bbox) else true end
         and
             case when cardinality(v_event_category) > 0 then
             ec.slug = any(v_event_category) else true end

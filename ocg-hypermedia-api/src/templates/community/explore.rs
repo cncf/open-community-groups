@@ -83,14 +83,31 @@ pub(crate) struct EventsFilters {
     #[serde(default)]
     pub region: Vec<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_ne_lat: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_ne_lon: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_sw_lat: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_sw_lon: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub date_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub date_to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
 }
 
@@ -243,12 +260,27 @@ pub(crate) struct GroupsFilters {
     #[serde(default)]
     pub region: Vec<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_ne_lat: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_ne_lon: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_sw_lat: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bbox_sw_lon: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
 }
 

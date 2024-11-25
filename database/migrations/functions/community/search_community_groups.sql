@@ -2,6 +2,7 @@
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
 returns table(groups json, total bigint) as $$
 declare
+    v_bbox geometry;
     v_group_category text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_max_distance real;
@@ -12,6 +13,15 @@ declare
     v_user_location geography;
 begin
     -- Prepare filters
+    if p_filters ? 'bbox_ne_lat' and p_filters ? 'bbox_ne_lon' and p_filters ? 'bbox_sw_lat' and p_filters ? 'bbox_sw_lon' then
+        v_bbox := st_makeenvelope(
+            (p_filters->>'bbox_sw_lon')::real,
+            (p_filters->>'bbox_sw_lat')::real,
+            (p_filters->>'bbox_ne_lon')::real,
+            (p_filters->>'bbox_ne_lat')::real,
+            4326
+        );
+    end if;
     if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
         v_max_distance := (p_filters->>'distance')::real;
         v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
@@ -66,6 +76,9 @@ begin
         left join region r using (region_id)
         where g.community_id = p_community_id
         and g.active = true
+        and
+            case when v_bbox is not null then
+            st_intersects(g.location, v_bbox) else true end
         and
             case when cardinality(v_group_category) > 0 then
             gc.normalized_name = any(v_group_category) else true end
