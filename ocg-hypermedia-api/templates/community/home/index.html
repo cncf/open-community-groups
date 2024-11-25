@@ -47,7 +47,7 @@
           </div>
           <div class="ms-5">
             <div class="text-xs text-gray-500 font-medium uppercase">Groups</div>
-            <div class="text-4xl font-semibold text-gray-900">{{ stats.groups }}</div>
+            <div class="text-4xl font-semibold text-gray-900">{{ stats.groups|num_fmt }}</div>
           </div>
         </div>
       </div>
@@ -61,7 +61,7 @@
           </div>
           <div class="ms-5">
             <div class="text-xs text-gray-500 font-medium uppercase">Members</div>
-            <div class="text-4xl font-semibold text-gray-900">{{ stats.groups_members }}</div>
+            <div class="text-4xl font-semibold text-gray-900">{{ stats.groups_members|num_fmt }}</div>
           </div>
         </div>
       </div>
@@ -75,7 +75,7 @@
           </div>
           <div class="ms-5">
             <div class="text-xs text-gray-500 font-medium uppercase">Events</div>
-            <div class="text-4xl font-semibold text-gray-900">{{ stats.events }}</div>
+            <div class="text-4xl font-semibold text-gray-900">{{ stats.events|num_fmt }}</div>
           </div>
         </div>
       </div>
@@ -89,7 +89,7 @@
           </div>
           <div class="ms-5">
             <div class="text-xs text-gray-500 font-medium uppercase">Attendees</div>
-            <div class="text-4xl font-semibold text-gray-900">{{ stats.events_attendees }}</div>
+            <div class="text-4xl font-semibold text-gray-900">{{ stats.events_attendees|num_fmt }}</div>
           </div>
         </div>
       </div>
