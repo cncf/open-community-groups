@@ -1,6 +1,5 @@
 {% import "common.html" as common %}
 
-<!DOCTYPE html>
 <header id="header">
   <nav class="flex items-center justify-between p-4 sm:p-6 lg:p-8">
     <!-- Logo -->
@@ -24,6 +23,8 @@
       {% endif %}
     </div>
     <!-- End logo -->
+
+    <!-- Mobile menu button -->
     <div class="flex lg:hidden">
       <button type="button" class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700" onclick="toggleNavbarMobile()">
         <span class="sr-only">Open main menu</span>
@@ -32,6 +33,9 @@
         </svg>
       </button>
     </div>
+    <!-- End mobile menu button -->
+
+    <!-- Desktop links -->
     <div class="hidden lg:flex lg:gap-x-8">
       {% call link("Home", "/", path, "") %}
       {% call link("Explore", "/explore", path, "") %}
@@ -39,10 +43,14 @@
         {% call button("New group", "updateModalStatus('new-group-modal')", "") %}
       {% endif %}
     </div>
+    <!-- End desktop links -->
+
+    <!-- Desktop buttons -->
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
       {% call common::secondary_button("Sign up", "", "() => console.log('hola')", "", false) %}
       {% call common::primary_button("Log in", "() => console.log('hola')", "", false) %}
     </div>
+    <!-- End desktop buttons -->
   </nav>
 
   <!-- Mobile menu -->

@@ -1,13 +1,15 @@
 {% import "common.html" as common %}
 
-<!-- Drawer filters -->
+<!-- TODO Drawer filters -->
 
 <div class="flex items-start">
+  <!-- Filters -->
   <div id="explore-filters" class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
     {% block filters %}
       <div></div>
     {% endblock %}
   </div>
+  <!-- End filters -->
 
   <div id="explore-cards" class="relative w-full lg:w-3/4 lg:pl-10 self-stretch">
     <div class="flex flex-col bg-white border rounded-lg pt-5 md:pt-7 h-full">
@@ -37,13 +39,19 @@
         <!-- End mobile filters button -->
 
         <div class="grow flex items-center justify-center">
+          <!-- Searchbar -->
           <div class="w-full">
             {% block searchbar %}{% endblock %}
           </div>
+          <!-- End searchbar -->
         </div>
       </div>
       <div class="flex items-end justify-between px-5 md:items-center md:px-7">
+        <!-- Results -->
         <div id="results" class="hidden font-semibold text-sm text-black w-[175px] md:flex">{% block results %}{% endblock %}</div>
+        <!-- End results -->
+
+        <!-- Sort by -->
         <div class="flex flex-col items-start sm:items-center sm:flex-row">
           <label
             for="sort_by"
@@ -70,6 +78,9 @@
           {% endif %}
           </select>
         </div>
+        <!-- End sort by -->
+
+        <!-- View mode -->
         <div class="flex flex-col items-start sm:items-center sm:flex-row">
           <label
             for="view_mode"
@@ -88,14 +99,20 @@
             <option value="calendar">Calendar</option>
           </select>
         </div>
+        <!-- End view mode -->
       </div>
-      <div id="results-mobile" class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
 
+      <!-- Results mobile -->
+      <div id="results-mobile" class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
+      <!-- End results mobile -->
+
+      <!-- Cards -->
       <div id="cards-list" class="flex flex-col justify-between grow">
         {% block content %}
           <div></div>
         {% endblock %}
       </div>
+      <!-- End cards -->
     </div>
   </div>
 </div>

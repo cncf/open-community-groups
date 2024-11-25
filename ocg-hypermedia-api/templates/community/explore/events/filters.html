@@ -1,8 +1,12 @@
 {% import "community/explore/filters.html" as macros %}
 
+<!-- Header Events -->
 {% call macros::header("events-form") %}
+<!-- End header events -->
 
+<!-- Entity -->
 {% call macros::entity_radio(Entity::Events) %}
+<!-- End entity -->
 
 <form
   id="events-form"
@@ -21,6 +25,7 @@
       Type
     </div>
     <ul class="grid w-full gap-2.5 grid-cols-3 mt-3">
+      <!-- In-person -->
       <li>
         <input type="checkbox" name="kind" id="in-person" value="in-person" class="hidden peer" {% if filters.kind.contains(EventKind::InPerson.borrow()) %}checked{% endif %}>
         <label for="in-person" class="inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -30,6 +35,9 @@
           </div>
         </label>
       </li>
+      <!-- End in-person -->
+
+      <!-- Virtual -->
       <li>
         <input type="checkbox" name="kind" id="kind-virtual" value="virtual" class="hidden peer" {% if filters.kind.contains(EventKind::Virtual.borrow()) %}checked{% endif %}>
         <label for="kind-virtual" class="inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -39,6 +47,9 @@
           </div>
         </label>
       </li>
+      <!-- End virtual -->
+
+      <!-- Hybrid -->
       <li>
         <input type="checkbox" name="kind" id="hybrid" value="hybrid" class="hidden peer" {% if filters.kind.contains(EventKind::Hybrid.borrow()) %}checked{% endif %}>
         <label for="hybrid" class="inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -51,6 +62,8 @@
           </div>
         </label>
       </li>
+      <!-- End hybrid -->
+
     </ul>
   </div>
   <!-- End type -->

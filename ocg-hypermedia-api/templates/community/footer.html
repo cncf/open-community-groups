@@ -11,17 +11,19 @@
   <div class="px-8 py-6 lg:px-16 lg:py-12">
     <div class="pb-10 text-center md:text-left">
       <div class="flex flex-col justify-between md:flex-row">
+        <!-- Footer logo -->
         {% if let Some(footer_logo_url) = self.community.footer_logo_url %}
-        <div>
-          <img
-            class="h-12 w-50 mx-auto md:mx-0"
-            src="{{ footer_logo_url }}"
-            alt="Logo"
-          />
-        </div>
+          <div>
+            <img
+              class="h-12 w-50 mx-auto md:mx-0"
+              src="{{ footer_logo_url }}"
+              alt="Logo"
+            />
+          </div>
         {% endif %}
+        <!-- End footer logo -->
 
-        <!-- Social network icons container -->
+        <!-- Social network links -->
         <div class="flex flex-wrap justify-center gap-4 md:gap-0 md:justify-self-end mt-6 md:mt-0">
           {% if let Some(twitter_url) = self.community.twitter_url %}
             {% call social_icon_link(twitter_url, "twitter") %}
@@ -51,9 +53,11 @@
             {% call social_icon_link(slack_url, "slack") %}
           {% endif %}
         </div>
+        <!-- End social network links -->
       </div>
     </div>
 
+    <!-- Extra links -->
     {% if let Some(extra_links) = self.community.extra_links %}
       <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
       <div class="pb-8 pt-2 text-sm md:text-base">
@@ -62,8 +66,9 @@
         {% endfor %}
       </div>
     {% endif %}
+    <!-- End extra links -->
 
-    <!--Copyright section-->
+    <!-- Copyright section -->
     <div class="pt-8 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
         <div class="mb-4 copyright">
@@ -80,6 +85,7 @@
       {% endif %}
       <p>Powered by <a href="https://github.com/cncf/open-community-groups" class="font-bold text-white" target="_blank" rel="noopener noreferrer">CNCF Open Community Groups</a>.</p>
     </div>
+    <!-- End copyright section -->
   </div>
 </footer>
 

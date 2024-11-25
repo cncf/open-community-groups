@@ -14,23 +14,35 @@
     <!-- Jumbotron -->
     <section>
       <div class="relative z-10 max-w-screen-xl pb-10 md:pb-20">
+        <!-- Community title -->
         <h1
           class="text-center mb-8 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl"
         >
           {{community.title }}
         </h1>
+        <!-- End community title -->
+
+        <!-- Community description -->
         <div
           id=""
           class="mb-8 font-normal text-gray-600 jumbotron-description"
         >
           {{ community.description|safe }}
         </div>
+        <!-- End community description -->
+
+        <!-- Search bar -->
         <div>
           {% call common::search_bar("Search groups and events", "", "", "w-[100%] lg:w-[50%]", "mb-6", true) %}
         </div>
+        <!-- End search bar -->
+
         {% call common::primary_link("Explore all", "/explore", "", false) %}
       </div>
+
+      <!-- Jumbotron background image -->
       <div class="absolute bottom-[-82px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] sm:w-[520px] md:w-[600px] lg:w-[710px] xl:w-[760px] sm:bottom-[-105px] md:bottom-[-120px] lg:bottom-[-145px] xl:bottom-[-155px]"></div>
+      <!-- End jumbotron background image -->
     </section>
     <!-- End jumbotron -->
   </div>
@@ -40,6 +52,7 @@
   <div class="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <!-- Stats -->
     <div class="flex flex-col justify-around items-center border rounded-lg p-10 sm:mt-16 sm:mb-6 md:flex-row">
+      <!-- Group stats -->
       <div>
         <div class="flex items-center justify-center">
           <div>
@@ -51,9 +64,11 @@
           </div>
         </div>
       </div>
+      <!-- End group stats -->
 
       <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
+      <!-- Members stats -->
       <div>
         <div class="flex items-center justify-center">
           <div>
@@ -65,9 +80,11 @@
           </div>
         </div>
       </div>
+      <!-- End members stats -->
 
       <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
+      <!-- Events stats -->
       <div>
         <div class="flex items-center justify-center">
           <div>
@@ -79,9 +96,11 @@
           </div>
         </div>
       </div>
+      <!-- End events stats -->
 
       <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
+      <!-- Attendees stats -->
       <div>
         <div class="flex items-center justify-center">
           <div>
@@ -93,15 +112,18 @@
           </div>
         </div>
       </div>
+      <!-- End attendees stats -->
     </div>
     <!-- End stats -->
 
     <div class="pt-4 md:pt-8">
       <!-- Events in-person -->
       {% call events_list("Upcoming in-person events", "/explore?entity=events&kind=in-person", upcoming_in_person_events) %}
+      <!-- End events in-person -->
 
       <!-- Events online -->
       {% call events_list("Upcoming virtual events", "/explore?entity=events&kind=virtual", upcoming_virtual_events) %}
+      <!-- End events online -->
 
       <!-- Banner -->
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
@@ -129,11 +151,13 @@
         </div>
       </div>
       <div class="my-10">
+        <!-- Groups cards -->
         <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
           {% for group in recently_added_groups %}
             {% call groups_list_item(group) %}
           {% endfor %}
         </div>
+        <!-- End groups cards -->
         <div class="block mt-10 lg:hidden lg:mt-0">
           {% call common::secondary_link("See all groups", "/explore?entity=groups", "", false) %}
         </div>
