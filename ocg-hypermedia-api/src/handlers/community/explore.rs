@@ -9,6 +9,7 @@ use axum::{
     http::{HeaderMap, Uri},
     response::IntoResponse,
 };
+use serde_json::json;
 use tracing::instrument;
 
 use crate::{
@@ -42,7 +43,7 @@ pub(crate) async fn index(
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (filters_options, (events, total)) = tokio::try_join!(
+            let (filters_options, (events, _bbox, total)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
             )?;
@@ -93,7 +94,7 @@ pub(crate) async fn events_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (filters_options, (events, total)) = tokio::try_join!(
+    let (filters_options, (events, _bbox, total)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_events(community_id, &filters)
     )?;
@@ -127,7 +128,7 @@ pub(crate) async fn events_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (events, total) = db.search_community_events(community_id, &filters).await?;
+    let (events, _bbox, total) = db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
         events,
         navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
@@ -214,8 +215,12 @@ pub(crate) async fn search_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (events, _) = db.search_community_events(community_id, &filters).await?;
-    let json_data = serde_json::to_string(&events)?;
+    let (events, bbox, total) = db.search_community_events(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&json!({
+        "bbox": bbox,
+        "events": events,
+        "total": total,
+    }))?;
 
     Ok(json_data)
 }

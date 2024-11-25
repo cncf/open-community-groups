@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use async_trait::async_trait;
 use deadpool_postgres::Pool;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use uuid::Uuid;
 
@@ -13,9 +14,6 @@ use crate::templates::community::{
     explore::{self, EventsFilters, GroupsFilters},
     home,
 };
-
-/// Type alias to represent the total count .
-pub(crate) type Total = usize;
 
 /// Abstraction layer over the database. Trait that defines some operations a
 /// DB implementation must support.
@@ -48,7 +46,7 @@ pub(crate) trait DB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<(Vec<explore::Event>, Total)>;
+    ) -> Result<(Vec<explore::Event>, Option<BBox>, Total)>;
 
     /// Search community groups that match the criteria provided.
     async fn search_community_groups(
@@ -166,19 +164,28 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &EventsFilters,
-    ) -> Result<(Vec<explore::Event>, Total)> {
+    ) -> Result<(Vec<explore::Event>, Option<BBox>, Total)> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select events::text, total from search_community_events($1::uuid, $2::jsonb)",
+                "
+                select events::text, bbox::text, total
+                from search_community_events($1::uuid, $2::jsonb)
+                ",
                 &[&community_id, &Json(filters)],
             )
             .await?;
+
         let events = explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?;
+        let bbox = if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
+            serde_json::from_str(&bbox)?
+        } else {
+            None
+        };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let total: Total = row.get::<_, i64>("total") as usize;
 
-        Ok((events, total))
+        Ok((events, bbox, total))
     }
 
     /// [DB::search_community_groups]
@@ -201,3 +208,15 @@ impl DB for PgDB {
         Ok((groups, total))
     }
 }
+
+/// Bounding box coordinates.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct BBox {
+    pub ne_lat: f64,
+    pub ne_lon: f64,
+    pub sw_lat: f64,
+    pub sw_lon: f64,
+}
+
+/// Type alias to represent the total count .
+pub(crate) type Total = usize;

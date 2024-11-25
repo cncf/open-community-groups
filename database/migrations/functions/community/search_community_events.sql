@@ -1,6 +1,6 @@
 -- Returns the community events that match the filters provided.
 create or replace function search_community_events(p_community_id uuid, p_filters jsonb)
-returns table(events json, total bigint) as $$
+returns table(events json, bbox json, total bigint) as $$
 declare
     v_bbox geometry;
     v_date_from date := (p_filters->>'date_from');
@@ -77,6 +77,7 @@ begin
             g.city as group_city,
             g.country_code as group_country_code,
             g.country_name as group_country_name,
+            g.location,
             g.name as group_name,
             g.slug as group_slug,
             g.state as group_state,
@@ -156,6 +157,22 @@ begin
                 limit v_limit
                 offset v_offset
             ) filtered_events_page
+        ),
+        (
+            case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
+                (
+                    select json_build_object(
+                        'ne_lat', st_ymax(bb),
+                        'ne_lon', st_xmax(bb),
+                        'sw_lat', st_ymin(bb),
+                        'sw_lon', st_xmin(bb)
+                    )
+                    from (
+                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
+                        from filtered_events
+                    ) as filtered_events_bbox
+                )
+            else null end
         ),
         (
             select count(*) from filtered_events

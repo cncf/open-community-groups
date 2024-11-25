@@ -97,6 +97,7 @@ pub(crate) struct EventsFilters {
     pub date_to: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u64>,
+    pub include_bbox: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
