@@ -26,10 +26,6 @@ begin
             4326
         );
     end if;
-    if p_filters ? 'distance' and p_filters ? 'latitude' and p_filters ? 'longitude' then
-        v_max_distance := (p_filters->>'distance')::real;
-        v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
-    end if;
     if p_filters ? 'event_category' then
         select array_agg(lower(e::text)) into v_event_category
         from jsonb_array_elements_text(p_filters->'event_category') e;
@@ -41,6 +37,12 @@ begin
     if p_filters ? 'kind' then
         select array_agg(e::text) into v_kind
         from jsonb_array_elements_text(p_filters->'kind') e;
+    end if;
+    if p_filters ? 'latitude' and p_filters ? 'longitude' then
+        v_user_location := st_setsrid(st_makepoint((p_filters->>'longitude')::real, (p_filters->>'latitude')::real), 4326);
+        if p_filters ? 'distance' then
+            v_max_distance := (p_filters->>'distance')::real;
+        end if;
     end if;
     if p_filters ? 'region' then
         select array_agg(lower(e::text)) into v_region
