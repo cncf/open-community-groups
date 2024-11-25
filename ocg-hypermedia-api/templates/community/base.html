@@ -187,7 +187,14 @@
         }
       };
 
-      const triggerChangeOnForm = (formId) => {
+      const triggerChangeOnForm = (formId, fromSearchSearch) => {
+        if (fromSearchSearch) {
+          const input = document.getElementById('ts_query');
+          // Prevent form submission if the search input is empty
+          if (input.value === '') {
+            return;
+          }
+        }
         const form = document.getElementById(formId);
         htmx.trigger(form, "change");
       };
