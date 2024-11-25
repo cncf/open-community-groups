@@ -145,8 +145,19 @@ impl ToRawQuery for EventsFilters {
     fn to_raw_query(&self) -> Result<String> {
         // Reset some filters we don't want to include in the query string
         let mut filters = self.clone();
+        if filters.date_from == Some(Utc::now().date_naive().to_string()) {
+            filters.date_from = None;
+        }
+        if let Some(date_to) = Utc::now().date_naive().checked_add_months(Months::new(12)) {
+            if filters.date_to == Some(date_to.to_string()) {
+                filters.date_to = None;
+            }
+        }
         filters.latitude = None;
         filters.longitude = None;
+        if filters.sort_by == Some("date".to_string()) {
+            filters.sort_by = None;
+        }
 
         serde_html_form::to_string(&filters).map_err(anyhow::Error::from)
     }
@@ -310,6 +321,9 @@ impl ToRawQuery for GroupsFilters {
         let mut filters = self.clone();
         filters.latitude = None;
         filters.longitude = None;
+        if filters.sort_by == Some("date".to_string()) {
+            filters.sort_by = None;
+        }
 
         serde_html_form::to_string(&filters).map_err(anyhow::Error::from)
     }
