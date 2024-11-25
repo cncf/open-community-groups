@@ -15,7 +15,7 @@
     }
 
     #explore-content.is-loading #explore-filters::before,
-    #explore-content.is-loading #explore-cards::before {
+    #explore-content.is-loading #explore-cards > div::before {
       content: "";
       display: block;
       position: absolute;
@@ -25,6 +25,7 @@
       left: 0;
       background-color: rgba(255, 255, 255, 0.75);
       z-index: 10;
+      border-radius: 0.5rem;
     }
   </style>
   <!-- End spinner styles -->
