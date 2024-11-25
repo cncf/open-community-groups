@@ -62,7 +62,7 @@ pub(crate) async fn index(
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (filters_options, (groups, total)) = tokio::try_join!(
+            let (filters_options, (groups, _bbox, total)) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
             )?;
@@ -155,7 +155,7 @@ pub(crate) async fn groups_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (filters_options, (groups, total)) = tokio::try_join!(
+    let (filters_options, (groups, _bbox, total)) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_groups(community_id, &filters)
     )?;
@@ -189,7 +189,7 @@ pub(crate) async fn groups_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (groups, total) = db.search_community_groups(community_id, &filters).await?;
+    let (groups, _bbox, total) = db.search_community_groups(community_id, &filters).await?;
     let template = explore::GroupsResultsSection {
         groups,
         navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
@@ -219,6 +219,25 @@ pub(crate) async fn search_events(
     let json_data = serde_json::to_string(&json!({
         "bbox": bbox,
         "events": events,
+        "total": total,
+    }))?;
+
+    Ok(json_data)
+}
+
+/// Handler that returns the groups search results.
+#[instrument(skip_all, err)]
+pub(crate) async fn search_groups(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, HandlerError> {
+    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let (groups, bbox, total) = db.search_community_groups(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&json!({
+        "bbox": bbox,
+        "groups": groups,
         "total": total,
     }))?;
 

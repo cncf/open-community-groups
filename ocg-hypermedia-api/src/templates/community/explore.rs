@@ -271,6 +271,7 @@ pub(crate) struct GroupsFilters {
     pub bbox_sw_lon: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<f64>,
+    pub include_bbox: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -347,12 +348,23 @@ pub(crate) struct Group {
     pub name: String,
     pub slug: String,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub country_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub country_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub longitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub region_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
 }
 

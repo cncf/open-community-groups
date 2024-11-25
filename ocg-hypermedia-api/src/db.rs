@@ -53,7 +53,7 @@ pub(crate) trait DB {
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<(Vec<explore::Group>, Total)>;
+    ) -> Result<(Vec<explore::Group>, Option<BBox>, Total)>;
 }
 
 /// Type alias to represent a DB trait object.
@@ -193,19 +193,28 @@ impl DB for PgDB {
         &self,
         community_id: Uuid,
         filters: &GroupsFilters,
-    ) -> Result<(Vec<explore::Group>, Total)> {
+    ) -> Result<(Vec<explore::Group>, Option<BBox>, Total)> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select groups::text, total from search_community_groups($1::uuid, $2::jsonb)",
+                "
+                select groups::text, bbox::text, total
+                from search_community_groups($1::uuid, $2::jsonb)
+                ",
                 &[&community_id, &Json(filters)],
             )
             .await?;
+
         let groups = explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?;
+        let bbox = if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
+            serde_json::from_str(&bbox)?
+        } else {
+            None
+        };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let total: Total = row.get::<_, i64>("total") as usize;
 
-        Ok((groups, total))
+        Ok((groups, bbox, total))
     }
 }
 

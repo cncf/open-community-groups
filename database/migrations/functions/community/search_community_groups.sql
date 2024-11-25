@@ -1,6 +1,6 @@
 -- Returns the community groups that match the filters provided.
 create or replace function search_community_groups(p_community_id uuid, p_filters jsonb)
-returns table(groups json, total bigint) as $$
+returns table(groups json, bbox json, total bigint) as $$
 declare
     v_bbox geometry;
     v_group_category text[];
@@ -64,12 +64,15 @@ begin
                 then null else
                     replace(regexp_replace(substring(g.description for 500), E'<[^>]+>', '', 'gi'), '&nbsp;', ' ')
             end as description,
+            g.location,
             g.logo_url,
             g.name,
             g.slug,
             g.state,
             gc.name as category_name,
             r.name as region_name,
+            st_y(g.location::geometry) as latitude,
+            st_x(g.location::geometry) as longitude,
             st_distance(g.location, v_user_location) as distance
         from "group" g
         join group_category gc using (group_category_id)
@@ -102,7 +105,9 @@ begin
                 'country_name', country_name,
                 'created_at', floor(extract(epoch from created_at)),
                 'description', description,
+                'latitude', latitude,
                 'logo_url', logo_url,
+                'longitude', longitude,
                 'name', name,
                 'region_name', region_name,
                 'slug', slug,
@@ -118,6 +123,22 @@ begin
                 limit v_limit
                 offset v_offset
             ) filtered_groups_page
+        ),
+        (
+            case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
+                (
+                    select json_build_object(
+                        'ne_lat', st_ymax(bb),
+                        'ne_lon', st_xmax(bb),
+                        'sw_lat', st_ymin(bb),
+                        'sw_lon', st_xmin(bb)
+                    )
+                    from (
+                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
+                        from filtered_groups
+                    ) as filtered_groups_bbox
+                )
+            else null end
         ),
         (
             select count(*) from filtered_groups
