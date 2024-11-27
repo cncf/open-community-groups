@@ -54,6 +54,7 @@ pub(crate) async fn index(
                 db.search_community_events(community_id, &filters)
             )?;
             let offset = filters.offset;
+            let view_mode = filters.view_mode.clone();
 
             template.events_section = Some(explore::EventsSection {
                 filters: filters.clone(),
@@ -63,6 +64,7 @@ pub(crate) async fn index(
                     navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
                     offset,
                     total,
+                    view_mode,
                 },
             });
         }
@@ -80,6 +82,7 @@ pub(crate) async fn index(
                 db.search_community_groups(community_id, &filters)
             )?;
             let offset = filters.offset;
+            let view_mode = filters.view_mode.clone();
 
             template.groups_section = Some(explore::GroupsSection {
                 filters: filters.clone(),
@@ -89,6 +92,7 @@ pub(crate) async fn index(
                     navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
                     offset,
                     total,
+                    view_mode,
                 },
             });
         }
@@ -126,6 +130,7 @@ pub(crate) async fn events_section(
             navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
             offset: filters.offset,
             total,
+            view_mode: filters.view_mode.clone(),
         },
     };
 
@@ -158,6 +163,7 @@ pub(crate) async fn events_results_section(
         navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
         offset: filters.offset,
         total,
+        view_mode: filters.view_mode.clone(),
     };
 
     // Prepare response headers
@@ -198,6 +204,7 @@ pub(crate) async fn groups_section(
             navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
             offset: filters.offset,
             total,
+            view_mode: filters.view_mode.clone(),
         },
     };
 
@@ -230,6 +237,7 @@ pub(crate) async fn groups_results_section(
         navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
         offset: filters.offset,
         total,
+        view_mode: filters.view_mode.clone(),
     };
 
     // Prepare response headers

@@ -1,3 +1,5 @@
+{% import "common.html" as common %}
+
 <!-- MACROS -->
 
 <!-- Filters header -->
@@ -8,12 +10,8 @@
     >
       Filters
     </div>
-    <button
-      class="hidden bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 lg:flex  hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white"
-      onclick="resetFilters(`{{ form_name }}`)"
-    >
-      Reset
-    </button>
+
+    {% call common::secondary_mini_button("Reset", "resetFilters('{}')"|format(form_name), "hidden lg:flex") %}
   </div>
 {% endmacro %}
 <!-- End filters header -->

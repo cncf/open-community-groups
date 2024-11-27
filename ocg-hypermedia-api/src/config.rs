@@ -1,4 +1,5 @@
-//! This module defines some types to represent the configuration.
+//! This module defines some types to represent the Hypermedia API service
+//! configuration.
 
 use std::path::PathBuf;
 

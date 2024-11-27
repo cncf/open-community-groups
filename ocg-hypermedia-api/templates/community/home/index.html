@@ -4,12 +4,6 @@
 {% block headerColor %}bg-gray-100{% endblock %}
 
 {% block jumbotron %}
-  <style>
-    .jumbotron-description a {
-      color: var(--ocg-primary);
-      font-weight: 600;
-    }
-  </style>
   <div class="relative container mx-auto max-w-7xl px-4 pt-5 pb-10 sm:px-6 lg:px-8">
     <!-- Jumbotron -->
     <section>
@@ -51,7 +45,7 @@
 {% block content %}
   <div class="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     <!-- Stats -->
-    <div class="flex flex-col justify-around items-center border rounded-lg p-10 sm:mt-16 sm:mb-6 md:flex-row">
+    <div class="flex flex-col justify-around items-center border rounded-lg p-10 mt-8 sm:mt-16 sm:mb-6 md:flex-row">
       <!-- Group stats -->
       <div>
         <div class="flex items-center justify-center">
@@ -66,6 +60,7 @@
       </div>
       <!-- End group stats -->
 
+      <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
       <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
       <!-- Members stats -->
@@ -209,7 +204,7 @@
   <div class="flex flex-1 flex-row items-center">
     <div class="relative">
       <!-- Event icon -->
-      {% call common::logo(event.logo_url, event.group_name, event.name, "md:h-[120px] md:min-w-[120px]", 120) %}
+      {% call common::logo(event.logo_url, event.group_name, event.name, "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", 120) %}
       <!-- End event icon -->
     </div>
 
@@ -266,7 +261,7 @@
 {% macro groups_list_item(group) %}
   <div class="flex flex-1 flex-row items-center">
     <!-- Group icon -->
-    {% call common::logo(group.logo_url, group.name, group.name, "md:h-[120px] md:min-w-[120px]", 120) %}
+    {% call common::logo(group.logo_url, group.name, group.name, "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", 120) %}
     <!-- End group icon -->
 
     <div class="min-w-0 pl-4 content-center h-full">
