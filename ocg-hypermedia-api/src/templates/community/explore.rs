@@ -187,6 +187,13 @@ pub(crate) struct EventsResultsSection {
     pub total: usize,
 }
 
+impl EventsResultsSection {
+    /// Return the entity to which the results belong.
+    pub(crate) fn entity(&self) -> Entity {
+        Entity::Events
+    }
+}
+
 /// Event information used in the community explore page.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Event {
@@ -351,6 +358,13 @@ pub(crate) struct GroupsResultsSection {
     pub navigation_links: NavigationLinks,
     pub offset: Option<usize>,
     pub total: usize,
+}
+
+impl GroupsResultsSection {
+    /// Return the entity to which the results belong.
+    pub(crate) fn entity(&self) -> Entity {
+        Entity::Groups
+    }
 }
 
 /// Group information used in the community explore page.
