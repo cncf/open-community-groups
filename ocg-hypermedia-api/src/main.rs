@@ -31,7 +31,7 @@ struct Args {
 async fn main() -> Result<()> {
     // Setup configuration
     let args = Args::parse();
-    let cfg = Config::new(&args.config_file).context("error setting up configuration")?;
+    let cfg = Config::new(args.config_file.as_ref()).context("error setting up configuration")?;
 
     // Setup logging
     let ts =

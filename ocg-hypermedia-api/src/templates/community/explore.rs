@@ -189,6 +189,7 @@ pub(crate) struct EventsResultsSection {
 
 impl EventsResultsSection {
     /// Return the entity to which the results belong.
+    #[allow(clippy::unused_self)]
     pub(crate) fn entity(&self) -> Entity {
         Entity::Events
     }
@@ -244,13 +245,13 @@ impl Event {
     /// Returns the location of the event.
     pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .group_city(&self.group_city)
-            .group_country_code(&self.group_country_code)
-            .group_country_name(&self.group_country_name)
-            .group_state(&self.group_state)
-            .venue_address(&self.venue_address)
-            .venue_city(&self.venue_city)
-            .venue_name(&self.venue_name);
+            .group_city(self.group_city.as_ref())
+            .group_country_code(self.group_country_code.as_ref())
+            .group_country_name(self.group_country_name.as_ref())
+            .group_state(self.group_state.as_ref())
+            .venue_address(self.venue_address.as_ref())
+            .venue_city(self.venue_city.as_ref())
+            .venue_name(self.venue_name.as_ref());
 
         build_location(max_len, &parts)
     }
@@ -362,6 +363,7 @@ pub(crate) struct GroupsResultsSection {
 
 impl GroupsResultsSection {
     /// Return the entity to which the results belong.
+    #[allow(clippy::unused_self)]
     pub(crate) fn entity(&self) -> Entity {
         Entity::Groups
     }
@@ -400,10 +402,10 @@ impl Group {
     /// Returns the location of the group.
     pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .group_city(&self.city)
-            .group_country_code(&self.country_code)
-            .group_country_name(&self.country_name)
-            .group_state(&self.state);
+            .group_city(self.city.as_ref())
+            .group_country_code(self.country_code.as_ref())
+            .group_country_name(self.country_name.as_ref())
+            .group_state(self.state.as_ref());
 
         build_location(max_len, &parts)
     }

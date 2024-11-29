@@ -4,67 +4,67 @@ use axum::http::header::HeaderMap;
 
 /// Parts used to build the location string.
 pub(crate) struct LocationParts<'a> {
-    group_city: &'a Option<String>,
-    group_country_code: &'a Option<String>,
-    group_country_name: &'a Option<String>,
-    group_state: &'a Option<String>,
-    venue_address: &'a Option<String>,
-    venue_city: &'a Option<String>,
-    venue_name: &'a Option<String>,
+    group_city: Option<&'a String>,
+    group_country_code: Option<&'a String>,
+    group_country_name: Option<&'a String>,
+    group_state: Option<&'a String>,
+    venue_address: Option<&'a String>,
+    venue_city: Option<&'a String>,
+    venue_name: Option<&'a String>,
 }
 
 impl<'a> LocationParts<'a> {
     /// Create a new instance of `LocationParts`.
     pub(crate) fn new() -> Self {
         Self {
-            group_city: &None,
-            group_country_code: &None,
-            group_country_name: &None,
-            group_state: &None,
-            venue_address: &None,
-            venue_city: &None,
-            venue_name: &None,
+            group_city: None,
+            group_country_code: None,
+            group_country_name: None,
+            group_state: None,
+            venue_address: None,
+            venue_city: None,
+            venue_name: None,
         }
     }
 
     /// Set the group city.
-    pub(crate) fn group_city(mut self, group_city: &'a Option<String>) -> Self {
+    pub(crate) fn group_city(mut self, group_city: Option<&'a String>) -> Self {
         self.group_city = group_city;
         self
     }
 
     /// Set the group country code.
-    pub(crate) fn group_country_code(mut self, group_country_code: &'a Option<String>) -> Self {
+    pub(crate) fn group_country_code(mut self, group_country_code: Option<&'a String>) -> Self {
         self.group_country_code = group_country_code;
         self
     }
 
     /// Set the group country name.
-    pub(crate) fn group_country_name(mut self, group_country_name: &'a Option<String>) -> Self {
+    pub(crate) fn group_country_name(mut self, group_country_name: Option<&'a String>) -> Self {
         self.group_country_name = group_country_name;
         self
     }
 
     /// Set the group state.
-    pub(crate) fn group_state(mut self, group_state: &'a Option<String>) -> Self {
+    pub(crate) fn group_state(mut self, group_state: Option<&'a String>) -> Self {
         self.group_state = group_state;
         self
     }
 
     /// Set the venue address.
-    pub(crate) fn venue_address(mut self, venue_address: &'a Option<String>) -> Self {
+    pub(crate) fn venue_address(mut self, venue_address: Option<&'a String>) -> Self {
         self.venue_address = venue_address;
         self
     }
 
     /// Set the venue city.
-    pub(crate) fn venue_city(mut self, venue_city: &'a Option<String>) -> Self {
+    pub(crate) fn venue_city(mut self, venue_city: Option<&'a String>) -> Self {
         self.venue_city = venue_city;
         self
     }
 
     /// Set the venue name.
-    pub(crate) fn venue_name(mut self, venue_name: &'a Option<String>) -> Self {
+    pub(crate) fn venue_name(mut self, venue_name: Option<&'a String>) -> Self {
         self.venue_name = venue_name;
         self
     }
@@ -73,7 +73,7 @@ impl<'a> LocationParts<'a> {
 /// Build location string from the location information provided.
 pub(crate) fn build_location(max_len: usize, parts: &LocationParts) -> Option<String> {
     let mut location = String::new();
-    let mut push = |part: &Option<String>| -> bool {
+    let mut push = |part: Option<&String>| -> bool {
         if let Some(part) = part {
             if location.len() + part.len() > max_len {
                 return false;
@@ -142,62 +142,62 @@ mod tests {
     build_location_tests! {
         build_location_1: {
             parts: &LocationParts::new()
-                .group_country_name(&Some("group country".to_string()))
-                .group_state(&Some("group state".to_string()))
-                .venue_name(&Some("venue name".to_string()))
-                .venue_address(&Some("venue address".to_string()))
-                .venue_city(&Some("venue city".to_string())),
+                .group_country_name(Some("group country".to_string()).as_ref())
+                .group_state(Some("group state".to_string()).as_ref())
+                .venue_name(Some("venue name".to_string()).as_ref())
+                .venue_address(Some("venue address".to_string()).as_ref())
+                .venue_city(Some("venue city".to_string()).as_ref()),
             expected_location: Some("venue name, venue address, venue city, group state, group country".to_string())
         },
 
         build_location_2: {
             parts: &LocationParts::new()
-                .group_city(&Some("group city".to_string()))
-                .group_country_code(&Some("group country code".to_string()))
-                .group_country_name(&Some("group country".to_string()))
-                .group_state(&Some("group state".to_string()))
-                .venue_address(&Some("venue address".to_string()))
-                .venue_city(&Some("venue city".to_string())),
+                .group_city(Some("group city".to_string()).as_ref())
+                .group_country_code(Some("group country code".to_string()).as_ref())
+                .group_country_name(Some("group country".to_string()).as_ref())
+                .group_state(Some("group state".to_string()).as_ref())
+                .venue_address(Some("venue address".to_string()).as_ref())
+                .venue_city(Some("venue city".to_string()).as_ref()),
             expected_location: Some("venue address, venue city, group state, group country".to_string())
         },
 
         build_location_3: {
             parts: &LocationParts::new()
-                .group_city(&Some("group city".to_string()))
-                .group_country_code(&Some("group country code".to_string()))
-                .group_country_name(&Some("group country".to_string()))
-                .group_state(&Some("group state".to_string()))
-                .venue_city(&Some("venue city".to_string())),
+                .group_city(Some("group city".to_string()).as_ref())
+                .group_country_code(Some("group country code".to_string()).as_ref())
+                .group_country_name(Some("group country".to_string()).as_ref())
+                .group_state(Some("group state".to_string()).as_ref())
+                .venue_city(Some("venue city".to_string()).as_ref()),
             expected_location: Some("venue city, group state, group country".to_string())
         },
 
         build_location_4: {
             parts: &LocationParts::new()
-                .group_city(&Some("group city".to_string()))
-                .group_country_code(&Some("group country code".to_string()))
-                .group_country_name(&Some("group country".to_string()))
-                .group_state(&Some("group state".to_string())),
+                .group_city(Some("group city".to_string()).as_ref())
+                .group_country_code(Some("group country code".to_string()).as_ref())
+                .group_country_name(Some("group country".to_string()).as_ref())
+                .group_state(Some("group state".to_string()).as_ref()),
             expected_location: Some("group city, group state, group country".to_string())
         },
 
         build_location_5: {
             parts: &LocationParts::new()
-                .group_country_code(&Some("group country code".to_string()))
-                .group_country_name(&Some("group country".to_string()))
-                .group_state(&Some("group state".to_string())),
+                .group_country_code(Some("group country code".to_string()).as_ref())
+                .group_country_name(Some("group country".to_string()).as_ref())
+                .group_state(Some("group state".to_string()).as_ref()),
             expected_location: Some("group state, group country".to_string())
         },
 
         build_location_6: {
             parts: &LocationParts::new()
-                .group_country_code(&Some("group country code".to_string()))
-                .group_country_name(&Some("group country".to_string())),
+                .group_country_code(Some("group country code".to_string()).as_ref())
+                .group_country_name(Some("group country".to_string()).as_ref()),
             expected_location: Some("group country".to_string())
         },
 
         build_location_7: {
             parts: &LocationParts::new()
-                .group_country_code(&Some("group country code".to_string())),
+                .group_country_code(Some("group country code".to_string()).as_ref()),
             expected_location: Some("group country code".to_string())
         },
 
