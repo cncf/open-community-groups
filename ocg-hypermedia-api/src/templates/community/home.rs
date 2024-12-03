@@ -27,7 +27,8 @@ pub(crate) struct Index {
 }
 
 /// Event information used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/home/event.html")]
 pub(crate) struct Event {
     pub group_name: String,
     pub group_slug: String,
@@ -68,7 +69,8 @@ impl Event {
 }
 
 /// Group information used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/home/group.html")]
 pub(crate) struct Group {
     pub category_name: String,
     #[serde(with = "chrono::serde::ts_seconds")]
@@ -104,7 +106,8 @@ impl Group {
 }
 
 /// Some stats used in the community home page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/home/stats.html")]
 pub(crate) struct Stats {
     groups: i64,
     groups_members: i64,

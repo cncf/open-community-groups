@@ -1,0 +1,66 @@
+<!-- Stats -->
+<div class="flex flex-col justify-around items-center border rounded-lg p-10 mt-8 sm:mt-16 sm:mb-6 md:flex-row">
+  <!-- Group stats -->
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <svg class="h-12 w-12 text-gray-400" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 640 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M72 88a56 56 0 1 1 112 0A56 56 0 1 1 72 88zM64 245.7C54 256.9 48 271.8 48 288s6 31.1 16 42.3V245.7zm144.4-49.3C178.7 222.7 160 261.2 160 304c0 34.3 12 65.8 32 90.5V416c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V389.2C26.2 371.2 0 332.7 0 288c0-61.9 50.1-112 112-112h32c24 0 46.2 7.5 64.4 20.3zM448 416V394.5c20-24.7 32-56.2 32-90.5c0-42.8-18.7-81.3-48.4-107.7C449.8 183.5 472 176 496 176h32c61.9 0 112 50.1 112 112c0 44.7-26.2 83.2-64 101.2V416c0 17.7-14.3 32-32 32H480c-17.7 0-32-14.3-32-32zm8-328a56 56 0 1 1 112 0A56 56 0 1 1 456 88zM576 245.7v84.7c10-11.3 16-26.1 16-42.3s-6-31.1-16-42.3zM320 32a64 64 0 1 1 0 128 64 64 0 1 1 0-128zM240 304c0 16.2 6 31 16 42.3V261.7c-10 11.3-16 26.1-16 42.3zm144-42.3v84.7c10-11.3 16-26.1 16-42.3s-6-31.1-16-42.3zM448 304c0 44.7-26.2 83.2-64 101.2V448c0 17.7-14.3 32-32 32H288c-17.7 0-32-14.3-32-32V405.2c-37.8-18-64-56.5-64-101.2c0-61.9 50.1-112 112-112h32c61.9 0 112 50.1 112 112z"></path></svg>
+      </div>
+      <div class="ms-5">
+        <div class="text-xs text-gray-500 font-medium uppercase">Groups</div>
+        <div class="text-4xl font-semibold text-gray-900">{{ groups|num_fmt }}</div>
+      </div>
+    </div>
+  </div>
+  <!-- End group stats -->
+
+  <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
+  <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
+
+  <!-- Members stats -->
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <svg class="h-12 w-12 text-gray-400" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 256 256" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M228.25,63.07l-4.66-2.69a23.6,23.6,0,0,0,0-8.76l4.66-2.69a8,8,0,0,0-8-13.86l-4.67,2.7A23.92,23.92,0,0,0,208,33.38V28a8,8,0,0,0-16,0v5.38a23.92,23.92,0,0,0-7.58,4.39l-4.67-2.7a8,8,0,1,0-8,13.86l4.66,2.69a23.6,23.6,0,0,0,0,8.76l-4.66,2.69a8,8,0,0,0,4,14.93,7.92,7.92,0,0,0,4-1.07l4.67-2.7A23.92,23.92,0,0,0,192,78.62V84a8,8,0,0,0,16,0V78.62a23.92,23.92,0,0,0,7.58-4.39l4.67,2.7a7.92,7.92,0,0,0,4,1.07,8,8,0,0,0,4-14.93ZM200,64a8,8,0,1,1,8-8A8,8,0,0,1,200,64ZM128,76a44,44,0,1,1-44,44A44,44,0,0,1,128,76Zm102.56,34.68a103.92,103.92,0,1,1-85.24-85.24,8,8,0,0,1-2.64,15.78A88.07,88.07,0,0,0,40,128a87.62,87.62,0,0,0,22.24,58.41A79.71,79.71,0,0,1,84,165.1a4,4,0,0,1,4.83.32,59.81,59.81,0,0,0,78.27,0,4,4,0,0,1,4.84-.32,79.86,79.86,0,0,1,21.79,21.31A87.62,87.62,0,0,0,216,128a88.85,88.85,0,0,0-1.22-14.68,8,8,0,1,1,15.78-2.64Z"></path></svg>
+      </div>
+      <div class="ms-5">
+        <div class="text-xs text-gray-500 font-medium uppercase">Members</div>
+        <div class="text-4xl font-semibold text-gray-900">{{ groups_members|num_fmt }}</div>
+      </div>
+    </div>
+  </div>
+  <!-- End members stats -->
+
+  <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
+
+  <!-- Events stats -->
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <svg class="h-12 w-12 text-gray-400" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M17 10H7v2h10v-2zm2-7h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-5-5H7v2h7v-2z"></path></svg>
+      </div>
+      <div class="ms-5">
+        <div class="text-xs text-gray-500 font-medium uppercase">Events</div>
+        <div class="text-4xl font-semibold text-gray-900">{{ events|num_fmt }}</div>
+      </div>
+    </div>
+  </div>
+  <!-- End events stats -->
+
+  <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
+
+  <!-- Attendees stats -->
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <svg class="h-12 w-12 text-gray-400" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M14 12h4v1.5h-4zM14 15h4v1.5h-4z"></path><path d="M20 7h-5V4c0-1.1-.9-2-2-2h-2c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 0V4h2v5h-2V7zm9 13H4V9h5c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2h5v11z"></path><circle cx="9" cy="13.5" r="1.5"></circle><path d="M11.08 16.18c-.64-.28-1.34-.43-2.08-.43s-1.44.15-2.08.43c-.56.24-.92.78-.92 1.39V18h6v-.43c0-.61-.36-1.15-.92-1.39z"></path></svg>
+      </div>
+      <div class="ms-5">
+        <div class="text-xs text-gray-500 font-medium uppercase">Attendees</div>
+        <div class="text-4xl font-semibold text-gray-900">{{ events_attendees|num_fmt }}</div>
+      </div>
+    </div>
+  </div>
+  <!-- End attendees stats -->
+</div>
+<!-- End stats -->
