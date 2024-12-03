@@ -2,8 +2,8 @@
 
 {% if let Some(view_mode) = self.view_mode %}
   {% match view_mode %}
-  <!-- Map view -->
   {% when ViewMode::Map %}
+    <!-- Map view -->
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="relative w-full border h-[600px] md:h-[820px]">
         <div id="map-box" class="w-full h-full"></div>
@@ -13,11 +13,10 @@
       </div>
     </div>
     <script>loadMap('groups');</script>
-  <!-- End map view -->
+    <!-- End map view -->
 
-  <!-- Grid view -->
   {% else %}
-    <!-- Cards -->
+    <!-- List view -->
     <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::results_legend(total, groups.len(), offset) %}')">
       <!-- Placeholder cards -->
       {% if groups.len() == 0 %}
@@ -25,39 +24,43 @@
       {% endif %}
       <!-- End placeholder cards -->
 
+      <!-- Cards -->
       {% for group in groups %}
         {% call group_card(group) %}
       {% endfor %}
+      <!-- End cards -->
     </div>
-    <!-- End cards -->
 
+    <!-- Pagination -->
     {% if groups.len() > 0 %}
-      <!-- Pagination -->
       {% include "community/explore/pagination.html" %}
-      <!-- End pagination -->
+
     {% endif %}
-  <!-- End grid view -->
+    <!-- End pagination -->
+    <!-- End grid view -->
   {% endmatch %}
 {% else %}
-  <!-- Cards -->
-  <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::results_legend(total, groups.len(), offset) %}')">
+    <!-- List view -->
+    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::results_legend(total, groups.len(), offset) %}')">
     <!-- Placeholder cards -->
     {% if groups.len() == 0 %}
       {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
     {% endif %}
     <!-- End placeholder cards -->
 
+    <!-- Cards -->
     {% for group in groups %}
       {% call group_card(group) %}
     {% endfor %}
+    <!-- End cards -->
   </div>
-  <!-- End cards -->
 
+  <!-- Pagination -->
   {% if groups.len() > 0 %}
-    <!-- Pagination -->
     {% include "community/explore/pagination.html" %}
-    <!-- End pagination -->
   {% endif %}
+  <!-- End pagination -->
+  <!-- End list view -->
 {% endif %}
 
 <!-- Group card -->
