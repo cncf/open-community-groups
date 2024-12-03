@@ -22,7 +22,10 @@ use crate::{
     },
 };
 
-use super::common::{Community, EventKind};
+use super::{
+    common::{Community, EventKind},
+    home,
+};
 
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
@@ -238,6 +241,8 @@ pub(crate) struct Event {
     pub logo_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub popover_html: Option<String>,
     #[serde(
         with = "chrono::serde::ts_seconds_option",
         skip_serializing_if = "Option::is_none"
@@ -264,6 +269,13 @@ impl Event {
             .venue_name(self.venue_name.as_ref());
 
         build_location(max_len, &parts)
+    }
+
+    /// Render popover HTML.
+    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
+        let home_event: home::Event = self.clone().into();
+        self.popover_html = Some(home_event.render()?);
+        Ok(())
     }
 
     /// Try to create a vector of `Event` instances from a JSON string.
@@ -410,6 +422,8 @@ pub(crate) struct Group {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub popover_html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub region_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
@@ -425,6 +439,13 @@ impl Group {
             .group_state(self.state.as_ref());
 
         build_location(max_len, &parts)
+    }
+
+    /// Render popover HTML.
+    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
+        let home_group: home::Group = self.clone().into();
+        self.popover_html = Some(home_group.render()?);
+        Ok(())
     }
 
     /// Try to create a vector of `Group` instances from a JSON string.

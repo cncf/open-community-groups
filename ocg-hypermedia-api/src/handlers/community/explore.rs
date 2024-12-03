@@ -230,7 +230,10 @@ pub(crate) async fn search_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let search_events_output = db.search_community_events(community_id, &filters).await?;
+    let mut search_events_output = db.search_community_events(community_id, &filters).await?;
+    for event in &mut search_events_output.events {
+        event.render_popover_html()?;
+    }
     let json_data = serde_json::to_string(&search_events_output)?;
 
     Ok(json_data)
@@ -245,7 +248,10 @@ pub(crate) async fn search_groups(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let search_groups_output = db.search_community_groups(community_id, &filters).await?;
+    let mut search_groups_output = db.search_community_groups(community_id, &filters).await?;
+    for group in &mut search_groups_output.groups {
+        group.render_popover_html()?;
+    }
     let json_data = serde_json::to_string(&search_groups_output)?;
 
     Ok(json_data)

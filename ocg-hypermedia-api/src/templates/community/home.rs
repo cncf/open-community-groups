@@ -12,7 +12,10 @@ use crate::templates::{
     helpers::{build_location, LocationParts},
 };
 
-use super::common::{Community, EventKind};
+use super::{
+    common::{Community, EventKind},
+    explore,
+};
 
 /// Home index page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -68,6 +71,27 @@ impl Event {
     }
 }
 
+impl From<explore::Event> for Event {
+    fn from(ee: explore::Event) -> Self {
+        Self {
+            group_name: ee.group_name,
+            group_slug: ee.group_slug,
+            kind: ee.kind,
+            name: ee.name,
+            slug: ee.slug,
+            timezone: ee.timezone,
+
+            group_city: ee.group_city,
+            group_country_code: ee.group_country_code,
+            group_country_name: ee.group_country_name,
+            group_state: ee.group_state,
+            logo_url: ee.logo_url,
+            starts_at: ee.starts_at,
+            venue_city: ee.venue_city,
+        }
+    }
+}
+
 /// Group information used in the community home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/group.html")]
@@ -102,6 +126,24 @@ impl Group {
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let groups: Vec<Self> = serde_json::from_str(data)?;
         Ok(groups)
+    }
+}
+
+impl From<explore::Group> for Group {
+    fn from(eg: explore::Group) -> Self {
+        Self {
+            category_name: eg.category_name,
+            created_at: eg.created_at,
+            name: eg.name,
+            slug: eg.slug,
+
+            city: eg.city,
+            country_code: eg.country_code,
+            country_name: eg.country_name,
+            logo_url: eg.logo_url,
+            region_name: eg.region_name,
+            state: eg.state,
+        }
     }
 }
 
