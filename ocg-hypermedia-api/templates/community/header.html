@@ -58,24 +58,31 @@
     <div class="hidden fixed inset-0 z-20" id="backdrop-backdrop"></div>
     <div class="fixed inset-y-0 right-0 z-20 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
       <div class="flex items-center justify-between">
+        <!-- Close menu button -->
         <button type="button" class="-m-2.5 rounded-md p-2.5 text-gray-700" onclick="toggleNavbarMobile()">
           <span class="sr-only">Close menu</span>
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+        <!-- End close menu button -->
       </div>
       <div class="mt-6 flow-root">
         <div class="-my-6 divide-y divide-gray-500/10">
+          <!-- Mobile links -->
           <div class="space-y-2 py-6">
             {% call mobile_link("Home", "/", "") %}
             {% call mobile_link("Explore", "/explore", "") %}
             {% call mobile_button("New group", "updateModalStatus('new-group-modal')", "") %}
           </div>
+          <!-- End mobile links -->
+
+          <!-- Mobile buttons - Sign up / Log in -->
           <div class="py-6">
             {% call mobile_link("Sign up", "#", "") %}
             {% call mobile_link("Login in", "#", "") %}
           </div>
+          <!-- End mobile buttons - Sign up / Log in -->
         </div>
       </div>
     </div>
@@ -83,23 +90,28 @@
   <!-- End mobile menu -->
 </header>
 
+<!-- New group modal -->
 {% if let Some(new_group_details) = self.community.new_group_details %}
-  <!-- New group modal -->
   <div id="new-group-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
     <div class="modal-overlay absolute w-full h-full bg-black opacity-75" onclick="updateModalStatus('new-group-modal')"></div>
     <div class="relative p-4 w-full max-w-2xl max-h-full">
       <div class="relative bg-white rounded-lg shadow">
         <!-- Modal header -->
         <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+          <!-- Title -->
           <h3 class="text-xl font-semibold text-gray-900">
             New group
           </h3>
+          <!-- End title -->
+
+          <!-- Close button -->
           <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center" onclick="updateModalStatus('new-group-modal')">
             <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
               <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
             </svg>
             <span class="sr-only">Close modal</span>
           </button>
+          <!-- End close button -->
         </div>
         <!-- End modal header -->
 
@@ -117,8 +129,8 @@
       </div>
     </div>
   </div>
-  <!-- End new group modal -->
 {% endif %}
+<!-- End new group modal -->
 
 <!-- Link -->
 {% macro link(content, href, current_path, extra_styles) %}

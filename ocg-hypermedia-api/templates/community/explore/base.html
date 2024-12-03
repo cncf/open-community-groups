@@ -52,13 +52,13 @@
 <!-- End drawer filters -->
 
 <div class="flex items-start">
-  <!-- Filters -->
+  <!-- Desktop filters -->
   <div id="explore-filters" class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
     {% block filters %}
       <div></div>
     {% endblock %}
   </div>
-  <!-- End filters -->
+  <!-- End desktop filters -->
 
   <div id="explore-cards" class="relative w-full lg:w-3/4 lg:pl-10 self-stretch">
     <div class="relative flex flex-col bg-white border rounded-lg pt-5 md:pt-7 h-full">
@@ -107,6 +107,7 @@
         <!-- View mode -->
         <div class="flex flex-1 flex-col items-start xl:items-center xl:flex-row">
           <ul class="flex items-end justify-center">
+            <!-- List view -->
             <li>
               <input type="radio" name="view_mode" id="list" value="list" class="hidden peer" {% if view_mode == ViewMode::List %}checked{% endif %} onChange="triggerChangeOnForm('{% block section %}{% endblock %}-form')">
               <label for="list" class="w-[95px] relative inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -114,6 +115,9 @@
                 <div class="w-full text-sm text-center text-nowrap ms-1">List</div>
               </label>
             </li>
+            <!-- End list view -->
+
+            <!-- Calendar view -->
             {% if results_section.entity() == Entity::Events %}
               <li>
                 <input type="radio" name="view_mode" id="calendar" value="calendar" class="hidden peer" {% if view_mode == ViewMode::Calendar %}checked{% endif %} onChange="triggerChangeOnForm('{% block section %}{% endblock %}-form')">
@@ -123,6 +127,9 @@
                 </label>
               </li>
             {% endif %}
+            <!-- End calendar view -->
+
+            <!-- Map view -->
             <li>
               <input type="radio" name="view_mode" id="map" value="map" class="hidden peer" {% if view_mode == ViewMode::Map %}checked{% endif %} onChange="triggerChangeOnForm('{% block section %}{% endblock %}-form')">
               <label for="map" class="w-[95px] relative -ms-[1px] inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -130,6 +137,7 @@
                 <div class="w-full text-sm text-center text-nowrap">Map</div>
               </label>
             </li>
+            <!-- End map view -->
           </ul>
         </div>
         <!-- End view mode -->

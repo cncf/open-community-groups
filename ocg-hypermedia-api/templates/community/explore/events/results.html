@@ -2,6 +2,7 @@
 
 {% if let Some(view_mode) = self.view_mode %}
   {% match view_mode %}
+  <!-- Calendar view -->
   {% when ViewMode::Calendar %}
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="flex justify-between items-center mb-5 h-16">
@@ -25,6 +26,9 @@
       <div id="calendar-box" class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
     </div>
     <script>loadCalendar('events');</script>
+  <!-- End calendar view -->
+
+  <!-- Map view -->
   {% when ViewMode::Map %}
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="relative w-full border h-[600px] md:h-[820px]">
@@ -35,12 +39,17 @@
       </div>
     </div>
     <script>loadMap('events');</script>
+  <!-- End map view -->
+
+  <!-- List view -->
   {% else %}
     <!-- Cards -->
     <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if events.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::results_legend(total, events.len(), offset) %}')">
+      <!-- Placeholder cards -->
       {% if events.len() == 0 %}
         {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
       {% endif %}
+      <!-- End placeholder cards -->
 
       {% for event in events %}
         {% call event_card(event) %}
@@ -52,14 +61,17 @@
       {% include "community/explore/pagination.html" %}
       <!-- End pagination -->
     {% endif %}
+  <!-- End list view -->
   {% endmatch %}
 {% else %}
   <!-- List -->
     <!-- Cards -->
     <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if events.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::results_legend(total, events.len(), offset) %}')">
+      <!-- Placeholder cards -->
       {% if events.len() == 0 %}
         {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
       {% endif %}
+      <!-- End placeholder cards -->
 
       {% for event in events %}
         {% call event_card(event) %}
@@ -139,6 +151,7 @@
       </div>
     </div>
 
+    <!-- Mobile -->
     <div class="block md:hidden">
       <!-- Event location -->
       <div class="flex flex-row items-center mt-3 h-[21px]">
@@ -166,6 +179,7 @@
       </div>
       <!-- End event date -->
     </div>
+    <!-- End mobile -->
 
     <!-- Event description on mobile -->
     {% if let Some(description_short) = event.description_short %}
