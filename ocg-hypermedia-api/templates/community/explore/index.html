@@ -4,16 +4,17 @@
 {% block bg_color %}bg-gray-100{% endblock %}
 
 {% block content %}
+  <!-- Community title -->
   <div class="text-center pt-5">
-    <!-- Community title -->
     <h1
       class="mb-4 mx-5 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl"
     >
       {{ community.title }}
     </h1>
-    <!-- End community title -->
   </div>
+  <!-- End community title -->
 
+  <!-- Main content -->
   <div id="explore-content" class="relative container mx-auto max-w-7xl px-4 pt-10 pb-12 sm:px-6 lg:px-8">
     <!-- Spinner -->
     <div id="spinner-entity-section" class="fixed top-0 right-0 left-0 bottom-0 bg-gray-100/10 z-10">
@@ -24,25 +25,27 @@
     </div>
     <!-- End spinner -->
 
-    <!-- Content -->
+    <!-- Entity section -->
     <div id="entity-section" class="relative" hx-on::after-settle="checkVisibleFilters();fillEmptyImages();" hx-on::after-swap="hideSpinner()">
       {% match entity %}
       {% when Entity::Groups %}
-        <!-- Groups -->
+        <!-- Groups section -->
         {% if let Some(groups_section) = groups_section %}
           {{ groups_section|safe }}
         {% endif %}
-        <!-- End Groups -->
+        <!-- End groups section -->
       {% else %}
-        <!-- Events -->
+        <!-- Events section -->
         {% if let Some(events_section) = events_section %}
           {{ events_section|safe }}
         {% endif %}
-        <!-- End Events -->
+        <!-- End events section -->
       {% endmatch %}
     </div>
-    <!-- End content -->
+    <!-- End entity section -->
   </div>
+  <!-- End main content -->
+
   <script>
     // Check if collapsible filters must be
     // opened or closed depeding on active filters

@@ -1,15 +1,13 @@
 {% import "common.html" as common %}
-{% extends "community/explore/base.html" %}
+{% extends "community/explore/entity_section_base.html" %}
 
 {% block filters %}
   {% include "community/explore/groups/filters.html" %}
 {% endblock %}
 
-{% block section %}groups{% endblock %}
-
-{% block results %}
+{% block current_page %}
   {% if results_section.groups.len() > 0 %}
-    {% call common::results_legend(results_section.total, results_section.groups.len(), filters.offset) %}
+    {% call common::current_page(results_section.total, results_section.groups.len(), filters.offset) %}
   {% endif %}
 {% endblock %}
 

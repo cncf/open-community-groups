@@ -143,9 +143,9 @@
 {% endmacro %}
 <!-- End alert -->
 
-<!-- Results -->
-{% macro results_legend(total, items_number, offset_value) %}{% if let Some(offset) = offset_value %}{{ offset + 1 }} - {{ items_number + offset }}{% else %}1 - {{ items_number }}{% endif %} of {{ total }} results{% endmacro %}
-<!-- End results -->
+<!-- Current page -->
+{% macro current_page(total, items_number, offset_value) %}{% if let Some(offset) = offset_value %}{{ offset + 1 }} - {{ items_number + offset }}{% else %}1 - {{ items_number }}{% endif %} of {{ total }} results{% endmacro %}
+<!-- End current page -->
 
 <!-- Logo -->
 {% macro logo(logo_url, name, title, classes, size) %}

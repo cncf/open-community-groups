@@ -3,39 +3,41 @@
 {% set view_mode = self.view_mode.clone().unwrap_or_default() %}
 
 {% match view_mode %}
-{% when ViewMode::Map %}
-  <!-- Map view -->
-  <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
-    <div class="relative w-full border h-[600px] md:h-[820px]">
-      <div id="map-box" class="w-full h-full"></div>
-      <div class="hidden absolute z-[1000] top-0 bottom-0 left-0 w-[40%] md:block">
-        <div id="map-content" class="w-full max-h-full overflow-auto"></div>
+  {% when ViewMode::List %}
+    <!-- List view -->
+    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::current_page(total, groups.len(), offset) %}')">
+      <!-- Placeholder cards -->
+      {% if groups.len() == 0 %}
+        {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
+      {% endif %}
+      <!-- End placeholder cards -->
+
+      <!-- Cards -->
+      {% for group in groups %}
+        {{ group|safe }}
+      {% endfor %}
+      <!-- End cards -->
+    </div>
+
+    <!-- Pagination -->
+    {% if groups.len() > 0 %}
+      {{ navigation_links|safe }}
+    {% endif %}
+    <!-- End pagination -->
+    <!-- End list view -->
+
+  {% when ViewMode::Map %}
+    <!-- Map view -->
+    <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
+      <div class="relative w-full border h-[600px] md:h-[820px]">
+        <div id="map-box" class="w-full h-full"></div>
+        <div class="hidden absolute z-[1000] top-0 bottom-0 left-0 w-[40%] md:block">
+          <div id="map-content" class="w-full max-h-full overflow-auto"></div>
+        </div>
       </div>
     </div>
-  </div>
-  <script>loadMap('groups');</script>
-  <!-- End map view -->
-
-{% else %}
-  <!-- List view -->
-  <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::results_legend(total, groups.len(), offset) %}')">
-    <!-- Placeholder cards -->
-    {% if groups.len() == 0 %}
-      {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
-    {% endif %}
-    <!-- End placeholder cards -->
-
-    <!-- Cards -->
-    {% for group in groups %}
-      {{ group|safe }}
-    {% endfor %}
-    <!-- End cards -->
-  </div>
-
-  <!-- Pagination -->
-  {% if groups.len() > 0 %}
-    {{ navigation_links|safe }}
-  {% endif %}
-  <!-- End pagination -->
-  <!-- End grid view -->
+    <script>loadMap('groups');</script>
+    <!-- End map view -->
+  {% else %}
+    <div>Not available view mode</div>
 {% endmatch %}

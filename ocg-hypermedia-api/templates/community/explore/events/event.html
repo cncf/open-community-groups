@@ -64,7 +64,7 @@
     </div>
   </div>
 
-  <!-- Mobile -->
+  <!-- Mobile content -->
   <div class="block md:hidden">
     <!-- Event location -->
     <div class="flex flex-row items-center mt-3 h-[21px]">
@@ -92,9 +92,8 @@
     </div>
     <!-- End event date -->
   </div>
-  <!-- End mobile -->
 
-  <!-- Event description on mobile -->
+  <!-- Description -->
   {% if let Some(description_short) = description_short %}
     <div class="block md:hidden">
       <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">
@@ -102,6 +101,7 @@
       </p>
     </div>
   {% endif %}
-  <!-- End event description on mobile -->
+  <!-- End description -->
+  <!-- End mobile content -->
 </div>
 <!-- End event card -->
