@@ -1,0 +1,101 @@
+:root {
+  --ocg-primary: #d62293;
+
+  /* Full Calendar */
+  --fc-small-font-size: .7em;
+  --fc-event-bg-color: var(--ocg-primary);
+  --fc-event-border-color: var(--ocg-primary);
+  --fc-today-bg-color: color-mix(in oklab, var(--ocg-primary) 5%, white);
+}
+
+/* Footer */
+.copyright a {
+  color: white;
+  font-weight: 600;
+}
+
+/* Jumbotron */
+.jumbotron-description a {
+  color: var(--ocg-primary);
+  font-weight: 600;
+}
+
+/* Spinner */
+#explore-content:not(.is-loading) #spinner-entity-section {
+  display: none;
+}
+
+#explore-content.is-loading #spinner-entity-section {
+  display: block;
+}
+
+#explore-content.is-loading #explore-filters::before,
+#explore-content.is-loading #explore-cards > div::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(255, 255, 255, 0.75);
+  z-index: 10;
+  border-radius: 0.5rem;
+}
+/* End spinner */
+
+/* Full calendar */
+.fc-view-harness {
+  height: 816px !important;
+}
+
+.fc-event-title {
+  border-radius: 9999px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Prevent browser tooltip on over when text overflows */
+.fc-event-title::after {
+  content: '';
+  display: block;
+}
+
+.fc-daygrid-event {
+  padding: 0 0.25rem;
+  border-radius: 999px;
+}
+
+.fc-daygrid-event-harness:hover div[data-popover] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.fc-daygrid-day-frame {
+  height: 130px;
+}
+
+.fc-daygrid-more-link {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  margin-top: 0.5rem !important;
+  color: rgb(107, 114, 128);
+}
+
+.fc-daygrid-more-link:hover {
+  background-color: transparent !important;
+  color: rgb(55, 65, 81);
+}
+/* End full calendar */
+
+/* Leaflet */
+.leaflet-popup {
+  font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+.leaflet-popup-content {
+  margin: 0.5rem;
+}
+/* End Leaflet */

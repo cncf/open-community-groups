@@ -39,6 +39,17 @@
 {% endmacro %}
 <!-- End secondary button -->
 
+<!-- Secondary mini button -->
+{% macro secondary_mini_button(content, onclick, extra_styles) %}
+  <button
+    class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
+    onclick="{{ onclick }}"
+  >
+    {{ content|safe }}
+  </button>
+{% endmacro %}
+<!-- End secondary mini button -->
+
 <!-- Secondary link -->
 {% macro secondary_link(content, href, extra_styles, rounded) %}
   <a
@@ -137,25 +148,27 @@
 <!-- End results -->
 
 <!-- Logo -->
-  {% macro logo(logo_url, name, title, classes, size) %}
-    {% if let Some(url) = logo_url %}
-      <div
-        class="h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
-        style='
-          background-image: url({{ url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", format!("c_scale,w_{}", size * 2) ) }});
-        '>
-      </div>
-    {% else %}
-      <div
-        class="relative h-24 w-24 md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
-      >
+{% macro logo(logo_url, name, title, classes, size) %}
+  {% if let Some(url) = logo_url %}
+    <div
+      class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
+      style='
+        background-image: url({{ url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", format!("c_scale,w_{}", size * 2) ) }});
+      '>
+    </div>
+  {% else %}
+    <div
+      class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
+    >
+      {% if size > 100 %}
         <div class="relative h-full w-full flex place-items-center p-2 text-[0.78rem] text-gray-600 font-bold leading-5 capitalize z-10">
           <p class="w-full text-ellipsis overflow-hidden text-center">
             {{ name }}
           </p>
         </div>
-        <div data-placeholder-logo="true" data-placeholder-name="{{ title }}" class="absolute w-full h-full top-0" style="mask-image: url(/static/images/placeholder_cncf.png);mask-mode: alpha;mask-size: cover;"></div>
-      </div>
-    {% endif %}
-  {% endmacro %}
+      {% endif %}
+      <div data-placeholder-logo="true" data-placeholder-name="{{ title }}" class="absolute w-full h-full top-0" style="mask-image: url(/static/images/placeholder_cncf.png);mask-mode: alpha;mask-size: cover;"></div>
+    </div>
+  {% endif %}
+{% endmacro %}
 <!-- End logo -->

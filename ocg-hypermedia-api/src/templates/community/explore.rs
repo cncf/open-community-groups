@@ -97,6 +97,7 @@ pub(crate) struct EventsFilters {
     pub date_to: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
@@ -110,6 +111,8 @@ pub(crate) struct EventsFilters {
     pub sort_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub view_mode: Option<ViewMode>,
 }
 
 impl EventsFilters {
@@ -183,8 +186,10 @@ impl Pagination for EventsFilters {
 pub(crate) struct EventsResultsSection {
     pub events: Vec<Event>,
     pub navigation_links: NavigationLinks,
-    pub offset: Option<usize>,
     pub total: usize,
+
+    pub offset: Option<usize>,
+    pub view_mode: Option<ViewMode>,
 }
 
 impl EventsResultsSection {
@@ -290,6 +295,7 @@ pub(crate) struct GroupsFilters {
     pub bbox_sw_lon: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
@@ -303,6 +309,8 @@ pub(crate) struct GroupsFilters {
     pub sort_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub view_mode: Option<ViewMode>,
 }
 
 impl GroupsFilters {
@@ -357,8 +365,10 @@ impl Pagination for GroupsFilters {
 pub(crate) struct GroupsResultsSection {
     pub groups: Vec<Group>,
     pub navigation_links: NavigationLinks,
-    pub offset: Option<usize>,
     pub total: usize,
+
+    pub offset: Option<usize>,
+    pub view_mode: Option<ViewMode>,
 }
 
 impl GroupsResultsSection {
@@ -548,6 +558,16 @@ impl NavigationLinksOffsets {
 
         offsets
     }
+}
+
+/// View mode.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ViewMode {
+    Calendar,
+    #[default]
+    List,
+    Map,
 }
 
 /// Build URL that includes the filters as query parameters.
