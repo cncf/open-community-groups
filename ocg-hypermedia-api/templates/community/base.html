@@ -26,25 +26,27 @@
     ></script>
 
     <script>
-      // Default colors when theme is not available
-      let default_colors = {
-        primary: {
-          50: "#fdf4fa",
-          100: "#fbe9f4",
-          300: "#eb91c9",
-          500: "#d62293",
-          700: "#ab1b76",
-          900: "#6b114a"
-        },
-      };
+      let default_colors = {};
 
-      // When theme is available, overwrite primary color
+      // When theme is available, use it as primary color
       {% if let Some(theme) = community.theme %}
         overWritePrimaryColor('{{ theme.primary_color }}');
 
         default_colors = {
           primary: calculatePalette("{{ theme.primary_color }}"),
         }
+      {% else %}
+        // Default primary color when theme is not available
+        default_colors = {
+          primary: {
+            50: "#fdf4fa",
+            100: "#fbe9f4",
+            300: "#eb91c9",
+            500: "#d62293",
+            700: "#ab1b76",
+            900: "#6b114a"
+          },
+        };
       {% endif %}
 
       // Tailwind configuration
@@ -93,13 +95,6 @@
     </div>
 
     <script>
-      // On explore page
-      {% if path == "/explore" %}
-        // Check if collapsible filters must be
-        // opened or closed depeding on active filters
-        checkVisibleFilters();
-      {% endif %}
-
       // Fill events and groups logos when these are empty
       fillEmptyImages();
     </script>

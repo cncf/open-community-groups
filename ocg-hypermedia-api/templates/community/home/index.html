@@ -61,40 +61,17 @@
       <!-- Banner -->
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
         <div class="hidden pb-16 md:flex">
-          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
-            <a rel="noopener noreferrer" class="mx-auto my-8 border-4 border-gray-100 w-[75%]" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">
-              <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
-            </a>
-          {% else %}
+          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}<a rel="noopener noreferrer" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">{% endif %}
             <div class="mx-auto my-8 border-4 border-gray-100 w-[75%]">
-              <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Kubecon 2024 NA">
+              <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Banner">
             </div>
-          {% endif %}
+          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}</a>{% endif %}
         </div>
       {% endif %}
       <!-- End banner -->
 
       <!-- Recently added groups -->
-      <div class="flex items-center justify-between mb-6">
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
-          Recently added groups
-        </div>
-        <div class="hidden justify-self-end lg:flex">
-          {% call common::secondary_link("See all groups", "/explore?entity=groups", "ms-4", false) %}
-        </div>
-      </div>
-      <div class="my-10">
-        <!-- Groups cards -->
-        <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
-          {% for group in recently_added_groups %}
-            {{ group|safe }}
-          {% endfor %}
-        </div>
-        <!-- End groups cards -->
-        <div class="block mt-10 lg:hidden lg:mt-0">
-          {% call common::secondary_link("See all groups", "/explore?entity=groups", "", false) %}
-        </div>
-      </div>
+        {% call groups_list("Recently added groups", "/explore?entity=groups", recently_added_groups) %}
       <!-- End recentry added groups -->
     </div>
   </div>
@@ -139,3 +116,28 @@
   </div>
 {% endmacro %}
 <!-- End events list -->
+
+<!-- Groups list -->
+{% macro groups_list(title, link, groups) %}
+<div class="flex items-center justify-between mb-6">
+  <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
+    {{ title }}
+  </div>
+  <div class="hidden justify-self-end lg:flex">
+    {% call common::secondary_link("See all groups", link, "ms-4", false) %}
+  </div>
+</div>
+<div class="my-10">
+  <!-- Groups cards -->
+  <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
+    {% for group in groups %}
+      {{ group|safe }}
+    {% endfor %}
+  </div>
+  <!-- End groups cards -->
+  <div class="block mt-10 lg:hidden lg:mt-0">
+    {% call common::secondary_link("See all groups", link, "", false) %}
+  </div>
+</div>
+{% endmacro %}
+<!-- End groups list -->
