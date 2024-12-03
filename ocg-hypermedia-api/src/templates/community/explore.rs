@@ -14,9 +14,12 @@ use chrono_tz::Tz;
 use serde::{ser, Deserialize, Serialize};
 use tracing::trace;
 
-use crate::templates::{
-    filters,
-    helpers::{build_location, extract_location, LocationParts},
+use crate::{
+    db::BBox,
+    templates::{
+        filters,
+        helpers::{build_location, extract_location, LocationParts},
+    },
 };
 
 use super::common::{Community, EventKind};
@@ -188,6 +191,7 @@ pub(crate) struct EventsResultsSection {
     pub navigation_links: NavigationLinks,
     pub total: usize,
 
+    pub bbox: Option<BBox>,
     pub offset: Option<usize>,
     pub view_mode: Option<ViewMode>,
 }
@@ -367,6 +371,7 @@ pub(crate) struct GroupsResultsSection {
     pub navigation_links: NavigationLinks,
     pub total: usize,
 
+    pub bbox: Option<BBox>,
     pub offset: Option<usize>,
     pub view_mode: Option<ViewMode>,
 }

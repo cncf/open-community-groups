@@ -42,14 +42,7 @@ pub(crate) async fn index(
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (
-                filters_options,
-                SearchCommunityEventsOutput {
-                    events,
-                    bbox: _,
-                    total,
-                },
-            ) = tokio::try_join!(
+            let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_events(community_id, &filters)
             )?;
@@ -62,22 +55,16 @@ pub(crate) async fn index(
                 results_section: explore::EventsResultsSection {
                     events,
                     navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
-                    offset,
                     total,
+                    bbox,
+                    offset,
                     view_mode,
                 },
             });
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (
-                filters_options,
-                SearchCommunityGroupsOutput {
-                    groups,
-                    bbox: _,
-                    total,
-                },
-            ) = tokio::try_join!(
+            let (filters_options, SearchCommunityGroupsOutput { groups, bbox, total }) = tokio::try_join!(
                 db.get_community_filters_options(community_id),
                 db.search_community_groups(community_id, &filters)
             )?;
@@ -90,8 +77,9 @@ pub(crate) async fn index(
                 results_section: explore::GroupsResultsSection {
                     groups,
                     navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
-                    offset,
                     total,
+                    bbox,
+                    offset,
                     view_mode,
                 },
             });
@@ -111,14 +99,7 @@ pub(crate) async fn events_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (
-        filters_options,
-        SearchCommunityEventsOutput {
-            events,
-            bbox: _,
-            total,
-        },
-    ) = tokio::try_join!(
+    let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_events(community_id, &filters)
     )?;
@@ -128,8 +109,9 @@ pub(crate) async fn events_section(
         results_section: explore::EventsResultsSection {
             events,
             navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
-            offset: filters.offset,
             total,
+            bbox,
+            offset: filters.offset,
             view_mode: filters.view_mode.clone(),
         },
     };
@@ -153,16 +135,14 @@ pub(crate) async fn events_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let SearchCommunityEventsOutput {
-        events,
-        bbox: _,
-        total,
-    } = db.search_community_events(community_id, &filters).await?;
+    let SearchCommunityEventsOutput { events, bbox, total } =
+        db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
         events,
         navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
-        offset: filters.offset,
         total,
+        bbox,
+        offset: filters.offset,
         view_mode: filters.view_mode.clone(),
     };
 
@@ -185,14 +165,7 @@ pub(crate) async fn groups_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (
-        filters_options,
-        SearchCommunityGroupsOutput {
-            groups,
-            bbox: _,
-            total,
-        },
-    ) = tokio::try_join!(
+    let (filters_options, SearchCommunityGroupsOutput { groups, bbox, total }) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         db.search_community_groups(community_id, &filters)
     )?;
@@ -202,8 +175,9 @@ pub(crate) async fn groups_section(
         results_section: explore::GroupsResultsSection {
             groups,
             navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
-            offset: filters.offset,
             total,
+            bbox,
+            offset: filters.offset,
             view_mode: filters.view_mode.clone(),
         },
     };
@@ -227,16 +201,14 @@ pub(crate) async fn groups_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let SearchCommunityGroupsOutput {
-        groups,
-        bbox: _,
-        total,
-    } = db.search_community_groups(community_id, &filters).await?;
+    let SearchCommunityGroupsOutput { groups, bbox, total } =
+        db.search_community_groups(community_id, &filters).await?;
     let template = explore::GroupsResultsSection {
         groups,
         navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
-        offset: filters.offset,
         total,
+        bbox,
+        offset: filters.offset,
         view_mode: filters.view_mode.clone(),
     };
 
