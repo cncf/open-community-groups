@@ -205,7 +205,8 @@ impl EventsResultsSection {
 }
 
 /// Event information used in the community explore page.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/event.html")]
 pub(crate) struct Event {
     pub canceled: bool,
     pub group_category_name: String,
@@ -385,7 +386,8 @@ impl GroupsResultsSection {
 }
 
 /// Group information used in the community explore page.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/groups/group.html")]
 pub(crate) struct Group {
     pub category_name: String,
     #[serde(with = "chrono::serde::ts_seconds")]
@@ -458,7 +460,8 @@ pub(crate) struct FilterOption {
 }
 
 /// Results navigation links.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/navigation_links.html")]
 pub(crate) struct NavigationLinks {
     pub first: Option<NavigationLink>,
     pub last: Option<NavigationLink>,

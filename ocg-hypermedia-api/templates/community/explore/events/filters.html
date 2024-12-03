@@ -39,12 +39,9 @@
 
       <!-- Virtual -->
       <li>
-        {% if let Some(view_mode) = filters.view_mode %}
-          {% if view_mode == ViewMode::Map|as_ref %}
-            <input type="checkbox" name="kind" id="kind-virtual" value="virtual" class="hidden peer" disabled>
-          {% else %}
-            <input type="checkbox" name="kind" id="kind-virtual" value="virtual" class="hidden peer" {% if filters.kind.contains(EventKind::Virtual.borrow()) %}checked{% endif %}>
-          {% endif %}
+        {% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
+        {% if view_mode == ViewMode::Map %}
+          <input type="checkbox" name="kind" id="kind-virtual" value="virtual" class="hidden peer" disabled>
         {% else %}
           <input type="checkbox" name="kind" id="kind-virtual" value="virtual" class="hidden peer" {% if filters.kind.contains(EventKind::Virtual.borrow()) %}checked{% endif %}>
         {% endif %}
