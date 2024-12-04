@@ -19,6 +19,7 @@ create table community (
     header_logo_url text not null check (header_logo_url <> ''),
     host text not null unique check (host <> ''),
     name text not null unique check (name <> ''),
+    theme jsonb not null,
     title text not null check (title <> ''),
     community_site_layout_id text not null references community_site_layout default 'default',
 
@@ -35,7 +36,6 @@ create table community (
     new_group_details text check (new_group_details <> ''),
     photos_urls text[],
     slack_url text check (slack_url <> ''),
-    theme jsonb,
     twitter_url text check (twitter_url <> ''),
     website_url text check (website_url <> ''),
     wechat_url text check (wechat_url <> ''),

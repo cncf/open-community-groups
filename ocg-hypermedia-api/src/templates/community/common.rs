@@ -14,6 +14,7 @@ pub(crate) struct Community {
     pub display_name: String,
     pub header_logo_url: String,
     pub name: String,
+    pub theme: Theme,
     pub title: String,
 
     pub ad_banner_link_url: Option<String>,
@@ -29,7 +30,6 @@ pub(crate) struct Community {
     pub new_group_details: Option<String>,
     pub photos_urls: Option<Vec<String>>,
     pub slack_url: Option<String>,
-    pub theme: Option<Theme>,
     pub twitter_url: Option<String>,
     pub website_url: Option<String>,
     pub wechat_url: Option<String>,
@@ -40,11 +40,7 @@ impl Community {
     /// Try to create a `Community` instance from a JSON string.
     pub(crate) fn try_from_json(data: &str) -> Result<Self> {
         let mut community: Community = serde_json::from_str(data)?;
-
-        if let Some(theme) = &mut community.theme {
-            theme.palette = generate_palette(&theme.primary_color)?;
-        }
-
+        community.theme.palette = generate_palette(&community.theme.primary_color)?;
         Ok(community)
     }
 }
