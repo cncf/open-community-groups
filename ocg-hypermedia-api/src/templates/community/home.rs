@@ -8,7 +8,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
 use crate::templates::{
-    filters,
+    filters::{self, color},
     helpers::{build_location, LocationParts},
 };
 

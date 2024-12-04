@@ -17,7 +17,7 @@ use tracing::trace;
 use crate::{
     db::BBox,
     templates::{
-        filters,
+        filters::{self, color},
         helpers::{build_location, extract_location, LocationParts},
     },
 };
