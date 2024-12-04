@@ -5,11 +5,13 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use num_format::{Locale, ToFormattedString};
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Colors used to make it easier to identify some entities. We use them as the
+/// tint for placeholder images, for example.
+const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
+
 /// Get the color corresponding to the value provided. The same value should
 /// always return the same color.
 pub(crate) fn color<T: Hash + ?Sized>(value: &T) -> &str {
-    const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
-
     // Calculate the hash of the value
     let mut hasher = DefaultHasher::new();
     value.hash(&mut hasher);
@@ -34,7 +36,7 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T) -> askama::Result<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{color, demoji, num_fmt};
+    use super::{color, demoji, num_fmt, COLORS};
 
     macro_rules! color_tests {
         ($(
@@ -50,10 +52,10 @@ mod tests {
     }
 
     color_tests! {
-        color_1: "value2" => "#fa4a18",
-        color_2: "value1" => "#f1c232",
-        color_3: "value3" => "#6aa84f",
-        color_4: "value5" => "#3d85c6"
+        color_1: "value2" => COLORS[0],
+        color_2: "value1" => COLORS[1],
+        color_3: "value3" => COLORS[2],
+        color_4: "value5" => COLORS[3]
     }
 
     #[test]
