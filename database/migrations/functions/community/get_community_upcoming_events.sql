@@ -9,7 +9,7 @@ returns json as $$
         'group_slug', group_slug,
         'group_state', group_state,
         'kind', event_kind_id,
-        'logo_url', logo_url,
+        'logo_url', coalesce(logo_url, group_logo_url),
         'name', name,
         'slug', slug,
         'starts_at', floor(extract(epoch from starts_at)),
@@ -28,6 +28,7 @@ returns json as $$
             g.city as group_city,
             g.country_code,
             g.country_name,
+            g.logo_url as group_logo_url,
             g.name as group_name,
             g.slug as group_slug,
             g.state as group_state
