@@ -33,6 +33,8 @@ pub(crate) struct Index {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/event.html")]
 pub(crate) struct Event {
+    #[serde(default)]
+    pub group_color: String,
     pub group_name: String,
     pub group_slug: String,
     pub kind: EventKind,
@@ -65,7 +67,11 @@ impl Event {
 
     /// Try to create a vector of `Event` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let events: Vec<Self> = serde_json::from_str(data)?;
+        let mut events: Vec<Self> = serde_json::from_str(data)?;
+
+        for event in &mut events {
+            event.group_color = color(&event.group_name).to_string();
+        }
 
         Ok(events)
     }
@@ -74,6 +80,7 @@ impl Event {
 impl From<explore::Event> for Event {
     fn from(ee: explore::Event) -> Self {
         Self {
+            group_color: ee.group_color,
             group_name: ee.group_name,
             group_slug: ee.group_slug,
             kind: ee.kind,
@@ -97,6 +104,8 @@ impl From<explore::Event> for Event {
 #[template(path = "community/home/group.html")]
 pub(crate) struct Group {
     pub category_name: String,
+    #[serde(default)]
+    pub color: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     pub name: String,
@@ -124,7 +133,12 @@ impl Group {
 
     /// Try to create a vector of `Group` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let groups: Vec<Self> = serde_json::from_str(data)?;
+        let mut groups: Vec<Self> = serde_json::from_str(data)?;
+
+        for group in &mut groups {
+            group.color = color(&group.name).to_string();
+        }
+
         Ok(groups)
     }
 }
@@ -133,6 +147,7 @@ impl From<explore::Group> for Group {
     fn from(eg: explore::Group) -> Self {
         Self {
             category_name: eg.category_name,
+            color: eg.color,
             created_at: eg.created_at,
             name: eg.name,
             slug: eg.slug,

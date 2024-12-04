@@ -213,6 +213,8 @@ impl EventsResultsSection {
 pub(crate) struct Event {
     pub canceled: bool,
     pub group_category_name: String,
+    #[serde(default)]
+    pub group_color: String,
     pub group_name: String,
     pub group_slug: String,
     pub kind: EventKind,
@@ -280,7 +282,12 @@ impl Event {
 
     /// Try to create a vector of `Event` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let events: Vec<Self> = serde_json::from_str(data)?;
+        let mut events: Vec<Self> = serde_json::from_str(data)?;
+
+        for event in &mut events {
+            event.group_color = color(&event.group_name).to_string();
+        }
+
         Ok(events)
     }
 }
@@ -402,6 +409,8 @@ impl GroupsResultsSection {
 #[template(path = "community/explore/groups/group.html")]
 pub(crate) struct Group {
     pub category_name: String,
+    #[serde(default)]
+    pub color: String,
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     pub name: String,
@@ -450,7 +459,12 @@ impl Group {
 
     /// Try to create a vector of `Group` instances from a JSON string.
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let groups: Vec<Self> = serde_json::from_str(data)?;
+        let mut groups: Vec<Self> = serde_json::from_str(data)?;
+
+        for group in &mut groups {
+            group.color = color(&group.name).to_string();
+        }
+
         Ok(groups)
     }
 }
