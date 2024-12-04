@@ -8,7 +8,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Get the color corresponding to the value provided. The same value should
 /// always return the same color.
 pub(crate) fn color<T: Hash + ?Sized>(value: &T) -> &str {
-    const COLORS: &[&str] = &["#fa4a18", "#f1c232", "#6aa84f", "#3d85c6"];
+    const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
 
     // Calculate the hash of the value
     let mut hasher = DefaultHasher::new();
