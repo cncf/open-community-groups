@@ -3,7 +3,7 @@
 {# MACROS -#}
 
 {# Filters header -#}
-{% macro header(form_name) %}
+{% macro header() %}
   <div class="flex justify-between items-center border-solid border-0 border-b border-gray-100 p-5">
     <div
       class="font-semibold text-sm text-black"
@@ -11,7 +11,7 @@
       Filters
     </div>
 
-    {% call common::secondary_mini_button("Reset", "resetFilters('{}')"|format(form_name), "hidden lg:flex") %}
+    {% call common::secondary_mini_button("Reset", "", "hidden lg:flex reset-filters") %}
   </div>
 {% endmacro %}
 {# End filters header -#}
@@ -25,10 +25,10 @@
           <li class="w-full">
             {# Events button -#}
             <button
+              id="events-button"
               hx-get='/explore/events-section'
               hx-trigger="click"
               hx-target="#entity-section"
-              hx-on::before-request="showSpinner()"
               hx-boost="true"
               class="inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-l-lg cursor-pointer select-none hover:bg-gray-50">
                 {% call entity_content("events", "Events", "") %}
@@ -42,6 +42,13 @@
             </div>
             {# End selected entity: groups -#}
           </li>
+          <script type="module">
+            import { showSpinner } from '/static/js/modules/spinner.js';
+
+            const eventsButton = document.querySelector('#events-button');
+            eventsButton.addEventListener('htmx:beforeRequest', showSpinner);
+          </script>
+
         {% when Entity::Events %}
           <li class="w-full">
             {# Selected entity: events -#}
@@ -53,16 +60,22 @@
           <li class="w-full">
             {# Groups event -#}
             <button
+              id="groups-button"
               hx-get='/explore/groups-section'
               hx-trigger="click"
               hx-target="#entity-section"
-              hx-on::before-request="showSpinner()"
               hx-boost="true"
               class="inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-r-lg cursor-pointer select-none hover:bg-gray-50">
                 {% call entity_content("groups", "Groups", "") %}
             </button>
             {# End groups button -#}
           </li>
+          <script type="module">
+            import { showSpinner } from '/static/js/modules/spinner.js';
+
+            const groupsButton = document.querySelector('#groups-button');
+            groupsButton.addEventListener('htmx:beforeRequest', showSpinner);
+          </script>
       {% endmatch %}
     </ul>
   </div>
@@ -133,7 +146,7 @@
     </div>
     <div>
       {% if items_length > max_visible_items_number %}
-        <button type="button" onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}', {{ max_visible_items_number }})" class="text-gray-700 border hover:bg-gray-700 hover:text-white focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
+        <button data-label="{{ label }}" type="button" class="collapse-btn text-gray-700 border hover:bg-gray-700 hover:text-white focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
           <span class="hidden group-[.collapsed]:block">
             <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 374.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 306.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"></path></svg>
           </span>
@@ -151,7 +164,7 @@
 {% macro collapsible_footer(label, items_length, max_visible_items_number) %}
   {% if items_length > max_visible_items_number %}
     <div class="mt-4 -mb-1.5">
-      <button onclick="updateCollapsibleFilterStatus('collapsible-{{ label }}')" type="button" class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
+      <button data-label="{{ label }}" type="button" class="collapse-btn text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
         <span class="hidden group-[.collapsed]:block">+ Show more</span>
         <span class="block group-[.collapsed]:hidden">- Show less</span>
       </button>
@@ -162,12 +175,12 @@
 
 {# Collapsible filter with checkboxes -#}
 {% macro collapsible_filter_checkboxes(title, options, label, active_filters, view, max_visible_items_number) %}
-  <div id="collapsible-{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed" data-collapsible-item="true" data-max-items="{{ max_visible_items_number }}">
+  <div data-collapsible-label="{{ label }}" class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed" data-collapsible-item="true" data-max-items="{{ max_visible_items_number }}">
     {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
     <ul class='flex w-full gap-2 mt-3 {% if view == "rows" %}flex-col{% else %}flex-wrap{% endif %}'>
       <li>
-        <input type="checkbox" name="any" value="" id="any-{{label}}" class="hidden peer" {% if active_filters.is_empty() %}checked{% endif %}>
-        <label for="any-{{label}}" class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50" onclick="updateAnyValue('{{ label }}')">
+        <input type="checkbox" name="any" value="" id="any-checkbox-{{label}}" class="hidden peer" {% if active_filters.is_empty() %}checked{% endif %}>
+        <label for="any-checkbox-{{label}}" class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="text-[0.8rem] text-center text-nowrap">Any</div>
         </label>
       </li>
@@ -181,6 +194,12 @@
     </ul>
     {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
   </div>
+  <script type="module">
+    import { updateAnyValue } from '/static/js/modules/filters.js';
+
+    const anyCheckbox = document.querySelector('#any-checkbox-{{ label }}');
+    anyCheckbox.addEventListener('click', () => updateAnyValue('{{ label }}'));
+  </script>
 {% endmacro %}
 {# End collapsible filter with checkboxes -#}
 
@@ -191,11 +210,11 @@
     <ul class='flex w-full gap-2 mt-3 {% if view == "rows" %}flex-col{% else %}flex-wrap{% endif %}'>
       <li>
         {% if let Some(selected) = active_filter %}
-          <input type="radio" name="any" value="" id="any-{{label}}" class="hidden peer">
+          <input type="radio" name="any" value="" id="any-radio-{{label}}" class="hidden peer">
         {% else %}
-          <input type="radio" name="any" value="" id="any-{{label}}" class="hidden peer" checked>
+          <input type="radio" name="any" value="" id="any-radio-{{label}}" class="hidden peer" checked>
         {% endif %}
-        <label for="any-{{label}}" class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50" onclick="updateAnyValue('{{ label }}', true)">
+        <label for="any-radio-{{label}}" class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="text-[0.8rem] text-center text-nowrap">Any</div>
         </label>
       </li>
@@ -209,5 +228,11 @@
     </ul>
     {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
   </div>
+  <script type="module">
+    import { updateAnyValue } from '/static/js/modules/filters.js';
+
+    const anyRadio = document.querySelector('#any-radio-{{ label }}');
+    anyCheckbox.addEventListener('click', () => updateAnyValue('{{ label }}', true));
+  </script>
 {% endmacro %}
 {# End collapsible filter with radios -#}

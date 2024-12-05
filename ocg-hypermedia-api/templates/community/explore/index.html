@@ -26,7 +26,7 @@
     {# End spinner -#}
 
     {# Entity section -#}
-    <div id="entity-section" class="relative" hx-on::after-settle="checkVisibleFilters();fillEmptyImages();" hx-on::after-swap="hideSpinner()">
+    <div id="entity-section" class="relative">
       {% match entity %}
       {% when Entity::Groups %}
         {# Groups section -#}
@@ -46,9 +46,21 @@
   </div>
   {# End main content -#}
 
-  <script>
+  <script type="module">
+    import { checkVisibleFilters } from '/static/js/modules/filters.js';
+    import { hideSpinner } from '/static/js/modules/spinner.js';
+
     // Check if collapsible filters must be
     // opened or closed depeding on active filters
     checkVisibleFilters();
+
+    // Hide spinner when content is loaded
+    const entitySection = document.querySelector('#entity-section');
+    entitySection.addEventListener('htmx:afterSwap', () => {
+      hideSpinner();
+    });
+    entitySection.addEventListener('htmx:afterSettle', () => {
+      checkVisibleFilters();
+    });
   </script>
 {% endblock %}

@@ -5,7 +5,7 @@
 {% match view_mode %}
   {% when ViewMode::List %}
     {# List view -#}
-    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::current_page(total, groups.len(), offset) %}')">
+    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}">
       {# Placeholder cards -#}
       {% if groups.len() == 0 %}
         {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
@@ -24,6 +24,12 @@
       {{ navigation_links|safe }}
     {% endif %}
     {# End pagination -#}
+
+    <script type="module">
+      import { updateResults } from '/static/js/modules/common.js';
+
+      updateResults('{% call common::current_page(total, groups.len(), offset) %}');
+    </script>
     {# End list view -#}
 
   {% when ViewMode::Map %}
@@ -31,13 +37,16 @@
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="relative w-full border h-[600px] md:h-[820px]">
         <div id="map-box" class="w-full h-full"></div>
-        <div class="hidden absolute z-[1000] top-0 bottom-0 left-0 w-[40%] md:block">
-          <div id="map-content" class="w-full max-h-full overflow-auto"></div>
-        </div>
       </div>
     </div>
-    <script>loadMap('groups');</script>
+
+    <script type="module">
+      import { loadMap } from '/static/js/modules/map.js';
+
+      loadMap('groups');
+    </script>
     {# End map view -#}
+
   {% else %}
-    <div>Not available view mode</div>
+    <div></div>
 {% endmatch %}

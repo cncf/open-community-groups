@@ -4,7 +4,7 @@
 <div class="flex flex-1 flex-row items-center">
   <div class="relative">
     {# Event icon -#}
-    {% call common::logo(logo_url, group_name, name, "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", 120) %}
+    {% call common::logo(logo_url, group_name, name, "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", 120, group_color) %}
     {# End event icon -#}
   </div>
 
@@ -18,7 +18,7 @@
         {# End event group -#}
 
         {# Event title -#}
-        <div class="font-semibold line-clamp-1 text-[0.9rem] lg:line-clamp-2 lg:h-[43px] mb-2 mt-1">{{ name|demoji }}</div>
+        <div class="font-semibold line-clamp-1 text-[0.9rem] lg:line-clamp-2 lg:h-[41px] mb-2 mt-1">{{ name|demoji }}</div>
         {# End event title -#}
       </div>
 

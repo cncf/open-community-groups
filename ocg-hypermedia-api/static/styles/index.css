@@ -6,6 +6,7 @@
   --fc-event-bg-color: var(--ocg-primary);
   --fc-event-border-color: var(--ocg-primary);
   --fc-today-bg-color: color-mix(in oklab, var(--ocg-primary) 5%, white);
+  --fc-event-text-color: black;
 }
 
 /* Footer */
@@ -97,5 +98,43 @@
 
 .leaflet-popup-content {
   margin: 0.5rem;
+  width: 390px !important;
+}
+
+.leaflet-container a {
+  color: inherit !important;
 }
 /* End Leaflet */
+
+/* Tooltip */
+.tooltip-with-arrow::after {
+  border: 5px solid #0000;
+  content: "";
+  display: block;
+  height: 0;
+  position: absolute;
+  width: 0;
+}
+
+.tooltip-with-arrow:not(.end-0)::after {
+  left: 20px;
+  right: auto;
+}
+
+.tooltip-with-arrow.end-0::after {
+  left: auto;
+  right: 20px;
+}
+
+.tooltip-with-arrow:not(.top-0)::after {
+  border-bottom: 5px solid rgb(209, 213, 219);
+  bottom: auto;
+  top: -4px;
+}
+
+.tooltip-with-arrow.top-0::after {
+  border-top: 5px solid rgb(209, 213, 219);
+  bottom: -4px;
+  top: auto;
+}
+/* End tooltip */

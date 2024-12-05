@@ -11,9 +11,9 @@
 >
   {# Close button -#}
   <button
+    id="close-filters"
     type="button"
     class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center"
-    onclick="closeFilters()"
   >
     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" /></svg>
     <span class="sr-only">Close menu</span>
@@ -28,14 +28,14 @@
 
   <div class="text-end p-5 border-t">
     <button
-      class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400"
+      class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 reset-filters"
     >
       Reset
     </button>
   </div>
 </div>
 {# Overlay -#}
-<div id="drawer-backdrop" class="hidden bg-gray-900/50 fixed inset-0 z-[1050]" onclick="closeFilters()"></div>
+<div id="drawer-backdrop" class="hidden bg-gray-900/50 fixed inset-0 z-[1050]"></div>
 {# End overlay -#}
 {# End mobile filters -#}
 
@@ -54,8 +54,8 @@
         {# Mobile filters button -#}
         <div class="flex lg:hidden">
           <button
+            id="open-filters"
             class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-white text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700"
-            onclick="openFilters()"
           >
             <svg class="w-4 h-4" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round"
               stroke-linejoin="round"
@@ -91,7 +91,7 @@
           <ul class="flex items-end justify-center">
             {# List view -#}
             <li>
-              <input type="radio" name="view_mode" id="list" value="list" class="hidden peer" {% if view_mode == ViewMode::List %}checked{% endif %} onChange="triggerChangeOnForm('{{ results_section.entity() }}-form')">
+              <input type="radio" name="view_mode" id="list" value="list" class="hidden peer" {% if view_mode == ViewMode::List %}checked{% endif %}>
               <label for="list" class="w-[95px] relative inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
                 <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M149.333 216v80c0 13.255-10.745 24-24 24H24c-13.255 0-24-10.745-24-24v-80c0-13.255 10.745-24 24-24h101.333c13.255 0 24 10.745 24 24zM0 376v80c0 13.255 10.745 24 24 24h101.333c13.255 0 24-10.745 24-24v-80c0-13.255-10.745-24-24-24H24c-13.255 0-24 10.745-24 24zM125.333 32H24C10.745 32 0 42.745 0 56v80c0 13.255 10.745 24 24 24h101.333c13.255 0 24-10.745 24-24V56c0-13.255-10.745-24-24-24zm80 448H488c13.255 0 24-10.745 24-24v-80c0-13.255-10.745-24-24-24H205.333c-13.255 0-24 10.745-24 24v80c0 13.255 10.745 24 24 24zm-24-424v80c0 13.255 10.745 24 24 24H488c13.255 0 24-10.745 24-24V56c0-13.255-10.745-24-24-24H205.333c-13.255 0-24 10.745-24 24zm24 264H488c13.255 0 24-10.745 24-24v-80c0-13.255-10.745-24-24-24H205.333c-13.255 0-24 10.745-24 24v80c0 13.255 10.745 24 24 24z"></path></svg>
                 <div class="w-full text-sm text-center text-nowrap ms-1">List</div>
@@ -102,7 +102,7 @@
             {# Calendar view -#}
             {% if results_section.entity() == Entity::Events %}
               <li>
-                <input type="radio" name="view_mode" id="calendar" value="calendar" class="hidden peer" {% if view_mode == ViewMode::Calendar %}checked{% endif %} onChange="triggerChangeOnForm('{{ results_section.entity() }}-form')">
+                <input type="radio" name="view_mode" id="calendar" value="calendar" class="hidden peer" {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
                 <label for="calendar" class="w-[95px] relative -ms-[1px] inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
                   <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M148 288h-40c-6.6 0-12-5.4-12-12v-40c0-6.6 5.4-12 12-12h40c6.6 0 12 5.4 12 12v40c0 6.6-5.4 12-12 12zm108-12v-40c0-6.6-5.4-12-12-12h-40c-6.6 0-12 5.4-12 12v40c0 6.6 5.4 12 12 12h40c6.6 0 12-5.4 12-12zm96 0v-40c0-6.6-5.4-12-12-12h-40c-6.6 0-12 5.4-12 12v40c0 6.6 5.4 12 12 12h40c6.6 0 12-5.4 12-12zm-96 96v-40c0-6.6-5.4-12-12-12h-40c-6.6 0-12 5.4-12 12v40c0 6.6 5.4 12 12 12h40c6.6 0 12-5.4 12-12zm-96 0v-40c0-6.6-5.4-12-12-12h-40c-6.6 0-12 5.4-12 12v40c0 6.6 5.4 12 12 12h40c6.6 0 12-5.4 12-12zm192 0v-40c0-6.6-5.4-12-12-12h-40c-6.6 0-12 5.4-12 12v40c0 6.6 5.4 12 12 12h40c6.6 0 12-5.4 12-12zm96-260v352c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V112c0-26.5 21.5-48 48-48h48V12c0-6.6 5.4-12 12-12h40c6.6 0 12 5.4 12 12v52h128V12c0-6.6 5.4-12 12-12h40c6.6 0 12 5.4 12 12v52h48c26.5 0 48 21.5 48 48zm-48 346V160H48v298c0 3.3 2.7 6 6 6h340c3.3 0 6-2.7 6-6z"></path></svg>
                   <div class="w-full text-sm text-center text-nowrap ms-1">Calendar</div>
@@ -113,7 +113,7 @@
 
             {# Map view -#}
             <li>
-              <input type="radio" name="view_mode" id="map" value="map" class="hidden peer" {% if view_mode == ViewMode::Map %}checked{% endif %} onChange="triggerChangeOnForm('{{ results_section.entity() }}-form')">
+              <input type="radio" name="view_mode" id="map" value="map" class="hidden peer" {% if view_mode == ViewMode::Map %}checked{% endif %}>
               <label for="map" class="w-[95px] relative -ms-[1px] inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
                 <svg class="w-6" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M18.364 17.364L12 23.7279L5.63604 17.364C2.12132 13.8492 2.12132 8.15076 5.63604 4.63604C9.15076 1.12132 14.8492 1.12132 18.364 4.63604C21.8787 8.15076 21.8787 13.8492 18.364 17.364ZM12 13C13.1046 13 14 12.1046 14 11C14 9.89543 13.1046 9 12 9C10.8954 9 10 9.89543 10 11C10 12.1046 10.8954 13 12 13Z"></path></svg>
                 <div class="w-full text-sm text-center text-nowrap">Map</div>
@@ -136,7 +136,6 @@
             id="sort_by"
             name="sort_by"
             class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500"
-            onchange="triggerChangeOnForm('{{ results_section.entity() }}-form')"
           >
           {% if let Some(sort_by) = filters.sort_by %}
             <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
@@ -170,3 +169,31 @@
     </div>
   </div>
 </div>
+<script type="module">
+  import { closeFilters, openFilters, resetFilters, triggerChangeOnForm, updateCollapsibleFilterStatus } from '/static/js/modules/filters.js';
+
+  const openFiltersBtn = document.querySelector('#open-filters');
+  openFiltersBtn.addEventListener('click', openFilters);
+
+  const closeFiltersBtn = document.querySelector('#close-filters');
+  closeFiltersBtn.addEventListener('click', closeFilters);
+
+  const backdropFilters = document.querySelector('#drawer-backdrop');
+  backdropFilters.addEventListener('click', closeFilters);
+
+  const inputs = document.querySelectorAll('input[name="view_mode"]');
+  inputs.forEach(input => {
+    input.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+  });
+
+  const select = document.querySelector('#sort_by');
+  select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+
+  const resetButtons = document.querySelectorAll('.reset-filters');
+  resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ results_section.entity() }}-form')));
+
+  const collapseBtn = document.querySelectorAll('.collapse-btn');
+  collapseBtn.forEach(btn => {
+    btn.addEventListener('click', () => updateCollapsibleFilterStatus(btn.dataset.label));
+  });
+</script>

@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="/static/styles/index.css" />
 
-    <script src="/static/js/index.js" crossorigin="anonymous"></script>
     <script type="text/javascript" src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script
       type="text/javascript"
@@ -18,15 +17,20 @@
       integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
       crossorigin="anonymous"
     ></script>
-    <script>
+
+    <script type="module">
+      import { overWritePrimaryColor } from '/static/js/modules/common.js';
+
       overWritePrimaryColor('{{ community.theme.primary_color }}');
+
+      const color = {{ community.theme.palette|json|safe }};
 
       // Tailwind configuration
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              primary: calculatePalette("{{ community.theme.primary_color }}"),
+              primary: color,
             },
             fontSize: {
               filterTitle: '0.8rem',
@@ -67,10 +71,5 @@
       {% include "community/footer.html" %}
       {# End footer -#}
     </div>
-
-    <script>
-      // Fill events and groups logos when these are empty
-      fillEmptyImages();
-    </script>
   </body>
 </html>

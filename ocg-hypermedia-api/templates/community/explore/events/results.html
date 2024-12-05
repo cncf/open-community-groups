@@ -10,14 +10,14 @@
         <div id="calendar-date" class="text-xl font-semibold text-gray-700 md:text-2xl lg:text-[2rem]"></div>
         <div class="flex">
           {# Today button -#}
-          {% call common::secondary_mini_button("Today", "loadCurrentMonth('events')", "") %}
+          {% call common::secondary_mini_button("Today", "current-month-btn", "") %}
 
           {# Next/Prev buttons -#}
           <div class="inline-flex ml-4" role="group">
-            <button type="button" class="cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white" onclick="loadPrevMonth('events')">
+            <button id="prev-month-btn" type="button" class="cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
               <svg class="h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"></path></svg>
             </button>
-            <button type="button" class="cursor-pointer inline-flex items-center -ml-[1px] pl-4 pr-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white" onclick="loadNextMonth('events')">
+            <button id="next-month-btn" type="button" class="cursor-pointer inline-flex items-center -ml-[1px] pl-4 pr-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
               <svg class="h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"></path></svg>
             </button>
           </div>
@@ -26,12 +26,25 @@
 
       <div id="calendar-box" class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
     </div>
-    <script>loadCalendar('events');</script>
+    <script type="module">
+      import { loadCalendar, loadCurrentMonth, loadNextMonth, loadPrevMonth } from '/static/js/modules/calendar.js';
+
+      loadCalendar();
+
+      const currentMonthBtn = document.querySelector('#current-month-btn');
+      currentMonthBtn.addEventListener('click', loadCurrentMonth);
+
+      const prevMonthBtn = document.querySelector('#prev-month-btn');
+      prevMonthBtn.addEventListener('click', loadPrevMonth);
+
+      const nextMonthBtn = document.querySelector('#next-month-btn');
+      nextMonthBtn.addEventListener('click', loadNextMonth);
+    </script>
     {# End calendar view -#}
 
   {% when ViewMode::List %}
     {# List view -#}
-    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if events.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::current_page(total, events.len(), offset) %}')">
+    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if events.len() > 0 %}border-b{% endif %}">
       {# Placeholder cards -#}
       {% if events.len() == 0 %}
         {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
@@ -50,6 +63,12 @@
       {{ navigation_links|safe }}
     {% endif %}
     {# End pagination -#}
+
+    <script type="module">
+      import { updateResults } from '/static/js/modules/common.js';
+
+      updateResults('{% call common::current_page(total, events.len(), offset) %}');
+    </script>
     {# End list view -#}
 
   {% when ViewMode::Map %}
@@ -57,14 +76,14 @@
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="relative w-full border h-[600px] md:h-[820px]">
         <div id="map-box" class="w-full h-full"></div>
-        <div class="hidden absolute z-[1000] top-0 bottom-0 left-0 w-[40%] md:block">
-          <div id="map-content" class="w-full max-h-full overflow-auto"></div>
-        </div>
       </div>
     </div>
-    <script>loadMap('events');</script>
+
+    <script type="module">
+      import { loadMap } from '/static/js/modules/map.js';
+
+      loadMap('events');
+    </script>
     {# End map view -#}
 
-  {% else %}
-    <div>Not available view mode</div>
 {% endmatch %}

@@ -1,7 +1,7 @@
 {% import "community/explore/filters.html" as macros %}
 
 {# Header Groups -#}
-{% call macros::header("groups-form") %}
+{% call macros::header() %}
 {# End header groups -#}
 
 {# Entity -#}
@@ -14,7 +14,6 @@
   hx-trigger="change"
   hx-target="#entity-section"
   hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
-  hx-on::before-request="showSpinner()"
   hx-boost="true"
 >
   {# Regions -#}
@@ -31,3 +30,10 @@
     {# End distance -#}
   {% endif %}
 </form>
+
+<script type="module">
+  import { showSpinner } from '/static/js/modules/spinner.js';
+
+  const form = document.getElementById('groups-form');
+  form.addEventListener('htmx:beforeRequest', showSpinner);
+</script>
