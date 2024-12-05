@@ -10,6 +10,7 @@ use axum::{
     response::IntoResponse,
 };
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     db::{DynDB, SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
@@ -42,47 +43,13 @@ pub(crate) async fn index(
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
-                db.get_community_filters_options(community_id),
-                db.search_community_events(community_id, &filters)
-            )?;
-            let offset = filters.offset;
-            let view_mode = filters.view_mode.clone();
-
-            template.events_section = Some(explore::EventsSection {
-                filters: filters.clone(),
-                filters_options,
-                results_section: explore::EventsResultsSection {
-                    events,
-                    navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
-                    total,
-                    bbox,
-                    offset,
-                    view_mode,
-                },
-            });
+            let events_section = prepare_events_section(&db, community_id, &filters).await?;
+            template.events_section = Some(events_section);
         }
         explore::Entity::Groups => {
             let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-            let (filters_options, SearchCommunityGroupsOutput { groups, bbox, total }) = tokio::try_join!(
-                db.get_community_filters_options(community_id),
-                db.search_community_groups(community_id, &filters)
-            )?;
-            let offset = filters.offset;
-            let view_mode = filters.view_mode.clone();
-
-            template.groups_section = Some(explore::GroupsSection {
-                filters: filters.clone(),
-                filters_options,
-                results_section: explore::GroupsResultsSection {
-                    groups,
-                    navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
-                    total,
-                    bbox,
-                    offset,
-                    view_mode,
-                },
-            });
+            let groups_section = prepare_groups_section(&db, community_id, &filters).await?;
+            template.groups_section = Some(groups_section);
         }
     }
 
@@ -99,22 +66,7 @@ pub(crate) async fn events_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
-        db.get_community_filters_options(community_id),
-        db.search_community_events(community_id, &filters)
-    )?;
-    let template = explore::EventsSection {
-        filters: filters.clone(),
-        filters_options,
-        results_section: explore::EventsResultsSection {
-            events,
-            navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
-            total,
-            bbox,
-            offset: filters.offset,
-            view_mode: filters.view_mode.clone(),
-        },
-    };
+    let template = prepare_events_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
     let headers = [(
@@ -165,22 +117,7 @@ pub(crate) async fn groups_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let (filters_options, SearchCommunityGroupsOutput { groups, bbox, total }) = tokio::try_join!(
-        db.get_community_filters_options(community_id),
-        db.search_community_groups(community_id, &filters)
-    )?;
-    let template = explore::GroupsSection {
-        filters: filters.clone(),
-        filters_options,
-        results_section: explore::GroupsResultsSection {
-            groups,
-            navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
-            total,
-            bbox,
-            offset: filters.offset,
-            view_mode: filters.view_mode.clone(),
-        },
-    };
+    let template = prepare_groups_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
     let headers = [(
@@ -255,4 +192,56 @@ pub(crate) async fn search_groups(
     let json_data = serde_json::to_string(&search_groups_output)?;
 
     Ok(json_data)
+}
+
+/// Prepare events section template.
+async fn prepare_events_section(
+    db: &DynDB,
+    community_id: Uuid,
+    filters: &EventsFilters,
+) -> Result<explore::EventsSection> {
+    let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
+        db.get_community_filters_options(community_id),
+        db.search_community_events(community_id, filters)
+    )?;
+    let template = explore::EventsSection {
+        filters: filters.clone(),
+        filters_options,
+        results_section: explore::EventsResultsSection {
+            events,
+            navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
+            total,
+            bbox,
+            offset: filters.offset,
+            view_mode: filters.view_mode.clone(),
+        },
+    };
+
+    Ok(template)
+}
+
+/// Prepare groups section template.
+async fn prepare_groups_section(
+    db: &DynDB,
+    community_id: Uuid,
+    filters: &GroupsFilters,
+) -> Result<explore::GroupsSection> {
+    let (filters_options, SearchCommunityGroupsOutput { groups, bbox, total }) = tokio::try_join!(
+        db.get_community_filters_options(community_id),
+        db.search_community_groups(community_id, filters)
+    )?;
+    let template = explore::GroupsSection {
+        filters: filters.clone(),
+        filters_options,
+        results_section: explore::GroupsResultsSection {
+            groups,
+            navigation_links: NavigationLinks::from_filters(&Entity::Groups, filters, total)?,
+            total,
+            bbox,
+            offset: filters.offset,
+            view_mode: filters.view_mode.clone(),
+        },
+    };
+
+    Ok(template)
 }

@@ -17,8 +17,8 @@ use tracing::trace;
 use crate::{
     db::BBox,
     templates::{
-        filters::{self, color},
-        helpers::{build_location, extract_location, LocationParts},
+        filters,
+        helpers::{build_location, color, extract_location, LocationParts},
     },
 };
 
@@ -270,7 +270,7 @@ impl Event {
             .venue_city(self.venue_city.as_ref())
             .venue_name(self.venue_name.as_ref());
 
-        build_location(max_len, &parts)
+        build_location(&parts, max_len)
     }
 
     /// Render popover HTML.
@@ -447,7 +447,7 @@ impl Group {
             .group_country_name(self.country_name.as_ref())
             .group_state(self.state.as_ref());
 
-        build_location(max_len, &parts)
+        build_location(&parts, max_len)
     }
 
     /// Render popover HTML.
@@ -682,7 +682,7 @@ mod tests {
     }
 
     navigation_links_offsets_tests! {
-        navigation_links_offsets_1: {
+        test_navigation_links_offsets_1: {
             offset: Some(0),
             limit: Some(10),
             total: 20,
@@ -694,7 +694,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_2: {
+        test_navigation_links_offsets_2: {
             offset: Some(10),
             limit: Some(10),
             total: 20,
@@ -706,7 +706,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_3: {
+        test_navigation_links_offsets_3: {
             offset: Some(0),
             limit: Some(10),
             total: 21,
@@ -718,7 +718,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_4: {
+        test_navigation_links_offsets_4: {
             offset: Some(10),
             limit: Some(10),
             total: 15,
@@ -730,7 +730,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_5: {
+        test_navigation_links_offsets_5: {
             offset: Some(0),
             limit: Some(10),
             total: 10,
@@ -742,7 +742,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_6: {
+        test_navigation_links_offsets_6: {
             offset: Some(0),
             limit: Some(10),
             total: 5,
@@ -754,7 +754,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_7: {
+        test_navigation_links_offsets_7: {
             offset: Some(0),
             limit: Some(10),
             total: 0,
@@ -766,7 +766,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_8: {
+        test_navigation_links_offsets_8: {
             offset: None,
             limit: Some(10),
             total: 15,
@@ -778,7 +778,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_9: {
+        test_navigation_links_offsets_9: {
             offset: None,
             limit: None,
             total: 15,
@@ -790,7 +790,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_10: {
+        test_navigation_links_offsets_10: {
             offset: Some(20),
             limit: Some(10),
             total: 50,
@@ -802,7 +802,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_11: {
+        test_navigation_links_offsets_11: {
             offset: Some(2),
             limit: Some(10),
             total: 20,
@@ -814,7 +814,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_12: {
+        test_navigation_links_offsets_12: {
             offset: Some(0),
             limit: Some(10),
             total: 5,
@@ -826,7 +826,7 @@ mod tests {
             }
         },
 
-        navigation_links_offsets_13: {
+        test_navigation_links_offsets_13: {
             offset: Some(0),
             limit: Some(10),
             total: 11,
@@ -852,9 +852,9 @@ mod tests {
     }
 
     get_url_filters_separator_tests! {
-        get_url_filters_separator_1: ("https://example.com", "?"),
-        get_url_filters_separator_2: ("https://example.com?", ""),
-        get_url_filters_separator_3: ("https://example.com?param1=value1", "&"),
-        get_url_filters_separator_4: ("https://example.com?param1=value1&", ""),
+        test_get_url_filters_separator_1: ("https://example.com", "?"),
+        test_get_url_filters_separator_2: ("https://example.com?", ""),
+        test_get_url_filters_separator_3: ("https://example.com?param1=value1", "&"),
+        test_get_url_filters_separator_4: ("https://example.com?param1=value1&", ""),
     }
 }

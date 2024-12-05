@@ -1,6 +1,12 @@
-//! Some helpers for handlers.
+//! Some helpers for templates.
+
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use axum::http::header::HeaderMap;
+
+/// Colors used to make it easier to identify some entities. We use them as the
+/// tint for placeholder images, for example.
+const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
 
 /// Parts used to build the location string.
 pub(crate) struct LocationParts<'a> {
@@ -71,7 +77,7 @@ impl<'a> LocationParts<'a> {
 }
 
 /// Build location string from the location information provided.
-pub(crate) fn build_location(max_len: usize, parts: &LocationParts) -> Option<String> {
+pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<String> {
     let mut location = String::new();
     let mut push = |part: Option<&String>| -> bool {
         if let Some(part) = part {
@@ -103,6 +109,19 @@ pub(crate) fn build_location(max_len: usize, parts: &LocationParts) -> Option<St
     None
 }
 
+/// Get the color corresponding to the value provided. The same value should
+/// always return the same color.
+pub(crate) fn color<T: Hash + ?Sized>(value: &T) -> &str {
+    // Calculate the hash of the value
+    let mut hasher = DefaultHasher::new();
+    value.hash(&mut hasher);
+    let hash = hasher.finish();
+
+    // Pick one of the colors based on the hash
+    #[allow(clippy::cast_possible_truncation)]
+    COLORS[(hash % COLORS.len() as u64) as usize]
+}
+
 /// Extract the latitude and longitude from the headers provided.
 pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>) {
     let try_from = |latitude_header: &str, longitude_header: &str| -> Option<(Option<f64>, Option<f64>)> {
@@ -121,7 +140,7 @@ pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>
 
 #[cfg(test)]
 mod tests {
-    use super::{build_location, LocationParts};
+    use super::{build_location, color, LocationParts, COLORS};
 
     macro_rules! build_location_tests {
         ($(
@@ -133,14 +152,14 @@ mod tests {
         $(
             #[test]
             fn $name() {
-                assert_eq!(build_location(100, $parts), $expected_location);
+                assert_eq!(build_location($parts, 100), $expected_location);
             }
         )*
         }
     }
 
     build_location_tests! {
-        build_location_1: {
+        test_build_location_1: {
             parts: &LocationParts::new()
                 .group_country_name(Some("group country".to_string()).as_ref())
                 .group_state(Some("group state".to_string()).as_ref())
@@ -150,7 +169,7 @@ mod tests {
             expected_location: Some("venue name, venue address, venue city, group state, group country".to_string())
         },
 
-        build_location_2: {
+        test_build_location_2: {
             parts: &LocationParts::new()
                 .group_city(Some("group city".to_string()).as_ref())
                 .group_country_code(Some("group country code".to_string()).as_ref())
@@ -161,7 +180,7 @@ mod tests {
             expected_location: Some("venue address, venue city, group state, group country".to_string())
         },
 
-        build_location_3: {
+        test_build_location_3: {
             parts: &LocationParts::new()
                 .group_city(Some("group city".to_string()).as_ref())
                 .group_country_code(Some("group country code".to_string()).as_ref())
@@ -171,7 +190,7 @@ mod tests {
             expected_location: Some("venue city, group state, group country".to_string())
         },
 
-        build_location_4: {
+        test_build_location_4: {
             parts: &LocationParts::new()
                 .group_city(Some("group city".to_string()).as_ref())
                 .group_country_code(Some("group country code".to_string()).as_ref())
@@ -180,7 +199,7 @@ mod tests {
             expected_location: Some("group city, group state, group country".to_string())
         },
 
-        build_location_5: {
+        test_build_location_5: {
             parts: &LocationParts::new()
                 .group_country_code(Some("group country code".to_string()).as_ref())
                 .group_country_name(Some("group country".to_string()).as_ref())
@@ -188,22 +207,42 @@ mod tests {
             expected_location: Some("group state, group country".to_string())
         },
 
-        build_location_6: {
+        test_build_location_6: {
             parts: &LocationParts::new()
                 .group_country_code(Some("group country code".to_string()).as_ref())
                 .group_country_name(Some("group country".to_string()).as_ref()),
             expected_location: Some("group country".to_string())
         },
 
-        build_location_7: {
+        test_build_location_7: {
             parts: &LocationParts::new()
                 .group_country_code(Some("group country code".to_string()).as_ref()),
             expected_location: Some("group country code".to_string())
         },
 
-        build_location_8: {
+        test_build_location_8: {
             parts: &LocationParts::new(),
             expected_location: None
         },
+    }
+
+    macro_rules! color_tests {
+        ($(
+            $name:ident: $value:expr => $expected:expr
+        ),*) => {
+            $(
+                #[test]
+                fn $name() {
+                    assert_eq!(color($value), $expected);
+                }
+            )*
+        };
+    }
+
+    color_tests! {
+        test_color_1: "value2" => COLORS[0],
+        test_color_2: "value1" => COLORS[1],
+        test_color_3: "value3" => COLORS[2],
+        test_color_4: "value5" => COLORS[3]
     }
 }

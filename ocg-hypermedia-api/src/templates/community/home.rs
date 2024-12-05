@@ -8,8 +8,8 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
 use crate::templates::{
-    filters::{self, color},
-    helpers::{build_location, LocationParts},
+    filters,
+    helpers::{build_location, color, LocationParts},
 };
 
 use super::{
@@ -62,7 +62,7 @@ impl Event {
             .group_state(self.group_state.as_ref())
             .venue_city(self.venue_city.as_ref());
 
-        build_location(max_len, &parts)
+        build_location(&parts, max_len)
     }
 
     /// Try to create a vector of `Event` instances from a JSON string.
@@ -128,7 +128,7 @@ impl Group {
             .group_country_name(self.country_name.as_ref())
             .group_state(self.state.as_ref());
 
-        build_location(max_len, &parts)
+        build_location(&parts, max_len)
     }
 
     /// Try to create a vector of `Group` instances from a JSON string.
