@@ -1,11 +1,11 @@
-<!-- Footer -->
+{# Footer -#}
 <footer
   class="flex-none bg-gray-950 text-center text-white text-surface/75 lg:text-left"
 >
   <div class="px-8 py-6 lg:px-16 lg:py-12">
     <div class="pb-10 text-center md:text-left">
       <div class="flex flex-col justify-between md:flex-row">
-        <!-- Footer logo -->
+        {# Footer logo -#}
         {% if let Some(footer_logo_url) = self.community.footer_logo_url %}
           <div>
             <img
@@ -15,9 +15,9 @@
             />
           </div>
         {% endif %}
-        <!-- End footer logo -->
+        {# End footer logo -#}
 
-        <!-- Social network links -->
+        {# Social network links -#}
         <div class="flex flex-wrap justify-center gap-4 md:gap-0 md:justify-self-end mt-6 md:mt-0">
           {% call social_icon_link("twitter", self.community.twitter_url) %}
           {% call social_icon_link("github", self.community.github_url) %}
@@ -29,16 +29,16 @@
           {% call social_icon_link("facebook", self.community.facebook_url) %}
           {% call social_icon_link("slack", self.community.slack_url) %}
         </div>
-        <!-- End social network links -->
+        {# End social network links -#}
       </div>
     </div>
 
-    <!-- Extra links -->
+    {# Extra links -#}
     {% if let Some(extra_links) = self.community.extra_links %}
       <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
       <div class="pb-8 pt-2 text-sm md:text-base">
         {% for (name, url) in extra_links %}
-          <!-- Extra link -->
+          {# Extra link -#}
           {% if !loop.first %}<span class="px-2 text-gray-300 md:px-3">·</span>{% endif -%}
           <a
             href="{{ url }}"
@@ -48,13 +48,13 @@
           >
             {{ name }}
           </a>
-          <!-- End extra link -->
+          {# End extra link -#}
         {% endfor %}
       </div>
     {% endif %}
-    <!-- End extra links -->
+    {# End extra links -#}
 
-    <!-- Copyright section -->
+    {# Copyright section -#}
     <div class="pt-8 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
         <div class="mb-4 copyright">
@@ -63,12 +63,12 @@
       {% endif %}
       <p>Powered by <a href="https://github.com/cncf/open-community-groups" class="font-bold text-white" target="_blank" rel="noopener noreferrer">CNCF Open Community Groups</a>.</p>
     </div>
-    <!-- End copyright section -->
+    {# End copyright section -#}
   </div>
 </footer>
-<!-- End footer -->
+{# End footer -#}
 
-<!-- Icon link -->
+{# Icon link -#}
 {% macro social_icon_link(kind, url) %}
   {% if let Some(url) = url %}
     <a
@@ -102,4 +102,4 @@
     </a>
   {% endif %}
 {% endmacro %}
-<!-- End icon link -->
+{# End icon link -#}

@@ -4,15 +4,15 @@
 
 {% match view_mode %}
   {% when ViewMode::Calendar %}
-    <!-- Calendar view -->
+    {# Calendar view -#}
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="flex justify-between items-center mb-5 h-16">
         <div id="calendar-date" class="text-xl font-semibold text-gray-700 md:text-2xl lg:text-[2rem]"></div>
         <div class="flex">
-          <!-- Today button -->
+          {# Today button -#}
           {% call common::secondary_mini_button("Today", "loadCurrentMonth('events')", "") %}
 
-          <!-- Next/Prev buttons -->
+          {# Next/Prev buttons -#}
           <div class="inline-flex ml-4" role="group">
             <button type="button" class="cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white" onclick="loadPrevMonth('events')">
               <svg class="h-5 w-5" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0V0z"></path><path d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"></path></svg>
@@ -27,33 +27,33 @@
       <div id="calendar-box" class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
     </div>
     <script>loadCalendar('events');</script>
-    <!-- End calendar view -->
+    {# End calendar view -#}
 
   {% when ViewMode::List %}
-    <!-- List view -->
+    {# List view -#}
     <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if events.len() > 0 %}border-b{% endif %}" hx-on::load="updateResults('{% call common::current_page(total, events.len(), offset) %}')">
-      <!-- Placeholder cards -->
+      {# Placeholder cards -#}
       {% if events.len() == 0 %}
         {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
       {% endif %}
-      <!-- End placeholder cards -->
+      {# End placeholder cards -#}
 
-      <!-- Cards -->
+      {# Cards -#}
       {% for event in events %}
         {{ event|safe }}
       {% endfor %}
-      <!-- End cards -->
+      {# End cards -#}
     </div>
 
-    <!-- Pagination -->
+    {# Pagination -#}
     {% if events.len() > 0 %}
       {{ navigation_links|safe }}
     {% endif %}
-    <!-- End pagination -->
-    <!-- End list view -->
+    {# End pagination -#}
+    {# End list view -#}
 
   {% when ViewMode::Map %}
-    <!-- Map view -->
+    {# Map view -#}
     <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
       <div class="relative w-full border h-[600px] md:h-[820px]">
         <div id="map-box" class="w-full h-full"></div>
@@ -63,7 +63,7 @@
       </div>
     </div>
     <script>loadMap('events');</script>
-    <!-- End map view -->
+    {# End map view -#}
 
   {% else %}
     <div>Not available view mode</div>

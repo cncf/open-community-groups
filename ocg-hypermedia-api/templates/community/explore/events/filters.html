@@ -1,12 +1,12 @@
 {% import "community/explore/filters.html" as macros %}
 
-<!-- Filters header -->
+{# Filters header -#}
 {% call macros::header("events-form") %}
-<!-- End filters header -->
+{# End filters header -#}
 
-<!-- Entity selector -->
+{# Entity selector -#}
 {% call macros::entity_radio(Entity::Events) %}
-<!-- End entity selector -->
+{# End entity selector -#}
 
 <form
   id="events-form"
@@ -17,7 +17,7 @@
   hx-on::before-request="showSpinner()"
   hx-boost="true"
 >
-  <!-- Type -->
+  {# Type -#}
   <div class="px-6 py-7 pt-5 border-b border-gray-100">
     <div
       class="font-semibold text-filterTitle text-black leading-6"
@@ -25,7 +25,7 @@
       Type
     </div>
     <ul class="grid w-full gap-2.5 grid-cols-3 mt-3">
-      <!-- In-person -->
+      {# In-person -#}
       <li>
         <input type="checkbox" name="kind" id="in-person" value="in-person" class="hidden peer" {% if filters.kind.contains(EventKind::InPerson.borrow()) %}checked{% endif %}>
         <label for="in-person" class="inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -35,9 +35,9 @@
           </div>
         </label>
       </li>
-      <!-- End in-person -->
+      {# End in-person -#}
 
-      <!-- Virtual -->
+      {# Virtual -#}
       <li>
         {% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
         {% if view_mode == ViewMode::Map %}
@@ -52,9 +52,9 @@
           </div>
         </label>
       </li>
-      <!-- End virtual -->
+      {# End virtual -#}
 
-      <!-- Hybrid -->
+      {# Hybrid -#}
       <li>
         <input type="checkbox" name="kind" id="hybrid" value="hybrid" class="hidden peer" {% if filters.kind.contains(EventKind::Hybrid.borrow()) %}checked{% endif %}>
         <label for="hybrid" class="inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -67,31 +67,31 @@
           </div>
         </label>
       </li>
-      <!-- End hybrid -->
+      {# End hybrid -#}
 
     </ul>
   </div>
-  <!-- End type -->
+  {# End type -#}
 
-  <!-- Regions -->
+  {# Regions -#}
   {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
-  <!-- End Regions -->
+  {# End Regions -#}
 
-  <!-- Group category -->
+  {# Group category -#}
   {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, "rows", 4) %}
-  <!-- End Group category -->
+  {# End Group category -#}
 
-  <!-- Event category -->
+  {# Event category -#}
   {% call macros::collapsible_filter_checkboxes("Event category", filters_options.event_category, "event_category", filters.event_category, "rows", 4) %}
-  <!-- End event category -->
+  {# End event category -#}
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-    <!-- Distance -->
+    {# Distance -#}
     {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, "cols", 5) %}
-    <!-- End distance -->
+    {# End distance -#}
   {% endif %}
 
-  <!-- Date -->
+  {# Date -#}
   <div class="px-6 py-7 pt-5">
     <div class="flex justify-between items-center">
       <div
@@ -105,5 +105,5 @@
       {% call macros::date_input("date_to", "to", filters.date_to) %}
     </div>
   </div>
-  <!-- End date -->
+  {# End date -#}
 </form>

@@ -1,12 +1,12 @@
 {% import "community/explore/filters.html" as macros %}
 
-<!-- Header Groups -->
+{# Header Groups -#}
 {% call macros::header("groups-form") %}
-<!-- End header groups -->
+{# End header groups -#}
 
-<!-- Entity -->
+{# Entity -#}
 {% call macros::entity_radio(Entity::Groups) %}
-<!-- End entity -->
+{# End entity -#}
 
 <form
   id="groups-form"
@@ -17,17 +17,17 @@
   hx-on::before-request="showSpinner()"
   hx-boost="true"
 >
-  <!-- Regions -->
+  {# Regions -#}
   {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
-  <!-- End Regions -->
+  {# End Regions -#}
 
-  <!-- Group category -->
+  {# Group category -#}
   {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, "rows", 4) %}
-  <!-- End Group category -->
+  {# End Group category -#}
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-    <!-- Distance -->
+    {# Distance -#}
     {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, "cols", 5) %}
-    <!-- End distance -->
+    {# End distance -#}
   {% endif %}
 </form>

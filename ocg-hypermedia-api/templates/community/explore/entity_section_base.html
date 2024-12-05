@@ -2,14 +2,14 @@
 
 {% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
 
-<!-- Mobile filters -->
+{# Mobile filters -#}
 <div
   id="drawer-filters"
   class="fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border border-r drop-shadow-lg"
   tabindex="-1"
   aria-labelledby="drawer-label"
 >
-  <!-- Close button -->
+  {# Close button -#}
   <button
     type="button"
     class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center"
@@ -18,13 +18,13 @@
     <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" /></svg>
     <span class="sr-only">Close menu</span>
   </button>
-  <!-- End close button -->
+  {# End close button -#}
 
-  <!-- Filters content -->
+  {# Filters content -#}
   {% block filters %}
     <div></div>
   {% endblock %}
-  <!-- End filters content -->
+  {# End filters content -#}
 
   <div class="text-end p-5 border-t">
     <button
@@ -34,24 +34,24 @@
     </button>
   </div>
 </div>
-<!-- Overlay -->
+{# Overlay -#}
 <div id="drawer-backdrop" class="hidden bg-gray-900/50 fixed inset-0 z-[1050]" onclick="closeFilters()"></div>
-<!-- End overlay -->
-<!-- End mobile filters -->
+{# End overlay -#}
+{# End mobile filters -#}
 
 <div class="flex items-start">
-  <!-- Desktop filters -->
+  {# Desktop filters -#}
   <div id="explore-filters" class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
     {% block filters %}
       <div></div>
     {% endblock %}
   </div>
-  <!-- End desktop filters -->
+  {# End desktop filters -#}
 
   <div id="explore-cards" class="relative w-full lg:w-3/4 lg:pl-10 self-stretch">
     <div class="relative flex flex-col bg-white border rounded-lg pt-5 md:pt-7 h-full">
       <div class="flex items-center mb-10 px-5 md:px-7">
-        <!-- Mobile filters button -->
+        {# Mobile filters button -#}
         <div class="flex lg:hidden">
           <button
             class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-white text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700"
@@ -67,29 +67,29 @@
             </svg>
           </button>
         </div>
-        <!-- End mobile filters button -->
+        {# End mobile filters button -#}
 
         <div class="grow flex items-center justify-center">
-          <!-- Searchbar -->
+          {# Searchbar -#}
           <div class="w-full">
             {% block searchbar %}{% endblock %}
           </div>
-          <!-- End searchbar -->
+          {# End searchbar -#}
         </div>
       </div>
       <div class="flex flex-col items-start justify-between px-5 xl:items-center md:px-7 sm:items-end sm:flex-row">
-        <!-- Results -->
+        {# Results -#}
         <div class="flex-1">
           {% if view_mode == ViewMode::List %}
             <div id="results" class="hidden mb-2.5 font-semibold text-sm text-black w-[175px] md:flex xl:mb-0">{% block current_page %}{% endblock %}</div>
           {% endif %}
         </div>
-        <!-- End results -->
+        {# End results -#}
 
-        <!-- View mode -->
+        {# View mode -#}
         <div class="flex flex-1 flex-col items-start xl:items-center xl:flex-row">
           <ul class="flex items-end justify-center">
-            <!-- List view -->
+            {# List view -#}
             <li>
               <input type="radio" name="view_mode" id="list" value="list" class="hidden peer" {% if view_mode == ViewMode::List %}checked{% endif %} onChange="triggerChangeOnForm('{{ results_section.entity() }}-form')">
               <label for="list" class="w-[95px] relative inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -97,9 +97,9 @@
                 <div class="w-full text-sm text-center text-nowrap ms-1">List</div>
               </label>
             </li>
-            <!-- End list view -->
+            {# End list view -#}
 
-            <!-- Calendar view -->
+            {# Calendar view -#}
             {% if results_section.entity() == Entity::Events %}
               <li>
                 <input type="radio" name="view_mode" id="calendar" value="calendar" class="hidden peer" {% if view_mode == ViewMode::Calendar %}checked{% endif %} onChange="triggerChangeOnForm('{{ results_section.entity() }}-form')">
@@ -109,9 +109,9 @@
                 </label>
               </li>
             {% endif %}
-            <!-- End calendar view -->
+            {# End calendar view -#}
 
-            <!-- Map view -->
+            {# Map view -#}
             <li>
               <input type="radio" name="view_mode" id="map" value="map" class="hidden peer" {% if view_mode == ViewMode::Map %}checked{% endif %} onChange="triggerChangeOnForm('{{ results_section.entity() }}-form')">
               <label for="map" class="w-[95px] relative -ms-[1px] inline-flex items-center justify-between px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
@@ -119,12 +119,12 @@
                 <div class="w-full text-sm text-center text-nowrap">Map</div>
               </label>
             </li>
-            <!-- End map view -->
+            {# End map view -#}
           </ul>
         </div>
-        <!-- End view mode -->
+        {# End view mode -#}
 
-        <!-- Sort by -->
+        {# Sort by -#}
         <div class="flex flex-1 flex-col items-start justify-end mb-3 sm:mb-0 xl:items-center xl:flex-row">
           <label
             for="sort_by"
@@ -151,22 +151,22 @@
           {% endif %}
           </select>
         </div>
-        <!-- End sort by -->
+        {# End sort by -#}
       </div>
 
-      <!-- Results mobile -->
+      {# Results mobile -#}
       {% if view_mode == ViewMode::List %}
         <div id="results-mobile" class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
       {% endif %}
-      <!-- End results mobile -->
+      {# End results mobile -#}
 
-      <!-- Cards -->
+      {# Cards -#}
       <div id="cards-list" class="flex flex-col justify-between grow">
         {% block content %}
           <div></div>
         {% endblock %}
       </div>
-      <!-- End cards -->
+      {# End cards -#}
     </div>
   </div>
 </div>

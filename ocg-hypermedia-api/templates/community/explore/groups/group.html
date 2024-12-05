@@ -1,17 +1,17 @@
 {% import "common.html" as common %}
 
-<!-- Group card -->
+{# Group card -#}
 <div class="p-5 md:p-7">
   <div class="flex flex-1 flex-row items-stretch">
-    <!-- Group icon -->
+    {# Group icon -#}
     {% call common::logo(logo_url, name, name, "hidden md:block h-[140px] w-[140px] min-w-[140px]", 140) %}
     {% call common::logo(logo_url, "", name, "block h-14 w-14 min-w-14 md:hidden", 60) %}
-    <!-- End group icon -->
+    {# End group icon -#}
 
     <div class="min-w-0 pl-4 content-center">
       <div class="flex flex-col justify-between h-full">
         <div>
-          <!-- Group region -->
+          {# Group region -#}
           <div class="truncate leading-3 text-gray-400">
             <span class="text-xs font-semibold tracking-wide uppercase">
               {% if let Some(region_name) = region_name %}
@@ -21,23 +21,23 @@
               {% endif %}
             </span>
           </div>
-          <!-- End group region -->
+          {# End group region -#}
 
-          <!-- Group name -->
+          {# Group name -#}
           <div class="text-sm line-clamp-2 font-semibold md:mt-1 md:text-normal md:line-clamp-1">{{ name|demoji }}</div>
-          <!-- End group name -->
+          {# End group name -#}
         </div>
 
         {% if let Some(description) = description %}
-          <!-- Group description -->
+          {# Group description -#}
           <div class="hidden relative text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2 md:block">
             {{ description|demoji }}
           </div>
-          <!-- End group description -->
+          {# End group description -#}
         {% endif %}
 
         <div class="hidden md:block">
-          <!-- Group location -->
+          {# Group location -#}
           <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[32px]">
             {% if let Some(location) = self.location(48) %}
               <svg class="mt-0.5 w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
@@ -45,49 +45,49 @@
               <div class="block truncate text-gray-700 text-xs uppercase xl:hidden">{{ location }}</div>
             {% endif %}
           </div>
-          <!-- End group location -->
+          {# End group location -#}
 
-          <!-- Group creation date -->
+          {# Group creation date -#}
           <div class="flex items-center pt-1">
             <div class="flex flex-row items-center leading-4">
               <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
               <span class="truncate text-gray-700 text-xs uppercase">{{ created_at.format("%B %e · %Y") }}</span>
             </div>
           </div>
-          <!-- End group creation date -->
+          {# End group creation date -#}
         </div>
       </div>
     </div>
   </div>
 
   <div class="block md:hidden">
-    <!-- Group location -->
+    {# Group location -#}
     <div class="flex flex-row items-center mt-3 h-[21px]">
       {% if let Some(location) = self.location(40) %}
         <svg class="mt-0.5 w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 384 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"></path></svg>
         <div class="block truncate text-gray-700 text-xs uppercase xl:hidden">{{ location }}</div>
       {% endif %}
     </div>
-    <!-- End group location -->
+    {# End group location -#}
 
-    <!-- Group creation date -->
+    {# Group creation date -#}
     <div class="flex items-center pt-1">
       <div class="flex flex-row items-center leading-4">
         <svg class="-mt-[2px] w-3 h-3 me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M128 0c13.3 0 24 10.7 24 24V64H296V24c0-13.3 10.7-24 24-24s24 10.7 24 24V64h40c35.3 0 64 28.7 64 64v16 48V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192 144 128C0 92.7 28.7 64 64 64h40V24c0-13.3 10.7-24 24-24zM400 192H48V448c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V192zM329 297L217 409c-9.4 9.4-24.6 9.4-33.9 0l-64-64c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l47 47 95-95c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9z"></path></svg>
         <span class="truncate text-gray-700 text-xs uppercase">{{ created_at.format("%B %e · %Y") }}</span>
       </div>
     </div>
-    <!-- End group creation date -->
+    {# End group creation date -#}
   </div>
 
   {% if let Some(description) = description %}
-    <!-- Mobile group description -->
+    {# Mobile group description -#}
     <div class="block md:hidden">
       <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">
         {{ description|demoji }}
       </p>
     </div>
-    <!-- End mobile group description -->
+    {# End mobile group description -#}
   {% endif %}
 </div>
-<!-- End group card -->
+{# End group card -#}

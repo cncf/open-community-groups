@@ -1,37 +1,37 @@
-<!-- Stats -->
+{# Stats -#}
 <div class="flex flex-col justify-around items-center border rounded-lg p-10 mt-8 sm:mt-16 sm:mb-6 md:flex-row">
-  <!-- Group stats -->
+  {# Group stats -#}
    {% call stat_block("groups", "Groups", groups) %}
-  <!-- End group stats -->
+  {# End group stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
   <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
-  <!-- Members stats -->
+  {# Members stats -#}
   {% call stat_block("members", "Members", groups_members) %}
-  <!-- End members stats -->
+  {# End members stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
   <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
-  <!-- Events stats -->
+  {# Events stats -#}
   {% call stat_block("events", "Events", events) %}
-  <!-- End events stats -->
+  {# End events stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
   <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
-  <!-- Attendees stats -->
+  {# Attendees stats -#}
   {% call stat_block("attendees", "Attendees", events_attendees) %}
-  <!-- End attendees stats -->
+  {# End attendees stats -#}
 </div>
-<!-- End stats -->
+{# End stats -#}
 
-<!-- Stat block -->
+{# Stat block -#}
 {% macro stat_block(kind, title, value) %}
   <div>
     <div class="flex items-center justify-center">
-      <!-- Icon -->
+      {# Icon -#}
       <div>
         {% match kind %}
           {% when "groups" %}
@@ -46,18 +46,18 @@
             <svg class="h-12 w-12 text-gray-400" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M104 496H72a24 24 0 0 1-24-24V328a24 24 0 0 1 24-24h32a24 24 0 0 1 24 24v144a24 24 0 0 1-24 24zm224 0h-32a24 24 0 0 1-24-24V232a24 24 0 0 1 24-24h32a24 24 0 0 1 24 24v240a24 24 0 0 1-24 24zm112 0h-32a24 24 0 0 1-24-24V120a24 24 0 0 1 24-24h32a24 24 0 0 1 24 24v352a24 24 0 0 1-24 24zm-224 0h-32a24 24 0 0 1-24-24V40a24 24 0 0 1 24-24h32a24 24 0 0 1 24 24v432a24 24 0 0 1-24 24z"></path></svg>
         {% endmatch %}
       </div>
-      <!-- End icon -->
+      {# End icon -#}
 
       <div class="ms-5">
-        <!-- Title -->
+        {# Title -#}
         <div class="text-xs text-gray-500 font-medium uppercase">{{ title }}</div>
-        <!-- End title -->
+        {# End title -#}
 
-        <!-- Value -->
+        {# Value -#}
         <div class="text-4xl font-semibold text-gray-900">{{ value|num_fmt }}</div>
-        <!-- End value -->
+        {# End value -#}
       </div>
     </div>
   </div>
 {% endmacro %}
-<!-- End stat block -->
+{# End stat block -#}

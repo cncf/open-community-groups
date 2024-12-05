@@ -1,30 +1,23 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
+    <title>{{ community.display_name }} community groups</title>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ community.display_name }} community groups</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Leaflet css -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
-    <!-- General styles -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="/static/styles/index.css" />
 
-    <!-- General script -->
     <script src="/static/js/index.js" crossorigin="anonymous"></script>
-
-    <!-- Tailwind -->
     <script type="text/javascript" src="https://cdn.tailwindcss.com?plugins=forms"></script>
-
-    <!-- htmx -->
     <script
       type="text/javascript"
       src="https://unpkg.com/htmx.org@2.0.3"
       integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
       crossorigin="anonymous"
     ></script>
-
     <script>
       overWritePrimaryColor('{{ community.theme.primary_color }}');
 
@@ -51,28 +44,28 @@
   <body class="h-full {% block bg_color %}bg-white{% endblock %}">
     <div class="min-h-full flex flex-col">
       <div class="{% block headerColor %}{{ headerColor }}{% endblock %}">
-        <!-- Header -->
+        {# Header -#}
         {% include "community/header.html" %}
-        <!-- End header -->
+        {# End header -#}
 
-        <!-- Jumbotron -->
+        {# Jumbotron -#}
         {% block jumbotron %}
           <div></div>
         {% endblock %}
-        <!-- End jumbotron -->
+        {# End jumbotron -#}
       </div>
 
-      <!-- Content -->
+      {# Content -#}
       <main class="grow z-[1]">
         {% block content %}
           <div></div>
         {% endblock %}
       </main>
-      <!-- End content -->
+      {# End content -#}
 
-      <!-- Footer -->
+      {# Footer -#}
       {% include "community/footer.html" %}
-      <!-- End footer -->
+      {# End footer -#}
     </div>
 
     <script>
