@@ -1,6 +1,7 @@
 //! This module defines some templates and types used in the explore page of
 //! the community site.
 
+use core::str;
 use std::{
     borrow::Borrow,
     fmt::{self, Display, Formatter},
@@ -11,6 +12,7 @@ use askama_axum::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Months, Utc};
 use chrono_tz::Tz;
+use minify_html::{minify, Cfg as MinifyCfg};
 use serde::{ser, Deserialize, Serialize};
 use tracing::trace;
 
@@ -276,7 +278,9 @@ impl Event {
     /// Render popover HTML.
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_event: home::Event = self.clone().into();
-        self.popover_html = Some(home_event.render()?);
+        let cfg = MinifyCfg::spec_compliant();
+        self.popover_html = Some(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?);
+
         Ok(())
     }
 
@@ -453,7 +457,8 @@ impl Group {
     /// Render popover HTML.
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_group: home::Group = self.clone().into();
-        self.popover_html = Some(home_group.render()?);
+        let cfg = MinifyCfg::spec_compliant();
+        self.popover_html = Some(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?);
         Ok(())
     }
 
