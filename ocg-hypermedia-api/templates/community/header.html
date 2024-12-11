@@ -36,7 +36,7 @@
       {% if let Some(new_group_details) = self.community.new_group_details %}
         {% call button("New group", "open-new-group-btn", "") %}
         <script type="module">
-          import { updateModalStatus } from '/static/js/modules/common.js';
+          import { updateModalStatus } from '/static/js/common/common.js';
 
           const openNewGroupBtn = document.querySelector('#open-new-group-btn');
           openNewGroupBtn.addEventListener('click', () => updateModalStatus('new-group-modal'));
@@ -76,7 +76,7 @@
             {% call mobile_link("Explore", "/explore", "") %}
             {% call mobile_button("New group", "open-new-group-mobile-btn", "") %}
             <script type="module">
-              import { updateModalStatus } from '/static/js/modules/common.js';
+              import { updateModalStatus } from '/static/js/common/common.js';
 
               const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
               openNewGroupMobileBtn.addEventListener('click', () => updateModalStatus('new-group-modal'));
@@ -99,7 +99,7 @@
 {# End header -#}
 
 <script type="module">
-  import { toggleNavbarMobile } from '/static/js/modules/common.js';
+  import { toggleNavbarMobile } from '/static/js/common/common.js';
 
   const openNavbarMobile = document.querySelector('#open-navbar-mobile');
   openNavbarMobile.addEventListener('click', toggleNavbarMobile);
@@ -148,7 +148,7 @@
     </div>
   </div>
   <script type="module">
-    import { updateModalStatus } from '/static/js/modules/common.js';
+    import { updateModalStatus } from '/static/js/common/common.js';
 
     const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
     backdropNewGroupModal.addEventListener('click', () => updateModalStatus('new-group-modal'));

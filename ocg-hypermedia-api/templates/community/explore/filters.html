@@ -43,7 +43,7 @@
             {# End selected entity: groups -#}
           </li>
           <script type="module">
-            import { showSpinner } from '/static/js/modules/spinner.js';
+            import { showSpinner } from '/static/js/common/common.js';
 
             const eventsButton = document.querySelector('#events-button');
             eventsButton.addEventListener('htmx:beforeRequest', showSpinner);
@@ -71,7 +71,7 @@
             {# End groups button -#}
           </li>
           <script type="module">
-            import { showSpinner } from '/static/js/modules/spinner.js';
+            import { showSpinner } from '/static/js/common/common.js';
 
             const groupsButton = document.querySelector('#groups-button');
             groupsButton.addEventListener('htmx:beforeRequest', showSpinner);
@@ -195,7 +195,7 @@
     {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
   </div>
   <script type="module">
-    import { updateAnyValue } from '/static/js/modules/filters.js';
+    import { updateAnyValue } from '/static/js/community/explore/filters.js';
 
     const anyCheckbox = document.querySelector('#any-checkbox-{{ label }}');
     anyCheckbox.addEventListener('click', () => updateAnyValue('{{ label }}'));
@@ -229,10 +229,10 @@
     {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
   </div>
   <script type="module">
-    import { updateAnyValue } from '/static/js/modules/filters.js';
+    import { updateAnyValue } from '/static/js/community/explore/filters.js';
 
     const anyRadio = document.querySelector('#any-radio-{{ label }}');
-    anyCheckbox.addEventListener('click', () => updateAnyValue('{{ label }}', true));
+    anyRadio.addEventListener('click', () => updateAnyValue('{{ label }}', true));
   </script>
 {% endmacro %}
 {# End collapsible filter with radios -#}

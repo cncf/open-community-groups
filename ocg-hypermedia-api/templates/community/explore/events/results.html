@@ -27,7 +27,7 @@
       <div id="calendar-box" class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
     </div>
     <script type="module">
-      import { loadCalendar, loadCurrentMonth, loadNextMonth, loadPrevMonth } from '/static/js/modules/calendar.js';
+      import { loadCalendar, loadCurrentMonth, loadNextMonth, loadPrevMonth } from '/static/js/community/explore/calendar.js';
 
       loadCalendar();
 
@@ -65,7 +65,7 @@
     {# End pagination -#}
 
     <script type="module">
-      import { updateResults } from '/static/js/modules/common.js';
+      import { updateResults } from '/static/js/community/explore/explore.js';
 
       updateResults('{% call common::current_page(total, events.len(), offset) %}');
     </script>
@@ -80,7 +80,7 @@
     </div>
 
     <script type="module">
-      import { loadMap } from '/static/js/modules/map.js';
+      import { loadMap } from '/static/js/community/explore/map.js';
 
       loadMap('events');
     </script>

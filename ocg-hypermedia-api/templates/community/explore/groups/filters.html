@@ -32,7 +32,7 @@
 </form>
 
 <script type="module">
-  import { showSpinner } from '/static/js/modules/spinner.js';
+  import { showSpinner } from '/static/js/common/common.js';
 
   const form = document.getElementById('groups-form');
   form.addEventListener('htmx:beforeRequest', showSpinner);

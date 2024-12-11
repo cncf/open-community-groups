@@ -1,4 +1,5 @@
-import { checkIfScriptIsLoaded, fetchData } from './common.js';
+import { checkIfScriptIsLoaded } from '../../common/common.js';
+import { fetchData } from './explore.js';
 
 // Calendar
 

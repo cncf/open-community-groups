@@ -83,7 +83,7 @@
         {% if form == "" %}
           {% call secondary_button("search-btn", "<svg class='w-3.5 h-3.5' aria-hidden='true' stroke='currentColor' fill='currentColor' stroke-width='0' viewBox='0 0 512 512' height='1em' width='1em' xmlns='http://www.w3.org/2000/svg'><path d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z'></path></svg>", "", "", true) %}
           <script type="module">
-            import { loadExplorePageWithTsQuery } from '/static/js/modules/common.js';
+            import { loadExplorePageWithTsQuery } from '/static/js/community/explore/filters.js';
 
             const searchHomeBtn = document.querySelector('#search-btn');
             searchHomeBtn.addEventListener('click', loadExplorePageWithTsQuery);
@@ -91,7 +91,7 @@
         {% else %}
           {% call secondary_button("search-btn", "<svg class='w-3.5 h-3.5' stroke='currentColor' fill='currentColor' stroke-width='0' viewBox='0 0 512 512' height='1em' width='1em' xmlns='http://www.w3.org/2000/svg'><path d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z'></path></svg>", "", "", true) %}
           <script type="module">
-            import { triggerChangeOnForm } from '/static/js/modules/filters.js';
+            import { triggerChangeOnForm } from '/static/js/community/explore/filters.js';
 
             const searchBtn = document.querySelector('#search-btn');
             searchBtn.addEventListener('click', () => triggerChangeOnForm("{{ form }}", true));
@@ -99,7 +99,7 @@
         {% endif %}
       </div>
       <script type="module">
-        import { cleanInputField, onSearchKeyDown } from '/static/js/modules/filters.js';
+        import { cleanInputField, onSearchKeyDown } from '/static/js/community/explore/filters.js';
 
         const searchInput = document.querySelector('#ts_query');
         searchInput.addEventListener('keydown', () => onSearchKeyDown(event, "{{ form }}"));
@@ -148,7 +148,7 @@
         {# End search tips modal -#}
 
         <script type="module">
-          import { updateModalStatus } from '/static/js/modules/common.js';
+          import { updateModalStatus } from '/static/js/common/common.js';
 
           const openSearchTipsModal = document.querySelector('#open-search-tips-modal');
           openSearchTipsModal.addEventListener('click', () => updateModalStatus('search-tips'));

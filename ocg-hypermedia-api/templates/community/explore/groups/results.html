@@ -26,7 +26,7 @@
     {# End pagination -#}
 
     <script type="module">
-      import { updateResults } from '/static/js/modules/common.js';
+      import { updateResults } from '/static/js/community/explore/explore.js';
 
       updateResults('{% call common::current_page(total, groups.len(), offset) %}');
     </script>
@@ -41,7 +41,7 @@
     </div>
 
     <script type="module">
-      import { loadMap } from '/static/js/modules/map.js';
+      import { loadMap } from '/static/js/community/explore/map.js';
 
       loadMap('groups');
     </script>

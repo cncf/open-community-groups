@@ -1,4 +1,5 @@
-import { checkIfScriptIsLoaded, fetchData } from './common.js';
+import { checkIfScriptIsLoaded } from '../../common/common.js';
+import { fetchData } from './explore.js';
 
 // Map
 let map = null;
@@ -45,7 +46,7 @@ export const loadMap = (entity) => {
       // Get bbox to overwrite bounds on first load
       if (overwriteBounds) {
         params.append('include_bbox', true);
-      // Get bounds from map
+        // Get bounds from map
       } else {
         params.append('bbox_sw_lat', bounds._southWest.lat);
         params.append('bbox_sw_lon', bounds._southWest.lng);
@@ -95,12 +96,12 @@ export const loadMap = (entity) => {
 
           // Add new markers
           newItems.forEach((item) => {
-            if (typeof(item.latitude) == "undefined" || typeof(item.longitude) == "undefined" || item.latitude == 0 || item.longitude == 0) {
+            if (typeof (item.latitude) == "undefined" || typeof (item.longitude) == "undefined" || item.latitude == 0 || item.longitude == 0) {
               return;
             }
 
             // Create marker
-            const icon = L.divIcon({...svgIcon, className: `text-primary-500 marker-${item.slug}`});
+            const icon = L.divIcon({ ...svgIcon, className: `text-primary-500 marker-${item.slug}` });
             const marker = L.marker(L.latLng(item.latitude, item.longitude), { icon: icon, bubblingMouseEvents: true });
 
             // Add popup to marker
@@ -147,7 +148,7 @@ export const loadMap = (entity) => {
     script.onload = () => {
       renderMap();
     };
-  // Render map if script is already loaded
+    // Render map if script is already loaded
   } else {
     renderMap();
   }
