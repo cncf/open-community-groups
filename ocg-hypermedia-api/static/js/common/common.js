@@ -1,24 +1,26 @@
 // Check if script is already loaded.
 export const checkIfScriptIsLoaded = (src) => {
-  return Array.from(document.querySelectorAll('script')).map(scr => scr.src).includes(src);
+  return Array.from(document.querySelectorAll("script"))
+    .map((scr) => scr.src)
+    .includes(src);
 };
 
 // Hide loading spinner.
 export const hideSpinner = () => {
-  const content = document.getElementById('explore-content');
-  content.classList.remove('is-loading');
+  const content = document.getElementById("explore-content");
+  content.classList.remove("is-loading");
 };
 
 // Overwrite primary color in CSS.
 export const overWritePrimaryColor = (color) => {
-  const r = document.querySelector(':root');
-  r.style.setProperty('--ocg-primary', color);
+  const r = document.querySelector(":root");
+  r.style.setProperty("--ocg-primary", color);
 };
 
 // Show loading spinner.
 export const showSpinner = () => {
-  const content = document.getElementById('explore-content');
-  content.classList.add('is-loading');
+  const content = document.getElementById("explore-content");
+  content.classList.add("is-loading");
 };
 
 // Show or hide mobile navigation bar.

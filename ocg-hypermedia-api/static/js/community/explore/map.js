@@ -1,5 +1,5 @@
-import { checkIfScriptIsLoaded } from '../../common/common.js';
-import { fetchData } from './explore.js';
+import { checkIfScriptIsLoaded } from "../../common/common.js";
+import { fetchData } from "./explore.js";
 
 // Map
 let map = null;
@@ -14,7 +14,7 @@ export const loadMap = (entity) => {
     }
 
     // Initialize map
-    map = L.map('map-box', {
+    map = L.map("map-box", {
       maxZoom: 20,
       minZoom: 3,
       zoomControl: false,
@@ -24,9 +24,11 @@ export const loadMap = (entity) => {
     const layerGroup = L.layerGroup();
 
     // Add zoom control to the map on the top right
-    L.control.zoom({
-      position: 'topright'
-    }).addTo(map);
+    L.control
+      .zoom({
+        position: "topright",
+      })
+      .addTo(map);
 
     // Load map data
     const loadMapData = async (currentMap, overwriteBounds) => {
@@ -36,22 +38,22 @@ export const loadMap = (entity) => {
       // Get URL params
       const params = new URLSearchParams(location.search);
       // Remove view mode and
-      params.delete('view_mode');
-      params.delete('kind', 'virtual');
+      params.delete("view_mode");
+      params.delete("kind", "virtual");
 
       // Add limit and offset
-      params.append('limit', 100);
-      params.append('offset', 0);
+      params.append("limit", 100);
+      params.append("offset", 0);
 
       // Get bbox to overwrite bounds on first load
       if (overwriteBounds) {
-        params.append('include_bbox', true);
+        params.append("include_bbox", true);
         // Get bounds from map
       } else {
-        params.append('bbox_sw_lat', bounds._southWest.lat);
-        params.append('bbox_sw_lon', bounds._southWest.lng);
-        params.append('bbox_ne_lat', bounds._northEast.lat);
-        params.append('bbox_ne_lon', bounds._northEast.lng);
+        params.append("bbox_sw_lat", bounds._southWest.lat);
+        params.append("bbox_sw_lon", bounds._southWest.lng);
+        params.append("bbox_ne_lat", bounds._northEast.lat);
+        params.append("bbox_ne_lon", bounds._northEast.lng);
       }
 
       // Fetch data
@@ -72,17 +74,17 @@ export const loadMap = (entity) => {
           html: '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 20 20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>',
           iconSize: [30, 30],
           iconAnchor: [15, 30],
-          popupAnchor: [0, -25]
+          popupAnchor: [0, -25],
         };
 
         // New items
         let newItems = [];
 
-        if (entity === 'events') {
+        if (entity === "events") {
           if (data.events && data.events.length > 0) {
             newItems = data.events;
           }
-        } else if (entity === 'groups') {
+        } else if (entity === "groups") {
           if (data.groups && data.groups.length > 0) {
             newItems = data.groups;
           }
@@ -96,16 +98,29 @@ export const loadMap = (entity) => {
 
           // Add new markers
           newItems.forEach((item) => {
-            if (typeof (item.latitude) == "undefined" || typeof (item.longitude) == "undefined" || item.latitude == 0 || item.longitude == 0) {
+            if (
+              typeof item.latitude == "undefined" ||
+              typeof item.longitude == "undefined" ||
+              item.latitude == 0 ||
+              item.longitude == 0
+            ) {
               return;
             }
 
             // Create marker
-            const icon = L.divIcon({ ...svgIcon, className: `text-primary-500 marker-${item.slug}` });
-            const marker = L.marker(L.latLng(item.latitude, item.longitude), { icon: icon, bubblingMouseEvents: true });
+            const icon = L.divIcon({
+              ...svgIcon,
+              className: `text-primary-500 marker-${item.slug}`,
+            });
+            const marker = L.marker(L.latLng(item.latitude, item.longitude), {
+              icon: icon,
+              bubblingMouseEvents: true,
+            });
 
             // Add popup to marker
-            marker.bindPopup(`<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`);
+            marker.bindPopup(
+              `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`
+            );
 
             // Add marker to layer group
             layerGroup.addLayer(marker);
@@ -113,10 +128,10 @@ export const loadMap = (entity) => {
           });
         }
       }
-    }
+    };
 
     // Load events after the map is loaded
-    map.on('load', () => {
+    map.on("load", () => {
       loadMapData(map, true);
     });
 
@@ -125,26 +140,33 @@ export const loadMap = (entity) => {
     map.setView([0, 0], 9);
 
     // Adding the base layer to the map
-    L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${L.Browser.retina ? '@2x.png' : '.png'}`, {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20,
-      minZoom: 0
-    }).addTo(map);
+    L.tileLayer(
+      `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${
+        L.Browser.retina ? "@2x.png" : ".png"
+      }`,
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 20,
+        minZoom: 0,
+      }
+    ).addTo(map);
 
     // Adding a listener to the map after setting the position to get the bounds
     // when the map is moved (zoom or pan)
-    map.on('moveend', () => {
+    map.on("moveend", () => {
       loadMapData(map);
     });
   };
 
   // Load LeafletJS library if not loaded
-  if (!checkIfScriptIsLoaded('leaflet')) {
-    let script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
-    document.getElementsByTagName('head')[0].appendChild(script);
+  if (!checkIfScriptIsLoaded("leaflet")) {
+    let script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+    document.getElementsByTagName("head")[0].appendChild(script);
     script.onload = () => {
       renderMap();
     };
@@ -152,4 +174,4 @@ export const loadMap = (entity) => {
   } else {
     renderMap();
   }
-}
+};
