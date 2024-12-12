@@ -14,6 +14,7 @@ use axum::{
 use rust_embed::Embed;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use tracing::instrument;
 
 use crate::{
     db::DynDB,
@@ -35,6 +36,7 @@ pub(crate) struct State {
 }
 
 /// Setup router.
+#[instrument(skip_all)]
 pub(crate) fn setup(db: DynDB) -> Router {
     Router::new()
         .route("/", get(community::home::index))
@@ -60,11 +62,13 @@ pub(crate) fn setup(db: DynDB) -> Router {
 }
 
 /// Handler that takes care of health check requests.
+#[instrument(skip_all)]
 async fn health_check() -> impl IntoResponse {
     StatusCode::OK
 }
 
 /// Handler that serves static files.
+#[instrument]
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Extract file path from URI
     let mut path = uri.path().trim_start_matches('/').to_string();

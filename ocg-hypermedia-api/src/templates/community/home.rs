@@ -6,6 +6,7 @@ use askama_axum::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 use crate::templates::{
     filters,
@@ -66,6 +67,7 @@ impl Event {
     }
 
     /// Try to create a vector of `Event` instances from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let mut events: Vec<Self> = serde_json::from_str(data)?;
 
@@ -132,6 +134,7 @@ impl Group {
     }
 
     /// Try to create a vector of `Group` instances from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let mut groups: Vec<Self> = serde_json::from_str(data)?;
 
@@ -174,6 +177,7 @@ pub(crate) struct Stats {
 
 impl Stats {
     /// Try to create a `Stats` instance from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_from_json(data: &str) -> Result<Self> {
         let stats: Stats = serde_json::from_str(data)?;
         Ok(stats)

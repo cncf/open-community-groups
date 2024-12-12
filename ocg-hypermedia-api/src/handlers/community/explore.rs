@@ -195,6 +195,7 @@ pub(crate) async fn search_groups(
 }
 
 /// Prepare events section template.
+#[instrument(skip(db), err)]
 async fn prepare_events_section(
     db: &DynDB,
     community_id: Uuid,
@@ -221,6 +222,7 @@ async fn prepare_events_section(
 }
 
 /// Prepare groups section template.
+#[instrument(skip(db), err)]
 async fn prepare_groups_section(
     db: &DynDB,
     community_id: Uuid,

@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::templates::community::{
@@ -74,6 +75,7 @@ impl PgDB {
 #[async_trait]
 impl DB for PgDB {
     /// [DB::get_community]
+    #[instrument(skip(self), err)]
     async fn get_community(&self, community_id: Uuid) -> Result<Community> {
         let db = self.pool.get().await?;
         let row = db
@@ -85,6 +87,7 @@ impl DB for PgDB {
     }
 
     /// [DB::get_community_filters_options]
+    #[instrument(skip(self), err)]
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions> {
         let db = self.pool.get().await?;
         let row = db
@@ -99,6 +102,7 @@ impl DB for PgDB {
     }
 
     /// [DB::get_community_home_stats]
+    #[instrument(skip(self), err)]
     async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats> {
         let db = self.pool.get().await?;
         let row = db
@@ -113,6 +117,7 @@ impl DB for PgDB {
     }
 
     /// [DB::get_community_id]
+    #[instrument(skip(self), err)]
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>> {
         let db = self.pool.get().await?;
         let community_id = db
@@ -127,6 +132,7 @@ impl DB for PgDB {
     }
 
     /// [DB::get_community_recently_added_groups]
+    #[instrument(skip(self), err)]
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<home::Group>> {
         let db = self.pool.get().await?;
         let row = db
@@ -141,6 +147,7 @@ impl DB for PgDB {
     }
 
     /// [DB::get_community_upcoming_events]
+    #[instrument(skip(self), err)]
     async fn get_community_upcoming_events(
         &self,
         community_id: Uuid,
@@ -160,6 +167,7 @@ impl DB for PgDB {
     }
 
     /// [DB::search_community_events]
+    #[instrument(skip(self), err)]
     async fn search_community_events(
         &self,
         community_id: Uuid,
@@ -191,6 +199,7 @@ impl DB for PgDB {
     }
 
     /// [DB::search_community_groups]
+    #[instrument(skip(self), err)]
     async fn search_community_groups(
         &self,
         community_id: Uuid,

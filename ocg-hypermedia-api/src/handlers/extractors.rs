@@ -53,6 +53,7 @@ impl FromRequestParts<router::State> for CommunityId {
     sync_writes = true,
     result = true
 )]
+#[instrument(skip(db), err)]
 async fn lookup_community_id(db: DynDB, host: &str) -> Result<Option<Uuid>> {
     if host.is_empty() {
         return Ok(None);

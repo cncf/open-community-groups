@@ -10,6 +10,7 @@ use figment::{
     Figment,
 };
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 /// Server configuration.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -21,6 +22,7 @@ pub(crate) struct Config {
 
 impl Config {
     /// Create a new Config instance.
+    #[instrument(err)]
     pub(crate) fn new(config_file: Option<&PathBuf>) -> Result<Self> {
         let mut figment = Figment::new()
             .merge(Serialized::default("log.format", "json"))

@@ -14,7 +14,7 @@ use chrono::{DateTime, Months, Utc};
 use chrono_tz::Tz;
 use minify_html::{minify, Cfg as MinifyCfg};
 use serde::{ser, Deserialize, Serialize};
-use tracing::trace;
+use tracing::{instrument, trace};
 
 use crate::{
     db::BBox,
@@ -126,6 +126,7 @@ pub(crate) struct EventsFilters {
 impl EventsFilters {
     /// Create a new `EventsFilters` instance from the raw query string
     /// and headers provided.
+    #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
         let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
 
@@ -153,6 +154,7 @@ impl EventsFilters {
 }
 
 impl ToRawQuery for EventsFilters {
+    #[instrument(skip_all, err)]
     fn to_raw_query(&self) -> Result<String> {
         // Reset some filters we don't want to include in the query string
         let mut filters = self.clone();
@@ -276,6 +278,7 @@ impl Event {
     }
 
     /// Render popover HTML.
+    #[instrument(skip_all, err)]
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_event: home::Event = self.clone().into();
         let cfg = MinifyCfg::spec_compliant();
@@ -285,6 +288,7 @@ impl Event {
     }
 
     /// Try to create a vector of `Event` instances from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let mut events: Vec<Self> = serde_json::from_str(data)?;
 
@@ -344,6 +348,7 @@ pub(crate) struct GroupsFilters {
 impl GroupsFilters {
     /// Create a new `GroupsFilters` instance from the raw query string
     /// and headers provided.
+    #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
         let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
 
@@ -360,6 +365,7 @@ impl GroupsFilters {
 }
 
 impl ToRawQuery for GroupsFilters {
+    #[instrument(skip_all, err)]
     fn to_raw_query(&self) -> Result<String> {
         // Reset some filters we don't want to include in the query string
         let mut filters = self.clone();
@@ -455,6 +461,7 @@ impl Group {
     }
 
     /// Render popover HTML.
+    #[instrument(skip_all, err)]
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_group: home::Group = self.clone().into();
         let cfg = MinifyCfg::spec_compliant();
@@ -463,6 +470,7 @@ impl Group {
     }
 
     /// Try to create a vector of `Group` instances from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
         let mut groups: Vec<Self> = serde_json::from_str(data)?;
 
@@ -485,6 +493,7 @@ pub(crate) struct FiltersOptions {
 
 impl FiltersOptions {
     /// Try to create a `FiltersOptions` instance from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_from_json(data: &str) -> Result<Self> {
         let filters_options: FiltersOptions = serde_json::from_str(data)?;
 

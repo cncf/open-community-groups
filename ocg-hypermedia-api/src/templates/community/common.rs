@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use anyhow::Result;
 use palette::{Darken, Lighten, Srgb};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
 /// Community information used in some community pages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +39,7 @@ pub(crate) struct Community {
 
 impl Community {
     /// Try to create a `Community` instance from a JSON string.
+    #[instrument(skip_all, err)]
     pub(crate) fn try_from_json(data: &str) -> Result<Self> {
         let mut community: Community = serde_json::from_str(data)?;
         community.theme.palette = generate_palette(&community.theme.primary_color)?;

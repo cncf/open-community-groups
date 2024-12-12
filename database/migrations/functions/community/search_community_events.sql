@@ -164,12 +164,15 @@ begin
         (
             case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
                 (
-                    select json_build_object(
-                        'ne_lat', st_ymax(bb),
-                        'ne_lon', st_xmax(bb),
-                        'sw_lat', st_ymin(bb),
-                        'sw_lon', st_xmin(bb)
-                    )
+                    select
+                        case when bb is not null then
+                            json_build_object(
+                                'ne_lat', st_ymax(bb),
+                                'ne_lon', st_xmax(bb),
+                                'sw_lat', st_ymin(bb),
+                                'sw_lon', st_xmin(bb)
+                            )
+                        else null end
                     from (
                         select st_envelope(st_union(st_envelope(location::geometry))) as bb
                         from filtered_events
