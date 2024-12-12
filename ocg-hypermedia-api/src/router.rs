@@ -1,18 +1,19 @@
 //! This module defines the router used to dispatch HTTP requests to the
 //! corresponding handler.
 
-use std::path::Path;
-
-use anyhow::Result;
 use axum::{
     extract::FromRef,
-    http::{header::CACHE_CONTROL, HeaderValue, StatusCode},
+    http::{
+        header::{CACHE_CONTROL, CONTENT_TYPE},
+        StatusCode, Uri,
+    },
     response::IntoResponse,
-    routing::{get, get_service},
+    routing::get,
     Router,
 };
+use rust_embed::Embed;
 use tower::ServiceBuilder;
-use tower_http::{services::ServeDir, set_header::SetResponseHeader, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 
 use crate::{
     db::DynDB,
@@ -22,6 +23,11 @@ use crate::{
 /// Static files cache duration.
 const STATIC_CACHE_MAX_AGE: usize = 365 * 24 * 60 * 60; // 1 year
 
+/// Embed static files in the binary.
+#[derive(Embed)]
+#[folder = "static"]
+struct StaticFile;
+
 /// Router's state.
 #[derive(Clone, FromRef)]
 pub(crate) struct State {
@@ -29,8 +35,8 @@ pub(crate) struct State {
 }
 
 /// Setup router.
-pub(crate) fn setup(static_dir: &Path, db: DynDB) -> Result<Router> {
-    let router = Router::new()
+pub(crate) fn setup(db: DynDB) -> Router {
+    Router::new()
         .route("/", get(community::home::index))
         .route("/explore", get(community::explore::index))
         .route("/explore/events-section", get(community::explore::events_section))
@@ -48,21 +54,32 @@ pub(crate) fn setup(static_dir: &Path, db: DynDB) -> Result<Router> {
         .route("/health-check", get(health_check))
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))
-        .nest_service(
-            "/static",
-            get_service(SetResponseHeader::overriding(
-                ServeDir::new(static_dir),
-                CACHE_CONTROL,
-                HeaderValue::try_from(format!("max-age={STATIC_CACHE_MAX_AGE}"))?,
-            )),
-        )
+        .route("/static/*file", get(static_handler))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .with_state(State { db });
-
-    Ok(router)
+        .with_state(State { db })
 }
 
 /// Handler that takes care of health check requests.
 async fn health_check() -> impl IntoResponse {
     StatusCode::OK
+}
+
+/// Handler that serves static files.
+async fn static_handler(uri: Uri) -> impl IntoResponse {
+    // Extract file path from URI
+    let mut path = uri.path().trim_start_matches('/').to_string();
+    if path.starts_with("static/") {
+        path = path.replace("static/", "");
+    }
+
+    // Get file content and return it (if available)
+    match StaticFile::get(path.as_str()) {
+        Some(file) => {
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
+            let cache = format!("max-age={STATIC_CACHE_MAX_AGE}");
+            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
+            (headers, file.data).into_response()
+        }
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }
