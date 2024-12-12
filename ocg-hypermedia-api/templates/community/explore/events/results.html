@@ -27,18 +27,18 @@
       <div id="calendar-box" class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
     </div>
     <script type="module">
-      import { loadCalendar, loadCurrentMonth, loadNextMonth, loadPrevMonth } from '/static/js/community/explore/calendar.js';
+      import { calendar } from '/static/js/community/explore/calendar.js';
 
-      loadCalendar();
+      calendar.initiate();
 
       const currentMonthBtn = document.querySelector('#current-month-btn');
-      currentMonthBtn.addEventListener('click', loadCurrentMonth);
+      currentMonthBtn.addEventListener('click', () => calendar.showCurrentMonthEvents());
 
       const prevMonthBtn = document.querySelector('#prev-month-btn');
-      prevMonthBtn.addEventListener('click', loadPrevMonth);
+      prevMonthBtn.addEventListener('click', () => calendar.navigateToPreviousMonth());
 
       const nextMonthBtn = document.querySelector('#next-month-btn');
-      nextMonthBtn.addEventListener('click', loadNextMonth);
+      nextMonthBtn.addEventListener('click', () => calendar.navigateToNextMonth());
     </script>
     {# End calendar view -#}
 

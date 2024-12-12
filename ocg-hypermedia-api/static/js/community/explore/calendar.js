@@ -1,22 +1,32 @@
 import { isScriptLoaded } from "../../common/common.js";
 import { fetchData } from "./explore.js";
 
-let calendar = null;
+class Calendar {
+  constructor() {
+    this.fullCalendarInstance = null;
+  }
 
-// Update calendar title with current month and year
-const updateCalendarDate = () => {
-  if (calendar) {
-    const el = document.getElementById("calendar-date");
-    if (el) {
-      el.textContent = calendar.currentData.viewTitle;
+  // Initialize calendar
+  initiate() {
+    // If fullcalendar script is not loaded, load it
+    if (!isScriptLoaded("fullcalendar")) {
+      let script = document.createElement("script");
+      script.type = "text/javascript";
+      script.src =
+        "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js";
+      document.getElementsByTagName("head")[0].appendChild(script);
+      // Wait for script to load and render calendar
+      script.onload = () => {
+        this.load();
+      };
+    } else {
+      // If script is already loaded, load events
+      this.fetchEvents();
     }
   }
-};
 
-// Load calendar on `calendar-box` element
-export const loadCalendar = () => {
-  // Prepare tooltip for calendar events
-  const createTooltip = (id, event, horizontalAlignment, verticalAlignment) => {
+  // Create tooltip for event popover on calendar
+  createTooltip(id, event, horizontalAlignment, verticalAlignment) {
     const tooltip = `<div id="${id}" role="tooltip" data-popover="true" class="absolute ${
       horizontalAlignment == "right" ? "end-0" : ""
     } ${
@@ -28,18 +38,24 @@ export const loadCalendar = () => {
     </div>`;
 
     return tooltip;
-  };
+  }
 
-  // Render calendar on screen
-  const renderCalendar = () => {
+  // Cleanup calendar
+  cleanupCalendar() {
+    if (this.fullCalendarInstance) {
+      this.fullCalendarInstance.destroy();
+    }
+  }
+
+  // Load calendar
+  load() {
+    this.cleanupCalendar();
+
+    // Get calendar element
     const calendarEl = document.getElementById("calendar-box");
 
-    if (calendar) {
-      calendar.destroy();
-    }
-
     // Initialize calendar
-    calendar = new FullCalendar.Calendar(calendarEl, {
+    this.fullCalendarInstance = new FullCalendar.Calendar(calendarEl, {
       timeZone: "local",
       initialView: "dayGridMonth",
       displayEventTime: false,
@@ -68,7 +84,7 @@ export const loadCalendar = () => {
         info.el.parentNode.setAttribute("popovertarget", id);
         info.el.parentNode.insertAdjacentHTML(
           "beforeend",
-          createTooltip(
+          this.createTooltip(
             id,
             info.event.extendedProps.event,
             horizontalAlignment,
@@ -78,73 +94,59 @@ export const loadCalendar = () => {
       },
     });
 
-    // Update calendar title
-    updateCalendarDate();
+    this.updateTitle();
 
-    // Load new events
-    loadNewEvents();
+    this.fetchEvents();
 
-    // Call to render calendar
-    calendar.render();
-  };
-
-  // If fullcalendar script is not loaded, load it
-  if (!isScriptLoaded("fullcalendar")) {
-    let script = document.createElement("script");
-    script.type = "text/javascript";
-    // Load only required libraries
-    script.src =
-      "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js";
-    document.getElementsByTagName("head")[0].appendChild(script);
-    // Wait for script to load and render calendar
-    script.onload = () => {
-      renderCalendar();
-    };
-  } else {
-    // If script is already loaded, render calendar
-    loadNewEvents();
+    // Fullcalendar render
+    this.fullCalendarInstance.render();
   }
-};
 
-// Load new events on calendar
-const loadNewEvents = async () => {
   // Convert date to ISO format
-  const convertDate = (date) => {
+  convertDate(date) {
     return date.toISOString();
-  };
-
-  // Prepare data for calendar
-  let date = new Date();
-  if (calendar) {
-    date = calendar.getDate();
   }
-  // Get first and last day of the month
-  const firstDayMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-  const lastDayMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-  // Prepare query params
-  const params = new URLSearchParams(location.search);
+  // Load events to calendar
+  async fetchEvents() {
+    // Prepare query params
+    let date = new Date();
+    if (this.fullCalendarInstance) {
+      date = this.fullCalendarInstance.getDate();
+    }
+    // Get first and last day of the month
+    const firstDayMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const lastDayMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-  // Remove view mode and date range from query params
-  params.delete("view_mode");
-  params.delete("date_from");
-  params.delete("data_to");
+    // Prepare query params
+    const params = new URLSearchParams(location.search);
 
-  // Update date range with current month
-  params.append("date_from", firstDayMonth.toISOString());
-  params.append("date_to", lastDayMonth.toISOString());
+    // Remove view mode and date range from query params
+    params.delete("view_mode");
+    params.delete("date_from");
+    params.delete("data_to");
 
-  // Add limit and offset
-  params.append("limit", 100);
-  params.append("offset", 0);
+    // Update date range with current month
+    params.append("date_from", firstDayMonth.toISOString());
+    params.append("date_to", lastDayMonth.toISOString());
 
-  // Fetch events data
-  const data = await fetchData("events", params.toString());
+    // Add limit and offset
+    params.append("limit", 100);
+    params.append("offset", 0);
 
-  // If events are available, add them to calendar
-  if (data.events && data.events.length > 0) {
+    // Fetch events data
+    const data = await fetchData("events", params.toString());
+
+    // If events are available, add them to calendar
+    if (data.events && data.events.length > 0) {
+      this.renderEvents(data.events);
+    }
+  }
+
+  // Add events to calendar
+  renderEvents(events) {
     // Prepare events for calendar
-    let formattedEvents = data.events.map((event) => {
+    let formattedEvents = events.map((event) => {
       // Backgorund color for past events
       let color = "rgb(190, 190, 190)";
       if (!event.starts_at) {
@@ -172,8 +174,8 @@ const loadNewEvents = async () => {
       return {
         title: event.name,
         // allDay: true,
-        start: convertDate(new Date(event.starts_at * 1000)),
-        end: convertDate(endDate),
+        start: this.convertDate(new Date(event.starts_at * 1000)),
+        end: this.convertDate(endDate),
         className: "cursor-pointer",
         backgroundColor: color,
         borderColor: color,
@@ -184,36 +186,49 @@ const loadNewEvents = async () => {
     });
 
     // Remove all previous events from calendar
-    calendar.removeAllEvents();
+    this.fullCalendarInstance.removeAllEvents();
 
     // Add new events to calendar
-    calendar.addEventSource(formattedEvents);
+    this.fullCalendarInstance.addEventSource(formattedEvents);
   }
-};
 
-// Load current month data
-export const loadCurrentMonth = () => {
-  if (calendar) {
-    calendar.today();
-    updateCalendarDate();
-    loadNewEvents();
+  // Update calendar title with month and year
+  updateTitle() {
+    if (this.fullCalendarInstance) {
+      const el = document.getElementById("calendar-date");
+      if (el) {
+        el.textContent = this.fullCalendarInstance.currentData.viewTitle;
+      }
+    }
   }
-};
 
-// Load next month data
-export const loadNextMonth = () => {
-  if (calendar) {
-    calendar.next();
-    updateCalendarDate();
-    loadNewEvents();
+  // Load current month data
+  showCurrentMonthEvents() {
+    if (this.fullCalendarInstance) {
+      this.fullCalendarInstance.today();
+      this.updateTitle();
+      this.fetchEvents();
+    }
   }
-};
 
-// Load previous month data
-export const loadPrevMonth = () => {
-  if (calendar) {
-    calendar.prev();
-    updateCalendarDate();
-    loadNewEvents();
+  // Load next month data
+  navigateToNextMonth() {
+    if (this.fullCalendarInstance) {
+      this.fullCalendarInstance.next();
+      this.updateTitle();
+      this.fetchEvents();
+    }
   }
-};
+
+  // Load previous month data
+  navigateToPreviousMonth() {
+    if (this.fullCalendarInstance) {
+      this.fullCalendarInstance.prev();
+      this.updateTitle();
+      this.fetchEvents();
+    }
+  }
+}
+
+// Create calendar instance
+export const calendar = new Calendar();
