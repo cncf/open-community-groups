@@ -1,4 +1,4 @@
-import { checkIfScriptIsLoaded } from "../../common/common.js";
+import { isScriptLoaded } from "../../common/common.js";
 import { fetchData } from "./explore.js";
 
 // Map
@@ -161,7 +161,7 @@ export const loadMap = (entity) => {
   };
 
   // Load LeafletJS library if not loaded
-  if (!checkIfScriptIsLoaded("leaflet")) {
+  if (!isScriptLoaded("leaflet")) {
     let script = document.createElement("script");
     script.type = "text/javascript";
     script.src =

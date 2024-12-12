@@ -1,39 +1,38 @@
-// Filters
+// Filters that are collapsible.
 const COLLAPSIBLE_FILTERS = ["region", "distance"];
 
-// Format date to ISO format (YYYY-MM-DD)
+// Format date to ISO format (YYYY-MM-DD).
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
 };
 
-// Open mobile filters
-export const openFilters = () => {
+// Open filters view (only for mobile).
+export const open = () => {
   const drawer = document.getElementById("drawer-filters");
   drawer.classList.remove("-translate-x-full");
   const backdrop = document.getElementById("drawer-backdrop");
   backdrop.classList.remove("hidden");
 };
 
-// Close mobile filters
-export const closeFilters = () => {
+// Close filters view (only for mobile).
+export const close = () => {
   const drawer = document.getElementById("drawer-filters");
   drawer.classList.add("-translate-x-full");
   const backdrop = document.getElementById("drawer-backdrop");
   backdrop.classList.add("hidden");
 };
 
-// Reset filters
-export const resetFilters = (formName) => {
-  const form = document.getElementById(formName);
+// Reset all filters in the form provided.
+export const reset = (formId) => {
+  // Uncheck all checkboxes and radios
   document
-    .querySelectorAll(`#${formName} input[type=checkbox]`)
+    .querySelectorAll(`#${formId} input[type=checkbox]`)
     .forEach((el) => (el.checked = false));
   document
-    .querySelectorAll(`#${formName} input[type=radio]`)
+    .querySelectorAll(`#${formId} input[type=radio]`)
     .forEach((el) => (el.checked = false));
-  document
-    .querySelectorAll(`#${formName} input[value='']`)
-    .forEach((el) => (el.checked = true));
+
+  // Reset date range
   document.querySelector("input[name=date_from]").value = formatDate(
     new Date()
   );
@@ -42,22 +41,34 @@ export const resetFilters = (formName) => {
   document.querySelector("input[name=date_to]").value =
     formatDate(aYearFromNow);
   document
-    .querySelectorAll(`#${formName} input[type=date]`)
+    .querySelectorAll(`#${formId} input[type=date]`)
     .forEach((el) => (el.value = ""));
+
+  // Reset text search input
   document.querySelector('input[name="ts_query"]').value = "";
 
-  triggerChangeOnForm(form.id);
+  // Select "Any" option when applicable
+  document
+    .querySelectorAll(`#${formId} input[value='']`)
+    .forEach((el) => (el.checked = true));
+
+  triggerChangeOnForm(formId);
 };
 
-// Update any value and trigger change on form
-export const updateAnyValue = (name, triggerChange) => {
+// Select "Any" option for the given filter name.
+export const selectAnyOption = (name, triggerChange) => {
   const anyInput = document.getElementById(`any-${name}`);
   if (!anyInput.isChecked) {
+    // Uncheck all other options
     const inputs = document.querySelectorAll(`input[name='${name}']:checked`);
     inputs.forEach((input) => {
       input.checked = false;
     });
+
+    // Check "Any" option
     anyInput.checked = true;
+
+    // Trigger change on form if needed
     if (triggerChange) {
       const form = anyInput.closest("form");
       triggerChangeOnForm(form.id);
@@ -65,7 +76,7 @@ export const updateAnyValue = (name, triggerChange) => {
   }
 };
 
-// Clean input field and trigger change on form
+// Clean input field and trigger change on form.
 export const cleanInputField = (id, formId) => {
   const input = document.getElementById(id);
   input.value = "";
@@ -78,30 +89,23 @@ export const cleanInputField = (id, formId) => {
   }
 };
 
-// Trigger change on form by id
-export const triggerChangeOnForm = (formId, fromSearchSearch) => {
-  // When it is triggered from the search input
-  if (fromSearchSearch) {
+// Trigger change on the form provided.
+export const triggerChangeOnForm = (formId, fromSearch) => {
+  // Prevent form submission if the search input is empty, and it is triggered
+  // from the search input
+  if (fromSearch) {
     const input = document.getElementById("ts_query");
-    // Prevent form submission if the search input is empty
     if (input.value === "") {
       return;
     }
   }
+
   const form = document.getElementById(formId);
   htmx.trigger(form, "change");
 };
 
-// Load explore page with ts_query from search input on home page
-export const loadExplorePageWithTsQuery = () => {
-  const input = document.getElementById("ts_query");
-  if (input.value !== "") {
-    document.location.href = `/explore?ts_query=${input.value}`;
-  }
-};
-
-// Trigger change on form on key down event on search input
-export const onSearchKeyDown = (e, formId) => {
+// Search on enter key press.
+export const searchOnEnter = (e, formId) => {
   if (e.key === "Enter") {
     if (formId === "") {
       const value = e.currentTarget.value;
@@ -115,24 +119,22 @@ export const onSearchKeyDown = (e, formId) => {
   }
 };
 
-// Check if collapsible filter is collapsed and active filters are hidden
-export const checkVisibleFilters = () => {
-  const collapsibleItems = document.querySelectorAll("[data-collapsible-item]");
-  collapsibleItems.forEach((item) => {
-    const filter = item.dataset.collapsibleLabel;
-    const hiddenCheckedOptions = item.querySelectorAll(
-      "li.hidden input:checked"
-    );
+// Make sure that used filters are not hidden (collapsed).
+export const expandFiltersUsed = () => {
+  const collapsibles = document.querySelectorAll("[data-collapsible-item]");
+  collapsibles.forEach((el) => {
+    const filter = el.dataset.collapsibleLabel;
+    const hiddenCheckedOptions = el.querySelectorAll("li.hidden input:checked");
     if (hiddenCheckedOptions.length > 0) {
-      updateCollapsibleFilterStatus(filter);
+      toggleCollapsibleFilterVisibility(filter);
     }
   });
 };
 
-// Expand or collapse collapsible filter
-export const updateCollapsibleFilterStatus = (id) => {
+// Toggle collapsible filter visibility.
+export const toggleCollapsibleFilterVisibility = (filter) => {
   const collapsibles = document.querySelectorAll(
-    `[data-collapsible-label='${id}']`
+    `[data-collapsible-label='${filter}']`
   );
   collapsibles.forEach((collapsible) => {
     const maxItems = collapsible.dataset.maxItems;

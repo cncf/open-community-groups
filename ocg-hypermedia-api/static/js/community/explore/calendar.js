@@ -1,12 +1,10 @@
-import { checkIfScriptIsLoaded } from "../../common/common.js";
+import { isScriptLoaded } from "../../common/common.js";
 import { fetchData } from "./explore.js";
-
-// Calendar
 
 let calendar = null;
 
 // Update calendar title with current month and year
-export const updateCalendarDate = () => {
+const updateCalendarDate = () => {
   if (calendar) {
     const el = document.getElementById("calendar-date");
     if (el) {
@@ -91,7 +89,7 @@ export const loadCalendar = () => {
   };
 
   // If fullcalendar script is not loaded, load it
-  if (!checkIfScriptIsLoaded("fullcalendar")) {
+  if (!isScriptLoaded("fullcalendar")) {
     let script = document.createElement("script");
     script.type = "text/javascript";
     // Load only required libraries

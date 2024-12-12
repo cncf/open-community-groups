@@ -1,41 +1,61 @@
-// Gallery
-
-// Open full modal with carousel of images by id
-export const openFullModal = (modalId, activeIndex) => {
+// Open images carousel modal.
+export const openModal = (modalId, activeIndex) => {
   const modal = document.getElementById(modalId);
-  activateImageInCarousel(activeIndex - 1);
+  setActiveImage(activeIndex - 1);
 
   modal.classList.remove("opacity-0");
   modal.classList.remove("pointer-events-none");
   modal.dataset.modal = "active";
 
-  document.addEventListener("mousedown", onFullModalClick);
+  document.addEventListener("mousedown", closeModalOnBackgroundClick);
 };
 
-// Close full modal by id
-export const closeFullModal = (modalId) => {
+// Close images carousel modal.
+export const closeModal = (modalId) => {
   const modal = document.getElementById(modalId);
+
   modal.classList.add("opacity-0");
   modal.classList.add("pointer-events-none");
   modal.dataset.modal = "";
 
-  document.removeEventListener("mousedown", onFullModalClick);
+  document.removeEventListener("mousedown", closeModalOnBackgroundClick);
 };
 
-// Close full modal on click outside
-export const onFullModalClick = (e) => {
-  const activeModal = document.querySelector(".modal[data-modal='active']");
+// Navigate images carousel to next or previous image.
+export const navigateCarousel = (direction) => {
+  const carouselItems = document.querySelectorAll(
+    "#gallery [data-carousel-item]"
+  );
 
-  if (
-    e.target.parentElement.tagName !== "BUTTON" &&
-    !["IMG", "BUTTON"].includes(e.target.tagName)
-  ) {
-    closeFullModal(activeModal.id);
+  let activeImageIndex = 0;
+  carouselItems.forEach((item, index) => {
+    if (item.dataset.carouselItem === "active") {
+      activeImageIndex = index;
+    }
+  });
+
+  // Update active item index based on direction
+  if (direction === "next") {
+    activeImageIndex++;
+
+    // Reset to first item if last item is reached
+    if (activeImageIndex >= carouselItems.length) {
+      activeImageIndex = 0;
+    }
+  } else if (direction === "prev") {
+    activeImageIndex--;
+
+    // Reset to last item if first item is reached
+    if (activeImageIndex < 0) {
+      activeImageIndex = carouselItems.length - 1;
+    }
   }
+
+  setActiveImage(activeImageIndex);
 };
 
-// Activate image in carousel by index
-export const activateImageInCarousel = (index) => {
+// Set active image in carousel.
+const setActiveImage = (index) => {
   const carouselItems = document.querySelectorAll(
     "#gallery [data-carousel-item]"
   );
@@ -58,35 +78,14 @@ export const activateImageInCarousel = (index) => {
   });
 };
 
-// Update active carousel item
-export const updateActiveCarouselItem = (direction) => {
-  const carouselItems = document.querySelectorAll(
-    "#gallery [data-carousel-item]"
-  );
-  let activeItem = 0;
-  carouselItems.forEach((item, index) => {
-    if (item.dataset.carouselItem === "active") {
-      activeItem = index;
-    }
-  });
-  let activeItemIndex = activeItem;
-  // Update active item index based on direction
-  // Next item
-  if (direction === "next") {
-    activeItemIndex = activeItem + 1;
-    // Reset to first item if last item is reached
-    if (activeItemIndex >= carouselItems.length) {
-      activeItemIndex = 0;
-    }
-    // Previous item
-  } else if (direction === "prev") {
-    activeItemIndex = activeItem - 1;
-    // Reset to last item if first item is reached
-    if (activeItemIndex < 0) {
-      activeItemIndex = carouselItems.length - 1;
-    }
-  }
+// Close images carousel modal on background click.
+const closeModalOnBackgroundClick = (e) => {
+  const activeModal = document.querySelector(".modal[data-modal='active']");
 
-  // Activate image in carousel
-  activateImageInCarousel(activeItemIndex);
+  if (
+    e.target.parentElement.tagName !== "BUTTON" &&
+    !["IMG", "BUTTON"].includes(e.target.tagName)
+  ) {
+    closeModal(activeModal.id);
+  }
 };

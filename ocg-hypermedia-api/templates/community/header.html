@@ -36,10 +36,10 @@
       {% if let Some(new_group_details) = self.community.new_group_details %}
         {% call button("New group", "open-new-group-btn", "") %}
         <script type="module">
-          import { updateModalStatus } from '/static/js/common/common.js';
+          import { toggleModalVisibility } from '/static/js/common/common.js';
 
           const openNewGroupBtn = document.querySelector('#open-new-group-btn');
-          openNewGroupBtn.addEventListener('click', () => updateModalStatus('new-group-modal'));
+          openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
         </script>
       {% endif %}
     </div>
@@ -76,10 +76,10 @@
             {% call mobile_link("Explore", "/explore", "") %}
             {% call mobile_button("New group", "open-new-group-mobile-btn", "") %}
             <script type="module">
-              import { updateModalStatus } from '/static/js/common/common.js';
+              import { toggleModalVisibility } from '/static/js/common/common.js';
 
               const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
-              openNewGroupMobileBtn.addEventListener('click', () => updateModalStatus('new-group-modal'));
+              openNewGroupMobileBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
             </script>
           </div>
           {# End mobile links -#}
@@ -99,13 +99,13 @@
 {# End header -#}
 
 <script type="module">
-  import { toggleNavbarMobile } from '/static/js/common/common.js';
+  import { toggleMobileNavbarVisibility } from '/static/js/common/common.js';
 
   const openNavbarMobile = document.querySelector('#open-navbar-mobile');
-  openNavbarMobile.addEventListener('click', toggleNavbarMobile);
+  openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
 
   const closeNavbarMobileBTn = document.querySelector('#close-navbar-mobile');
-  closeNavbarMobileBTn.addEventListener('click', toggleNavbarMobile);
+  closeNavbarMobileBTn.addEventListener('click', toggleMobileNavbarVisibility);
 </script>
 
 {# New group modal -#}
@@ -141,20 +141,20 @@
 
         {# Modal footer -#}
         <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-          {% call common::secondary_button("Create group", "", "updateModalStatus('new-group-modal')", "", false) %}
+          {% call common::secondary_button("Create group", "", "toggleModalVisibility('new-group-modal')", "", false) %}
         </div>
         {# End modal footer -#}
       </div>
     </div>
   </div>
   <script type="module">
-    import { updateModalStatus } from '/static/js/common/common.js';
+    import { toggleModalVisibility } from '/static/js/common/common.js';
 
     const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
-    backdropNewGroupModal.addEventListener('click', () => updateModalStatus('new-group-modal'));
+    backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
 
     const closeNewGroupModal = document.querySelector('#close-new-group-modal');
-    closeNewGroupModal.addEventListener('click', () => updateModalStatus('new-group-modal'));
+    closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
   </script>
 {% endif %}
 {# End new group modal -#}

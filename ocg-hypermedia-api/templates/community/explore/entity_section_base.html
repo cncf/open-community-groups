@@ -170,16 +170,16 @@
   </div>
 </div>
 <script type="module">
-  import { closeFilters, openFilters, resetFilters, triggerChangeOnForm, updateCollapsibleFilterStatus } from '/static/js/community/explore/filters.js';
+  import { close, open, reset, triggerChangeOnForm, toggleCollapsibleFilterVisibility } from '/static/js/community/explore/filters.js';
 
   const openFiltersBtn = document.querySelector('#open-filters');
-  openFiltersBtn.addEventListener('click', openFilters);
+  openFiltersBtn.addEventListener('click', open);
 
   const closeFiltersBtn = document.querySelector('#close-filters');
-  closeFiltersBtn.addEventListener('click', closeFilters);
+  closeFiltersBtn.addEventListener('click', close);
 
   const backdropFilters = document.querySelector('#drawer-backdrop');
-  backdropFilters.addEventListener('click', closeFilters);
+  backdropFilters.addEventListener('click', close);
 
   const inputs = document.querySelectorAll('input[name="view_mode"]');
   inputs.forEach(input => {
@@ -190,10 +190,10 @@
   select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
 
   const resetButtons = document.querySelectorAll('.reset-filters');
-  resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ results_section.entity() }}-form')));
+  resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
 
-  const collapseBtn = document.querySelectorAll('.collapse-btn');
-  collapseBtn.forEach(btn => {
-    btn.addEventListener('click', () => updateCollapsibleFilterStatus(btn.dataset.label));
+  const collapseBtns = document.querySelectorAll('.collapse-btn');
+  collapseBtns.forEach(btn => {
+    btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
   });
 </script>

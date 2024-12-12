@@ -47,20 +47,17 @@
   {# End main content -#}
 
   <script type="module">
-    import { checkVisibleFilters } from '/static/js/community/explore/filters.js';
-    import { hideSpinner } from '/static/js/common/common.js';
+    import { expandFiltersUsed } from '/static/js/community/explore/filters.js';
+    import { hideLoadingSpinner } from '/static/js/common/common.js';
 
-    // Check if collapsible filters must be
-    // opened or closed depeding on active filters
-    checkVisibleFilters();
+    expandFiltersUsed();
 
-    // Hide spinner when content is loaded
     const entitySection = document.querySelector('#entity-section');
     entitySection.addEventListener('htmx:afterSwap', () => {
-      hideSpinner();
+      hideLoadingSpinner();
     });
     entitySection.addEventListener('htmx:afterSettle', () => {
-      checkVisibleFilters();
+      expandFiltersUsed();
     });
   </script>
 {% endblock %}

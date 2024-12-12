@@ -1,4 +1,4 @@
-// Update results and results-mobile on DOM with content
+// Update results and results-mobile on DOM with the given content.
 export const updateResults = (content) => {
   const results = document.getElementById("results");
   results.innerHTML = content;
@@ -6,7 +6,7 @@ export const updateResults = (content) => {
   resultsMobile.innerHTML = content;
 };
 
-// Fetch API data for events or groups
+// Fetch events or groups data from the API.
 export async function fetchData(entity, params) {
   const url = `/explore/${entity}/search?${params}`;
   try {
