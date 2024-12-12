@@ -9,6 +9,13 @@
   --fc-event-text-color: black;
 }
 
+.svg-icon {
+  mask-size: 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
 /* Footer */
 .copyright a {
   color: white;

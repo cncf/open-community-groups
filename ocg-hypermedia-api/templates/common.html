@@ -21,20 +21,12 @@
 {# End primary link -#}
 
 {# Secondary button -#}
-{% macro secondary_button(id, content, icon, extra_styles, rounded) %}
+{% macro secondary_button(id, content, extra_styles, rounded) %}
   <button
     id="{{ id }}"
-    class="{% if rounded %}p-1.5 h-[30px] w-[30px]{% else %}py-1.5 px-5 h-[40px]{% endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
+    class="group {% if rounded %}p-1.5 h-[36px] w-[36px]{% else %}py-1.5 px-5 h-[40px]{% endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
   >
-    <div class="flex items-center justify-center">
-      {% match icon %}
-        {% when "map" %}
-        <svg class="me-2" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M408 120c0 54.6-73.1 151.9-105.2 192c-7.7 9.6-22 9.6-29.6 0C241.1 271.9 168 174.6 168 120C168 53.7 221.7 0 288 0s120 53.7 120 120zm8 80.4c3.5-6.9 6.7-13.8 9.6-20.6c.5-1.2 1-2.5 1.5-3.7l116-46.4C558.9 123.4 576 135 576 152V422.8c0 9.8-6 18.6-15.1 22.3L416 503V200.4zM137.6 138.3c2.4 14.1 7.2 28.3 12.8 41.5c2.9 6.8 6.1 13.7 9.6 20.6V451.8L32.9 502.7C17.1 509 0 497.4 0 480.4V209.6c0-9.8 6-18.6 15.1-22.3l122.6-49zM327.8 332c13.9-17.4 35.7-45.7 56.2-77V504.3L192 449.4V255c20.5 31.3 42.3 59.6 56.2 77c20.5 25.6 59.1 25.6 79.6 0zM288 152a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"></path></svg>
-        {% else %}
-          <span></span>
-      {% endmatch %}
-      {{ content|safe }}
-    </div>
+    {{ content|safe }}
   </button>
 {% endmacro %}
 {# End secondary button -#}
@@ -75,13 +67,13 @@
         autocomplete="off"
       />
       <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
-        <button id="clean-search" class='mr-2 mt-[2px] text-xl text-gray-400 hover:text-current block peer-placeholder-shown:hidden'>
-          <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        <button id="clean-search" class='mr-2 mt-[2px] block peer-placeholder-shown:hidden'>
+          <div class="svg-icon h-5 w-5 bg-gray-400 hover:bg-gray-700" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
         </button>
       </div>
-      <div class="absolute right-[8px] top-[5px]">
+      <div class="absolute right-[6px] top-[5px]">
+        {% call secondary_button("search-btn", "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white' style='mask-image: url(/static/images/icons/magnifying_glass.svg); -webkit-mask-image: url(/static/images/icons/magnifying_glass.svg);'></div>", "", true) %}
         {% if form == "" %}
-          {% call secondary_button("search-btn", "<svg class='w-3.5 h-3.5' aria-hidden='true' stroke='currentColor' fill='currentColor' stroke-width='0' viewBox='0 0 512 512' height='1em' width='1em' xmlns='http://www.w3.org/2000/svg'><path d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z'></path></svg>", "", "", true) %}
           <script type="module">
             import { loadExplorePage } from '/static/js/community/home/home.js';
 
@@ -89,7 +81,6 @@
             searchHomeBtn.addEventListener('click', loadExplorePage);
           </script>
         {% else %}
-          {% call secondary_button("search-btn", "<svg class='w-3.5 h-3.5' stroke='currentColor' fill='currentColor' stroke-width='0' viewBox='0 0 512 512' height='1em' width='1em' xmlns='http://www.w3.org/2000/svg'><path d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z'></path></svg>", "", "", true) %}
           <script type="module">
             import { triggerChangeOnForm } from '/static/js/community/explore/filters.js';
 
@@ -109,8 +100,8 @@
       </script>
       {% if !home  %}
         <div class="absolute hidden -right-[1.5rem] top-0 md:block">
-          <button id="open-search-tips-modal" class="text-gray-300">
-            <svg class='w-4 h-4' stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 448c-110.532 0-200-89.431-200-200 0-110.495 89.472-200 200-200 110.491 0 200 89.471 200 200 0 110.53-89.431 200-200 200zm107.244-255.2c0 67.052-72.421 68.084-72.421 92.863V300c0 6.627-5.373 12-12 12h-45.647c-6.627 0-12-5.373-12-12v-8.659c0-35.745 27.1-50.034 47.579-61.516 17.561-9.845 28.324-16.541 28.324-29.579 0-17.246-21.999-28.693-39.784-28.693-23.189 0-33.894 10.977-48.942 29.969-4.057 5.12-11.46 6.071-16.666 2.124l-27.824-21.098c-5.107-3.872-6.251-11.066-2.644-16.363C184.846 131.491 214.94 112 261.794 112c49.071 0 101.45 38.304 101.45 88.8zM298 368c0 23.159-18.841 42-42 42s-42-18.841-42-42 18.841-42 42-42 42 18.841 42 42z"></path></svg>
+          <button id="open-search-tips-modal">
+            <div class="svg-icon w-4 h-4 bg-gray-300 hover:bg-gray-700" style="mask-image: url('/static/images/icons/question_mark.svg'); -webkit-mask-image: url('/static/images/icons/question_mark.svg');"></div>
           </button>
         </div>
         {# Search tips modal -#}
@@ -123,10 +114,8 @@
                 <h3 class="text-xl font-semibold text-gray-900">
                   Search tips
                 </h3>
-                <button id="close-search-tips-modal" type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-                  <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                  </svg>
+                <button id="close-search-tips-modal" type="button" class="group text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                  <div class="svg-icon w-5 h-5 bg-gray-500 group-hover:bg-gray-900" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
                   <span class="sr-only">Close modal</span>
                 </button>
               </div>

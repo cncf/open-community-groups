@@ -30,15 +30,15 @@
               hx-trigger="click"
               hx-target="#entity-section"
               hx-boost="true"
-              class="inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-l-lg cursor-pointer select-none hover:bg-gray-50">
-                {% call entity_content("events", "Events", "") %}
+              class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-l-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
+                {% call entity_content("events", "Events", "", "bg-gray-500") %}
             </button>
             {# End events button -#}
           </li>
           <li class="w-full">
             {# Selected entity: groups -#}
-            <div class="inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-r-lg text-primary-500 border-primary-500">
-              {% call entity_content("groups", "Groups", "select-none") %}
+            <div class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-r-lg text-primary-500 border-primary-500">
+              {% call entity_content("groups", "Groups", "select-none", "bg-primary-500") %}
             </div>
             {# End selected entity: groups -#}
           </li>
@@ -52,8 +52,8 @@
         {% when Entity::Events %}
           <li class="w-full">
             {# Selected entity: events -#}
-            <div class="inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-l-lg text-primary-500 border-primary-500">
-              {% call entity_content("events", "Events", "select-none") %}
+            <div class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-l-lg text-primary-500 border-primary-500">
+              {% call entity_content("events", "Events", "select-none", "bg-primary-500") %}
             </div>
             {# End selected entity: events -#}
           </li>
@@ -65,8 +65,8 @@
               hx-trigger="click"
               hx-target="#entity-section"
               hx-boost="true"
-              class="inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-r-lg cursor-pointer select-none hover:bg-gray-50">
-                {% call entity_content("groups", "Groups", "") %}
+              class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-r-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
+                {% call entity_content("groups", "Groups", "", "bg-gray-500") %}
             </button>
             {# End groups button -#}
           </li>
@@ -83,14 +83,14 @@
 {# End entity selector -#}
 
 {# Entity content -#}
-{% macro entity_content(kind, title, styles) %}
+{% macro entity_content(kind, title, styles, icon_styles) %}
   <div class="flex w-full flex-col items-center {{ styles }}">
     {# Icon -#}
     {% match kind %}
       {% when "groups" %}
-        <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 640 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M72 88a56 56 0 1 1 112 0A56 56 0 1 1 72 88zM64 245.7C54 256.9 48 271.8 48 288s6 31.1 16 42.3V245.7zm144.4-49.3C178.7 222.7 160 261.2 160 304c0 34.3 12 65.8 32 90.5V416c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V389.2C26.2 371.2 0 332.7 0 288c0-61.9 50.1-112 112-112h32c24 0 46.2 7.5 64.4 20.3zM448 416V394.5c20-24.7 32-56.2 32-90.5c0-42.8-18.7-81.3-48.4-107.7C449.8 183.5 472 176 496 176h32c61.9 0 112 50.1 112 112c0 44.7-26.2 83.2-64 101.2V416c0 17.7-14.3 32-32 32H480c-17.7 0-32-14.3-32-32zm8-328a56 56 0 1 1 112 0A56 56 0 1 1 456 88zM576 245.7v84.7c10-11.3 16-26.1 16-42.3s-6-31.1-16-42.3zM320 32a64 64 0 1 1 0 128 64 64 0 1 1 0-128zM240 304c0 16.2 6 31 16 42.3V261.7c-10 11.3-16 26.1-16 42.3zm144-42.3v84.7c10-11.3 16-26.1 16-42.3s-6-31.1-16-42.3zM448 304c0 44.7-26.2 83.2-64 101.2V448c0 17.7-14.3 32-32 32H288c-17.7 0-32-14.3-32-32V405.2c-37.8-18-64-56.5-64-101.2c0-61.9 50.1-112 112-112h32c61.9 0 112 50.1 112 112z"></path></svg>
+        <div class="svg-icon h-4 w-4 {{ icon_styles }}" style="mask-image: url('/static/images/icons/groups.svg'); -webkit-mask-image: url('/static/images/icons/groups.svg');"></div>
       {% else %}
-      <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" d="M0 0h24v24H0z"></path><path d="M17 10H7v2h10v-2zm2-7h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zm-5-5H7v2h7v-2z"></path></svg>
+        <div class="svg-icon h-4 w-4 {{ icon_styles }}" style="mask-image: url('/static/images/icons/events.svg'); -webkit-mask-image: url('/static/images/icons/events.svg');"></div>
     {% endmatch %}
     {# End icon -#}
 
@@ -146,12 +146,12 @@
     </div>
     <div>
       {% if items_length > max_visible_items_number %}
-        <button data-label="{{ label }}" type="button" class="collapse-btn text-gray-700 border hover:bg-gray-700 hover:text-white focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
+        <button data-label="{{ label }}" type="button" class="group/btn collapse-btn border hover:bg-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
           <span class="hidden group-[.collapsed]:block">
-            <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 374.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 306.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"></path></svg>
+            <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white" style="mask-image: url('/static/images/icons/caret_down.svg'); -webkit-mask-image: url('/static/images/icons/caret_down.svg');"></div>
           </span>
           <span class="block group-[.collapsed]:hidden">
-            <svg class="w-3 h-3" aria-hidden="true" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M201.4 137.4c12.5-12.5 32.8-12.5 45.3 0l160 160c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L224 205.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l160-160z"></path></svg>
+            <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white" style="mask-image: url('/static/images/icons/caret_up.svg'); -webkit-mask-image: url('/static/images/icons/caret_up.svg');"></div>
           </span>
         </button>
       {% endif %}
