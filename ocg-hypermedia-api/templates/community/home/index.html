@@ -27,7 +27,20 @@
 
         {# Search bar -#}
         <div>
-          {% call common::search_bar("Search groups and events", "", "", "w-[100%] lg:w-[50%]", "mb-6", true) %}
+          {% call common::search_bar("Search groups and events", "", "w-[100%] lg:w-[50%]", "mb-6", false) %}
+          <script type="module">
+            import { loadExplorePage } from '/static/js/community/home/home.js';
+            import { cleanInputField, searchOnEnter } from '/static/js/community/explore/filters.js';
+
+            const searchHomeBtn = document.querySelector('#search-btn');
+            searchHomeBtn.addEventListener('click', loadExplorePage);
+
+            const searchInput = document.querySelector('#ts_query');
+            searchInput.addEventListener('keydown', () => searchOnEnter(event));
+
+            const cleanSearch = document.querySelector('#clean-search');
+            cleanSearch.addEventListener('click', () => cleanInputField('ts_query'));
+          </script>
         </div>
         {# End search bar -#}
 

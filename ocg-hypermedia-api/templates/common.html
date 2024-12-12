@@ -54,9 +54,9 @@
 {# End secondary link -#}
 
 {# Search bar -#}
-{% macro search_bar(placeholder, value, form, input_styles, container_styles, home) %}
+{% macro search_bar(placeholder, value, input_styles, container_styles, with_help) %}
   <div class="flex items-center {{ container_styles }}">
-    <div class="relative {{ input_styles }} {% if !home %}md:-ml-[0.75rem]{% endif %}">
+    <div class="relative {{ input_styles }} {% if with_help %}md:-ml-[0.75rem]{% endif %}">
       <input
         type="text"
         id="ts_query"
@@ -73,37 +73,15 @@
       </div>
       <div class="absolute right-[6px] top-[5px]">
         {% call secondary_button("search-btn", "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white' style='mask-image: url(/static/images/icons/magnifying_glass.svg); -webkit-mask-image: url(/static/images/icons/magnifying_glass.svg);'></div>", "", true) %}
-        {% if form == "" %}
-          <script type="module">
-            import { loadExplorePage } from '/static/js/community/home/home.js';
-
-            const searchHomeBtn = document.querySelector('#search-btn');
-            searchHomeBtn.addEventListener('click', loadExplorePage);
-          </script>
-        {% else %}
-          <script type="module">
-            import { triggerChangeOnForm } from '/static/js/community/explore/filters.js';
-
-            const searchBtn = document.querySelector('#search-btn');
-            searchBtn.addEventListener('click', () => triggerChangeOnForm("{{ form }}", true));
-          </script>
-        {% endif %}
       </div>
-      <script type="module">
-        import { cleanInputField, searchOnEnter } from '/static/js/community/explore/filters.js';
 
-        const searchInput = document.querySelector('#ts_query');
-        searchInput.addEventListener('keydown', () => searchOnEnter(event, "{{ form }}"));
-
-        const cleanSearch = document.querySelector('#clean-search');
-        cleanSearch.addEventListener('click', () => cleanInputField('ts_query', '{{ form }}'));
-      </script>
-      {% if !home  %}
+      {% if with_help  %}
         <div class="absolute hidden -right-[1.5rem] top-0 md:block">
           <button id="open-search-tips-modal">
             <div class="svg-icon w-4 h-4 bg-gray-300 hover:bg-gray-700" style="mask-image: url('/static/images/icons/question_mark.svg'); -webkit-mask-image: url('/static/images/icons/question_mark.svg');"></div>
           </button>
         </div>
+
         {# Search tips modal -#}
         <div id="search-tips" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
           <div id="overlay-search-tips" class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
@@ -120,7 +98,6 @@
                 </button>
               </div>
               {# End modal header -#}
-
               {# Modal content -#}
               <div class="p-4 md:p-5 space-y-4">
                 <ul class="list-disc text-sm ps-8 pe-4 py-6 leading-8">

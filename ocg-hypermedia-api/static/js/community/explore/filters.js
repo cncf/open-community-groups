@@ -83,9 +83,6 @@ export const cleanInputField = (id, formId) => {
 
   if (formId) {
     triggerChangeOnForm(formId);
-  } else {
-    let form = input.closest("form");
-    triggerChangeOnForm(form.id);
   }
 };
 
@@ -107,13 +104,13 @@ export const triggerChangeOnForm = (formId, fromSearch) => {
 // Search on enter key press.
 export const searchOnEnter = (e, formId) => {
   if (e.key === "Enter") {
-    if (formId === "") {
+    if (formId) {
+      triggerChangeOnForm(formId);
+    } else {
       const value = e.currentTarget.value;
       if (value !== "") {
         document.location.href = `/explore?ts_query=${value}`;
       }
-    } else {
-      triggerChangeOnForm(formId);
     }
     e.currentTarget.blur();
   }

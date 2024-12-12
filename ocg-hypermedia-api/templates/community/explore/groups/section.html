@@ -12,11 +12,21 @@
 {% endblock %}
 
 {% block searchbar %}
-  {% if let Some(ts_query) = filters.ts_query %}
-    {% call common::search_bar("Search groups by name, location or tags", ts_query, "groups-form", "w-full md:w-3/4", "justify-center", false) %}
-  {% else %}
-    {% call common::search_bar("Search groups by name, location or tags", "", "groups-form", "w-full md:w-3/4", "justify-center", false) %}
-  {% endif %}
+  {% set ts_query = filters.ts_query.clone().unwrap_or_default() %}
+  {% call common::search_bar("Search groups by name, location or tags", ts_query, "w-full md:w-3/4", "justify-center", true) %}
+  <script type="module">
+    import { triggerChangeOnForm } from '/static/js/community/explore/filters.js';
+    import { cleanInputField, searchOnEnter } from '/static/js/community/explore/filters.js';
+
+    const searchBtn = document.querySelector('#search-btn');
+    searchBtn.addEventListener('click', () => triggerChangeOnForm("groups-form", true));
+
+    const searchInput = document.querySelector('#ts_query');
+    searchInput.addEventListener('keydown', () => searchOnEnter(event, "groups-form"));
+
+    const cleanSearch = document.querySelector('#clean-search');
+    cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'groups-form'));
+  </script>
 {% endblock %}
 
 {% block content %}
