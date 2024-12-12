@@ -56,8 +56,8 @@ export const reset = (formId) => {
 };
 
 // Select "Any" option for the given filter name.
-export const selectAnyOption = (name, triggerChange) => {
-  const anyInput = document.getElementById(`any-${name}`);
+export const selectAnyOption = (name, type, triggerChange) => {
+  const anyInput = document.getElementById(`any-${type}-${name}`);
   if (!anyInput.isChecked) {
     // Uncheck all other options
     const inputs = document.querySelectorAll(`input[name='${name}']:checked`);

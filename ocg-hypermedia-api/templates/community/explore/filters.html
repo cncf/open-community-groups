@@ -198,7 +198,7 @@
     import { selectAnyOption } from '/static/js/community/explore/filters.js';
 
     const anyCheckbox = document.querySelector('#any-checkbox-{{ label }}');
-    anyCheckbox.addEventListener('click', () => selectAnyOption('{{ label }}'));
+    anyCheckbox.addEventListener('click', () => selectAnyOption('{{ label }}', 'checkbox'));
   </script>
 {% endmacro %}
 {# End collapsible filter with checkboxes -#}
@@ -232,7 +232,7 @@
     import { selectAnyOption } from '/static/js/community/explore/filters.js';
 
     const anyRadio = document.querySelector('#any-radio-{{ label }}');
-    anyRadio.addEventListener('click', () => selectAnyOption('{{ label }}', true));
+    anyRadio.addEventListener('click', () => selectAnyOption('{{ label }}', 'radio', true));
   </script>
 {% endmacro %}
 {# End collapsible filter with radios -#}
