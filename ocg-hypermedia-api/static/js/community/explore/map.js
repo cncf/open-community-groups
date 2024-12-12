@@ -71,7 +71,7 @@ export const loadMap = (entity) => {
 
         // SVG icon for markers
         const svgIcon = {
-          html: '<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 20 20" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>',
+          html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500" style="mask-image: url(/static/images/icons/marker.svg); -webkit-mask-image: url(/static/images/icons/marker.svg);"></div>',
           iconSize: [30, 30],
           iconAnchor: [15, 30],
           popupAnchor: [0, -25],
