@@ -26,11 +26,8 @@
 
         overWritePrimaryColor('{{ community.theme.primary_color }}');
 
-        const color = {
-            {
-                community.theme.palette | json | safe
-            }
-        };
+        // TODO - Djlint - avoid format
+        const color = {{ community.theme.palette|json|safe }};
 
         // Tailwind configuration
         tailwind.config = {
