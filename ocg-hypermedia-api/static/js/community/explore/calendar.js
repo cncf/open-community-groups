@@ -1,61 +1,34 @@
-import { isScriptLoaded } from "../../common/common.js";
 import { fetchData } from "./explore.js";
 
-class Calendar {
+export class Calendar {
+  // Initialize calendar.
   constructor() {
-    this.fullCalendarInstance = null;
-  }
-
-  // Initialize calendar
-  initiate() {
-    // If fullcalendar script is not loaded, load it
-    if (!isScriptLoaded("fullcalendar")) {
-      let script = document.createElement("script");
-      script.type = "text/javascript";
-      script.src =
-        "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js";
-      document.getElementsByTagName("head")[0].appendChild(script);
-      // Wait for script to load and render calendar
-      script.onload = () => {
-        this.load();
-      };
-    } else {
-      // If script is already loaded, load events
-      this.fetchEvents();
+    // Check if calendar is already initialized
+    if (Calendar._instance) {
+      Calendar._instance.setup();
+      return Calendar._instance;
     }
+
+    // Load `fullcalendar` script
+    let script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js";
+    document.getElementsByTagName("head")[0].appendChild(script);
+
+    // Setup calendar after script is loaded
+    script.onload = () => {
+      this.setup();
+    };
+
+    // Save calendar instance
+    Calendar._instance = this;
   }
 
-  // Create tooltip for event popover on calendar
-  createTooltip(id, event, horizontalAlignment, verticalAlignment) {
-    const tooltip = `<div id="${id}" role="tooltip" data-popover="true" class="absolute ${
-      horizontalAlignment == "right" ? "end-0" : ""
-    } ${
-      verticalAlignment == "top" ? "top-0 -translate-y-full pb-1.5" : "pt-1.5"
-    } z-10 invisible inline-block w-[380px] text-sm text-gray-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow">
-      <div class="bg-white border border-gray-300 p-2 rounded-lg shadow-md">
-        ${event.popover_html}
-      </div>
-    </div>`;
-
-    return tooltip;
-  }
-
-  // Cleanup calendar
-  cleanupCalendar() {
-    if (this.fullCalendarInstance) {
-      this.fullCalendarInstance.destroy();
-    }
-  }
-
-  // Load calendar
-  load() {
-    this.cleanupCalendar();
-
-    // Get calendar element
+  // Setup calendar instance.
+  setup() {
     const calendarEl = document.getElementById("calendar-box");
 
-    // Initialize calendar
-    this.fullCalendarInstance = new FullCalendar.Calendar(calendarEl, {
+    this.fullCalendar = new FullCalendar.Calendar(calendarEl, {
       timeZone: "local",
       initialView: "dayGridMonth",
       displayEventTime: false,
@@ -72,52 +45,43 @@ class Calendar {
         console.log("Event: " + info.event.name + info.view.type);
       },
 
-      // Add tooltip to events when they are mounted
+      // Add popover to events when they are mounted
       eventDidMount: (info) => {
         // Calculate alignment based on the position of the event in the calendar
-        const horizontalAlignment =
-          info.el.fcSeg.firstCol > 3 ? "right" : "left";
+        const horizontalAlignment = info.el.fcSeg.firstCol > 3 ? "right" : "left";
         const verticalAlignment = info.el.fcSeg.row > 4 ? "top" : "bottom";
 
-        // Add tooltip
+        // Add popover
         const id = `popover-${info.event.extendedProps.event.slug}`;
         info.el.parentNode.setAttribute("popovertarget", id);
         info.el.parentNode.insertAdjacentHTML(
           "beforeend",
-          this.createTooltip(
-            id,
-            info.event.extendedProps.event,
-            horizontalAlignment,
-            verticalAlignment
-          )
+          newEventPopover(id, info.event.extendedProps.event, horizontalAlignment, verticalAlignment)
         );
       },
     });
 
-    this.updateTitle();
-
-    this.fetchEvents();
-
-    // Fullcalendar render
-    this.fullCalendarInstance.render();
+    this.refresh();
+    this.fullCalendar.render();
   }
 
-  // Convert date to ISO format
-  convertDate(date) {
-    return date.toISOString();
-  }
-
-  // Load events to calendar
-  async fetchEvents() {
-    // Prepare query params
-    let date = new Date();
-    if (this.fullCalendarInstance) {
-      date = this.fullCalendarInstance.getDate();
+  // Refresh calendar, updating the title and events.
+  async refresh() {
+    // Update calendar title
+    const el = document.getElementById("calendar-date");
+    if (el) {
+      el.textContent = this.fullCalendar.currentData.viewTitle;
     }
-    // Get first and last day of the month
-    const firstDayMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const lastDayMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
+    // Refresh calendar events
+    const events = await this.fetchEvents();
+    if (events && events.length > 0) {
+      this.addEvents(events);
+    }
+  }
+
+  // Fetch events for the selected month from the server.
+  async fetchEvents() {
     // Prepare query params
     const params = new URLSearchParams(location.search);
 
@@ -126,37 +90,35 @@ class Calendar {
     params.delete("date_from");
     params.delete("data_to");
 
-    // Update date range with current month
-    params.append("date_from", firstDayMonth.toISOString());
-    params.append("date_to", lastDayMonth.toISOString());
-
     // Add limit and offset
     params.append("limit", 100);
     params.append("offset", 0);
 
-    // Fetch events data
+    // Add date range for the month displayed
+    let date = this.fullCalendar.getDate();
+    const firstDayMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const lastDayMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    params.append("date_from", firstDayMonth.toISOString());
+    params.append("date_to", lastDayMonth.toISOString());
+
+    // Fetch events
     const data = await fetchData("events", params.toString());
 
-    // If events are available, add them to calendar
-    if (data.events && data.events.length > 0) {
-      this.renderEvents(data.events);
-    }
+    return data.events;
   }
 
-  // Add events to calendar
-  renderEvents(events) {
+  // Add events provided to calendar.
+  addEvents(events) {
     // Prepare events for calendar
     let formattedEvents = events.map((event) => {
-      // Backgorund color for past events
+      // Background color for past events
       let color = "rgb(190, 190, 190)";
       if (!event.starts_at) {
         return;
       }
 
       // Get end date
-      const endDate = event.ends_at
-        ? new Date(event.ends_at * 1000)
-        : new Date(event.starts_at * 1000);
+      const endDate = event.ends_at ? new Date(event.ends_at * 1000) : new Date(event.starts_at * 1000);
 
       // Set end date to the end of the day to get badge color
       const endDateNoTime = endDate;
@@ -173,9 +135,8 @@ class Calendar {
       // Add event to calendar
       return {
         title: event.name,
-        // allDay: true,
-        start: this.convertDate(new Date(event.starts_at * 1000)),
-        end: this.convertDate(endDate),
+        start: convertDate(new Date(event.starts_at * 1000)),
+        end: convertDate(endDate),
         className: "cursor-pointer",
         backgroundColor: color,
         borderColor: color,
@@ -186,49 +147,51 @@ class Calendar {
     });
 
     // Remove all previous events from calendar
-    this.fullCalendarInstance.removeAllEvents();
+    this.fullCalendar.removeAllEvents();
 
     // Add new events to calendar
-    this.fullCalendarInstance.addEventSource(formattedEvents);
+    this.fullCalendar.addEventSource(formattedEvents);
   }
 
-  // Update calendar title with month and year
-  updateTitle() {
-    if (this.fullCalendarInstance) {
-      const el = document.getElementById("calendar-date");
-      if (el) {
-        el.textContent = this.fullCalendarInstance.currentData.viewTitle;
-      }
-    }
+  // Load current month data.
+  currentMonth() {
+    this.fullCalendar.today();
+    this.refresh();
   }
 
-  // Load current month data
-  showCurrentMonthEvents() {
-    if (this.fullCalendarInstance) {
-      this.fullCalendarInstance.today();
-      this.updateTitle();
-      this.fetchEvents();
-    }
+  // Load next month data.
+  nextMonth() {
+    this.fullCalendar.next();
+    this.refresh();
   }
 
-  // Load next month data
-  navigateToNextMonth() {
-    if (this.fullCalendarInstance) {
-      this.fullCalendarInstance.next();
-      this.updateTitle();
-      this.fetchEvents();
-    }
-  }
-
-  // Load previous month data
-  navigateToPreviousMonth() {
-    if (this.fullCalendarInstance) {
-      this.fullCalendarInstance.prev();
-      this.updateTitle();
-      this.fetchEvents();
-    }
+  // Load previous month data.
+  previousMonth() {
+    this.fullCalendar.prev();
+    this.refresh();
   }
 }
 
-// Create calendar instance
-export const calendar = new Calendar();
+// Convert date to ISO format.
+function convertDate(date) {
+  return date.toISOString();
+}
+
+// Create a new popover for the event provided.
+function newEventPopover(id, event, horizontalAlignment, verticalAlignment) {
+  // prettier-ignore
+  const popover = `
+  <div
+    id="${id}"
+    role="tooltip"
+    data-popover="true"
+    class="absolute ${horizontalAlignment == "right" ? "end-0" : ""} ${verticalAlignment == "top" ? "top-0 -translate-y-full pb-1.5" : "pt-1.5"} z-10 invisible inline-block w-[380px] text-sm text-gray-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow"
+  >
+    <div class="bg-white border border-gray-300 p-2 rounded-lg shadow-md">
+      ${event.popover_html}
+    </div>
+  </div>
+  `;
+
+  return popover;
+}
