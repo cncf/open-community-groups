@@ -8,8 +8,6 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
-askama = { workspace = true }
-askama_axum = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
 cached = { workspace = true }
@@ -20,6 +18,8 @@ deadpool-postgres = { workspace = true }
 figment = { workspace = true }
 openssl = { workspace = true }
 postgres-openssl = { workspace = true }
+rinja = { workspace = true }
+rinja_axum = { workspace = true }
 serde = { workspace = true }
 serde_html_form = { workspace = true }
 serde_json = { workspace = true }

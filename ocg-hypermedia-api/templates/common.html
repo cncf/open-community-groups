@@ -148,11 +148,11 @@
 
 {# Logo -#}
 {% macro logo(logo_url, name, title, classes, size, color) %}
-  {% if let Some(url) = logo_url %}
+  {% if let Some(logo_url) = logo_url %}
     <div
       class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
       style='
-        background-image: url({{ url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", format!("c_scale,w_{}", size * 2) ) }});
+        background-image: url({{ logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) }});
       '>
     </div>
   {% else %}

@@ -2,9 +2,9 @@
 //! community site.
 
 use anyhow::Result;
-use askama_axum::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
+use rinja_axum::Template;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 

@@ -8,11 +8,11 @@ use std::{
 };
 
 use anyhow::Result;
-use askama_axum::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Months, Utc};
 use chrono_tz::Tz;
 use minify_html::{minify, Cfg as MinifyCfg};
+use rinja_axum::Template;
 use serde::{ser, Deserialize, Serialize};
 use tracing::{instrument, trace};
 
