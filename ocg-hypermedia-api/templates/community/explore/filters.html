@@ -155,9 +155,9 @@
       <input id="{{ name }}"
              name="{{ name }}"
              validate="false"
-             value="{% if let Some(date) = value %}
-                      {{ date }}
-                    {% endif %}"
+             {# djlint:off #}
+             value="{% if let Some(date) = value %}{{ date }}{% endif %}"
+             {# djlint:on #}
              type="date"
              class="inline-flex bg-white border border-gray-200 text-[0.8rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-gray-50"
              placeholder="Date {{ label }}">
