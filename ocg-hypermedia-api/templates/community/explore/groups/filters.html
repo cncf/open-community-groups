@@ -8,14 +8,12 @@
 {% call macros::entity_radio(Entity::Groups) %}
 {# End entity -#}
 
-<form
-  id="groups-form"
-  hx-get='/explore/groups-section'
-  hx-trigger="change"
-  hx-target="#entity-section"
-  hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
-  hx-boost="true"
->
+<form id="groups-form"
+      hx-get='/explore/groups-section'
+      hx-trigger="change"
+      hx-target="#entity-section"
+      hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+      hx-boost="true">
   {# Regions -#}
   {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
   {# End Regions -#}
@@ -32,8 +30,10 @@
 </form>
 
 <script type="module">
-  import { showLoadingSpinner } from '/static/js/common/common.js';
+    import {
+        showLoadingSpinner
+    } from '/static/js/common/common.js';
 
-  const form = document.getElementById('groups-form');
-  form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
+    const form = document.getElementById('groups-form');
+    form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
 </script>

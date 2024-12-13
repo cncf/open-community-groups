@@ -1,0 +1,10 @@
+{
+    "custom_blocks": "when",
+    "format_attribute_template_tags": true,
+    "format_js": true,
+    "format_css": true,
+    "ignore": "",
+    "ignore_blocks": "call,when",
+    "max_blank_lines": 1,
+    "max_line_length": "110"
+}

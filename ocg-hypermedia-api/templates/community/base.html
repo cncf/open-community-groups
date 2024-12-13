@@ -5,65 +5,70 @@
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="" />
     <link rel="stylesheet" href="/static/styles/index.css" />
 
-    <script type="text/javascript" src="https://cdn.tailwindcss.com?plugins=forms"></script>
-    <script
-      type="text/javascript"
-      src="https://unpkg.com/htmx.org@2.0.3"
-      integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
-      crossorigin="anonymous"
-    ></script>
+    <script type="text/javascript"
+            src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script type="text/javascript"
+            src="https://unpkg.com/htmx.org@2.0.3"
+            integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
+            crossorigin="anonymous"></script>
 
     <script type="module">
-      import { overWritePrimaryColor } from '/static/js/common/common.js';
+        import {
+            overWritePrimaryColor
+        } from '/static/js/common/common.js';
 
-      overWritePrimaryColor('{{ community.theme.primary_color }}');
+        overWritePrimaryColor('{{ community.theme.primary_color }}');
 
-      const color = {{ community.theme.palette|json|safe }};
+        const color = {
+            {
+                community.theme.palette | json | safe
+            }
+        };
 
-      // Tailwind configuration
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: color,
+        // Tailwind configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: color,
+                    },
+                    fontSize: {
+                        filterTitle: '0.8rem',
+                    },
+                },
+                fontFamily: {
+                    sans: [
+                        '"Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
+                    ],
+                },
             },
-            fontSize: {
-              filterTitle: '0.8rem',
-            },
-          },
-          fontFamily: {
-            sans: [
-              '"Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
-            ],
-          },
-        },
-      };
+        };
     </script>
   </head>
-  <body class="h-full {% block bg_color %}bg-white{% endblock %}">
+  <body class="h-full {% block bg_color %} bg-white {% endblock bg_color %}">
     <div class="min-h-full flex flex-col">
-      <div class="{% block headerColor %}{{ headerColor }}{% endblock %}">
+      <div class="{% block headerColor %}
+                    {{ headerColor }}
+                  {% endblock headerColor %}">
         {# Header -#}
         {% include "community/header.html" %}
         {# End header -#}
 
         {# Jumbotron -#}
-        {% block jumbotron %}
-          <div></div>
-        {% endblock %}
+        {% block jumbotron %}<div></div>{% endblock %}
         {# End jumbotron -#}
       </div>
 
       {# Content -#}
       <main class="grow z-[1]">
-        {% block content %}
-          <div></div>
-        {% endblock %}
+        {% block content %}<div></div>{% endblock %}
       </main>
       {# End content -#}
 

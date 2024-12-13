@@ -3,61 +3,56 @@
 {% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
 
 {# Mobile filters -#}
-<div
-  id="drawer-filters"
-  class="fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border border-r drop-shadow-lg"
-  tabindex="-1"
-  aria-labelledby="drawer-label"
->
+<div id="drawer-filters"
+     class="fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border border-r drop-shadow-lg"
+     tabindex="-1"
+     aria-labelledby="drawer-label">
   {# Close button -#}
-  <button
-    id="close-filters"
-    type="button"
-    class="group bg-transparent hover:bg-gray-200 rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center"
-  >
-    <div class="svg-icon h-4 w-4 bg-gray-400 group-hover:bg-gray-900" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
+  <button id="close-filters"
+          type="button"
+          class="group bg-transparent hover:bg-gray-200 rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center">
+    <div class="svg-icon h-4 w-4 bg-gray-400 group-hover:bg-gray-900"
+         style="mask-image: url('/static/images/icons/close.svg');
+                -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
     <span class="sr-only">Close menu</span>
   </button>
   {# End close button -#}
 
   {# Filters content -#}
-  {% block filters %}
-    <div></div>
-  {% endblock %}
+  {% block filters %}<div></div>{% endblock %}
   {# End filters content -#}
 
   <div class="text-end p-5 border-t">
-    <button
-      class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 reset-filters"
-    >
+    <button class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 reset-filters">
       Reset
     </button>
   </div>
 </div>
 {# Overlay -#}
-<div id="drawer-backdrop" class="hidden bg-gray-900/50 fixed inset-0 z-[1050]"></div>
+<div id="drawer-backdrop"
+     class="hidden bg-gray-900/50 fixed inset-0 z-[1050]"></div>
 {# End overlay -#}
 {# End mobile filters -#}
 
 <div class="flex items-start">
   {# Desktop filters -#}
-  <div id="explore-filters" class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
-    {% block filters %}
-      <div></div>
-    {% endblock %}
+  <div id="explore-filters"
+       class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
+    {% block filters %}<div></div>{% endblock %}
   </div>
   {# End desktop filters -#}
 
-  <div id="explore-cards" class="relative w-full lg:w-3/4 lg:pl-10 self-stretch">
+  <div id="explore-cards"
+       class="relative w-full lg:w-3/4 lg:pl-10 self-stretch">
     <div class="relative flex flex-col bg-white border rounded-lg pt-5 md:pt-7 h-full">
       <div class="flex items-center mb-10 px-5 md:px-7">
         {# Mobile filters button -#}
         <div class="flex lg:hidden">
-          <button
-            id="open-filters"
-            class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700"
-          >
-            <div class="svg-icon h-4 w-4 bg-white" style="mask-image: url('/static/images/icons/filter.svg'); -webkit-mask-image: url('/static/images/icons/filter.svg');"></div>
+          <button id="open-filters"
+                  class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700">
+            <div class="svg-icon h-4 w-4 bg-white"
+                 style="mask-image: url('/static/images/icons/filter.svg');
+                        -webkit-mask-image: url('/static/images/icons/filter.svg')"></div>
           </button>
         </div>
         {# End mobile filters button -#}
@@ -74,7 +69,10 @@
         {# Results -#}
         <div class="flex-1">
           {% if view_mode == ViewMode::List %}
-            <div id="results" class="hidden mb-2.5 font-semibold text-sm text-black w-[175px] md:flex xl:mb-0">{% block current_page %}{% endblock %}</div>
+            <div id="results"
+                 class="hidden mb-2.5 font-semibold text-sm text-black w-[175px] md:flex xl:mb-0">
+              {% block current_page %}{% endblock %}
+            </div>
           {% endif %}
         </div>
         {# End results -#}
@@ -84,9 +82,17 @@
           <ul class="flex items-end justify-center">
             {# List view -#}
             <li>
-              <input type="radio" name="view_mode" id="list" value="list" class="hidden peer" {% if view_mode == ViewMode::List %}checked{% endif %}>
-              <label for="list" class="group w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-                <div class="svg-icon h-3 w-3 bg-gray-500 peer-checked:group-[]:bg-primary-500" style="mask-image: url('/static/images/icons/list.svg'); -webkit-mask-image: url('/static/images/icons/list.svg');"></div>
+              <input type="radio"
+                     name="view_mode"
+                     id="list"
+                     value="list"
+                     class="hidden peer"
+                     {% if view_mode == ViewMode::List %}checked{% endif %}>
+              <label for="list"
+                     class="group w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+                <div class="svg-icon h-3 w-3 bg-gray-500 peer-checked:group-[]:bg-primary-500"
+                     style="mask-image: url('/static/images/icons/list.svg');
+                            -webkit-mask-image: url('/static/images/icons/list.svg')"></div>
                 <div class="text-[0.8rem] text-center text-nowrap ms-1">List</div>
               </label>
             </li>
@@ -95,9 +101,17 @@
             {# Calendar view -#}
             {% if results_section.entity() == Entity::Events %}
               <li>
-                <input type="radio" name="view_mode" id="calendar" value="calendar" class="hidden peer" {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
-                <label for="calendar" class="group w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-                  <div class="svg-icon h-3 w-3 bg-gray-500 peer-checked:group-[]:bg-primary-500" style="mask-image: url('/static/images/icons/calendar.svg'); -webkit-mask-image: url('/static/images/icons/calendar.svg');"></div>
+                <input type="radio"
+                       name="view_mode"
+                       id="calendar"
+                       value="calendar"
+                       class="hidden peer"
+                       {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
+                <label for="calendar"
+                       class="group w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+                  <div class="svg-icon h-3 w-3 bg-gray-500 peer-checked:group-[]:bg-primary-500"
+                       style="mask-image: url('/static/images/icons/calendar.svg');
+                              -webkit-mask-image: url('/static/images/icons/calendar.svg')"></div>
                   <div class="text-[0.8rem] text-center text-nowrap ms-1">Calendar</div>
                 </label>
               </li>
@@ -106,9 +120,17 @@
 
             {# Map view -#}
             <li>
-              <input type="radio" name="view_mode" id="map" value="map" class="hidden peer" {% if view_mode == ViewMode::Map %}checked{% endif %}>
-              <label for="map" class="group w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
-                <div class="svg-icon h-3.5 w-3.5 bg-gray-500 peer-checked:group-[]:bg-primary-500" style="mask-image: url('/static/images/icons/map.svg'); -webkit-mask-image: url('/static/images/icons/map.svg');"></div>
+              <input type="radio"
+                     name="view_mode"
+                     id="map"
+                     value="map"
+                     class="hidden peer"
+                     {% if view_mode == ViewMode::Map %}checked{% endif %}>
+              <label for="map"
+                     class="group w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
+                <div class="svg-icon h-3.5 w-3.5 bg-gray-500 peer-checked:group-[]:bg-primary-500"
+                     style="mask-image: url('/static/images/icons/map.svg');
+                            -webkit-mask-image: url('/static/images/icons/map.svg')"></div>
                 <div class="text-[0.8rem] text-center text-nowrap ms-1">Map</div>
               </label>
             </li>
@@ -120,28 +142,23 @@
         {# Sort by -#}
         <div class="flex flex-1 flex-col items-start justify-end mb-3 sm:mb-0 xl:items-center xl:flex-row">
           {% if view_mode == ViewMode::List %}
-            <label
-              for="sort_by"
-              class="font-semibold text-filterTitle text-black leading-6 me-3"
-              >Sort by</label
-            >
+            <label for="sort_by"
+                   class="font-semibold text-filterTitle text-black leading-6 me-3">Sort by</label>
 
-            <select
-              id="sort_by"
-              name="sort_by"
-              class="block w-40 py-1 px-3 text-[0.8rem] leading-none h-[30px] text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500"
-            >
-            {% if let Some(sort_by) = filters.sort_by %}
-              <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
-              {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-                <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
+            <select id="sort_by"
+                    name="sort_by"
+                    class="block w-40 py-1 px-3 text-[0.8rem] leading-none h-[30px] text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500">
+              {% if let Some(sort_by) = filters.sort_by %}
+                <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
+                {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+                  <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
+                {% endif %}
+              {% else %}
+                <option value="date" selected>Date</option>
+                {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+                  <option value="distance">Distance</option>
+                {% endif %}
               {% endif %}
-            {% else %}
-              <option value="date" selected>Date</option>
-              {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-                <option value="distance">Distance</option>
-              {% endif %}
-            {% endif %}
             </select>
           {% endif %}
         </div>
@@ -150,45 +167,52 @@
 
       {# Results mobile -#}
       {% if view_mode == ViewMode::List %}
-        <div id="results-mobile" class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">{% block results %}{% endblock %}</div>
+        <div id="results-mobile"
+             class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">
+          {% block results %}{% endblock %}
+        </div>
       {% endif %}
       {# End results mobile -#}
 
       {# Cards -#}
       <div id="cards-list" class="flex flex-col justify-between grow">
-        {% block content %}
-          <div></div>
-        {% endblock %}
+        {% block content %}<div></div>{% endblock %}
       </div>
       {# End cards -#}
     </div>
   </div>
 </div>
 <script type="module">
-  import { close, open, reset, triggerChangeOnForm, toggleCollapsibleFilterVisibility } from '/static/js/community/explore/filters.js';
+    import {
+        close,
+        open,
+        reset,
+        triggerChangeOnForm,
+        toggleCollapsibleFilterVisibility
+    } from '/static/js/community/explore/filters.js';
 
-  const openFiltersBtn = document.querySelector('#open-filters');
-  openFiltersBtn.addEventListener('click', open);
+    const openFiltersBtn = document.querySelector('#open-filters');
+    openFiltersBtn.addEventListener('click', open);
 
-  const closeFiltersBtn = document.querySelector('#close-filters');
-  closeFiltersBtn.addEventListener('click', close);
+    const closeFiltersBtn = document.querySelector('#close-filters');
+    closeFiltersBtn.addEventListener('click', close);
 
-  const backdropFilters = document.querySelector('#drawer-backdrop');
-  backdropFilters.addEventListener('click', close);
+    const backdropFilters = document.querySelector('#drawer-backdrop');
+    backdropFilters.addEventListener('click', close);
 
-  const inputs = document.querySelectorAll('input[name="view_mode"]');
-  inputs.forEach(input => {
-    input.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
-  });
+    const inputs = document.querySelectorAll('input[name="view_mode"]');
+    inputs.forEach(input => {
+        input.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+    });
 
-  const select = document.querySelector('#sort_by');
-  select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+    const select = document.querySelector('#sort_by');
+    select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
 
-  const resetButtons = document.querySelectorAll('.reset-filters');
-  resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
+    const resetButtons = document.querySelectorAll('.reset-filters');
+    resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
 
-  const collapseBtns = document.querySelectorAll('.collapse-btn');
-  collapseBtns.forEach(btn => {
-    btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
-  });
+    const collapseBtns = document.querySelectorAll('.collapse-btn');
+    collapseBtns.forEach(btn => {
+        btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
+    });
 </script>

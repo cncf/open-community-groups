@@ -3,13 +3,23 @@
   <div hx-boost="true" class="inline-flex" role="group">
     {# First button -#}
     {% if let Some(first) = first %}
-      <a href="{{ first.url }}" hx-get="{{ first.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
-        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white" style="mask-image: url('/static/images/icons/arrow_left_double.svg'); -webkit-mask-image: url('/static/images/icons/arrow_left_double.svg');"></div>
+      <a href="{{ first.url }}"
+         hx-get="{{ first.hx_url }}"
+         hx-target="#cards-list"
+         hx-swap="innerHTML show:#header:top"
+         class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
+             style="mask-image: url('/static/images/icons/arrow_left_double.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_left_double.svg')"></div>
         First
       </a>
     {% else %}
-      <button type="button" disabled class="inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-gray-300 bg-gray-50 border border-gray-300 rounded-s-full">
-        <div class="svg-icon me-2 h-5 w-5 bg-gray-300" style="mask-image: url('/static/images/icons/arrow_left_double.svg'); -webkit-mask-image: url('/static/images/icons/arrow_left_double.svg');"></div>
+      <button type="button"
+              disabled
+              class="inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-gray-300 bg-gray-50 border border-gray-300 rounded-s-full">
+        <div class="svg-icon me-2 h-5 w-5 bg-gray-300"
+             style="mask-image: url('/static/images/icons/arrow_left_double.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_left_double.svg')"></div>
         First
       </button>
     {% endif %}
@@ -17,13 +27,23 @@
 
     {# Prev button -#}
     {% if let Some(prev) = prev %}
-      <a href="{{ prev.url }}" hx-get="{{ prev.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="group cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
-        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white" style="mask-image: url('/static/images/icons/arrow_left.svg'); -webkit-mask-image: url('/static/images/icons/arrow_left.svg');"></div>
+      <a href="{{ prev.url }}"
+         hx-get="{{ prev.hx_url }}"
+         hx-target="#cards-list"
+         hx-swap="innerHTML show:#header:top"
+         class="group cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
+             style="mask-image: url('/static/images/icons/arrow_left.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_left.svg')"></div>
         Prev
       </a>
     {% else %}
-      <button type="button" disabled class="inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-gray-300 bg-gray-50 border-t border-b border-e border-gray-300">
-        <div class="svg-icon me-2 h-5 w-5 bg-gray-300" style="mask-image: url('/static/images/icons/arrow_left.svg'); -webkit-mask-image: url('/static/images/icons/arrow_left.svg');"></div>
+      <button type="button"
+              disabled
+              class="inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-gray-300 bg-gray-50 border-t border-b border-e border-gray-300">
+        <div class="svg-icon me-2 h-5 w-5 bg-gray-300"
+             style="mask-image: url('/static/images/icons/arrow_left.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_left.svg')"></div>
         Prev
       </button>
     {% endif %}
@@ -31,28 +51,48 @@
 
     {# Next button -#}
     {% if let Some(next) = next %}
-      <a href="{{ next.url }}" hx-get="{{ next.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="group cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+      <a href="{{ next.url }}"
+         hx-get="{{ next.hx_url }}"
+         hx-target="#cards-list"
+         hx-swap="innerHTML show:#header:top"
+         class="group cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         Next
-        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white" style="mask-image: url('/static/images/icons/arrow_right.svg'); -webkit-mask-image: url('/static/images/icons/arrow_right.svg');"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
+             style="mask-image: url('/static/images/icons/arrow_right.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_right.svg')"></div>
       </a>
     {% else %}
-      <button type="button" disabled class="inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-gray-300 bg-gray-50 border-t border-b border-gray-300">
+      <button type="button"
+              disabled
+              class="inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-gray-300 bg-gray-50 border-t border-b border-gray-300">
         Next
-        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300" style="mask-image: url('/static/images/icons/arrow_right.svg'); -webkit-mask-image: url('/static/images/icons/arrow_right.svg');"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300"
+             style="mask-image: url('/static/images/icons/arrow_right.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_right.svg')"></div>
       </button>
     {% endif %}
     {# End next button -#}
 
     {# Last button -#}
     {% if let Some(last) = last %}
-      <a href="{{ last.url }}" hx-get="{{ last.hx_url }}" hx-target="#cards-list" hx-swap="innerHTML show:#header:top" class="group cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+      <a href="{{ last.url }}"
+         hx-get="{{ last.hx_url }}"
+         hx-target="#cards-list"
+         hx-swap="innerHTML show:#header:top"
+         class="group cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         Last
-        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white" style="mask-image: url('/static/images/icons/arrow_right_double.svg'); -webkit-mask-image: url('/static/images/icons/arrow_right_double.svg');"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
+             style="mask-image: url('/static/images/icons/arrow_right_double.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_right_double.svg')"></div>
       </a>
     {% else %}
-      <button type="button" disabled class="inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-gray-300 bg-gray-50 border border-gray-300 rounded-e-full">
+      <button type="button"
+              disabled
+              class="inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-gray-300 bg-gray-50 border border-gray-300 rounded-e-full">
         Last
-        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300" style="mask-image: url('/static/images/icons/arrow_right_double.svg'); -webkit-mask-image: url('/static/images/icons/arrow_right_double.svg');"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300"
+             style="mask-image: url('/static/images/icons/arrow_right_double.svg');
+                    -webkit-mask-image: url('/static/images/icons/arrow_right_double.svg')"></div>
       </button>
     {% endif %}
     {# End last button -#}
@@ -61,10 +101,12 @@
 {# End pagination -#}
 
 <script type="module">
-  import { showLoadingSpinner } from '/static/js/common/common.js';
+    import {
+        showLoadingSpinner
+    } from '/static/js/common/common.js';
 
-  const links = document.querySelectorAll('#pagination a');
-  links.forEach(link => {
-    link.addEventListener('hmtx:beforeRequest', showLoadingSpinner);
-  });
+    const links = document.querySelectorAll('#pagination a');
+    links.forEach(link => {
+        link.addEventListener('hmtx:beforeRequest', showLoadingSpinner);
+    });
 </script>

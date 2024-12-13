@@ -24,7 +24,9 @@
           {# End group region -#}
 
           {# Group name -#}
-          <div class="text-sm line-clamp-2 font-semibold md:mt-1 md:text-normal md:line-clamp-1">{{ name|demoji }}</div>
+          <div class="text-sm line-clamp-2 font-semibold md:mt-1 md:text-normal md:line-clamp-1">
+            {{ name|demoji }}
+          </div>
           {# End group name -#}
         </div>
 
@@ -40,8 +42,12 @@
           {# Group location -#}
           <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[32px]">
             {% if let Some(location) = self.location(48) %}
-              <img class="mt-0.5 w-3 h-3 me-2" src="/static/images/icons/location.svg" alt="Location icon" />
-              <div class="hidden truncate text-gray-700 text-xs uppercase xl:block">{{ self.location(67).expect("location to exist") }}</div>
+              <img class="mt-0.5 w-3 h-3 me-2"
+                   src="/static/images/icons/location.svg"
+                   alt="Location icon" />
+              <div class="hidden truncate text-gray-700 text-xs uppercase xl:block">
+                {{ self.location(67).expect("location to exist") }}
+              </div>
               <div class="block truncate text-gray-700 text-xs uppercase xl:hidden">{{ location }}</div>
             {% endif %}
           </div>
@@ -50,7 +56,9 @@
           {# Group creation date -#}
           <div class="flex items-center pt-1">
             <div class="flex flex-row items-center leading-4">
-              <img class="-mt-[2px] w-3 h-3 me-2" src="/static/images/icons/date.svg" alt="Date icon" />
+              <img class="-mt-[2px] w-3 h-3 me-2"
+                   src="/static/images/icons/date.svg"
+                   alt="Date icon" />
               <span class="truncate text-gray-700 text-xs uppercase">{{ created_at.format("%B %e · %Y") }}</span>
             </div>
           </div>
@@ -64,7 +72,9 @@
     {# Group location -#}
     <div class="flex flex-row items-center mt-3 h-[21px]">
       {% if let Some(location) = self.location(40) %}
-        <img class="mt-0.5 w-3 h-3 me-2" src="/static/images/icons/location.svg" alt="Location icon" />
+        <img class="mt-0.5 w-3 h-3 me-2"
+             src="/static/images/icons/location.svg"
+             alt="Location icon" />
         <div class="block truncate text-gray-700 text-xs uppercase xl:hidden">{{ location }}</div>
       {% endif %}
     </div>
@@ -73,7 +83,9 @@
     {# Group creation date -#}
     <div class="flex items-center pt-1">
       <div class="flex flex-row items-center leading-4">
-        <img class="-mt-[2px] w-3 h-3 me-2" src="/static/images/icons/date.svg" alt="Date icon" />
+        <img class="-mt-[2px] w-3 h-3 me-2"
+             src="/static/images/icons/date.svg"
+             alt="Date icon" />
         <span class="truncate text-gray-700 text-xs uppercase">{{ created_at.format("%B %e · %Y") }}</span>
       </div>
     </div>
@@ -83,9 +95,7 @@
   {% if let Some(description) = description %}
     {# Mobile group description -#}
     <div class="block md:hidden">
-      <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">
-        {{ description|demoji }}
-      </p>
+      <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description|demoji }}</p>
     </div>
     {# End mobile group description -#}
   {% endif %}

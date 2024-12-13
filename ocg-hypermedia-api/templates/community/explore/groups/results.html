@@ -3,50 +3,51 @@
 {% set view_mode = self.view_mode.clone().unwrap_or_default() %}
 
 {% match view_mode %}
-  {% when ViewMode::List %}
-    {# List view -#}
-    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if groups.len() > 0 %}border-b{% endif %}">
-      {# Placeholder cards -#}
-      {% if groups.len() == 0 %}
-        {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
-      {% endif %}
-      {# End placeholder cards -#}
+{% when ViewMode::List %}
+{# List view -#}
+<div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7
+            {% if groups.len() > 0 %}border-b{% endif %}">
+  {# Placeholder cards -#}
+  {% if groups.len() == 0 %}
+    {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
+  {% endif %}
+  {# End placeholder cards -#}
 
-      {# Cards -#}
-      {% for group in groups %}
-        {{ group|safe }}
-      {% endfor %}
-      {# End cards -#}
-    </div>
+  {# Cards -#}
+  {% for group in groups %}{{ group|safe }}{% endfor %}
+  {# End cards -#}
+</div>
 
-    {# Pagination -#}
-    {% if groups.len() > 0 %}
-      {{ navigation_links|safe }}
-    {% endif %}
-    {# End pagination -#}
+{# Pagination -#}
+{% if groups.len() > 0 %}{{ navigation_links|safe }}{% endif %}
+{# End pagination -#}
 
-    <script type="module">
-      import { updateResults } from '/static/js/community/explore/explore.js';
+<script type="module">
+    import {
+        updateResults
+    } from '/static/js/community/explore/explore.js';
 
-      updateResults('{% call common::current_page(total, groups.len(), offset) %}');
-    </script>
-    {# End list view -#}
+    updateResults('{% call common::current_page(total, groups.len(), offset) %}');
+</script>
+{# End list view -#}
 
-  {% when ViewMode::Map %}
-    {# Map view -#}
-    <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
-      <div class="relative w-full border h-[600px] md:h-[820px]">
-        <div id="map-box" class="w-full h-full"></div>
-      </div>
-    </div>
+{% when ViewMode::Map %}
+{# Map view -#}
+<div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
+  <div class="relative w-full border h-[600px] md:h-[820px]">
+    <div id="map-box" class="w-full h-full"></div>
+  </div>
+</div>
 
-    <script type="module">
-      import { loadMap } from '/static/js/community/explore/map.js';
+<script type="module">
+    import {
+        loadMap
+    } from '/static/js/community/explore/map.js';
 
-      loadMap('groups');
-    </script>
-    {# End map view -#}
+    loadMap('groups');
+</script>
+{# End map view -#}
 
-  {% else %}
-    <div></div>
+{% else %}
+<div></div>
 {% endmatch %}

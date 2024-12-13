@@ -9,18 +9,13 @@
     <section>
       <div class="relative z-10 max-w-screen-xl pb-10 md:pb-20">
         {# Community title -#}
-        <h1
-          class="text-center mb-8 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl"
-        >
-          {{community.title }}
+        <h1 class="text-center mb-8 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+          {{ community.title }}
         </h1>
         {# End community title -#}
 
         {# Community description -#}
-        <div
-          id=""
-          class="mb-8 font-normal text-gray-600 jumbotron-description"
-        >
+        <div id="" class="mb-8 font-normal text-gray-600 jumbotron-description">
           {{ community.description|safe }}
         </div>
         {# End community description -#}
@@ -29,17 +24,22 @@
         <div>
           {% call common::search_bar("Search groups and events", "", "w-[100%] lg:w-[50%]", "mb-6", false) %}
           <script type="module">
-            import { loadExplorePage } from '/static/js/community/home/home.js';
-            import { cleanInputField, searchOnEnter } from '/static/js/community/explore/filters.js';
+              import {
+                  loadExplorePage
+              } from '/static/js/community/home/home.js';
+              import {
+                  cleanInputField,
+                  searchOnEnter
+              } from '/static/js/community/explore/filters.js';
 
-            const searchHomeBtn = document.querySelector('#search-btn');
-            searchHomeBtn.addEventListener('click', loadExplorePage);
+              const searchHomeBtn = document.querySelector('#search-btn');
+              searchHomeBtn.addEventListener('click', loadExplorePage);
 
-            const searchInput = document.querySelector('#ts_query');
-            searchInput.addEventListener('keydown', () => searchOnEnter(event));
+              const searchInput = document.querySelector('#ts_query');
+              searchInput.addEventListener('keydown', () => searchOnEnter(event));
 
-            const cleanSearch = document.querySelector('#clean-search');
-            cleanSearch.addEventListener('click', () => cleanInputField('ts_query'));
+              const cleanSearch = document.querySelector('#clean-search');
+              cleanSearch.addEventListener('click', () => cleanInputField('ts_query'));
           </script>
         </div>
         {# End search bar -#}
@@ -48,11 +48,12 @@
       </div>
 
       {# Jumbotron background image -#}
-      <div class="absolute bottom-[-82px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] sm:w-[520px] md:w-[600px] lg:w-[710px] xl:w-[760px] sm:bottom-[-105px] md:bottom-[-120px] lg:bottom-[-145px] xl:bottom-[-155px]"></div>
+      <div class="absolute bottom-[-82px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain bg-[url('https://www.cncf.io/wp-content/uploads/2024/03/phippy-family-2.png')] sm:w-[520px] md:w-[600px] lg:w-[710px] xl:w-[760px] sm:bottom-[-105px] md:bottom-[-120px] lg:bottom-[-145px] xl:bottom-[-155px]">
+      </div>
       {# End jumbotron background image -#}
     </section>
   </div>
-{# End jumbotron -#}
+  {# End jumbotron -#}
 {% endblock %}
 
 {% block content %}
@@ -74,17 +75,22 @@
       {# Banner -#}
       {% if let Some(ad_banner_url) = community.ad_banner_url %}
         <div class="hidden pb-16 md:flex">
-          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}<a rel="noopener noreferrer" href="{{ ad_banner_link_url }}" target="_blank" aria-label="Open external link">{% endif %}
+          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
+            <a rel="noopener noreferrer"
+               href="{{ ad_banner_link_url }}"
+               target="_blank"
+               aria-label="Open external link">
+            {% endif %}
             <div class="mx-auto my-8 border-4 border-gray-100 w-[75%]">
               <img class="h-auto max-w-[100%]" src="{{ ad_banner_url }}" title="Banner">
             </div>
-          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}</a>{% endif %}
+            {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}</a>{% endif %}
         </div>
       {% endif %}
       {# End banner -#}
 
       {# Recently added groups -#}
-        {% call groups_list("Recently added groups", "/explore?entity=groups", recently_added_groups) %}
+      {% call groups_list("Recently added groups", "/explore?entity=groups", recently_added_groups) %}
       {# End recentry added groups -#}
     </div>
   </div>
@@ -100,9 +106,7 @@
   <div class="my-5 pb-5 sm:my-8">
     <div class="flex items-center justify-between mb-6">
       {# Title -#}
-      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
-        {{ title }}
-      </div>
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
       {# End title -#}
 
       {# See all events on desktop -#}
@@ -114,9 +118,7 @@
     <div class="my-10">
       {# Cards list -#}
       <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
-        {% for event in events %}
-          {{ event|safe }}
-        {% endfor %}
+        {% for event in events %}{{ event|safe }}{% endfor %}
       </div>
       {# End cards list -#}
 
@@ -132,25 +134,21 @@
 
 {# Groups list -#}
 {% macro groups_list(title, link, groups) %}
-<div class="flex items-center justify-between mb-6">
-  <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
-    {{ title }}
+  <div class="flex items-center justify-between mb-6">
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
+    <div class="hidden justify-self-end lg:flex">
+      {% call common::secondary_link("See all groups", link, "ms-4", false) %}
+    </div>
   </div>
-  <div class="hidden justify-self-end lg:flex">
-    {% call common::secondary_link("See all groups", link, "ms-4", false) %}
+  <div class="my-10">
+    {# Groups cards -#}
+    <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
+      {% for group in groups %}{{ group|safe }}{% endfor %}
+    </div>
+    {# End groups cards -#}
+    <div class="block mt-10 lg:hidden lg:mt-0">
+      {% call common::secondary_link("See all groups", link, "", false) %}
+    </div>
   </div>
-</div>
-<div class="my-10">
-  {# Groups cards -#}
-  <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
-    {% for group in groups %}
-      {{ group|safe }}
-    {% endfor %}
-  </div>
-  {# End groups cards -#}
-  <div class="block mt-10 lg:hidden lg:mt-0">
-    {% call common::secondary_link("See all groups", link, "", false) %}
-  </div>
-</div>
 {% endmacro %}
 {# End groups list -#}

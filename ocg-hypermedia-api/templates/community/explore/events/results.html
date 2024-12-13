@@ -3,87 +3,100 @@
 {% set view_mode = self.view_mode.clone().unwrap_or_default() %}
 
 {% match view_mode %}
-  {% when ViewMode::Calendar %}
-    {# Calendar view -#}
-    <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
-      <div class="flex justify-between items-center mb-5 h-16">
-        <div id="calendar-date" class="text-xl font-semibold text-gray-700 md:text-2xl lg:text-[2rem]"></div>
-        <div class="flex">
-          {# Today button -#}
-          {% call common::secondary_mini_button("Today", "current-month-btn", "") %}
+{% when ViewMode::Calendar %}
+{# Calendar view -#}
+<div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
+  <div class="flex justify-between items-center mb-5 h-16">
+    <div id="calendar-date"
+         class="text-xl font-semibold text-gray-700 md:text-2xl lg:text-[2rem]"></div>
+    <div class="flex">
+      {# Today button -#}
+      {% call common::secondary_mini_button("Today", "current-month-btn", "") %}
 
-          {# Next/Prev buttons -#}
-          <div class="inline-flex ml-4" role="group">
-            <button id="prev-month-btn" type="button" class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
-              <div class="svg-icon h-5 w-5 bg-primary-500 group-hover:bg-white" style="mask-image: url('/static/images/icons/arrow_left.svg'); -webkit-mask-image: url('/static/images/icons/arrow_left.svg');"></div>
-            </button>
-            <button id="next-month-btn" type="button" class="group cursor-pointer inline-flex items-center -ml-[1px] pl-4 pr-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
-              <div class="svg-icon h-5 w-5 bg-primary-500 group-hover:bg-white" style="mask-image: url('/static/images/icons/arrow_right.svg'); -webkit-mask-image: url('/static/images/icons/arrow_right.svg');"></div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div id="calendar-box" class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
-    </div>
-    <script type="module">
-      import { Calendar } from '/static/js/community/explore/calendar.js';
-
-      const calendar = new Calendar();
-
-      const currentMonthBtn = document.querySelector('#current-month-btn');
-      currentMonthBtn.addEventListener('click', () => calendar.currentMonth());
-
-      const prevMonthBtn = document.querySelector('#prev-month-btn');
-      prevMonthBtn.addEventListener('click', () => calendar.previousMonth());
-
-      const nextMonthBtn = document.querySelector('#next-month-btn');
-      nextMonthBtn.addEventListener('click', () => calendar.nextMonth());
-    </script>
-    {# End calendar view -#}
-
-  {% when ViewMode::List %}
-    {# List view -#}
-    <div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7 {% if events.len() > 0 %}border-b{% endif %}">
-      {# Placeholder cards -#}
-      {% if events.len() == 0 %}
-        {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
-      {% endif %}
-      {# End placeholder cards -#}
-
-      {# Cards -#}
-      {% for event in events %}
-        {{ event|safe }}
-      {% endfor %}
-      {# End cards -#}
-    </div>
-
-    {# Pagination -#}
-    {% if events.len() > 0 %}
-      {{ navigation_links|safe }}
-    {% endif %}
-    {# End pagination -#}
-
-    <script type="module">
-      import { updateResults } from '/static/js/community/explore/explore.js';
-
-      updateResults('{% call common::current_page(total, events.len(), offset) %}');
-    </script>
-    {# End list view -#}
-
-  {% when ViewMode::Map %}
-    {# Map view -#}
-    <div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
-      <div class="relative w-full border h-[600px] md:h-[820px]">
-        <div id="map-box" class="w-full h-full"></div>
+      {# Next/Prev buttons -#}
+      <div class="inline-flex ml-4" role="group">
+        <button id="prev-month-btn"
+                type="button"
+                class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+          <div class="svg-icon h-5 w-5 bg-primary-500 group-hover:bg-white"
+               style="mask-image: url('/static/images/icons/arrow_left.svg');
+                      -webkit-mask-image: url('/static/images/icons/arrow_left.svg')"></div>
+        </button>
+        <button id="next-month-btn"
+                type="button"
+                class="group cursor-pointer inline-flex items-center -ml-[1px] pl-4 pr-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
+          <div class="svg-icon h-5 w-5 bg-primary-500 group-hover:bg-white"
+               style="mask-image: url('/static/images/icons/arrow_right.svg');
+                      -webkit-mask-image: url('/static/images/icons/arrow_right.svg')"></div>
+        </button>
       </div>
     </div>
+  </div>
 
-    <script type="module">
-      import { loadMap } from '/static/js/community/explore/map.js';
+  <div id="calendar-box"
+       class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
+</div>
+<script type="module">
+    import {
+        Calendar
+    } from '/static/js/community/explore/calendar.js';
 
-      loadMap('events');
-    </script>
-    {# End map view -#}
+    const calendar = new Calendar();
+
+    const currentMonthBtn = document.querySelector('#current-month-btn');
+    currentMonthBtn.addEventListener('click', () => calendar.currentMonth());
+
+    const prevMonthBtn = document.querySelector('#prev-month-btn');
+    prevMonthBtn.addEventListener('click', () => calendar.previousMonth());
+
+    const nextMonthBtn = document.querySelector('#next-month-btn');
+    nextMonthBtn.addEventListener('click', () => calendar.nextMonth());
+</script>
+{# End calendar view -#}
+
+{% when ViewMode::List %}
+{# List view -#}
+<div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7
+            {% if events.len() > 0 %}border-b{% endif %}">
+  {# Placeholder cards -#}
+  {% if events.len() == 0 %}
+    {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
+  {% endif %}
+  {# End placeholder cards -#}
+
+  {# Cards -#}
+  {% for event in events %}{{ event|safe }}{% endfor %}
+  {# End cards -#}
+</div>
+
+{# Pagination -#}
+{% if events.len() > 0 %}{{ navigation_links|safe }}{% endif %}
+{# End pagination -#}
+
+<script type="module">
+    import {
+        updateResults
+    } from '/static/js/community/explore/explore.js';
+
+    updateResults('{% call common::current_page(total, events.len(), offset) %}');
+</script>
+{# End list view -#}
+
+{% when ViewMode::Map %}
+{# Map view -#}
+<div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
+  <div class="relative w-full border h-[600px] md:h-[820px]">
+    <div id="map-box" class="w-full h-full"></div>
+  </div>
+</div>
+
+<script type="module">
+    import {
+        loadMap
+    } from '/static/js/community/explore/map.js';
+
+    loadMap('events');
+</script>
+{# End map view -#}
 
 {% endmatch %}

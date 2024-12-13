@@ -1,18 +1,14 @@
 {# Footer -#}
-<footer
-  class="flex-none bg-gray-950 text-center text-white text-surface/75 lg:text-left"
->
+<footer class="flex-none bg-gray-950 text-center text-white text-surface/75 lg:text-left">
   <div class="px-8 py-6 lg:px-16 lg:py-12">
     <div class="pb-10 text-center md:text-left">
       <div class="flex flex-col justify-between md:flex-row">
         {# Footer logo -#}
         {% if let Some(footer_logo_url) = self.community.footer_logo_url %}
           <div>
-            <img
-              class="h-12 w-50 mx-auto md:mx-0"
-              src="{{ footer_logo_url }}"
-              alt="Logo"
-            />
+            <img class="h-12 w-50 mx-auto md:mx-0"
+                 src="{{ footer_logo_url }}"
+                 alt="Logo" />
           </div>
         {% endif %}
         {# End footer logo -#}
@@ -39,15 +35,13 @@
       <div class="pb-8 pt-2 text-sm md:text-base">
         {% for (name, url) in extra_links %}
           {# Extra link -#}
-          {% if !loop.first %}<span class="px-2 text-gray-300 md:px-3">·</span>{% endif -%}
-          <a
-            href="{{ url }}"
-            class="tracking-wider text-sm text-white hover:text-primary-500"
-            target='{% if url.starts_with("/") %}_self{% else %}_blank{% endif %}'
-            rel="noopener noreferrer"
-          >
-            {{ name }}
-          </a>
+          {% if !loop.first %}
+            <span class="px-2 text-gray-300 md:px-3">·</span>
+          {% endif -%}
+          <a href="{{ url }}"
+             class="tracking-wider text-sm text-white hover:text-primary-500"
+             target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
+             rel="noopener noreferrer">{{ name }}</a>
           {# End extra link -#}
         {% endfor %}
       </div>
@@ -57,11 +51,14 @@
     {# Copyright section -#}
     <div class="pt-8 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice %}
-        <div class="mb-4 copyright">
-          {{ copyright_notice|safe }}
-        </div>
+        <div class="mb-4 copyright">{{ copyright_notice|safe }}</div>
       {% endif %}
-      <p>Powered by <a href="https://github.com/cncf/open-community-groups" class="font-bold text-white" target="_blank" rel="noopener noreferrer">CNCF Open Community Groups</a>.</p>
+      <p>
+        Powered by <a href="https://github.com/cncf/open-community-groups"
+    class="font-bold text-white"
+    target="_blank"
+    rel="noopener noreferrer">CNCF Open Community Groups</a>.
+      </p>
     </div>
     {# End copyright section -#}
   </div>
@@ -71,35 +68,53 @@
 {# Icon link -#}
 {% macro social_icon_link(kind, url) %}
   {% if let Some(url) = url %}
-    <a
-      href="{{ url }}"
-      class="ms-0 md:ms-6 content-center"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a href="{{ url }}"
+       class="ms-0 md:ms-6 content-center"
+       target="_blank"
+       rel="noopener noreferrer">
       {% match kind %}
-        {% when "twitter" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/twitter.svg'); -webkit-mask-image: url('/static/images/icons/twitter.svg');"></div>
-        {% when "github" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/github.svg'); -webkit-mask-image: url('/static/images/icons/github.svg');"></div>
-        {% when "linkedin" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/linkedin.svg'); -webkit-mask-image: url('/static/images/icons/linkedin.svg');"></div>
-        {% when "instagram" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/instagram.svg'); -webkit-mask-image: url('/static/images/icons/instagram.svg');"></div>
-        {% when "wechat" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/wechat.svg'); -webkit-mask-image: url('/static/images/icons/wechat.svg');"></div>
-        {% when "youtube" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/youtube.svg'); -webkit-mask-image: url('/static/images/icons/youtube.svg');"></div>
-        {% when "flickr" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/flickr.svg'); -webkit-mask-image: url('/static/images/icons/flickr.svg');"></div>
-        {% when "facebook" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/facebook.svg'); -webkit-mask-image: url('/static/images/icons/facebook.svg');"></div>
-        {% when "slack" %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/slack.svg'); -webkit-mask-image: url('/static/images/icons/slack.svg');"></div>
-        {% else %}
-          <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500" style="mask-image: url('/static/images/icons/link.svg'); -webkit-mask-image: url('/static/images/icons/link.svg');"></div>
-      {% endmatch %}
-    </a>
-  {% endif %}
+      {% when "twitter" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/twitter.svg');
+                  -webkit-mask-image: url('/static/images/icons/twitter.svg')"></div>
+      {% when "github" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/github.svg');
+                  -webkit-mask-image: url('/static/images/icons/github.svg')"></div>
+      {% when "linkedin" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/linkedin.svg');
+                  -webkit-mask-image: url('/static/images/icons/linkedin.svg')"></div>
+      {% when "instagram" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/instagram.svg');
+                  -webkit-mask-image: url('/static/images/icons/instagram.svg')"></div>
+      {% when "wechat" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/wechat.svg');
+                  -webkit-mask-image: url('/static/images/icons/wechat.svg')"></div>
+      {% when "youtube" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/youtube.svg');
+                  -webkit-mask-image: url('/static/images/icons/youtube.svg')"></div>
+      {% when "flickr" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/flickr.svg');
+                  -webkit-mask-image: url('/static/images/icons/flickr.svg')"></div>
+      {% when "facebook" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/facebook.svg');
+                  -webkit-mask-image: url('/static/images/icons/facebook.svg')"></div>
+      {% when "slack" %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/slack.svg');
+                  -webkit-mask-image: url('/static/images/icons/slack.svg')"></div>
+      {% when _ %}
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500"
+           style="mask-image: url('/static/images/icons/link.svg');
+                  -webkit-mask-image: url('/static/images/icons/link.svg')"></div>
+    {% endmatch %}
+  </a>
+{% endif %}
 {% endmacro %}
 {# End icon link -#}

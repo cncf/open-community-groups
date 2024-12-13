@@ -18,16 +18,16 @@
           {# End event group -#}
 
           {# Event name -#}
-          <div class="text-sm line-clamp-2 font-semibold md:mt-1 md:text-normal md:line-clamp-1">{{ name|demoji }}</div>
+          <div class="text-sm line-clamp-2 font-semibold md:mt-1 md:text-normal md:line-clamp-1">
+            {{ name|demoji }}
+          </div>
           {# End event name -#}
         </div>
 
         {# Event description on desktop -#}
         {% if let Some(description_short) = description_short %}
           <div class="hidden h-[36px] md:my-2 md:block">
-            <p class="text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2">
-              {{ description_short|demoji }}
-            </p>
+            <p class="text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2">{{ description_short|demoji }}</p>
           </div>
         {% endif %}
         {# End event description on desktop -#}
@@ -35,10 +35,14 @@
         <div class="hidden md:block">
           {# Event location -#}
           <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[32px]">
-            <img class="-mt-[2px] w-3 h-3 me-2" src="/static/images/icons/location.svg" alt="Location icon" />
+            <img class="-mt-[2px] w-3 h-3 me-2"
+                 src="/static/images/icons/location.svg"
+                 alt="Location icon" />
             {% if kind != EventKind::Virtual %}
               {% if let Some(location) = self.location(36) %}
-                <div class="hidden truncate me-3 text-gray-700 text-xs uppercase xl:block">{{ self.location(57).expect("location to exist") }}</div>
+                <div class="hidden truncate me-3 text-gray-700 text-xs uppercase xl:block">
+                  {{ self.location(57).expect("location to exist") }}
+                </div>
                 <div class="block truncate me-3 text-gray-700 text-xs uppercase xl:hidden">{{ location }}</div>
               {% endif %}
             {% endif %}
@@ -50,7 +54,9 @@
           <div class="flex items-center pt-1">
             {% if let Some(starts_at) = starts_at %}
               <div class="flex flex-row items-center leading-4">
-                <img class="-mt-[2px] w-3 h-3 me-2" src="/static/images/icons/date.svg" alt="Date icon" />
+                <img class="-mt-[2px] w-3 h-3 me-2"
+                     src="/static/images/icons/date.svg"
+                     alt="Date icon" />
                 <span class="truncate text-gray-700 text-xs uppercase">{{ starts_at.with_timezone(timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}</span>
               </div>
             {% endif %}
@@ -68,7 +74,9 @@
   <div class="block md:hidden">
     {# Event location -#}
     <div class="flex flex-row items-center mt-3 h-[21px]">
-      <img class="-mt-[2px] w-3 h-3 me-2" src="/static/images/icons/location.svg" alt="Location icon" />
+      <img class="-mt-[2px] w-3 h-3 me-2"
+           src="/static/images/icons/location.svg"
+           alt="Location icon" />
       {% if kind != EventKind::Virtual %}
         {% if let Some(location) = self.location(25) %}
           <div class="truncate me-3 text-gray-700 text-xs uppercase">{{ location }}</div>
@@ -82,7 +90,9 @@
     <div class="flex items-center pt-1">
       {% if let Some(starts_at) = starts_at %}
         <div class="flex flex-row items-center leading-4">
-          <img class="-mt-[2px] w-3 h-3 me-2" src="/static/images/icons/date.svg" alt="Date icon" />
+          <img class="-mt-[2px] w-3 h-3 me-2"
+               src="/static/images/icons/date.svg"
+               alt="Date icon" />
           <span class="truncate text-gray-700 text-xs uppercase">{{ starts_at.with_timezone(timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}</span>
         </div>
       {% endif %}
@@ -96,9 +106,7 @@
   {# Description -#}
   {% if let Some(description_short) = description_short %}
     <div class="block md:hidden">
-      <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">
-        {{ description_short|demoji }}
-      </p>
+      <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>
     </div>
   {% endif %}
   {# End description -#}

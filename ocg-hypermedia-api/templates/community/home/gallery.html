@@ -5,16 +5,16 @@
       <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div class="mb-12">
           {# Title -#}
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">
-            Gallery
-          </div>
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Gallery</div>
           {# End title -#}
         </div>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-8">
           {# Photos list -#}
           {% for photo in photos_urls %}
             <button class="photo-gallery" data-photo-index="{{ loop.index }}">
-              <img class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300" src="{{ photo }}" alt="Community {{ community.display_name }}">
+              <img class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
+                   src="{{ photo }}"
+                   alt="Community {{ community.display_name }}">
             </button>
           {% endfor %}
           {# End photos list -#}
@@ -24,15 +24,20 @@
     {# End gallery -#}
 
     {# Modal full page -#}
-    <div id="modal-gallery" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center" data-modal="">
+    <div id="modal-gallery"
+         class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center"
+         data-modal="">
       {# Modal overlay -#}
       <div class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
       {# End modal overlay -#}
 
       <div class="modal-container fixed w-full h-full z-50 overflow-y-auto">
         {# Close button -#}
-        <button id="close-gallery-btn" class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full hover:bg-gray-300/30">
-          <div class="svg-icon h-8 w-8 bg-gray-100" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
+        <button id="close-gallery-btn"
+                class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full hover:bg-gray-300/30">
+          <div class="svg-icon h-8 w-8 bg-gray-100"
+               style="mask-image: url('/static/images/icons/close.svg');
+                      -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
         </button>
         {# End close button -#}
 
@@ -48,8 +53,18 @@
             {# Gallery -#}
             <div id="gallery" class="relative w-full h-full overflow-hidden">
               {% for photo in photos_urls %}
-                <div class="duration-700 ease-in-out absolute inset-0 transition-transform transform z-30 {% if !loop.first %}hidden z-10 translate-x-full{% else %}translate-x-0{% endif %}" data-carousel-item="{% if loop.first %}active{% endif %}">
-                  <img src="{{ photo }}" class="bg-white rounded-lg border border-8 border-white absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2" alt="Community {{ community.display_name }}">
+                <div class="duration-700 ease-in-out absolute inset-0 transition-transform transform z-30
+                            {% if !loop.first %}
+                              hidden z-10 translate-x-full
+                            {% else %}
+                              translate-x-0
+                            {% endif %}"
+                     data-carousel-item="{% if loop.first %}
+                                           active
+                                         {% endif %}">
+                  <img src="{{ photo }}"
+                       class="bg-white rounded-lg border border-8 border-white absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
+                       alt="Community {{ community.display_name }}">
                 </div>
               {% endfor %}
             </div>
@@ -61,16 +76,22 @@
           <div class="flex">
             <div class="absolute top-0 start-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
               {# Prev button -#}
-              <button id="prev-gallery-btn" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none">
-                <div class="svg-icon h-4 w-2.5 bg-white" style="mask-image: url('/static/images/icons/prev.svg'); -webkit-mask-image: url('/static/images/icons/prev.svg');"></div>
+              <button id="prev-gallery-btn"
+                      class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none">
+                <div class="svg-icon h-4 w-2.5 bg-white"
+                     style="mask-image: url('/static/images/icons/prev.svg');
+                            -webkit-mask-image: url('/static/images/icons/prev.svg')"></div>
                 <span class="sr-only">Previous</span>
               </button>
               {# End prev button -#}
             </div>
             <div class="absolute top-0 end-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
               {# Next button -#}
-              <button id="next-gallery-btn" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none">
-                <div class="svg-icon h-4 w-2.5 bg-white" style="mask-image: url('/static/images/icons/next.svg'); -webkit-mask-image: url('/static/images/icons/next.svg');"></div>
+              <button id="next-gallery-btn"
+                      class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none">
+                <div class="svg-icon h-4 w-2.5 bg-white"
+                     style="mask-image: url('/static/images/icons/next.svg');
+                            -webkit-mask-image: url('/static/images/icons/next.svg')"></div>
                 <span class="sr-only">Next</span>
               </button>
               {# End next button -#}
@@ -83,22 +104,26 @@
     {# End modal full page -#}
 
     <script type="module">
-      import { openModal, closeModal, navigateCarousel } from '/static/js/community/home/gallery.js';
+        import {
+            openModal,
+            closeModal,
+            navigateCarousel
+        } from '/static/js/community/home/gallery.js';
 
-      const photos = document.querySelectorAll('.photo-gallery');
-      photos.forEach((photo) => {
-        const index = photo.dataset.photoIndex;
-        photo.addEventListener('click', () => openModal('modal-gallery', index));
-      });
+        const photos = document.querySelectorAll('.photo-gallery');
+        photos.forEach((photo) => {
+            const index = photo.dataset.photoIndex;
+            photo.addEventListener('click', () => openModal('modal-gallery', index));
+        });
 
-      const closeGalleryBtn = document.querySelector('#close-gallery-btn');
-      closeGalleryBtn.addEventListener('click', () => closeModal('modal-gallery'));
+        const closeGalleryBtn = document.querySelector('#close-gallery-btn');
+        closeGalleryBtn.addEventListener('click', () => closeModal('modal-gallery'));
 
-      const prevGalleryBtn = document.querySelector('#prev-gallery-btn');
-      prevGalleryBtn.addEventListener('click', () => navigateCarousel('prev'));
+        const prevGalleryBtn = document.querySelector('#prev-gallery-btn');
+        prevGalleryBtn.addEventListener('click', () => navigateCarousel('prev'));
 
-      const nextGalleryBtn = document.querySelector('#next-gallery-btn');
-      nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
+        const nextGalleryBtn = document.querySelector('#next-gallery-btn');
+        nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
     </script>
   {% endif %}
 {% endif %}

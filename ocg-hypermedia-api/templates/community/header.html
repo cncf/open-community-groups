@@ -1,4 +1,4 @@
- {% import "common.html" as common %}
+{% import "common.html" as common %}
 
 {# Header -#}
 <header id="header">
@@ -8,21 +8,23 @@
     <div class="flex lg:flex-1">
       {% if path != "/" %}<a href="/">{% endif %}
         <div class="-m-1.5 p-1.5">
-          <img
-            class="h-10 w-50"
-            src="{{ self.community.header_logo_url }}"
-            alt="Logo"
-          />
+          <img class="h-10 w-50"
+               src="{{ self.community.header_logo_url }}"
+               alt="Logo" />
         </div>
-      {% if path != "/" %}</a>{% endif %}
+        {% if path != "/" %}</a>{% endif %}
     </div>
     {# End logo -#}
 
     {# Mobile menu button -#}
     <div class="flex lg:hidden">
-      <button id="open-navbar-mobile" type="button" class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5">
+      <button id="open-navbar-mobile"
+              type="button"
+              class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5">
         <span class="sr-only">Open main menu</span>
-        <div class="svg-icon h-6 w-6 bg-gray-700" style="mask-image: url('/static/images/icons/lines.svg'); -webkit-mask-image: url('/static/images/icons/lines.svg');"></div>
+        <div class="svg-icon h-6 w-6 bg-gray-700"
+             style="mask-image: url('/static/images/icons/lines.svg');
+                    -webkit-mask-image: url('/static/images/icons/lines.svg')"></div>
       </button>
     </div>
     {# End mobile menu button -#}
@@ -34,10 +36,12 @@
       {% if let Some(new_group_details) = self.community.new_group_details %}
         {% call button("New group", "open-new-group-btn", "") %}
         <script type="module">
-          import { toggleModalVisibility } from '/static/js/common/common.js';
+            import {
+                toggleModalVisibility
+            } from '/static/js/common/common.js';
 
-          const openNewGroupBtn = document.querySelector('#open-new-group-btn');
-          openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+            const openNewGroupBtn = document.querySelector('#open-new-group-btn');
+            openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
         </script>
       {% endif %}
     </div>
@@ -53,14 +57,21 @@
   {# End navigation bar -#}
 
   {# Mobile menu -#}
-  <div class="hidden lg:hidden" role="dialog" aria-modal="true" id="navbar-mobile">
+  <div class="hidden lg:hidden"
+       role="dialog"
+       aria-modal="true"
+       id="navbar-mobile">
     <div class="hidden fixed inset-0 z-20" id="backdrop-backdrop"></div>
     <div class="fixed inset-y-0 right-0 z-20 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
       <div class="flex items-center justify-between">
         {# Close menu button -#}
-        <button id="close-navbar-mobile" type="button" class="-m-2.5 rounded-md p-2.5">
+        <button id="close-navbar-mobile"
+                type="button"
+                class="-m-2.5 rounded-md p-2.5">
           <span class="sr-only">Close menu</span>
-          <div class="svg-icon h-6 w-6 bg-gray-700" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
+          <div class="svg-icon h-6 w-6 bg-gray-700"
+               style="mask-image: url('/static/images/icons/close.svg');
+                      -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
         </button>
         {# End close menu button -#}
       </div>
@@ -72,10 +83,12 @@
             {% call mobile_link("Explore", "/explore", "") %}
             {% call mobile_button("New group", "open-new-group-mobile-btn", "") %}
             <script type="module">
-              import { toggleModalVisibility } from '/static/js/common/common.js';
+                import {
+                    toggleModalVisibility
+                } from '/static/js/common/common.js';
 
-              const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
-              openNewGroupMobileBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+                const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
+                openNewGroupMobileBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
             </script>
           </div>
           {# End mobile links -#}
@@ -95,32 +108,40 @@
 {# End header -#}
 
 <script type="module">
-  import { toggleMobileNavbarVisibility } from '/static/js/common/common.js';
+    import {
+        toggleMobileNavbarVisibility
+    } from '/static/js/common/common.js';
 
-  const openNavbarMobile = document.querySelector('#open-navbar-mobile');
-  openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
+    const openNavbarMobile = document.querySelector('#open-navbar-mobile');
+    openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
 
-  const closeNavbarMobileBTn = document.querySelector('#close-navbar-mobile');
-  closeNavbarMobileBTn.addEventListener('click', toggleMobileNavbarVisibility);
+    const closeNavbarMobileBTn = document.querySelector('#close-navbar-mobile');
+    closeNavbarMobileBTn.addEventListener('click', toggleMobileNavbarVisibility);
 </script>
 
 {# New group modal -#}
 {% if let Some(new_group_details) = self.community.new_group_details %}
-  <div id="new-group-modal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
-    <div id="backdrop-new-group-modal" class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
+  <div id="new-group-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
+    <div id="backdrop-new-group-modal"
+         class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
     <div class="relative p-4 w-full max-w-2xl max-h-full">
       <div class="relative bg-white rounded-lg shadow">
         {# Modal header -#}
         <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
           {# Title -#}
-          <h3 class="text-xl font-semibold text-gray-900">
-            New group
-          </h3>
+          <h3 class="text-xl font-semibold text-gray-900">New group</h3>
           {# End title -#}
 
           {# Close button -#}
-          <button id="close-new-group-modal" type="button" class="group bg-transparent hover:bg-gray-200 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-            <div class="svg-icon h-5 w-5 bg-gray-400 grouphover:bg-gray-900" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
+          <button id="close-new-group-modal"
+                  type="button"
+                  class="group bg-transparent hover:bg-gray-200 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-gray-400 grouphover:bg-gray-900"
+                 style="mask-image: url('/static/images/icons/close.svg');
+                        -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
             <span class="sr-only">Close modal</span>
           </button>
           {# End close button -#}
@@ -128,9 +149,7 @@
         {# End modal header -#}
 
         {# Modal content -#}
-        <div class="p-4 md:p-8">
-          {{ new_group_details|safe }}
-        </div>
+        <div class="p-4 md:p-8">{{ new_group_details|safe }}</div>
         {# End modal content -#}
 
         {# Modal footer -#}
@@ -142,34 +161,36 @@
     </div>
   </div>
   <script type="module">
-    import { toggleModalVisibility } from '/static/js/common/common.js';
+      import {
+          toggleModalVisibility
+      } from '/static/js/common/common.js';
 
-    const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
-    backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+      const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
+      backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
 
-    const closeNewGroupModal = document.querySelector('#close-new-group-modal');
-    closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+      const closeNewGroupModal = document.querySelector('#close-new-group-modal');
+      closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
   </script>
 {% endif %}
 {# End new group modal -#}
 
 {# Link -#}
 {% macro link(content, href, current_path, extra_styles) %}
-  <a
-    href="{{ href }}"
-    class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {% if current_path == href %}border-b-2{% else %}hover:border-b-2 hover:border-primary-300{% endif %} {{ extra_styles }}"
-  >
-    {{ content }}
-  </a>
+  <a href="{{ href }}"
+     class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase
+            {% if current_path == href %}
+              border-b-2
+            {% else %}
+              hover:border-b-2 hover:border-primary-300
+            {% endif %}
+            {{ extra_styles }}">{{ content }}</a>
 {% endmacro %}
 {# End link -#}
 
 {# Button -#}
 {% macro button(content, id, extra_styles) %}
-  <button
-    id="{{ id }}"
-    class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles }}"
-  >
+  <button id="{{ id }}"
+          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles }}">
     {{ content }}
   </button>
 {% endmacro %}
@@ -177,10 +198,8 @@
 
 {# Mobile link -#}
 {% macro mobile_link(content, href, extra_styles) %}
-  <a
-    href="{{ href }}"
-    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}"
-  >
+  <a href="{{ href }}"
+     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}">
     {{ content }}
   </a>
 {% endmacro %}
@@ -188,11 +207,9 @@
 
 {# Mobile button -#}
 {% macro mobile_button(content, id, extra_styles) %}
-  <button
-    id="{{ id }}"
-    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}"
-  >
+  <button id="{{ id }}"
+          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}">
     {{ content }}
-</button>
+  </button>
 {% endmacro %}
 {# End mobile button -#}

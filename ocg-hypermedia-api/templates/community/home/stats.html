@@ -1,7 +1,7 @@
 {# Stats -#}
 <div class="flex flex-col justify-around items-center border rounded-lg p-10 mt-8 sm:mt-16 sm:mb-6 md:flex-row">
   {# Group stats -#}
-   {% call stat_block("groups", "Groups", groups) %}
+  {% call stat_block("groups", "Groups", groups) %}
   {# End group stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
@@ -34,30 +34,40 @@
       {# Icon -#}
       <div>
         {% match kind %}
-          {% when "groups" %}
-            <div class="svg-icon h-12 w-12 bg-gray-400" style="mask-image: url('/static/images/icons/groups.svg'); -webkit-mask-image: url('/static/images/icons/groups.svg');"></div>
-          {% when "members" %}
-            <div class="svg-icon h-12 w-12 bg-gray-400" style="mask-image: url('/static/images/icons/members.svg'); -webkit-mask-image: url('/static/images/icons/members.svg');"></div>
-          {% when "events" %}
-            <div class="svg-icon h-12 w-12 bg-gray-400" style="mask-image: url('/static/images/icons/events.svg'); -webkit-mask-image: url('/static/images/icons/events.svg');"></div>
-          {% when "attendees" %}
-            <div class="svg-icon h-12 w-12 bg-gray-400" style="mask-image: url('/static/images/icons/attendees.svg'); -webkit-mask-image: url('/static/images/icons/attendees.svg');"></div>
-          {% else %}
-            <div class="svg-icon h-12 w-12 bg-gray-400" style="mask-image: url('/static/images/icons/charts.svg'); -webkit-mask-image: url('/static/images/icons/charts.svg');"></div>
-        {% endmatch %}
-      </div>
-      {# End icon -#}
+        {% when "groups" %}
+        <div class="svg-icon h-12 w-12 bg-gray-400"
+             style="mask-image: url('/static/images/icons/groups.svg');
+                    -webkit-mask-image: url('/static/images/icons/groups.svg')"></div>
+        {% when "members" %}
+        <div class="svg-icon h-12 w-12 bg-gray-400"
+             style="mask-image: url('/static/images/icons/members.svg');
+                    -webkit-mask-image: url('/static/images/icons/members.svg')"></div>
+        {% when "events" %}
+        <div class="svg-icon h-12 w-12 bg-gray-400"
+             style="mask-image: url('/static/images/icons/events.svg');
+                    -webkit-mask-image: url('/static/images/icons/events.svg')"></div>
+        {% when "attendees" %}
+        <div class="svg-icon h-12 w-12 bg-gray-400"
+             style="mask-image: url('/static/images/icons/attendees.svg');
+                    -webkit-mask-image: url('/static/images/icons/attendees.svg')"></div>
+        {% when _ %}
+        <div class="svg-icon h-12 w-12 bg-gray-400"
+             style="mask-image: url('/static/images/icons/charts.svg');
+                    -webkit-mask-image: url('/static/images/icons/charts.svg')"></div>
+      {% endmatch %}
+    </div>
+    {# End icon -#}
 
-      <div class="ms-5">
-        {# Title -#}
-        <div class="text-xs text-gray-500 font-medium uppercase">{{ title }}</div>
-        {# End title -#}
+    <div class="ms-5">
+      {# Title -#}
+      <div class="text-xs text-gray-500 font-medium uppercase">{{ title }}</div>
+      {# End title -#}
 
-        {# Value -#}
-        <div class="text-4xl font-semibold text-gray-900">{{ value|num_fmt }}</div>
-        {# End value -#}
-      </div>
+      {# Value -#}
+      <div class="text-4xl font-semibold text-gray-900">{{ value|num_fmt }}</div>
+      {# End value -#}
     </div>
   </div>
+</div>
 {% endmacro %}
 {# End stat block -#}
