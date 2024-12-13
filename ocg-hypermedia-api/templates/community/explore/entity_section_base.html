@@ -85,9 +85,9 @@
             {# List view -#}
             <li>
               <input type="radio" name="view_mode" id="list" value="list" class="hidden peer" {% if view_mode == ViewMode::List %}checked{% endif %}>
-              <label for="list" class="group w-[95px] relative inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+              <label for="list" class="group w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
                 <div class="svg-icon h-3 w-3 bg-gray-500 peer-checked:group-[]:bg-primary-500" style="mask-image: url('/static/images/icons/list.svg'); -webkit-mask-image: url('/static/images/icons/list.svg');"></div>
-                <div class="text-sm text-center text-nowrap ms-1">List</div>
+                <div class="text-[0.8rem] text-center text-nowrap ms-1">List</div>
               </label>
             </li>
             {# End list view -#}
@@ -96,9 +96,9 @@
             {% if results_section.entity() == Entity::Events %}
               <li>
                 <input type="radio" name="view_mode" id="calendar" value="calendar" class="hidden peer" {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
-                <label for="calendar" class="group w-[95px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+                <label for="calendar" class="group w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
                   <div class="svg-icon h-3 w-3 bg-gray-500 peer-checked:group-[]:bg-primary-500" style="mask-image: url('/static/images/icons/calendar.svg'); -webkit-mask-image: url('/static/images/icons/calendar.svg');"></div>
-                  <div class="text-sm text-center text-nowrap ms-1">Calendar</div>
+                  <div class="text-[0.8rem] text-center text-nowrap ms-1">Calendar</div>
                 </label>
               </li>
             {% endif %}
@@ -107,9 +107,9 @@
             {# Map view -#}
             <li>
               <input type="radio" name="view_mode" id="map" value="map" class="hidden peer" {% if view_mode == ViewMode::Map %}checked{% endif %}>
-              <label for="map" class="group w-[95px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
+              <label for="map" class="group w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
                 <div class="svg-icon h-3.5 w-3.5 bg-gray-500 peer-checked:group-[]:bg-primary-500" style="mask-image: url('/static/images/icons/map.svg'); -webkit-mask-image: url('/static/images/icons/map.svg');"></div>
-                <div class="text-sm text-center text-nowrap ms-1">Map</div>
+                <div class="text-[0.8rem] text-center text-nowrap ms-1">Map</div>
               </label>
             </li>
             {# End map view -#}
@@ -119,29 +119,31 @@
 
         {# Sort by -#}
         <div class="flex flex-1 flex-col items-start justify-end mb-3 sm:mb-0 xl:items-center xl:flex-row">
-          <label
-            for="sort_by"
-            class="font-semibold text-filterTitle text-black leading-6 me-3"
-            >Sort by</label
-          >
+          {% if view_mode == ViewMode::List %}
+            <label
+              for="sort_by"
+              class="font-semibold text-filterTitle text-black leading-6 me-3"
+              >Sort by</label
+            >
 
-          <select
-            id="sort_by"
-            name="sort_by"
-            class="block w-40 py-2 px-3 text-sm text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500"
-          >
-          {% if let Some(sort_by) = filters.sort_by %}
-            <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
-            {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-              <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
+            <select
+              id="sort_by"
+              name="sort_by"
+              class="block w-40 py-1 px-3 text-[0.8rem] leading-none h-[30px] text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500"
+            >
+            {% if let Some(sort_by) = filters.sort_by %}
+              <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
+              {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+                <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
+              {% endif %}
+            {% else %}
+              <option value="date" selected>Date</option>
+              {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+                <option value="distance">Distance</option>
+              {% endif %}
             {% endif %}
-          {% else %}
-            <option value="date" selected>Date</option>
-            {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-              <option value="distance">Distance</option>
-            {% endif %}
+            </select>
           {% endif %}
-          </select>
         </div>
         {# End sort by -#}
       </div>
