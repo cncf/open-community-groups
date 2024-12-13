@@ -206,7 +206,10 @@
     });
 
     const select = document.querySelector('#sort_by');
-    select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+    // Sort by is only available in list view
+    if (select) {
+      select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+    }
 
     const resetButtons = document.querySelectorAll('.reset-filters');
     resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
