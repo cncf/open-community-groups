@@ -147,7 +147,7 @@
 {# End current page -#}
 
 {# Logo -#}
-{% macro logo(logo_url, name, title, classes, size, color) %}
+{% macro logo(logo_url, name, classes, size, color) %}
   {% if let Some(logo_url) = logo_url %}
     <div
       class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
