@@ -23,15 +23,9 @@ use crate::{
 
 /// Default cache duration.
 #[cfg(debug_assertions)]
-pub(crate) const DEFAULT_CACHE_MAX_AGE: usize = 0; // No cache
+pub(crate) const DEFAULT_CACHE_DURATION: usize = 0; // No cache
 #[cfg(not(debug_assertions))]
-pub(crate) const DEFAULT_CACHE_MAX_AGE: usize = 60 * 15; // 15 minutes
-
-/// Static files cache duration.
-#[cfg(debug_assertions)]
-const STATIC_CACHE_MAX_AGE: usize = 0; // No cache
-#[cfg(not(debug_assertions))]
-const STATIC_CACHE_MAX_AGE: usize = 7 * 24 * 60 * 60; // 1 week
+pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 15; // 15 minutes
 
 /// Embed static files in the binary.
 #[derive(Embed)]
@@ -85,11 +79,22 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         path = path.replace("static/", "");
     }
 
+    // Set cache duration based on resource type
+    #[cfg(not(debug_assertions))]
+    let cache_max_age = if path.starts_with("images/") {
+        60 * 60 * 24 * 7 // 1 week
+    } else {
+        // Default cache duration for other static resources
+        60 * 60 // 1 hour
+    };
+    #[cfg(debug_assertions)]
+    let cache_max_age = 0;
+
     // Get file content and return it (if available)
     match StaticFile::get(path.as_str()) {
         Some(file) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
-            let cache = format!("max-age={STATIC_CACHE_MAX_AGE}");
+            let cache = format!("max-age={cache_max_age}");
             let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
             (headers, file.data).into_response()
         }

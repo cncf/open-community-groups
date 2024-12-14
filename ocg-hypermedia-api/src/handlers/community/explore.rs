@@ -15,7 +15,7 @@ use uuid::Uuid;
 use crate::{
     db::{DynDB, SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     handlers::{error::HandlerError, extractors::CommunityId},
-    router::DEFAULT_CACHE_MAX_AGE,
+    router::DEFAULT_CACHE_DURATION,
     templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
 };
 
@@ -176,7 +176,7 @@ pub(crate) async fn search_events(
     let json_data = serde_json::to_string(&search_events_output)?;
 
     // Prepare response headers
-    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_MAX_AGE}"))];
+    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_DURATION}"))];
 
     Ok((headers, json_data))
 }
@@ -198,7 +198,7 @@ pub(crate) async fn search_groups(
     let json_data = serde_json::to_string(&search_groups_output)?;
 
     // Prepare response headers
-    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_MAX_AGE}"))];
+    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_DURATION}"))];
 
     Ok((headers, json_data))
 }
