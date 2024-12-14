@@ -22,6 +22,9 @@ use crate::{
 };
 
 /// Static files cache duration.
+#[cfg(debug_assertions)]
+const STATIC_CACHE_MAX_AGE: usize = 0; // No cache
+#[cfg(not(debug_assertions))]
 const STATIC_CACHE_MAX_AGE: usize = 365 * 24 * 60 * 60; // 1 year
 
 /// Embed static files in the binary.
