@@ -21,11 +21,17 @@ use crate::{
     handlers::{community, event, group},
 };
 
+/// Default cache duration.
+#[cfg(debug_assertions)]
+pub(crate) const DEFAULT_CACHE_MAX_AGE: usize = 0; // No cache
+#[cfg(not(debug_assertions))]
+pub(crate) const DEFAULT_CACHE_MAX_AGE: usize = 60 * 15; // 15 minutes
+
 /// Static files cache duration.
 #[cfg(debug_assertions)]
 const STATIC_CACHE_MAX_AGE: usize = 0; // No cache
 #[cfg(not(debug_assertions))]
-const STATIC_CACHE_MAX_AGE: usize = 365 * 24 * 60 * 60; // 1 year
+const STATIC_CACHE_MAX_AGE: usize = 7 * 24 * 60 * 60; // 1 week
 
 /// Embed static files in the binary.
 #[derive(Embed)]

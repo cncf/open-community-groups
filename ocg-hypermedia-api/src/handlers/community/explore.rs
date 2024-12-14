@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use axum::{
     extract::{Query, RawQuery, State},
-    http::{HeaderMap, Uri},
+    http::{header::CACHE_CONTROL, HeaderMap, Uri},
     response::IntoResponse,
 };
 use tracing::instrument;
@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::{
     db::{DynDB, SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     handlers::{error::HandlerError, extractors::CommunityId},
+    router::DEFAULT_CACHE_MAX_AGE,
     templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
 };
 
@@ -166,6 +167,7 @@ pub(crate) async fn search_events(
     RawQuery(raw_query): RawQuery,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Search events
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let mut search_events_output = db.search_community_events(community_id, &filters).await?;
     for event in &mut search_events_output.events {
@@ -173,7 +175,10 @@ pub(crate) async fn search_events(
     }
     let json_data = serde_json::to_string(&search_events_output)?;
 
-    Ok(json_data)
+    // Prepare response headers
+    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_MAX_AGE}"))];
+
+    Ok((headers, json_data))
 }
 
 /// Handler that returns the groups search results.
@@ -184,6 +189,7 @@ pub(crate) async fn search_groups(
     RawQuery(raw_query): RawQuery,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Search groups
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let mut search_groups_output = db.search_community_groups(community_id, &filters).await?;
     for group in &mut search_groups_output.groups {
@@ -191,7 +197,10 @@ pub(crate) async fn search_groups(
     }
     let json_data = serde_json::to_string(&search_groups_output)?;
 
-    Ok(json_data)
+    // Prepare response headers
+    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_MAX_AGE}"))];
+
+    Ok((headers, json_data))
 }
 
 /// Prepare events section template.
