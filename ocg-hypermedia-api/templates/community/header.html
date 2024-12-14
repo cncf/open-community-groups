@@ -9,8 +9,8 @@
       {% if path != "/" %}<a href="/">{% endif %}
         <div class="-m-1.5 p-1.5">
           <img class="h-10 w-50"
-               height="208"
-               width="40"
+               width="208"
+               height="40"
                src="{{ self.community.header_logo_url }}"
                alt="Logo" />
         </div>
@@ -36,12 +36,12 @@
       {% if let Some(new_group_details) = self.community.new_group_details %}
         {% call button("New group", "open-new-group-btn", "") %}
         <script type="module">
-            import {
-                toggleModalVisibility
-            } from '/static/js/common/common.js';
+          import {
+            toggleModalVisibility
+          } from '/static/js/common/common.js';
 
-            const openNewGroupBtn = document.querySelector('#open-new-group-btn');
-            openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+          const openNewGroupBtn = document.querySelector('#open-new-group-btn');
+          openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
         </script>
       {% endif %}
     </div>
@@ -81,12 +81,12 @@
             {% call mobile_link("Explore", "/explore", "") %}
             {% call mobile_button("New group", "open-new-group-mobile-btn", "") %}
             <script type="module">
-                import {
-                    toggleModalVisibility
-                } from '/static/js/common/common.js';
+              import {
+                toggleModalVisibility
+              } from '/static/js/common/common.js';
 
-                const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
-                openNewGroupMobileBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+              const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
+              openNewGroupMobileBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
             </script>
           </div>
           {# End mobile links -#}
@@ -106,15 +106,15 @@
 {# End header -#}
 
 <script type="module">
-    import {
-        toggleMobileNavbarVisibility
-    } from '/static/js/common/common.js';
+  import {
+    toggleMobileNavbarVisibility
+  } from '/static/js/common/common.js';
 
-    const openNavbarMobile = document.querySelector('#open-navbar-mobile');
-    openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
+  const openNavbarMobile = document.querySelector('#open-navbar-mobile');
+  openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
 
-    const closeNavbarMobileBTn = document.querySelector('#close-navbar-mobile');
-    closeNavbarMobileBTn.addEventListener('click', toggleMobileNavbarVisibility);
+  const closeNavbarMobileBTn = document.querySelector('#close-navbar-mobile');
+  closeNavbarMobileBTn.addEventListener('click', toggleMobileNavbarVisibility);
 </script>
 
 {# New group modal -#}
@@ -157,15 +157,15 @@
     </div>
   </div>
   <script type="module">
-      import {
-          toggleModalVisibility
-      } from '/static/js/common/common.js';
+    import {
+      toggleModalVisibility
+    } from '/static/js/common/common.js';
 
-      const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
-      backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
+    backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
 
-      const closeNewGroupModal = document.querySelector('#close-new-group-modal');
-      closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    const closeNewGroupModal = document.querySelector('#close-new-group-modal');
+    closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
   </script>
 {% endif %}
 {# End new group modal -#}

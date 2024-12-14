@@ -1,7 +1,7 @@
 {% import "common.html" as common %}
 {% extends "community/base.html" %}
 
-{% block headerColor %}bg-gray-100{% endblock %}
+{% block header_color %}bg-gray-100{% endblock header_color %}
 
 {% block jumbotron %}
   {# Jumbotron -#}
@@ -52,7 +52,7 @@
     </section>
   </div>
   {# End jumbotron -#}
-{% endblock %}
+{% endblock jumbotron %}
 
 {% block content %}
   {# Main content -#}
@@ -102,7 +102,7 @@
   {# Gallery -#}
   {% include "community/home/gallery.html" %}
   {# End gallery -#}
-{% endblock %}
+{% endblock content %}
 
 {# Events list -#}
 {% macro events_list(title, link, events) %}

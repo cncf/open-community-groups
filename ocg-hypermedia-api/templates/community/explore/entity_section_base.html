@@ -17,7 +17,7 @@
   {# End close button -#}
 
   {# Filters content -#}
-  {% block filters %}{% endblock %}
+  {% block filters %}{% endblock filters %}
   {# End filters content -#}
 
   <div class="text-end p-5 border-t">
@@ -36,7 +36,7 @@
   {# Desktop filters -#}
   <div id="explore-filters"
        class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
-    {% block filters %}{% endblock %}
+    {% block filters %}{% endblock filters %}
   </div>
   {# End desktop filters -#}
 
@@ -56,7 +56,7 @@
         <div class="grow flex items-center justify-center">
           {# Searchbar -#}
           <div class="w-full">
-            {% block searchbar %}{% endblock %}
+            {% block search_bar %}{% endblock search_bar %}
           </div>
           {# End searchbar -#}
         </div>
@@ -67,7 +67,7 @@
           {% if view_mode == ViewMode::List %}
             <div id="results"
                  class="hidden mb-2.5 font-semibold text-sm text-black w-[175px] md:flex xl:mb-0">
-              {% block current_page %}{% endblock %}
+              {% block current_page %}{% endblock current_page %}
             </div>
           {% endif %}
         </div>
@@ -159,14 +159,14 @@
       {% if view_mode == ViewMode::List %}
         <div id="results-mobile"
              class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">
-          {% block results %}{% endblock %}
+          {% block results %}{% endblock results %}
         </div>
       {% endif %}
       {# End results mobile -#}
 
       {# Cards -#}
       <div id="cards-list" class="flex flex-col justify-between grow">
-        {% block content %}{% endblock %}
+        {% block content %}{% endblock content %}
       </div>
       {# End cards -#}
     </div>

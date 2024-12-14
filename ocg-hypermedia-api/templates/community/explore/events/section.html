@@ -3,15 +3,15 @@
 
 {% block filters %}
   {% include "community/explore/events/filters.html" %}
-{% endblock %}
+{% endblock filters %}
 
 {% block current_page %}
   {% if results_section.events.len() > 0 %}
     {% call common::current_page(results_section.total, results_section.events.len(), filters.offset) %}
   {% endif %}
-{% endblock %}
+{% endblock current_page %}
 
-{% block searchbar %}
+{% block search_bar %}
   {% set ts_query = filters.ts_query.clone().unwrap_or_default() %}
   {% call common::search_bar("Search events by name, location or tags", ts_query, "w-full md:w-3/4", "justify-center", true) %}
   <script type="module">
@@ -32,6 +32,6 @@
       const cleanSearch = document.querySelector('#clean-search');
       cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'events-form'));
   </script>
-{% endblock %}
+{% endblock search_bar %}
 
-{% block content %}{{ results_section|safe }}{% endblock %}
+{% block content %}{{ results_section|safe }}{% endblock content %}

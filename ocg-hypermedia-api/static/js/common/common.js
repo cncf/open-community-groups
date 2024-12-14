@@ -5,12 +5,6 @@ export const isScriptLoaded = (src) => {
     .includes(src);
 };
 
-// Overwrite primary color in CSS.
-export const overWritePrimaryColor = (color) => {
-  const r = document.querySelector(":root");
-  r.style.setProperty("--ocg-primary", color);
-};
-
 // Show loading spinner.
 export const showLoadingSpinner = () => {
   const content = document.getElementById("explore-content");

@@ -1,6 +1,4 @@
 :root {
-  --ocg-primary: #d62293;
-
   /* Full Calendar */
   --fc-small-font-size: .7em;
   --fc-event-bg-color: var(--ocg-primary);

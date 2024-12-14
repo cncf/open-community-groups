@@ -79,7 +79,7 @@
         </button>
       </div>
       <div class="absolute right-[6px] top-[5px]">
-        {% call secondary_button("search-btn", "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", "", true) %}
+        {% call secondary_button("search-btn", "<div class=\"svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass\"></div>", "", true) %}
       </div>
 
       {% if with_help %}
@@ -125,18 +125,18 @@
         {# End search tips modal -#}
 
         <script type="module">
-            import {
-                toggleModalVisibility
-            } from '/static/js/common/common.js';
+          import {
+            toggleModalVisibility
+          } from '/static/js/common/common.js';
 
-            const openSearchTipsModal = document.querySelector('#open-search-tips-modal');
-            openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          const openSearchTipsModal = document.querySelector('#open-search-tips-modal');
+          openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
 
-            const overlaySearchTips = document.querySelector('#overlay-search-tips');
-            overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          const overlaySearchTips = document.querySelector('#overlay-search-tips');
+          overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
 
-            const closeSearchTipsModal = document.querySelector('#close-search-tips-modal');
-            closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          const closeSearchTipsModal = document.querySelector('#close-search-tips-modal');
+          closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
         </script>
       {% endif %}
     </div>
@@ -170,9 +170,9 @@
 {# Logo -#}
 {% macro logo(logo_url, name, classes, size, color) %}
   {% if let Some(logo_url) = logo_url %}
+    {% set bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) %}
     <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
-         style='background-image: url({{ logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) }})'>
-    </div>
+         style="background-image: url('{{ bg_image }}')"></div>
   {% else %}
     <div class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}">
       {% if size > 100 %}
@@ -180,7 +180,7 @@
           <p class="w-full text-ellipsis overflow-hidden text-center">{{ name }}</p>
         </div>
       {% endif %}
-      <div class="absolute w-full h-full top-0 plaholder-logo"
+      <div class="absolute w-full h-full top-0 placeholder-logo"
            style="background-color: {{ color }}"></div>
     </div>
   {% endif %}
