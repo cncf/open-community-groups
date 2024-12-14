@@ -9,6 +9,8 @@
       {% if path != "/" %}<a href="/">{% endif %}
         <div class="-m-1.5 p-1.5">
           <img class="h-10 w-50"
+               height="208"
+               width="40"
                src="{{ self.community.header_logo_url }}"
                alt="Logo" />
         </div>
@@ -22,9 +24,7 @@
               type="button"
               class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5">
         <span class="sr-only">Open main menu</span>
-        <div class="svg-icon h-6 w-6 bg-gray-700"
-             style="mask-image: url('/static/images/icons/lines.svg');
-                    -webkit-mask-image: url('/static/images/icons/lines.svg')"></div>
+        <div class="svg-icon h-6 w-6 bg-gray-700 icon-lines"></div>
       </button>
     </div>
     {# End mobile menu button -#}
@@ -69,9 +69,7 @@
                 type="button"
                 class="-m-2.5 rounded-md p-2.5">
           <span class="sr-only">Close menu</span>
-          <div class="svg-icon h-6 w-6 bg-gray-700"
-               style="mask-image: url('/static/images/icons/close.svg');
-                      -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
+          <div class="svg-icon h-6 w-6 bg-gray-700 icon-close"></div>
         </button>
         {# End close menu button -#}
       </div>
@@ -139,9 +137,7 @@
           <button id="close-new-group-modal"
                   type="button"
                   class="group bg-transparent hover:bg-gray-200 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-            <div class="svg-icon h-5 w-5 bg-gray-400 grouphover:bg-gray-900"
-                 style="mask-image: url('/static/images/icons/close.svg');
-                        -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
+            <div class="svg-icon h-5 w-5 bg-gray-400 grouphover:bg-gray-900 icon-close"></div>
             <span class="sr-only">Close modal</span>
           </button>
           {# End close button -#}

@@ -1,9 +1,12 @@
 {# Primary button -#}
 {% macro primary_button(id, content, extra_styles, rounded) %}
-  <button
-    id="{{ id }}"
-    class="{% if rounded %}p-2.5 h-[44px] w-[44px]{% else %}py-1.5 px-5 h-[40px]{% endif %} text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
-  >
+  <button id="{{ id }}"
+          class="{% if rounded %}
+                   p-2.5 h-[44px] w-[44px]
+                 {% else %}
+                   py-1.5 px-5 h-[40px]
+                 {% endif %}
+                 text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
@@ -11,21 +14,26 @@
 
 {# Primary link -#}
 {% macro primary_link(content, href, extra_styles, rounded) %}
-  <a
-    class="{% if rounded %}p-2.5 h-[44px] w-[44px]{% else %}py-2 px-5{% endif %} inline-block text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
-    href="{{ href }}"
-  >
-    {{ content|safe }}
-</a>
+  <a class="{% if rounded %}
+              p-2.5 h-[44px] w-[44px]
+            {% else %}
+              py-2 px-5
+            {% endif %}
+            inline-block text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
+     href="{{ href }}">{{ content|safe }}</a>
 {% endmacro %}
 {# End primary link -#}
 
 {# Secondary button -#}
 {% macro secondary_button(id, content, extra_styles, rounded) %}
-  <button
-    id="{{ id }}"
-    class="group {% if rounded %}p-1.5 h-[36px] w-[36px]{% else %}py-1.5 px-5 h-[40px]{% endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
-  >
+  <button id="{{ id }}"
+          class="group
+                 {% if rounded %}
+                   p-1.5 h-[36px] w-[36px]
+                 {% else %}
+                   py-1.5 px-5 h-[40px]
+                 {% endif %}
+                 bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
@@ -33,10 +41,8 @@
 
 {# Secondary mini button -#}
 {% macro secondary_mini_button(content, id, extra_styles) %}
-  <button
-    id="{{ id }}"
-    class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
-  >
+  <button id="{{ id }}"
+          class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
@@ -44,56 +50,61 @@
 
 {# Secondary link -#}
 {% macro secondary_link(content, href, extra_styles, rounded) %}
-  <a
-    class="{% if rounded %}p-2 h-[44px] w-[44px]{% else %}py-2 px-5{% endif %} inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
-    href="{{ href }}"
-  >
-    {{ content|safe }}
-</a>
+  <a class="{% if rounded %}
+              p-2 h-[44px] w-[44px]
+            {% else %}
+              py-2 px-5
+            {% endif %}
+            inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles }}"
+     href="{{ href }}">{{ content|safe }}</a>
 {% endmacro %}
 {# End secondary link -#}
 
 {# Search bar -#}
 {% macro search_bar(placeholder, value, input_styles, container_styles, with_help) %}
   <div class="flex items-center {{ container_styles }}">
-    <div class="relative {{ input_styles }} {% if with_help %}md:-ml-[0.75rem]{% endif %}">
-      <input
-        type="text"
-        id="ts_query"
-        name="ts_query"
-        value="{{ value }}"
-        class="peer w-[100%] rounded-full border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4"
-        placeholder="{{ placeholder}}"
-        autocomplete="off"
-      />
+    <div class="relative {{ input_styles }}
+                {% if with_help %}md:-ml-[0.75rem]{% endif %}">
+      <input type="text"
+             id="ts_query"
+             name="ts_query"
+             value="{{ value }}"
+             class="peer w-[100%] rounded-full border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4"
+             placeholder="{{ placeholder }}"
+             autocomplete="off" />
       <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
-        <button id="clean-search" class='mr-2 mt-[2px] block peer-placeholder-shown:hidden'>
-          <div class="svg-icon h-5 w-5 bg-gray-400 hover:bg-gray-700" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
+        <button id="clean-search"
+                class="mr-2 mt-[2px] block peer-placeholder-shown:hidden">
+          <div class="svg-icon h-5 w-5 bg-gray-400 hover:bg-gray-700 icon-close"></div>
         </button>
       </div>
       <div class="absolute right-[6px] top-[5px]">
-        {% call secondary_button("search-btn", "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white' style='mask-image: url(/static/images/icons/magnifying_glass.svg); -webkit-mask-image: url(/static/images/icons/magnifying_glass.svg);'></div>", "", true) %}
+        {% call secondary_button("search-btn", "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", "", true) %}
       </div>
 
-      {% if with_help  %}
+      {% if with_help %}
         <div class="absolute hidden -right-[1.5rem] top-0 md:block">
           <button id="open-search-tips-modal">
-            <div class="svg-icon w-4 h-4 bg-gray-300 hover:bg-gray-700" style="mask-image: url('/static/images/icons/question_mark.svg'); -webkit-mask-image: url('/static/images/icons/question_mark.svg');"></div>
+            <div class="svg-icon w-4 h-4 bg-gray-300 hover:bg-gray-700 icon-question-mark"></div>
           </button>
         </div>
 
         {# Search tips modal -#}
-        <div id="search-tips" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
-          <div id="overlay-search-tips" class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
+        <div id="search-tips"
+             tabindex="-1"
+             aria-hidden="true"
+             class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex">
+          <div id="overlay-search-tips"
+               class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
           <div class="relative p-4 w-full max-w-2xl max-h-full">
             <div class="relative bg-white rounded-lg shadow">
               {# Modal header -#}
               <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
-                <h3 class="text-xl font-semibold text-gray-900">
-                  Search tips
-                </h3>
-                <button id="close-search-tips-modal" type="button" class="group text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-                  <div class="svg-icon w-5 h-5 bg-gray-500 group-hover:bg-gray-900" style="mask-image: url('/static/images/icons/close.svg'); -webkit-mask-image: url('/static/images/icons/close.svg');"></div>
+                <h3 class="text-xl font-semibold text-gray-900">Search tips</h3>
+                <button id="close-search-tips-modal"
+                        type="button"
+                        class="group text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                  <div class="svg-icon w-5 h-5 bg-gray-500 group-hover:bg-gray-900 icon-close"></div>
                   <span class="sr-only">Close modal</span>
                 </button>
               </div>
@@ -114,16 +125,18 @@
         {# End search tips modal -#}
 
         <script type="module">
-          import { toggleModalVisibility } from '/static/js/common/common.js';
+            import {
+                toggleModalVisibility
+            } from '/static/js/common/common.js';
 
-          const openSearchTipsModal = document.querySelector('#open-search-tips-modal');
-          openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+            const openSearchTipsModal = document.querySelector('#open-search-tips-modal');
+            openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
 
-          const overlaySearchTips = document.querySelector('#overlay-search-tips');
-          overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
+            const overlaySearchTips = document.querySelector('#overlay-search-tips');
+            overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
 
-          const closeSearchTipsModal = document.querySelector('#close-search-tips-modal');
-          closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+            const closeSearchTipsModal = document.querySelector('#close-search-tips-modal');
+            closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
         </script>
       {% endif %}
     </div>
@@ -134,7 +147,8 @@
 {# Alert -#}
 {% macro alert(title, content) %}
   <div class="p-10 md:p-14">
-    <div class="border border-primary-300 p-10 text-sm text-gray-800 rounded-lg bg-primary-50 text-center" role="alert">
+    <div class="border border-primary-300 p-10 text-sm text-gray-800 rounded-lg bg-primary-50 text-center"
+         role="alert">
       <div class="text-xl mb-6">{{ title }}</div>
       {{ content }}
     </div>
@@ -143,30 +157,31 @@
 {# End alert -#}
 
 {# Current page -#}
-{% macro current_page(total, items_number, offset_value) %}{% if let Some(offset) = offset_value %}{{ offset + 1 }} - {{ items_number + offset }}{% else %}1 - {{ items_number }}{% endif %} of {{ total }} results{% endmacro %}
+{% macro current_page(total, items_number, offset_value) %}
+  {% if let Some(offset) = offset_value %}
+    {{ offset + 1 }} - {{ items_number + offset }}
+  {% else %}
+    1 - {{ items_number }}
+  {% endif %}
+  of {{ total }} results
+{% endmacro %}
 {# End current page -#}
 
 {# Logo -#}
 {% macro logo(logo_url, name, classes, size, color) %}
   {% if let Some(logo_url) = logo_url %}
-    <div
-      class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
-      style='
-        background-image: url({{ logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) }});
-      '>
+    <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
+         style='background-image: url({{ logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) }})'>
     </div>
   {% else %}
-    <div
-      class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
-    >
+    <div class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}">
       {% if size > 100 %}
         <div class="relative h-full w-full flex place-items-center p-2 text-[0.78rem] text-gray-600 font-bold leading-5 capitalize z-10">
-          <p class="w-full text-ellipsis overflow-hidden text-center">
-            {{ name }}
-          </p>
+          <p class="w-full text-ellipsis overflow-hidden text-center">{{ name }}</p>
         </div>
       {% endif %}
-      <div class="absolute w-full h-full top-0" style="mask-image: url(/static/images/placeholder_cncf.png);mask-mode: alpha;mask-size: cover; background-color: {{ color }};"></div>
+      <div class="absolute w-full h-full top-0 plaholder-logo"
+           style="background-color: {{ color }}"></div>
     </div>
   {% endif %}
 {% endmacro %}

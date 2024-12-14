@@ -84,24 +84,13 @@
 {% macro entity_content(kind, title, styles, icon_styles) %}
   <div class="flex w-full flex-col items-center {{ styles }}">
     {# Icon -#}
-    {% match kind %}
-    {% when "groups" %}
-    <div class="svg-icon h-4 w-4 {{ icon_styles }}"
-         style="mask-image: url('/static/images/icons/groups.svg');
-                -webkit-mask-image: url('/static/images/icons/groups.svg')"></div>
-    {% when "events" %}
-    <div class="svg-icon h-4 w-4 {{ icon_styles }}"
-         style="mask-image: url('/static/images/icons/events.svg');
-                -webkit-mask-image: url('/static/images/icons/events.svg')"></div>
-    {% when _ %}
-      <div></div>
-  {% endmatch %}
-  {# End icon -#}
+    <div class="svg-icon h-4 w-4 icon-{{ kind }} {{ icon_styles }}"></div>
+    {# End icon -#}
 
-  {# Title -#}
-  <div class="text-[0.8rem] mt-1.5">{{ title }}</div>
-  {# End title -#}
-</div>
+    {# Title -#}
+    <div class="text-[0.8rem] mt-1.5">{{ title }}</div>
+    {# End title -#}
+  </div>
 {% endmacro %}
 {# End entity content -#}
 
@@ -153,156 +142,156 @@
     <div class="text-[10px] uppercase leading-4 text-gray-500 mb-1">{{ label }}:</div>
     <div class="relative w-[75%]">
       <input id="{{ name }}"
-             name="{{ name }}"
-             validate="false"
-             {# djlint:off #}
+        name="{{ name }}"
+        validate="false"
+        {# djlint:off #}
              value="{% if let Some(date) = value %}{{ date }}{% endif %}"
-             {# djlint:on #}
-             type="date"
-             class="inline-flex bg-white border border-gray-200 text-[0.8rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-gray-50"
-             placeholder="Date {{ label }}">
+        {# djlint:on #}
+        type="date"
+        class="inline-flex bg-white border border-gray-200 text-[0.8rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-gray-50"
+        placeholder="Date {{ label }}">
+      </div>
     </div>
-  </div>
-{% endmacro %}
-{# End input date -#}
+  {% endmacro %}
+  {# End input date -#}
 
-{# Collapsible header -#}
-{% macro collapsible_header(title, label, items_length, max_visible_items_number) %}
-  <div class="flex justify-between items-center">
-    <div class="font-semibold text-filterTitle text-black leading-6">{{ title }}</div>
-    <div>
-      {% if items_length > max_visible_items_number %}
+  {# Collapsible header -#}
+  {% macro collapsible_header(title, label, items_length, max_visible_items_number) %}
+    <div class="flex justify-between items-center">
+      <div class="font-semibold text-filterTitle text-black leading-6">{{ title }}</div>
+      <div>
+        {% if items_length > max_visible_items_number %}
+          <button data-label="{{ label }}"
+                  type="button"
+                  class="group/btn collapse-btn border hover:bg-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
+            <span class="hidden group-[.collapsed]:block">
+              <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white icon-caret-down"></div>
+            </span>
+            <span class="block group-[.collapsed]:hidden">
+              <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white icon-caret-up"></div>
+            </span>
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  {% endmacro %}
+  {# End collapsible header -#}
+
+  {# Collapsible footer -#}
+  {% macro collapsible_footer(label, items_length, max_visible_items_number) %}
+    {% if items_length > max_visible_items_number %}
+      <div class="mt-4 -mb-1.5">
         <button data-label="{{ label }}"
                 type="button"
-                class="group/btn collapse-btn border hover:bg-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
-          <span class="hidden group-[.collapsed]:block">
-            <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white"
-                 style="mask-image: url('/static/images/icons/caret_down.svg');
-                        -webkit-mask-image: url('/static/images/icons/caret_down.svg')"></div>
-          </span>
-          <span class="block group-[.collapsed]:hidden">
-            <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white"
-                 style="mask-image: url('/static/images/icons/caret_up.svg');
-                        -webkit-mask-image: url('/static/images/icons/caret_up.svg')"></div>
-          </span>
+                class="collapse-btn text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
+          <span class="hidden group-[.collapsed]:block">+ Show more</span>
+          <span class="block group-[.collapsed]:hidden">- Show less</span>
         </button>
-      {% endif %}
-    </div>
-  </div>
-{% endmacro %}
-{# End collapsible header -#}
+      </div>
+    {% endif %}
+  {% endmacro %}
+  {# End collapsible footer -#}
 
-{# Collapsible footer -#}
-{% macro collapsible_footer(label, items_length, max_visible_items_number) %}
-  {% if items_length > max_visible_items_number %}
-    <div class="mt-4 -mb-1.5">
-      <button data-label="{{ label }}"
-              type="button"
-              class="collapse-btn text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs">
-        <span class="hidden group-[.collapsed]:block">+ Show more</span>
-        <span class="block group-[.collapsed]:hidden">- Show less</span>
-      </button>
-    </div>
-  {% endif %}
-{% endmacro %}
-{# End collapsible footer -#}
-
-{# Collapsible filter with checkboxes -#}
-{% macro collapsible_filter_checkboxes(title, options, label, active_filters, view, max_visible_items_number) %}
-  <div data-collapsible-label="{{ label }}"
-       class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed"
-       data-collapsible-item="true"
-       data-max-items="{{ max_visible_items_number }}">
-    {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
-    <ul class='flex w-full gap-2 mt-3
-               {% if view == "rows" %}
-                 flex-col
-               {% else %}
-                 flex-wrap
-               {% endif %}'>
-      <li>
-        <input type="checkbox"
-               name="any"
-               value=""
-               id="any-checkbox-{{ label }}"
-               class="hidden peer"
-               {% if active_filters.is_empty() %}checked{% endif %}>
-        <label for="any-checkbox-{{ label }}"
-               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-          <div class="text-[0.8rem] text-center text-nowrap">Any</div>
-        </label>
-      </li>
-      {% for option in options %}
-        {% if loop.index <= max_visible_items_number %}
-          {% call checkbox_input(label, option.name, option.value, active_filters, "") %}
-        {% else %}
-          {% call checkbox_input(label, option.name, option.value, active_filters, "hidden") %}
-        {% endif %}
-      {% endfor %}
-    </ul>
-    {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
-  </div>
-  <script type="module">
-      import {
-          selectAnyOption
-      } from '/static/js/community/explore/filters.js';
-
-      const anyCheckbox = document.querySelector('#any-checkbox-{{ label }}');
-      anyCheckbox.addEventListener('click', () => selectAnyOption('{{ label }}', 'checkbox'));
-  </script>
-{% endmacro %}
-{# End collapsible filter with checkboxes -#}
-
-{# Collapsible filter with radios -#}
-{% macro collapsible_filter_radios(title, options, label, active_filter, view, max_visible_items_number) %}
-  <div id="collapsible-{{ label }}"
-       class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed"
-       data-collapsible-item="true"
-       data-max-items="{{ max_visible_items_number }}">
-    {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
-    <ul class='flex w-full gap-2 mt-3
-               {% if view == "rows" %}
-                 flex-col
-               {% else %}
-                 flex-wrap
-               {% endif %}'>
-      <li>
-        {% if let Some(selected) = active_filter %}
-          <input type="radio"
+  {# Collapsible filter with checkboxes -#}
+  {% macro collapsible_filter_checkboxes(title, options, label, active_filters, view, max_visible_items_number) %}
+    <div data-collapsible-label="{{ label }}"
+         class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed"
+         data-collapsible-item="true"
+         data-max-items="{{ max_visible_items_number }}">
+      {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
+      {# djlint:off H008 #}
+      <ul class='flex w-full gap-2 mt-3
+                 {% if view == "rows" %}
+                   flex-col
+                 {% else %}
+                   flex-wrap
+                 {% endif %}'>
+        {# djlint:on #}
+        <li>
+          <input type="checkbox"
                  name="any"
                  value=""
-                 id="any-radio-{{ label }}"
-                 class="hidden peer">
-        {% else %}
-          <input type="radio"
-                 name="any"
-                 value=""
-                 id="any-radio-{{ label }}"
+                 id="any-checkbox-{{ label }}"
                  class="hidden peer"
-                 checked>
-        {% endif %}
-        <label for="any-radio-{{ label }}"
-               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-          <div class="text-[0.8rem] text-center text-nowrap">Any</div>
-        </label>
-      </li>
-      {% for option in options %}
-        {% if loop.index <= max_visible_items_number %}
-          {% call radio_input(label, option.name, option.value, active_filter, "") %}
-        {% else %}
-          {% call radio_input(label, option.name, option.value, active_filter, "hidden") %}
-        {% endif %}
-      {% endfor %}
-    </ul>
-    {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
-  </div>
-  <script type="module">
-      import {
-          selectAnyOption
-      } from '/static/js/community/explore/filters.js';
+                 {% if active_filters.is_empty() %}checked{% endif %}>
+          <label for="any-checkbox-{{ label }}"
+                 class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+            <div class="text-[0.8rem] text-center text-nowrap">Any</div>
+          </label>
+        </li>
+        {% for option in options %}
+          {% if loop.index <= max_visible_items_number %}
+            {% call checkbox_input(label, option.name, option.value, active_filters, "") %}
+          {% else %}
+            {% call checkbox_input(label, option.name, option.value, active_filters, "hidden") %}
+          {% endif %}
+        {% endfor %}
+      </ul>
+      {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
+    </div>
+    <script type="module">
+        import {
+            selectAnyOption
+        } from '/static/js/community/explore/filters.js';
 
-      const anyRadio = document.querySelector('#any-radio-{{ label }}');
-      anyRadio.addEventListener('click', () => selectAnyOption('{{ label }}', 'radio', true));
-  </script>
-{% endmacro %}
-{# End collapsible filter with radios -#}
+        const anyCheckbox = document.querySelector('#any-checkbox-{{ label }}');
+        anyCheckbox.addEventListener('click', () => selectAnyOption('{{ label }}', 'checkbox'));
+    </script>
+  {% endmacro %}
+  {# End collapsible filter with checkboxes -#}
+
+  {# Collapsible filter with radios -#}
+  {% macro collapsible_filter_radios(title, options, label, active_filter, view, max_visible_items_number) %}
+    <div id="collapsible-{{ label }}"
+         class="px-6 py-7 pt-5 border-b border-gray-100 group collapsed"
+         data-collapsible-item="true"
+         data-max-items="{{ max_visible_items_number }}">
+      {% call collapsible_header(title, label, options.len(), max_visible_items_number) %}
+      {# djlint:off H008 #}
+      <ul class='flex w-full gap-2 mt-3
+                 {% if view == "rows" %}
+                   flex-col
+                 {% else %}
+                   flex-wrap
+                 {% endif %}'>
+        {# djlint:on #}
+        <li>
+          {% if let Some(selected) = active_filter %}
+            <input type="radio"
+                   name="any"
+                   value=""
+                   id="any-radio-{{ label }}"
+                   class="hidden peer">
+          {% else %}
+            <input type="radio"
+                   name="any"
+                   value=""
+                   id="any-radio-{{ label }}"
+                   class="hidden peer"
+                   checked>
+          {% endif %}
+          <label for="any-radio-{{ label }}"
+                 class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+            <div class="text-[0.8rem] text-center text-nowrap">Any</div>
+          </label>
+        </li>
+        {% for option in options %}
+          {% if loop.index <= max_visible_items_number %}
+            {% call radio_input(label, option.name, option.value, active_filter, "") %}
+          {% else %}
+            {% call radio_input(label, option.name, option.value, active_filter, "hidden") %}
+          {% endif %}
+        {% endfor %}
+      </ul>
+      {% call collapsible_footer(label, options.len(), max_visible_items_number) %}
+    </div>
+    <script type="module">
+        import {
+            selectAnyOption
+        } from '/static/js/community/explore/filters.js';
+
+        const anyRadio = document.querySelector('#any-radio-{{ label }}');
+        anyRadio.addEventListener('click', () => selectAnyOption('{{ label }}', 'radio', true));
+    </script>
+  {% endmacro %}
+  {# End collapsible filter with radios -#}

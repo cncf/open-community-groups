@@ -2,6 +2,9 @@
 <html lang="en" class="h-full min-h-screen">
   <head>
     <title>{{ community.display_name }} community groups</title>
+    <meta name="description"
+          content="{{ community.display_name }} community groups">
+    <meta name="keywords" content="community, groups, events">
 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -26,15 +29,12 @@
 
         overWritePrimaryColor('{{ community.theme.primary_color }}');
 
-        // TODO - Djlint - avoid format
-        const color = {{ community.theme.palette|json|safe }};
-
         // Tailwind configuration
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: color,
+                        primary: "{{ community.theme.palette|json|safe }}",
                     },
                     fontSize: {
                         filterTitle: '0.8rem',
@@ -59,13 +59,13 @@
         {# End header -#}
 
         {# Jumbotron -#}
-        {% block jumbotron %}<div></div>{% endblock %}
+        {% block jumbotron %}{% endblock %}
         {# End jumbotron -#}
       </div>
 
       {# Content -#}
       <main class="grow z-[1]">
-        {% block content %}<div></div>{% endblock %}
+        {% block content %}{% endblock %}
       </main>
       {# End content -#}
 

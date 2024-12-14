@@ -8,18 +8,14 @@
          hx-target="#cards-list"
          hx-swap="innerHTML show:#header:top"
          class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
-        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
-             style="mask-image: url('/static/images/icons/arrow_left_double.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_left_double.svg')"></div>
+        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white icon-arrow-left-double"></div>
         First
       </a>
     {% else %}
       <button type="button"
               disabled
               class="inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-gray-300 bg-gray-50 border border-gray-300 rounded-s-full">
-        <div class="svg-icon me-2 h-5 w-5 bg-gray-300"
-             style="mask-image: url('/static/images/icons/arrow_left_double.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_left_double.svg')"></div>
+        <div class="svg-icon me-2 h-5 w-5 bg-gray-300 icon-arrow-left-double"></div>
         First
       </button>
     {% endif %}
@@ -32,18 +28,14 @@
          hx-target="#cards-list"
          hx-swap="innerHTML show:#header:top"
          class="group cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
-        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
-             style="mask-image: url('/static/images/icons/arrow_left.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_left.svg')"></div>
+        <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white icon-arrow-left"></div>
         Prev
       </a>
     {% else %}
       <button type="button"
               disabled
               class="inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-gray-300 bg-gray-50 border-t border-b border-e border-gray-300">
-        <div class="svg-icon me-2 h-5 w-5 bg-gray-300"
-             style="mask-image: url('/static/images/icons/arrow_left.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_left.svg')"></div>
+        <div class="svg-icon me-2 h-5 w-5 bg-gray-300 icon-arrow-left"></div>
         Prev
       </button>
     {% endif %}
@@ -57,18 +49,14 @@
          hx-swap="innerHTML show:#header:top"
          class="group cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         Next
-        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
-             style="mask-image: url('/static/images/icons/arrow_right.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_right.svg')"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white icon-arrow-right"></div>
       </a>
     {% else %}
       <button type="button"
               disabled
               class="inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-gray-300 bg-gray-50 border-t border-b border-gray-300">
         Next
-        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300"
-             style="mask-image: url('/static/images/icons/arrow_right.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_right.svg')"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300 icon-arrow-right"></div>
       </button>
     {% endif %}
     {# End next button -#}
@@ -81,18 +69,14 @@
          hx-swap="innerHTML show:#header:top"
          class="group cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
         Last
-        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white"
-             style="mask-image: url('/static/images/icons/arrow_right_double.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_right_double.svg')"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white icon-arrow-right-double"></div>
       </a>
     {% else %}
       <button type="button"
               disabled
               class="inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-gray-300 bg-gray-50 border border-gray-300 rounded-e-full">
         Last
-        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300"
-             style="mask-image: url('/static/images/icons/arrow_right_double.svg');
-                    -webkit-mask-image: url('/static/images/icons/arrow_right_double.svg')"></div>
+        <div class="svg-icon ms-2 h-5 w-5 bg-gray-300 icon-arrow-right-double"></div>
       </button>
     {% endif %}
     {# End last button -#}

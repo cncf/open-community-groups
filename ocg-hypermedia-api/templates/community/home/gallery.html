@@ -12,7 +12,9 @@
           {# Photos list -#}
           {% for photo in photos_urls %}
             <button class="photo-gallery" data-photo-index="{{ loop.index }}">
-              <img class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
+              <img height="160"
+                   width="auto"
+                   class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
                    src="{{ photo }}"
                    alt="Community {{ community.display_name }}">
             </button>
@@ -35,9 +37,7 @@
         {# Close button -#}
         <button id="close-gallery-btn"
                 class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full hover:bg-gray-300/30">
-          <div class="svg-icon h-8 w-8 bg-gray-100"
-               style="mask-image: url('/static/images/icons/close.svg');
-                      -webkit-mask-image: url('/static/images/icons/close.svg')"></div>
+          <div class="svg-icon h-8 w-8 bg-gray-100 icon-close"></div>
         </button>
         {# End close button -#}
 
@@ -63,6 +63,8 @@
                                            active
                                          {% endif %}">
                   <img src="{{ photo }}"
+                       height="auto"
+                       width="auto"
                        class="bg-white rounded-lg border border-8 border-white absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
                        alt="Community {{ community.display_name }}">
                 </div>
@@ -78,9 +80,7 @@
               {# Prev button -#}
               <button id="prev-gallery-btn"
                       class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none">
-                <div class="svg-icon h-4 w-2.5 bg-white"
-                     style="mask-image: url('/static/images/icons/prev.svg');
-                            -webkit-mask-image: url('/static/images/icons/prev.svg')"></div>
+                <div class="svg-icon h-4 w-2.5 bg-white icon-prev"></div>
                 <span class="sr-only">Previous</span>
               </button>
               {# End prev button -#}
@@ -89,9 +89,7 @@
               {# Next button -#}
               <button id="next-gallery-btn"
                       class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none">
-                <div class="svg-icon h-4 w-2.5 bg-white"
-                     style="mask-image: url('/static/images/icons/next.svg');
-                            -webkit-mask-image: url('/static/images/icons/next.svg')"></div>
+                <div class="svg-icon h-4 w-2.5 bg-white icon-next"></div>
                 <span class="sr-only">Next</span>
               </button>
               {# End next button -#}
