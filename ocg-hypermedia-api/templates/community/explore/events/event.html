@@ -18,7 +18,7 @@
           {# End event group -#}
 
           {# Event name -#}
-          <div class="text-sm line-clamp-2 font-semibold md:mt-1 md:text-normal md:line-clamp-1">
+          <div class="line-clamp-2 font-semibold md:mt-1 md:line-clamp-1">
             {{ name|demoji }}
           </div>
           {# End event name -#}
@@ -53,7 +53,7 @@
           {# End event location -#}
 
           {# Event date -#}
-          <div class="flex items-center pt-1">
+          <div class="flex items-center pt-0.5">
             {% if let Some(starts_at) = starts_at %}
               <div class="flex flex-row items-center leading-4">
                 <img class="-mt-[2px] w-3 h-3 me-2"
