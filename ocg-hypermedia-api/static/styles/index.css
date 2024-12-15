@@ -61,6 +61,10 @@
   height: 816px !important;
 }
 
+.fc-col-header-cell-cushion {
+  color: rgb(107 114 128);
+}
+
 .fc-event-title {
   border-radius: 9999px;
   overflow: hidden;

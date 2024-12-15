@@ -5,10 +5,10 @@
 {% match view_mode %}
 {% when ViewMode::Calendar %}
 {# Calendar view -#}
-<div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
-  <div class="flex justify-between items-center mb-5 h-16">
+<div class="mt-5 border-t border-gray-100 md:mt-7 p-5 md:p-7">
+  <div class="flex justify-between items-center mb-8">
     <div id="calendar-date"
-         class="text-xl font-semibold text-gray-700 md:text-2xl lg:text-[2rem]"></div>
+         class="text-xl font-semibold text-gray-500 md:text-2xl lg:text-[2rem]"></div>
     <div class="flex">
       {# Today button -#}
       {% call common::secondary_mini_button("Today", "current-month-btn", "") %}
@@ -80,7 +80,7 @@
 
 {% when ViewMode::Map %}
 {# Map view -#}
-<div class="mt-5 border-t border-gray-100 md:mt-7 p-6">
+<div class="mt-5 border-t border-gray-100 md:mt-7 p-5 md:p-7">
   <div class="relative w-full border h-[600px] md:h-[820px]">
     <div id="map-box" class="w-full h-full"></div>
   </div>

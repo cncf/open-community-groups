@@ -112,7 +112,7 @@ export class Calendar {
     // Prepare events for calendar
     let formattedEvents = events.map((event) => {
       // Background color for past events
-      let color = "rgb(190, 190, 190)";
+      let color = "rgb(229, 231, 235)";
       if (!event.starts_at) {
         return;
       }
