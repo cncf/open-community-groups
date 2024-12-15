@@ -137,7 +137,7 @@
 
             <select id="sort_by"
                     name="sort_by"
-                    class="block w-40 py-1 px-3 text-[0.8rem] leading-none h-[30px] text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500">
+                    class="block w-40 py-1 px-3 text-[0.8rem] leading-none h-[30px] w-24 text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500">
               {% if let Some(sort_by) = filters.sort_by %}
                 <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
                 {% if filters.longitude.is_some() && filters.latitude.is_some() %}
