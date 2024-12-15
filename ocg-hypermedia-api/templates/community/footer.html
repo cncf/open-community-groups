@@ -17,15 +17,15 @@
 
         {# Social network links -#}
         <div class="flex flex-wrap justify-center gap-4 md:gap-0 md:justify-self-end mt-6 md:mt-0">
-          {% call social_icon_link("twitter", self.community.twitter_url) %}
-          {% call social_icon_link("github", self.community.github_url) %}
-          {% call social_icon_link("linkedin", self.community.linkedin_url) %}
-          {% call social_icon_link("instagram", self.community.instagram_url) %}
-          {% call social_icon_link("wechat", self.community.wechat_url) %}
-          {% call social_icon_link("youtube", self.community.youtube_url) %}
-          {% call social_icon_link("flickr", self.community.flickr_url) %}
-          {% call social_icon_link("facebook", self.community.facebook_url) %}
-          {% call social_icon_link("slack", self.community.slack_url) %}
+          {% call social_icon_link(kind = "twitter", url = self.community.twitter_url) %}
+          {% call social_icon_link(kind = "github", url = self.community.github_url) %}
+          {% call social_icon_link(kind = "linkedin", url = self.community.linkedin_url) %}
+          {% call social_icon_link(kind = "instagram", url = self.community.instagram_url) %}
+          {% call social_icon_link(kind = "wechat", url = self.community.wechat_url) %}
+          {% call social_icon_link(kind = "youtube", url = self.community.youtube_url) %}
+          {% call social_icon_link(kind = "flickr", url = self.community.flickr_url) %}
+          {% call social_icon_link(kind = "facebook", url = self.community.facebook_url) %}
+          {% call social_icon_link(kind = "slack", url = self.community.slack_url) %}
         </div>
         {# End social network links -#}
       </div>

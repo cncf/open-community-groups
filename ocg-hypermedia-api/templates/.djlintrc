@@ -2,7 +2,7 @@
     "custom_blocks": "when",
     "format_attribute_template_tags": true,
     "format_js": true,
-    "ignore": "J004",
+    "ignore": "J004,J018",
     "ignore_blocks": "call,when",
     "js": {
         "indent_size": 2

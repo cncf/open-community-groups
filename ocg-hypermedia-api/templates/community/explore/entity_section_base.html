@@ -1,6 +1,6 @@
 {% import "common.html" as common %}
 
-{% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
+{% let view_mode = filters.view_mode.clone().unwrap_or_default() %}
 
 {# Mobile filters -#}
 <div id="drawer-filters"
@@ -17,7 +17,8 @@
   {# End close button -#}
 
   {# Filters content -#}
-  {% block filters %}{% endblock filters %}
+  {% block filters %}
+  {% endblock filters %}
   {# End filters content -#}
 
   <div class="text-end p-5 border-t">
@@ -36,7 +37,8 @@
   {# Desktop filters -#}
   <div id="explore-filters"
        class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
-    {% block filters %}{% endblock filters %}
+    {% block filters %}
+    {% endblock filters %}
   </div>
   {# End desktop filters -#}
 
@@ -56,7 +58,8 @@
         <div class="grow flex items-center justify-center">
           {# Searchbar -#}
           <div class="w-full">
-            {% block search_bar %}{% endblock search_bar %}
+            {% block search_bar %}
+            {% endblock search_bar %}
           </div>
           {# End searchbar -#}
         </div>
@@ -67,7 +70,8 @@
           {% if view_mode == ViewMode::List %}
             <div id="results"
                  class="hidden mb-2.5 font-semibold text-sm text-black w-[175px] md:flex xl:mb-0">
-              {% block current_page %}{% endblock current_page %}
+              {% block current_page %}
+              {% endblock current_page %}
             </div>
           {% endif %}
         </div>
@@ -159,53 +163,55 @@
       {% if view_mode == ViewMode::List %}
         <div id="results-mobile"
              class="flex justify-end mt-3 font-semibold text-sm text-black px-5 md:px-7 md:hidden md:mt-0">
-          {% block results %}{% endblock results %}
+          {% block results %}
+          {% endblock results %}
         </div>
       {% endif %}
       {# End results mobile -#}
 
       {# Cards -#}
       <div id="cards-list" class="flex flex-col justify-between grow">
-        {% block content %}{% endblock content %}
+        {% block content %}
+        {% endblock content %}
       </div>
       {# End cards -#}
     </div>
   </div>
 </div>
 <script type="module">
-    import {
-        close,
-        open,
-        reset,
-        triggerChangeOnForm,
-        toggleCollapsibleFilterVisibility
-    } from '/static/js/community/explore/filters.js';
+  import {
+    close,
+    open,
+    reset,
+    triggerChangeOnForm,
+    toggleCollapsibleFilterVisibility
+  } from '/static/js/community/explore/filters.js';
 
-    const openFiltersBtn = document.querySelector('#open-filters');
-    openFiltersBtn.addEventListener('click', open);
+  const openFiltersBtn = document.querySelector('#open-filters');
+  openFiltersBtn.addEventListener('click', open);
 
-    const closeFiltersBtn = document.querySelector('#close-filters');
-    closeFiltersBtn.addEventListener('click', close);
+  const closeFiltersBtn = document.querySelector('#close-filters');
+  closeFiltersBtn.addEventListener('click', close);
 
-    const backdropFilters = document.querySelector('#drawer-backdrop');
-    backdropFilters.addEventListener('click', close);
+  const backdropFilters = document.querySelector('#drawer-backdrop');
+  backdropFilters.addEventListener('click', close);
 
-    const inputs = document.querySelectorAll('input[name="view_mode"]');
-    inputs.forEach(input => {
-        input.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
-    });
+  const inputs = document.querySelectorAll('input[name="view_mode"]');
+  inputs.forEach(input => {
+    input.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+  });
 
-    const select = document.querySelector('#sort_by');
-    // Sort by is only available in list view
-    if (select) {
-        select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
-    }
+  const select = document.querySelector('#sort_by');
+  // Sort by is only available in list view
+  if (select) {
+    select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+  }
 
-    const resetButtons = document.querySelectorAll('.reset-filters');
-    resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
+  const resetButtons = document.querySelectorAll('.reset-filters');
+  resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
 
-    const collapseBtns = document.querySelectorAll('.collapse-btn');
-    collapseBtns.forEach(btn => {
-        btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
-    });
+  const collapseBtns = document.querySelectorAll('.collapse-btn');
+  collapseBtns.forEach(btn => {
+    btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
+  });
 </script>

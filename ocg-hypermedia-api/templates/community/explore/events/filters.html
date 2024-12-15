@@ -5,10 +5,10 @@
 {# End filters header -#}
 
 {# Entity selector -#}
-{% call macros::entity_radio(Entity::Events) %}
+{% call macros::entity_radio(selected = Entity::Events) %}
 {# End entity selector -#}
 
-{% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
+{% let view_mode = filters.view_mode.clone().unwrap_or_default() %}
 
 <form id="events-form"
       hx-get='/explore/events-section'
@@ -91,20 +91,20 @@
   {# End type -#}
 
   {# Regions -#}
-  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
+  {% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
   {# End Regions -#}
 
   {# Group category -#}
-  {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, "rows", 4) %}
+  {% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
   {# End Group category -#}
 
   {# Event category -#}
-  {% call macros::collapsible_filter_checkboxes("Event category", filters_options.event_category, "event_category", filters.event_category, "rows", 4) %}
+  {% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) %}
   {# End event category -#}
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
     {# Distance -#}
-    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, "cols", 5) %}
+    {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
     {# End distance -#}
   {% endif %}
 
@@ -115,8 +115,8 @@
         <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
       </div>
       <div class="flex flex-wrap gap-3 items-center mt-3">
-        {% call macros::date_input("date_from", "from", filters.date_from) %}
-        {% call macros::date_input("date_to", "to", filters.date_to) %}
+        {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) %}
+        {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) %}
       </div>
     </div>
     {# End date -#}
@@ -126,10 +126,10 @@
 </form>
 
 <script type="module">
-    import {
-        showLoadingSpinner
-    } from '/static/js/common/common.js';
+  import {
+    showLoadingSpinner
+  } from '/static/js/common/common.js';
 
-    const form = document.getElementById('events-form');
-    form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
+  const form = document.getElementById('events-form');
+  form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
 </script>

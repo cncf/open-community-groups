@@ -1,6 +1,6 @@
 {% import "common.html" as common %}
 
-{% set view_mode = self.view_mode.clone().unwrap_or_default() %}
+{% let view_mode = self.view_mode.clone().unwrap_or_default() %}
 
 {% match view_mode %}
 {% when ViewMode::Calendar %}
@@ -11,7 +11,7 @@
          class="text-xl font-semibold text-gray-500 md:text-2xl lg:text-[2rem]"></div>
     <div class="flex">
       {# Today button -#}
-      {% call common::secondary_mini_button("Today", "current-month-btn", "") %}
+      {% call common::secondary_mini_button(id = "current-month-btn", content = "Today", extra_styles = None) %}
 
       {# Next/Prev buttons -#}
       <div class="inline-flex ml-4" role="group">
@@ -33,20 +33,20 @@
        class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
 </div>
 <script type="module">
-    import {
-        Calendar
-    } from '/static/js/community/explore/calendar.js';
+  import {
+    Calendar
+  } from '/static/js/community/explore/calendar.js';
 
-    const calendar = new Calendar();
+  const calendar = new Calendar();
 
-    const currentMonthBtn = document.querySelector('#current-month-btn');
-    currentMonthBtn.addEventListener('click', () => calendar.currentMonth());
+  const currentMonthBtn = document.querySelector('#current-month-btn');
+  currentMonthBtn.addEventListener('click', () => calendar.currentMonth());
 
-    const prevMonthBtn = document.querySelector('#prev-month-btn');
-    prevMonthBtn.addEventListener('click', () => calendar.previousMonth());
+  const prevMonthBtn = document.querySelector('#prev-month-btn');
+  prevMonthBtn.addEventListener('click', () => calendar.previousMonth());
 
-    const nextMonthBtn = document.querySelector('#next-month-btn');
-    nextMonthBtn.addEventListener('click', () => calendar.nextMonth());
+  const nextMonthBtn = document.querySelector('#next-month-btn');
+  nextMonthBtn.addEventListener('click', () => calendar.nextMonth());
 </script>
 {# End calendar view -#}
 
@@ -56,7 +56,7 @@
             {% if events.len() > 0 %}border-b{% endif %}">
   {# Placeholder cards -#}
   {% if events.len() == 0 %}
-    {% call common::alert("We're sorry!", "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
+    {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
   {% endif %}
   {# End placeholder cards -#}
 
@@ -70,11 +70,11 @@
 {# End pagination -#}
 
 <script type="module">
-    import {
-        updateResults
-    } from '/static/js/community/explore/explore.js';
+  import {
+    updateResults
+  } from '/static/js/community/explore/explore.js';
 
-    updateResults('{% call common::current_page(total, events.len(), offset) %}');
+  updateResults('{% call common::current_page(total, events.len(), offset) %}');
 </script>
 {# End list view -#}
 
@@ -87,11 +87,11 @@
 </div>
 
 <script type="module">
-    import {
-        loadMap
-    } from '/static/js/community/explore/map.js';
+  import {
+    loadMap
+  } from '/static/js/community/explore/map.js';
 
-    loadMap('events');
+  loadMap('events');
 </script>
 {# End map view -#}
 

@@ -1,28 +1,28 @@
 {# Stats -#}
 <div class="flex flex-col justify-around items-center border rounded-lg p-10 mt-8 sm:mt-16 sm:mb-6 md:flex-row">
   {# Group stats -#}
-  {% call stat_block("groups", "Groups", groups) %}
+  {% call stat_block(kind = "groups", title = "Groups", value = groups) %}
   {# End group stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
   <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
   {# Members stats -#}
-  {% call stat_block("members", "Members", groups_members) %}
+  {% call stat_block(kind = "members", title = "Members", value = groups_members) %}
   {# End members stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
   <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
   {# Events stats -#}
-  {% call stat_block("events", "Events", events) %}
+  {% call stat_block(kind = "events", title = "Events", value = events) %}
   {# End events stats -#}
 
   <div class="block w-[50px] min-w-[1em] h-0.5 align-center bg-neutral-200 lg:hidden"></div>
   <div class="hidden h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200 lg:inline-block"></div>
 
   {# Attendees stats -#}
-  {% call stat_block("attendees", "Attendees", events_attendees) %}
+  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees) %}
   {# End attendees stats -#}
 </div>
 {# End stats -#}
@@ -43,7 +43,7 @@
         {# End title -#}
 
         {# Value -#}
-        <div class="text-4xl font-semibold text-gray-900">{{ value|num_fmt }}</div>
+        <div class="text-4xl font-semibold text-gray-900">{{ *value|num_fmt }}</div>
         {# End value -#}
       </div>
     </div>

@@ -4,8 +4,8 @@
 <div class="p-5 md:p-7">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
-    {% call common::logo(logo_url, group_name, "hidden md:block h-[140px] w-[140px] min-w-[140px]", 140, group_color) %}
-    {% call common::logo(logo_url, "", "block h-14 w-14 min-w-14 md:hidden", 60, group_color) %}
+    {% call common::logo(logo_url = logo_url, name = Some(group_name), classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group_color) %}
+    {% call common::logo(logo_url = logo_url, name = None, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group_color) %}
     {# End event icon -#}
 
     <div class="min-w-0 pl-4 content-center">
@@ -18,9 +18,7 @@
           {# End event group -#}
 
           {# Event name -#}
-          <div class="line-clamp-2 font-semibold md:mt-1 md:line-clamp-1">
-            {{ name|demoji }}
-          </div>
+          <div class="line-clamp-2 font-semibold md:mt-1 md:line-clamp-1">{{ name|demoji }}</div>
           {# End event name -#}
         </div>
 

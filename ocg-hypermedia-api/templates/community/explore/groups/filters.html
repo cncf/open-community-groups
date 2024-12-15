@@ -5,7 +5,7 @@
 {# End header groups -#}
 
 {# Entity -#}
-{% call macros::entity_radio(Entity::Groups) %}
+{% call macros::entity_radio(selected = Entity::Groups) %}
 {# End entity -#}
 
 <form id="groups-form"
@@ -15,16 +15,16 @@
       hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
       hx-boost="true">
   {# Regions -#}
-  {% call macros::collapsible_filter_checkboxes("Region", filters_options.region, "region", filters.region, "cols", 5) %}
+  {% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
   {# End Regions -#}
 
   {# Group category -#}
-  {% call macros::collapsible_filter_checkboxes("Group category", filters_options.group_category, "group_category", filters.group_category, "rows", 4) %}
+  {% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
   {# End Group category -#}
 
   {% if filters.longitude.is_some() && filters.latitude.is_some() %}
     {# Distance -#}
-    {% call macros::collapsible_filter_radios("Distance", filters_options.distance, "distance", filters.distance, "cols", 5) %}
+    {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
     {# End distance -#}
   {% endif %}
 </form>

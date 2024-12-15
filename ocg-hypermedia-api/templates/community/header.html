@@ -31,10 +31,10 @@
 
     {# Desktop links -#}
     <div class="hidden lg:flex lg:gap-x-8">
-      {% call link("Home", "/", path, "") %}
-      {% call link("Explore", "/explore", path, "") %}
+      {% call link(content = "Home", href = "/", current_path = path, extra_styles = None) %}
+      {% call link(content = "Explore", href = "/explore", current_path = path, extra_styles = None) %}
       {% if let Some(new_group_details) = self.community.new_group_details %}
-        {% call button("New group", "open-new-group-btn", "") %}
+        {% call button(id = "open-new-group-btn", content = "New group", extra_styles = None) %}
         <script type="module">
           import {
             toggleModalVisibility
@@ -49,8 +49,8 @@
 
     {# Desktop buttons -#}
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      {% call common::secondary_button("signup-btn", "Sign up", "", false) %}
-      {% call common::primary_button("login-btn", "Log in", "", false) %}
+      {% call common::secondary_button(id = "signup-btn", content = "Sign up", rounded = false, extra_styles = None) %}
+      {% call common::primary_button(id = "login-btn", content = "Log in", rounded = false, extra_styles = None) %}
     </div>
     {# End desktop buttons -#}
   </nav>
@@ -150,7 +150,7 @@
 
         {# Modal footer -#}
         <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-          {% call common::secondary_button("create-group", "Create group", "", false) %}
+          {% call common::secondary_button(id = "create-group", content = "Create group", extra_styles = None, rounded = false) %}
         </div>
         {# End modal footer -#}
       </div>
@@ -179,14 +179,14 @@
             {% else %}
               hover:border-b-2 hover:border-primary-300
             {% endif %}
-            {{ extra_styles }}">{{ content }}</a>
+            {{ extra_styles.unwrap_or("") }}">{{ content }}</a>
 {% endmacro %}
 {# End link -#}
 
 {# Button -#}
-{% macro button(content, id, extra_styles) %}
+{% macro button(id, content, extra_styles) %}
   <button id="{{ id }}"
-          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles }}">
+          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles.unwrap_or("") }}">
     {{ content }}
   </button>
 {% endmacro %}

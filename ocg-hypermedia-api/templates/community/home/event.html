@@ -4,7 +4,7 @@
 <div class="flex flex-1 flex-row items-center">
   <div class="relative">
     {# Event icon -#}
-    {% call common::logo(logo_url, group_name, "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", 120, group_color) %}
+    {% call common::logo(logo_url = logo_url, name = Some(group_name), classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = group_color) %}
     {# End event icon -#}
   </div>
 

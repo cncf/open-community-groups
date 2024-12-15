@@ -1,6 +1,6 @@
 {% import "common.html" as common %}
 
-{% set view_mode = self.view_mode.clone().unwrap_or_default() %}
+{% let view_mode = self.view_mode.clone().unwrap_or_default() %}
 
 {% match view_mode %}
 {% when ViewMode::List %}
@@ -9,7 +9,7 @@
             {% if groups.len() > 0 %}border-b{% endif %}">
   {# Placeholder cards -#}
   {% if groups.len() == 0 %}
-    {% call common::alert("We're sorry!", "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
+    {% call common::alert(title = "We're sorry!", content = "We can't seem to find any groups that match your search criteria. You can reset your filters or try a different search.") %}
   {% endif %}
   {# End placeholder cards -#}
 
@@ -23,11 +23,11 @@
 {# End pagination -#}
 
 <script type="module">
-    import {
-        updateResults
-    } from '/static/js/community/explore/explore.js';
+  import {
+    updateResults
+  } from '/static/js/community/explore/explore.js';
 
-    updateResults('{% call common::current_page(total, groups.len(), offset) %}');
+  updateResults('{% call common::current_page(total, groups.len(), offset) %}');
 </script>
 {# End list view -#}
 
@@ -40,11 +40,11 @@
 </div>
 
 <script type="module">
-    import {
-        loadMap
-    } from '/static/js/community/explore/map.js';
+  import {
+    loadMap
+  } from '/static/js/community/explore/map.js';
 
-    loadMap('groups');
+  loadMap('groups');
 </script>
 {# End map view -#}
 

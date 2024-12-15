@@ -7,31 +7,32 @@
 
 {% block current_page %}
   {% if results_section.groups.len() > 0 %}
-    {% call common::current_page(results_section.total, results_section.groups.len(), filters.offset) %}
+    {% call common::current_page(total = results_section.total, items_number = results_section.groups.len(), offset_value = filters.offset) %}
   {% endif %}
 {% endblock current_page %}
 
 {% block search_bar %}
-  {% set ts_query = filters.ts_query.clone().unwrap_or_default() %}
-  {% call common::search_bar("Search groups by name, location or tags", ts_query, "w-full md:w-3/4", "justify-center", true) %}
+  {% call common::search_bar(placeholder = "Search groups by name, location or tags", value = filters.ts_query, input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true) %}
   <script type="module">
-      import {
-          triggerChangeOnForm
-      } from '/static/js/community/explore/filters.js';
-      import {
-          cleanInputField,
-          searchOnEnter
-      } from '/static/js/community/explore/filters.js';
+    import {
+      triggerChangeOnForm
+    } from '/static/js/community/explore/filters.js';
+    import {
+      cleanInputField,
+      searchOnEnter
+    } from '/static/js/community/explore/filters.js';
 
-      const searchBtn = document.querySelector('#search-btn');
-      searchBtn.addEventListener('click', () => triggerChangeOnForm("groups-form", true));
+    const searchBtn = document.querySelector('#search-btn');
+    searchBtn.addEventListener('click', () => triggerChangeOnForm("groups-form", true));
 
-      const searchInput = document.querySelector('#ts_query');
-      searchInput.addEventListener('keydown', () => searchOnEnter(event, "groups-form"));
+    const searchInput = document.querySelector('#ts_query');
+    searchInput.addEventListener('keydown', () => searchOnEnter(event, "groups-form"));
 
-      const cleanSearch = document.querySelector('#clean-search');
-      cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'groups-form'));
+    const cleanSearch = document.querySelector('#clean-search');
+    cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'groups-form'));
   </script>
 {% endblock search_bar %}
 
-{% block content %}{{ results_section|safe }}{% endblock content %}
+{% block content %}
+  {{ results_section|safe }}
+{% endblock content %}
