@@ -155,6 +155,11 @@ export class Calendar {
 
   // Load current month data.
   currentMonth() {
+    const today =  document.querySelector('.fc-day-today');
+    if (today) {
+      return;
+    }
+
     this.fullCalendar.today();
     this.refresh();
   }
