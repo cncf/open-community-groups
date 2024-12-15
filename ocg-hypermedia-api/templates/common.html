@@ -157,14 +157,14 @@
 {# End alert -#}
 
 {# Current page -#}
-{% macro current_page(total, items_number, offset_value) %}
-  {% if let Some(offset) = offset_value %}
+{% macro current_page(total, items_number, offset_value) -%}
+  {%- if let Some(offset) = offset_value -%}
     {{ offset + 1 }} - {{ items_number + offset }}
-  {% else %}
+  {%- else -%}
     1 - {{ items_number }}
-  {% endif %}
-  of {{ total }} results
-{% endmacro %}
+  {%- endif -%}
+  {{ "" }} of {{ total }} results
+{%- endmacro %}
 {# End current page -#}
 
 {# Logo -#}
