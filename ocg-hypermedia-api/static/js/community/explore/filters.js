@@ -32,17 +32,21 @@ export const reset = (formId) => {
     .querySelectorAll(`#${formId} input[type=radio]`)
     .forEach((el) => (el.checked = false));
 
-  // Reset date range
-  document.querySelector("input[name=date_from]").value = formatDate(
-    new Date()
-  );
-  const aYearFromNow = new Date();
-  aYearFromNow.setFullYear(aYearFromNow.getFullYear() + 1);
-  document.querySelector("input[name=date_to]").value =
-    formatDate(aYearFromNow);
-  document
-    .querySelectorAll(`#${formId} input[type=date]`)
-    .forEach((el) => (el.value = ""));
+  // Date inputs are hidden when view mode is "calendar"
+  const dateInputs = document.querySelectorAll(`#${formId} input[type=date]`);
+  if (dateInputs.length > 0) {
+    // Reset date range
+    document.querySelector("input[name=date_from]").value = formatDate(
+      new Date()
+    );
+    const aYearFromNow = new Date();
+    aYearFromNow.setFullYear(aYearFromNow.getFullYear() + 1);
+    document.querySelector("input[name=date_to]").value =
+      formatDate(aYearFromNow);
+    document
+      .querySelectorAll(`#${formId} input[type=date]`)
+      .forEach((el) => (el.value = ""));
+  }
 
   // Reset text search input
   document.querySelector('input[name="ts_query"]').value = "";

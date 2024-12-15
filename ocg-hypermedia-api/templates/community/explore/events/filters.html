@@ -8,6 +8,8 @@
 {% call macros::entity_radio(Entity::Events) %}
 {# End entity selector -#}
 
+{% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
+
 <form id="events-form"
       hx-get='/explore/events-section'
       hx-trigger="change"
@@ -38,7 +40,6 @@
 
       {# Virtual -#}
       <li>
-        {% set view_mode = filters.view_mode.clone().unwrap_or_default() %}
         {% if view_mode == ViewMode::Map %}
           <input type="checkbox"
                  name="kind"
@@ -107,17 +108,21 @@
     {# End distance -#}
   {% endif %}
 
-  {# Date -#}
-  <div class="px-6 py-7 pt-5">
-    <div class="flex justify-between items-center">
-      <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
+  {% if view_mode != ViewMode::Calendar %}
+    {# Date -#}
+    <div class="px-6 py-7 pt-5">
+      <div class="flex justify-between items-center">
+        <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
+      </div>
+      <div class="flex flex-wrap gap-3 items-center mt-3">
+        {% call macros::date_input("date_from", "from", filters.date_from) %}
+        {% call macros::date_input("date_to", "to", filters.date_to) %}
+      </div>
     </div>
-    <div class="flex flex-wrap gap-3 items-center mt-3">
-      {% call macros::date_input("date_from", "from", filters.date_from) %}
-      {% call macros::date_input("date_to", "to", filters.date_to) %}
-    </div>
-  </div>
-  {# End date -#}
+    {# End date -#}
+  {% endif %}
+
+  {# Apply filters -#}
 </form>
 
 <script type="module">
