@@ -1,6 +1,3 @@
-// Filters that are collapsible.
-const COLLAPSIBLE_FILTERS = ["region", "distance"];
-
 // Format date to ISO format (YYYY-MM-DD).
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
@@ -31,12 +28,10 @@ export const reset = (formId) => {
   // Date inputs are hidden when view mode is "calendar"
   const dateInputs = document.querySelectorAll(`#${formId} input[type=date]`);
   if (dateInputs.length > 0) {
-    // Reset date range
-    document.querySelector("input[name=date_from]").value = formatDate(new Date());
-    const aYearFromNow = new Date();
-    aYearFromNow.setFullYear(aYearFromNow.getFullYear() + 1);
-    document.querySelector("input[name=date_to]").value = formatDate(aYearFromNow);
-    document.querySelectorAll(`#${formId} input[type=date]`).forEach((el) => (el.value = ""));
+    // Reset date inputs
+    document
+      .querySelectorAll(`#${formId} input[type=date]`)
+      .forEach((el) => (el.value = ""));
   }
 
   // Reset text search input
@@ -56,6 +51,20 @@ export const reset = (formId) => {
 
   triggerChangeOnForm(formId);
 };
+
+// Reset date filters on calendar view mode.
+export const resetDateFiltersOnCalendarViewMode = () => {
+  const inputs = document.querySelectorAll("input[type=hidden]");
+  if (inputs.length === 0) {
+    return;
+  }
+
+  inputs.forEach((input) => {
+    if (input.name === "date_from" || input.name === "date_to") {
+      input.value = "";
+    }
+  });
+}
 
 // Select "Any" option for the given filter name.
 export const selectAnyOption = (name, type, triggerChange) => {
@@ -149,4 +158,24 @@ export const toggleCollapsibleFilterVisibility = (filter) => {
       });
     }
   });
+};
+
+// Get the first and last day of the month for the provided date.
+export function getFirstAndLastDayOfMonth(date) {
+  const currentDate = date || new Date();
+  const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+
+  const month = ("0" + (currentDate.getMonth() + 1)).slice(-2);
+  const firstDayMonth = `${currentDate.getFullYear()}-${month}-01`;
+  const lastDayMonth = `${currentDate.getFullYear()}-${month}-${lastDay.getDate()}`;
+
+  return {first: firstDayMonth, last: lastDayMonth};
+}
+
+// Update date input with motnhly range.
+export const updateDateInput = (date) => {
+  const { first, last } = getFirstAndLastDayOfMonth(date);
+
+  document.querySelector('input[name="date_from"]').value = first;
+  document.querySelector('input[name="date_to"]').value = last;
 };

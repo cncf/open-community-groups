@@ -1,4 +1,5 @@
 import { fetchData } from "./explore.js";
+import { getFirstAndLastDayOfMonth, updateDateInput } from "./filters.js";
 
 export class Calendar {
   // Initialize calendar.
@@ -27,6 +28,8 @@ export class Calendar {
   // Setup calendar instance.
   setup() {
     const calendarEl = document.getElementById("calendar-box");
+    const date_to = document.querySelector('input[name="date_to"]');
+    const initialDate = date_to ? new Date(date_to.value) : new Date();
 
     this.fullCalendar = new FullCalendar.Calendar(calendarEl, {
       timeZone: "local",
@@ -39,6 +42,7 @@ export class Calendar {
       headerToolbar: false,
       dayMaxEventRows: 4,
       moreLinkClick: "popover",
+      initialDate: initialDate,
 
       // TODO - Add event click
       eventClick: (info) => {
@@ -95,11 +99,14 @@ export class Calendar {
     params.append("offset", 0);
 
     // Add date range for the month displayed
-    let date = this.fullCalendar.getDate();
-    const firstDayMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const lastDayMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    params.append("date_from", firstDayMonth.toISOString());
-    params.append("date_to", lastDayMonth.toISOString());
+    const date = this.fullCalendar.getDate();
+    const { first, last } = getFirstAndLastDayOfMonth(date);
+
+    params.append("date_from", first);
+    params.append("date_to", last);
+
+    // Update inputs
+    updateDateInput(date);
 
     // Fetch events
     const data = await fetchData("events", params.toString());

@@ -120,6 +120,13 @@
       </div>
     </div>
     {# End date -#}
+  {% else %}
+    <input type="hidden"
+           name="date_from"
+           value="{%- if let Some(date_from) = filters.date_from -%} {{ date_from }} {%- endif -%}">
+    <input type="hidden"
+           name="date_to"
+           value="{%- if let Some(date_to) = filters.date_to -%} {{ date_to }} {%- endif -%}">
   {% endif %}
 
   {# Apply filters -#}

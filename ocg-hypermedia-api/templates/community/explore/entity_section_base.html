@@ -181,10 +181,13 @@
 <script type="module">
   import {
     close,
+    getFirstAndLastDayOfMonth,
     open,
     reset,
+    resetDateFiltersOnCalendarViewMode,
     triggerChangeOnForm,
-    toggleCollapsibleFilterVisibility
+    toggleCollapsibleFilterVisibility,
+    updateDateInput
   } from '/static/js/community/explore/filters.js';
 
   const openFiltersBtn = document.querySelector('#open-filters');
@@ -198,7 +201,15 @@
 
   const inputs = document.querySelectorAll('input[name="view_mode"]');
   inputs.forEach(input => {
-    input.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+    input.addEventListener('change', () => {
+      if (input.value === 'calendar') {
+        updateDateInput();
+      } else {
+        resetDateFiltersOnCalendarViewMode();
+      }
+
+      triggerChangeOnForm('{{ results_section.entity() }}-form');
+    });
   });
 
   const select = document.querySelector('#sort_by');
