@@ -65,9 +65,6 @@ export const reset = (formId) => {
     .querySelectorAll(`#${formId} input[value='']`)
     .forEach((el) => (el.checked = true));
 
-  console.log("Reset filters");
-
-
   triggerChangeOnForm(formId);
 };
 

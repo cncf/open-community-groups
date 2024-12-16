@@ -88,7 +88,7 @@ export class Calendar {
     // Remove view mode and date range from query params
     params.delete("view_mode");
     params.delete("date_from");
-    params.delete("data_to");
+    params.delete("date_to");
 
     // Add limit and offset
     params.append("limit", 100);
