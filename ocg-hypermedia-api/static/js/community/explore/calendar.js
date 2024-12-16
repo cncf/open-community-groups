@@ -112,7 +112,7 @@ export class Calendar {
     // Prepare events for calendar
     let formattedEvents = events.map((event) => {
       // Background color for past events
-      let color = "rgb(229, 231, 235)";
+      let color;
       if (!event.starts_at) {
         return;
       }
@@ -138,7 +138,7 @@ export class Calendar {
         start: convertDate(new Date(event.starts_at * 1000)),
         end: convertDate(endDate),
         className: "cursor-pointer",
-        backgroundColor: color,
+        backgroundColor: updateColor(color),
         borderColor: color,
         extendedProps: {
           event: event,
@@ -175,6 +175,29 @@ export class Calendar {
     this.fullCalendar.prev();
     this.refresh();
   }
+}
+
+function updateColor (color) {
+  if (!color) {
+    return;
+  }
+  return hexToRgb(color, 0.35);
+}
+
+function hexToRgb(hex, alpha = 1) {
+  // Remove the hash sign if it's included
+  hex = hex.replace(/^#/, '');
+
+  // Parse the hex values
+  let bigint = parseInt(hex, 16);
+
+  // Extract RGB components
+  let r = (bigint >> 16) & 255;
+  let g = (bigint >> 8) & 255;
+  let b = bigint & 255;
+
+  // Return the RGBA string
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Convert date to ISO format.

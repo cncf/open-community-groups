@@ -1,8 +1,8 @@
 :root {
   /* Full Calendar */
   --fc-small-font-size: .7em;
-  --fc-event-bg-color: var(--ocg-primary);
-  --fc-event-border-color: var(--ocg-primary);
+  --fc-event-bg-color: rgb(229, 231, 235);
+  --fc-event-border-color: rgb(209, 213, 219);
   --fc-today-bg-color: color-mix(in oklab, var(--ocg-primary) 5%, white);
   --fc-event-text-color: black;
 }
