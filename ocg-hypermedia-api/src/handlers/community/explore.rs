@@ -7,8 +7,9 @@ use anyhow::Result;
 use axum::{
     extract::{Query, RawQuery, State},
     http::{header::CACHE_CONTROL, HeaderMap, Uri},
-    response::IntoResponse,
+    response::{Html, IntoResponse},
 };
+use rinja::Template;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -54,7 +55,7 @@ pub(crate) async fn index(
         }
     }
 
-    Ok(template)
+    Ok(Html(template.render()?))
 }
 
 /// Handler that returns the events section of the explore page.
@@ -75,7 +76,7 @@ pub(crate) async fn events_section(
         explore::build_url("/explore?entity=events", &filters)?,
     )];
 
-    Ok((headers, template))
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that returns the events results section of the explore page.
@@ -105,7 +106,7 @@ pub(crate) async fn events_results_section(
         explore::build_url("/explore?entity=events", &filters)?,
     )];
 
-    Ok((headers, template))
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that returns the groups section of the explore page.
@@ -126,7 +127,7 @@ pub(crate) async fn groups_section(
         explore::build_url("/explore?entity=groups", &filters)?,
     )];
 
-    Ok((headers, template))
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that returns the groups results section of the explore page.
@@ -156,7 +157,7 @@ pub(crate) async fn groups_results_section(
         explore::build_url("/explore?entity=groups", &filters)?,
     )];
 
-    Ok((headers, template))
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that returns the events search results.

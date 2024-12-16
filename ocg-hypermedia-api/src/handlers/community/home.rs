@@ -2,7 +2,12 @@
 //! site.
 
 use anyhow::Result;
-use axum::{extract::State, http::Uri, response::IntoResponse};
+use axum::{
+    extract::State,
+    http::Uri,
+    response::{Html, IntoResponse},
+};
+use rinja::Template;
 use tracing::instrument;
 
 use crate::{
@@ -36,5 +41,5 @@ pub(crate) async fn index(
         stats,
     };
 
-    Ok(template)
+    Ok(Html(template.render()?))
 }

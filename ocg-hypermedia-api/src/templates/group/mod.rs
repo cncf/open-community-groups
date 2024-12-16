@@ -1,6 +1,6 @@
 //! This module defines the templates for the group site.
 
-use rinja_axum::Template;
+use rinja::Template;
 
 /// Group index page template.
 #[derive(Debug, Clone, Template)]

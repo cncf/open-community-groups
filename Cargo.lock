@@ -1047,15 +1047,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
-name = "humansize"
-version = "2.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cb51c9a029ddc91b07a787f1d86b53ccfa49b0e86688c946ebe8d3555685dd7"
-dependencies = [
- "libm",
-]
-
-[[package]]
 name = "hyper"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1186,12 +1177,6 @@ name = "libc"
 version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
-
-[[package]]
-name = "libm"
-version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 
 [[package]]
 name = "lightningcss"
@@ -1343,12 +1328,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "minimal-lexical"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
-
-[[package]]
 name = "miniz_oxide"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1367,16 +1346,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys",
-]
-
-[[package]]
-name = "nom"
-version = "7.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
-dependencies = [
- "memchr",
- "minimal-lexical",
 ]
 
 [[package]]
@@ -1454,7 +1423,6 @@ dependencies = [
  "palette",
  "postgres-openssl",
  "rinja",
- "rinja_axum",
  "rust-embed",
  "serde",
  "serde_html_form",
@@ -2014,10 +1982,8 @@ dependencies = [
 [[package]]
 name = "rinja"
 version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dc4940d00595430b3d7d5a01f6222b5e5b51395d1120bdb28d854bb8abb17a5"
+source = "git+https://github.com/rinja-rs/rinja?rev=f71ce23#f71ce236d6b662c0f46429a774e12199b1d30236"
 dependencies = [
- "humansize",
  "itoa",
  "percent-encoding",
  "rinja_derive",
@@ -2026,26 +1992,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "rinja_axum"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc64d77bb950f6498d0fc64b028d168fcb4e56ac31b66a8ae05f64d3b0c218b6"
-dependencies = [
- "axum-core",
- "http",
- "rinja",
-]
-
-[[package]]
 name = "rinja_derive"
 version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d9ed0146aef6e2825f1b1515f074510549efba38d71f4554eec32eb36ba18b"
+source = "git+https://github.com/rinja-rs/rinja?rev=f71ce23#f71ce236d6b662c0f46429a774e12199b1d30236"
 dependencies = [
  "basic-toml",
  "memchr",
- "mime",
- "mime_guess",
  "proc-macro2",
  "quote",
  "rinja_parser",
@@ -2057,12 +2009,11 @@ dependencies = [
 [[package]]
 name = "rinja_parser"
 version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93f9a866e2e00a7a1fb27e46e9e324a6f7c0e7edc4543cae1d38f4e4a100c610"
+source = "git+https://github.com/rinja-rs/rinja?rev=f71ce23#f71ce236d6b662c0f46429a774e12199b1d30236"
 dependencies = [
  "memchr",
- "nom",
  "serde",
+ "winnow",
 ]
 
 [[package]]
@@ -3017,6 +2968,15 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+
+[[package]]
+name = "winnow"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "656953b22bcbfb1ec8179d60734981d1904494ecc91f8a3f0ee5c7389bb8eb4b"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "wyz"

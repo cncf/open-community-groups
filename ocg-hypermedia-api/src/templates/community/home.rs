@@ -4,7 +4,7 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
-use rinja_axum::Template;
+use rinja::Template;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
