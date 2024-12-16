@@ -177,7 +177,7 @@ export class Calendar {
   }
 }
 
-function updateColor (color) {
+function updateColor(color) {
   if (!color) {
     return;
   }
@@ -186,7 +186,7 @@ function updateColor (color) {
 
 function hexToRgb(hex, alpha = 1) {
   // Remove the hash sign if it's included
-  hex = hex.replace(/^#/, '');
+  hex = hex.replace(/^#/, "");
 
   // Parse the hex values
   let bigint = parseInt(hex, 16);
