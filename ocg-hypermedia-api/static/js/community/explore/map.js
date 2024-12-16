@@ -119,7 +119,7 @@ export const loadMap = (entity) => {
 
             // Add popup to marker
             marker.bindPopup(
-              `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`
+              `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`,
             );
 
             // Add marker to layer group
@@ -150,7 +150,7 @@ export const loadMap = (entity) => {
         subdomains: "abcd",
         maxZoom: 20,
         minZoom: 0,
-      }
+      },
     ).addTo(map);
 
     // Adding a listener to the map after setting the position to get the bounds
@@ -164,8 +164,7 @@ export const loadMap = (entity) => {
   if (!isScriptLoaded("leaflet")) {
     let script = document.createElement("script");
     script.type = "text/javascript";
-    script.src =
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
     document.getElementsByTagName("head")[0].appendChild(script);
     script.onload = () => {
       renderMap();

@@ -4,6 +4,7 @@
     "format_js": true,
     "ignore": "J004,J018",
     "ignore_blocks": "call,when",
+    "indent": 2,
     "js": {
         "indent_size": 2
     },

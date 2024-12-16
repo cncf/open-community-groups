@@ -23,9 +23,7 @@ export const closeModal = (modalId) => {
 
 // Navigate images carousel to next or previous image.
 export const navigateCarousel = (direction) => {
-  const carouselItems = document.querySelectorAll(
-    "#gallery [data-carousel-item]"
-  );
+  const carouselItems = document.querySelectorAll("#gallery [data-carousel-item]");
 
   let activeImageIndex = 0;
   carouselItems.forEach((item, index) => {
@@ -56,9 +54,7 @@ export const navigateCarousel = (direction) => {
 
 // Set active image in carousel.
 const setActiveImage = (index) => {
-  const carouselItems = document.querySelectorAll(
-    "#gallery [data-carousel-item]"
-  );
+  const carouselItems = document.querySelectorAll("#gallery [data-carousel-item]");
   carouselItems.forEach((item, i) => {
     if (i === index) {
       item.classList.remove("hidden");
@@ -82,10 +78,7 @@ const setActiveImage = (index) => {
 const closeModalOnBackgroundClick = (e) => {
   const activeModal = document.querySelector(".modal[data-modal='active']");
 
-  if (
-    e.target.parentElement.tagName !== "BUTTON" &&
-    !["IMG", "BUTTON"].includes(e.target.tagName)
-  ) {
+  if (e.target.parentElement.tagName !== "BUTTON" && !["IMG", "BUTTON"].includes(e.target.tagName)) {
     closeModal(activeModal.id);
   }
 };

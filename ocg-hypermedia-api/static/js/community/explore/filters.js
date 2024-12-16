@@ -25,27 +25,18 @@ export const close = () => {
 // Reset all filters in the form provided.
 export const reset = (formId) => {
   // Uncheck all checkboxes and radios
-  document
-    .querySelectorAll(`#${formId} input[type=checkbox]`)
-    .forEach((el) => (el.checked = false));
-  document
-    .querySelectorAll(`#${formId} input[type=radio]`)
-    .forEach((el) => (el.checked = false));
+  document.querySelectorAll(`#${formId} input[type=checkbox]`).forEach((el) => (el.checked = false));
+  document.querySelectorAll(`#${formId} input[type=radio]`).forEach((el) => (el.checked = false));
 
   // Date inputs are hidden when view mode is "calendar"
   const dateInputs = document.querySelectorAll(`#${formId} input[type=date]`);
   if (dateInputs.length > 0) {
     // Reset date range
-    document.querySelector("input[name=date_from]").value = formatDate(
-      new Date()
-    );
+    document.querySelector("input[name=date_from]").value = formatDate(new Date());
     const aYearFromNow = new Date();
     aYearFromNow.setFullYear(aYearFromNow.getFullYear() + 1);
-    document.querySelector("input[name=date_to]").value =
-      formatDate(aYearFromNow);
-    document
-      .querySelectorAll(`#${formId} input[type=date]`)
-      .forEach((el) => (el.value = ""));
+    document.querySelector("input[name=date_to]").value = formatDate(aYearFromNow);
+    document.querySelectorAll(`#${formId} input[type=date]`).forEach((el) => (el.value = ""));
   }
 
   // Reset text search input
@@ -61,9 +52,7 @@ export const reset = (formId) => {
   }
 
   // Select "Any" option when applicable
-  document
-    .querySelectorAll(`#${formId} input[value='']`)
-    .forEach((el) => (el.checked = true));
+  document.querySelectorAll(`#${formId} input[value='']`).forEach((el) => (el.checked = true));
 
   triggerChangeOnForm(formId);
 };
@@ -143,27 +132,21 @@ export const expandFiltersUsed = () => {
 
 // Toggle collapsible filter visibility.
 export const toggleCollapsibleFilterVisibility = (filter) => {
-  const collapsibles = document.querySelectorAll(
-    `[data-collapsible-label='${filter}']`
-  );
+  const collapsibles = document.querySelectorAll(`[data-collapsible-label='${filter}']`);
   collapsibles.forEach((collapsible) => {
     const maxItems = collapsible.dataset.maxItems;
     const isCollapsed = collapsible.classList.contains("collapsed");
     if (isCollapsed) {
       collapsible.classList.remove("collapsed");
-      collapsible
-        .querySelectorAll("li")
-        .forEach((el) => el.classList.remove("hidden"));
+      collapsible.querySelectorAll("li").forEach((el) => el.classList.remove("hidden"));
     } else {
       collapsible.classList.add("collapsed");
-      collapsible
-        .querySelectorAll("li[data-input-item]")
-        .forEach((el, index) => {
-          // Hide all items after the max_visible_items_number (add 1 to include the "Any" option)
-          if (index >= maxItems) {
-            el.classList.add("hidden");
-          }
-        });
+      collapsible.querySelectorAll("li[data-input-item]").forEach((el, index) => {
+        // Hide all items after the max_visible_items_number (add 1 to include the "Any" option)
+        if (index >= maxItems) {
+          el.classList.add("hidden");
+        }
+      });
     }
   });
 };

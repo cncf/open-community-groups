@@ -56,7 +56,7 @@ export class Calendar {
         info.el.parentNode.setAttribute("popovertarget", id);
         info.el.parentNode.insertAdjacentHTML(
           "beforeend",
-          newEventPopover(id, info.event.extendedProps.event, horizontalAlignment, verticalAlignment)
+          newEventPopover(id, info.event.extendedProps.event, horizontalAlignment, verticalAlignment),
         );
       },
     });
@@ -155,7 +155,7 @@ export class Calendar {
 
   // Load current month data.
   currentMonth() {
-    const today =  document.querySelector('.fc-day-today');
+    const today = document.querySelector(".fc-day-today");
     if (today) {
       return;
     }
