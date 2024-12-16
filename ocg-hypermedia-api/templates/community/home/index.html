@@ -22,7 +22,7 @@
 
         {# Search bar -#}
         <div>
-          {% call common::search_bar(placeholder = "Search groups and events", value = None, input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) %}
+          {% call common::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) %}
           <script type="module">
             import {
               loadExplorePage
@@ -44,7 +44,7 @@
         </div>
         {# End search bar -#}
 
-        {% call common::primary_link(content = "Explore all", href = "/explore", rounded = false, extra_styles = None) %}
+        {% call common::primary_link(content = "Explore all", href = "/explore", rounded = false) %}
       </div>
 
       {# Jumbotron background image -#}
@@ -129,7 +129,7 @@
 
       {# See all events on mobile -#}
       <div class="block mt-10 lg:hidden lg:mt-0">
-        {% call common::secondary_link(content = "See all events", href = link, rounded = false, extra_styles = None) %}
+        {% call common::secondary_link(content = "See all events", href = link, rounded = false) %}
       </div>
       {# See all events on mobile -#}
     </div>
@@ -152,7 +152,7 @@
     </div>
     {# End groups cards -#}
     <div class="block mt-10 lg:hidden lg:mt-0">
-      {% call common::secondary_link(content = "See all groups", href = link, rounded = false, extra_styles = None) %}
+      {% call common::secondary_link(content = "See all groups", href = link, rounded = false) %}
     </div>
   </div>
 {% endmacro %}

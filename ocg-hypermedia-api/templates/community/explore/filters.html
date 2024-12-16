@@ -26,7 +26,7 @@
                 hx-target="#entity-section"
                 hx-boost="true"
                 class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-l-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
-          {% call entity_content(kind = "events", title = "Events", styles = None, icon_styles = Some("bg-gray-500")) %}
+          {% call entity_content(kind = "events", title = "Events", icon_styles = Some("bg-gray-500")) %}
         </button>
         {# End events button -#}
       </li>
@@ -62,7 +62,7 @@
                 hx-target="#entity-section"
                 hx-boost="true"
                 class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-r-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
-          {% call entity_content(kind = "groups", title = "Groups", styles = None, icon_styles = Some("bg-gray-500")) %}
+          {% call entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-gray-500")) %}
         </button>
         {# End groups button -#}
       </li>
@@ -81,10 +81,13 @@
 {# End entity selector -#}
 
 {# Entity content -#}
-{% macro entity_content(kind, title, styles, icon_styles) %}
-  <div class="flex w-full flex-col items-center {{ styles.unwrap_or("") }}">
+{% macro entity_content(kind, title, styles = None, icon_styles = None) %}
+  {% let styles_ = styles.unwrap_or("") %}
+  {% let icon_styles_ = icon_styles.unwrap_or("") %}
+
+  <div class="flex w-full flex-col items-center {{ styles_ }}">
     {# Icon -#}
-    <div class="svg-icon h-4 w-4 icon-{{ kind }} {{ icon_styles.unwrap_or("") }}"></div>
+    <div class="svg-icon h-4 w-4 icon-{{ kind }} {{ icon_styles_ }}"></div>
     {# End icon -#}
 
     {# Title -#}
@@ -95,48 +98,48 @@
 {# End entity content -#}
 
 {# Checkbox input -#}
-{% macro checkbox_input(name, label, value, active_filters, styles) %}
-  {# djlint:off #}
-  <li data-input-item="true" class="{{ styles.unwrap_or("") }}">
-  {# djlint:on #}
-  <input type="checkbox"
-         name="{{ name }}"
-         id="{{ value }}"
-         value="{{ value }}"
-         class="hidden peer"
-         {% if active_filters.contains(value.to_string().borrow()) %}checked{% endif %}>
-  <label for="{{ value }}"
-         class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-    <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
-  </label>
-</li>
-{% endmacro %}
-{# End checkbox input-#}
+{% macro checkbox_input(name, label, value, active_filters, styles = None) %}
+  {% let styles_ = styles.unwrap_or("") %}
 
-{# Radio input -#}
-{% macro radio_input(name, label, value, active_filter, styles) %}
-  {# djlint:off #}
-  <li data-input-item="true" class="{{ styles.unwrap_or("") }}">
-  {# djlint:on #}
-  {% if let Some(active) = active_filter %}
-    <input type="radio"
+  <li data-input-item="true" class="{{ styles_ }}">
+    <input type="checkbox"
            name="{{ name }}"
            id="{{ value }}"
            value="{{ value }}"
            class="hidden peer"
-           {% if &active.to_string() == value %}checked{% endif %}>
-  {% else %}
-    <input type="radio"
-           name="{{ name }}"
-           id="{{ value }}"
-           value="{{ value }}"
-           class="hidden peer">
-  {% endif %}
-  <label for="{{ value }}"
-         class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-    <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
-  </label>
-</li>
+           {% if active_filters.contains(&value.to_string()) %}checked{% endif %}>
+    <label for="{{ value }}"
+           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+      <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
+    </label>
+  </li>
+{% endmacro %}
+{# End checkbox input-#}
+
+{# Radio input -#}
+{% macro radio_input(name, label, value, active_filter, styles = None) %}
+  {% let styles_ = styles.unwrap_or("") %}
+
+  <li data-input-item="true" class="{{ styles_ }}">
+    {% if let Some(active) = active_filter %}
+      <input type="radio"
+             name="{{ name }}"
+             id="{{ value }}"
+             value="{{ value }}"
+             class="hidden peer"
+             {% if &active.to_string() == value %}checked{% endif %}>
+    {% else %}
+      <input type="radio"
+             name="{{ name }}"
+             id="{{ value }}"
+             value="{{ value }}"
+             class="hidden peer">
+    {% endif %}
+    <label for="{{ value }}"
+           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+      <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
+    </label>
+  </li>
 {% endmacro %}
 {# End radio input-#}
 
@@ -201,7 +204,9 @@
        data-collapsible-item="true"
        data-max-items="{{ max_visible_items_number }}">
     {% call collapsible_header(title = title, label = name, items_length = options.len(), max_visible_items_number = max_visible_items_number) %}
-    <ul class="flex w-full gap-2 mt-3 {% if *view == "rows" -%} flex-col {%- else -%} flex-wrap {%- endif -%}">
+    <ul class="flex w-full gap-2 mt-3
+               {% if *view == "rows" -%}
+                 flex-col {%- else -%} flex-wrap {%- endif -%}">
       <li>
         <input type="checkbox"
                name="any"
@@ -216,7 +221,7 @@
       </li>
       {% for option in options %}
         {% if loop.index <= *max_visible_items_number %}
-          {% call checkbox_input(name = name, label = option.name, value = option.value, active_filters = active_filters, styles = None) %}
+          {% call checkbox_input(name = name, label = option.name, value = option.value, active_filters = active_filters) %}
         {% else %}
           {% call checkbox_input(name = name, label = option.name, value = option.value, active_filters = active_filters, styles = Some("hidden")) %}
         {% endif %}
@@ -242,7 +247,9 @@
        data-collapsible-item="true"
        data-max-items="{{ max_visible_items_number }}">
     {% call collapsible_header(title = title, label = name, items_length = options.len(), max_visible_items_number = max_visible_items_number) %}
-    <ul class="flex w-full gap-2 mt-3 {% if *view == "rows" -%} flex-col {%- else -%} flex-wrap {%- endif -%}">
+    <ul class="flex w-full gap-2 mt-3
+               {% if *view == "rows" -%}
+                 flex-col {%- else -%} flex-wrap {%- endif -%}">
       <li>
         {% if let Some(selected) = active_filter %}
           <input type="radio"
@@ -265,7 +272,7 @@
       </li>
       {% for option in options %}
         {% if loop.index <= *max_visible_items_number %}
-          {% call radio_input(name = name, label = option.name, value = option.value, active_filter = active_filter, styles = None) %}
+          {% call radio_input(name = name, label = option.name, value = option.value, active_filter = active_filter) %}
         {% else %}
           {% call radio_input(name = name, label = option.name, value = option.value, active_filter = active_filter, styles = Some("hidden")) %}
         {% endif %}

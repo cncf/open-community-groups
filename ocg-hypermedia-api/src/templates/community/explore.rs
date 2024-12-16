@@ -2,10 +2,7 @@
 //! the community site.
 
 use core::str;
-use std::{
-    borrow::Borrow,
-    fmt::{self, Display, Formatter},
-};
+use std::fmt::{self, Display, Formatter};
 
 use anyhow::Result;
 use axum::http::HeaderMap;

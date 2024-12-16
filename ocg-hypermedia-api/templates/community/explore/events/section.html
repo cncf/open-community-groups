@@ -12,7 +12,7 @@
 {% endblock current_page %}
 
 {% block search_bar %}
-  {% call common::search_bar(placeholder = "Search events by name, location or tags", value = filters.ts_query, input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true) %}
+  {% call common::search_bar(placeholder = "Search events by name, location or tags", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) %}
   <script type="module">
     import {
       triggerChangeOnForm

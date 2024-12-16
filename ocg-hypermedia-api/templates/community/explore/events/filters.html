@@ -27,7 +27,7 @@
                id="in-person"
                value="in-person"
                class="hidden peer"
-               {% if filters.kind.contains(EventKind::InPerson.borrow()) %}checked{% endif %}>
+               {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
         <label for="in-person"
                class="group inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="flex w-full flex-col items-center">
@@ -53,7 +53,7 @@
                  id="kind-virtual"
                  value="virtual"
                  class="hidden peer"
-                 {% if filters.kind.contains(EventKind::Virtual.borrow()) %}checked{% endif %}>
+                 {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
         {% endif %}
         <label for="kind-virtual"
                class="group inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-lg peer-enabled:cursor-pointer select-none peer-checked:border-primary-500 hover:peer-enabled:text-gray-600 peer-checked:text-primary-500 hover:peer-enabled:peer-checked:text-primary-500 hover:peer-enabled:bg-gray-50 peer-disabled:opacity-40 peer-disabled:bg-gray-100">
@@ -72,7 +72,7 @@
                id="hybrid"
                value="hybrid"
                class="hidden peer"
-               {% if filters.kind.contains(EventKind::Hybrid.borrow()) %}checked{% endif %}>
+               {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
         <label for="hybrid"
                class="group inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="flex w-full flex-col items-center">

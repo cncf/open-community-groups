@@ -85,12 +85,12 @@
 {# End pagination -#}
 
 <script type="module">
-    import {
-        showLoadingSpinner
-    } from '/static/js/common/common.js';
+  import {
+    showLoadingSpinner
+  } from '/static/js/common/common.js';
 
-    const links = document.querySelectorAll('#pagination a');
-    links.forEach(link => {
-        link.addEventListener('hmtx:beforeRequest', showLoadingSpinner);
-    });
+  const links = document.querySelectorAll('#pagination a');
+  links.forEach(link => {
+    link.addEventListener('hmtx:beforeRequest', showLoadingSpinner);
+  });
 </script>

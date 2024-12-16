@@ -53,15 +53,8 @@
             {# Gallery -#}
             <div id="gallery" class="relative w-full h-full overflow-hidden">
               {% for photo in photos_urls %}
-                <div class="duration-700 ease-in-out absolute inset-0 transition-transform transform z-30
-                            {%- if !loop.first -%}
-                              hidden z-10 translate-x-full
-                            {%- else -%}
-                              translate-x-0
-                            {%- endif -%}"
-                     data-carousel-item="{%- if loop.first -%}
-                                           active
-                                         {%- endif -%}">
+                <div class="duration-700 ease-in-out absolute inset-0 transition-transform transform z-30 {%- if !loop.first -%} hidden z-10 translate-x-full {%- else -%} translate-x-0 {%- endif -%}"
+                     data-carousel-item="{%- if loop.first -%} active {%- endif -%}">
                   <img src="{{ photo }}"
                        height="auto"
                        width="auto"
@@ -102,22 +95,26 @@
     {# End modal full page -#}
 
     <script type="module">
-        import { openModal, closeModal, navigateCarousel } from '/static/js/community/home/gallery.js';
+      import {
+        openModal,
+        closeModal,
+        navigateCarousel
+      } from '/static/js/community/home/gallery.js';
 
-        const photos = document.querySelectorAll('.photo-gallery');
-        photos.forEach((photo) => {
-          const index = photo.dataset.photoIndex;
-          photo.addEventListener('click', () => openModal('modal-gallery', index));
-        });
+      const photos = document.querySelectorAll('.photo-gallery');
+      photos.forEach((photo) => {
+        const index = photo.dataset.photoIndex;
+        photo.addEventListener('click', () => openModal('modal-gallery', index));
+      });
 
-        const closeGalleryBtn = document.querySelector('#close-gallery-btn');
-        closeGalleryBtn.addEventListener('click', () => closeModal('modal-gallery'));
+      const closeGalleryBtn = document.querySelector('#close-gallery-btn');
+      closeGalleryBtn.addEventListener('click', () => closeModal('modal-gallery'));
 
-        const prevGalleryBtn = document.querySelector('#prev-gallery-btn');
-        prevGalleryBtn.addEventListener('click', () => navigateCarousel('prev'));
+      const prevGalleryBtn = document.querySelector('#prev-gallery-btn');
+      prevGalleryBtn.addEventListener('click', () => navigateCarousel('prev'));
 
-        const nextGalleryBtn = document.querySelector('#next-gallery-btn');
-        nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
+      const nextGalleryBtn = document.querySelector('#next-gallery-btn');
+      nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
     </script>
   {% endif %}
 {% endif %}

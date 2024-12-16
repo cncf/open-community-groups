@@ -1,7 +1,11 @@
 {% extends "community/base.html" %}
 
-{% block header_color %}bg-transparent{% endblock header_color %}
-{% block bg_color %}bg-gray-100{% endblock bg_color %}
+{% block header_color %}
+  bg-transparent
+{% endblock header_color %}
+{% block bg_color %}
+  bg-gray-100
+{% endblock bg_color %}
 
 {% block content %}
   {# Community title -#}
@@ -50,21 +54,21 @@
 {# End main content -#}
 
 <script type="module">
-    import {
-        expandFiltersUsed
-    } from '/static/js/community/explore/filters.js';
-    import {
-        hideLoadingSpinner
-    } from '/static/js/common/common.js';
+  import {
+    expandFiltersUsed
+  } from '/static/js/community/explore/filters.js';
+  import {
+    hideLoadingSpinner
+  } from '/static/js/common/common.js';
 
+  expandFiltersUsed();
+
+  const entitySection = document.querySelector('#entity-section');
+  entitySection.addEventListener('htmx:afterSwap', () => {
+    hideLoadingSpinner();
+  });
+  entitySection.addEventListener('htmx:afterSettle', () => {
     expandFiltersUsed();
-
-    const entitySection = document.querySelector('#entity-section');
-    entitySection.addEventListener('htmx:afterSwap', () => {
-        hideLoadingSpinner();
-    });
-    entitySection.addEventListener('htmx:afterSettle', () => {
-        expandFiltersUsed();
-    });
+  });
 </script>
 {% endblock content %}

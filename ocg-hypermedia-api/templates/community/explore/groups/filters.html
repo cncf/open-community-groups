@@ -30,10 +30,10 @@
 </form>
 
 <script type="module">
-    import {
-        showLoadingSpinner
-    } from '/static/js/common/common.js';
+  import {
+    showLoadingSpinner
+  } from '/static/js/common/common.js';
 
-    const form = document.getElementById('groups-form');
-    form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
+  const form = document.getElementById('groups-form');
+  form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
 </script>

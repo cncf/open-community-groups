@@ -31,10 +31,10 @@
 
     {# Desktop links -#}
     <div class="hidden lg:flex lg:gap-x-8">
-      {% call link(content = "Home", href = "/", current_path = path, extra_styles = None) %}
-      {% call link(content = "Explore", href = "/explore", current_path = path, extra_styles = None) %}
+      {% call link(content = "Home", href = "/", current_path = path) %}
+      {% call link(content = "Explore", href = "/explore", current_path = path) %}
       {% if let Some(new_group_details) = self.community.new_group_details %}
-        {% call button(id = "open-new-group-btn", content = "New group", extra_styles = None) %}
+        {% call button(id = "open-new-group-btn", content = "New group") %}
         <script type="module">
           import {
             toggleModalVisibility
@@ -49,8 +49,8 @@
 
     {# Desktop buttons -#}
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      {% call common::secondary_button(id = "signup-btn", content = "Sign up", rounded = false, extra_styles = None) %}
-      {% call common::primary_button(id = "login-btn", content = "Log in", rounded = false, extra_styles = None) %}
+      {% call common::secondary_button(id = "signup-btn", content = "Sign up", rounded = false) %}
+      {% call common::primary_button(id = "login-btn", content = "Log in", rounded = false) %}
     </div>
     {# End desktop buttons -#}
   </nav>
@@ -77,9 +77,9 @@
         <div class="-my-6 divide-y divide-gray-500/10">
           {# Mobile links -#}
           <div class="space-y-2 py-6">
-            {% call mobile_link("Home", "/", "") %}
-            {% call mobile_link("Explore", "/explore", "") %}
-            {% call mobile_button("New group", "open-new-group-mobile-btn", "") %}
+            {% call mobile_link(content = "Home", href = "/") %}
+            {% call mobile_link(content = "Explore", href = "/explore") %}
+            {% call mobile_button(content = "New group", id = "open-new-group-mobile-btn") %}
             <script type="module">
               import {
                 toggleModalVisibility
@@ -93,8 +93,8 @@
 
           {# Mobile buttons - Sign up / Log in -#}
           <div class="py-6">
-            {% call mobile_link("Sign up", "#", "") %}
-            {% call mobile_link("Login in", "#", "") %}
+            {% call mobile_link(content = "Sign up", href = "#") %}
+            {% call mobile_link(content = "Login in", href = "#") %}
           </div>
           {# End mobile buttons - Sign up / Log in -#}
         </div>
@@ -150,7 +150,7 @@
 
         {# Modal footer -#}
         <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-          {% call common::secondary_button(id = "create-group", content = "Create group", extra_styles = None, rounded = false) %}
+          {% call common::secondary_button(id = "create-group", content = "Create group", rounded = false) %}
         </div>
         {# End modal footer -#}
       </div>
@@ -171,7 +171,9 @@
 {# End new group modal -#}
 
 {# Link -#}
-{% macro link(content, href, current_path, extra_styles) %}
+{% macro link(content, href, current_path, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <a href="{{ href }}"
      class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase
             {% if current_path == href %}
@@ -179,32 +181,38 @@
             {% else %}
               hover:border-b-2 hover:border-primary-300
             {% endif %}
-            {{ extra_styles.unwrap_or("") }}">{{ content }}</a>
+            {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro %}
 {# End link -#}
 
 {# Button -#}
-{% macro button(id, content, extra_styles) %}
+{% macro button(id, content, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <button id="{{ id }}"
-          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles.unwrap_or("") }}">
+          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro %}
 {# End button -#}
 
 {# Mobile link -#}
-{% macro mobile_link(content, href, extra_styles) %}
+{% macro mobile_link(content, href, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <a href="{{ href }}"
-     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}">
+     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles_ }}">
     {{ content }}
   </a>
 {% endmacro %}
 {# End mobile link -#}
 
 {# Mobile button -#}
-{% macro mobile_button(content, id, extra_styles) %}
+{% macro mobile_button(content, id, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <button id="{{ id }}"
-          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles }}">
+          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro %}

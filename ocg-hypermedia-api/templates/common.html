@@ -1,52 +1,68 @@
 {# Primary button -#}
-{% macro primary_button(id, content, rounded, extra_styles) %}
+{% macro primary_button(id, content, rounded, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <button id="{{ id }}"
-          class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles.unwrap_or("") }}">
+          class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
 {# End primary button -#}
 
 {# Primary link -#}
-{% macro primary_link(content, href, rounded, extra_styles) %}
-  <a class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles.unwrap_or("") }}"
+{% macro primary_link(content, href, rounded, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
+  <a class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}"
      href="{{ href }}">{{ content|safe }}</a>
 {% endmacro %}
 {# End primary link -#}
 
 {# Secondary button -#}
-{% macro secondary_button(id, content, rounded, extra_styles) %}
+{% macro secondary_button(id, content, rounded, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <button id="{{ id }}"
-          class="group {% if rounded -%} p-1.5 h-[36px] w-[36px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles.unwrap_or("") }}">
+          class="group
+                 {% if rounded -%}
+                   p-1.5 h-[36px] w-[36px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
 {# End secondary button -#}
 
 {# Secondary mini button -#}
-{% macro secondary_mini_button(id, content, extra_styles) %}
+{% macro secondary_mini_button(id, content, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
   <button id="{{ id }}"
-          class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles.unwrap_or("") }}">
+          class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
 {# End secondary mini button -#}
 
 {# Secondary link -#}
-{% macro secondary_link(content, href, rounded, extra_styles) %}
-  <a class="{%- if rounded -%} p-2 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles.unwrap_or("") }}"
+{% macro secondary_link(content, href, rounded, extra_styles = None) %}
+  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+
+  <a class="{%- if rounded -%} p-2 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}"
      href="{{ href }}">{{ content|safe }}</a>
 {% endmacro %}
 {# End secondary link -#}
 
 {# Search bar -#}
-{% macro search_bar(placeholder, value, input_styles, container_styles, with_help) %}
+{% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) %}
+  {% let value_ = value.clone().unwrap_or("".to_string()) %}
+
   <div class="flex items-center {{ container_styles }}">
-    <div class="relative {{ input_styles }} {% if with_help -%}md:-ml-[0.75rem]{%- endif -%}">
+    <div class="relative {{ input_styles }}
+                {% if with_help -%}
+                  md:-ml-[0.75rem]{%- endif -%}">
       <input type="text"
              id="ts_query"
              name="ts_query"
-             value="{{ value.clone().unwrap_or("".to_string()) }}"
+             value="{{ value_ }}"
              class="peer w-[100%] rounded-full border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4"
              placeholder="{{ placeholder }}"
              autocomplete="off" />
@@ -58,7 +74,7 @@
       </div>
       <div class="absolute right-[6px] top-[5px]">
         {# djlint:off H008 #}
-        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true, extra_styles = None) %}
+        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true) %}
         {# djlint:on H008 #}
       </div>
 
@@ -148,9 +164,10 @@
 {# End current page -#}
 
 {# Logo -#}
-{% macro logo(logo_url, name, classes, size, color) %}
+{% macro logo(logo_url, classes, size, color, name = None) %}
   {% if let Some(logo_url) = logo_url %}
     {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", *size * 2) ) %}
+
     <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
          style="background-image: url('{{ bg_image }}')"></div>
   {% else %}
