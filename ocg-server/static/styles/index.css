@@ -121,6 +121,18 @@
 }
 /* End Leaflet */
 
+/* Marker cluster */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+  background-color: color-mix(in oklab, var(--ocg-primary) 50%, white) !important;
+}
+
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  background-color: var(--ocg-primary) !important;
+  color: white;
+  font-weight: 700;
+}
+/* End marker cluster */
+
 /* Tooltip */
 .tooltip-with-arrow::after {
   border: 5px solid #0000;

@@ -20,7 +20,8 @@ export class Map {
     // Prepare markercluster script
     let markerClusterScript = document.createElement("script");
     markerClusterScript.type = "text/javascript";
-    markerClusterScript.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js";
+    markerClusterScript.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js";
 
     this.entity = entity;
     this.enabledMoveEnd = false;
