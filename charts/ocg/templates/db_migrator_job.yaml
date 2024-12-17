@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+{{- if .Release.IsInstall }}
+  name: {{ include "chart.resourceNamePrefix" . }}db-migrator-install
+{{- else }}
+  name: {{ include "chart.resourceNamePrefix" . }}db-migrator-upgrade
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+{{- end }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+{{- with .Values.dbMigrator.job.extraJobLabels }}
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  ttlSecondsAfterFinished: {{ .Values.dbMigrator.job.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "chart.labels" . | nindent 8 }}
+    {{- with .Values.dbMigrator.job.extraPodLabels }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dbMigrator.job.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (default .Values.nodeSelector .Values.dbMigrator.job.nodeSelector) }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      initContainers:
+        - {{- include "chart.checkDbIsReadyInitContainer" . | nindent 10 }}
+      containers:
+        - name: db-migrator
+          image: {{ .Values.dbMigrator.job.image.repository }}:{{ .Values.imageTag | default (printf "v%s" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          {{- with .Values.dbMigrator.job.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: TERN_CONF
+              value: {{ .Values.dbMigrator.configDir }}/tern.conf
+          volumeMounts:
+            - name: db-migrator-config
+              mountPath: {{ .Values.dbMigrator.configDir }}
+              readOnly: true
+          command: ["./migrate.sh"]
+      volumes:
+        - name: db-migrator-config
+          secret:
+            secretName: {{ include "chart.resourceNamePrefix" . }}db-migrator-config
