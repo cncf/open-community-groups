@@ -29,9 +29,7 @@ export const reset = (formId) => {
   const dateInputs = document.querySelectorAll(`#${formId} input[type=date]`);
   if (dateInputs.length > 0) {
     // Reset date inputs
-    document
-      .querySelectorAll(`#${formId} input[type=date]`)
-      .forEach((el) => (el.value = ""));
+    document.querySelectorAll(`#${formId} input[type=date]`).forEach((el) => (el.value = ""));
   }
 
   // Reset text search input
@@ -64,7 +62,7 @@ export const resetDateFiltersOnCalendarViewMode = () => {
       input.value = "";
     }
   });
-}
+};
 
 // Select "Any" option for the given filter name.
 export const selectAnyOption = (name, type, triggerChange) => {
@@ -169,7 +167,7 @@ export function getFirstAndLastDayOfMonth(date) {
   const firstDayMonth = `${currentDate.getFullYear()}-${month}-01`;
   const lastDayMonth = `${currentDate.getFullYear()}-${month}-${lastDay.getDate()}`;
 
-  return {first: firstDayMonth, last: lastDayMonth};
+  return { first: firstDayMonth, last: lastDayMonth };
 }
 
 // Update date input with motnhly range.
