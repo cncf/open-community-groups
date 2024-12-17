@@ -197,12 +197,14 @@ export class Map {
         );
 
         // Open popup on hover
-        marker.on("mouseover", (e) => {
+        marker.on("mouseover", () => {
+          this.enabledMoveEnd = false;
           marker.openPopup();
         });
 
         // Close popup on mouseout
         marker.on("mouseout", () => {
+          this.enabledMoveEnd = true;
           marker.closePopup();
         });
       }
