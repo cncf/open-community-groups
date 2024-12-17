@@ -85,10 +85,6 @@ export class Map {
       }
       this.enabledMoveEnd = true;
     });
-
-    this.map.on("viewreset", () => {
-      console.log("View reset");
-    });
   }
 
   // Refresh map, updating the markers.
