@@ -17,11 +17,21 @@ export class Map {
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
     document.getElementsByTagName("head")[0].appendChild(script);
 
+    // Prepare markercluster script
+    let markerClusterScript = document.createElement("script");
+    markerClusterScript.type = "text/javascript";
+    markerClusterScript.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js";
+
     this.entity = entity;
     this.enabledMoveEnd = false;
 
-    // Setup map after script is loaded
+    // Load markercluster library after LeafletJS is loaded
     script.onload = () => {
+      document.getElementsByTagName("head")[0].appendChild(markerClusterScript);
+    };
+
+    // Setup map after scripts are loaded
+    markerClusterScript.onload = () => {
       this.setup(data);
     };
 
@@ -36,9 +46,6 @@ export class Map {
       minZoom: 3,
       zoomControl: false,
     });
-
-    // Create a layer group to add markers
-    this.layerGroup = L.layerGroup();
 
     // Add zoom control to the map on the top right
     L.control
@@ -93,11 +100,6 @@ export class Map {
       data = currentData;
     } else {
       data = await this.fetchData(overwriteBounds);
-    }
-
-    // Clear previous markers for the layer group
-    if (this.map.hasLayer(this.layerGroup)) {
-      this.layerGroup.clearLayers();
     }
 
     if (data) {
@@ -166,6 +168,9 @@ export class Map {
       popupAnchor: [0, -25],
     };
 
+    // Create marker cluster group
+    const markers = window.L.markerClusterGroup();
+
     // Add markers
     items.forEach((item) => {
       // Skip items without coordinates
@@ -209,11 +214,11 @@ export class Map {
         });
       }
 
-      // Add marker to layer group
-      this.layerGroup.addLayer(marker);
+      // Add marker to the marker cluster group
+      markers.addLayer(marker);
 
-      // Add layer group to the map
-      this.map.addLayer(this.layerGroup);
+      // Add marker cluster group to the map
+      this.map.addLayer(markers);
 
       // TODO - Open details on click
       marker.on("click", () => {
