@@ -3,10 +3,10 @@ import { getFirstAndLastDayOfMonth, updateDateInput } from "./filters.js";
 
 export class Calendar {
   // Initialize calendar.
-  constructor() {
+  constructor(data) {
     // Check if calendar is already initialized
     if (Calendar._instance) {
-      Calendar._instance.setup();
+      Calendar._instance.setup(data);
       return Calendar._instance;
     }
 
@@ -18,7 +18,7 @@ export class Calendar {
 
     // Setup calendar after script is loaded
     script.onload = () => {
-      this.setup();
+      this.setup(data);
     };
 
     // Save calendar instance
@@ -26,7 +26,7 @@ export class Calendar {
   }
 
   // Setup calendar instance.
-  setup() {
+  setup(data) {
     const calendarEl = document.getElementById("calendar-box");
     const date_to = document.querySelector('input[name="date_to"]');
     const initialDate = date_to ? new Date(date_to.value) : new Date();
@@ -65,12 +65,12 @@ export class Calendar {
       },
     });
 
-    this.refresh();
+    this.refresh(data);
     this.fullCalendar.render();
   }
 
   // Refresh calendar, updating the title and events.
-  async refresh() {
+  async refresh(data) {
     // Update calendar title
     const el = document.getElementById("calendar-date");
     if (el) {
@@ -78,7 +78,13 @@ export class Calendar {
     }
 
     // Refresh calendar events
-    const events = await this.fetchEvents();
+    let events;
+    if (data) {
+      events = data.events;
+    } else {
+      events = await this.fetchEvents();
+    }
+
     if (events && events.length > 0) {
       this.addEvents(events);
     }
@@ -93,10 +99,6 @@ export class Calendar {
     params.delete("view_mode");
     params.delete("date_from");
     params.delete("date_to");
-
-    // Add limit and offset
-    params.append("limit", 100);
-    params.append("offset", 0);
 
     // Add date range for the month displayed
     const date = this.fullCalendar.getDate();

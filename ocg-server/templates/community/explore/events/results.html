@@ -33,12 +33,13 @@
   <div id="calendar-box"
        class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
 </div>
+{# djlint:off #}
 <script type="module">
   import {
     Calendar
   } from '/static/js/community/explore/calendar.js';
 
-  const calendar = new Calendar();
+  const calendar = new Calendar({ events: {{ events|json|safe }} });
 
   const currentMonthBtn = document.querySelector('#current-month-btn');
   currentMonthBtn.addEventListener('click', () => calendar.currentMonth());
@@ -49,6 +50,7 @@
   const nextMonthBtn = document.querySelector('#next-month-btn');
   nextMonthBtn.addEventListener('click', () => calendar.nextMonth());
 </script>
+{# djlint:on #}
 {# End calendar view -#}
 
 {% when ViewMode::List %}
