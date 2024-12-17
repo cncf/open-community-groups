@@ -77,8 +77,8 @@ server:
 postgresql:
   enabled: true
   auth:
-    enablePostgresUser: true
-    postgresqlPassword: postgres
+    username: postgres
+    password: postgres
     database: ocg
   image:
     repository: bitnami/postgresql
