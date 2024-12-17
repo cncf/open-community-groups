@@ -1403,7 +1403,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ocg-hypermedia-api"
+name = "ocg-server"
 version = "0.0.1"
 dependencies = [
  "anyhow",

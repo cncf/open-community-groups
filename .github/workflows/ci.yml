@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  lint-and-test-hypermedia-api:
+  lint-and-test-server:
     runs-on:
       labels: ubuntu-latest
     steps:
@@ -39,8 +39,8 @@ jobs:
         run: |
           djlint \
             --reformat \
-            --configuration ocg-hypermedia-api/templates/.djlintrc \
-            ocg-hypermedia-api/templates
+            --configuration ocg-server/templates/.djlintrc \
+            ocg-server/templates
 
   check-js-files-format:
     runs-on:
@@ -52,5 +52,5 @@ jobs:
         uses: creyD/prettier_action@v4.3
         with:
           dry: true
-          prettier_options: --check ocg-hypermedia-api/static/js/**/*.js --config ocg-hypermedia-api/static/js/.prettierrc.yaml
+          prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
 

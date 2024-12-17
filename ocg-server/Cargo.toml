@@ -1,6 +1,6 @@
 [package]
-name = "ocg-hypermedia-api"
-description = "Open Community Groups Hypermedia API"
+name = "ocg-server"
+description = "Open Community Groups server"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
