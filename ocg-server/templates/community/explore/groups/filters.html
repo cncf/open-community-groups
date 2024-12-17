@@ -31,9 +31,11 @@
 
 <script type="module">
   import {
+    hideLoadingSpinner,
     showLoadingSpinner
   } from '/static/js/common/common.js';
 
+  hideLoadingSpinner();
   const form = document.getElementById('groups-form');
   form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
 </script>

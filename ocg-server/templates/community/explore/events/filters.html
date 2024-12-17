@@ -134,9 +134,11 @@
 
 <script type="module">
   import {
+    hideLoadingSpinner,
     showLoadingSpinner
   } from '/static/js/common/common.js';
 
+  hideLoadingSpinner();
   const form = document.getElementById('events-form');
   form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
 </script>
