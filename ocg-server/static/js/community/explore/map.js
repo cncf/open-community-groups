@@ -198,13 +198,12 @@ export class Map {
         );
 
         // Open popup on hover
-        marker.on('mouseover', (e) =>{
-          console.log('Marker hovered', e);
+        marker.on("mouseover", (e) => {
           marker.openPopup();
         });
 
         // Close popup on mouseout
-        marker.on('mouseout', () => {
+        marker.on("mouseout", () => {
           marker.closePopup();
         });
       }
@@ -216,8 +215,8 @@ export class Map {
       this.map.addLayer(this.layerGroup);
 
       // TODO - Open details on click
-      marker.on('click', () => {
-        console.log('Marker clicked', item.slug);
+      marker.on("click", () => {
+        console.log("Marker clicked", item.slug);
       });
     });
   }
