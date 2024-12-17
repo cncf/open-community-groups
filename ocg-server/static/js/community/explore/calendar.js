@@ -51,17 +51,19 @@ export class Calendar {
 
       // Add popover to events when they are mounted
       eventDidMount: (info) => {
-        // Calculate alignment based on the position of the event in the calendar
-        const horizontalAlignment = info.el.fcSeg.firstCol > 3 ? "right" : "left";
-        const verticalAlignment = info.el.fcSeg.row > 4 ? "top" : "bottom";
+        if (info.event.extendedProps.event.popover_html) {
+          // Calculate alignment based on the position of the event in the calendar
+          const horizontalAlignment = info.el.fcSeg.firstCol > 3 ? "right" : "left";
+          const verticalAlignment = info.el.fcSeg.row > 4 ? "top" : "bottom";
 
-        // Add popover
-        const id = `popover-${info.event.extendedProps.event.slug}`;
-        info.el.parentNode.setAttribute("popovertarget", id);
-        info.el.parentNode.insertAdjacentHTML(
-          "beforeend",
-          newEventPopover(id, info.event.extendedProps.event, horizontalAlignment, verticalAlignment),
-        );
+          // Add popover
+          const id = `popover-${info.event.extendedProps.event.slug}`;
+          info.el.parentNode.setAttribute("popovertarget", id);
+          info.el.parentNode.insertAdjacentHTML(
+            "beforeend",
+            newEventPopover(id, info.event.extendedProps.event, horizontalAlignment, verticalAlignment),
+          );
+        }
       },
     });
 
