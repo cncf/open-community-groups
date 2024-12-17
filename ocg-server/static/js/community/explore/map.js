@@ -191,16 +191,34 @@ export class Map {
         bubblingMouseEvents: true,
       });
 
-      // Add popup to marker
-      marker.bindPopup(
-        `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`,
-      );
+      if (item.popover_html) {
+        // Add popup to marker
+        marker.bindPopup(
+          `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`,
+        );
+
+        // Open popup on hover
+        marker.on('mouseover', (e) =>{
+          console.log('Marker hovered', e);
+          marker.openPopup();
+        });
+
+        // Close popup on mouseout
+        marker.on('mouseout', () => {
+          marker.closePopup();
+        });
+      }
 
       // Add marker to layer group
       this.layerGroup.addLayer(marker);
 
       // Add layer group to the map
       this.map.addLayer(this.layerGroup);
+
+      // TODO - Open details on click
+      marker.on('click', () => {
+        console.log('Marker clicked', item.slug);
+      });
     });
   }
 }
