@@ -132,6 +132,9 @@ impl EventsFilters {
         filters.group_category.retain(|c| !c.is_empty());
         filters.region.retain(|r| !r.is_empty());
 
+        // Populate the latitude and longitude fields from the headers provided
+        (filters.latitude, filters.longitude) = extract_location(headers);
+
         // Add default date range if not provided (now -> 12 months from now)
         if filters.date_from.is_none() {
             filters.date_from = Some(Utc::now().date_naive().to_string());
@@ -142,8 +145,16 @@ impl EventsFilters {
             }
         }
 
-        // Populate the latitude and longitude fields from the headers provided
-        (filters.latitude, filters.longitude) = extract_location(headers);
+        // Update limit and offset if the view mode is calendar or map
+        if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map) {
+            filters.limit = Some(100);
+            filters.offset = Some(0);
+        }
+
+        // Include bbox if the view mode is map
+        if filters.view_mode == Some(ViewMode::Map) {
+            filters.include_bbox = Some(true);
+        }
 
         trace!("{:?}", filters);
         Ok(filters)
@@ -355,6 +366,17 @@ impl GroupsFilters {
 
         // Populate the latitude and longitude fields from the headers provided.
         (filters.latitude, filters.longitude) = extract_location(headers);
+
+        // Update limit and offset if the view mode is calendar or map
+        if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map) {
+            filters.limit = Some(100);
+            filters.offset = Some(0);
+        }
+
+        // Include bbox if the view mode is map
+        if filters.view_mode == Some(ViewMode::Map) {
+            filters.include_bbox = Some(true);
+        }
 
         trace!("{:?}", filters);
         Ok(filters)
