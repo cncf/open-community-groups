@@ -13,10 +13,11 @@ use axum::{
 };
 use rust_embed::Embed;
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower_http::{trace::TraceLayer, validate_request::ValidateRequestHeaderLayer};
 use tracing::instrument;
 
 use crate::{
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{community, event, group},
 };
@@ -40,8 +41,9 @@ pub(crate) struct State {
 
 /// Setup router.
 #[instrument(skip_all)]
-pub(crate) fn setup(db: DynDB) -> Router {
-    Router::new()
+pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
+    // Setup router
+    let mut router = Router::new()
         .route("/", get(community::home::index))
         .route("/explore", get(community::explore::index))
         .route("/explore/events-section", get(community::explore::events_section))
@@ -61,7 +63,19 @@ pub(crate) fn setup(db: DynDB) -> Router {
         .route("/group/:group_slug/event/:event_slug", get(event::index))
         .route("/static/*file", get(static_handler))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .with_state(State { db })
+        .with_state(State { db });
+
+    // Setup basic auth
+    if let Some(basic_auth) = &cfg.basic_auth {
+        if basic_auth.enabled {
+            router = router.layer(ValidateRequestHeaderLayer::basic(
+                &basic_auth.username,
+                &basic_auth.password,
+            ));
+        }
+    }
+
+    router
 }
 
 /// Handler that takes care of health check requests.

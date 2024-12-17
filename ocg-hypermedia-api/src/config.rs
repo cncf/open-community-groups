@@ -43,6 +43,15 @@ impl Config {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HttpServerConfig {
     pub addr: String,
+    pub basic_auth: Option<BasicAuth>,
+}
+
+/// Basic authentication configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct BasicAuth {
+    pub enabled: bool,
+    pub username: String,
+    pub password: String,
 }
 
 /// Logs configuration.
