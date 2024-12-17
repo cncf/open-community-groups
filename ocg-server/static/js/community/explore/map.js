@@ -59,8 +59,7 @@ export class Map {
       this.map.remove();
     });
 
-    // Setting the position of the map: lat/long and zoom level
-    // TODO - Get the user's location and set the map to that location
+    // Center map view
     this.map.setView([0, 0], 0);
 
     // Adding the base layer to the map
