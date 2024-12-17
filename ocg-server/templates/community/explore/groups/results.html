@@ -34,17 +34,17 @@
 {% when ViewMode::Map %}
 {# Map view -#}
 <div class="mt-5 border-t border-gray-100 md:mt-7 p-5 md:p-7">
-  <div class="relative w-full border h-[600px] md:h-[820px]">
-    <div id="map-box" class="w-full h-full"></div>
+  <div class="relative w-full border h-[600px] md:h-[820px] overflow-hidden">
+    <div id="map-box" class="relative w-full h-full"></div>
   </div>
 </div>
 
 <script type="module">
   import {
-    loadMap
+    Map
   } from '/static/js/community/explore/map.js';
 
-  loadMap('groups');
+  const map = new Map('groups');
 </script>
 {# End map view -#}
 
