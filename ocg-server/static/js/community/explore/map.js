@@ -2,14 +2,12 @@ import { fetchData } from "./explore.js";
 
 export class Map {
   // Initialize map.
-  constructor(entity) {
+  constructor(entity, data) {
     // Check if map is already initialized
     if (Map._instance) {
-      // Invalidate map size to fix the map container
-      Map._instance.map.invalidateSize();
-
       Map._instance.entity = entity;
-      Map._instance.setup();
+      Map._instance.enabledMoveEnd = false;
+      Map._instance.setup(data);
       return Map._instance;
     }
 
@@ -20,10 +18,11 @@ export class Map {
     document.getElementsByTagName("head")[0].appendChild(script);
 
     this.entity = entity;
+    this.enabledMoveEnd = false;
 
     // Setup map after script is loaded
     script.onload = () => {
-      this.setup();
+      this.setup(data);
     };
 
     // Save map instance
@@ -31,7 +30,7 @@ export class Map {
   }
 
   // Setup map instance.
-  setup() {
+  setup(data) {
     this.map = L.map("map-box", {
       maxZoom: 20,
       minZoom: 3,
@@ -50,11 +49,14 @@ export class Map {
 
     // Load events after the map is loaded
     this.map.on("load", () => {
-      this.refresh(true);
+      this.refresh(true, data);
     });
 
+    // Remove map on unload, invalidating the size and removing event listeners
     this.map.on("unload", () => {
-      this.layerGroup.clearLayers();
+      this.map.invalidateSize();
+      this.map.off();
+      this.map.remove();
     });
 
     // Setting the position of the map: lat/long and zoom level
@@ -78,15 +80,30 @@ export class Map {
     // Adding a listener to the map after setting the position to get the bounds
     // when the map is moved (zoom or pan)
     this.map.on("moveend", () => {
-      this.refresh();
+      if (this.enabledMoveEnd) {
+        this.refresh();
+      }
+      this.enabledMoveEnd = true;
+    });
+
+    this.map.on("viewreset", () => {
+      console.log("View reset");
     });
   }
 
   // Refresh map, updating the markers.
-  async refresh(overwriteBounds) {
-    const data = await this.fetchData(overwriteBounds);
+  async refresh(overwriteBounds = false, currentData = null) {
+    let data;
+    if (currentData) {
+      data = currentData;
+    } else {
+      data = await this.fetchData(overwriteBounds);
+    }
 
-    fixMapBoxClasses();
+    // Clear previous markers for the layer group
+    if (this.map.hasLayer(this.layerGroup)) {
+      this.layerGroup.clearLayers();
+    }
 
     if (data) {
       // Get items from data
@@ -116,10 +133,6 @@ export class Map {
     // Remove view mode and virtual kind from query params
     params.delete("view_mode");
     params.delete("kind", "virtual");
-
-    // Add limit and offset
-    params.append("limit", 100);
-    params.append("offset", 0);
 
     if (overwriteBounds) {
       // Get bbox to overwrite bounds on first load
@@ -158,11 +171,6 @@ export class Map {
       popupAnchor: [0, -25],
     };
 
-    // Clear previous markers for the layer group
-    if (this.map.hasLayer(this.layerGroup)) {
-      this.layerGroup.clearLayers();
-    }
-
     // Add markers
     items.forEach((item) => {
       // Skip items without coordinates
@@ -200,15 +208,3 @@ export class Map {
     });
   }
 }
-
-// Fix map box classes (issue to refresh map on filters changes).
-const fixMapBoxClasses = () => {
-  const mapBox = document.getElementById("map-box");
-  if (mapBox && !mapBox.classList.contains("leaflet-container")) {
-    const classes =
-      "leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom".split(
-        " ",
-      );
-    mapBox.classList.add(...classes);
-  }
-};

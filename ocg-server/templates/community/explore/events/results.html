@@ -83,17 +83,21 @@
 {# Map view -#}
 <div class="mt-5 border-t border-gray-100 md:mt-7 p-5 md:p-7">
   <div class="relative w-full border h-[600px] md:h-[820px] overflow-hidden">
-    <div id="map-box" class="w-full h-full"></div>
+    <div id="map-box"
+         class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom">
+    </div>
   </div>
 </div>
 
+{# djlint:off #}
 <script type="module">
   import {
     Map
   } from '/static/js/community/explore/map.js';
 
-  const map = new Map('events');
+  const map = new Map('events', { events: {{ events|json|safe }}, bbox: {{ bbox|json|safe }} });
 </script>
+{# djlint:on #}
 {# End map view -#}
 
 {% endmatch %}

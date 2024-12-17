@@ -28,14 +28,14 @@
             integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
             crossorigin="anonymous"></script>
 
+    {# djlint:off #}
     <script type="text/javascript">
       // Tailwind CSS configuration
-      const palette = JSON.parse('{{ community.theme.palette|json|safe }}');
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              primary: palette,
+              primary: {{ community.theme.palette|json|safe }},
             },
             fontSize: {
               filterTitle: '0.8rem',
@@ -48,7 +48,8 @@
           },
         },
       };
-    </script>
+</script>
+    {# djlint:on #}
   </head>
   <body class="h-full {% block bg_color %} bg-white {% endblock bg_color %}">
     <div class="min-h-full flex flex-col">
