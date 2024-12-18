@@ -224,11 +224,6 @@ export class Map {
 
       // Add marker cluster group to the map
       this.map.addLayer(markers);
-
-      // TODO - Open details on click
-      marker.on("click", () => {
-        console.log("Marker clicked", item.slug);
-      });
     });
 
     // Hide loading spinner

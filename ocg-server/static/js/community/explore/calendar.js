@@ -45,11 +45,6 @@ export class Calendar {
       moreLinkClick: "popover",
       initialDate: initialDate,
 
-      // TODO - Add event click
-      eventClick: (info) => {
-        console.log("Event: " + info.event.name + info.view.type);
-      },
-
       // Add popover to events when they are mounted
       eventDidMount: (info) => {
         if (info.event.extendedProps.event.popover_html) {
