@@ -94,6 +94,9 @@ export class Calendar {
 
     if (events && events.length > 0) {
       this.addEvents(events);
+    } else {
+      // Hide loading spinner
+      hideLoadingSpinner("loading-calendar");
     }
   }
 
@@ -196,6 +199,7 @@ export class Calendar {
   }
 }
 
+// Update hexadecimal color to RGB with opacity.
 function updateColor(color) {
   if (!color) {
     return;
@@ -203,6 +207,7 @@ function updateColor(color) {
   return hexToRgb(color, 0.35);
 }
 
+// Convert hex color to rgba.
 function hexToRgb(hex, alpha = 1) {
   // Remove the hash sign if it's included
   hex = hex.replace(/^#/, "");

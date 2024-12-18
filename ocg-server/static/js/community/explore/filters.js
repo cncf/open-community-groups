@@ -25,6 +25,19 @@ export const reset = (formId) => {
   if (dateInputs.length > 0) {
     // Reset date inputs
     document.querySelectorAll(`#${formId} input[type=date]`).forEach((el) => (el.value = ""));
+  } else {
+    const {first, last} = getFirstAndLastDayOfMonth();
+
+    const inputs = document.querySelectorAll(`#${formId} input[type=hidden]`);
+    if (inputs) {
+      inputs.forEach((input) => {
+        if (input.name === "date_from") {
+          input.value = first;
+        } else if (input.name === "date_to") {
+          input.value = last;
+        }
+      });
+    }
   }
 
   // Reset text search input

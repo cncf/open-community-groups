@@ -8,13 +8,17 @@ export const isScriptLoaded = (src) => {
 // Show loading spinner.
 export const showLoadingSpinner = (id) => {
   const content = document.getElementById(id || "explore-content");
-  content.classList.add("is-loading");
+  if (content) {
+    content.classList.add("is-loading");
+  }
 };
 
 // Hide loading spinner.
 export const hideLoadingSpinner = (id) => {
   const content = document.getElementById(id || "explore-content");
-  content.classList.remove("is-loading");
+  if (content) {
+    content.classList.remove("is-loading");
+  }
 };
 
 // Show or hide the mobile navigation bar.
