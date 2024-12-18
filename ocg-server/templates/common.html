@@ -1,11 +1,12 @@
 {# Primary button -#}
-{% macro primary_button(id, content, rounded, extra_styles = None) %}
+{% macro primary_button(id, content, rounded, extra_styles = None, disabled = false) %}
   {% let extra_styles_ = extra_styles.unwrap_or("") %}
 
   <button id="{{ id }}"
-          class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
-    {{ content|safe }}
-  </button>
+          class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} text-base font-medium text-center text-white rounded-full bg-primary-500
+                 {% if !disabled -%}
+                   hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {%- endif -%} {{ extra_styles_ }}"
+          disabled="{{ disabled }}">{{ content|safe }}</button>
 {% endmacro %}
 {# End primary button -#}
 
@@ -19,15 +20,16 @@
 {# End primary link -#}
 
 {# Secondary button -#}
-{% macro secondary_button(id, content, rounded, extra_styles = None) %}
+{% macro secondary_button(id, content, rounded, extra_styles = None, disabled = false) %}
   {% let extra_styles_ = extra_styles.unwrap_or("") %}
 
   <button id="{{ id }}"
           class="group
                  {% if rounded -%}
-                   p-1.5 h-[30px] w-[30px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
-    {{ content|safe }}
-  </button>
+                   p-1.5 h-[30px] w-[30px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500
+                   {% if !disabled -%}
+                     hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {%- endif -%} {{ extra_styles_ }}"
+          disabled="{{ disabled }}">{{ content|safe }}</button>
 {% endmacro %}
 {# End secondary button -#}
 
