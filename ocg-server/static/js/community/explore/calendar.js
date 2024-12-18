@@ -125,25 +125,20 @@ export class Calendar {
   addEvents(events) {
     // Prepare events for calendar
     let formattedEvents = events.map((event) => {
-      // Background color for past events
-      let color;
       if (!event.starts_at) {
         return;
       }
 
+      const color = event.group_color;
+      let isPast = false;
+
       // Get end date
       const endDate = event.ends_at ? new Date(event.ends_at * 1000) : new Date(event.starts_at * 1000);
 
-      // Set end date to the end of the day to get badge color
-      const endDateNoTime = endDate;
-      endDateNoTime.setHours(23);
-      endDateNoTime.setMinutes(59);
-      endDateNoTime.setSeconds(59);
-
       // Get background color badge for future events
-      const diff = new Date().getTime() - endDateNoTime.getTime();
-      if (diff < 0) {
-        color = event.group_color;
+      const diff = new Date().getTime() - endDate.getTime();
+      if (diff > 0) {
+        isPast = true;
       }
 
       // Add event to calendar
@@ -151,9 +146,9 @@ export class Calendar {
         title: event.name,
         start: convertDate(new Date(event.starts_at * 1000)),
         end: convertDate(endDate),
-        className: "cursor-pointer",
-        backgroundColor: updateColor(color),
-        borderColor: color,
+        className: `cursor-pointer ${isPast ? "opacity-50" : ""}`,
+        backgroundColor: updateColor(event.group_color),
+        borderColor: event.group_color,
         extendedProps: {
           event: event,
         },
