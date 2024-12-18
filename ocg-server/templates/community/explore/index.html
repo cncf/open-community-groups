@@ -65,6 +65,10 @@
 
   const entitySection = document.querySelector('#entity-section');
   entitySection.addEventListener('htmx:afterSwap', () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'instant'
+    })
     hideLoadingSpinner();
   });
   entitySection.addEventListener('htmx:afterSettle', () => {
