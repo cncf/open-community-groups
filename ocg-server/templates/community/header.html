@@ -145,14 +145,8 @@
         {# End modal header -#}
 
         {# Modal content -#}
-        <div class="p-4 md:p-8">{{ new_group_details|safe }}</div>
+        <div class="new-group-content p-4 md:p-8">{{ new_group_details|safe }}</div>
         {# End modal content -#}
-
-        {# Modal footer -#}
-        <div class="flex justify-end p-4 md:p-5 border-t border-gray-200 rounded-b">
-          {% call common::secondary_button(id = "create-group", content = "Create group", rounded = false) %}
-        </div>
-        {# End modal footer -#}
       </div>
     </div>
   </div>

@@ -27,7 +27,7 @@
 }
 
 /* Jumbotron */
-.jumbotron-description a {
+.jumbotron-description a, .new-group-content a {
   color: var(--ocg-primary);
   font-weight: 600;
 }
