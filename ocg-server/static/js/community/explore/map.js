@@ -178,7 +178,9 @@ export class Map {
     };
 
     // Create marker cluster group
-    const markers = window.L.markerClusterGroup();
+    const markers = window.L.markerClusterGroup({
+      showCoverageOnHover: false,
+    });
 
     // Add markers
     items.forEach((item) => {
