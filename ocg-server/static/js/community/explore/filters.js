@@ -26,7 +26,7 @@ export const reset = (formId) => {
     // Reset date inputs
     document.querySelectorAll(`#${formId} input[type=date]`).forEach((el) => (el.value = ""));
   } else {
-    const {first, last} = getFirstAndLastDayOfMonth();
+    const { first, last } = getFirstAndLastDayOfMonth();
 
     const inputs = document.querySelectorAll(`#${formId} input[type=hidden]`);
     if (inputs) {

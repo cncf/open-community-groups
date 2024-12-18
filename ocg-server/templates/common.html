@@ -25,7 +25,7 @@
   <button id="{{ id }}"
           class="group
                  {% if rounded -%}
-                   p-1.5 h-[36px] w-[36px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
+                   p-1.5 h-[30px] w-[30px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
     {{ content|safe }}
   </button>
 {% endmacro %}
@@ -74,7 +74,7 @@
       </div>
       <div class="absolute right-[6px] top-[5px]">
         {# djlint:off H008 #}
-        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true) %}
+        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true, extra_styles = Some("mt-[3px] mr-[0.3px]")) %}
         {# djlint:on H008 #}
       </div>
 
