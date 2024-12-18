@@ -1,8 +1,3 @@
-// Format date to ISO format (YYYY-MM-DD).
-const formatDate = (date) => {
-  return date.toISOString().split("T")[0];
-};
-
 // Open filters view (only for mobile).
 export const open = () => {
   const drawer = document.getElementById("drawer-filters");
