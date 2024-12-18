@@ -193,26 +193,22 @@ export class Map {
       // Create marker
       const marker = L.marker(L.latLng(item.latitude, item.longitude), {
         icon: icon,
+        autoPanOnFocus: false,
         bubblingMouseEvents: true,
       });
 
       if (item.popover_html) {
         // Add popup to marker
-        marker.bindPopup(
+        marker.bindTooltip(
           `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`,
+          {
+            direction: "top",
+            permanent: false,
+            sticky: true,
+            offset: [0, 0],
+            opacity: 1,
+          },
         );
-
-        // Open popup on hover
-        marker.on("mouseover", () => {
-          this.enabledMoveEnd = false;
-          marker.openPopup();
-        });
-
-        // Close popup on mouseout
-        marker.on("mouseout", () => {
-          this.enabledMoveEnd = true;
-          marker.closePopup();
-        });
       }
 
       // Add marker to the marker cluster group
