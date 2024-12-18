@@ -1,41 +1,15 @@
 {% import "community/explore/filters.html" as macros %}
 
-{# Header Groups -#}
-{% call macros::header() %}
-{# End header groups -#}
+{# Regions -#}
+{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
+{# End Regions -#}
 
-{# Entity -#}
-{% call macros::entity_radio(selected = Entity::Groups) %}
-{# End entity -#}
+{# Group category -#}
+{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
+{# End Group category -#}
 
-<form id="groups-form"
-      hx-get='/explore/groups-section'
-      hx-trigger="change"
-      hx-target="#entity-section"
-      hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
-      hx-boost="true">
-  {# Regions -#}
-  {% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
-  {# End Regions -#}
-
-  {# Group category -#}
-  {% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
-  {# End Group category -#}
-
-  {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-    {# Distance -#}
-    {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
-    {# End distance -#}
-  {% endif %}
-</form>
-
-<script type="module">
-  import {
-    hideLoadingSpinner,
-    showLoadingSpinner
-  } from '/static/js/common/common.js';
-
-  hideLoadingSpinner();
-  const form = document.getElementById('groups-form');
-  form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
-</script>
+{% if filters.longitude.is_some() && filters.latitude.is_some() %}
+  {# Distance -#}
+  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
+  {# End distance -#}
+{% endif %}

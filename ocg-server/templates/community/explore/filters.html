@@ -43,7 +43,7 @@
         } from '/static/js/common/common.js';
 
         const eventsButton = document.querySelector('#events-button');
-        eventsButton.addEventListener('htmx:beforeRequest', showLoadingSpinner);
+        eventsButton.addEventListener('htmx:beforeRequest', () => showLoadingSpinner());
       </script>
 
       {% when Entity::Events %}
@@ -148,8 +148,7 @@
   <div class="w-full">
     <div class="text-[10px] uppercase leading-4 text-gray-500 mb-1">{{ label }}:</div>
     <div class="relative w-[75%]">
-      <input id="{{ name }}"
-             name="{{ name }}"
+      <input name="{{ name }}"
              validate="false"
              value="{%- if let Some(date) = value -%} {{ date }} {%- endif -%}"
              type="date"

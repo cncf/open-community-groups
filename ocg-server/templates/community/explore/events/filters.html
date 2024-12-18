@@ -1,144 +1,118 @@
 {% import "community/explore/filters.html" as macros %}
 
-{# Filters header -#}
-{% call macros::header() %}
-{# End filters header -#}
-
-{# Entity selector -#}
-{% call macros::entity_radio(selected = Entity::Events) %}
-{# End entity selector -#}
-
 {% let view_mode = filters.view_mode.clone().unwrap_or_default() %}
 
-<form id="events-form"
-      hx-get='/explore/events-section'
-      hx-trigger="change"
-      hx-target="#entity-section"
-      hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
-      hx-boost="true">
-  {# Type -#}
-  <div class="px-6 py-7 pt-5 border-b border-gray-100">
-    <div class="font-semibold text-filterTitle text-black leading-6">Type</div>
-    <ul class="grid w-full gap-2.5 grid-cols-3 mt-3">
-      {# In-person -#}
-      <li>
+{# Type -#}
+<div class="px-6 py-7 pt-5 border-b border-gray-100">
+  <div class="font-semibold text-filterTitle text-black leading-6">Type</div>
+  <ul class="grid w-full gap-2.5 grid-cols-3 mt-3">
+    {# In-person -#}
+    <li>
+      <input type="checkbox"
+             name="kind"
+             id="in-person"
+             value="in-person"
+             class="hidden peer"
+             {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
+      <label for="in-person"
+             class="group inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+        <div class="flex w-full flex-col items-center">
+          <div class="svg-icon h-4 w-4 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-in-person"></div>
+          <div class="text-[0.8rem] mt-1.5">In-person</div>
+        </div>
+      </label>
+    </li>
+    {# End in-person -#}
+
+    {# Virtual -#}
+    <li>
+      {% if view_mode == ViewMode::Map %}
         <input type="checkbox"
                name="kind"
-               id="in-person"
-               value="in-person"
+               id="kind-virtual"
+               value="virtual"
                class="hidden peer"
-               {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
-        <label for="in-person"
-               class="group inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-          <div class="flex w-full flex-col items-center">
-            <div class="svg-icon h-4 w-4 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-in-person"></div>
-            <div class="text-[0.8rem] mt-1.5">In-person</div>
-          </div>
-        </label>
-      </li>
-      {# End in-person -#}
-
-      {# Virtual -#}
-      <li>
-        {% if view_mode == ViewMode::Map %}
-          <input type="checkbox"
-                 name="kind"
-                 id="kind-virtual"
-                 value="virtual"
-                 class="hidden peer"
-                 disabled>
-        {% else %}
-          <input type="checkbox"
-                 name="kind"
-                 id="kind-virtual"
-                 value="virtual"
-                 class="hidden peer"
-                 {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
-        {% endif %}
-        <label for="kind-virtual"
-               class="group inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-lg peer-enabled:cursor-pointer select-none peer-checked:border-primary-500 hover:peer-enabled:text-gray-600 peer-checked:text-primary-500 hover:peer-enabled:peer-checked:text-primary-500 hover:peer-enabled:bg-gray-50 peer-disabled:opacity-40 peer-disabled:bg-gray-100">
-          <div class="flex w-full flex-col items-center">
-            <div class="svg-icon h-4 w-4 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-virtual"></div>
-            <div class="text-[0.8rem] mt-1.5">Virtual</div>
-          </div>
-        </label>
-      </li>
-      {# End virtual -#}
-
-      {# Hybrid -#}
-      <li>
+               disabled>
+      {% else %}
         <input type="checkbox"
                name="kind"
-               id="hybrid"
-               value="hybrid"
+               id="kind-virtual"
+               value="virtual"
                class="hidden peer"
-               {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
-        <label for="hybrid"
-               class="group inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
-          <div class="flex w-full flex-col items-center">
-            <div class="flex flex-row">
-              <div class="svg-icon h-4 w-4 mr-0.5 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-in-person"></div>
-              <div class="svg-icon h-4 w-4 ml-0.5 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-virtual"></div>
-            </div>
-            <div class="text-[0.8rem] mt-1.5">Hybrid</div>
+               {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
+      {% endif %}
+      <label for="kind-virtual"
+             class="group inline-flex items-center justify-between w-full p-3 text-gray-500 bg-white border rounded-lg peer-enabled:cursor-pointer select-none peer-checked:border-primary-500 hover:peer-enabled:text-gray-600 peer-checked:text-primary-500 hover:peer-enabled:peer-checked:text-primary-500 hover:peer-enabled:bg-gray-50 peer-disabled:opacity-40 peer-disabled:bg-gray-100">
+        <div class="flex w-full flex-col items-center">
+          <div class="svg-icon h-4 w-4 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-virtual"></div>
+          <div class="text-[0.8rem] mt-1.5">Virtual</div>
+        </div>
+      </label>
+    </li>
+    {# End virtual -#}
+
+    {# Hybrid -#}
+    <li>
+      <input type="checkbox"
+             name="kind"
+             id="hybrid"
+             value="hybrid"
+             class="hidden peer"
+             {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
+      <label for="hybrid"
+             class="group inline-flex items-center justify-between w-full py-3 px-2 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+        <div class="flex w-full flex-col items-center">
+          <div class="flex flex-row">
+            <div class="svg-icon h-4 w-4 mr-0.5 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-in-person"></div>
+            <div class="svg-icon h-4 w-4 ml-0.5 bg-gray-500 peer-checked:group-[]:bg-primary-500 icon-virtual"></div>
           </div>
-        </label>
-      </li>
-      {# End hybrid -#}
+          <div class="text-[0.8rem] mt-1.5">Hybrid</div>
+        </div>
+      </label>
+    </li>
+    {# End hybrid -#}
 
-    </ul>
-  </div>
-  {# End type -#}
+  </ul>
+</div>
+{# End type -#}
 
-  {# Regions -#}
-  {% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
-  {# End Regions -#}
+{# Regions -#}
+{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
+{# End Regions -#}
 
-  {# Group category -#}
-  {% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
-  {# End Group category -#}
+{# Group category -#}
+{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
+{# End Group category -#}
 
-  {# Event category -#}
-  {% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) %}
-  {# End event category -#}
+{# Event category -#}
+{% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) %}
+{# End event category -#}
 
-  {% if filters.longitude.is_some() && filters.latitude.is_some() %}
-    {# Distance -#}
-    {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
-    {# End distance -#}
-  {% endif %}
+{% if filters.longitude.is_some() && filters.latitude.is_some() %}
+  {# Distance -#}
+  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
+  {# End distance -#}
+{% endif %}
 
-  {% if view_mode != ViewMode::Calendar %}
-    {# Date -#}
-    <div class="px-6 py-7 pt-5">
-      <div class="flex justify-between items-center">
-        <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
-      </div>
-      <div class="flex flex-wrap gap-3 items-center mt-3">
-        {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) %}
-        {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) %}
-      </div>
+{% if view_mode != ViewMode::Calendar %}
+  {# Date -#}
+  <div class="px-6 py-7 pt-5">
+    <div class="flex justify-between items-center">
+      <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
     </div>
-    {# End date -#}
-  {% else %}
-    <input type="hidden"
-           name="date_from"
-           value="{%- if let Some(date_from) = filters.date_from -%} {{ date_from }} {%- endif -%}">
-    <input type="hidden"
-           name="date_to"
-           value="{%- if let Some(date_to) = filters.date_to -%} {{ date_to }} {%- endif -%}">
-  {% endif %}
+    <div class="flex flex-wrap gap-3 items-center mt-3">
+      {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) %}
+      {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) %}
+    </div>
+  </div>
+  {# End date -#}
+{% else %}
+  <input type="hidden"
+         name="date_from"
+         value="{%- if let Some(date_from) = filters.date_from -%} {{ date_from }} {%- endif -%}">
+  <input type="hidden"
+         name="date_to"
+         value="{%- if let Some(date_to) = filters.date_to -%} {{ date_to }} {%- endif -%}">
+{% endif %}
 
-  {# Apply filters -#}
-</form>
-
-<script type="module">
-  import {
-    hideLoadingSpinner,
-    showLoadingSpinner
-  } from '/static/js/common/common.js';
-
-  hideLoadingSpinner();
-  const form = document.getElementById('events-form');
-  form.addEventListener('htmx:beforeRequest', showLoadingSpinner);
-</script>
+{# Apply filters -#}

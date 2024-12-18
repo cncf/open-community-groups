@@ -1,6 +1,8 @@
 {% import "common.html" as common %}
+{% import "community/explore/filters.html" as macros %}
 
 {% let view_mode = filters.view_mode.clone().unwrap_or_default() %}
+{% let entity = results_section.entity() %}
 
 {# Mobile filters -#}
 <div id="drawer-filters"
@@ -17,8 +19,24 @@
   {# End close button -#}
 
   {# Filters content -#}
-  {% block filters %}
-  {% endblock filters %}
+  {# Header Filters -#}
+  {% call macros::header() %}
+  {# End header filters -#}
+
+  {# Entity selector -#}
+  {% call macros::entity_radio(selected = entity) %}
+  {# End entity selector -#}
+
+  <form id="{{ entity }}-form-mobile"
+        class="filters-form"
+        hx-get='/explore/{{ entity }}-section'
+        hx-trigger="change"
+        hx-target="#entity-section"
+        hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+        hx-boost="true">
+    {% block filters %}
+    {% endblock filters %}
+  </form>
   {# End filters content -#}
 
   <div class="text-end p-5 border-t">
@@ -37,8 +55,24 @@
   {# Desktop filters -#}
   <div id="explore-filters"
        class="relative hidden w-1/4 lg:block bg-white border rounded-lg">
-    {% block filters %}
-    {% endblock filters %}
+    {# Header Filters -#}
+    {% call macros::header() %}
+    {# End header filters -#}
+
+    {# Entity selector -#}
+    {% call macros::entity_radio(selected = entity) %}
+    {# End entity selector -#}
+
+    <form id="{{ entity }}-form"
+          class="filters-form"
+          hx-get='/explore/{{ entity }}-section'
+          hx-trigger="change"
+          hx-target="#entity-section"
+          hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+          hx-boost="true">
+      {% block filters %}
+      {% endblock filters %}
+    </form>
   </div>
   {# End desktop filters -#}
 
@@ -97,7 +131,7 @@
             {# End list view -#}
 
             {# Calendar view -#}
-            {% if results_section.entity() == Entity::Events %}
+            {% if entity == Entity::Events %}
               <li>
                 <input type="radio"
                        name="view_mode"
@@ -189,6 +223,10 @@
     toggleCollapsibleFilterVisibility,
     updateDateInput
   } from '/static/js/community/explore/filters.js';
+  import {
+    hideLoadingSpinner,
+    showLoadingSpinner
+  } from '/static/js/common/common.js';
 
   const openFiltersBtn = document.querySelector('#open-filters');
   openFiltersBtn.addEventListener('click', open);
@@ -208,21 +246,26 @@
         resetDateFiltersOnCalendarViewMode();
       }
 
-      triggerChangeOnForm('{{ results_section.entity() }}-form');
+      triggerChangeOnForm('{{ entity }}-form');
     });
   });
 
   const select = document.querySelector('#sort_by');
   // Sort by is only available in list view
   if (select) {
-    select.addEventListener('change', () => triggerChangeOnForm('{{ results_section.entity() }}-form'));
+    select.addEventListener('change', () => triggerChangeOnForm('{{ entity }}-form'));
   }
 
   const resetButtons = document.querySelectorAll('.reset-filters');
-  resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ results_section.entity() }}-form')));
+  resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ entity }}-form')));
 
   const collapseBtns = document.querySelectorAll('.collapse-btn');
   collapseBtns.forEach(btn => {
     btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
+  });
+
+  const forms = document.querySelectorAll('.filters-form');
+  forms.forEach(form => {
+    form.addEventListener('htmx:beforeRequest', () => showLoadingSpinner());
   });
 </script>

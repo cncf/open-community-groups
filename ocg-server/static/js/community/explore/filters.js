@@ -1,3 +1,8 @@
+// Format date to ISO format (YYYY-MM-DD).
+const formatDate = (date) => {
+  return date.toISOString().split("T")[0];
+};
+
 // Open filters view (only for mobile).
 export const open = () => {
   const drawer = document.getElementById("drawer-filters");
@@ -23,8 +28,15 @@ export const reset = (formId) => {
   // Date inputs are hidden when view mode is "calendar"
   const dateInputs = document.querySelectorAll(`#${formId} input[type=date]`);
   if (dateInputs.length > 0) {
+    const { from, to } = getDefaultDateRange();
     // Reset date inputs
-    document.querySelectorAll(`#${formId} input[type=date]`).forEach((el) => (el.value = ""));
+    dateInputs.forEach((el) => {
+      if (el.name === "date_from") {
+        el.value = from;
+      } else if (el.name === "date_to") {
+        el.value = to;
+      }
+    });
   } else {
     const { first, last } = getFirstAndLastDayOfMonth();
 
@@ -181,4 +193,13 @@ export const updateDateInput = (date) => {
 
   document.querySelector('input[name="date_from"]').value = first;
   document.querySelector('input[name="date_to"]').value = last;
+};
+
+// Get default date range.
+export const getDefaultDateRange = () => {
+  const date = new Date();
+  const aYearFromNow = new Date();
+  aYearFromNow.setFullYear(aYearFromNow.getFullYear() + 1);
+
+  return { from: formatDate(date), to: formatDate(aYearFromNow) };
 };

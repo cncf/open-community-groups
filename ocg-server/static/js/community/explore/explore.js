@@ -19,6 +19,5 @@ export async function fetchData(entity, params) {
     return json;
   } catch (error) {
     // TODO - Handle error
-    console.error(error.message);
   }
 }
