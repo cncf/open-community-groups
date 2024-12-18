@@ -6,7 +6,7 @@ use std::fmt::{self, Display, Formatter};
 
 use anyhow::Result;
 use axum::http::HeaderMap;
-use chrono::{DateTime, Months, Utc};
+use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 use chrono_tz::Tz;
 use minify_html::{minify, Cfg as MinifyCfg};
 use rinja::Template;
@@ -137,14 +137,34 @@ impl EventsFilters {
         // Populate the latitude and longitude fields from the headers provided
         (filters.latitude, filters.longitude) = extract_location(headers);
 
-        // Add default date range if not provided (now -> 12 months from now)
+        // Set default date range when not provided. We'll use the current month
+        // as the date range when the view mode is calendar. Otherwise, we'll use
+        // the next 12 months from now.
+        let now = Utc::now();
         if filters.date_from.is_none() {
-            filters.date_from = Some(Utc::now().date_naive().to_string());
+            let default_date_from = if filters.view_mode == Some(ViewMode::Calendar) {
+                // First day of the current month
+                NaiveDate::from_ymd_opt(now.year(), now.month(), 1).expect("valid date")
+            } else {
+                // Today
+                now.date_naive()
+            };
+            filters.date_from = Some(default_date_from.to_string());
         }
         if filters.date_to.is_none() {
-            if let Some(date_to) = Utc::now().date_naive().checked_add_months(Months::new(12)) {
-                filters.date_to = Some(date_to.to_string());
-            }
+            let default_to_date = if filters.view_mode == Some(ViewMode::Calendar) {
+                // Last day of the current month
+                NaiveDate::from_ymd_opt(now.year(), now.month() + 1, 1)
+                    .unwrap_or(NaiveDate::from_ymd_opt(now.year() + 1, 1, 1).expect("valid date"))
+                    .pred_opt()
+                    .expect("valid date")
+            } else {
+                // 12 months from now
+                now.date_naive()
+                    .checked_add_months(Months::new(12))
+                    .expect("valid date")
+            };
+            filters.date_to = Some(default_to_date.to_string());
         }
 
         // Set some defaults when the view mode is calendar or map
