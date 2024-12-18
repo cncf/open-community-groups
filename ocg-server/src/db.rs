@@ -173,6 +173,7 @@ impl DB for PgDB {
         community_id: Uuid,
         filters: &EventsFilters,
     ) -> Result<SearchCommunityEventsOutput> {
+        // Query database
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -184,8 +185,9 @@ impl DB for PgDB {
             )
             .await?;
 
+        // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchCommunityEventsOutput {
+        let mut output = SearchCommunityEventsOutput {
             events: explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
@@ -194,6 +196,13 @@ impl DB for PgDB {
             },
             total: row.get::<_, i64>("total") as usize,
         };
+
+        // Render events popover HTML if requested
+        if filters.include_popover_html.unwrap_or_default() {
+            for group in &mut output.events {
+                group.render_popover_html()?;
+            }
+        }
 
         Ok(output)
     }
@@ -205,6 +214,7 @@ impl DB for PgDB {
         community_id: Uuid,
         filters: &GroupsFilters,
     ) -> Result<SearchCommunityGroupsOutput> {
+        // Query database
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -216,8 +226,9 @@ impl DB for PgDB {
             )
             .await?;
 
+        // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchCommunityGroupsOutput {
+        let mut output = SearchCommunityGroupsOutput {
             groups: explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
@@ -226,6 +237,13 @@ impl DB for PgDB {
             },
             total: row.get::<_, i64>("total") as usize,
         };
+
+        // Render events popover HTML if requested
+        if filters.include_popover_html.unwrap_or_default() {
+            for group in &mut output.groups {
+                group.render_popover_html()?;
+            }
+        }
 
         Ok(output)
     }

@@ -169,11 +169,9 @@ pub(crate) async fn search_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Search events
-    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let mut search_events_output = db.search_community_events(community_id, &filters).await?;
-    for event in &mut search_events_output.events {
-        event.render_popover_html()?;
-    }
+    let mut filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    filters.include_popover_html = Some(true);
+    let search_events_output = db.search_community_events(community_id, &filters).await?;
     let json_data = serde_json::to_string(&search_events_output)?;
 
     // Prepare response headers
@@ -191,11 +189,9 @@ pub(crate) async fn search_groups(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Search groups
-    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let mut search_groups_output = db.search_community_groups(community_id, &filters).await?;
-    for group in &mut search_groups_output.groups {
-        group.render_popover_html()?;
-    }
+    let mut filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    filters.include_popover_html = Some(true);
+    let search_groups_output = db.search_community_groups(community_id, &filters).await?;
     let json_data = serde_json::to_string(&search_groups_output)?;
 
     // Prepare response headers

@@ -105,6 +105,8 @@ pub(crate) struct EventsFilters {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_popover_html: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
@@ -145,13 +147,14 @@ impl EventsFilters {
             }
         }
 
-        // Update limit and offset if the view mode is calendar or map
+        // Set some defaults when the view mode is calendar or map
         if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map) {
             filters.limit = Some(100);
             filters.offset = Some(0);
+            filters.include_popover_html = Some(true);
         }
 
-        // Include bbox if the view mode is map
+        // Set some defaults when the view mode is map
         if filters.view_mode == Some(ViewMode::Map) {
             filters.include_bbox = Some(true);
         }
@@ -338,6 +341,8 @@ pub(crate) struct GroupsFilters {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_popover_html: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
@@ -367,13 +372,14 @@ impl GroupsFilters {
         // Populate the latitude and longitude fields from the headers provided.
         (filters.latitude, filters.longitude) = extract_location(headers);
 
-        // Update limit and offset if the view mode is calendar or map
+        // Set some defaults when the view mode is calendar or map
         if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map) {
             filters.limit = Some(100);
             filters.offset = Some(0);
+            filters.include_popover_html = Some(true);
         }
 
-        // Include bbox if the view mode is map
+        // Set some defaults when the view mode is map
         if filters.view_mode == Some(ViewMode::Map) {
             filters.include_bbox = Some(true);
         }
