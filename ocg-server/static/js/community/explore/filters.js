@@ -30,9 +30,6 @@ export const reset = (formId) => {
   // Reset text search input
   document.querySelector('input[name="ts_query"]').value = "";
 
-  // Reset view mode
-  document.querySelector('input[id="list"]').checked = true;
-
   // Reset sort by
   const sortSelect = document.querySelector('select[name="sort_by"]');
   if (sortSelect) {
