@@ -6,14 +6,14 @@ export const isScriptLoaded = (src) => {
 };
 
 // Show loading spinner.
-export const showLoadingSpinner = () => {
-  const content = document.getElementById("explore-content");
+export const showLoadingSpinner = (id) => {
+  const content = document.getElementById(id || "explore-content");
   content.classList.add("is-loading");
 };
 
 // Hide loading spinner.
-export const hideLoadingSpinner = () => {
-  const content = document.getElementById("explore-content");
+export const hideLoadingSpinner = (id) => {
+  const content = document.getElementById(id || "explore-content");
   content.classList.remove("is-loading");
 };
 

@@ -1,3 +1,4 @@
+import { hideLoadingSpinner, showLoadingSpinner } from "../../common/common.js";
 import { fetchData } from "./explore.js";
 import { getFirstAndLastDayOfMonth, updateDateInput } from "./filters.js";
 
@@ -84,6 +85,10 @@ export class Calendar {
     if (data) {
       events = data.events;
     } else {
+      // Show loading spinner
+      showLoadingSpinner("loading-calendar");
+
+      // Fetch events
       events = await this.fetchEvents();
     }
 
@@ -162,6 +167,9 @@ export class Calendar {
 
     // Add new events to calendar
     this.fullCalendar.addEventSource(formattedEvents);
+
+    // Hide loading spinner
+    hideLoadingSpinner("loading-calendar");
   }
 
   // Load current month data.

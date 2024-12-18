@@ -35,6 +35,11 @@
 {# Map view -#}
 <div class="mt-5 border-t border-gray-100 md:mt-7 p-5 md:p-7">
   <div class="relative w-full border h-[600px] md:h-[820px] overflow-hidden">
+    {# Loading spinner -#}
+    <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">
+      {% call common::small_spinner() %}
+    </div>
+    {# End loading spinner #}
     <div id="map-box"
          class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom">
     </div>

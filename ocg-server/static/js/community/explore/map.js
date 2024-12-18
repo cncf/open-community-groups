@@ -1,3 +1,4 @@
+import { hideLoadingSpinner, showLoadingSpinner } from "../../common/common.js";
 import { fetchData } from "./explore.js";
 
 export class Map {
@@ -100,6 +101,10 @@ export class Map {
     if (currentData) {
       data = currentData;
     } else {
+      // Show loading spinner
+      showLoadingSpinner("loading-map");
+
+      // Fetch data
       data = await this.fetchData(overwriteBounds);
     }
 
@@ -119,6 +124,9 @@ export class Map {
       // Refresh map markers
       if (items.length > 0) {
         this.addMarkers(items, overwriteBounds ? data.bbox : null);
+      } else {
+        // Hide loading spinner
+        hideLoadingSpinner("loading-map");
       }
     }
   }
@@ -222,5 +230,8 @@ export class Map {
         console.log("Marker clicked", item.slug);
       });
     });
+
+    // Hide loading spinner
+    hideLoadingSpinner("loading-map");
   }
 }
