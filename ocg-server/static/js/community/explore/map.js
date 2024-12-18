@@ -166,7 +166,7 @@ export class Map {
       const southWest = L.latLng(bbox.sw_lat, bbox.sw_lon);
       const northEast = L.latLng(bbox.ne_lat, bbox.ne_lon);
       const bounds = L.latLngBounds(southWest, northEast);
-      this.map.flyToBounds(bounds, { animate: false });
+      this.map.flyToBounds(bounds, { animate: false, noMoveStart: true });
     }
 
     // SVG icon for markers
