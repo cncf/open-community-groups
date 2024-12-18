@@ -107,13 +107,12 @@
 /* End full calendar */
 
 /* Leaflet */
-.leaflet-popup {
+.leaflet-tooltip {
   font-family: "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
-.leaflet-popup-content {
-  margin: 0.5rem;
-  width: 390px !important;
+.leaflet-tooltip > div {
+  width: 370px !important;
 }
 
 .leaflet-container a {
