@@ -203,3 +203,13 @@ export const getDefaultDateRange = () => {
 
   return { from: formatDate(date), to: formatDate(aYearFromNow) };
 };
+
+// Uncheck all kinds.
+export const unckeckAllKinds = () => {
+  const kinds = document.querySelectorAll("input[name=kind]:checked");
+  if (kinds) {
+    kinds.forEach((el) => {
+      el.checked = false;
+    });
+  }
+};

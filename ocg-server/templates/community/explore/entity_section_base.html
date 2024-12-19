@@ -227,6 +227,7 @@
     resetDateFiltersOnCalendarViewMode,
     triggerChangeOnForm,
     toggleCollapsibleFilterVisibility,
+    unckeckAllKinds,
     updateDateInput
   } from '/static/js/community/explore/filters.js';
   import {
@@ -250,7 +251,7 @@
       } else {
         resetDateFiltersOnCalendarViewMode();
       }
-
+      unckeckAllKinds();
       triggerChangeOnForm('{{ entity }}-form');
     });
   });
