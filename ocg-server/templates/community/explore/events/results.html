@@ -35,8 +35,19 @@
     </div>
   </div>
 
-  <div id="calendar-box"
-       class="fc fc-media-screen fc-direction-ltr fc-theme-standard"></div>
+  <div class="relative">
+    {# Placeholder calendar -#}
+    {% if events.len() == 0 %}
+      <div class="absolute mt-10 z-[10]">
+        {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
+      </div>
+    {% endif %}
+    {# End placeholder calendar -#}
+    <div id="calendar-box"
+         class="fc fc-media-screen fc-direction-ltr fc-theme-standard
+                {% if events.len() == 0 -%}opacity-30{%- endif %}"></div>
+  </div>
+
 </div>
 {# djlint:off #}
 <script type="module">
@@ -104,9 +115,17 @@
       {% call common::small_spinner() %}
     </div>
     {# End loading spinner #}
+    {# Placeholder map -#}
+    {% if events.len() == 0 %}
+      <div class="absolute mt-10 z-[425]">
+        {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
+      </div>
+    {% endif %}
+    {# End placeholder map -#}
     <div id="map-box"
-         class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom">
-    </div>
+         class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom
+                {% if events.len() == 0 -%}opacity-30{%- endif %}"></div>
+
   </div>
 </div>
 

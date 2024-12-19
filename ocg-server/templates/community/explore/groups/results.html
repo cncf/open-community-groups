@@ -40,9 +40,16 @@
       {% call common::small_spinner() %}
     </div>
     {# End loading spinner #}
+    {# Placeholder map -#}
+    {% if groups.len() == 0 %}
+      <div class="absolute mt-10 z-[425]">
+        {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") %}
+      </div>
+    {% endif %}
+    {# End placeholder map -#}
     <div id="map-box"
-         class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom">
-    </div>
+         class="relative w-full h-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom
+                {% if groups.len() == 0 -%}opacity-30{%- endif %}"></div>
   </div>
 </div>
 
