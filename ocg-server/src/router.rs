@@ -5,7 +5,7 @@ use axum::{
     extract::FromRef,
     http::{
         header::{CACHE_CONTROL, CONTENT_TYPE},
-        StatusCode, Uri,
+        HeaderValue, StatusCode, Uri,
     },
     response::IntoResponse,
     routing::get,
@@ -13,7 +13,9 @@ use axum::{
 };
 use rust_embed::Embed;
 use tower::ServiceBuilder;
-use tower_http::{trace::TraceLayer, validate_request::ValidateRequestHeaderLayer};
+use tower_http::{
+    set_header::SetResponseHeaderLayer, trace::TraceLayer, validate_request::ValidateRequestHeaderLayer,
+};
 use tracing::instrument;
 
 use crate::{
@@ -26,7 +28,7 @@ use crate::{
 #[cfg(debug_assertions)]
 pub(crate) const DEFAULT_CACHE_DURATION: usize = 0; // No cache
 #[cfg(not(debug_assertions))]
-pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 15; // 15 minutes
+pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 5; // 5 minutes
 
 /// Embed static files in the binary.
 #[derive(Embed)]
@@ -62,6 +64,10 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))
         .route("/static/*file", get(static_handler))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            CACHE_CONTROL,
+            HeaderValue::try_from(format!("max-age={DEFAULT_CACHE_DURATION}")).expect("valid header value"),
+        ))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(State { db });
 

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use axum::{
     extract::{Query, RawQuery, State},
-    http::{header::CACHE_CONTROL, HeaderMap, Uri},
+    http::{HeaderMap, Uri},
     response::{Html, IntoResponse},
 };
 use rinja::Template;
@@ -16,7 +16,6 @@ use uuid::Uuid;
 use crate::{
     db::{DynDB, SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     handlers::{error::HandlerError, extractors::CommunityId},
-    router::DEFAULT_CACHE_DURATION,
     templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
 };
 
@@ -174,10 +173,7 @@ pub(crate) async fn search_events(
     let search_events_output = db.search_community_events(community_id, &filters).await?;
     let json_data = serde_json::to_string(&search_events_output)?;
 
-    // Prepare response headers
-    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_DURATION}"))];
-
-    Ok((headers, json_data))
+    Ok(json_data)
 }
 
 /// Handler that returns the groups search results.
@@ -194,10 +190,7 @@ pub(crate) async fn search_groups(
     let search_groups_output = db.search_community_groups(community_id, &filters).await?;
     let json_data = serde_json::to_string(&search_groups_output)?;
 
-    // Prepare response headers
-    let headers = [(CACHE_CONTROL, format!("max-age={DEFAULT_CACHE_DURATION}"))];
-
-    Ok((headers, json_data))
+    Ok(json_data)
 }
 
 /// Prepare events section template.
