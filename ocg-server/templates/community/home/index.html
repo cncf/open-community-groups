@@ -11,7 +11,7 @@
     <section>
       <div class="relative z-10 max-w-screen-xl pb-10 md:pb-20">
         {# Community title -#}
-        <h1 class="text-center mb-8 text-xl font-bold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+        <h1 class="text-center mb-8 text-2xl font-bold tracking-tight leading-none lg:text-4xl xl:text-5xl">
           {{ community.title }}
         </h1>
         {# End community title -#}
@@ -81,7 +81,7 @@
                target="_blank"
                aria-label="Open external link">
             {% endif %}
-            <div class="mx-auto my-8 border-4 border-gray-100 w-[40%]">
+            <div class="mx-auto my-4 lg:my-8 border-4 border-gray-100 w-[70%] md:[w-55%] lg:w-[40%]">
               <img class="h-auto max-w-[100%]"
                    height="auto"
                    width="auto"
@@ -108,27 +108,27 @@
 
 {# Events list -#}
 {% macro events_list(title, link, events) %}
-  <div class="my-5 pb-5 sm:my-8">
+  <div class="my-5 pb-0 md:pb-5 sm:my-8">
     <div class="flex items-center justify-between mb-6">
       {# Title -#}
       <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
       {# End title -#}
 
       {# See all events on desktop -#}
-      <div class="hidden justify-self-end lg:flex">
+      <div class="hidden justify-self-end md:flex">
         {% call common::secondary_link(content = "See all events", href = link, rounded = false, extra_styles = Some("ms-4")) %}
       </div>
       {# End see all events on desktop -#}
     </div>
-    <div class="my-10">
+    <div class="my-4 md:my-10">
       {# Cards list -#}
-      <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
         {% for event in events %}{{ event|safe }}{% endfor %}
       </div>
       {# End cards list -#}
 
       {# See all events on mobile -#}
-      <div class="block mt-10 lg:hidden lg:mt-0">
+      <div class="block mt-10 justify-self-center md:hidden md:mt-0">
         {% call common::secondary_link(content = "See all events", href = link, rounded = false) %}
       </div>
       {# See all events on mobile -#}
@@ -141,17 +141,17 @@
 {% macro groups_list(title, link, groups) %}
   <div class="flex items-center justify-between mb-6">
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
-    <div class="hidden justify-self-end lg:flex">
+    <div class="hidden justify-self-end md:flex">
       {% call common::secondary_link(content = "See all groups", href = link, rounded = false, extra_styles = Some("ms-4")) %}
     </div>
   </div>
-  <div class="my-10">
+  <div class="my-4 md:my-10">
     {# Groups cards -#}
-    <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
+    <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
       {% for group in groups %}{{ group|safe }}{% endfor %}
     </div>
     {# End groups cards -#}
-    <div class="block mt-10 lg:hidden lg:mt-0">
+    <div class="block mt-10 justify-self-center md:hidden md:mt-0">
       {% call common::secondary_link(content = "See all groups", href = link, rounded = false) %}
     </div>
   </div>
