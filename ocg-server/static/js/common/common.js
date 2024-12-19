@@ -7,7 +7,7 @@ export const isScriptLoaded = (src) => {
 
 // Show loading spinner.
 export const showLoadingSpinner = (id) => {
-  const content = document.getElementById(id || "explore-content");
+  const content = document.getElementById(id);
   if (content) {
     content.classList.add("is-loading");
   }
@@ -15,7 +15,7 @@ export const showLoadingSpinner = (id) => {
 
 // Hide loading spinner.
 export const hideLoadingSpinner = (id) => {
-  const content = document.getElementById(id || "explore-content");
+  const content = document.getElementById(id);
   if (content) {
     content.classList.remove("is-loading");
   }

@@ -32,30 +32,6 @@
   font-weight: 600;
 }
 
-/* Spinner */
-#explore-content:not(.is-loading) #spinner-entity-section {
-  display: none;
-}
-
-#explore-content.is-loading #spinner-entity-section {
-  display: block;
-}
-
-#explore-content.is-loading #explore-filters::before,
-#explore-content.is-loading #explore-cards > div::before {
-  content: "";
-  display: block;
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background-color: rgba(255, 255, 255, 0.75);
-  z-index: 10;
-  border-radius: 0.5rem;
-}
-/* End spinner */
-
 /* Full calendar */
 .fc-view-harness {
   height: 816px !important;

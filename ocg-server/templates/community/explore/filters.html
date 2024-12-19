@@ -7,7 +7,14 @@
   <div class="flex justify-between items-center border-solid border-0 border-b border-gray-100 p-5">
     <div class="font-semibold text-sm text-black">Filters</div>
 
-    {% call common::secondary_mini_button(id = "filters-reset-mobile", content = "Reset", extra_styles = Some("hidden lg:flex reset-filters")) %}
+    <div class="flex items-center">
+      {# Filters view mode -#}
+      {# Loading spinner -#}
+      <div id="loading-filters" class="me-3 w-6 group">{% call common::small_spinner() %}</div>
+      {# End loading spinner #}
+
+      {% call common::secondary_mini_button(id = "reset-filters", content = "Reset", extra_styles = Some("hidden lg:flex reset-filters")) %}
+    </div>
   </div>
 {% endmacro %}
 {# End filters header -#}
@@ -43,7 +50,10 @@
         } from '/static/js/common/common.js';
 
         const eventsButton = document.querySelector('#events-button');
-        eventsButton.addEventListener('htmx:beforeRequest', () => showLoadingSpinner());
+        eventsButton.addEventListener('htmx:beforeRequest', () => {
+          showLoadingSpinner("loading-filters");
+          showLoadingSpinner("loading-filters-mobile");
+        });
       </script>
 
       {% when Entity::Events %}
@@ -72,7 +82,10 @@
         } from '/static/js/common/common.js';
 
         const groupsButton = document.querySelector('#groups-button');
-        groupsButton.addEventListener('htmx:beforeRequest', showLoadingSpinner);
+        groupsButton.addEventListener('htmx:beforeRequest', () => {
+          showLoadingSpinner("loading-filters");
+          showLoadingSpinner("loading-filters-mobile");
+        });
       </script>
     {% endmatch %}
   </ul>

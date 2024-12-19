@@ -191,8 +191,8 @@ export function getFirstAndLastDayOfMonth(date) {
 export const updateDateInput = (date) => {
   const { first, last } = getFirstAndLastDayOfMonth(date);
 
-  document.querySelectorAll('input[name=date_from]').forEach((el) => (el.value = first));
-  document.querySelectorAll('input[name=date_to]').forEach((el) => (el.value = last));
+  document.querySelectorAll("input[name=date_from]").forEach((el) => (el.value = first));
+  document.querySelectorAll("input[name=date_to]").forEach((el) => (el.value = last));
 };
 
 // Get default date range.

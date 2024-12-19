@@ -164,6 +164,12 @@
             </li>
             {# End map view -#}
           </ul>
+
+          {# Loading spinner -#}
+          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
+            {% call common::small_spinner() %}
+          </div>
+          {# End loading spinner #}
         </div>
         {# End view mode -#}
 
@@ -224,7 +230,6 @@
     updateDateInput
   } from '/static/js/community/explore/filters.js';
   import {
-    hideLoadingSpinner,
     showLoadingSpinner
   } from '/static/js/common/common.js';
 
@@ -266,6 +271,9 @@
 
   const forms = document.querySelectorAll('.filters-form');
   forms.forEach(form => {
-    form.addEventListener('htmx:beforeRequest', () => showLoadingSpinner());
+    form.addEventListener('htmx:beforeRequest', () => {
+      showLoadingSpinner("loading-filters");
+      showLoadingSpinner("loading-filters-mobile");
+    });
   });
 </script>
