@@ -241,5 +241,6 @@ export class Map {
 
 // Check if bbox is valid.
 function checkValidBbox(bbox) {
-  return Object.values(bbox).every((value) => value !== 0);
+  const allEqual = new Set(Object.values(bbox)).size === 1;
+  return !allEqual;
 }

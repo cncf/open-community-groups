@@ -2,8 +2,6 @@
 export const updateResults = (content) => {
   const results = document.getElementById("results");
   results.innerHTML = content;
-  const resultsMobile = document.getElementById("results-mobile");
-  resultsMobile.innerHTML = content;
 };
 
 // Fetch events or groups data from the API.
