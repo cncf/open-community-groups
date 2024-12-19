@@ -1,23 +1,32 @@
 {% if let Some(photos_urls) = community.photos_urls %}
   {% if photos_urls.len() > 0 %}
     {# Gallery -#}
-    <div class="bg-gray-100 pt-10 pb-12">
+    <div class="bg-gray-100 pt-4 md:pt-10 pb-6 md:pb-12">
       <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div class="mb-12">
           {# Title -#}
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Gallery</div>
           {# End title -#}
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-8">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
           {# Photos list -#}
           {% for photo in photos_urls %}
-            <button class="photo-gallery" data-photo-index="{{ loop.index }}">
+            <div class="hidden md:block">
+              <button class="photo-gallery" data-photo-index="{{ loop.index }}">
+                <img height="160"
+                     width="auto"
+                     class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
+                     src="{{ photo }}"
+                     alt="Community {{ community.display_name }}">
+              </button>
+            </div>
+            <div class="block md:hidden">
               <img height="160"
                    width="auto"
                    class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
                    src="{{ photo }}"
                    alt="Community {{ community.display_name }}">
-            </button>
+            </div>
           {% endfor %}
           {# End photos list -#}
         </div>
