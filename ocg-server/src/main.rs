@@ -5,7 +5,7 @@ use std::{path::PathBuf, sync::Arc};
 use anyhow::{Context, Result};
 use clap::Parser;
 use deadpool_postgres::Runtime;
-use openssl::ssl::{SslConnector, SslMethod};
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres_openssl::MakeTlsConnector;
 use tokio::{net::TcpListener, signal};
 use tracing::{error, info};
@@ -51,7 +51,8 @@ async fn main() -> Result<()> {
     };
 
     // Setup database
-    let builder = SslConnector::builder(SslMethod::tls())?;
+    let mut builder = SslConnector::builder(SslMethod::tls())?;
+    builder.set_verify(SslVerifyMode::NONE);
     let connector = MakeTlsConnector::new(builder.build());
     let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
