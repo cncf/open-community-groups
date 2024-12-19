@@ -12,6 +12,12 @@ export class Map {
       return Map._instance;
     }
 
+    // Display main loading
+    const mainLoading = document.getElementById("main-loading-map");
+    if (mainLoading) {
+      mainLoading.classList.remove("hidden");
+    }
+
     // Load LeafletJS library
     let script = document.createElement("script");
     script.type = "text/javascript";

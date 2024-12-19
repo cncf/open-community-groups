@@ -11,6 +11,12 @@ export class Calendar {
       return Calendar._instance;
     }
 
+    // Display main loading
+    const mainLoading = document.getElementById("main-loading-calendar");
+    if (mainLoading) {
+      mainLoading.classList.remove("hidden");
+    }
+
     // Load `fullcalendar` script
     let script = document.createElement("script");
     script.type = "text/javascript";
