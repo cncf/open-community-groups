@@ -102,7 +102,8 @@
         {# Results -#}
         <div class="flex-1">
           {% if view_mode == ViewMode::List %}
-            <div id="results" class="flex font-semibold text-sm text-black w-[175px]">
+            <div id="results"
+                 class="flex font-semibold text-xs md:text-sm text-black w-[175px]">
               {% block current_page %}
               {% endblock current_page %}
             </div>
