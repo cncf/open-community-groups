@@ -168,7 +168,7 @@ export class Map {
   // Add markers to the map.
   addMarkers(items, bbox) {
     // Fit map bounds to the bbox
-    if (bbox) {
+    if (bbox && checkValidBbox(bbox)) {
       const southWest = L.latLng(bbox.sw_lat, bbox.sw_lon);
       const northEast = L.latLng(bbox.ne_lat, bbox.ne_lon);
       const bounds = L.latLngBounds(southWest, northEast);
@@ -237,4 +237,9 @@ export class Map {
     // Hide loading spinner
     hideLoadingSpinner("loading-map");
   }
+}
+
+// Check if bbox is valid.
+function checkValidBbox(bbox) {
+  return Object.values(bbox).every((value) => value !== 0);
 }

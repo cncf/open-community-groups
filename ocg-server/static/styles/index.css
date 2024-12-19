@@ -32,6 +32,11 @@
   font-weight: 600;
 }
 
+/* Input */
+input:placeholder-shown {
+  text-overflow: ellipsis;
+}
+
 /* Full calendar */
 .fc-view-harness {
   height: 816px !important;
