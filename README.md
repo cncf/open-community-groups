@@ -5,17 +5,9 @@
 > [!WARNING]
 > This project is currently in the early stages of development and is not yet ready for production use.
 
-<br/>
-<table>
-    <tr>
-        <td width="50%"><img src="docs/screenshots/ocg1.png?raw=true"></td>
-        <td width="50%"><img src="docs/screenshots/ocg2.png?raw=true"></td>
-    </tr>
-    <tr>
-        <td width="50%"><img src="docs/screenshots/ocg3.png?raw=true"></td>
-        <td width="50%"><img src="docs/screenshots/ocg4.png?raw=true"></td>
-    </tr>
-</table>
+| ![Screenshot 1](docs/screenshots/ocg1.png?raw=true) | ![Screenshot 2](docs/screenshots/ocg2.png?raw=true) |
+| --------------------------------------------------- | --------------------------------------------------- |
+| ![Screenshot 3](docs/screenshots/ocg3.png?raw=true) | ![Screenshot 4](docs/screenshots/ocg4.png?raw=true) |
 
 ## Contributing
 
