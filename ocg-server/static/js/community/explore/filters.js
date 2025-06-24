@@ -128,7 +128,9 @@ export const selectAnyOption = (name, type, triggerChange) => {
     // Trigger change on form if needed
     if (triggerChange) {
       const form = anyInput.closest("form");
-      triggerChangeOnForm(form.id);
+      if (form) {
+        triggerChangeOnForm(form.id);
+      }
     }
   }
 };
@@ -140,7 +142,9 @@ export const selectAnyOption = (name, type, triggerChange) => {
  */
 export const cleanInputField = (id, formId) => {
   const input = document.getElementById(id);
-  input.value = "";
+  if (input) {
+    input.value = "";
+  }
 
   if (formId) {
     triggerChangeOnForm(formId);

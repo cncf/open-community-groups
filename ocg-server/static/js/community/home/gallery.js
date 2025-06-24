@@ -1,7 +1,7 @@
 /**
  * Opens the images carousel modal and sets the active image.
  * @param {string} modalId - The ID of the modal to open
- * @param {number} activeIndex - The index of the image to display (1-based)
+ * @param {number} activeIndex - The index of the image to display
  */
 export const openModal = (modalId, activeIndex) => {
   const modal = document.getElementById(modalId);
@@ -70,7 +70,7 @@ export const navigateCarousel = (direction) => {
 
 /**
  * Sets the active image in the carousel by updating CSS classes and data attributes.
- * @param {number} index - The index of the image to set as active (0-based)
+ * @param {number} index - The index of the image to set as active
  */
 const setActiveImage = (index) => {
   const carouselItems = document.querySelectorAll("#gallery [data-carousel-item]");

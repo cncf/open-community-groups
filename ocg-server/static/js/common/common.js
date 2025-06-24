@@ -1,15 +1,4 @@
 /**
- * Checks if a script with the given source URL is already loaded in the document.
- * @param {string} src - The source URL of the script to check
- * @returns {boolean} True if the script is already loaded, false otherwise
- */
-export const isScriptLoaded = (src) => {
-  return Array.from(document.querySelectorAll("script"))
-    .map((scr) => scr.src)
-    .includes(src);
-};
-
-/**
  * Shows a loading spinner by adding the 'is-loading' class to the element.
  * @param {string} id - The ID of the element to show loading spinner for
  */
@@ -53,10 +42,6 @@ export const toggleMobileNavbarVisibility = () => {
 export const toggleModalVisibility = (modalId) => {
   const modal = document.getElementById(modalId);
   if (modal) {
-    if (modal.classList.contains("hidden")) {
-      modal.classList.remove("hidden");
-    } else {
-      modal.classList.add("hidden");
-    }
+    modal.classList.toggle("hidden");
   }
 };

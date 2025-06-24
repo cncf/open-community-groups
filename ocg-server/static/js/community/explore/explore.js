@@ -4,7 +4,9 @@
  */
 export const updateResults = (content) => {
   const results = document.getElementById("results");
-  results.innerHTML = content;
+  if (results) {
+    results.innerHTML = content;
+  }
 };
 
 /**
