@@ -26,14 +26,13 @@ export class Map {
     // Load LeafletJS library
     let script = document.createElement("script");
     script.type = "text/javascript";
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
+    script.src = "/static/vendor/js/leaflet.v1.9.4.min.js";
     document.getElementsByTagName("head")[0].appendChild(script);
 
     // Load markercluster script
     let markerClusterScript = document.createElement("script");
     markerClusterScript.type = "text/javascript";
-    markerClusterScript.src =
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js";
+    markerClusterScript.src = "/static/vendor/js/leaflet.markercluster.v1.5.3.min.js";
 
     this.entity = entity;
     this.enabledMoveEnd = false;

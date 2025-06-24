@@ -32,7 +32,7 @@ const DEFAULT_PAGINATION_LIMIT: usize = 10;
 /// This is the root template that renders the explore page with either events or groups
 /// content based on the selected entity.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/index.html")]
+#[template(path = "community/explore/page.html")]
 pub(crate) struct Page {
     /// Community information.
     pub community: Community,
