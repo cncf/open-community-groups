@@ -73,7 +73,7 @@
 
   const calendar = new Calendar({ events: {{ events|json|safe }} });
 
-  const currentMonthBtn = document.getElementById('#current-month-btn');
+  const currentMonthBtn = document.getElementById('current-month-btn');
   if (currentMonthBtn) {
     currentMonthBtn.addEventListener('click', () => {
       calendar.currentMonth()
@@ -81,7 +81,7 @@
     });
   }
 
-  const prevMonthBtn = document.getElementById('#prev-month-btn');
+  const prevMonthBtn = document.getElementById('prev-month-btn');
   if (prevMonthBtn) {
     prevMonthBtn.addEventListener('click', () => {
       calendar.previousMonth();
@@ -89,7 +89,7 @@
     });
   }
 
-  const nextMonthBtn = document.getElementById('#next-month-btn');
+  const nextMonthBtn = document.getElementById('next-month-btn');
   if (nextMonthBtn) {
     nextMonthBtn.addEventListener('click', () => {
       calendar.nextMonth();

@@ -49,7 +49,7 @@
           showLoadingSpinner
         } from '/static/js/common/common.js';
 
-        const eventsButton = document.getElementById('#events-button');
+        const eventsButton = document.getElementById('events-button');
         if (eventsButton) {
           eventsButton.addEventListener('htmx:trigger', () => {
             showLoadingSpinner("loading-filters");
@@ -83,7 +83,7 @@
           showLoadingSpinner
         } from '/static/js/common/common.js';
 
-        const groupsButton = document.getElementById('#groups-button');
+        const groupsButton = document.getElementById('groups-button');
         if (groupsButton) {
           groupsButton.addEventListener('htmx:trigger', () => {
             showLoadingSpinner("loading-filters");
@@ -250,7 +250,7 @@
       selectAnyOption
     } from '/static/js/community/explore/filters.js';
 
-    const anyCheckbox = document.getElementById('#any-checkbox-{{ name }}');
+    const anyCheckbox = document.getElementById('any-checkbox-{{ name }}');
     if (anyCheckbox) {
       anyCheckbox.addEventListener('click', () => selectAnyOption('{{ name }}', 'checkbox'));
     }
@@ -303,7 +303,7 @@
       selectAnyOption
     } from '/static/js/community/explore/filters.js';
 
-    const anyRadio = document.getElementById('#any-radio-{{ name }}');
+    const anyRadio = document.getElementById('any-radio-{{ name }}');
     if (anyRadio) {
       anyRadio.addEventListener('click', () => selectAnyOption('{{ name }}', 'radio', true));
     }

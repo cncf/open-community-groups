@@ -226,17 +226,17 @@
     showLoadingSpinner
   } from '/static/js/common/common.js';
 
-  const openFiltersBtn = document.getElementById('#open-filters');
+  const openFiltersBtn = document.getElementById('open-filters');
   if (openFiltersBtn) {
     openFiltersBtn.addEventListener('click', openFiltersDrawer);
   }
 
-  const closeFiltersBtn = document.getElementById('#close-filters');
+  const closeFiltersBtn = document.getElementById('close-filters');
   if (closeFiltersBtn) {
     closeFiltersBtn.addEventListener('click', closeFiltersDrawer);
   }
 
-  const backdropFilters = document.getElementById('#drawer-backdrop');
+  const backdropFilters = document.getElementById('drawer-backdrop');
   if (backdropFilters) {
     backdropFilters.addEventListener('click', closeFiltersDrawer);
   }
@@ -254,7 +254,7 @@
     });
   });
 
-  const select = document.getElementById('#sort_by');
+  const select = document.getElementById('sort_by');
   // Sort by is only available in list view
   if (select) {
     select.addEventListener('change', () => triggerChangeOnForm('{{ entity }}-form'));

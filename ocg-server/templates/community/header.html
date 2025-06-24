@@ -40,7 +40,7 @@
             toggleModalVisibility
           } from '/static/js/common/common.js';
 
-          const openNewGroupBtn = document.getElementById('#open-new-group-btn');
+          const openNewGroupBtn = document.getElementById('open-new-group-btn');
           if (openNewGroupBtn) {
             openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
           }
@@ -88,7 +88,7 @@
                 toggleModalVisibility
               } from '/static/js/common/common.js';
 
-              const openNewGroupMobileBtn = document.getElementById('#open-new-group-mobile-btn');
+              const openNewGroupMobileBtn = document.getElementById('open-new-group-mobile-btn');
               if (openNewGroupMobileBtn) {
                 openNewGroupMobileBtn.addEventListener('click', () => {
                   toggleModalVisibility('new-group-modal')
@@ -118,12 +118,12 @@
     toggleMobileNavbarVisibility
   } from '/static/js/common/common.js';
 
-  const openNavbarMobile = document.getElementById('#open-navbar-mobile');
+  const openNavbarMobile = document.getElementById('open-navbar-mobile');
   if (openNavbarMobile) {
     openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
   }
 
-  const closeNavbarMobileBtn = document.getElementById('#close-navbar-mobile');
+  const closeNavbarMobileBtn = document.getElementById('close-navbar-mobile');
   if (closeNavbarMobileBtn) {
     closeNavbarMobileBtn.addEventListener('click', toggleMobileNavbarVisibility);
   }
@@ -167,12 +167,12 @@
       toggleModalVisibility
     } from '/static/js/common/common.js';
 
-    const backdropNewGroupModal = document.getElementById('#backdrop-new-group-modal');
+    const backdropNewGroupModal = document.getElementById('backdrop-new-group-modal');
     if (backdropNewGroupModal) {
       backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
     }
 
-    const closeNewGroupModal = document.getElementById('#close-new-group-modal');
+    const closeNewGroupModal = document.getElementById('close-new-group-modal');
     if (closeNewGroupModal) {
       closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
     }
