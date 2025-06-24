@@ -1,5 +1,7 @@
-//! This module defines the HTTP handlers for the explore page of the community
-//! site.
+//! HTTP handlers for the community explore page.
+//!
+//! The explore page provides a searchable interface for discovering groups and events
+//! within a community.
 
 use std::collections::HashMap;
 
@@ -19,9 +21,9 @@ use crate::{
     templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
 };
 
-/// Handler that returns the explore index page.
+/// Handler that renders the community explore page with either events or groups section.
 #[instrument(skip_all, err)]
-pub(crate) async fn index(
+pub(crate) async fn page(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Query(query): Query<HashMap<String, String>>,
@@ -29,10 +31,10 @@ pub(crate) async fn index(
     headers: HeaderMap,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare explore index template
+    // Prepare template
     let community = db.get_community(community_id).await?;
     let entity: explore::Entity = query.get("entity").into();
-    let mut template = explore::Index {
+    let mut template = explore::Page {
         community,
         entity: entity.clone(),
         path: uri.path().to_string(),
@@ -40,7 +42,7 @@ pub(crate) async fn index(
         groups_section: None,
     };
 
-    // Attach events or groups section template to the index template
+    // Attach events or groups section template to the page template
     match entity {
         explore::Entity::Events => {
             let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
@@ -57,7 +59,7 @@ pub(crate) async fn index(
     Ok(Html(template.render()?))
 }
 
-/// Handler that returns the events section of the explore page.
+/// Handler that renders the events section of the explore page.
 #[instrument(skip_all, err)]
 pub(crate) async fn events_section(
     State(db): State<DynDB>,
@@ -78,7 +80,7 @@ pub(crate) async fn events_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler that returns the events results section of the explore page.
+/// Handler that renders the events results section of the explore page.
 #[instrument(skip_all, err)]
 pub(crate) async fn events_results_section(
     State(db): State<DynDB>,
@@ -108,7 +110,7 @@ pub(crate) async fn events_results_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler that returns the groups section of the explore page.
+/// Handler that renders the groups section of the explore page.
 #[instrument(skip_all, err)]
 pub(crate) async fn groups_section(
     State(db): State<DynDB>,
@@ -129,7 +131,7 @@ pub(crate) async fn groups_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler that returns the groups results section of the explore page.
+/// Handler that renders the groups results section of the explore page.
 #[instrument(skip_all, err)]
 pub(crate) async fn groups_results_section(
     State(db): State<DynDB>,
@@ -159,7 +161,7 @@ pub(crate) async fn groups_results_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler that returns the events search results.
+/// Handler for the events search endpoint (JSON format).
 #[instrument(skip_all, err)]
 pub(crate) async fn search_events(
     State(db): State<DynDB>,
@@ -176,7 +178,7 @@ pub(crate) async fn search_events(
     Ok(json_data)
 }
 
-/// Handler that returns the groups search results.
+/// Handler for the groups search endpoint (JSON format).
 #[instrument(skip_all, err)]
 pub(crate) async fn search_groups(
     State(db): State<DynDB>,
@@ -193,7 +195,7 @@ pub(crate) async fn search_groups(
     Ok(json_data)
 }
 
-/// Prepare events section template.
+/// Prepares the events section template.
 #[instrument(skip(db), err)]
 async fn prepare_events_section(
     db: &DynDB,
@@ -220,7 +222,7 @@ async fn prepare_events_section(
     Ok(template)
 }
 
-/// Prepare groups section template.
+/// Prepares groups section template.
 #[instrument(skip(db), err)]
 async fn prepare_groups_section(
     db: &DynDB,

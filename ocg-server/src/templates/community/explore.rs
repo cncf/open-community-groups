@@ -1,5 +1,4 @@
-//! This module defines some templates and types used in the explore page of
-//! the community site.
+//! Templates and types for the community site explore page.
 
 use std::fmt::{self, Display, Formatter, Write as _};
 
@@ -28,23 +27,36 @@ use super::{
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
 
-/// Explore index page template.
+/// Template for the explore page.
+///
+/// This is the root template that renders the explore page with either events or groups
+/// content based on the selected entity.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/index.html")]
-pub(crate) struct Index {
+pub(crate) struct Page {
+    /// Community information.
     pub community: Community,
+    /// The type of content being explored (events or groups).
     pub entity: Entity,
+    /// Current URL path.
     pub path: String,
 
+    /// Events section data, populated when exploring events.
     pub events_section: Option<EventsSection>,
+    /// Groups section data, populated when exploring groups.
     pub groups_section: Option<GroupsSection>,
 }
 
-/// Entity to display in the explore page (events or groups).
+/// Represents the type of content being explored.
+///
+/// The explore page can display either events or groups. This enum determines which
+/// section is shown.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Entity {
+    /// Explore events (default).
     #[default]
     Events,
+    /// Explore groups.
     Groups,
 }
 
@@ -66,64 +78,93 @@ impl Display for Entity {
     }
 }
 
-/// Explore events section template.
+/// Template for the events section of the explore page.
+///
+/// This template renders the events exploration interface, including filters panel and
+/// results. It's used when `Entity::Events` is selected.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/section.html")]
 pub(crate) struct EventsSection {
+    /// Active filters for events search.
     pub filters: EventsFilters,
+    /// Available filter options (categories, regions, etc.).
     pub filters_options: FiltersOptions,
+    /// Results section containing matching events.
     pub results_section: EventsResultsSection,
 }
 
-/// Filters used in the events section of the community explore page.
+/// Filter parameters for event searches.
+///
+/// This struct captures all possible filtering criteria for events including
+/// location-based filters (bounding box, distance), temporal filters (date range),
+/// categorical filters, etc.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
+    /// Selected event categories to filter by.
     #[serde(default)]
     pub event_category: Vec<String>,
+    /// Selected group categories to filter by.
     #[serde(default)]
     pub group_category: Vec<String>,
+    /// Event types to include (in-person, online, hybrid).
     #[serde(default)]
     pub kind: Vec<EventKind>,
+    /// Geographic regions to filter by.
     #[serde(default)]
     pub region: Vec<String>,
 
+    /// Northeast latitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lat: Option<f64>,
+    /// Northeast longitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lon: Option<f64>,
+    /// Southwest latitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lat: Option<f64>,
+    /// Southwest longitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lon: Option<f64>,
+    /// Start date for event filtering (YYYY-MM-DD format).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_from: Option<String>,
+    /// End date for event filtering (YYYY-MM-DD format).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date_to: Option<String>,
+    /// Maximum distance in meters from user's location.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u64>,
+    /// Whether to include bounding box in results (for map view).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
+    /// Whether to pre-render popover HTML.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_popover_html: Option<bool>,
+    /// User's latitude for distance-based filtering.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
+    /// Number of results per page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    /// User's longitude for distance-based filtering.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    /// Pagination offset for results.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    /// Sort order for results (e.g., "date", "distance").
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<String>,
+    /// Full-text search query.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
+    /// Display mode for results (list, calendar, or map).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub view_mode: Option<ViewMode>,
 }
 
 impl EventsFilters {
-    /// Create a new `EventsFilters` instance from the raw query string
-    /// and headers provided.
+    /// Create a new `EventsFilters` instance from the raw query string and headers.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
         let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
@@ -136,9 +177,9 @@ impl EventsFilters {
         // Populate the latitude and longitude fields from the headers provided
         (filters.latitude, filters.longitude) = extract_location(headers);
 
-        // Set default date range when not provided. We'll use the current month
-        // as the date range when the view mode is calendar. Otherwise, we'll use
-        // the next 12 months from now.
+        // Set default date range when not provided. We'll use the current month as the
+        // date range when the view mode is calendar. Otherwise, we'll use the next 12
+        // months from now.
         let now = Utc::now();
         if filters.date_from.is_none() {
             let default_date_from = if filters.view_mode == Some(ViewMode::Calendar) {
@@ -220,16 +261,25 @@ impl Pagination for EventsFilters {
     }
 }
 
-/// Events results section template.
+/// Template for displaying event search results.
+///
+/// This template renders the list of matching events along with pagination controls. It
+/// supports different view modes and includes geographic bounds for map display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/results.html")]
 pub(crate) struct EventsResultsSection {
+    /// List of events matching the current filters.
     pub events: Vec<Event>,
+    /// Pagination links for navigating results.
     pub navigation_links: NavigationLinks,
+    /// Total number of matching events (for pagination).
     pub total: usize,
 
+    /// Geographic bounds of all events (for map centering).
     pub bbox: Option<BBox>,
+    /// Current pagination offset.
     pub offset: Option<usize>,
+    /// Current display mode.
     pub view_mode: Option<ViewMode>,
 }
 
@@ -241,59 +291,86 @@ impl EventsResultsSection {
     }
 }
 
-/// Event information used in the community explore page.
+/// Detailed event information for display in explore results.
+///
+/// This struct contains all the data needed to render an event in the explore page,
+/// including location details, timing, and group information. It can also render itself
+/// as a popover for map/calendar views.
 #[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/event.html")]
 pub(crate) struct Event {
+    /// Whether the event has been canceled.
     pub canceled: bool,
+    /// Category of the hosting group.
     pub group_category_name: String,
+    /// Generated color for visual distinction.
     #[serde(default)]
     pub group_color: String,
+    /// Name of the group hosting the event.
     pub group_name: String,
+    /// URL slug of the hosting group.
     pub group_slug: String,
+    /// Type of event (in-person, online, hybrid).
     pub kind: EventKind,
+    /// Event title.
     pub name: String,
+    /// URL slug of the event.
     pub slug: String,
+    /// Timezone for event times.
     pub timezone: Tz,
 
+    /// Brief event description for listings.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description_short: Option<String>,
+    /// Event end time in UTC.
     #[serde(
         with = "chrono::serde::ts_seconds_option",
         skip_serializing_if = "Option::is_none"
     )]
     pub ends_at: Option<DateTime<Utc>>,
+    /// City where the group is based.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_city: Option<String>,
+    /// ISO country code of the group.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_country_code: Option<String>,
+    /// Full country name of the group.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_country_name: Option<String>,
+    /// State/province where the group is based.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_state: Option<String>,
+    /// Latitude for map display.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
+    /// URL to the event or group logo.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
+    /// Longitude for map display.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map/calendar popovers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub popover_html: Option<String>,
+    /// Event start time in UTC.
     #[serde(
         with = "chrono::serde::ts_seconds_option",
         skip_serializing_if = "Option::is_none"
     )]
     pub starts_at: Option<DateTime<Utc>>,
+    /// Street address of the venue.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_address: Option<String>,
+    /// City where the event takes place.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_city: Option<String>,
+    /// Name of the venue.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_name: Option<String>,
 }
 
 impl Event {
-    /// Get the location of the event.
+    /// Build a display-friendly location string from available location data.
     pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(self.group_city.as_ref())
@@ -307,7 +384,10 @@ impl Event {
         build_location(&parts, max_len)
     }
 
-    /// Render popover HTML.
+    /// Render popover HTML for map and calendar views.
+    ///
+    /// Converts this event into a home::Event template and renders it as minified HTML
+    /// for inclusion in map/calendar popovers.
     #[instrument(skip_all, err)]
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_event: home::Event = self.clone().into();
@@ -330,56 +410,82 @@ impl Event {
     }
 }
 
-/// Explore groups section template.
+/// Template for the groups section of the explore page.
+///
+/// This template renders the groups exploration interface, including filters panel and
+/// results. It's used when `Entity::Groups` is selected.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
+    /// Active filters for groups search.
     pub filters: GroupsFilters,
+    /// Available filter options (categories, regions, etc.).
     pub filters_options: FiltersOptions,
+    /// Results section containing matching groups.
     pub results_section: GroupsResultsSection,
 }
 
-/// Filters used in the groups section of the community explore page.
+/// Filter parameters for group searches.
+///
+/// Similar to `EventsFilters` but without temporal filters since groups are ongoing
+/// entities. Supports location-based filtering, categorical filtering, and full-text
+/// search.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
+    /// Selected group categories to filter by.
     #[serde(default)]
     pub group_category: Vec<String>,
+    /// Geographic regions to filter by.
     #[serde(default)]
     pub region: Vec<String>,
 
+    /// Northeast latitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lat: Option<f64>,
+    /// Northeast longitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lon: Option<f64>,
+    /// Southwest latitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lat: Option<f64>,
+    /// Southwest longitude of bounding box for map view.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lon: Option<f64>,
+    /// Maximum distance in meters from user's location.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<f64>,
+    /// Whether to include bounding box in results.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
+    /// Whether to pre-render popover HTML.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_popover_html: Option<bool>,
+    /// User's latitude for distance-based filtering.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
+    /// Number of results per page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    /// User's longitude for distance-based filtering.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    /// Pagination offset for results.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    /// Sort order for results.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<String>,
+    /// Full-text search query.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
+    /// Display mode for results (list or map).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub view_mode: Option<ViewMode>,
 }
 
 impl GroupsFilters {
-    /// Create a new `GroupsFilters` instance from the raw query string
-    /// and headers provided.
+    /// Create a new `GroupsFilters` instance from the raw query string and headers
+    /// provided.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
         let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
@@ -437,16 +543,25 @@ impl Pagination for GroupsFilters {
     }
 }
 
-/// Groups results section template.
+/// Template for displaying group search results.
+///
+/// This template renders the list of matching groups along with pagination controls. It
+/// supports different view modes and includes geographic bounds for map display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups/results.html")]
 pub(crate) struct GroupsResultsSection {
+    /// List of groups matching the current filters.
     pub groups: Vec<Group>,
+    /// Pagination links for navigating results.
     pub navigation_links: NavigationLinks,
+    /// Total number of matching groups (for pagination).
     pub total: usize,
 
+    /// Geographic bounds of all groups (for map centering).
     pub bbox: Option<BBox>,
+    /// Current pagination offset.
     pub offset: Option<usize>,
+    /// Current display mode.
     pub view_mode: Option<ViewMode>,
 }
 
@@ -458,42 +573,61 @@ impl GroupsResultsSection {
     }
 }
 
-/// Group information used in the community explore page.
+/// Detailed group information for display in explore results.
+///
+/// This struct contains all the data needed to render a group in the explore page,
+/// including location details and metadata. It can also render itself as a popover for
+/// map views.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups/group.html")]
 pub(crate) struct Group {
+    /// Category this group belongs to.
     pub category_name: String,
+    /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
+    /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Group name.
     pub name: String,
+    /// URL slug of the group.
     pub slug: String,
 
+    /// City where the group is based.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
+    /// ISO country code of the group.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub country_code: Option<String>,
+    /// Full country name of the group.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub country_name: Option<String>,
+    /// Group description text.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Latitude for map display.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
+    /// URL to the group logo.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
+    /// Longitude for map display.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map popovers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub popover_html: Option<String>,
+    /// Name of the geographic region.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub region_name: Option<String>,
+    /// State/province where the group is based.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
 }
 
 impl Group {
-    /// Get the location of the group.
+    /// Build a display-friendly location string from available location data.
     pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(self.city.as_ref())
@@ -504,7 +638,10 @@ impl Group {
         build_location(&parts, max_len)
     }
 
-    /// Render popover HTML.
+    /// Render popover HTML for map views.
+    ///
+    /// Converts this group into a home::Group template and renders it as minified HTML
+    /// for inclusion in map popovers.
     #[instrument(skip_all, err)]
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_group: home::Group = self.clone().into();
@@ -526,12 +663,18 @@ impl Group {
     }
 }
 
-/// Filters options available.
+/// Available options for filters.
+///
+/// This struct provides the lists of available options for some filters.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
+    /// Available event categories.
     pub event_category: Vec<FilterOption>,
+    /// Available group categories.
     pub group_category: Vec<FilterOption>,
+    /// Available distance options (e.g., 5km, 10km, 25km).
     pub distance: Vec<FilterOption>,
+    /// Available geographic regions.
     pub region: Vec<FilterOption>,
 }
 
@@ -545,25 +688,38 @@ impl FiltersOptions {
     }
 }
 
-/// Filter option details.
+/// Individual filter option with display name and value.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct FilterOption {
+    /// Display name shown to users.
     pub name: String,
+    /// Technical value used in queries.
     pub value: String,
 }
 
-/// Results navigation links.
+/// Pagination navigation links for result sets.
+///
+/// Provides first/last/next/previous links for navigating through paginated results.
+/// Links are only populated when applicable based on current position in the result set.
 #[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/navigation_links.html")]
 pub(crate) struct NavigationLinks {
+    /// Link to first page of results.
     pub first: Option<NavigationLink>,
+    /// Link to last page of results.
     pub last: Option<NavigationLink>,
+    /// Link to next page of results.
     pub next: Option<NavigationLink>,
+    /// Link to previous page of results.
     pub prev: Option<NavigationLink>,
 }
 
 impl NavigationLinks {
-    /// Create a new `NavigationLinks` instance from the filters provided.
+    /// Generate navigation links based on current filters and result count.
+    ///
+    /// Calculates which navigation links should be shown based on the current offset,
+    /// limit, and total number of results. Only creates links that make sense (e.g., no
+    /// "previous" link on the first page).
     pub(crate) fn from_filters<T>(entity: &Entity, filters: &T, total: usize) -> Result<Self>
     where
         T: Serialize + Clone + ToRawQuery + Pagination,
@@ -594,15 +750,20 @@ impl NavigationLinks {
     }
 }
 
-/// Navigation link.
+/// Individual navigation link with URLs for both standard and HTMX requests.
+///
+/// Each link includes two URLs: one for standard page navigation and one for HTMX partial
+/// updates to enable seamless client-side updates.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct NavigationLink {
+    /// URL for HTMX partial page updates.
     pub hx_url: String,
+    /// URL for standard full-page navigation.
     pub url: String,
 }
 
 impl NavigationLink {
-    /// Create a new `NavigationLink` instance from the filters provided.
+    /// Create a navigation link with both standard and HTMX URLs.
     pub(crate) fn new<T>(entity: &Entity, filters: &T) -> Result<Self>
     where
         T: Serialize + ToRawQuery,
@@ -617,17 +778,27 @@ impl NavigationLink {
     }
 }
 
-/// Offsets used to build the navigation links.
+/// Calculated pagination offsets for navigation links.
+///
+/// Internal struct used to determine which navigation links should be created based on
+/// the current position in the result set.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 struct NavigationLinksOffsets {
+    /// Offset for first page.
     first: Option<usize>,
+    /// Offset for last page.
     last: Option<usize>,
+    /// Offset for next page.
     next: Option<usize>,
+    /// Offset for previous page.
     prev: Option<usize>,
 }
 
 impl NavigationLinksOffsets {
-    /// Create a new `NavigationLinksOffsets` instance.
+    /// Calculate appropriate offsets for pagination links.
+    ///
+    /// Determines which navigation links should exist based on the current offset, page
+    /// size (limit), and total number of results.
     fn new(offset: Option<usize>, limit: Option<usize>, total: usize) -> Self {
         let mut offsets = NavigationLinksOffsets::default();
 
@@ -661,17 +832,26 @@ impl NavigationLinksOffsets {
     }
 }
 
-/// View mode.
+/// Display mode for explore results.
+///
+/// Determines how results are displayed - as a traditional list, on a calendar view, or
+/// as markers on a map.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum ViewMode {
+    /// Calendar grid view (events only).
     Calendar,
+    /// Traditional list view (default).
     #[default]
     List,
+    /// Interactive map view.
     Map,
 }
 
-/// Build URL that includes the filters as query parameters.
+/// Build a URL with filter parameters appended as query string.
+///
+/// Takes a base URL and a serializable filter object, converts the filters to URL query
+/// parameters, and appends them appropriately.
 pub(crate) fn build_url<T>(base_url: &str, filters: &T) -> Result<String>
 where
     T: Serialize + ToRawQuery,
@@ -680,12 +860,15 @@ where
     let sep = get_url_filters_separator(base_url);
     let filters_params = filters.to_raw_query()?;
     if !filters_params.is_empty() {
-        write!(url, "{sep}{filters_params}").unwrap();
+        write!(url, "{sep}{filters_params}").expect("write to succeed");
     }
     Ok(url)
 }
 
-/// Get the separator to use when joining the filters to the URL.
+/// Determine the appropriate separator for appending query parameters.
+///
+/// Returns "?" if the URL has no query string, "&" if it has parameters but doesn't end
+/// with a separator, or "" if it already ends with one.
 fn get_url_filters_separator(url: &str) -> &str {
     if url.contains('?') {
         if url.ends_with('?') || url.ends_with('&') {
@@ -698,21 +881,27 @@ fn get_url_filters_separator(url: &str) -> &str {
     }
 }
 
-/// Trait to convert a type to a raw query string.
+/// Trait for converting filter structs to URL query strings.
+///
+/// Implemented by filter types to provide custom serialization logic for URL query
+/// strings.
 pub(crate) trait ToRawQuery {
-    /// Convert the type to a raw query string.
+    /// Convert the implementing type to a URL query string.
     fn to_raw_query(&self) -> Result<String>;
 }
 
-/// Trait to get and set some pagination values.
+/// Trait for types that support pagination.
+///
+/// Provides methods to access and modify pagination parameters, used by the navigation
+/// link generation logic to create appropriate URLs for different pages.
 pub(crate) trait Pagination {
-    /// Get the limit value.
+    /// Get the current page size limit.
     fn limit(&self) -> Option<usize>;
 
-    /// Get the offset value.
+    /// Get the current offset (starting position).
     fn offset(&self) -> Option<usize>;
 
-    /// Set the offset value.
+    /// Update the offset for navigation.
     fn set_offset(&mut self, offset: Option<usize>);
 }
 

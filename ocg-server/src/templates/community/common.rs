@@ -1,5 +1,4 @@
-//! This module defines some templates and types used in some pages of the
-//! community site.
+//! This module defines some templates and types used across the community site.
 
 use std::collections::BTreeMap;
 
@@ -48,6 +47,9 @@ impl Community {
 }
 
 /// Theme information used to customize the selected layout.
+///
+/// Defines the primary color and derived color palette used throughout the community's
+/// pages for consistent branding.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Theme {
     #[serde(default)]
@@ -55,10 +57,15 @@ pub(crate) struct Theme {
     pub primary_color: String,
 }
 
-/// Theme colors palette.
+/// Color palette mapping intensity levels (50-900) to hex color values.
+///
+/// Lower numbers represent lighter shades, higher numbers darker shades.
 type Palette = BTreeMap<u32, String>;
 
-/// Event kind (in-person, virtual or hybrid).
+/// Categorization of event attendance modes.
+///
+/// Distinguishes between physical, online, and mixed attendance events
+/// for filtering and display purposes.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum EventKind {
@@ -78,7 +85,10 @@ impl std::fmt::Display for EventKind {
     }
 }
 
-/// Generate a palette from the provided color.
+/// Generates a complete color palette from a single primary color.
+///
+/// Creates lighter and darker variants of the primary color to build palette with shades
+/// from 50 (lightest) to 900 (darkest). Uses the palette crate for color manipulation.
 fn generate_palette(color: &str) -> Result<Palette> {
     let color: Srgb<f32> = color.parse::<Srgb<u8>>()?.into();
 

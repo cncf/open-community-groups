@@ -1,26 +1,42 @@
-//! Some helpers for templates.
+//! Template helper functions and utilities.
+//!
+//! This module provides utility functions used by templates for common tasks like
+//! building location strings, generating consistent colors for entities, and extracting
+//! geolocation data from HTTP headers.
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use axum::http::header::HeaderMap;
 
-/// Colors used to make it easier to identify some entities. We use them as the
-/// tint for placeholder images, for example.
+/// Predefined color palette for visual entity identification.
+///
+/// These soft pastel colors are used to generate consistent visual identifiers for
+/// entities like groups or events, particularly in placeholder images.
 const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
 
-/// Parts used to build the location string.
+/// Builder for constructing location strings from various components.
+///
+/// Provides a mechanism to combine venue and group location information into a
+/// human-readable location string with proper formatting.
 pub(crate) struct LocationParts<'a> {
+    /// City where the group is located (used when venue city is not available).
     group_city: Option<&'a String>,
+    /// ISO country code of the group's location (e.g., "US", "GB").
     group_country_code: Option<&'a String>,
+    /// Full country name of the group's location.
     group_country_name: Option<&'a String>,
+    /// State or province where the group is located.
     group_state: Option<&'a String>,
+    /// Street address of the event venue.
     venue_address: Option<&'a String>,
+    /// City where the venue is located (takes precedence over group city).
     venue_city: Option<&'a String>,
+    /// Name of the venue (e.g., "Community Center", "Conference Hall").
     venue_name: Option<&'a String>,
 }
 
 impl<'a> LocationParts<'a> {
-    /// Create a new instance of `LocationParts`.
+    /// Creates a new empty `LocationParts` builder.
     pub(crate) fn new() -> Self {
         Self {
             group_city: None,
@@ -33,50 +49,54 @@ impl<'a> LocationParts<'a> {
         }
     }
 
-    /// Set the group city.
+    /// Sets the group's city for the location string.
     pub(crate) fn group_city(mut self, group_city: Option<&'a String>) -> Self {
         self.group_city = group_city;
         self
     }
 
-    /// Set the group country code.
+    /// Sets the group's country code (e.g., "US", "GB").
     pub(crate) fn group_country_code(mut self, group_country_code: Option<&'a String>) -> Self {
         self.group_country_code = group_country_code;
         self
     }
 
-    /// Set the group country name.
+    /// Sets the group's full country name.
     pub(crate) fn group_country_name(mut self, group_country_name: Option<&'a String>) -> Self {
         self.group_country_name = group_country_name;
         self
     }
 
-    /// Set the group state.
+    /// Sets the group's state or province.
     pub(crate) fn group_state(mut self, group_state: Option<&'a String>) -> Self {
         self.group_state = group_state;
         self
     }
 
-    /// Set the venue address.
+    /// Sets the specific venue street address.
     pub(crate) fn venue_address(mut self, venue_address: Option<&'a String>) -> Self {
         self.venue_address = venue_address;
         self
     }
 
-    /// Set the venue city.
+    /// Sets the venue's city, which takes precedence over group city.
     pub(crate) fn venue_city(mut self, venue_city: Option<&'a String>) -> Self {
         self.venue_city = venue_city;
         self
     }
 
-    /// Set the venue name.
+    /// Sets the venue name (e.g., "Community Center").
     pub(crate) fn venue_name(mut self, venue_name: Option<&'a String>) -> Self {
         self.venue_name = venue_name;
         self
     }
 }
 
-/// Build location string from the location information provided.
+/// Constructs a formatted location string from available parts.
+///
+/// Combines location components, preferring venue details over group defaults. Respects
+/// the maximum length constraint and gracefully handles missing information. Returns
+/// None if no location data is available.
 pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<String> {
     let mut location = String::new();
     let mut push = |part: Option<&String>| -> bool {
@@ -109,8 +129,11 @@ pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<St
     None
 }
 
-/// Get the color corresponding to the value provided. The same value should
-/// always return the same color.
+/// Returns a consistent color for any hashable value.
+///
+/// Uses a hash function to deterministically map values to colors from the predefined
+/// palette. Ensures the same input always produces the same color, useful for visual
+/// consistency across the application.
 pub(crate) fn color<T: Hash + ?Sized>(value: &T) -> &str {
     // Calculate the hash of the value
     let mut hasher = DefaultHasher::new();
@@ -122,7 +145,11 @@ pub(crate) fn color<T: Hash + ?Sized>(value: &T) -> &str {
     COLORS[(hash % COLORS.len() as u64) as usize]
 }
 
-/// Extract the latitude and longitude from the headers provided.
+/// Extracts geolocation coordinates from HTTP headers.
+///
+/// Currently supports `CloudFront` geolocation headers. Returns a tuple of (latitude,
+/// longitude) as Options, with both None if location cannot be determined from the
+/// headers.
 pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>) {
     let try_from = |latitude_header: &str, longitude_header: &str| -> Option<(Option<f64>, Option<f64>)> {
         let latitude = headers.get(latitude_header)?.to_str().ok()?.parse().ok()?;

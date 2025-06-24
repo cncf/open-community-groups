@@ -1,5 +1,7 @@
-//! This module defines some templates and types used in the home page of the
-//! community site.
+//! Templates and data structures for the home page of the community site.
+//!
+//! The home page displays an overview of the community including community statistics,
+//! upcoming events (both in-person and virtual), and recently added groups.
 
 use anyhow::Result;
 use askama::Template;
@@ -18,43 +20,66 @@ use super::{
     explore,
 };
 
-/// Home index page template.
+/// Template for the community home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/index.html")]
-pub(crate) struct Index {
+pub(crate) struct Page {
+    /// Community information including name, logo, and other metadata.
     pub community: Community,
+    /// Current request path.
     pub path: String,
+    /// List of groups recently added to the community.
     pub recently_added_groups: Vec<Group>,
+    /// List of upcoming in-person events across all community groups.
     pub upcoming_in_person_events: Vec<Event>,
+    /// List of upcoming virtual events across all community groups.
     pub upcoming_virtual_events: Vec<Event>,
+    /// Aggregated statistics about groups, members, events, and attendees.
     pub stats: Stats,
 }
 
-/// Event information used in the community home page.
+/// Event data structure for home page display.
+///
+/// Contains essential event information optimized for the compact home page layout.
+/// Includes group context and location details for proper display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/event.html")]
 pub(crate) struct Event {
+    /// Color associated with the group hosting this event, used for visual styling.
     #[serde(default)]
     pub group_color: String,
+    /// Name of the group hosting this event.
     pub group_name: String,
+    /// URL-friendly identifier for the group hosting this event.
     pub group_slug: String,
+    /// Type of event (in-person or virtual).
     pub kind: EventKind,
+    /// Display name of the event.
     pub name: String,
+    /// URL-friendly identifier for this event.
     pub slug: String,
+    /// Timezone in which the event times should be displayed.
     pub timezone: Tz,
 
+    /// City where the group is located (may differ from venue city).
     pub group_city: Option<String>,
+    /// ISO country code of the group's location.
     pub group_country_code: Option<String>,
+    /// Full country name of the group's location.
     pub group_country_name: Option<String>,
+    /// State or province where the group is located.
     pub group_state: Option<String>,
+    /// URL to the event or group's logo image.
     pub logo_url: Option<String>,
+    /// UTC timestamp when the event starts.
     #[serde(with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
+    /// City where the event venue is located (for in-person events).
     pub venue_city: Option<String>,
 }
 
 impl Event {
-    /// Get the location of the event.
+    /// Builds a formatted location string for the event.
     pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(self.group_city.as_ref())
@@ -101,28 +126,39 @@ impl From<explore::Event> for Event {
     }
 }
 
-/// Group information used in the community home page.
+/// Group data structure for home page display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/group.html")]
 pub(crate) struct Group {
+    /// Name of the category this group belongs to.
     pub category_name: String,
+    /// Color associated with this group, used for visual styling.
     #[serde(default)]
     pub color: String,
+    /// UTC timestamp when the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Display name of the group.
     pub name: String,
+    /// URL-friendly identifier for this group.
     pub slug: String,
 
+    /// City where the group is located.
     pub city: Option<String>,
+    /// ISO country code of the group's location.
     pub country_code: Option<String>,
+    /// Full country name of the group's location.
     pub country_name: Option<String>,
+    /// URL to the group's logo image.
     pub logo_url: Option<String>,
+    /// Geographic region name where the group is located.
     pub region_name: Option<String>,
+    /// State or province where the group is located.
     pub state: Option<String>,
 }
 
 impl Group {
-    /// Get the location of the group.
+    /// Builds a formatted location string for the group.
     pub(crate) fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(self.city.as_ref())
@@ -165,13 +201,17 @@ impl From<explore::Group> for Group {
     }
 }
 
-/// Some stats used in the community home page.
+/// Community statistics for the home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/stats.html")]
 pub(crate) struct Stats {
+    /// Total number of groups in the community.
     groups: i64,
+    /// Total number of members across all groups.
     groups_members: i64,
+    /// Total number of events hosted by all groups.
     events: i64,
+    /// Total number of attendees across all events.
     events_attendees: i64,
 }
 
