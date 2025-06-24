@@ -1,3 +1,8 @@
+//! Open Community Groups server.
+//!
+//! This is the main entry point for the OCG server, which provides a web-based platform
+//! for managing community groups and events.
+
 #![warn(clippy::all, clippy::pedantic)]
 
 use std::{path::PathBuf, sync::Arc};
@@ -22,42 +27,46 @@ mod handlers;
 mod router;
 mod templates;
 
+/// Command-line arguments for the application.
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Args {
-    /// Config file path
+    /// Path to the configuration file.
     #[clap(short, long)]
     config_file: Option<PathBuf>,
 }
 
+/// Main entry point for the application.
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Setup configuration
+    // Setup configuration.
     let args = Args::parse();
     let cfg = Config::new(args.config_file.as_ref()).context("error setting up configuration")?;
 
-    // Setup logging
-    let ts =
-        tracing_subscriber::fmt().with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+    // Setup logging based on configuration.
+    let ts = tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| {
             format!(
-                "{}=debug,tower_http=debug,axum::rejection=trace",
+                "{}=debug,axum_login=debug,tower_sessions=debug",
                 env!("CARGO_CRATE_NAME")
             )
             .into()
-        }));
+        }))
+        .with_file(true)
+        .with_line_number(true);
     match cfg.log.format {
         LogFormat::Json => ts.json().init(),
         LogFormat::Pretty => ts.init(),
     }
 
-    // Setup database
+    // Setup database connection pool.
     let mut builder = SslConnector::builder(SslMethod::tls())?;
     builder.set_verify(SslVerifyMode::NONE);
     let connector = MakeTlsConnector::new(builder.build());
     let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
 
-    // Setup and launch HTTP server
+    // Setup and launch the HTTP server.
     let router = router::setup(&cfg.server, db);
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
@@ -74,10 +83,11 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Return a future that will complete when the program is asked to stop via a
-/// ctrl+c or terminate signal.
+/// Returns a future that completes when the program receives a shutdown signal.
+///
+/// Handles both ctrl+c and terminate signals for graceful shutdown.
 async fn shutdown_signal() {
-    // Setup signal handlers
+    // Setup ctrl+c signal handler.
     let ctrl_c = async {
         signal::ctrl_c()
             .await
@@ -85,6 +95,7 @@ async fn shutdown_signal() {
     };
 
     #[cfg(unix)]
+    // Setup terminate signal handler (Unix only).
     let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("failed to install terminate signal handler")
@@ -95,7 +106,7 @@ async fn shutdown_signal() {
     #[cfg(not(unix))]
     let terminate = std::future::pending::<()>();
 
-    // Wait for any of the signals
+    // Wait for either ctrl+c or terminate signal.
     tokio::select! {
         () = ctrl_c => {},
         () = terminate => {},

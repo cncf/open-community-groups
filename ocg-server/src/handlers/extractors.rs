@@ -11,7 +11,11 @@ use uuid::Uuid;
 
 use crate::{db::DynDB, router};
 
-/// Custom extractor to get the community id from the request's host header.
+/// Extractor that resolves a community ID from the request's Host header.
+///
+/// This enables multi-tenant functionality where different communities are served based
+/// on the domain name. The community ID is cached for 24 hours to reduce database
+/// lookups.
 pub(crate) struct CommunityId(pub Uuid);
 
 impl FromRequestParts<router::State> for CommunityId {
@@ -43,7 +47,10 @@ impl FromRequestParts<router::State> for CommunityId {
     }
 }
 
-/// Lookup the community id in the database using the host provided.
+/// Cached lookup function for resolving community IDs from hostnames.
+///
+/// Results are cached for 24 hours (86400 seconds) to minimize database queries. The
+/// cache uses the hostname as the key and is synchronized to prevent duplicate lookups.
 #[cached(
     time = 86400,
     key = "String",

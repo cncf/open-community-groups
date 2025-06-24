@@ -5,4 +5,4 @@ use askama::Template;
 /// Event index page template.
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/index.html")]
-pub(crate) struct Index {}
+pub(crate) struct Page {}

@@ -1,4 +1,10 @@
-//! This module defines some types to represent the server configuration.
+//! Configuration management for the OCG server.
+//!
+//! This module handles loading and parsing configuration from multiple sources using
+//! Figment. Configuration can be provided via:
+//!
+//! - YAML configuration file
+//! - Environment variables (with OCG_ prefix)
 
 use std::path::PathBuf;
 
@@ -11,16 +17,25 @@ use figment::{
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-/// Server configuration.
+/// Root configuration structure for the OCG server.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct Config {
+    /// Database configuration.
     pub db: DbConfig,
+    /// Logging configuration.
     pub log: LogConfig,
+    /// HTTP server configuration.
     pub server: HttpServerConfig,
 }
 
 impl Config {
-    /// Create a new Config instance.
+    /// Creates a new Config instance from available configuration sources.
+    ///
+    /// Configuration is loaded in the following order (later sources override):
+    ///
+    /// 1. Default values
+    /// 2. Optional YAML configuration file
+    /// 3. Environment variables with OCG_ prefix
     #[instrument(err)]
     pub(crate) fn new(config_file: Option<&PathBuf>) -> Result<Self> {
         let mut figment = Figment::new()
@@ -38,31 +53,45 @@ impl Config {
     }
 }
 
-/// Http server configuration.
+/// HTTP server configuration settings.
+///
+/// Defines the server's listening address and optional basic authentication
+/// credentials.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HttpServerConfig {
+    /// The address the HTTP server will listen on.
     pub addr: String,
+    /// Optional basic authentication configuration.
     pub basic_auth: Option<BasicAuth>,
 }
 
-/// Basic authentication configuration.
+/// Basic authentication configuration for the HTTP server.
+///
+/// When enabled, all requests must provide valid credentials via HTTP Basic
+/// Authentication.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct BasicAuth {
+    /// Whether basic authentication is enabled.
     pub enabled: bool,
+    /// Username for basic authentication.
     pub username: String,
+    /// Password for basic authentication.
     pub password: String,
 }
 
-/// Logs configuration.
+/// Logging configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct LogConfig {
+    /// Log output format.
     pub format: LogFormat,
 }
 
-/// Format to use in logs.
+/// Supported log output formats.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum LogFormat {
+    /// JSON log format.
     Json,
+    /// Human-readable log format.
     Pretty,
 }

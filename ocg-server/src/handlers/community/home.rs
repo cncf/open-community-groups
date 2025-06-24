@@ -1,5 +1,7 @@
-//! This module defines the HTTP handlers for the home page of the community
-//! site.
+//! HTTP handlers for the community home page.
+//!
+//! The home page displays an overview of the community including recent groups,
+//! upcoming events (both in-person and virtual), and community statistics.
 
 use anyhow::Result;
 use askama::Template;
@@ -16,14 +18,14 @@ use crate::{
     templates::community::{common::EventKind, home},
 };
 
-/// Handler that returns the home index page.
+/// Handler that renders the community home page.
 #[instrument(skip_all, err)]
-pub(crate) async fn index(
+pub(crate) async fn page(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare home index template
+    // Prepare template
     #[rustfmt::skip]
     let (community, recently_added_groups, upcoming_in_person_events, upcoming_virtual_events, stats) = tokio::try_join!(
         db.get_community(community_id),
@@ -32,7 +34,7 @@ pub(crate) async fn index(
         db.get_community_upcoming_events(community_id, vec![EventKind::Virtual, EventKind::Hybrid]),
         db.get_community_home_stats(community_id),
     )?;
-    let template = home::Index {
+    let template = home::Page {
         community,
         path: uri.path().to_string(),
         recently_added_groups,

@@ -1,35 +1,30 @@
-//! This module defines a `HandlerError` type to improve error handling in
-//! handlers.
+//! This module defines a `HandlerError` type to make error propagation easier
+//! in handlers.
 
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 
-/// Wrapper around `anyhow::Error` to improve error handling in handlers.
-#[derive(Debug)]
-pub(crate) struct HandlerError(anyhow::Error);
+/// Represents all possible errors that can occur in a handler.
+#[derive(thiserror::Error, Debug)]
+pub(crate) enum HandlerError {
+    /// Error during JSON serialization or deserialization.
+    #[error("serde json error: {0}")]
+    Serde(#[from] serde_json::Error),
 
-/// Allows to convert a `HandlerError` into a `Response`.
+    /// Error during template rendering.
+    #[error("template error: {0}")]
+    Template(#[from] askama::Error),
+
+    /// Any other error, wrapped in `anyhow::Error` for flexibility.
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
+/// Enables conversion of `HandlerError` into an HTTP response for Axum handlers.
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         StatusCode::INTERNAL_SERVER_ERROR.into_response()
-    }
-}
-
-/// Allows to convert an `anyhow::Error` into a `HandlerError`.
-impl<E> From<E> for HandlerError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
-}
-
-/// Allows to convert a `HandlerError` into a `String`.
-impl std::fmt::Display for HandlerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }

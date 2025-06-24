@@ -1,5 +1,8 @@
-//! This module defines the templates used to render the different parts of the
-//! sites.
+//! Askama templates for HTML rendering.
+//!
+//! This module organizes all HTML templates used by the OCG server. Templates are
+//! compile-time checked using Askama, providing type safety and performance. The
+//! structure mirrors the handler organization.
 
 pub(crate) mod community;
 pub(crate) mod event;

@@ -1,5 +1,7 @@
-//! This module defines the router used to dispatch HTTP requests to the
-//! corresponding handler.
+//! HTTP routing configuration for the OCG server.
+//!
+//! This module sets up the Axum router with all application routes, middleware layers,
+//! and static file handling.
 
 use axum::{
     Router,
@@ -24,30 +26,38 @@ use crate::{
     handlers::{community, event, group},
 };
 
-/// Default cache duration.
+/// Default cache duration for HTTP responses in seconds.
 #[cfg(debug_assertions)]
 pub(crate) const DEFAULT_CACHE_DURATION: usize = 0; // No cache
 #[cfg(not(debug_assertions))]
 pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 5; // 5 minutes
 
-/// Embed static files in the binary.
+/// Static file embedder using rust-embed.
+///
+/// Embeds all files from the static directory into the binary.
 #[derive(Embed)]
 #[folder = "static"]
 struct StaticFile;
 
-/// Router's state.
+/// Application state shared across all request handlers.
+///
+/// Contains the database connection pool and any other shared resources needed by
+/// handlers.
 #[derive(Clone, FromRef)]
 pub(crate) struct State {
     pub db: DynDB,
 }
 
-/// Setup router.
+/// Configures and returns the application router.
+///
+/// Sets up all routes, middleware layers, and shared state. Optionally adds basic
+/// authentication if configured.
 #[instrument(skip_all)]
 pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
     // Setup router
     let mut router = Router::new()
-        .route("/", get(community::home::index))
-        .route("/explore", get(community::explore::index))
+        .route("/", get(community::home::page))
+        .route("/explore", get(community::explore::page))
         .route("/explore/events-section", get(community::explore::events_section))
         .route(
             "/explore/events-results-section",
@@ -61,8 +71,8 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
         .route("/explore/events/search", get(community::explore::search_events))
         .route("/explore/groups/search", get(community::explore::search_groups))
         .route("/health-check", get(health_check))
-        .route("/group/:group_slug", get(group::index))
-        .route("/group/:group_slug/event/:event_slug", get(event::index))
+        .route("/group/{group_slug}", get(group::page))
+        .route("/group/{group_slug}/event/{event_slug}", get(event::page))
         .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
@@ -84,20 +94,21 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
     router
 }
 
-/// Handler that takes care of health check requests.
+/// Health check endpoint handler.
+///
+/// Returns 200 OK for monitoring and load balancer health checks.
 #[instrument(skip_all)]
 async fn health_check() -> impl IntoResponse {
     StatusCode::OK
 }
 
-/// Handler that serves static files.
+/// Static file handler for embedded assets.
+///
+/// Serves files embedded in the binary with appropriate MIME types and cache headers.
 #[instrument]
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Extract file path from URI
-    let mut path = uri.path().trim_start_matches('/').to_string();
-    if path.starts_with("static/") {
-        path = path.replace("static/", "");
-    }
+    let path = uri.path().trim_start_matches("/static/");
 
     // Set cache duration based on resource type
     #[cfg(not(debug_assertions))]
@@ -111,7 +122,7 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     let cache_max_age = 0;
 
     // Get file content and return it (if available)
-    match StaticFile::get(path.as_str()) {
+    match StaticFile::get(path) {
         Some(file) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
             let cache = format!("max-age={cache_max_age}");
