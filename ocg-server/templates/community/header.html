@@ -40,8 +40,10 @@
             toggleModalVisibility
           } from '/static/js/common/common.js';
 
-          const openNewGroupBtn = document.querySelector('#open-new-group-btn');
-          openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+          const openNewGroupBtn = document.getElementById('open-new-group-btn');
+          if (openNewGroupBtn) {
+            openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+          }
         </script>
       {% endif %}
     </div>
@@ -86,11 +88,13 @@
                 toggleModalVisibility
               } from '/static/js/common/common.js';
 
-              const openNewGroupMobileBtn = document.querySelector('#open-new-group-mobile-btn');
-              openNewGroupMobileBtn.addEventListener('click', () => {
-                toggleModalVisibility('new-group-modal')
-                toggleMobileNavbarVisibility();
-              });
+              const openNewGroupMobileBtn = document.getElementById('open-new-group-mobile-btn');
+              if (openNewGroupMobileBtn) {
+                openNewGroupMobileBtn.addEventListener('click', () => {
+                  toggleModalVisibility('new-group-modal')
+                  toggleMobileNavbarVisibility();
+                });
+              }
             </script>
           </div>
           {# End mobile links -#}
@@ -114,11 +118,15 @@
     toggleMobileNavbarVisibility
   } from '/static/js/common/common.js';
 
-  const openNavbarMobile = document.querySelector('#open-navbar-mobile');
-  openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
+  const openNavbarMobile = document.getElementById('open-navbar-mobile');
+  if (openNavbarMobile) {
+    openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
+  }
 
-  const closeNavbarMobileBTn = document.querySelector('#close-navbar-mobile');
-  closeNavbarMobileBTn.addEventListener('click', toggleMobileNavbarVisibility);
+  const closeNavbarMobileBtn = document.getElementById('close-navbar-mobile');
+  if (closeNavbarMobileBtn) {
+    closeNavbarMobileBtn.addEventListener('click', toggleMobileNavbarVisibility);
+  }
 </script>
 
 {# New group modal -#}
@@ -159,11 +167,15 @@
       toggleModalVisibility
     } from '/static/js/common/common.js';
 
-    const backdropNewGroupModal = document.querySelector('#backdrop-new-group-modal');
-    backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    const backdropNewGroupModal = document.getElementById('backdrop-new-group-modal');
+    if (backdropNewGroupModal) {
+      backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    }
 
-    const closeNewGroupModal = document.querySelector('#close-new-group-modal');
-    closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    const closeNewGroupModal = document.getElementById('close-new-group-modal');
+    if (closeNewGroupModal) {
+      closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    }
   </script>
 {% endif %}
 {# End new group modal -#}

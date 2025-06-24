@@ -1,26 +1,47 @@
-// Format date to ISO format (YYYY-MM-DD).
+/**
+ * Formats a date object to ISO format (YYYY-MM-DD).
+ * @param {Date} date - The date object to format
+ * @returns {string} The formatted date string in YYYY-MM-DD format
+ */
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
 };
 
-// Open filters view (only for mobile).
-export const open = () => {
+/**
+ * Opens the filters drawer view (mobile only).
+ * Removes CSS classes to show the drawer and backdrop.
+ */
+export const openFiltersDrawer = () => {
   const drawer = document.getElementById("drawer-filters");
-  drawer.classList.remove("-translate-x-full");
+  if (drawer) {
+    drawer.classList.remove("-translate-x-full");
+  }
   const backdrop = document.getElementById("drawer-backdrop");
-  backdrop.classList.remove("hidden");
+  if (backdrop) {
+    backdrop.classList.remove("hidden");
+  }
 };
 
-// Close filters view (only for mobile).
-export const close = () => {
+/**
+ * Closes the filters drawer view (mobile only).
+ * Adds CSS classes to hide the drawer and backdrop.
+ */
+export const closeFiltersDrawer = () => {
   const drawer = document.getElementById("drawer-filters");
-  drawer.classList.add("-translate-x-full");
+  if (drawer) {
+    drawer.classList.add("-translate-x-full");
+  }
   const backdrop = document.getElementById("drawer-backdrop");
-  backdrop.classList.add("hidden");
+  if (backdrop) {
+    backdrop.classList.add("hidden");
+  }
 };
 
-// Reset all filters in the form provided.
-export const reset = (formId) => {
+/**
+ * Resets all filters in the specified form to their default values.
+ * @param {string} formId - The ID of the form containing the filters to reset
+ */
+export const resetFilters = (formId) => {
   // Uncheck all checkboxes and radios
   document.querySelectorAll(`#${formId} input[type=checkbox]`).forEach((el) => (el.checked = false));
   document.querySelectorAll(`#${formId} input[type=radio]`).forEach((el) => (el.checked = false));
@@ -64,10 +85,15 @@ export const reset = (formId) => {
   // Select "Any" option when applicable
   document.querySelectorAll(`#${formId} input[value='']`).forEach((el) => (el.checked = true));
 
+  // Trigger change event on the form to update results
+  // This is necessary to ensure the filters are applied correctly
+  // after resetting them.
   triggerChangeOnForm(formId);
 };
 
-// Reset date filters on calendar view mode.
+/**
+ * Resets date filters when in calendar view mode by clearing hidden date inputs.
+ */
 export const resetDateFiltersOnCalendarViewMode = () => {
   const inputs = document.querySelectorAll("input[type=hidden]");
   if (inputs.length === 0) {
@@ -81,10 +107,15 @@ export const resetDateFiltersOnCalendarViewMode = () => {
   });
 };
 
-// Select "Any" option for the given filter name.
+/**
+ * Selects the "Any" option for a given filter, unchecking all other options.
+ * @param {string} name - The name of the filter
+ * @param {string} type - The type of filter
+ * @param {boolean} triggerChange - Whether to trigger a form change event
+ */
 export const selectAnyOption = (name, type, triggerChange) => {
   const anyInput = document.getElementById(`any-${type}-${name}`);
-  if (!anyInput.isChecked) {
+  if (anyInput && !anyInput.isChecked) {
     // Uncheck all other options
     const inputs = document.querySelectorAll(`input[name='${name}']:checked`);
     inputs.forEach((input) => {
@@ -97,37 +128,56 @@ export const selectAnyOption = (name, type, triggerChange) => {
     // Trigger change on form if needed
     if (triggerChange) {
       const form = anyInput.closest("form");
-      triggerChangeOnForm(form.id);
+      if (form) {
+        triggerChangeOnForm(form.id);
+      }
     }
   }
 };
 
-// Clean input field and trigger change on form.
+/**
+ * Clears an input field and optionally triggers a form change event.
+ * @param {string} id - The ID of the input field to clear
+ * @param {string} formId - The ID of the form to trigger change on (optional)
+ */
 export const cleanInputField = (id, formId) => {
   const input = document.getElementById(id);
-  input.value = "";
+  if (input) {
+    input.value = "";
+  }
 
   if (formId) {
     triggerChangeOnForm(formId);
   }
 };
 
-// Trigger change on the form provided.
+/**
+ * Triggers a change event on the specified form using htmx.
+ * @param {string} formId - The ID of the form to trigger change on
+ * @param {boolean} fromSearch - Whether the trigger comes from search input
+ */
 export const triggerChangeOnForm = (formId, fromSearch) => {
   // Prevent form submission if the search input is empty, and it is triggered
   // from the search input
   if (fromSearch) {
     const input = document.getElementById("ts_query");
-    if (input.value === "") {
+    if (input && input.value === "") {
       return;
     }
   }
 
   const form = document.getElementById(formId);
-  htmx.trigger(form, "change");
+  if (form) {
+    // Trigger change event using htmx
+    htmx.trigger(form, "change");
+  }
 };
 
-// Search on enter key press.
+/**
+ * Handles search functionality when Enter key is pressed.
+ * @param {KeyboardEvent} e - The keyboard event object
+ * @param {string} formId - The ID of the form to submit (optional)
+ */
 export const searchOnEnter = (e, formId) => {
   if (e.key === "Enter") {
     if (formId) {
@@ -142,7 +192,9 @@ export const searchOnEnter = (e, formId) => {
   }
 };
 
-// Make sure that used filters are not hidden (collapsed).
+/**
+ * Expands collapsible filters that have active/checked options to ensure they are visible.
+ */
 export const expandFiltersUsed = () => {
   const collapsibles = document.querySelectorAll("[data-collapsible-item]");
   collapsibles.forEach((el) => {
@@ -154,7 +206,10 @@ export const expandFiltersUsed = () => {
   });
 };
 
-// Toggle collapsible filter visibility.
+/**
+ * Toggles the visibility of a collapsible filter section.
+ * @param {string} filter - The filter identifier to toggle
+ */
 export const toggleCollapsibleFilterVisibility = (filter) => {
   const collapsibles = document.querySelectorAll(`[data-collapsible-label='${filter}']`);
   collapsibles.forEach((collapsible) => {
@@ -175,7 +230,11 @@ export const toggleCollapsibleFilterVisibility = (filter) => {
   });
 };
 
-// Get the first and last day of the month for the provided date.
+/**
+ * Gets the first and last day of the month for the provided date.
+ * @param {Date} date - The date to get the month boundaries for (defaults to current date)
+ * @returns {object} Object with 'first' and 'last' properties containing formatted date strings
+ */
 export function getFirstAndLastDayOfMonth(date) {
   const currentDate = date || new Date();
   const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -187,7 +246,10 @@ export function getFirstAndLastDayOfMonth(date) {
   return { first: firstDayMonth, last: lastDayMonth };
 }
 
-// Update date input with motnhly range.
+/**
+ * Updates date input fields with the monthly range for the given date.
+ * @param {Date} date - The date to use for calculating the monthly range
+ */
 export const updateDateInput = (date) => {
   const { first, last } = getFirstAndLastDayOfMonth(date);
 
@@ -195,7 +257,10 @@ export const updateDateInput = (date) => {
   document.querySelectorAll("input[name=date_to]").forEach((el) => (el.value = last));
 };
 
-// Get default date range.
+/**
+ * Gets the default date range from today to one year from now.
+ * @returns {object} Object with 'from' and 'to' properties containing formatted date strings
+ */
 export const getDefaultDateRange = () => {
   const date = new Date();
   const aYearFromNow = new Date();
@@ -204,7 +269,9 @@ export const getDefaultDateRange = () => {
   return { from: formatDate(date), to: formatDate(aYearFromNow) };
 };
 
-// Uncheck all kinds.
+/**
+ * Unchecks all 'kind' filter options.
+ */
 export const unckeckAllKinds = () => {
   const kinds = document.querySelectorAll("input[name=kind]:checked");
   if (kinds) {

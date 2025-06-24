@@ -116,14 +116,20 @@
         photo.addEventListener('click', () => openModal('modal-gallery', index));
       });
 
-      const closeGalleryBtn = document.querySelector('#close-gallery-btn');
-      closeGalleryBtn.addEventListener('click', () => closeModal('modal-gallery'));
+      const closeGalleryBtn = document.getElementById('close-gallery-btn');
+      if (closeGalleryBtn) {
+        closeGalleryBtn.addEventListener('click', () => closeModal('modal-gallery'));
+      }
 
-      const prevGalleryBtn = document.querySelector('#prev-gallery-btn');
-      prevGalleryBtn.addEventListener('click', () => navigateCarousel('prev'));
+      const prevGalleryBtn = document.getElementById('prev-gallery-btn');
+      if (prevGalleryBtn) {
+        prevGalleryBtn.addEventListener('click', () => navigateCarousel('prev'));
+      }
 
-      const nextGalleryBtn = document.querySelector('#next-gallery-btn');
-      nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
+      const nextGalleryBtn = document.getElementById('next-gallery-btn');
+      if (nextGalleryBtn) {
+        nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
+      }
     </script>
   {% endif %}
 {% endif %}

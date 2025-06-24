@@ -47,17 +47,19 @@
 
   expandFiltersUsed();
 
-  const entitySection = document.querySelector('#entity-section');
-  entitySection.addEventListener('htmx:afterSwap', () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'instant'
-    })
-    hideLoadingSpinner("loading-filters");
-    hideLoadingSpinner("loading-filters-mobile");
-  });
-  entitySection.addEventListener('htmx:afterSettle', () => {
-    expandFiltersUsed();
-  });
+  const entitySection = document.getElementById('entity-section');
+  if (entitySection) {
+    entitySection.addEventListener('htmx:afterSwap', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'instant'
+      })
+      hideLoadingSpinner("loading-filters");
+      hideLoadingSpinner("loading-filters-mobile");
+    });
+    entitySection.addEventListener('htmx:afterSettle', () => {
+      expandFiltersUsed();
+    });
+  }
 </script>
 {% endblock content %}

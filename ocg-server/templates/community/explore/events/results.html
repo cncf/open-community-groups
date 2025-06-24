@@ -73,23 +73,29 @@
 
   const calendar = new Calendar({ events: {{ events|json|safe }} });
 
-  const currentMonthBtn = document.querySelector('#current-month-btn');
-  currentMonthBtn.addEventListener('click', () => {
-    calendar.currentMonth()
-    currentMonthBtn.blur();
-  });
+  const currentMonthBtn = document.getElementById('current-month-btn');
+  if (currentMonthBtn) {
+    currentMonthBtn.addEventListener('click', () => {
+      calendar.currentMonth()
+      currentMonthBtn.blur();
+    });
+  }
 
-  const prevMonthBtn = document.querySelector('#prev-month-btn');
-  prevMonthBtn.addEventListener('click', () => {
-    calendar.previousMonth();
-    prevMonthBtn.blur();
-  });
+  const prevMonthBtn = document.getElementById('prev-month-btn');
+  if (prevMonthBtn) {
+    prevMonthBtn.addEventListener('click', () => {
+      calendar.previousMonth();
+      prevMonthBtn.blur();
+    });
+  }
 
-  const nextMonthBtn = document.querySelector('#next-month-btn');
-  nextMonthBtn.addEventListener('click', () => {
-    calendar.nextMonth();
-    nextMonthBtn.blur();
-  });
+  const nextMonthBtn = document.getElementById('next-month-btn');
+  if (nextMonthBtn) {
+    nextMonthBtn.addEventListener('click', () => {
+      calendar.nextMonth();
+      nextMonthBtn.blur();
+    });
+  }
 </script>
 {# djlint:on #}
 {# End calendar view -#}

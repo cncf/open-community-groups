@@ -2,7 +2,12 @@ import { hideLoadingSpinner, showLoadingSpinner } from "../../common/common.js";
 import { fetchData } from "./explore.js";
 
 export class Map {
-  // Initialize map.
+  /**
+   * Initializes the map with Leaflet.js and marker clustering.
+   * Uses singleton pattern to ensure only one map instance exists.
+   * @param {string} entity - The type of entity to display ('events' or 'groups')
+   * @param {object} data - Initial map data containing items to display
+   */
   constructor(entity, data) {
     // Check if map is already initialized
     if (Map._instance) {
@@ -12,7 +17,7 @@ export class Map {
       return Map._instance;
     }
 
-    // Display main loading
+    // Display main loading spinner
     const mainLoading = document.getElementById("main-loading-map");
     if (mainLoading) {
       mainLoading.classList.remove("hidden");
@@ -24,7 +29,7 @@ export class Map {
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
     document.getElementsByTagName("head")[0].appendChild(script);
 
-    // Prepare markercluster script
+    // Load markercluster script
     let markerClusterScript = document.createElement("script");
     markerClusterScript.type = "text/javascript";
     markerClusterScript.src =
@@ -47,7 +52,10 @@ export class Map {
     Map._instance = this;
   }
 
-  // Setup map instance.
+  /**
+   * Sets up the Leaflet map instance with tile layers and event listeners.
+   * @param {object} data - Map data containing items to display
+   */
   setup(data) {
     this.map = L.map("map-box", {
       maxZoom: 20,
@@ -101,16 +109,23 @@ export class Map {
     });
   }
 
-  // Refresh map, updating the markers.
+  /**
+   * Refreshes the map by updating markers with new data.
+   * @param {boolean} overwriteBounds - Whether to overwrite map bounds with new data
+   * @param {object} currentData - Optional current data to use instead of fetching
+   */
   async refresh(overwriteBounds = false, currentData = null) {
     let data;
+    // If currentData is provided, use it instead of fetching
+    // This is useful for initial load when we already have data
+    // or when we want to overwrite bounds with a specific bbox
     if (currentData) {
       data = currentData;
     } else {
       // Show loading spinner
       showLoadingSpinner("loading-map");
 
-      // Fetch data
+      // Fetch data based on current map bounds
       data = await this.fetchData(overwriteBounds);
     }
 
@@ -137,7 +152,11 @@ export class Map {
     }
   }
 
-  // Fetch data from the server.
+  /**
+   * Fetches data from the server based on current map bounds and filters.
+   * @param {boolean} overwriteBounds - Whether to include bbox in request
+   * @returns {Promise<object>} The fetched data containing items and optional bbox
+   */
   async fetchData(overwriteBounds) {
     // Prepare query params
     const params = new URLSearchParams(location.search);
@@ -160,12 +179,18 @@ export class Map {
       params.append("bbox_ne_lon", bounds._northEast.lng);
     }
 
-    // Fetch data
+    // Fetch data from the server
+    // This will return either events or groups based on the entity type
+    // and will include bbox if requested
     const data = await fetchData(this.entity, params.toString());
     return data;
   }
 
-  // Add markers to the map.
+  /**
+   * Adds markers to the map with clustering and popover functionality.
+   * @param {Array} items - Array of items (events or groups) to add as markers
+   * @param {object} bbox - Optional bounding box to fit the map view
+   */
   addMarkers(items, bbox) {
     // Fit map bounds to the bbox
     if (bbox && checkValidBbox(bbox)) {
@@ -239,7 +264,11 @@ export class Map {
   }
 }
 
-// Check if bbox is valid.
+/**
+ * Checks if a bounding box object contains valid, non-identical coordinates.
+ * @param {object} bbox - Bounding box object with coordinate properties
+ * @returns {boolean} True if bbox is valid (coordinates are not all the same)
+ */
 function checkValidBbox(bbox) {
   const allEqual = new Set(Object.values(bbox)).size === 1;
   return !allEqual;

@@ -15,21 +15,25 @@
   {% call common::search_bar(placeholder = "Search events by name, location or tags", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) %}
   <script type="module">
     import {
+      cleanInputField,
+      searchOnEnter,
       triggerChangeOnForm
     } from '/static/js/community/explore/filters.js';
-    import {
-      cleanInputField,
-      searchOnEnter
-    } from '/static/js/community/explore/filters.js';
 
-    const searchBtn = document.querySelector('#search-btn');
-    searchBtn.addEventListener('click', () => triggerChangeOnForm("events-form", true));
+    const searchBtn = document.getElementById('search-btn');
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => triggerChangeOnForm("events-form", true));
+    }
 
-    const searchInput = document.querySelector('#ts_query');
-    searchInput.addEventListener('keydown', () => searchOnEnter(event, "events-form"));
+    const searchInput = document.getElementById('ts_query');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', () => searchOnEnter(event, "events-form"));
+    }
 
-    const cleanSearch = document.querySelector('#clean-search');
-    cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'events-form'));
+    const cleanSearch = document.getElementById('clean-search');
+    if (cleanSearch) {
+      cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'events-form'));
+    }
   </script>
 {% endblock search_bar %}
 
