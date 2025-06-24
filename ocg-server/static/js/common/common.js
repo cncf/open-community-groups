@@ -1,11 +1,18 @@
-// Check if the provided script is already loaded.
+/**
+ * Checks if a script with the given source URL is already loaded in the document.
+ * @param {string} src - The source URL of the script to check
+ * @returns {boolean} True if the script is already loaded, false otherwise
+ */
 export const isScriptLoaded = (src) => {
   return Array.from(document.querySelectorAll("script"))
     .map((scr) => scr.src)
     .includes(src);
 };
 
-// Show loading spinner.
+/**
+ * Shows a loading spinner by adding the 'is-loading' class to the element.
+ * @param {string} id - The ID of the element to show loading spinner for
+ */
 export const showLoadingSpinner = (id) => {
   const content = document.getElementById(id);
   if (content) {
@@ -13,7 +20,10 @@ export const showLoadingSpinner = (id) => {
   }
 };
 
-// Hide loading spinner.
+/**
+ * Hides a loading spinner by removing the 'is-loading' class from the element.
+ * @param {string} id - The ID of the element to hide loading spinner for
+ */
 export const hideLoadingSpinner = (id) => {
   const content = document.getElementById(id);
   if (content) {
@@ -21,20 +31,32 @@ export const hideLoadingSpinner = (id) => {
   }
 };
 
-// Show or hide the mobile navigation bar.
+/**
+ * Toggles the visibility of the mobile navigation bar and its backdrop.
+ * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
+ */
 export const toggleMobileNavbarVisibility = () => {
   const navbarMobile = document.getElementById("navbar-mobile");
-  navbarMobile.classList.toggle("hidden");
+  if (navbarMobile) {
+    navbarMobile.classList.toggle("hidden");
+  }
   const navbarBackdrop = document.getElementById("navbar-backdrop");
-  navbarBackdrop.classList.toggle("hidden");
+  if (navbarBackdrop) {
+    navbarBackdrop.classList.toggle("hidden");
+  }
 };
 
-// Show or hide the provided modal.
+/**
+ * Toggles the visibility of a modal by adding or removing the 'hidden' class.
+ * @param {string} modalId - The ID of the modal element to toggle
+ */
 export const toggleModalVisibility = (modalId) => {
   const modal = document.getElementById(modalId);
-  if (modal.classList.contains("hidden")) {
-    modal.classList.remove("hidden");
-  } else {
-    modal.classList.add("hidden");
+  if (modal) {
+    if (modal.classList.contains("hidden")) {
+      modal.classList.remove("hidden");
+    } else {
+      modal.classList.add("hidden");
+    }
   }
 };

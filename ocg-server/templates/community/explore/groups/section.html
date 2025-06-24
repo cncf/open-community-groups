@@ -15,11 +15,9 @@
   {% call common::search_bar(placeholder = "Search groups by name, location or tags", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) %}
   <script type="module">
     import {
-      triggerChangeOnForm
-    } from '/static/js/community/explore/filters.js';
-    import {
       cleanInputField,
-      searchOnEnter
+      searchOnEnter,
+      triggerChangeOnForm
     } from '/static/js/community/explore/filters.js';
 
     const searchBtn = document.querySelector('#search-btn');

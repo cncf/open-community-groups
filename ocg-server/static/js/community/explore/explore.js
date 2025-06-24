@@ -1,10 +1,18 @@
-// Update results and results-mobile on DOM with the given content.
+/**
+ * Updates the results container in the DOM with new content.
+ * @param {string} content - The HTML content to insert into the results container
+ */
 export const updateResults = (content) => {
   const results = document.getElementById("results");
   results.innerHTML = content;
 };
 
-// Fetch events or groups data from the API.
+/**
+ * Fetches events or groups data from the API based on entity type and search parameters.
+ * @param {string} entity - The type of entity to fetch ('events' or 'groups')
+ * @param {string} params - URL search parameters as a string
+ * @returns {Promise<object>} The JSON response data
+ */
 export async function fetchData(entity, params) {
   const url = `/explore/${entity}/search?${params}`;
   try {
