@@ -22,7 +22,7 @@ use super::{
 
 /// Template for the community home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/home/index.html")]
+#[template(path = "community/home/page.html")]
 pub(crate) struct Page {
     /// Community information including name, logo, and other metadata.
     pub community: Community,
