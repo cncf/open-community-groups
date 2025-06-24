@@ -49,11 +49,13 @@
           showLoadingSpinner
         } from '/static/js/common/common.js';
 
-        const eventsButton = document.querySelector('#events-button');
-        eventsButton.addEventListener('htmx:trigger', () => {
-          showLoadingSpinner("loading-filters");
-          showLoadingSpinner("loading-filters-mobile");
-        });
+        const eventsButton = document.getElementById('#events-button');
+        if (eventsButton) {
+          eventsButton.addEventListener('htmx:trigger', () => {
+            showLoadingSpinner("loading-filters");
+            showLoadingSpinner("loading-filters-mobile");
+          });
+        }
       </script>
 
       {% when Entity::Events %}
@@ -81,11 +83,13 @@
           showLoadingSpinner
         } from '/static/js/common/common.js';
 
-        const groupsButton = document.querySelector('#groups-button');
-        groupsButton.addEventListener('htmx:trigger', () => {
-          showLoadingSpinner("loading-filters");
-          showLoadingSpinner("loading-filters-mobile");
-        });
+        const groupsButton = document.getElementById('#groups-button');
+        if (groupsButton) {
+          groupsButton.addEventListener('htmx:trigger', () => {
+            showLoadingSpinner("loading-filters");
+            showLoadingSpinner("loading-filters-mobile");
+          });
+        }
       </script>
     {% endmatch %}
   </ul>
@@ -246,8 +250,10 @@
       selectAnyOption
     } from '/static/js/community/explore/filters.js';
 
-    const anyCheckbox = document.querySelector('#any-checkbox-{{ name }}');
-    anyCheckbox.addEventListener('click', () => selectAnyOption('{{ name }}', 'checkbox'));
+    const anyCheckbox = document.getElementById('#any-checkbox-{{ name }}');
+    if (anyCheckbox) {
+      anyCheckbox.addEventListener('click', () => selectAnyOption('{{ name }}', 'checkbox'));
+    }
   </script>
 {% endmacro %}
 {# End collapsible filter with checkboxes -#}
@@ -297,8 +303,10 @@
       selectAnyOption
     } from '/static/js/community/explore/filters.js';
 
-    const anyRadio = document.querySelector('#any-radio-{{ name }}');
-    anyRadio.addEventListener('click', () => selectAnyOption('{{ name }}', 'radio', true));
+    const anyRadio = document.getElementById('#any-radio-{{ name }}');
+    if (anyRadio) {
+      anyRadio.addEventListener('click', () => selectAnyOption('{{ name }}', 'radio', true));
+    }
   </script>
 {% endmacro %}
 {# End collapsible filter with radios -#}

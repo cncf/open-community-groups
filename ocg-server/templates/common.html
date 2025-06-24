@@ -127,14 +127,20 @@
             toggleModalVisibility
           } from '/static/js/common/common.js';
 
-          const openSearchTipsModal = document.querySelector('#open-search-tips-modal');
-          openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          const openSearchTipsModal = document.getElementById('#open-search-tips-modal');
+          if (openSearchTipsModal) {
+            openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          }
 
-          const overlaySearchTips = document.querySelector('#overlay-search-tips');
-          overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          const overlaySearchTips = document.getElementById('#overlay-search-tips');
+          if (overlaySearchTips) {
+            overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          }
 
-          const closeSearchTipsModal = document.querySelector('#close-search-tips-modal');
-          closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          const closeSearchTipsModal = document.getElementById('#close-search-tips-modal');
+          if (closeSearchTipsModal) {
+            closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          }
         </script>
       {% endif %}
     </div>

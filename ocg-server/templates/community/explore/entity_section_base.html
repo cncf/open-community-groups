@@ -212,10 +212,10 @@
 </div>
 <script type="module">
   import {
-    close,
+    closeFiltersDrawer,
     getFirstAndLastDayOfMonth,
-    open,
-    reset,
+    openFiltersDrawer,
+    resetFilters,
     resetDateFiltersOnCalendarViewMode,
     triggerChangeOnForm,
     toggleCollapsibleFilterVisibility,
@@ -226,14 +226,20 @@
     showLoadingSpinner
   } from '/static/js/common/common.js';
 
-  const openFiltersBtn = document.querySelector('#open-filters');
-  openFiltersBtn.addEventListener('click', open);
+  const openFiltersBtn = document.getElementById('#open-filters');
+  if (openFiltersBtn) {
+    openFiltersBtn.addEventListener('click', openFiltersDrawer);
+  }
 
-  const closeFiltersBtn = document.querySelector('#close-filters');
-  closeFiltersBtn.addEventListener('click', close);
+  const closeFiltersBtn = document.getElementById('#close-filters');
+  if (closeFiltersBtn) {
+    closeFiltersBtn.addEventListener('click', closeFiltersDrawer);
+  }
 
-  const backdropFilters = document.querySelector('#drawer-backdrop');
-  backdropFilters.addEventListener('click', close);
+  const backdropFilters = document.getElementById('#drawer-backdrop');
+  if (backdropFilters) {
+    backdropFilters.addEventListener('click', closeFiltersDrawer);
+  }
 
   const inputs = document.querySelectorAll('input[name="view_mode"]');
   inputs.forEach(input => {
@@ -248,14 +254,14 @@
     });
   });
 
-  const select = document.querySelector('#sort_by');
+  const select = document.getElementById('#sort_by');
   // Sort by is only available in list view
   if (select) {
     select.addEventListener('change', () => triggerChangeOnForm('{{ entity }}-form'));
   }
 
   const resetButtons = document.querySelectorAll('.reset-filters');
-  resetButtons.forEach(button => button.addEventListener('click', () => reset('{{ entity }}-form')));
+  resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ entity }}-form')));
 
   const collapseBtns = document.querySelectorAll('.collapse-btn');
   collapseBtns.forEach(btn => {

@@ -32,14 +32,20 @@
               searchOnEnter
             } from '/static/js/community/explore/filters.js';
 
-            const searchHomeBtn = document.querySelector('#search-btn');
-            searchHomeBtn.addEventListener('click', loadExplorePage);
+            const searchHomeBtn = document.getElementById('#search-btn');
+            if (searchHomeBtn) {
+              searchHomeBtn.addEventListener('click', loadExplorePage);
+            }
 
-            const searchInput = document.querySelector('#ts_query');
-            searchInput.addEventListener('keydown', () => searchOnEnter(event));
+            const searchInput = document.getElementById('#ts_query');
+            if (searchInput) {
+              searchInput.addEventListener('keydown', () => searchOnEnter(event));
+            }
 
-            const cleanSearch = document.querySelector('#clean-search');
-            cleanSearch.addEventListener('click', () => cleanInputField('ts_query'));
+            const cleanSearch = document.getElementById('#clean-search');
+            if (cleanSearch) {
+              cleanSearch.addEventListener('click', () => cleanInputField('ts_query'));
+            }
           </script>
         </div>
         {# End search bar -#}
