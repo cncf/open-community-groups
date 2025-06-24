@@ -1,6 +1,6 @@
 //! This module defines the templates for the event page.
 
-use rinja::Template;
+use askama::Template;
 
 /// Event index page template.
 #[derive(Debug, Clone, Template)]

@@ -8,6 +8,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+askama = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
 cached = { workspace = true }
@@ -15,10 +16,15 @@ clap = { workspace = true }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
 deadpool-postgres = { workspace = true }
+emojis = { workspace = true }
 figment = { workspace = true }
+mime_guess = { workspace = true }
+minify-html = { workspace = true }
+num-format = { workspace = true }
 openssl = { workspace = true }
+palette = { workspace = true }
 postgres-openssl = { workspace = true }
-rinja = { workspace = true }
+rust-embed = { workspace = true }
 serde = { workspace = true }
 serde_html_form = { workspace = true }
 serde_json = { workspace = true }
@@ -29,13 +35,7 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+unicode-segmentation = { workspace = true }
 uuid = { workspace = true }
-unicode-segmentation = "1.12.0"
-emojis = "0.6.4"
-num-format = "0.4.4"
-palette = "0.7.6"
-minify-html = "0.15.0"
-rust-embed = "8.5.0"
-mime_guess = "2.0.5"
 
 [dev-dependencies]

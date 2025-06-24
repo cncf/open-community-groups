@@ -1,23 +1,22 @@
 //! This module defines some templates and types used in the explore page of
 //! the community site.
 
-use core::str;
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Display, Formatter, Write as _};
 
 use anyhow::Result;
+use askama::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 use chrono_tz::Tz;
-use minify_html::{minify, Cfg as MinifyCfg};
-use rinja::Template;
-use serde::{ser, Deserialize, Serialize};
+use minify_html::{Cfg as MinifyCfg, minify};
+use serde::{Deserialize, Serialize};
 use tracing::{instrument, trace};
 
 use crate::{
     db::BBox,
     templates::{
         filters,
-        helpers::{build_location, color, extract_location, LocationParts},
+        helpers::{LocationParts, build_location, color, extract_location},
     },
 };
 
@@ -312,7 +311,7 @@ impl Event {
     #[instrument(skip_all, err)]
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_event: home::Event = self.clone().into();
-        let cfg = MinifyCfg::spec_compliant();
+        let cfg = MinifyCfg::new();
         self.popover_html = Some(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?);
 
         Ok(())
@@ -509,7 +508,7 @@ impl Group {
     #[instrument(skip_all, err)]
     pub(crate) fn render_popover_html(&mut self) -> Result<()> {
         let home_group: home::Group = self.clone().into();
-        let cfg = MinifyCfg::spec_compliant();
+        let cfg = MinifyCfg::new();
         self.popover_html = Some(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?);
         Ok(())
     }
@@ -567,7 +566,7 @@ impl NavigationLinks {
     /// Create a new `NavigationLinks` instance from the filters provided.
     pub(crate) fn from_filters<T>(entity: &Entity, filters: &T, total: usize) -> Result<Self>
     where
-        T: ser::Serialize + Clone + ToRawQuery + Pagination,
+        T: Serialize + Clone + ToRawQuery + Pagination,
     {
         let mut links = NavigationLinks::default();
 
@@ -606,7 +605,7 @@ impl NavigationLink {
     /// Create a new `NavigationLink` instance from the filters provided.
     pub(crate) fn new<T>(entity: &Entity, filters: &T) -> Result<Self>
     where
-        T: ser::Serialize + ToRawQuery,
+        T: Serialize + ToRawQuery,
     {
         let base_hx_url = format!("/explore/{entity}-results-section");
         let base_url = format!("/explore?entity={entity}");
@@ -675,13 +674,13 @@ pub(crate) enum ViewMode {
 /// Build URL that includes the filters as query parameters.
 pub(crate) fn build_url<T>(base_url: &str, filters: &T) -> Result<String>
 where
-    T: ser::Serialize + ToRawQuery,
+    T: Serialize + ToRawQuery,
 {
     let mut url = base_url.to_string();
-    let sep = get_url_filters_separator(&url);
+    let sep = get_url_filters_separator(base_url);
     let filters_params = filters.to_raw_query()?;
     if !filters_params.is_empty() {
-        url.push_str(&format!("{sep}{filters_params}"));
+        write!(url, "{sep}{filters_params}").unwrap();
     }
     Ok(url)
 }
@@ -719,7 +718,7 @@ pub(crate) trait Pagination {
 
 #[cfg(test)]
 mod tests {
-    use super::{get_url_filters_separator, NavigationLinksOffsets, DEFAULT_PAGINATION_LIMIT};
+    use super::{DEFAULT_PAGINATION_LIMIT, NavigationLinksOffsets, get_url_filters_separator};
 
     macro_rules! navigation_links_offsets_tests {
         ($(

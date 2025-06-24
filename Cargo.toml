@@ -7,27 +7,33 @@ members = [
 [workspace.package]
 version = "0.0.1"
 license = "Apache-2.0"
-edition = "2021"
-rust-version = "1.81"
+edition = "2024"
+rust-version = "1.87"
 
 [workspace.dependencies]
-anyhow = "1.0.94"
-async-trait = "0.1.83"
-axum = { version = "0.7.9", features = ["macros"] }
-cached = { version = "0.54.0", features = ["async"] }
-clap = { version = "4.5.23", features = ["derive"] }
-chrono = { version = "0.4.39", features = ["serde"] }
-chrono-tz = { version = "0.10.0", features = ["serde"] }
-deadpool-postgres = { version = "0.14.0", features = ["serde"] }
+anyhow = "1.0.98"
+askama = { version = "0.14.0", features = ["serde_json"] }
+async-trait = "0.1.88"
+axum = { version = "0.8.4", features = ["macros"] }
+cached = { version = "0.55.1", features = ["async"] }
+clap = { version = "4.5.40", features = ["derive"] }
+chrono = { version = "0.4.41", features = ["serde"] }
+chrono-tz = { version = "0.10.3", features = ["serde"] }
+deadpool-postgres = { version = "0.14.1", features = ["serde"] }
+emojis = "0.6.4"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
-openssl = { version = "0.10.68", features = ["vendored"] }
-postgres-openssl = "0.5.0"
-rinja = { git = "https://github.com/rinja-rs/rinja", rev = "f71ce23", features = ["serde_json"] }
-serde = { version = "1.0.216", features = ["derive"] }
-serde_html_form = "0.2.6"
-serde_json = "1.0.133"
-serde_qs = "0.13.0"
-tokio = { version = "1.42.0", features = [
+mime_guess = "2.0.5"
+minify-html = "0.16.4"
+num-format = "0.4.4"
+openssl = { version = "0.10.73", features = ["vendored"] }
+palette = "0.7.6"
+postgres-openssl = "0.5.1"
+rust-embed = "8.7.2"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_html_form = "0.2.7"
+serde_json = "1.0.140"
+serde_qs = "0.15.0"
+tokio = { version = "1.45.1", features = [
     "macros",
     "process",
     "rt-multi-thread",
@@ -35,13 +41,14 @@ tokio = { version = "1.42.0", features = [
     "sync",
     "time",
 ] }
-tokio-postgres = { version = "0.7.12", features = [
+tokio-postgres = { version = "0.7.13", features = [
     "with-uuid-1",
     "with-serde_json-1",
     "with-time-0_3",
 ] }
 tower = "0.5.2"
-tower-http = { version = "0.6.2", features = ["auth", "fs", "set-header", "trace"] }
+tower-http = { version = "0.6.6", features = ["auth", "fs", "set-header", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
-uuid = { version = "1.11.0", features = ["serde", "v4"] }
+unicode-segmentation = "1.12.0"
+uuid = { version = "1.17.0", features = ["serde", "v4"] }

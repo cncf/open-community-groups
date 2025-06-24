@@ -2,14 +2,14 @@
 //! corresponding handler.
 
 use axum::{
+    Router,
     extract::FromRef,
     http::{
-        header::{CACHE_CONTROL, CONTENT_TYPE},
         HeaderValue, StatusCode, Uri,
+        header::{CACHE_CONTROL, CONTENT_TYPE},
     },
     response::IntoResponse,
     routing::get,
-    Router,
 };
 use rust_embed::Embed;
 use tower::ServiceBuilder;
@@ -63,7 +63,7 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
         .route("/health-check", get(health_check))
         .route("/group/:group_slug", get(group::index))
         .route("/group/:group_slug/event/:event_slug", get(event::index))
-        .route("/static/*file", get(static_handler))
+        .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
             HeaderValue::try_from(format!("max-age={DEFAULT_CACHE_DURATION}")).expect("valid header value"),

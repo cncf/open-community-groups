@@ -1,10 +1,10 @@
 //! This module defines the HTTP handlers for the group site.
 
+use askama::Template;
 use axum::{
     extract::Path,
     response::{Html, IntoResponse},
 };
-use rinja::Template;
 use tracing::{debug, instrument};
 
 use crate::templates::group::Index;

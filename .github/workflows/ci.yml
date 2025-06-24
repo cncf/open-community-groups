@@ -15,7 +15,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.83.0
+          toolchain: 1.87.0
           components: clippy, rustfmt
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- --deny warnings
@@ -31,7 +31,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Install djlint
-        run: pip install djlint==1.36.3
+        run: pip install djlint==1.36.4
       - name: Run djlint
         run: |
           djlint \
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run prettier
-        uses: creyD/prettier_action@v4.3
+        uses: creyD/prettier_action@v4.6
         with:
           dry: true
           prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml

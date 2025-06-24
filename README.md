@@ -3,7 +3,7 @@
 **Open Community Groups** is an open source events platform for communities and organizations.
 
 > [!WARNING]
-> This project is currently in the early stages of development and is not yet ready for production use.
+> This project is currently in the early stages of development and is in beta.
 
 | ![Screenshot 1](docs/screenshots/ocg1.png?raw=true) | ![Screenshot 2](docs/screenshots/ocg2.png?raw=true) |
 | --------------------------------------------------- | --------------------------------------------------- |

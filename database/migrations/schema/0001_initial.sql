@@ -129,6 +129,7 @@ create table "group" (
     city text check (city <> ''),
     country_code text check (country_code <> ''),
     country_name text check (country_name <> ''),
+
     extra_links jsonb,
     facebook_url text check (facebook_url <> ''),
     flickr_url text check (flickr_url <> ''),

@@ -274,5 +274,5 @@ pub(crate) struct BBox {
     pub sw_lon: f64,
 }
 
-/// Type alias to represent the total count .
+/// Type alias to represent the total count.
 pub(crate) type Total = usize;

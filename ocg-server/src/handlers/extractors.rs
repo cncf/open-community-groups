@@ -2,9 +2,8 @@
 
 use anyhow::Result;
 use axum::{
-    async_trait,
     extract::FromRequestParts,
-    http::{header::HOST, request::Parts, StatusCode},
+    http::{StatusCode, header::HOST, request::Parts},
 };
 use cached::proc_macro::cached;
 use tracing::{error, instrument};
@@ -15,7 +14,6 @@ use crate::{db::DynDB, router};
 /// Custom extractor to get the community id from the request's host header.
 pub(crate) struct CommunityId(pub Uuid);
 
-#[async_trait]
 impl FromRequestParts<router::State> for CommunityId {
     type Rejection = (StatusCode, &'static str);
 
@@ -50,7 +48,7 @@ impl FromRequestParts<router::State> for CommunityId {
     time = 86400,
     key = "String",
     convert = r#"{ String::from(host) }"#,
-    sync_writes = true,
+    sync_writes = "by_key",
     result = true
 )]
 #[instrument(skip(db), err)]
