@@ -2,15 +2,15 @@
 //! community site.
 
 use anyhow::Result;
+use askama::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
-use rinja::Template;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::templates::{
     filters,
-    helpers::{build_location, color, LocationParts},
+    helpers::{LocationParts, build_location, color},
 };
 
 use super::{

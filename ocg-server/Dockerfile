@@ -1,5 +1,5 @@
 # Build server
-FROM rust:1-alpine3.21 AS builder
+FROM rust:1-alpine3.22 AS builder
 RUN apk --no-cache add musl-dev perl make
 WORKDIR /ocg
 COPY Cargo.* ./
@@ -8,7 +8,7 @@ WORKDIR /ocg/ocg-server
 RUN cargo build --release
 
 # Final stage
-FROM alpine:3.21.0
+FROM alpine:3.22.0
 RUN apk --no-cache add ca-certificates && addgroup -S ocg && adduser -S ocg -G ocg
 USER ocg
 WORKDIR /home/ocg

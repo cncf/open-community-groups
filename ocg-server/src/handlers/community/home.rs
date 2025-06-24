@@ -2,12 +2,12 @@
 //! site.
 
 use anyhow::Result;
+use askama::Template;
 use axum::{
     extract::State,
     http::Uri,
     response::{Html, IntoResponse},
 };
-use rinja::Template;
 use tracing::instrument;
 
 use crate::{

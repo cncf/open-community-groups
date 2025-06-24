@@ -140,7 +140,7 @@ pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>
 
 #[cfg(test)]
 mod tests {
-    use super::{build_location, color, LocationParts, COLORS};
+    use super::{COLORS, LocationParts, build_location, color};
 
     macro_rules! build_location_tests {
         ($(

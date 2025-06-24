@@ -4,12 +4,12 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use askama::Template;
 use axum::{
     extract::{Query, RawQuery, State},
     http::{HeaderMap, Uri},
     response::{Html, IntoResponse},
 };
-use rinja::Template;
 use tracing::instrument;
 use uuid::Uuid;
 
