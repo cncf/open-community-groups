@@ -39,12 +39,15 @@
   </form>
   {# End filters content -#}
 
+  {# Reset button -#}
   <div class="text-end p-5 border-t">
     <button class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-gray-100 focus:ring-4 focus:ring-gray-400 reset-filters">
       Reset
     </button>
   </div>
+  {# End reset button -#}
 </div>
+
 {# Overlay -#}
 <div id="drawer-backdrop"
      class="hidden bg-gray-900/50 fixed inset-0 z-[1050]"></div>
@@ -99,7 +102,7 @@
         </div>
       </div>
       <div class="flex flex-row items-center justify-between px-5 md:px-7">
-        {# Results -#}
+        {# Current page results -#}
         <div class="flex-1">
           {% if view_mode == ViewMode::List -%}
             <div id="results"
@@ -109,7 +112,7 @@
             </div>
           {% endif -%}
         </div>
-        {# End results -#}
+        {# End current page results -#}
 
         {# View mode -#}
         <div class="hidden flex-row flex-1 items-center md:flex">
@@ -201,12 +204,12 @@
         {# End sort by -#}
       </div>
 
-      {# Cards -#}
+      {# Content: cards -#}
       <div id="cards-list" class="flex flex-col justify-between grow">
         {% block content -%}
         {% endblock content -%}
       </div>
-      {# End cards -#}
+      {# End content: cards -#}
     </div>
   </div>
 </div>
