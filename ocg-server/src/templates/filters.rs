@@ -27,19 +27,22 @@ mod tests {
     fn test_demoji() {
         // Basic emoji removal
         assert_eq!(demoji("🙂Hi👋", &()).unwrap(), "Hi");
-        
+
         // Multiple emojis
         assert_eq!(demoji("🎉Test🎊String🎈", &()).unwrap(), "TestString");
-        
+
         // No emojis
         assert_eq!(demoji("Hello World", &()).unwrap(), "Hello World");
-        
+
         // Only emojis
         assert_eq!(demoji("😀😃😄😁", &()).unwrap(), "");
-        
+
         // Mixed with special characters
-        assert_eq!(demoji("Hello! 👋 How are you? 😊", &()).unwrap(), "Hello!  How are you? ");
-        
+        assert_eq!(
+            demoji("Hello! 👋 How are you? 😊", &()).unwrap(),
+            "Hello!  How are you? "
+        );
+
         // Complex emojis (multi-codepoint)
         assert_eq!(demoji("👨‍👩‍👧‍👦Family", &()).unwrap(), "Family");
     }
@@ -48,17 +51,17 @@ mod tests {
     fn test_num_fmt() {
         // Basic formatting
         assert_eq!(num_fmt(&123_456_789, &()).unwrap(), "123,456,789");
-        
+
         // Small numbers
         assert_eq!(num_fmt(&999, &()).unwrap(), "999");
         assert_eq!(num_fmt(&1_000, &()).unwrap(), "1,000");
-        
+
         // Zero
         assert_eq!(num_fmt(&0, &()).unwrap(), "0");
-        
+
         // Large numbers
         assert_eq!(num_fmt(&1_234_567_890, &()).unwrap(), "1,234,567,890");
-        
+
         // Different integer types
         assert_eq!(num_fmt(&1_234u32, &()).unwrap(), "1,234");
         assert_eq!(num_fmt(&1_234i64, &()).unwrap(), "1,234");
