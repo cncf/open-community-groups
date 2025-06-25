@@ -1,32 +1,23 @@
-//! Database abstraction layer for the OCG server.
-//!
-//! This module provides a trait-based abstraction over database operations, allowing
-//! for different database implementations while maintaining a consistent interface.
-//! Currently implemented with `PostgreSQL` backend using deadpool for connection
-//! pooling.
-
-use std::sync::Arc;
+//! This module defines some database functionality for the community site.
 
 use anyhow::Result;
 use async_trait::async_trait;
-use deadpool_postgres::Pool;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::community::{
-    common::{Community, EventKind},
-    explore::{self, EventsFilters, GroupsFilters},
-    home,
+use crate::{
+    db::{BBox, PgDB, Total},
+    templates::community::{
+        common::{Community, EventKind},
+        explore, home,
+    },
 };
 
-/// Database trait defining all data access operations.
-///
-/// This trait provides an abstraction layer for database operations, enabling
-/// testability and potential support for different backends.
+/// Database trait defining all data access operations for the community site.
 #[async_trait]
-pub(crate) trait DB {
+pub(crate) trait DBCommunity {
     /// Retrieves community information by its unique identifier.
     async fn get_community(&self, community_id: Uuid) -> Result<Community>;
 
@@ -37,9 +28,6 @@ pub(crate) trait DB {
     async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats>;
 
     /// Resolves a community ID from the provided hostname.
-    ///
-    /// Used for multi-tenant host-based routing. Returns None if no community is
-    /// associated with the given host.
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
     /// Retrieves the most recently added groups in the community.
@@ -56,40 +44,19 @@ pub(crate) trait DB {
     async fn search_community_events(
         &self,
         community_id: Uuid,
-        filters: &EventsFilters,
+        filters: &explore::EventsFilters,
     ) -> Result<SearchCommunityEventsOutput>;
 
     /// Searches for groups within a community based on filter criteria.
     async fn search_community_groups(
         &self,
         community_id: Uuid,
-        filters: &GroupsFilters,
+        filters: &explore::GroupsFilters,
     ) -> Result<SearchCommunityGroupsOutput>;
 }
 
-/// Type alias for a thread-safe, shared database trait object.
-///
-/// Used throughout the application to pass database instances without knowing the
-/// concrete implementation.
-pub(crate) type DynDB = Arc<dyn DB + Send + Sync>;
-
-/// `PostgreSQL` implementation of the database trait.
-///
-/// Uses deadpool for connection pooling and relies on `PostgreSQL` functions that
-/// return JSON for complex queries.
-pub(crate) struct PgDB {
-    pool: Pool,
-}
-
-impl PgDB {
-    /// Creates a new `PostgreSQL` database instance with the given connection pool.
-    pub(crate) fn new(pool: Pool) -> Self {
-        Self { pool }
-    }
-}
-
 #[async_trait]
-impl DB for PgDB {
+impl DBCommunity for PgDB {
     /// [DB::get_community]
     #[instrument(skip(self), err)]
     async fn get_community(&self, community_id: Uuid) -> Result<Community> {
@@ -187,7 +154,7 @@ impl DB for PgDB {
     async fn search_community_events(
         &self,
         community_id: Uuid,
-        filters: &EventsFilters,
+        filters: &explore::EventsFilters,
     ) -> Result<SearchCommunityEventsOutput> {
         // Query database
         let db = self.pool.get().await?;
@@ -228,7 +195,7 @@ impl DB for PgDB {
     async fn search_community_groups(
         &self,
         community_id: Uuid,
-        filters: &GroupsFilters,
+        filters: &explore::GroupsFilters,
     ) -> Result<SearchCommunityGroupsOutput> {
         // Query database
         let db = self.pool.get().await?;
@@ -266,9 +233,6 @@ impl DB for PgDB {
 }
 
 /// Output structure for community events search operations.
-///
-/// Contains the matching events, optional geographic bounding box,
-/// and total count for pagination.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityEventsOutput {
     pub events: Vec<explore::Event>,
@@ -277,27 +241,9 @@ pub(crate) struct SearchCommunityEventsOutput {
 }
 
 /// Output structure for community groups search operations.
-///
-/// Contains the matching groups, optional geographic bounding box,
-/// and total count for pagination.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityGroupsOutput {
     pub groups: Vec<explore::Group>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }
-
-/// Geographic bounding box coordinates.
-///
-/// Represents the northeast and southwest corners of a rectangular
-/// area on the map, used for spatial queries and map viewport.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct BBox {
-    pub ne_lat: f64,
-    pub ne_lon: f64,
-    pub sw_lat: f64,
-    pub sw_lon: f64,
-}
-
-/// Type alias for result counts, used in pagination.
-pub(crate) type Total = usize;

@@ -54,9 +54,6 @@ impl Config {
 }
 
 /// HTTP server configuration settings.
-///
-/// Defines the server's listening address and optional basic authentication
-/// credentials.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HttpServerConfig {
     /// The address the HTTP server will listen on.
@@ -66,9 +63,6 @@ pub(crate) struct HttpServerConfig {
 }
 
 /// Basic authentication configuration for the HTTP server.
-///
-/// When enabled, all requests must provide valid credentials via HTTP Basic
-/// Authentication.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct BasicAuth {
     /// Whether basic authentication is enabled.
