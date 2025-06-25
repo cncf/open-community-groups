@@ -4,12 +4,11 @@
 
 {# Type -#}
 <div class="px-6 py-7 pt-5 border-b border-gray-100">
-  <div class="font-semibold text-filterTitle text-black leading-6">Type</div>
+  <div class="font-semibold text-[0.8rem] text-black leading-6">Type</div>
   <ul class="grid w-full gap-2.5 grid-cols-3 mt-3">
     {# In-person -#}
     <li>
-      <label class="group items-center justify-between w-full py-3 px-2 bg-white border rounded-lg cursor-pointer select-none flex flex-col
-                    {% if filters.kind.contains(&EventKind::InPerson) -%}border-primary-500{%- endif %} hover:bg-gray-50">
+      <label class="group items-center justify-between w-full py-3 px-2 bg-white border border-gray-200 rounded-lg cursor-pointer select-none flex flex-col {%+ if filters.kind.contains(&EventKind::InPerson) %}border-primary-500{%- endif %} hover:bg-gray-50">
         <input type="checkbox"
                name="kind"
                value="in-person"
@@ -23,7 +22,7 @@
 
     {# Virtual -#}
     <li>
-      <label class="group flex flex-col items-center justify-between w-full p-3 bg-white border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-gray-200 opacity-40 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%- endif %} cursor-pointer hover:bg-gray-50{%- endif %}">
+      <label class="group flex flex-col items-center justify-between w-full p-3 bg-white border border-gray-200 rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-gray-200 opacity-40 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%- endif %} cursor-pointer hover:bg-gray-50{%- endif %}">
         {% if view_mode == ViewMode::Map -%}
           <input type="checkbox"
                  name="kind"
@@ -47,7 +46,7 @@
 
     {# Hybrid -#}
     <li>
-      <label class="group items-center justify-between w-full py-3 px-2 bg-white border rounded-lg cursor-pointer select-none flex flex-col {%+ if filters.kind.contains(&EventKind::Hybrid) %}border-primary-500 checked{%- endif %} hover:bg-gray-50">
+      <label class="group items-center justify-between w-full py-3 px-2 bg-white border border-gray-200 rounded-lg cursor-pointer select-none flex flex-col {%+ if filters.kind.contains(&EventKind::Hybrid) %}border-primary-500 checked{%- endif %} hover:bg-gray-50">
         <input type="checkbox"
                name="kind"
                value="hybrid"
@@ -87,7 +86,7 @@
   {# Date -#}
   <div class="px-6 py-7 pt-5">
     <div class="flex justify-between items-center">
-      <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
+      <div class="font-semibold text-[0.8rem] text-black leading-6">Date</div>
     </div>
     <div class="flex flex-wrap gap-3 items-center mt-3">
       {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) -%}

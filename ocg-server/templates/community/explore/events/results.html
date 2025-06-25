@@ -97,7 +97,7 @@
 
 {% when ViewMode::List -%}
 {# List view -#}
-<div class="flex flex-col divide-y mt-5 border-t border-gray-100 md:mt-7
+<div class="flex flex-col divide-y divide-gray-100 mt-5 border-t border-gray-100 md:mt-7
             {% if events.len() > 0 %}border-b{% endif %}">
   {# Placeholder cards -#}
   {% if events.len() == 0 -%}
@@ -126,7 +126,7 @@
 {% when ViewMode::Map -%}
 {# Map view -#}
 <div class="mt-5 border-t border-gray-100 md:mt-7 p-5 md:p-7">
-  <div class="relative w-full border h-[600px] md:h-[820px] overflow-hidden">
+  <div class="relative w-full border border-gray-200 h-[600px] md:h-[820px] overflow-hidden">
     {# Loading spinner -#}
     <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">
       {% call common::small_spinner() -%}
