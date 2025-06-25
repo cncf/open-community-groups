@@ -1,3 +1,23 @@
+@import "tailwindcss";
+
+@plugin "@tailwindcss/forms";
+
+@source "static/js";
+@source "templates";
+
+@theme {
+  --font-sans:
+    "Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+    Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol";
+  --color-primary-50: #FDF4FA;
+  --color-primary-100: #FBE9F4;
+  --color-primary-300: #EB90C9;
+  --color-primary-500: #D62293;
+  --color-primary-700: #AB1B76;
+  --color-primary-900: #6B114A;
+}
+
 :root {
   /* Full Calendar */
   --fc-small-font-size: .7em;

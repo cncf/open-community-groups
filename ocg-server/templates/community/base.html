@@ -23,36 +23,8 @@
     {# End styles -#}
 
     {# Scripts -#}
-    <script type="text/javascript"
-            src="/static/vendor/js/tailwindcss.v3.4.16.min.js"></script>
     <script type="text/javascript" src="/static/vendor/js/htmx.v2.0.4.min.js"></script>
     {# End scripts -#}
-
-    {# djlint:off #}
-    <script type="text/javascript">
-      // Tailwind CSS configuration
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: {{ community.theme.palette|json|safe }},
-            },
-            fontSize: {
-              filterTitle: '0.8rem',
-            },
-          },
-          fontFamily: {
-            sans: [
-              '"Clarity City", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"',
-            ],
-          },
-        },
-        future: {
-          hoverOnlyWhenSupported: true,
-        },
-      };
-</script>
-    {# djlint:on #}
   </head>
   <body class="h-full {% block bg_color %} bg-white {% endblock bg_color %}">
     <div class="min-h-full flex flex-col">
