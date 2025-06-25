@@ -1,11 +1,11 @@
-{% import "common.html" as common %}
-{% extends "community/base.html" %}
+{% import "common.html" as common -%}
+{% extends "community/base.html" -%}
 
-{% block header_color %}
+{% block header_color -%}
   bg-gray-100
-{% endblock header_color %}
+{% endblock header_color -%}
 
-{% block jumbotron %}
+{% block jumbotron -%}
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-5 pb-10 sm:px-6 lg:px-8">
     <section>
@@ -22,7 +22,7 @@
 
         {# Search bar -#}
         <div>
-          {% call common::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) %}
+          {% call common::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) -%}
           <script type="module">
             import {
               loadExplorePage
@@ -50,7 +50,7 @@
         </div>
         {# End search bar -#}
 
-        {% call common::primary_link(content = "Explore all", href = "/explore", rounded = false) %}
+        {% call common::primary_link(content = "Explore all", href = "/explore", rounded = false) -%}
       </div>
 
       {# Jumbotron background image -#}
@@ -60,9 +60,9 @@
     </section>
   </div>
   {# End jumbotron -#}
-{% endblock jumbotron %}
+{% endblock jumbotron -%}
 
-{% block content %}
+{% block content -%}
   {# Main content -#}
   <div class="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
     {# Stats -#}
@@ -71,22 +71,22 @@
 
     <div class="pt-4 md:pt-8">
       {# Events in-person -#}
-      {% call events_list(title = "Upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) %}
+      {% call events_list(title = "Upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -%}
       {# End events in-person -#}
 
       {# Events online -#}
-      {% call events_list(title = "Upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) %}
+      {% call events_list(title = "Upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -%}
       {# End events online -#}
 
       {# Banner -#}
-      {% if let Some(ad_banner_url) = community.ad_banner_url %}
+      {% if let Some(ad_banner_url) = community.ad_banner_url -%}
         <div class="hidden pb-16 md:flex">
-          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
+          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url -%}
             <a rel="noopener noreferrer"
                href="{{ ad_banner_link_url }}"
                target="_blank"
                aria-label="Open external link">
-            {% endif %}
+            {% endif -%}
             <div class="mx-auto my-4 lg:my-8 border-4 border-gray-100 w-[70%] md:[w-55%] lg:w-[40%]">
               <img class="h-auto max-w-[100%]"
                    height="auto"
@@ -95,25 +95,27 @@
                    src="{{ ad_banner_url }}"
                    title="Banner">
             </div>
-            {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}</a>{% endif %}
+            {% if let Some(ad_banner_link_url) = community.ad_banner_link_url -%}
+            </a>
+          {% endif -%}
         </div>
-      {% endif %}
+      {% endif -%}
       {# End banner -#}
 
       {# Recently added groups -#}
-      {% call groups_list(title = "Recently added groups", link = "/explore?entity=groups", groups = recently_added_groups) %}
+      {% call groups_list(title = "Recently added groups", link = "/explore?entity=groups", groups = recently_added_groups) -%}
       {# End recentry added groups -#}
     </div>
   </div>
   {# End main content -#}
 
   {# Gallery -#}
-  {% include "community/home/gallery.html" %}
+  {% include "community/home/gallery.html" -%}
   {# End gallery -#}
-{% endblock content %}
+{% endblock content -%}
 
 {# Events list -#}
-{% macro events_list(title, link, events) %}
+{% macro events_list(title, link, events) -%}
   <div class="my-5 pb-0 md:pb-5 sm:my-8">
     <div class="flex items-center justify-between mb-6">
       {# Title -#}
@@ -122,44 +124,48 @@
 
       {# See all events on desktop -#}
       <div class="hidden justify-self-end md:flex">
-        {% call common::secondary_link(content = "See all events", href = link, rounded = false, extra_styles = Some("ms-4")) %}
+        {% call common::secondary_link(content = "See all events", href = link, rounded = false, extra_styles = Some("ms-4")) -%}
       </div>
       {# End see all events on desktop -#}
     </div>
     <div class="my-6 md:my-10">
       {# Cards list -#}
       <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
-        {% for event in events %}{{ event|safe }}{% endfor %}
+        {% for event in events -%}
+          {{ event|safe }}
+        {% endfor -%}
       </div>
       {# End cards list -#}
 
       {# See all events on mobile -#}
       <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
-        {% call common::secondary_link(content = "See all events", href = link, rounded = false) %}
+        {% call common::secondary_link(content = "See all events", href = link, rounded = false) -%}
       </div>
       {# See all events on mobile -#}
     </div>
   </div>
-{% endmacro %}
+{% endmacro events_list -%}
 {# End events list -#}
 
 {# Groups list -#}
-{% macro groups_list(title, link, groups) %}
+{% macro groups_list(title, link, groups) -%}
   <div class="flex items-center justify-between mb-6">
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
     <div class="hidden justify-self-end md:flex">
-      {% call common::secondary_link(content = "See all groups", href = link, rounded = false, extra_styles = Some("ms-4")) %}
+      {% call common::secondary_link(content = "See all groups", href = link, rounded = false, extra_styles = Some("ms-4")) -%}
     </div>
   </div>
   <div class="my-6 md:my-10">
     {# Groups cards -#}
     <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
-      {% for group in groups %}{{ group|safe }}{% endfor %}
+      {% for group in groups -%}
+        {{ group|safe }}
+      {% endfor -%}
     </div>
     {# End groups cards -#}
     <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
-      {% call common::secondary_link(content = "See all groups", href = link, rounded = false) %}
+      {% call common::secondary_link(content = "See all groups", href = link, rounded = false) -%}
     </div>
   </div>
-{% endmacro %}
+{% endmacro groups_list -%}
 {# End groups list -#}

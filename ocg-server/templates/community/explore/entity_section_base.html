@@ -1,8 +1,8 @@
-{% import "common.html" as common %}
-{% import "community/explore/filters.html" as macros %}
+{% import "common.html" as common -%}
+{% import "community/explore/filters.html" as macros -%}
 
-{% let view_mode = filters.view_mode.clone().unwrap_or_default() %}
-{% let entity = results_section.entity() %}
+{% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
+{% let entity = results_section.entity() -%}
 
 {# Mobile filters -#}
 <div id="drawer-filters"
@@ -20,11 +20,11 @@
 
   {# Filters content -#}
   {# Header Filters -#}
-  {% call macros::header() %}
+  {% call macros::header() -%}
   {# End header filters -#}
 
   {# Entity selector -#}
-  {% call macros::entity_radio(selected = entity) %}
+  {% call macros::entity_radio(selected = entity) -%}
   {# End entity selector -#}
 
   <form id="{{ entity }}-form-mobile"
@@ -34,8 +34,8 @@
         hx-target="#entity-section"
         hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
         hx-boost="true">
-    {% block filters %}
-    {% endblock filters %}
+    {% block filters -%}
+    {% endblock filters -%}
   </form>
   {# End filters content -#}
 
@@ -56,11 +56,11 @@
   <div id="explore-filters"
        class="relative hidden w-[28%] xl:w-1/4 lg:block bg-white border rounded-lg">
     {# Header Filters -#}
-    {% call macros::header() %}
+    {% call macros::header() -%}
     {# End header filters -#}
 
     {# Entity selector -#}
-    {% call macros::entity_radio(selected = entity) %}
+    {% call macros::entity_radio(selected = entity) -%}
     {# End entity selector -#}
 
     <form id="{{ entity }}-form"
@@ -70,8 +70,8 @@
           hx-target="#entity-section"
           hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
           hx-boost="true">
-      {% block filters %}
-      {% endblock filters %}
+      {% block filters -%}
+      {% endblock filters -%}
     </form>
   </div>
   {# End desktop filters -#}
@@ -92,8 +92,8 @@
         <div class="grow flex items-center justify-center">
           {# Searchbar -#}
           <div class="w-full">
-            {% block search_bar %}
-            {% endblock search_bar %}
+            {% block search_bar -%}
+            {% endblock search_bar -%}
           </div>
           {# End searchbar -#}
         </div>
@@ -101,13 +101,13 @@
       <div class="flex flex-row items-center justify-between px-5 md:px-7">
         {# Results -#}
         <div class="flex-1">
-          {% if view_mode == ViewMode::List %}
+          {% if view_mode == ViewMode::List -%}
             <div id="results"
                  class="flex font-semibold text-xs md:text-sm text-black w-[175px]">
-              {% block current_page %}
-              {% endblock current_page %}
+              {% block current_page -%}
+              {% endblock current_page -%}
             </div>
-          {% endif %}
+          {% endif -%}
         </div>
         {# End results -#}
 
@@ -131,7 +131,7 @@
             {# End list view -#}
 
             {# Calendar view -#}
-            {% if entity == Entity::Events %}
+            {% if entity == Entity::Events -%}
               <li>
                 <input type="radio"
                        name="view_mode"
@@ -145,7 +145,7 @@
                   <div class="text-[0.8rem] text-center text-nowrap ms-1">Calendar</div>
                 </label>
               </li>
-            {% endif %}
+            {% endif -%}
             {# End calendar view -#}
 
             {# Map view -#}
@@ -167,15 +167,15 @@
 
           {# Loading spinner -#}
           <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
-            {% call common::small_spinner() %}
+            {% call common::small_spinner() -%}
           </div>
-          {# End loading spinner #}
+          {# End loading spinner -#}
         </div>
         {# End view mode -#}
 
         {# Sort by -#}
         <div class="flex flex-1 flex-row items-center justify-end mb-3 mt-3 sm:mb-0 sm:mt-0">
-          {% if view_mode == ViewMode::List %}
+          {% if view_mode == ViewMode::List -%}
             <label for="sort_by"
                    class="font-semibold text-filterTitle text-nowrap text-black leading-6 me-2 xl:me-3">
               Sort by
@@ -184,27 +184,27 @@
             <select id="sort_by"
                     name="sort_by"
                     class="block w-24 py-1 px-3 text-[0.8rem] leading-none h-[30px] text-gray-900 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-0 focus:border-gray-300 hover:border-primary-500 focus:hover:border-primary-500">
-              {% if let Some(sort_by) = filters.sort_by %}
+              {% if let Some(sort_by) = filters.sort_by -%}
                 <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
-                {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+                {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
                   <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
-                {% endif %}
-              {% else %}
+                {% endif -%}
+              {% else -%}
                 <option value="date" selected>Date</option>
-                {% if filters.longitude.is_some() && filters.latitude.is_some() %}
+                {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
                   <option value="distance">Distance</option>
-                {% endif %}
-              {% endif %}
+                {% endif -%}
+              {% endif -%}
             </select>
-          {% endif %}
+          {% endif -%}
         </div>
         {# End sort by -#}
       </div>
 
       {# Cards -#}
       <div id="cards-list" class="flex flex-col justify-between grow">
-        {% block content %}
-        {% endblock content %}
+        {% block content -%}
+        {% endblock content -%}
       </div>
       {# End cards -#}
     </div>

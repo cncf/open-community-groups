@@ -1,18 +1,23 @@
-{% import "common.html" as common %}
-{% extends "community/explore/entity_section_base.html" %}
+{% import "common.html" as common -%}
+{% extends "community/explore/entity_section_base.html" -%}
 
-{% block filters %}
-  {% include "community/explore/events/filters.html" %}
-{% endblock filters %}
+{# Filters -#}
+{% block filters -%}
+  {% include "community/explore/events/filters.html" -%}
+{% endblock filters -%}
+{# End filters -#}
 
-{% block current_page %}
-  {% if results_section.events.len() > 0 %}
-    {% call common::current_page(total = results_section.total, items_number = results_section.events.len(), offset_value = filters.offset) %}
-  {% endif %}
-{% endblock current_page %}
+{# Current page status -#}
+{% block current_page -%}
+  {% if results_section.events.len() > 0 -%}
+    {% call common::current_page(total = results_section.total, items_number = results_section.events.len(), offset_value = filters.offset) -%}
+  {% endif -%}
+{% endblock current_page -%}
+{# End current page status -#}
 
-{% block search_bar %}
-  {% call common::search_bar(placeholder = "Search events by name, location or tags", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) %}
+{# Search bar -#}
+{% block search_bar -%}
+  {% call common::search_bar(placeholder = "Search events by name, location or tags", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -%}
   <script type="module">
     import {
       cleanInputField,
@@ -35,8 +40,11 @@
       cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'events-form'));
     }
   </script>
-{% endblock search_bar %}
+{% endblock search_bar -%}
+{# End search bar -#}
 
-{% block content %}
+{# Main content -#}
+{% block content -%}
   {{ results_section|safe }}
-{% endblock content %}
+{% endblock content -%}
+{# End main content -#}

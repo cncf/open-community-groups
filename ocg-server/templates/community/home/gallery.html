@@ -1,5 +1,5 @@
-{% if let Some(photos_urls) = community.photos_urls %}
-  {% if photos_urls.len() > 0 %}
+{% if let Some(photos_urls) = community.photos_urls -%}
+  {% if photos_urls.len() > 0 -%}
     {# Gallery -#}
     <div class="bg-gray-100 pt-4 md:pt-10 pb-6 md:pb-12">
       <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -10,7 +10,7 @@
         </div>
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
           {# Photos list -#}
-          {% for photo in photos_urls %}
+          {% for photo in photos_urls -%}
             <div class="hidden md:block">
               <button class="photo-gallery" data-photo-index="{{ loop.index }}">
                 <img height="160"
@@ -27,7 +27,7 @@
                    src="{{ photo }}"
                    alt="Community {{ community.display_name }}">
             </div>
-          {% endfor %}
+          {% endfor -%}
           {# End photos list -#}
         </div>
       </div>
@@ -61,7 +61,7 @@
           <div class="grow mx-10 xl:mx-20">
             {# Gallery -#}
             <div id="gallery" class="relative w-full h-full overflow-hidden">
-              {% for photo in photos_urls %}
+              {% for photo in photos_urls -%}
                 <div class="duration-700 ease-in-out absolute inset-0 transition-transform transform z-30 {%- if !loop.first -%} hidden z-10 translate-x-full {%- else -%} translate-x-0 {%- endif -%}"
                      data-carousel-item="{%- if loop.first -%} active {%- endif -%}">
                   <img src="{{ photo }}"
@@ -70,7 +70,7 @@
                        class="bg-white rounded-lg border border-8 border-white absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
                        alt="Community {{ community.display_name }}">
                 </div>
-              {% endfor %}
+              {% endfor -%}
             </div>
             {# End gallery -#}
           </div>
@@ -131,5 +131,5 @@
         nextGalleryBtn.addEventListener('click', () => navigateCarousel('next'));
       }
     </script>
-  {% endif %}
-{% endif %}
+  {% endif -%}
+{% endif -%}

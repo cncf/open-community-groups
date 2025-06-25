@@ -1,27 +1,27 @@
 {# Primary button -#}
-{% macro primary_button(id, content, rounded, extra_styles = None, disabled = false) %}
-  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+{% macro primary_button(id, content, rounded, extra_styles = None, disabled = false) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
           class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} text-base font-medium text-center text-white rounded-full bg-primary-500
                  {% if !disabled -%}
                    hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {%- endif %} {{ extra_styles_ }}"
           disabled="{{ disabled }}">{{ content|safe }}</button>
-{% endmacro %}
+{% endmacro primary_button -%}
 {# End primary button -#}
 
 {# Primary link -#}
-{% macro primary_link(content, href, rounded, extra_styles = None) %}
-  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+{% macro primary_link(content, href, rounded, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}"
      href="{{ href }}">{{ content|safe }}</a>
-{% endmacro %}
+{% endmacro primary_link -%}
 {# End primary link -#}
 
 {# Secondary button -#}
-{% macro secondary_button(id, content, rounded, extra_styles = None, disabled = false) %}
-  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+{% macro secondary_button(id, content, rounded, extra_styles = None, disabled = false) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
           class="group
@@ -30,32 +30,32 @@
                    {% if !disabled -%}
                      hover:bg-primary-500 hover:text-white hover:bg-gray-100 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {%- endif %} {{ extra_styles_ }}"
           disabled="{{ disabled }}">{{ content|safe }}</button>
-{% endmacro %}
+{% endmacro secondary_button -%}
 {# End secondary button -#}
 
 {# Secondary mini button -#}
-{% macro secondary_mini_button(id, content, extra_styles = None) %}
-  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+{% macro secondary_mini_button(id, content, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
           class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
     {{ content|safe }}
   </button>
-{% endmacro %}
+{% endmacro secondary_mini_button -%}
 {# End secondary mini button -#}
 
 {# Secondary link -#}
-{% macro secondary_link(content, href, rounded, extra_styles = None) %}
-  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+{% macro secondary_link(content, href, rounded, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a class="{%- if rounded -%} p-2 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}"
      href="{{ href }}">{{ content|safe }}</a>
-{% endmacro %}
+{% endmacro secondary_link -%}
 {# End secondary link -#}
 
 {# Search bar -#}
-{% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) %}
-  {% let value_ = value.clone().unwrap_or("".to_string()) %}
+{% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) -%}
+  {% let value_ = value.clone().unwrap_or("".to_string()) -%}
 
   <div class="flex items-center {{ container_styles }}">
     <div class="relative {{ input_styles }}
@@ -75,12 +75,12 @@
         </button>
       </div>
       <div class="absolute right-[6px] top-[5px]">
-        {# djlint:off H008 #}
-        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true, extra_styles = Some("mt-[3px] mr-[3px]")) %}
-        {# djlint:on H008 #}
+        {# djlint:off H008 -#}
+        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true, extra_styles = Some("mt-[3px] mr-[3px]")) -%}
+        {# djlint:on H008 -#}
       </div>
 
-      {% if with_help %}
+      {% if with_help -%}
         <div class="absolute hidden -right-[1.5rem] top-0 md:block">
           <button id="open-search-tips-modal">
             <div class="svg-icon w-4 h-4 bg-gray-300 hover:bg-gray-700 icon-question-mark"></div>
@@ -142,14 +142,14 @@
             closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
           }
         </script>
-      {% endif %}
+      {% endif -%}
     </div>
   </div>
-{% endmacro %}
+{% endmacro search_bar -%}
 {# End search bar -#}
 
 {# Alert -#}
-{% macro alert(title, content) %}
+{% macro alert(title, content) -%}
   <div class="p-10 md:p-14">
     <div class="border border-primary-300 p-10 text-sm text-gray-800 rounded-lg bg-primary-50 text-center"
          role="alert">
@@ -157,7 +157,7 @@
       {{ content }}
     </div>
   </div>
-{% endmacro %}
+{% endmacro alert -%}
 {# End alert -#}
 
 {# Current page -#}
@@ -168,17 +168,17 @@
     1 - {{ items_number }}
   {%- endif -%}
   {{ "" }} of {{ total }} results
-{%- endmacro %}
+{%- endmacro current_page -%}
 {# End current page -#}
 
 {# Logo -#}
-{% macro logo(logo_url, classes, size, color, name = None) %}
-  {% if let Some(logo_url) = logo_url %}
-    {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", *size * 2) ) %}
+{% macro logo(logo_url, classes, size, color, name = None) -%}
+  {% if let Some(logo_url) = logo_url -%}
+    {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", *size * 2) ) -%}
 
     <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
          style="background-image: url('{{ bg_image }}')"></div>
-  {% else %}
+  {% else -%}
     <div class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}">
       <div class="relative h-full w-full flex place-items-center p-2 text-[0.78rem] text-gray-600 font-bold leading-5 capitalize z-10">
         <p class="w-full text-ellipsis overflow-hidden text-center">{{ name.unwrap_or(&"".to_string() ) }}</p>
@@ -186,12 +186,12 @@
       <div class="absolute w-full h-full top-0 placeholder-logo"
            style="background-color: {{ color }}"></div>
     </div>
-  {% endif %}
-{% endmacro %}
+  {% endif -%}
+{% endmacro logo -%}
 {# End logo -#}
 
-{# Small spinner #}
-{% macro small_spinner() %}
+{# Small spinner -#}
+{% macro small_spinner() -%}
   <div role="status" class="hidden group-[.is-loading]:block">
     <svg aria-hidden="true"
          class="w-6 h-6 text-gray-200 animate-spin fill-primary-500"
@@ -203,5 +203,17 @@
     </svg>
     <span class="sr-only">Loading...</span>
   </div>
-{% endmacro %}
-{# End small spinner #}
+{% endmacro small_spinner -%}
+{# End small spinner -#}
+
+{# Main loading -#}
+{% macro main_loading() -%}
+  <div class="w-20 h-20 text-gray-200 animate-spin">
+    <img src="/static/images/icons/main_loading.svg"
+         height="20"
+         width="20"
+         alt="Loading icon"
+         class="w-full h-full object-contain" />
+  </div>
+{% endmacro main_loading -%}
+{# End main loading -#}
