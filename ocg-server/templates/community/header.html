@@ -185,13 +185,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
-     class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase
-            {% if current_path == href %}
-              border-b-2
-            {% else %}
-              hover:border-b-2 hover:border-primary-300
-            {% endif %}
-            {{ extra_styles_ }}">{{ content }}</a>
+     class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {%+ if current_path == href %} border-b-2 {%- else %} hover:border-b-2 hover:border-primary-300 {%- endif %} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
 {# End link -#}
 
