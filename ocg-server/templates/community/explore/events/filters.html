@@ -1,6 +1,6 @@
-{% import "community/explore/filters.html" as macros %}
+{% import "community/explore/filters.html" as macros -%}
 
-{% let view_mode = filters.view_mode.clone().unwrap_or_default() %}
+{% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
 
 {# Type -#}
 <div class="px-6 py-7 pt-5 border-b border-gray-100">
@@ -23,25 +23,20 @@
 
     {# Virtual -#}
     <li>
-
-      <label class="group flex flex-col items-center justify-between w-full p-3 bg-white border rounded-lg peer-enabled:cursor-pointer select-none
-                    {% if view_mode == ViewMode::Map -%}
-                      bg-gray-200 opacity-40
-                    {% else -%}
-                      {% if filters.kind.contains(&EventKind::Virtual) -%}border-primary-500{%- endif %} cursor-pointer hover:bg-gray-50{%- endif %}">
-        {% if view_mode == ViewMode::Map %}
+      <label class="group flex flex-col items-center justify-between w-full p-3 bg-white border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-gray-200 opacity-40 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%- endif %} cursor-pointer hover:bg-gray-50{%- endif %}">
+        {% if view_mode == ViewMode::Map -%}
           <input type="checkbox"
                  name="kind"
                  value="virtual"
                  class="virtual-kind hidden peer"
                  disabled>
-        {% else %}
+        {% else -%}
           <input type="checkbox"
                  name="kind"
                  value="virtual"
                  class="virtual-kind hidden peer"
                  {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
-        {% endif %}
+        {% endif -%}
         <div class="svg-icon h-4 w-4 bg-gray-500 peer-checked:bg-primary-500 icon-virtual"></div>
         <div class="text-[0.8rem] mt-1.5 text-gray-500 peer-checked:text-primary-500 peer-checked:text-primary-500">
           Virtual
@@ -52,9 +47,7 @@
 
     {# Hybrid -#}
     <li>
-
-      <label class="group items-center justify-between w-full py-3 px-2 bg-white border rounded-lg cursor-pointer select-none flex flex-col
-                    {% if filters.kind.contains(&EventKind::Hybrid) -%}border-primary-500 checked{%- endif %} hover:bg-gray-50">
+      <label class="group items-center justify-between w-full py-3 px-2 bg-white border rounded-lg cursor-pointer select-none flex flex-col {%+ if filters.kind.contains(&EventKind::Hybrid) %}border-primary-500 checked{%- endif %} hover:bg-gray-50">
         <input type="checkbox"
                name="kind"
                value="hybrid"
@@ -68,48 +61,48 @@
       </label>
     </li>
     {# End hybrid -#}
-
   </ul>
 </div>
 {# End type -#}
 
 {# Group category -#}
-{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
+{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) -%}
 {# End Group category -#}
 
 {# Regions -#}
-{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
+{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) -%}
 {# End Regions -#}
 
 {# Event category -#}
-{% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) %}
+{% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) -%}
 {# End event category -#}
 
-{% if filters.longitude.is_some() && filters.latitude.is_some() %}
+{% if filters.longitude.is_some() && filters.latitude.is_some() -%}
   {# Distance -#}
-  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
+  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) -%}
   {# End distance -#}
-{% endif %}
+{% endif -%}
 
-{% if view_mode != ViewMode::Calendar %}
+{% if view_mode != ViewMode::Calendar -%}
   {# Date -#}
   <div class="px-6 py-7 pt-5">
     <div class="flex justify-between items-center">
       <div class="font-semibold text-filterTitle text-black leading-6">Date</div>
     </div>
     <div class="flex flex-wrap gap-3 items-center mt-3">
-      {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) %}
-      {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) %}
+      {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) -%}
+      {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) -%}
     </div>
   </div>
   {# End date -#}
-{% else %}
+{% else -%}
+  {# Date on calendar view -#}
   <input type="hidden"
          name="date_from"
          value="{%- if let Some(date_from) = filters.date_from -%} {{ date_from }} {%- endif -%}">
   <input type="hidden"
          name="date_to"
          value="{%- if let Some(date_to) = filters.date_to -%} {{ date_to }} {%- endif -%}">
-{% endif %}
-
+  {# End date on calendar view -#}
+{% endif -%}
 {# Apply filters -#}

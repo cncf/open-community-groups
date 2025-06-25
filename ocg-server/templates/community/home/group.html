@@ -1,10 +1,10 @@
-{% import "common.html" as common %}
+{% import "common.html" as common -%}
 
 {# Group card -#}
 <div class="flex flex-1 flex-row items-center">
   <div class="relative">
     {# Group icon -#}
-    {% call common::logo(logo_url = logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = color, name = Some(name)) %}
+    {% call common::logo(logo_url = logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = color, name = Some(name)) -%}
     {# End group icon -#}
   </div>
 
@@ -14,11 +14,11 @@
         {# Category or region -#}
         <div class="truncate leading-3 text-gray-400">
           <span class="text-xs font-semibold tracking-wide uppercase">
-            {% if let Some(region_name) = region_name %}
+            {% if let Some(region_name) = region_name -%}
               {{ region_name }}
-            {% else %}
+            {% else -%}
               {{ category_name }}
-            {% endif %}
+            {% endif -%}
           </span>
         </div>
         {# End category or region -#}
@@ -32,7 +32,7 @@
 
       <div>
         {# Group location -#}
-        {% if let Some(location) = self.location(25) %}
+        {% if let Some(location) = self.location(25) -%}
           <div class="flex flex-row leading-4 pt-1 lg:pt-2">
             <img class="mt-0.5 w-3 h-3 me-2"
                  height="12"
@@ -41,7 +41,7 @@
                  alt="Location icon" />
             <div class="truncate text-gray-700 text-xs uppercase">{{ location }}</div>
           </div>
-        {% endif %}
+        {% endif -%}
         {# End group location -#}
 
         {# Group creation date -#}

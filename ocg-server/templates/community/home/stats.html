@@ -1,55 +1,55 @@
 {# Stats -#}
-{# Desktop #}
+{# Desktop -#}
 <div class="hidden lg:flex w-full flex flex-row justify-around items-center border rounded-lg p-10 mx-auto mt-16 mb-6">
   {# Group stats -#}
-  {% call stat_block(kind = "groups", title = "Groups", value = groups) %}
+  {% call stat_block(kind = "groups", title = "Groups", value = groups) -%}
   {# End group stats -#}
 
   <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
 
   {# Members stats -#}
-  {% call stat_block(kind = "members", title = "Members", value = groups_members) %}
+  {% call stat_block(kind = "members", title = "Members", value = groups_members) -%}
   {# End members stats -#}
 
   <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
 
   {# Events stats -#}
-  {% call stat_block(kind = "events", title = "Events", value = events) %}
+  {% call stat_block(kind = "events", title = "Events", value = events) -%}
   {# End events stats -#}
 
   <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
 
   {# Attendees stats -#}
-  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees) %}
+  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees) -%}
   {# End attendees stats -#}
 </div>
-{# End desktop #}
+{# End desktop -#}
 
-{# Mobile #}
+{# Mobile -#}
 <div class="grid grid-cols-2 gap-8 justify-around lg:hidden w-full border rounded-lg py-6 mx-auto mt-6">
   {# Group stats -#}
-  {% call stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center")) %}
+  {% call stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center")) -%}
   {# End group stats -#}
 
   {# Members stats -#}
-  {% call stat_block(kind = "members", title = "Members", value = groups_members, extra_styles=Some("place-self-center")) %}
+  {% call stat_block(kind = "members", title = "Members", value = groups_members, extra_styles=Some("place-self-center")) -%}
   {# End members stats -#}
 
   {# Events stats -#}
-  {% call stat_block(kind = "events", title = "Events", value = events, extra_styles=Some("place-self-center")) %}
+  {% call stat_block(kind = "events", title = "Events", value = events, extra_styles=Some("place-self-center")) -%}
   {# End events stats -#}
 
   {# Attendees stats -#}
-  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles=Some("place-self-center")) %}
+  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles=Some("place-self-center")) -%}
   {# End attendees stats -#}
 </div>
 
-{# End mobile #}
+{# End mobile -#}
 {# End stats -#}
 
 {# Stat block -#}
-{% macro stat_block(kind, title, value, extra_styles = None) %}
-  {% let extra_styles_ = extra_styles.unwrap_or("") %}
+{% macro stat_block(kind, title, value, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
   <div class="{{ extra_styles_ }}">
     <div class="flex items-center justify-center">
       {# Icon -#}
@@ -69,5 +69,5 @@
       </div>
     </div>
   </div>
-{% endmacro %}
+{% endmacro stat_block -%}
 {# End stat block -#}

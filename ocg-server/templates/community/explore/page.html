@@ -1,13 +1,13 @@
-{% extends "community/base.html" %}
+{% extends "community/base.html" -%}
 
-{% block header_color %}
+{% block header_color -%}
   bg-transparent
-{% endblock header_color %}
-{% block bg_color %}
+{% endblock header_color -%}
+{% block bg_color -%}
   bg-gray-100
-{% endblock bg_color %}
+{% endblock bg_color -%}
 
-{% block content %}
+{% block content -%}
   {# Community title -#}
   <div class="text-center pt-5">
     <h1 class="mb-4 mx-3 md:mx-5 text-2xl font-bold tracking-tight leading-none lg:text-4xl xl:text-5xl">
@@ -22,16 +22,16 @@
 
     {# Entity section -#}
     <div id="entity-section" class="relative">
-      {% match entity %}
-      {% when Entity::Groups %}
+      {% match entity -%}
+      {% when Entity::Groups -%}
       {# Groups section -#}
       {% if let Some(groups_section) = groups_section %}{{ groups_section|safe }}{% endif %}
       {# End groups section -#}
-      {% when Entity::Events %}
+      {% when Entity::Events -%}
       {# Events section -#}
       {% if let Some(events_section) = events_section %}{{ events_section|safe }}{% endif %}
       {# End events section -#}
-    {% endmatch %}
+    {% endmatch -%}
   </div>
   {# End entity section -#}
 </div>
@@ -62,4 +62,4 @@
     });
   }
 </script>
-{% endblock content %}
+{% endblock content -%}

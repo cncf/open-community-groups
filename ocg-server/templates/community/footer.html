@@ -4,7 +4,7 @@
     <div class="pb-10 text-center md:text-left">
       <div class="flex flex-col justify-between md:flex-row">
         {# Footer logo -#}
-        {% if let Some(footer_logo_url) = self.community.footer_logo_url %}
+        {% if let Some(footer_logo_url) = self.community.footer_logo_url -%}
           <div>
             <img class="h-12 w-50 mx-auto md:mx-0"
                  width="251"
@@ -12,32 +12,32 @@
                  src="{{ footer_logo_url }}"
                  alt="Logo" />
           </div>
-        {% endif %}
+        {% endif -%}
         {# End footer logo -#}
 
         {# Social network links -#}
         <div class="flex flex-wrap justify-center gap-4 md:gap-0 md:justify-self-end mt-6 md:mt-0">
-          {% call social_icon_link(kind = "twitter", url = self.community.twitter_url) %}
-          {% call social_icon_link(kind = "github", url = self.community.github_url) %}
-          {% call social_icon_link(kind = "linkedin", url = self.community.linkedin_url) %}
-          {% call social_icon_link(kind = "instagram", url = self.community.instagram_url) %}
-          {% call social_icon_link(kind = "wechat", url = self.community.wechat_url) %}
-          {% call social_icon_link(kind = "youtube", url = self.community.youtube_url) %}
-          {% call social_icon_link(kind = "flickr", url = self.community.flickr_url) %}
-          {% call social_icon_link(kind = "facebook", url = self.community.facebook_url) %}
-          {% call social_icon_link(kind = "slack", url = self.community.slack_url) %}
+          {% call social_icon_link(kind = "twitter", url = self.community.twitter_url) -%}
+          {% call social_icon_link(kind = "github", url = self.community.github_url) -%}
+          {% call social_icon_link(kind = "linkedin", url = self.community.linkedin_url) -%}
+          {% call social_icon_link(kind = "instagram", url = self.community.instagram_url) -%}
+          {% call social_icon_link(kind = "wechat", url = self.community.wechat_url) -%}
+          {% call social_icon_link(kind = "youtube", url = self.community.youtube_url) -%}
+          {% call social_icon_link(kind = "flickr", url = self.community.flickr_url) -%}
+          {% call social_icon_link(kind = "facebook", url = self.community.facebook_url) -%}
+          {% call social_icon_link(kind = "slack", url = self.community.slack_url) -%}
         </div>
         {# End social network links -#}
       </div>
     </div>
 
     {# Extra links -#}
-    {% if let Some(extra_links) = self.community.extra_links %}
+    {% if let Some(extra_links) = self.community.extra_links -%}
       <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
       <div class="pb-8 pt-2 text-sm md:text-base">
-        {% for (name, url) in extra_links %}
+        {% for (name, url) in extra_links -%}
           {# Extra link -#}
-          {% if !loop.first %}
+          {% if !loop.first -%}
             <span class="px-2 text-gray-300 md:px-3">·</span>
           {% endif -%}
           <a href="{{ url }}"
@@ -45,16 +45,16 @@
              target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
              rel="noopener noreferrer">{{ name }}</a>
           {# End extra link -#}
-        {% endfor %}
+        {% endfor -%}
       </div>
-    {% endif %}
+    {% endif -%}
     {# End extra links -#}
 
     {# Copyright section -#}
     <div class="pt-8 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
-      {% if let Some(copyright_notice) = self.community.copyright_notice %}
+      {% if let Some(copyright_notice) = self.community.copyright_notice -%}
         <div class="mb-4 copyright">{{ copyright_notice|safe }}</div>
-      {% endif %}
+      {% endif -%}
       <p>
         Powered by <a href="https://github.com/cncf/open-community-groups"
     class="font-bold text-white"
@@ -68,14 +68,14 @@
 {# End footer -#}
 
 {# Icon link -#}
-{% macro social_icon_link(kind, url) %}
-  {% if let Some(url) = url %}
+{% macro social_icon_link(kind, url) -%}
+  {% if let Some(url) = url -%}
     <a href="{{ url }}"
        class="ms-0 md:ms-6 content-center"
        target="_blank"
        rel="noopener noreferrer">
       <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 icon-{{ kind }}"></div>
     </a>
-  {% endif %}
-{% endmacro %}
+  {% endif -%}
+{% endmacro social_icon_link -%}
 {# End icon link -#}

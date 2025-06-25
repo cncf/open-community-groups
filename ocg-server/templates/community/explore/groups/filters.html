@@ -1,15 +1,15 @@
-{% import "community/explore/filters.html" as macros %}
+{% import "community/explore/filters.html" as macros -%}
 
 {# Group category -#}
-{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) %}
+{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) -%}
 {# End Group category -#}
 
 {# Regions -#}
-{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) %}
+{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) -%}
 {# End Regions -#}
 
-{% if filters.longitude.is_some() && filters.latitude.is_some() %}
+{% if filters.longitude.is_some() && filters.latitude.is_some() -%}
   {# Distance -#}
-  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) %}
+  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) -%}
   {# End distance -#}
-{% endif %}
+{% endif -%}

@@ -56,28 +56,26 @@
   </head>
   <body class="h-full {% block bg_color %} bg-white {% endblock bg_color %}">
     <div class="min-h-full flex flex-col">
-      <div class="{% block header_color %}
-                    {{ header_color }}
-                  {% endblock header_color %}">
+      <div class="{%- block header_color -%} {{ header_color }} {%- endblock header_color -%}">
         {# Header -#}
-        {% include "community/header.html" %}
+        {% include "community/header.html" -%}
         {# End header -#}
 
         {# Jumbotron -#}
-        {% block jumbotron %}
-        {% endblock jumbotron %}
+        {% block jumbotron -%}
+        {% endblock jumbotron -%}
         {# End jumbotron -#}
       </div>
 
       {# Content -#}
       <main class="grow z-[1]">
-        {% block content %}
-        {% endblock content %}
+        {% block content -%}
+        {% endblock content -%}
       </main>
       {# End content -#}
 
       {# Footer -#}
-      {% include "community/footer.html" %}
+      {% include "community/footer.html" -%}
       {# End footer -#}
     </div>
   </body>
