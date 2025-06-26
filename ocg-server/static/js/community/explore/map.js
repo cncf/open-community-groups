@@ -1,5 +1,5 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "../../common/common.js";
-import { fetchData } from "./explore.js";
+import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { fetchData } from "/static/js/community/explore/explore.js";
 
 export class Map {
   /**

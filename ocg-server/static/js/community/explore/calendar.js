@@ -1,6 +1,6 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "../../common/common.js";
-import { fetchData } from "./explore.js";
-import { getFirstAndLastDayOfMonth, updateDateInput } from "./filters.js";
+import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { fetchData } from "/static/js/community/explore/explore.js";
+import { getFirstAndLastDayOfMonth, updateDateInput } from "/static/js/community/explore/filters.js";
 
 export class Calendar {
   /**
