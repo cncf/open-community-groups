@@ -32,7 +32,7 @@
                 hx-trigger="click"
                 hx-target="#entity-section"
                 hx-boost="true"
-                class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-l-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
+                class="inline-flex items-center justify-between w-full p-3 bg-white border border-gray-200 rounded-l-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
           {% call entity_content(kind = "events", title = "Events", icon_styles = Some("bg-gray-500")) -%}
         </button>
         {# End events button -#}
@@ -73,7 +73,7 @@
                 hx-trigger="click"
                 hx-target="#entity-section"
                 hx-boost="true"
-                class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-r-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
+                class="inline-flex items-center justify-between w-full p-3 bg-white border border-gray-200 rounded-r-lg cursor-pointer text-gray-500 select-none hover:bg-gray-50">
           {% call entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-gray-500")) -%}
         </button>
         {# End groups button -#}
@@ -126,7 +126,7 @@
            class="hidden peer"
            {% if active_filters.contains(&value.to_string()) %}checked{% endif %}>
     <label for="{{ value }}"
-           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
     </label>
   </li>
@@ -153,7 +153,7 @@
              class="hidden peer">
     {% endif -%}
     <label for="{{ value }}"
-           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
     </label>
   </li>
@@ -179,12 +179,12 @@
 {# Collapsible header -#}
 {% macro collapsible_header(title, label, items_length, max_visible_items_number) -%}
   <div class="flex justify-between items-center">
-    <div class="font-semibold text-filterTitle text-black leading-6">{{ title }}</div>
+    <div class="font-semibold text-[0.8rem] text-black leading-6">{{ title }}</div>
     <div>
       {% if items_length > max_visible_items_number -%}
         <button data-label="{{ label }}"
                 type="button"
-                class="group/btn collapse-btn border hover:bg-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
+                class="group/btn collapse-btn border border-gray-200 hover:bg-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center">
           <span class="hidden group-[.collapsed]:block">
             <div class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white icon-caret-down"></div>
           </span>
@@ -231,7 +231,7 @@
                class="hidden peer"
                {% if active_filters.is_empty() %}checked{% endif %}>
         <label for="any-checkbox-{{ name }}"
-               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="text-[0.8rem] text-center text-nowrap">Any</div>
         </label>
       </li>
@@ -284,7 +284,7 @@
                  checked>
         {% endif -%}
         <label for="any-radio-{{ name }}"
-               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="text-[0.8rem] text-center text-nowrap">Any</div>
         </label>
       </li>

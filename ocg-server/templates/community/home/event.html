@@ -41,9 +41,9 @@
           {% if let Some(location) = self.location(16) -%}
             <div class="truncate text-gray-700 text-xs uppercase">{{ location }}</div>
           {% endif -%}
-          <span class="-mt-[1px] ms-2 border text-gray-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full">{{ kind }}</span>
+          <span class="-mt-[1px] ms-2 border border-gray-200 text-gray-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full">{{ kind }}</span>
           {% when EventKind::Virtual -%}
-          <span class="-mt-[1px] border text-gray-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full">{{ kind }}</span>
+          <span class="-mt-[1px] border border-gray-200 text-gray-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full">{{ kind }}</span>
         {% endmatch -%}
       </div>
       {# End event location -#}

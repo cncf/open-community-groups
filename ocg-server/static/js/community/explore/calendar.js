@@ -1,6 +1,6 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "../../common/common.js";
-import { fetchData } from "./explore.js";
-import { getFirstAndLastDayOfMonth, updateDateInput } from "./filters.js";
+import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { fetchData } from "/static/js/community/explore/explore.js";
+import { getFirstAndLastDayOfMonth, updateDateInput } from "/static/js/community/explore/filters.js";
 
 export class Calendar {
   /**
@@ -283,7 +283,7 @@ function newEventPopover(id, event, horizontalAlignment, verticalAlignment) {
     data-popover="true"
     class="absolute ${horizontalAlignment == "right" ? "end-0" : ""} ${verticalAlignment == "top" ? "top-0 -translate-y-full pb-1.5" : "pt-1.5"} z-10 invisible inline-block w-[380px] text-sm text-gray-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow"
   >
-    <div class="bg-white border border-gray-300 p-2 rounded-lg shadow-lg">
+    <div class="bg-white border border-gray-200 p-2 rounded-lg shadow-lg">
       ${event.popover_html}
     </div>
   </div>

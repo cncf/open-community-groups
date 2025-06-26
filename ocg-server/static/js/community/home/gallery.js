@@ -39,7 +39,7 @@ export const closeModal = (modalId) => {
 export const navigateCarousel = (direction) => {
   const carouselItems = document.querySelectorAll("#gallery [data-carousel-item]");
 
-  if (carouselItems.length === 0) {
+  if (carouselItems.length > 0) {
     let activeImageIndex = 0;
     carouselItems.forEach((item, index) => {
       if (item.dataset.carouselItem === "active") {
@@ -74,6 +74,7 @@ export const navigateCarousel = (direction) => {
  */
 const setActiveImage = (index) => {
   const carouselItems = document.querySelectorAll("#gallery [data-carousel-item]");
+
   if (carouselItems.length > 0) {
     carouselItems.forEach((item, i) => {
       if (i === index) {

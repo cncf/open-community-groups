@@ -36,7 +36,7 @@ pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 5; // 5 minutes
 ///
 /// Embeds all files from the static directory into the binary.
 #[derive(Embed)]
-#[folder = "static"]
+#[folder = "dist/static"]
 struct StaticFile;
 
 /// Application state shared across all request handlers.
@@ -113,10 +113,14 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 
     // Set cache duration based on resource type
     #[cfg(not(debug_assertions))]
-    let cache_max_age = if path.starts_with("images/") {
-        60 * 60 * 24 * 7 // 1 week
+    let cache_max_age = if path.starts_with("js/") || path.starts_with("css/") {
+        // These assets are hashed
+        60 * 60 * 24 * 365 // 1 year
     } else if path.starts_with("vendor/") {
-        60 * 60 * 24 * 30 // 1 month
+        // Vendor libraries files include versions
+        60 * 60 * 24 * 365 // 1 year
+    } else if path.starts_with("images/") {
+        60 * 60 * 24 * 7 // 1 week
     } else {
         // Default cache duration for other static resources
         60 * 60 // 1 hour

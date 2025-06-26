@@ -1,6 +1,6 @@
 {# Stats -#}
 {# Desktop -#}
-<div class="hidden lg:flex w-full flex flex-row justify-around items-center border rounded-lg p-10 mx-auto mt-16 mb-6">
+<div class="hidden lg:flex w-full flex flex-row justify-around items-center border border-gray-200 rounded-lg p-10 mx-auto mt-16 mb-6">
   {# Group stats -#}
   {% call stat_block(kind = "groups", title = "Groups", value = groups) -%}
   {# End group stats -#}
@@ -26,7 +26,7 @@
 {# End desktop -#}
 
 {# Mobile -#}
-<div class="grid grid-cols-2 gap-8 justify-around lg:hidden w-full border rounded-lg py-6 mx-auto mt-6">
+<div class="grid grid-cols-2 gap-8 justify-around lg:hidden w-full border border-gray-200 rounded-lg py-6 mx-auto mt-6">
   {# Group stats -#}
   {% call stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center")) -%}
   {# End group stats -#}

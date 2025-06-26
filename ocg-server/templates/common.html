@@ -59,7 +59,7 @@
              id="ts_query"
              name="ts_query"
              value="{{ value_ }}"
-             class="peer w-[100%] rounded-full border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-14"
+             class="peer w-[100%] rounded-full border border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-14"
              placeholder="{{ placeholder }}"
              autocomplete="off" />
       <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
@@ -91,7 +91,7 @@
           <div class="relative p-4 w-full max-w-2xl max-h-full">
             <div class="relative bg-white rounded-lg shadow">
               {# Modal header -#}
-              <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+              <div class="flex items-center justify-between p-4 md:p-5 border-b border-gray-200 rounded-t">
                 <h3 class="text-xl font-semibold text-gray-900">Search tips</h3>
                 <button id="close-search-tips-modal"
                         type="button"
@@ -170,10 +170,10 @@
   {% if let Some(logo_url) = logo_url -%}
     {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", *size * 2) ) -%}
 
-    <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
+    <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-gray-200 border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
          style="background-image: url('{{ bg_image }}')"></div>
   {% else -%}
-    <div class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}">
+    <div class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-gray-300 border border-gray-200 border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}">
       <div class="relative h-full w-full flex place-items-center p-2 text-[0.78rem] text-gray-600 font-bold leading-5 capitalize z-10">
         <p class="w-full text-ellipsis overflow-hidden text-center">{{ name.unwrap_or(&"".to_string() ) }}</p>
       </div>

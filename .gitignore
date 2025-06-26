@@ -1,5 +1,7 @@
 .DS_Store
 .vscode
+/target
 Chart.lock
 chart/charts
-/target
+ocg-server/dist
+ocg-server/static/css/styles.css
