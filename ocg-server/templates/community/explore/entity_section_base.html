@@ -118,7 +118,7 @@
         <div class="hidden flex-row flex-1 items-center md:flex">
           <ul class="flex items-center justify-center">
             {# List view -#}
-            <li>
+            <li class="group">
               <input type="radio"
                      name="view_mode"
                      id="list"
@@ -126,7 +126,7 @@
                      class="hidden peer"
                      {% if view_mode == ViewMode::List %}checked{% endif %}>
               <label for="list"
-                     class="group w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border border-gray-200 rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+                     class="w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border border-gray-200 rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
                 <div class="svg-icon h-3 w-3 bg-gray-500 group-has-[input:checked]:bg-primary-500 icon-list"></div>
                 <div class="text-[0.8rem] text-center text-nowrap ms-1">List</div>
               </label>
@@ -135,7 +135,7 @@
 
             {# Calendar view -#}
             {% if entity == Entity::Events -%}
-              <li>
+              <li class="group">
                 <input type="radio"
                        name="view_mode"
                        id="calendar"
@@ -143,7 +143,7 @@
                        class="hidden peer"
                        {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
                 <label for="calendar"
-                       class="group w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border border-gray-200 cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+                       class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border border-gray-200 cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
                   <div class="svg-icon h-3 w-3 bg-gray-500 group-has-[input:checked]:bg-primary-500 icon-calendar"></div>
                   <div class="text-[0.8rem] text-center text-nowrap ms-1">Calendar</div>
                 </label>
@@ -152,7 +152,7 @@
             {# End calendar view -#}
 
             {# Map view -#}
-            <li>
+            <li class="group">
               <input type="radio"
                      name="view_mode"
                      id="map"
@@ -160,7 +160,7 @@
                      class="hidden peer"
                      {% if view_mode == ViewMode::Map %}checked{% endif %}>
               <label for="map"
-                     class="group w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border border-gray-200 rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
+                     class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.8rem] text-gray-500 bg-white border border-gray-200 rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-gray-50">
                 <div class="svg-icon h-3.5 w-3.5 bg-gray-500 group-has-[input:checked]:bg-primary-500 icon-map"></div>
                 <div class="text-[0.8rem] text-center text-nowrap ms-1">Map</div>
               </label>

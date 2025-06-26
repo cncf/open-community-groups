@@ -126,7 +126,7 @@
            class="hidden peer"
            {% if active_filters.contains(&value.to_string()) %}checked{% endif %}>
     <label for="{{ value }}"
-           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
     </label>
   </li>
@@ -153,7 +153,7 @@
              class="hidden peer">
     {% endif -%}
     <label for="{{ value }}"
-           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+           class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
       <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
     </label>
   </li>
@@ -231,7 +231,7 @@
                class="hidden peer"
                {% if active_filters.is_empty() %}checked{% endif %}>
         <label for="any-checkbox-{{ name }}"
-               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="text-[0.8rem] text-center text-nowrap">Any</div>
         </label>
       </li>
@@ -284,7 +284,7 @@
                  checked>
         {% endif -%}
         <label for="any-radio-{{ name }}"
-               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
+               class="inline-flex items-center justify-between w-full px-2 py-1 text-gray-500 bg-white border border-gray-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-gray-600 peer-checked:text-primary-500 hover:bg-gray-50">
           <div class="text-[0.8rem] text-center text-nowrap">Any</div>
         </label>
       </li>
