@@ -43,6 +43,10 @@
   mask-size: cover;
 }
 
+button:enabled {
+  cursor: pointer;
+}
+
 /* Footer */
 .copyright a {
   color: white;
