@@ -35,7 +35,7 @@
             {% if let Some(location) = self.location(16) -%}
               {% call common::icon_text(icon_name = "location", text = location) -%}
             {% endif -%}
-            {% call common::event_badge(kind = kind, extra_classes = Some("ms-2")) -%}
+            {% call common::event_badge(kind = kind) -%}
           </div>
           {% when EventKind::Virtual -%}
           <div class="flex items-center">
@@ -44,7 +44,7 @@
                  src="/static/images/icons/location.svg"
                  alt="Location icon"
                  class="me-2" />
-            {% call common::event_badge(kind = kind, extra_classes = Some("ms-2")) -%}
+            {% call common::event_badge(kind = kind) -%}
           </div>
         {% endmatch -%}
       </div>
