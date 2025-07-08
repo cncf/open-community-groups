@@ -13,7 +13,7 @@
       <div id="loading-filters" class="me-3 w-6 group">{% call common::small_spinner() -%}</div>
       {# End loading spinner -#}
 
-      {% call common::secondary_mini_button(id = "reset-filters", content = "Reset", extra_styles = Some("hidden lg:flex reset-filters")) -%}
+      <button id="reset-filters" class="btn-mini hidden lg:flex reset-filters">Reset</button>
     </div>
   </div>
 {% endmacro -%}

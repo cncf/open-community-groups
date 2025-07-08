@@ -1,31 +1,5 @@
-{# Primary link -#}
-{% macro primary_link(content, href, rounded, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  <a class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block text-base font-medium text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}"
-     href="{{ href }}">{{ content|safe }}</a>
-{% endmacro primary_link -%}
-{# End primary link -#}
 
-{# Secondary mini button -#}
-{% macro secondary_mini_button(id, content, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <button id="{{ id }}"
-          class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}">
-    {{ content|safe }}
-  </button>
-{% endmacro secondary_mini_button -%}
-{# End secondary mini button -#}
-
-{# Secondary link -#}
-{% macro secondary_link(content, href, rounded, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <a class="{%- if rounded -%} p-2 h-[44px] w-[44px] {%- else -%} py-2 px-5 {%- endif %} inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {{ extra_styles_ }}"
-     href="{{ href }}">{{ content|safe }}</a>
-{% endmacro secondary_link -%}
-{# End secondary link -#}
 
 {# Search bar -#}
 {% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) -%}
