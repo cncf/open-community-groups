@@ -1,6 +1,3 @@
-
-
-
 {# Search bar -#}
 {% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) -%}
   {% let value_ = value.clone().unwrap_or("".to_string()) -%}
@@ -170,12 +167,12 @@
 {# Icon text -#}
 {% macro icon_text(icon_name, text, extra_classes = None) -%}
   {% let extra_classes_ = extra_classes.unwrap_or("") -%}
-  
+
   <div class="icon-text {{ extra_classes_ }}">
-    <img height="12" 
-         width="12" 
-         src="/static/images/icons/{{ icon_name }}.svg" 
-         alt="{{ icon_name | capitalize }} icon" 
+    <img height="12"
+         width="12"
+         src="/static/images/icons/{{ icon_name }}.svg"
+         alt="{{ icon_name | capitalize }} icon"
          class="mr-2" />
     <span>{{ text }}</span>
   </div>
@@ -185,7 +182,7 @@
 {# Event badge -#}
 {% macro event_badge(kind, canceled = false, extra_classes = None) -%}
   {% let extra_classes_ = extra_classes.unwrap_or("") -%}
-  
+
   {% if canceled -%}
     <span class="event-badge canceled {{ extra_classes_ }}">Canceled</span>
   {% else -%}
