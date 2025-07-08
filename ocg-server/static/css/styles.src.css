@@ -35,8 +35,6 @@
     @apply py-2 px-5 inline-block bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
   }
 
-  /* {%- if rounded -%} p-2 h-[44px] w-[44px] */
-
   .btn-mini {
     @apply bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white
   }
