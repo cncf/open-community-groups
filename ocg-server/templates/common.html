@@ -1,13 +1,3 @@
-{# Primary button -#}
-{% macro primary_button(id, content, rounded, extra_styles = None, disabled = false) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <button id="{{ id }}"
-          class="{%- if rounded -%} p-2.5 h-[44px] w-[44px] {%- else -%} py-1.5 px-5 h-[40px] {%- endif %} text-base font-medium text-center text-white rounded-full bg-primary-500 {%+ if !disabled %} hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white {%- endif %} {{ extra_styles_ }}"
-          disabled="{{ disabled }}">{{ content|safe }}</button>
-{% endmacro primary_button -%}
-{# End primary button -#}
-
 {# Primary link -#}
 {% macro primary_link(content, href, rounded, extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
@@ -69,9 +59,10 @@
         </button>
       </div>
       <div class="absolute right-[6px] top-[5px]">
-        {# djlint:off H008 -#}
-        {% call secondary_button(id = "search-btn", content = "<div class='svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass'></div>", rounded = true, extra_styles = Some("mt-[3px] mr-[3px]")) -%}
-        {# djlint:on H008 -#}
+        <button id="search-btn"
+                class="btn-secondary group p-1.5 h-[30px] w-[30px] mt-[3px] mr-[3px]">
+          <div class="svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white icon-magnifying-glass"></div>
+        </button>
       </div>
 
       {% if with_help -%}
