@@ -51,8 +51,11 @@
 
     {# Desktop buttons -#}
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      {% call common::secondary_button(id = "signup-btn", content = "Sign up", rounded = false, disabled = true) -%}
-      {% call common::primary_button(id = "login-btn", content = "Log in", rounded = false, disabled = true) -%}
+      {# Sign up button -#}
+      <button id="signup-btn" class="btn-secondary" disabled>Sign up</button>
+
+      {# Log in button -#}
+      <button id="login-btn" class="btn-primary" disabled>Log in</button>
     </div>
     {# End desktop buttons -#}
   </nav>

@@ -50,7 +50,7 @@
         </div>
         {# End search bar -#}
 
-        {% call common::primary_link(content = "Explore all", href = "/explore", rounded = false) -%}
+        <a href="/explore" class="btn-primary-anchor">Explore all</a>
       </div>
 
       {# Jumbotron background image -#}
@@ -124,7 +124,7 @@
 
       {# See all events on desktop -#}
       <div class="hidden justify-self-end md:flex">
-        {% call common::secondary_link(content = "See all events", href = link, rounded = false, extra_styles = Some("ms-4")) -%}
+        <a href="{{ link }}" class="btn-secondary-anchor ms-4">See all events</a>
       </div>
       {# End see all events on desktop -#}
     </div>
@@ -139,7 +139,7 @@
 
       {# See all events on mobile -#}
       <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
-        {% call common::secondary_link(content = "See all events", href = link, rounded = false) -%}
+        <a href="{{ link }}" class="btn-secondary-anchor">See all events</a>
       </div>
       {# See all events on mobile -#}
     </div>
@@ -153,7 +153,7 @@
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
     {# See all groups on desktop -#}
     <div class="hidden justify-self-end md:flex">
-      {% call common::secondary_link(content = "See all groups", href = link, rounded = false, extra_styles = Some("ms-4")) -%}
+      <a href="{{ link }}" class="btn-secondary-anchor ms-4">See all groups</a>
     </div>
     {# End see all groups on desktop -#}
   </div>
@@ -167,7 +167,7 @@
     {# End groups cards -#}
     {# See all groups mobile button -#}
     <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
-      {% call common::secondary_link(content = "See all groups", href = link, rounded = false) -%}
+      <a href="{{ link }}" class="btn-secondary-anchor">See all groups</a>
     </div>
     {# End see all groups mobile button -#}
   </div>
