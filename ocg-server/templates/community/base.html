@@ -26,9 +26,10 @@
     <script type="text/javascript" src="/static/vendor/js/htmx.v2.0.4.min.js"></script>
     {# End scripts -#}
   </head>
-  <body class="h-full {% block bg_color %} bg-white {% endblock bg_color %}">
+  {# djlint:off #}
+  <body class='h-full {% if path == "/explore" %}bg-gray-100{% else %}bg-white{% endif %}'>
     <div class="min-h-full flex flex-col">
-      <div class="{%- block header_color -%} {{ header_color }} {%- endblock header_color -%}">
+      <div class='{%- if path == "/" -%}bg-gray-100{%- else if path == "/explore" -%}bg-transparent{%- else -%}bg-white{%- endif -%}'>
         {# Header -#}
         {% include "community/header.html" -%}
         {# End header -#}
@@ -51,4 +52,5 @@
       {# End footer -#}
     </div>
   </body>
+  {# djlint:on #}
 </html>
