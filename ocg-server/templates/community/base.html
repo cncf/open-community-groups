@@ -26,7 +26,7 @@
     <script type="text/javascript" src="/static/vendor/js/htmx.v2.0.4.min.js"></script>
     {# End scripts -#}
   </head>
-  <body class="h-full {% if path == "/explore" -%}bg-gray-100{% else -%}bg-white{% endif -%}">
+  <body class="h-full {% if path == "/explore" %}bg-gray-100{% else %}bg-white{% endif %}">
     <div class="min-h-full flex flex-col">
       <div class="{%- if path == "/" -%}bg-gray-100{%- else if path == "/explore" -%}bg-transparent{%- else -%}bg-white{%- endif -%}">
         {# Header -#}
