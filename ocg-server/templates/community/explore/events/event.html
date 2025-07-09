@@ -64,7 +64,7 @@
               {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
             {% endif -%}
             {% if canceled -%}
-              {% call common::event_badge(kind = kind, canceled = true, extra_classes = Some("ms-3")) -%}
+              {% call common::event_badge(kind = kind, canceled = true, extra_styles = Some("ms-3")) -%}
             {% endif -%}
           </div>
           {# End event date -#}
@@ -79,7 +79,7 @@
     <div class="card-meta mt-3 h-[21px]">
       {% if kind != EventKind::Virtual -%}
         {% if let Some(location) = self.location(25) -%}
-          {% call common::icon_text(icon_name = "location", text = location, extra_classes = Some("me-2")) -%}
+          {% call common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2")) -%}
         {% endif -%}
       {% else -%}
         <div class="icon-text me-2">
@@ -99,7 +99,7 @@
         {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
       {% endif -%}
       {% if canceled -%}
-        {% call common::event_badge(kind = kind, canceled = true, extra_classes = Some("ms-3")) -%}
+        {% call common::event_badge(kind = kind, canceled = true, extra_styles = Some("ms-3")) -%}
       {% endif -%}
     </div>
     {# End event date -#}

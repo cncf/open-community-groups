@@ -165,10 +165,10 @@
 {# End main loading -#}
 
 {# Icon text -#}
-{% macro icon_text(icon_name, text, extra_classes = None) -%}
-  {% let extra_classes_ = extra_classes.unwrap_or("") -%}
+{% macro icon_text(icon_name, text, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  <div class="icon-text {{ extra_classes_ }}">
+  <div class="icon-text {{ extra_styles_ }}">
     <img height="12"
          width="12"
          src="/static/images/icons/{{ icon_name }}.svg"
@@ -180,13 +180,13 @@
 {# End icon text -#}
 
 {# Event badge -#}
-{% macro event_badge(kind, canceled = false, extra_classes = None) -%}
-  {% let extra_classes_ = extra_classes.unwrap_or("") -%}
+{% macro event_badge(kind, canceled = false, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   {% if canceled -%}
-    <span class="event-badge canceled {{ extra_classes_ }}">Canceled</span>
+    <span class="event-badge canceled {{ extra_styles_ }}">Canceled</span>
   {% else -%}
-    <span class="event-badge {{ extra_classes_ }}">{{ kind }}</span>
+    <span class="event-badge {{ extra_styles_ }}">{{ kind }}</span>
   {% endif -%}
 {% endmacro event_badge -%}
 {# End event badge -#}
