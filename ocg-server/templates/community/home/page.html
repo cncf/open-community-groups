@@ -106,7 +106,9 @@
   {# End main content -#}
 
   {# Gallery -#}
-  {% include "community/home/gallery.html" -%}
+  {% if let Some(photos_urls) = community.photos_urls -%}
+    <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+  {% endif -%}
   {# End gallery -#}
 {% endblock content -%}
 
