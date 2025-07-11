@@ -6,15 +6,18 @@ use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use serde::{Deserialize, Serialize};
 
-use crate::db::community::DBCommunity;
+use crate::db::{community::DBCommunity, group::DBGroup};
 
 /// Module containing database functionality for the community site.
 pub(crate) mod community;
 
+/// Module containing database functionality for the group site.
+pub(crate) mod group;
+
 /// Database trait defining all data access operations. This is the parent trait
 /// that includes all the functionality defined in other traits (e.g. `DBCommunity`).
 #[async_trait]
-pub(crate) trait DB: DBCommunity {}
+pub(crate) trait DB: DBCommunity + DBGroup {}
 
 /// Type alias for a thread-safe, shared database trait object.
 pub(crate) type DynDB = Arc<dyn DB + Send + Sync>;
