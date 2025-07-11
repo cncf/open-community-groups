@@ -65,7 +65,8 @@
 {# End type -#}
 
 {# Group category -#}
-{% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) -%}
+{# {% call macros::collapsible_filter_checkboxes(title = "Group category", options = filters_options.group_category, name = "group_category", active_filters = filters.group_category, view = "rows", max_visible_items_number = 4) -%} #}
+<collapsible-filter title="Group category" name="group_category" form="{{ entity }}-form" options="{{ filters_options.group_category|json }}" selected="{{ filters.group_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
 {# End Group category -#}
 
 {# Regions -#}
