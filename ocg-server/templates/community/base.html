@@ -28,6 +28,26 @@
     <script type="module"
             src="/static/js/community/explore/collapsible-filter.js"></script>
     {# End scripts -#}
+
+    <script type="text/javascript">
+      // htmx extension to remove empty values from the parameters
+      htmx.defineExtension("no-empty-vals", {
+        encodeParameters: (xhr, parameters, elt) => {
+          const currentParameters = new URLSearchParams(parameters);
+
+          for (const key of [...currentParameters.keys()]) {
+            const value = currentParameters.get(key).trim();
+            // Remove empty values or "0"
+            if (value === "" || value === "0") {
+              parameters.delete(key);
+            }
+          }
+
+          // Let HTMX encode the parameters
+          return null;
+        }
+      });
+    </script>
   </head>
   {# djlint:off #}
   <body class='h-full {% if path == "/explore" %}bg-gray-100{% else %}bg-white{% endif %}'>

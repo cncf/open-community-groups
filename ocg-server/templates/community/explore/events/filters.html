@@ -70,16 +70,19 @@
 {# End Group category -#}
 
 {# Regions -#}
-{% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) -%}
+{# {% call macros::collapsible_filter_checkboxes(title = "Region", options = filters_options.region, name = "region", active_filters = filters.region, view = "cols", max_visible_items_number = 5) -%} #}
+<collapsible-filter title="Region" name="region" form="{{ entity }}-form" options="{{ filters_options.region|json }}" selected="{{ filters.region|json }}" viewType="cols" maxVisibleItems="5"></collapsible-filter>
 {# End Regions -#}
 
 {# Event category -#}
-{% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) -%}
+{# {% call macros::collapsible_filter_checkboxes(title = "Event category", options = filters_options.event_category, name = "event_category", active_filters = filters.event_category, view = "rows", max_visible_items_number = 4) -%} #}
+<collapsible-filter title="Event category" name="event_category" form="{{ entity }}-form" options="{{ filters_options.event_category|json }}" selected="{{ filters.event_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
 {# End event category -#}
 
 {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
   {# Distance -#}
-  {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) -%}
+  {# {% call macros::collapsible_filter_radios(title = "Distance", options = filters_options.distance, name = "distance", active_filter = filters.distance, view = "cols", max_visible_items_number = 5) -%} #}
+  <collapsible-filter title="Distance" name="distance" form="{{ entity }}-form" options="{{ filters_options.distance|json }}" selected="{{ filters.distance|json }}" viewType="cols" maxVisibleItems="5" singleSelection></collapsible-filter>
   {# End distance -#}
 {% endif -%}
 
