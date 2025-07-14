@@ -9,6 +9,7 @@ use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 use chrono_tz::Tz;
 use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use tracing::{instrument, trace};
 
 use crate::{
@@ -98,6 +99,7 @@ pub(crate) struct EventsSection {
 /// This struct captures all possible filtering criteria for events including
 /// location-based filters (bounding box, distance), temporal filters (date range),
 /// categorical filters, etc.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
     /// Selected event categories to filter by.
@@ -114,52 +116,36 @@ pub(crate) struct EventsFilters {
     pub region: Vec<String>,
 
     /// Northeast latitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lat: Option<f64>,
     /// Northeast longitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lon: Option<f64>,
     /// Southwest latitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lat: Option<f64>,
     /// Southwest longitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lon: Option<f64>,
     /// Start date for event filtering (YYYY-MM-DD format).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub date_from: Option<String>,
     /// End date for event filtering (YYYY-MM-DD format).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub date_to: Option<String>,
     /// Maximum distance in meters from user's location.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u64>,
     /// Whether to include bounding box in results (for map view).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
     /// Whether to pre-render popover HTML.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_popover_html: Option<bool>,
     /// User's latitude for distance-based filtering.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     /// Number of results per page.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
     /// Pagination offset for results.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
     /// Sort order for results (e.g., "date", "distance").
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<String>,
     /// Full-text search query.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
     /// Display mode for results (list, calendar, or map).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub view_mode: Option<ViewMode>,
 }
 
@@ -296,6 +282,7 @@ impl EventsResultsSection {
 /// This struct contains all the data needed to render an event in the explore page,
 /// including location details, timing, and group information. It can also render itself
 /// as a popover for map/calendar views.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/event.html")]
 pub(crate) struct Event {
@@ -320,52 +307,34 @@ pub(crate) struct Event {
     pub timezone: Tz,
 
     /// Brief event description for listings.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description_short: Option<String>,
     /// Event end time in UTC.
-    #[serde(
-        with = "chrono::serde::ts_seconds_option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
     /// City where the group is based.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_city: Option<String>,
     /// ISO country code of the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_country_code: Option<String>,
     /// Full country name of the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_country_name: Option<String>,
     /// State/province where the group is based.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub group_state: Option<String>,
     /// Latitude for map display.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     /// URL to the event or group logo.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
     /// Longitude for map display.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
     /// Pre-rendered HTML for map/calendar popovers.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub popover_html: Option<String>,
     /// Event start time in UTC.
-    #[serde(
-        with = "chrono::serde::ts_seconds_option",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
     /// Street address of the venue.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_address: Option<String>,
     /// City where the event takes place.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_city: Option<String>,
     /// Name of the venue.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub venue_name: Option<String>,
 }
 
@@ -430,6 +399,7 @@ pub(crate) struct GroupsSection {
 /// Similar to `EventsFilters` but without temporal filters since groups are ongoing
 /// entities. Supports location-based filtering, categorical filtering, and full-text
 /// search.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
     /// Selected group categories to filter by.
@@ -440,46 +410,32 @@ pub(crate) struct GroupsFilters {
     pub region: Vec<String>,
 
     /// Northeast latitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lat: Option<f64>,
     /// Northeast longitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_ne_lon: Option<f64>,
     /// Southwest latitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lat: Option<f64>,
     /// Southwest longitude of bounding box for map view.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox_sw_lon: Option<f64>,
     /// Maximum distance in meters from user's location.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<f64>,
     /// Whether to include bounding box in results.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_bbox: Option<bool>,
     /// Whether to pre-render popover HTML.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_popover_html: Option<bool>,
     /// User's latitude for distance-based filtering.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     /// Number of results per page.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
     /// Pagination offset for results.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
     /// Sort order for results.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_by: Option<String>,
     /// Full-text search query.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub ts_query: Option<String>,
     /// Display mode for results (list or map).
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub view_mode: Option<ViewMode>,
 }
 
@@ -578,6 +534,7 @@ impl GroupsResultsSection {
 /// This struct contains all the data needed to render a group in the explore page,
 /// including location details and metadata. It can also render itself as a popover for
 /// map views.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups/group.html")]
 pub(crate) struct Group {
@@ -595,34 +552,24 @@ pub(crate) struct Group {
     pub slug: String,
 
     /// City where the group is based.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
     /// ISO country code of the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub country_code: Option<String>,
     /// Full country name of the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub country_name: Option<String>,
     /// Group description text.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Latitude for map display.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     /// URL to the group logo.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
     /// Longitude for map display.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
     /// Pre-rendered HTML for map popovers.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub popover_html: Option<String>,
     /// Name of the geographic region.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub region_name: Option<String>,
     /// State/province where the group is based.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
 }
 
