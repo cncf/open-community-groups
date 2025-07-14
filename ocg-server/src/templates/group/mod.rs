@@ -6,6 +6,7 @@ use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -28,6 +29,7 @@ pub(crate) struct Page {
 }
 
 /// Comprehensive group information for the group page.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Group {
     /// Category this group belongs to.
@@ -48,73 +50,50 @@ pub(crate) struct Group {
     pub slug: String,
 
     /// Banner image URL for the group page.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub banner_url: Option<String>,
     /// City where the group is based.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
     /// ISO country code of the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub country_code: Option<String>,
     /// Full country name of the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub country_name: Option<String>,
     /// Group description text.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Additional links as key-value pairs.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Facebook profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub facebook_url: Option<String>,
     /// Flickr profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub flickr_url: Option<String>,
     /// GitHub organization URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub github_url: Option<String>,
     /// Instagram profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub instagram_url: Option<String>,
     /// Latitude for map display.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub latitude: Option<f64>,
     /// `LinkedIn` profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub linkedin_url: Option<String>,
     /// URL to the group logo.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_url: Option<String>,
     /// Longitude for map display.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub longitude: Option<f64>,
     /// Gallery of photo URLs.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub photos_urls: Option<Vec<String>>,
     /// Name of the geographic region.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub region_name: Option<String>,
     /// Slack workspace URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub slack_url: Option<String>,
     /// State/province where the group is based.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<String>,
     /// Tags associated with the group.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
     /// Twitter profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub twitter_url: Option<String>,
     /// `WeChat` URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub wechat_url: Option<String>,
     /// Group website URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub website_url: Option<String>,
     /// `YouTube` channel URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub youtube_url: Option<String>,
 }
 
@@ -141,6 +120,7 @@ impl Group {
 }
 
 /// User information for group organizers and members.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct User {
     /// Unique identifier for the user.
@@ -148,30 +128,21 @@ pub(crate) struct User {
     pub id: Uuid,
 
     /// User's first name.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub first_name: Option<String>,
     /// User's last name.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_name: Option<String>,
     /// Company the user works for.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub company: Option<String>,
     /// User's job title.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// URL to the user's profile photo.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub photo_url: Option<String>,
     /// Facebook profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub facebook_url: Option<String>,
     /// `LinkedIn` profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub linkedin_url: Option<String>,
     /// Twitter profile URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub twitter_url: Option<String>,
     /// Personal website URL.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub website_url: Option<String>,
 }
