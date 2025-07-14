@@ -46,17 +46,11 @@ export class CollapsibleFilter extends LitWrapper {
   }
 
   _prepareSelected() {
-    console.log("Preparing selected options:", this.selected);
     if (this.selected === null || this.selected === undefined) {
       this.selected = [];
     } else if (typeof this.selected === "string" || typeof this.selected === "number") {
-      this.selected = [this.selected];
+      this.selected = [this.selected.toString()];
     }
-    // if (typeof this.selected === "string") {
-    //   this.selected = [this.selected];
-    // } else {
-    //   this.selected = this.selected || [];
-    // }
   }
 
   _checkMaxVisibleItems() {
