@@ -28,7 +28,31 @@ returns json as $$
         'twitter_url', g.twitter_url,
         'website_url', g.website_url,
         'wechat_url', g.wechat_url,
-        'youtube_url', g.youtube_url
+        'youtube_url', g.youtube_url,
+        'members_count', (
+            select count(*)
+            from group_member
+            where group_id = g.group_id
+        ),
+        'organizers', (
+            select coalesce(json_agg(json_strip_nulls(json_build_object(
+                'user_id', u.user_id,
+                'first_name', u.first_name,
+                'last_name', u.last_name,
+                'company', u.company,
+                'title', u.title,
+                'photo_url', u.photo_url,
+                'facebook_url', u.facebook_url,
+                'linkedin_url', u.linkedin_url,
+                'twitter_url', u.twitter_url,
+                'website_url', u.website_url
+            ))), '[]')
+            from group_team gt
+            join "user" u using (user_id)
+            where gt.group_id = g.group_id
+            and gt.role = 'organizer'
+            order by gt."order" nulls last, u.first_name, u.last_name
+        )
     )) as json_data
     from "group" g
     join group_category gc using (group_category_id)

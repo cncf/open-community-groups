@@ -7,6 +7,7 @@ use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::templates::{
     community::home::Event,
@@ -37,8 +38,12 @@ pub(crate) struct Group {
     /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Total number of group members.
+    pub members_count: i64,
     /// Group name.
     pub name: String,
+    /// List of group organizers.
+    pub organizers: Vec<User>,
     /// URL slug of the group.
     pub slug: String,
 
@@ -133,4 +138,40 @@ impl Group {
         group.color = color(&group.name).to_string();
         Ok(group)
     }
+}
+
+/// User information for group organizers and members.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct User {
+    /// Unique identifier for the user.
+    #[serde(rename = "user_id")]
+    pub id: Uuid,
+
+    /// User's first name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first_name: Option<String>,
+    /// User's last name.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_name: Option<String>,
+    /// Company the user works for.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub company: Option<String>,
+    /// User's job title.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// URL to the user's profile photo.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photo_url: Option<String>,
+    /// Facebook profile URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub facebook_url: Option<String>,
+    /// `LinkedIn` profile URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub linkedin_url: Option<String>,
+    /// Twitter profile URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter_url: Option<String>,
+    /// Personal website URL.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website_url: Option<String>,
 }
