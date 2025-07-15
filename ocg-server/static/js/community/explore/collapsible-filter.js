@@ -14,7 +14,6 @@ export class CollapsibleFilter extends LitWrapper {
     viewType: { type: String },
     singleSelection: { type: Boolean },
     visibleOptions: { type: Array },
-    form: { type: String },
   };
 
   constructor() {
@@ -29,7 +28,6 @@ export class CollapsibleFilter extends LitWrapper {
     this.viewType = "cols";
     this.visibleOptions = [];
     this.singleSelection = false;
-    this.form = "";
   }
 
   cleanSelected() {
@@ -109,6 +107,11 @@ export class CollapsibleFilter extends LitWrapper {
     }
   }
 
+  _getParentFormId() {
+    const form = this.closest("form");
+    return form ? form.id : null;
+  }
+
   _onSelect(value) {
     if (!this.singleSelection) {
       if (!this.selected.includes(value)) {
@@ -134,7 +137,11 @@ export class CollapsibleFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    triggerChangeOnForm(this.form);
+    const parentFormId = this._getParentFormId();
+    if (parentFormId) {
+      // Trigger change event on the form
+      triggerChangeOnForm(parentFormId);
+    }
   }
 
   render() {

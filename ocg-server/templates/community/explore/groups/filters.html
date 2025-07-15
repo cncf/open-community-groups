@@ -1,15 +1,15 @@
 {% import "community/explore/filters.html" as macros -%}
 
 {# Group category -#}
-<collapsible-filter title="Group category" name="group_category" form="{{ entity }}-form" options="{{ filters_options.group_category|json }}" selected="{{ filters.group_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
+<collapsible-filter title="Group category" name="group_category" options="{{ filters_options.group_category|json }}" selected="{{ filters.group_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
 {# End Group category -#}
 
 {# Regions -#}
-<collapsible-filter title="Region" name="region" form="{{ entity }}-form" options="{{ filters_options.region|json }}" selected="{{ filters.region|json }}" viewType="cols" maxVisibleItems="5"></collapsible-filter>
+<collapsible-filter title="Region" name="region" options="{{ filters_options.region|json }}" selected="{{ filters.region|json }}" viewType="cols" maxVisibleItems="5"></collapsible-filter>
 {# End Regions -#}
 
 {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
   {# Distance -#}
-  <collapsible-filter title="Distance" name="distance" form="{{ entity }}-form" options="{{ filters_options.distance|json }}" selected="{{ filters.distance|json }}" viewType="cols" maxVisibleItems="5" singleSelection></collapsible-filter>
+  <collapsible-filter title="Distance" name="distance" options="{{ filters_options.distance|json }}" selected="{{ filters.distance|json }}" viewType="cols" maxVisibleItems="5" singleSelection></collapsible-filter>
   {# End distance -#}
 {% endif -%}
