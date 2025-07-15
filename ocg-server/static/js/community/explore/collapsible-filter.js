@@ -287,7 +287,7 @@ export class CollapsibleFilter extends LitWrapper {
               data-label="{{ label }}"
               type="button"
               @click=${this._changeCollapseState}
-              class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium text-xs"
+              class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
             >
               ${this.isCollapsed ? "+ Show more" : "- Show less"}
             </button>
