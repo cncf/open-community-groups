@@ -43,6 +43,7 @@ export class CollapsibleFilter extends LitWrapper {
     this._prepareSelected();
     this._checkMaxVisibleItems();
     this._filterOptions();
+    this._checkExpandIfHiddenSelected();
   }
 
   _prepareSelected() {
@@ -92,6 +93,22 @@ export class CollapsibleFilter extends LitWrapper {
     this._filterOptions();
   }
 
+  _checkExpandIfHiddenSelected() {
+    if (!this.isCollapsed) return;
+
+    // Check if any selected items would be hidden when collapsed
+    const sortedOptions = this._sortOptions();
+    const hiddenWhenCollapsed = sortedOptions.slice(this.maxVisibleItems);
+
+    // If any selected items are in the hidden section, expand the filter
+    const hasSelectedHiddenItems = hiddenWhenCollapsed.some((opt) => this.selected.includes(opt.value));
+
+    if (hasSelectedHiddenItems) {
+      this.isCollapsed = false;
+      this._filterOptions();
+    }
+  }
+
   _onSelect(value) {
     if (!this.singleSelection) {
       if (!this.selected.includes(value)) {
@@ -103,6 +120,7 @@ export class CollapsibleFilter extends LitWrapper {
       this.selected = [value];
     }
     this._checkMaxVisibleItems();
+    this._checkExpandIfHiddenSelected();
     this._filterOptions();
     this.requestUpdate();
   }

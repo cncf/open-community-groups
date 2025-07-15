@@ -42,6 +42,14 @@ export const closeFiltersDrawer = () => {
  * @param {string} formId - The ID of the form containing the filters to reset
  */
 export const resetFilters = (formId) => {
+  // Reset all CollapsibleFilter components in the form
+  const collapsibleFilters = document.querySelectorAll(`#${formId} collapsible-filter`);
+  collapsibleFilters.forEach((filter) => {
+    if (filter.cleanSelected) {
+      filter.cleanSelected();
+    }
+  });
+
   // Uncheck all checkboxes and radios
   document.querySelectorAll(`#${formId} input[type=checkbox]`).forEach((el) => (el.checked = false));
   document.querySelectorAll(`#${formId} input[type=radio]`).forEach((el) => (el.checked = false));
@@ -108,34 +116,6 @@ export const resetDateFiltersOnCalendarViewMode = () => {
 };
 
 /**
- * Selects the "Any" option for a given filter, unchecking all other options.
- * @param {string} name - The name of the filter
- * @param {string} type - The type of filter
- * @param {boolean} triggerChange - Whether to trigger a form change event
- */
-export const selectAnyOption = (name, type, triggerChange) => {
-  const anyInput = document.getElementById(`any-${type}-${name}`);
-  if (anyInput && !anyInput.isChecked) {
-    // Uncheck all other options
-    const inputs = document.querySelectorAll(`input[name='${name}']:checked`);
-    inputs.forEach((input) => {
-      input.checked = false;
-    });
-
-    // Check "Any" option
-    anyInput.checked = true;
-
-    // Trigger change on form if needed
-    if (triggerChange) {
-      const form = anyInput.closest("form");
-      if (form) {
-        triggerChangeOnForm(form.id);
-      }
-    }
-  }
-};
-
-/**
  * Clears an input field and optionally triggers a form change event.
  * @param {string} id - The ID of the input field to clear
  * @param {string} formId - The ID of the form to trigger change on (optional)
@@ -190,44 +170,6 @@ export const searchOnEnter = (e, formId) => {
     }
     e.currentTarget.blur();
   }
-};
-
-/**
- * Expands collapsible filters that have active/checked options to ensure they are visible.
- */
-export const expandFiltersUsed = () => {
-  const collapsibles = document.querySelectorAll("[data-collapsible-item]");
-  collapsibles.forEach((el) => {
-    const filter = el.dataset.collapsibleLabel;
-    const hiddenCheckedOptions = el.querySelectorAll("li.hidden input:checked");
-    if (hiddenCheckedOptions.length > 0) {
-      toggleCollapsibleFilterVisibility(filter);
-    }
-  });
-};
-
-/**
- * Toggles the visibility of a collapsible filter section.
- * @param {string} filter - The filter identifier to toggle
- */
-export const toggleCollapsibleFilterVisibility = (filter) => {
-  const collapsibles = document.querySelectorAll(`[data-collapsible-label='${filter}']`);
-  collapsibles.forEach((collapsible) => {
-    const maxItems = collapsible.dataset.maxItems;
-    const isCollapsed = collapsible.classList.contains("collapsed");
-    if (isCollapsed) {
-      collapsible.classList.remove("collapsed");
-      collapsible.querySelectorAll("li").forEach((el) => el.classList.remove("hidden"));
-    } else {
-      collapsible.classList.add("collapsed");
-      collapsible.querySelectorAll("li[data-input-item]").forEach((el, index) => {
-        // Hide all items after the max_visible_items_number (add 1 to include the "Any" option)
-        if (index >= maxItems) {
-          el.classList.add("hidden");
-        }
-      });
-    }
-  });
 };
 
 /**

@@ -223,7 +223,6 @@
     resetFilters,
     resetDateFiltersOnCalendarViewMode,
     triggerChangeOnForm,
-    toggleCollapsibleFilterVisibility,
     unckeckAllKinds,
     updateDateInput
   } from '/static/js/community/explore/filters.js';
@@ -267,11 +266,6 @@
 
   const resetButtons = document.querySelectorAll('.reset-filters');
   resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ entity }}-form')));
-
-  const collapseBtns = document.querySelectorAll('.collapse-btn');
-  collapseBtns.forEach(btn => {
-    btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
-  });
 
   const forms = document.querySelectorAll('.filters-form');
   forms.forEach(form => {

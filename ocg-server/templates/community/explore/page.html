@@ -32,13 +32,8 @@
 
 <script type="module">
   import {
-    expandFiltersUsed
-  } from '/static/js/community/explore/filters.js';
-  import {
     hideLoadingSpinner
   } from '/static/js/common/common.js';
-
-  expandFiltersUsed();
 
   const entitySection = document.getElementById('entity-section');
   if (entitySection) {
@@ -49,9 +44,6 @@
       })
       hideLoadingSpinner("loading-filters");
       hideLoadingSpinner("loading-filters-mobile");
-    });
-    entitySection.addEventListener('htmx:afterSettle', () => {
-      expandFiltersUsed();
     });
   }
 </script>
