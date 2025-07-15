@@ -270,6 +270,7 @@ input:placeholder-shown {
 .icon-arrow-right-double { --icon-url: url('/static/images/icons/arrow_right_double.svg'); }
 .icon-arrow-right { --icon-url: url('/static/images/icons/arrow_right.svg'); }
 .icon-attendees { --icon-url: url('/static/images/icons/attendees.svg'); }
+.icon-buildings { --icon-url: url('/static/images/icons/buildings.svg'); }
 .icon-calendar { --icon-url: url('/static/images/icons/calendar.svg'); }
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
