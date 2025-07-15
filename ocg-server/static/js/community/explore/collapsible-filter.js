@@ -2,7 +2,26 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { triggerChangeOnForm } from "/static/js/community/explore/filters.js";
 
+/**
+ * Collapsible filter component for managing multiple selection options.
+ * Supports both single and multiple selection modes with collapse/expand functionality.
+ * Automatically detects parent form and manages selection state.
+ * @extends LitWrapper
+ */
 export class CollapsibleFilter extends LitWrapper {
+  /**
+   * Component properties definition
+   * @property {string} title - Filter section title displayed to users
+   * @property {string} name - Form input name attribute for checkbox elements
+   * @property {Array} options - Array of filter options with value and name properties
+   * @property {Array} formattedOptions - Internal processed options array
+   * @property {Array} selected - Array of currently selected option values
+   * @property {number} maxVisibleItems - Maximum options visible when collapsed
+   * @property {boolean} isCollapsed - Whether the filter is in collapsed state
+   * @property {'rows'|'cols'} viewType - Layout orientation for options display
+   * @property {boolean} singleSelection - Whether only one option can be selected
+   * @property {Array} visibleOptions - Filtered options array for current view
+   */
   static properties = {
     title: { type: String },
     name: { type: String },
@@ -30,6 +49,10 @@ export class CollapsibleFilter extends LitWrapper {
     this.singleSelection = false;
   }
 
+  /**
+   * Public method to reset all selected options.
+   * Used by parent form reset functionality.
+   */
   cleanSelected() {
     this.selected = [];
     this._filterOptions();
@@ -44,6 +67,11 @@ export class CollapsibleFilter extends LitWrapper {
     this._checkExpandIfHiddenSelected();
   }
 
+  /**
+   * Normalizes selected property to ensure it's always an array.
+   * Handles cases where selected is null, undefined, or a single value.
+   * @private
+   */
   _prepareSelected() {
     if (this.selected === null || this.selected === undefined) {
       this.selected = [];
@@ -52,12 +80,22 @@ export class CollapsibleFilter extends LitWrapper {
     }
   }
 
+  /**
+   * Adjusts maxVisibleItems to ensure all selected options are visible.
+   * Prevents hiding selected options when collapsed.
+   * @private
+   */
   _checkMaxVisibleItems() {
     if (this.selected.length > this.maxVisibleItems) {
       this.maxVisibleItems = this.selected.length;
     }
   }
 
+  /**
+   * Determines which options to display based on collapse state.
+   * Shows limited options when collapsed, all options when expanded.
+   * @private
+   */
   _filterOptions() {
     const sortedOptions = this._sortOptions();
     if (this.isCollapsed) {
@@ -67,7 +105,12 @@ export class CollapsibleFilter extends LitWrapper {
     }
   }
 
-  // Sort the options based on the selected order
+  /**
+   * Sorts options to display selected items first, then unselected items.
+   * This ensures selected options are always visible when collapsed.
+   * @returns {Array} Sorted array of options
+   * @private
+   */
   _sortOptions() {
     if (this.selected.length === 0) {
       return this.options;
@@ -86,11 +129,21 @@ export class CollapsibleFilter extends LitWrapper {
     }
   }
 
+  /**
+   * Toggles the collapse state of the filter.
+   * Called when user clicks the expand/collapse button.
+   * @private
+   */
   _changeCollapseState() {
     this.isCollapsed = !this.isCollapsed;
     this._filterOptions();
   }
 
+  /**
+   * Automatically expands the filter if any selected items would be hidden.
+   * Ensures users can always see their selected options.
+   * @private
+   */
   _checkExpandIfHiddenSelected() {
     if (!this.isCollapsed) return;
 
@@ -107,11 +160,23 @@ export class CollapsibleFilter extends LitWrapper {
     }
   }
 
+  /**
+   * Dynamically finds and returns the parent form ID.
+   * Uses DOM traversal to locate the nearest form element.
+   * @returns {string|null} Parent form ID or null if no form found
+   * @private
+   */
   _getParentFormId() {
     const form = this.closest("form");
     return form ? form.id : null;
   }
 
+  /**
+   * Handles option selection/deselection.
+   * Supports both single and multiple selection modes.
+   * @param {string} value - The value of the selected option
+   * @private
+   */
   _onSelect(value) {
     if (!this.singleSelection) {
       if (!this.selected.includes(value)) {
@@ -128,6 +193,11 @@ export class CollapsibleFilter extends LitWrapper {
     this.requestUpdate();
   }
 
+  /**
+   * Handles "Any" option selection by clearing all selections.
+   * Triggers form change event after component update.
+   * @private
+   */
   async _onSelectAny() {
     // Clear all selections when "Any" is clicked
     this.selected = [];
@@ -144,6 +214,11 @@ export class CollapsibleFilter extends LitWrapper {
     }
   }
 
+  /**
+   * Renders the complete collapsible filter component.
+   * Includes title, collapse button, option list, and show more/less button.
+   * @returns {import('lit').TemplateResult} Component template
+   */
   render() {
     const canCollapse = this.options.length > this.maxVisibleItems;
 
