@@ -253,7 +253,7 @@ export class CollapsibleFilter extends LitWrapper {
               ? "border-primary-500 text-primary-500"
               : "text-stone-500 hover:text-stone-600 hover:bg-stone-50"}"
           >
-            <div class="text-[0.8rem] text-center text-nowrap">Any</div>
+            <div class="text-[0.775rem] text-center text-nowrap">Any</div>
           </button>
         </li>
         ${repeat(
@@ -276,7 +276,7 @@ export class CollapsibleFilter extends LitWrapper {
                   @change=${() => this._onSelect(opt.value)}
                   class="sr-only"
                 />
-                <div class="text-[0.8rem] text-center text-nowrap capitalize">${opt.name}</div>
+                <div class="text-[0.775rem] text-center text-nowrap capitalize">${opt.name}</div>
               </label>
             </li>`,
         )}

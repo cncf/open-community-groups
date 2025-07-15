@@ -15,7 +15,7 @@
                class="hidden peer"
                {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
         <div class="svg-icon size-3 bg-stone-500 peer-checked:bg-primary-500 icon-in-person"></div>
-        <div class="text-[0.8rem] ms-2 text-stone-500 text-nowrap peer-checked:text-primary-500">In-person</div>
+        <div class="text-[0.775rem] ms-2 text-stone-500 text-nowrap peer-checked:text-primary-500">In-person</div>
       </label>
     </li>
     {# End in-person -#}
@@ -37,7 +37,7 @@
                  {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
         {% endif -%}
         <div class="svg-icon size-3 bg-stone-500 peer-checked:bg-primary-500 icon-virtual"></div>
-        <div class="text-[0.8rem] ms-2 text-stone-500 peer-checked:text-primary-500 peer-checked:text-primary-500">
+        <div class="text-[0.775rem] ms-2 text-stone-500 peer-checked:text-primary-500 peer-checked:text-primary-500">
           Virtual
         </div>
       </label>
@@ -53,7 +53,7 @@
                class="hidden peer"
                {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
         <div class="svg-icon size-3 bg-stone-500 peer-checked:bg-primary-500 icon-buildings"></div>
-        <div class="text-[0.8rem] ms-2 text-stone-500 peer-checked:text-primary-500">Hybrid</div>
+        <div class="text-[0.775rem] ms-2 text-stone-500 peer-checked:text-primary-500">Hybrid</div>
       </label>
     </li>
     {# End hybrid -#}

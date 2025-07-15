@@ -108,57 +108,11 @@
     {# End icon -#}
 
     {# Title -#}
-    <div class="text-[0.8rem] mt-1.5">{{ title }}</div>
+    <div class="text-[0.775rem] mt-1.5">{{ title }}</div>
     {# End title -#}
   </div>
 {% endmacro entity_content -%}
 {# End entity content -#}
-
-{# Checkbox input -#}
-{% macro checkbox_input(name, label, value, active_filters, styles = None) -%}
-  {% let styles_ = styles.unwrap_or("") -%}
-
-  <li data-input-item="true" class="{{ styles_ }}">
-    <input type="checkbox"
-           name="{{ name }}"
-           id="{{ value }}"
-           value="{{ value }}"
-           class="hidden peer"
-           {% if active_filters.contains(&value.to_string()) %}checked{% endif %}>
-    <label for="{{ value }}"
-           class="inline-flex items-center justify-between w-full px-2 py-1 text-stone-500 bg-white border border-stone-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50">
-      <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
-    </label>
-  </li>
-{% endmacro checkbox_input -%}
-{# End checkbox input-#}
-
-{# Radio input -#}
-{% macro radio_input(name, label, value, active_filter, styles = None) -%}
-  {% let styles_ = styles.unwrap_or("") -%}
-
-  <li data-input-item="true" class="{{ styles_ }}">
-    {% if let Some(active) = active_filter -%}
-      <input type="radio"
-             name="{{ name }}"
-             id="{{ value }}"
-             value="{{ value }}"
-             class="hidden peer"
-             {% if &active.to_string() == value %}checked{% endif %}>
-    {% else -%}
-      <input type="radio"
-             name="{{ name }}"
-             id="{{ value }}"
-             value="{{ value }}"
-             class="hidden peer">
-    {% endif -%}
-    <label for="{{ value }}"
-           class="inline-flex items-center justify-between w-full px-2 py-1 text-stone-500 bg-white border border-stone-200 rounded-lg cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50">
-      <div class="text-[0.8rem] text-center text-nowrap">{{ label }}</div>
-    </label>
-  </li>
-{% endmacro radio_input -%}
-{# End radio input-#}
 
 {# Input date -#}
 {% macro date_input(name, label, value) -%}
@@ -169,7 +123,7 @@
              validate="false"
              value="{%- if let Some(date) = value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.8rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50"
+             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50"
              placeholder="Date {{ label }}">
     </div>
   </div>
