@@ -33,7 +33,8 @@
         hx-trigger="change"
         hx-target="#entity-section"
         hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
-        hx-boost="true">
+        hx-boost="true"
+        hx-ext="no-empty-vals">
     {% block filters -%}
     {% endblock filters -%}
   </form>
@@ -72,7 +73,8 @@
           hx-trigger="change"
           hx-target="#entity-section"
           hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
-          hx-boost="true">
+          hx-boost="true"
+          hx-ext="no-empty-vals">
       {% block filters -%}
       {% endblock filters -%}
     </form>
@@ -221,7 +223,6 @@
     resetFilters,
     resetDateFiltersOnCalendarViewMode,
     triggerChangeOnForm,
-    toggleCollapsibleFilterVisibility,
     unckeckAllKinds,
     updateDateInput
   } from '/static/js/community/explore/filters.js';
@@ -265,11 +266,6 @@
 
   const resetButtons = document.querySelectorAll('.reset-filters');
   resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ entity }}-form')));
-
-  const collapseBtns = document.querySelectorAll('.collapse-btn');
-  collapseBtns.forEach(btn => {
-    btn.addEventListener('click', () => toggleCollapsibleFilterVisibility(btn.dataset.label));
-  });
 
   const forms = document.querySelectorAll('.filters-form');
   forms.forEach(form => {
