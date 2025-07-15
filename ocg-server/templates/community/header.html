@@ -3,7 +3,7 @@
 {# Header -#}
 <header id="header">
   {# Navigation bar -#}
-  <nav class="flex items-center justify-between p-4 sm:p-6 lg:p-8">
+  <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20 px-4 lg:px-5">
     {# Logo -#}
     <div class="flex lg:flex-1">
       {% if path != "/" %}<a href="/">{% endif %}
@@ -188,7 +188,9 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
-     class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {%+ if current_path == href %} border-b-2 {%- else %} hover:border-b-2 hover:border-primary-300 {%- endif %} {{ extra_styles_ }}">{{ content }}</a>
+     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2
+            {% if current_path == href -%}
+              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
 {# End link -#}
 
@@ -197,7 +199,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
-          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles_ }}">
+          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro button -%}
