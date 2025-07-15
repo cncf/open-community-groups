@@ -28,7 +28,7 @@
   }
 
   .btn-secondary {
-    @apply py-1.5 px-5 h-[40px] bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 enabled:hover:bg-primary-500 enabled:hover:text-white enabled:hover:bg-gray-100 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white;
+    @apply py-1.5 px-5 h-[40px] bg-white items-center text-base font-medium text-center text-primary-500 rounded-full border border-primary-500 enabled:hover:bg-primary-500 enabled:hover:text-white enabled:hover:bg-stone-100 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white;
   }
 
   .btn-secondary-anchor {
@@ -48,11 +48,11 @@
   }
 
   .icon-text span {
-    @apply text-xs text-gray-700 uppercase truncate;
+    @apply text-xs text-stone-700 uppercase truncate;
   }
 
   .event-badge {
-    @apply -mt-[1px] border border-gray-200 text-gray-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full;
+    @apply -mt-[1px] border border-stone-200 text-stone-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full;
   }
 
   .event-badge.canceled {
@@ -76,7 +76,7 @@
   }
 
   .card-header {
-    @apply truncate leading-3 text-gray-400;
+    @apply truncate leading-3 text-stone-400;
   }
 
   .card-header span {

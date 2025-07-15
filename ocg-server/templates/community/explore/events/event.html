@@ -29,7 +29,7 @@
         {# Event description on desktop -#}
         {% if let Some(description_short) = description_short -%}
           <div class="hidden h-[36px] md:my-2 md:block">
-            <p class="text-[0.8rem] text-gray-500 leading-[1.2rem] line-clamp-2">{{ description_short|demoji }}</p>
+            <p class="text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2">{{ description_short|demoji }}</p>
           </div>
         {% endif -%}
         {# End event description on desktop -#}
@@ -109,7 +109,7 @@
   {# Description -#}
   {% if let Some(description_short) = description_short -%}
     <div class="block md:hidden">
-      <p class="text-xs text-gray-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>
+      <p class="text-xs text-stone-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>
     </div>
   {% endif -%}
   {# End description -#}

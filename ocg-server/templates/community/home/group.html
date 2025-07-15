@@ -12,7 +12,7 @@
     <div class="flex flex-col justify-between w-full h-full">
       <div>
         {# Category or region -#}
-        <div class="truncate leading-3 text-gray-400">
+        <div class="truncate leading-3 text-stone-400">
           <span class="text-xs font-semibold tracking-wide uppercase">
             {% if let Some(region_name) = region_name -%}
               {{ region_name }}
@@ -39,7 +39,7 @@
                  width="12"
                  src="/static/images/icons/location.svg"
                  alt="Location icon" />
-            <div class="truncate text-gray-700 text-xs uppercase">{{ location }}</div>
+            <div class="truncate text-stone-700 text-xs uppercase">{{ location }}</div>
           </div>
         {% endif -%}
         {# End group location -#}
@@ -51,7 +51,7 @@
                width="12"
                src="/static/images/icons/calendar.svg"
                alt="Calendar icon" />
-          <span class="text-gray-700 text-xs uppercase truncate">{{ created_at.format("%B %e · %Y") }}</span>
+          <span class="text-stone-700 text-xs uppercase truncate">{{ created_at.format("%B %e · %Y") }}</span>
         </div>
         {# End group creation date -#}
       </div>

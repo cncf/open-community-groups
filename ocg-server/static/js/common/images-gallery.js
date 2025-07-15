@@ -88,7 +88,7 @@ export class ImagesGallery extends LitWrapper {
 
     return html`
       <!-- Gallery -->
-      <div class="bg-gray-100 pt-4 md:pt-10 pb-6 md:pb-12">
+      <div class="bg-stone-100 pt-4 md:pt-10 pb-6 md:pb-12">
         <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div class="mb-12">
             <!-- Title -->
@@ -104,7 +104,7 @@ export class ImagesGallery extends LitWrapper {
                     <img
                       height="160"
                       width="auto"
-                      class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
+                      class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-stone-300"
                       src="${image}"
                       alt="${this.altImage} image ${index + 1}"
                     />
@@ -114,7 +114,7 @@ export class ImagesGallery extends LitWrapper {
                   <img
                     height="160"
                     width="auto"
-                    class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-gray-300"
+                    class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-stone-300"
                     src="${image}"
                     alt="${this.altImage} image ${index + 1}"
                   />
@@ -140,17 +140,17 @@ export class ImagesGallery extends LitWrapper {
         <div class="modal-container fixed w-full h-full z-50 overflow-y-auto">
           <!-- Close button -->
           <button
-            class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full hover:bg-gray-300/30"
+            class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full hover:bg-stone-300/30"
             @click="${this._closeModal}"
           >
-            <div class="svg-icon size-8 bg-gray-100 icon-close"></div>
+            <div class="svg-icon size-8 bg-stone-100 icon-close"></div>
           </button>
           <!-- End close button -->
 
           <div class="modal-content container mx-auto h-full p-10 flex flex-col">
             <!-- Title -->
             <div
-              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-gray-100 text-center leading-10 mb-10"
+              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-100 text-center leading-10 mb-10"
             >
               ${this.title}
             </div>
@@ -188,7 +188,7 @@ export class ImagesGallery extends LitWrapper {
               <div class="absolute top-0 start-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
                 <!-- Prev button -->
                 <button
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none"
                   @click="${() => this._navigateCarousel("prev")}"
                 >
                   <div class="svg-icon h-4 w-2.5 bg-white icon-prev"></div>
@@ -199,7 +199,7 @@ export class ImagesGallery extends LitWrapper {
               <div class="absolute top-0 end-0 z-30 flex items-center justify-center h-full px-5 xl:px-10">
                 <!-- Next button -->
                 <button
-                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gray-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none"
                   @click="${() => this._navigateCarousel("next")}"
                 >
                   <div class="svg-icon h-4 w-2.5 bg-white icon-next"></div>

@@ -1,6 +1,6 @@
 {# Stats -#}
 {# Desktop -#}
-<div class="hidden lg:flex w-full flex flex-row justify-around items-center border border-gray-200 rounded-lg p-10 mx-auto mt-16 mb-6">
+<div class="hidden lg:flex w-full flex flex-row justify-around items-center border border-stone-200 rounded-lg p-10 mx-auto mt-16 mb-6">
   {# Group stats -#}
   {% call stat_block(kind = "groups", title = "Groups", value = groups) -%}
   {# End group stats -#}
@@ -26,7 +26,7 @@
 {# End desktop -#}
 
 {# Mobile -#}
-<div class="grid grid-cols-2 gap-8 justify-around lg:hidden w-full border border-gray-200 rounded-lg py-6 mx-auto mt-6">
+<div class="grid grid-cols-2 gap-8 justify-around lg:hidden w-full border border-stone-200 rounded-lg py-6 mx-auto mt-6">
   {# Group stats -#}
   {% call stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center")) -%}
   {# End group stats -#}
@@ -54,17 +54,17 @@
     <div class="flex items-center justify-center">
       {# Icon -#}
       <div>
-        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-gray-400 icon-{{ kind }}"></div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-{{ kind }}"></div>
       </div>
       {# End icon -#}
 
       <div class="ms-5">
         {# Title -#}
-        <div class="text-xs text-gray-500 font-medium uppercase">{{ title }}</div>
+        <div class="text-xs text-stone-500 font-medium uppercase">{{ title }}</div>
         {# End title -#}
 
         {# Value -#}
-        <div class="text-xl font-semibold text-gray-900 md:text-2xl lg:text-4xl">{{ *value|num_fmt }}</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ *value|num_fmt }}</div>
         {# End value -#}
       </div>
     </div>
