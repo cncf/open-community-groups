@@ -3,20 +3,42 @@
 {# Header -#}
 <header id="header">
   {# Navigation bar -#}
-  <nav class="flex items-center justify-between p-4 sm:p-6 lg:p-8">
-    {# Logo -#}
-    <div class="flex lg:flex-1">
-      {% if path != "/" %}<a href="/">{% endif %}
-        <div class="-m-1.5 p-1.5">
-          <img class="h-10 w-50"
-               width="208"
-               height="40"
-               src="{{ self.community.header_logo_url }}"
-               alt="Logo" />
-        </div>
-        {% if path != "/" %}</a>{% endif %}
+  <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20 px-4 lg:px-5">
+    <div class="flex items-center gap-x-6">
+      {# Logo -#}
+      <div class="me-3">
+        {% if path != "/" %}<a href="/">{% endif %}
+          <div class="-m-1.5 p-1.5">
+            <img class="h-10 w-50"
+                 width="208"
+                 height="40"
+                 src="{{ self.community.header_logo_url }}"
+                 alt="Logo" />
+          </div>
+          {% if path != "/" %}</a>{% endif %}
+      </div>
+      {# End logo -#}
+
+      {# Desktop links -#}
+      <div class="hidden lg:flex lg:gap-x-8">
+        {% call link(content = "Home", href = "/", current_path = path) -%}
+        {% call link(content = "Explore", href = "/explore", current_path = path) -%}
+        {% if let Some(new_group_details) = self.community.new_group_details -%}
+          {% call button(id = "open-new-group-btn", content = "New group") -%}
+          <script type="module">
+            import {
+              toggleModalVisibility
+            } from '/static/js/common/common.js';
+
+            const openNewGroupBtn = document.getElementById('open-new-group-btn');
+            if (openNewGroupBtn) {
+              openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+            }
+          </script>
+        {% endif -%}
+      </div>
+      {# End desktop links -#}
     </div>
-    {# End logo -#}
 
     {# Mobile menu button -#}
     <div class="flex lg:hidden">
@@ -24,38 +46,18 @@
               type="button"
               class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5">
         <span class="sr-only">Open main menu</span>
-        <div class="svg-icon h-6 w-6 bg-gray-700 icon-lines"></div>
+        <div class="svg-icon h-6 w-6 bg-stone-700 icon-lines"></div>
       </button>
     </div>
     {# End mobile menu button -#}
 
-    {# Desktop links -#}
-    <div class="hidden lg:flex lg:gap-x-8">
-      {% call link(content = "Home", href = "/", current_path = path) -%}
-      {% call link(content = "Explore", href = "/explore", current_path = path) -%}
-      {% if let Some(new_group_details) = self.community.new_group_details -%}
-        {% call button(id = "open-new-group-btn", content = "New group") -%}
-        <script type="module">
-          import {
-            toggleModalVisibility
-          } from '/static/js/common/common.js';
-
-          const openNewGroupBtn = document.getElementById('open-new-group-btn');
-          if (openNewGroupBtn) {
-            openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
-          }
-        </script>
-      {% endif -%}
-    </div>
-    {# End desktop links -#}
-
     {# Desktop buttons -#}
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
       {# Sign up button -#}
-      <button id="signup-btn" class="btn-secondary" disabled>Sign up</button>
+      <button id="signup-btn" class="btn-secondary w-[120px]" disabled>Sign up</button>
 
       {# Log in button -#}
-      <button id="login-btn" class="btn-primary" disabled>Log in</button>
+      <button id="login-btn" class="btn-primary w-[120px]" disabled>Log in</button>
     </div>
     {# End desktop buttons -#}
   </nav>
@@ -67,19 +69,19 @@
        aria-modal="true"
        id="navbar-mobile">
     <div class="hidden fixed inset-0 z-20" id="backdrop-backdrop"></div>
-    <div class="fixed inset-y-0 right-0 z-20 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
+    <div class="fixed inset-y-0 right-0 z-20 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-stone-900/10">
       <div class="flex items-center justify-between">
         {# Close menu button -#}
         <button id="close-navbar-mobile"
                 type="button"
                 class="-m-2.5 rounded-md p-2.5">
           <span class="sr-only">Close menu</span>
-          <div class="svg-icon h-6 w-6 bg-gray-700 icon-close"></div>
+          <div class="svg-icon h-6 w-6 bg-stone-700 icon-close"></div>
         </button>
         {# End close menu button -#}
       </div>
       <div class="mt-6 flow-root">
-        <div class="-my-6 divide-y divide-gray-500/10">
+        <div class="-my-6 divide-y divide-stone-500/10">
           {# Mobile links -#}
           <div class="space-y-2 py-6">
             {% call mobile_link(content = "Home", href = "/") -%}
@@ -143,16 +145,16 @@
     <div class="relative p-4 w-full max-w-2xl max-h-full">
       <div class="relative bg-white rounded-lg shadow">
         {# Modal header -#}
-        <div class="flex items-center justify-between p-4 md:p-5 border-b border-gray-200 rounded-t">
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
           {# Title -#}
-          <h3 class="text-xl font-semibold text-gray-900">New group</h3>
+          <h3 class="text-xl font-semibold text-stone-900">New group</h3>
           {# End title -#}
 
           {# Close button -#}
           <button id="close-new-group-modal"
                   type="button"
-                  class="group bg-transparent hover:bg-gray-200 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-            <div class="svg-icon h-5 w-5 bg-gray-400 grouphover:bg-gray-900 icon-close"></div>
+                  class="group bg-transparent hover:bg-stone-200 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-stone-400 grouphover:bg-stone-900 icon-close"></div>
             <span class="sr-only">Close modal</span>
           </button>
           {# End close button -#}
@@ -188,7 +190,9 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
-     class="mx-3 pb-1 border-0 border-primary-500 text-lg font-semibold tracking-widest text-primary-500 uppercase {%+ if current_path == href %} border-b-2 {%- else %} hover:border-b-2 hover:border-primary-300 {%- endif %} {{ extra_styles_ }}">{{ content }}</a>
+     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2
+            {% if current_path == href -%}
+              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
 {# End link -#}
 
@@ -197,7 +201,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
-          class="mx-3 pb-1 border-b-2 border-transparent text-lg font-semibold tracking-widest text-primary-500 uppercase hover:border-primary-300 {{ extra_styles_ }}">
+          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro button -%}
@@ -208,7 +212,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
-     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles_ }}">
+     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 {{ extra_styles_ }}">
     {{ content }}
   </a>
 {% endmacro mobile_link -%}
@@ -219,7 +223,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
-          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 hover:bg-gray-50 {{ extra_styles_ }}">
+          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro mobile_button -%}

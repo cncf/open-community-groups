@@ -1,5 +1,5 @@
 {# Footer -#}
-<footer class="flex-none bg-gray-950 text-center text-white text-surface/75 lg:text-left">
+<footer class="flex-none bg-stone-950 text-center text-white text-surface/75 lg:text-left">
   <div class="px-8 py-6 lg:px-16 lg:py-12">
     <div class="pb-10 text-center md:text-left">
       <div class="flex flex-col justify-between md:flex-row">
@@ -33,12 +33,12 @@
 
     {# Extra links -#}
     {% if let Some(extra_links) = self.community.extra_links -%}
-      <div class="font-bold text-sm uppercase text-gray-300">Quick links</div>
+      <div class="font-bold text-sm uppercase text-stone-300">Quick links</div>
       <div class="pb-8 pt-2 text-sm md:text-base">
         {% for (name, url) in extra_links -%}
           {# Extra link -#}
           {% if !loop.first -%}
-            <span class="px-2 text-gray-300 md:px-3">·</span>
+            <span class="px-2 text-stone-300 md:px-3">·</span>
           {% endif -%}
           <a href="{{ url }}"
              class="tracking-wider text-sm text-white hover:text-primary-500"
@@ -51,7 +51,7 @@
     {# End extra links -#}
 
     {# Copyright section -#}
-    <div class="pt-8 border-solid border-0 border-t border-gray-800 text-xs text-gray-300">
+    <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice -%}
         <div class="mb-4 copyright">{{ copyright_notice|safe }}</div>
       {% endif -%}

@@ -97,35 +97,10 @@ export class CollapsibleFilter extends LitWrapper {
    * @private
    */
   _filterOptions() {
-    const sortedOptions = this._sortOptions();
     if (this.isCollapsed) {
-      this.visibleOptions = sortedOptions.slice(0, this.maxVisibleItems);
+      this.visibleOptions = this.options.slice(0, this.maxVisibleItems);
     } else {
-      this.visibleOptions = sortedOptions;
-    }
-  }
-
-  /**
-   * Sorts options to display selected items first, then unselected items.
-   * This ensures selected options are always visible when collapsed.
-   * @returns {Array} Sorted array of options
-   * @private
-   */
-  _sortOptions() {
-    if (this.selected.length === 0) {
-      return this.options;
-    } else {
-      const selectedOptions = [];
-      const noSelectedOptions = [];
-      this.options.map((opt) => {
-        if (this.selected.includes(opt)) {
-          selectedOptions.push(opt);
-        } else {
-          noSelectedOptions.push(opt);
-        }
-      });
-
-      return selectedOptions.concat(noSelectedOptions);
+      this.visibleOptions = this.options;
     }
   }
 
@@ -148,8 +123,7 @@ export class CollapsibleFilter extends LitWrapper {
     if (!this.isCollapsed) return;
 
     // Check if any selected items would be hidden when collapsed
-    const sortedOptions = this._sortOptions();
-    const hiddenWhenCollapsed = sortedOptions.slice(this.maxVisibleItems);
+    const hiddenWhenCollapsed = this.options.slice(this.maxVisibleItems);
 
     // If any selected items are in the hidden section, expand the filter
     const hasSelectedHiddenItems = hiddenWhenCollapsed.some((opt) => this.selected.includes(opt.value));
@@ -177,7 +151,7 @@ export class CollapsibleFilter extends LitWrapper {
    * @param {string} value - The value of the selected option
    * @private
    */
-  _onSelect(value) {
+  async _onSelect(value) {
     if (!this.singleSelection) {
       if (!this.selected.includes(value)) {
         this.selected = [...this.selected, value];
@@ -190,7 +164,16 @@ export class CollapsibleFilter extends LitWrapper {
     this._checkMaxVisibleItems();
     this._checkExpandIfHiddenSelected();
     this._filterOptions();
+
+    // Request update and wait for it to complete
     this.requestUpdate();
+    await this.updateComplete;
+
+    const parentFormId = this._getParentFormId();
+    if (parentFormId) {
+      // Trigger change event on the form
+      triggerChangeOnForm(parentFormId);
+    }
   }
 
   /**
@@ -222,22 +205,22 @@ export class CollapsibleFilter extends LitWrapper {
   render() {
     const canCollapse = this.options.length > this.maxVisibleItems;
 
-    return html`<div class="px-6 py-7 pt-5 border-b border-gray-100">
+    return html`<div class="px-6 py-7 pt-5 border-b border-stone-100">
       <div class="flex justify-between items-center">
-        <div class="font-semibold text-black text-[0.8rem]/6">${this.title}</div>
+        <div class="font-semibold leading-4 md:leading-8 text-[0.775rem] text-stone-700">${this.title}</div>
         <div>
           ${canCollapse
             ? html`<button
                 type="button"
                 @click=${this._changeCollapseState}
-                class="group/btn collapse-btn border border-gray-200 hover:bg-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
+                class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
               >
                 ${this.isCollapsed
                   ? html`<div
-                      class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white icon-caret-down"
+                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
                     ></div>`
                   : html`<div
-                      class="svg-icon h-3 w-3 bg-gray-500 group-hover/btn:bg-white icon-caret-up"
+                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
                     ></div>`}
               </button>`
             : ""}
@@ -248,12 +231,12 @@ export class CollapsibleFilter extends LitWrapper {
           <button
             type="button"
             @click=${this._onSelectAny}
-            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border border-gray-200 rounded-lg cursor-pointer select-none ${this
+            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this
               .selected.length === 0
               ? "border-primary-500 text-primary-500"
-              : "text-gray-500 hover:text-gray-600 hover:bg-gray-50"}"
+              : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"}"
           >
-            <div class="text-[0.8rem] text-center text-nowrap">Any</div>
+            <div class="text-[0.775rem] text-center text-nowrap">Any</div>
           </button>
         </li>
         ${repeat(
@@ -262,11 +245,11 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border border-gray-200 rounded-lg cursor-pointer select-none ${this.selected.includes(
+                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this.selected.includes(
                   opt.value,
                 )
                   ? "border-primary-500 text-primary-500"
-                  : "text-gray-500 hover:text-gray-600 hover:bg-gray-50"}"
+                  : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"}"
               >
                 <input
                   type="checkbox"
@@ -276,7 +259,7 @@ export class CollapsibleFilter extends LitWrapper {
                   @change=${() => this._onSelect(opt.value)}
                   class="sr-only"
                 />
-                <div class="text-[0.8rem] text-center text-nowrap capitalize">${opt.name}</div>
+                <div class="text-[0.775rem] text-center text-nowrap capitalize">${opt.name}</div>
               </label>
             </li>`,
         )}
@@ -287,7 +270,7 @@ export class CollapsibleFilter extends LitWrapper {
               data-label="{{ label }}"
               type="button"
               @click=${this._changeCollapseState}
-              class="text-gray-500 hover:text-gray-700 focus:ring-0 focus:outline-none focus:ring-gray-300 font-medium text-xs"
+              class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
             >
               ${this.isCollapsed ? "+ Show more" : "- Show less"}
             </button>

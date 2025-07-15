@@ -2,8 +2,8 @@
 
 {% block content -%}
   {# Community title -#}
-  <div class="text-center pt-5">
-    <h1 class="mb-4 mx-3 md:mx-5 text-2xl font-bold tracking-tight leading-none lg:text-4xl xl:text-5xl">
+  <div class="text-center pt-2 xl:pt-5">
+    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-[1.15rem] font-semibold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl">
       {{ community.title }}
     </h1>
   </div>
@@ -11,10 +11,10 @@
 
   {# Main content -#}
   <div id="explore-content"
-       class="relative container mx-auto max-w-7xl px-4 pt-6 md:pt-10 pb-[3.5rem] sm:px-6 lg:px-8">
+       class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
 
     {# Entity section -#}
-    <div id="entity-section" class="relative">
+    <div id="entity-section" class="relative w-full">
       {% match entity -%}
       {% when Entity::Groups -%}
       {# Groups section -#}

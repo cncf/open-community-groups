@@ -281,9 +281,9 @@ function newEventPopover(id, event, horizontalAlignment, verticalAlignment) {
     id="${id}"
     role="tooltip"
     data-popover="true"
-    class="absolute ${horizontalAlignment == "right" ? "end-0" : ""} ${verticalAlignment == "top" ? "top-0 -translate-y-full pb-1.5" : "pt-1.5"} z-10 invisible inline-block w-[380px] text-sm text-gray-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow"
+    class="absolute ${horizontalAlignment == "right" ? "end-0" : ""} ${verticalAlignment == "top" ? "top-0 -translate-y-full pb-1.5" : "pt-1.5"} z-10 invisible inline-block w-[380px] text-sm text-stone-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow"
   >
-    <div class="bg-white border border-gray-200 p-2 rounded-lg shadow-lg">
+    <div class="bg-white border border-stone-200 p-2 rounded-lg shadow-lg">
       ${event.popover_html}
     </div>
   </div>
