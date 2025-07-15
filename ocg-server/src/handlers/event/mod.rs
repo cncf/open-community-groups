@@ -2,25 +2,25 @@
 
 use askama::Template;
 use axum::{
-    extract::Path,
+    extract::{Path, State},
     response::{Html, IntoResponse},
 };
-use tracing::{debug, instrument};
+use tracing::instrument;
 
-use crate::templates::event::Page;
+use crate::{db::DynDB, templates::event::Page};
 
 use super::{error::HandlerError, extractors::CommunityId};
 
 /// Handler that renders the event page.
 #[instrument(skip_all)]
 pub(crate) async fn page(
+    State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((group_slug, event_slug)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    debug!(
-        "community_id: {}, group: {}, event: {}",
-        community_id, group_slug, event_slug
-    );
+    // Prepare template
+    let event = db.get_event(community_id, &group_slug, &event_slug).await?;
+    let template = Page { event };
 
-    Ok(Html(Page {}.render()?))
+    Ok(Html(template.render()?))
 }
