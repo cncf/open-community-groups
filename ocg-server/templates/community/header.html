@@ -4,19 +4,41 @@
 <header id="header">
   {# Navigation bar -#}
   <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20 px-4 lg:px-5">
-    {# Logo -#}
-    <div class="flex lg:flex-1">
-      {% if path != "/" %}<a href="/">{% endif %}
-        <div class="-m-1.5 p-1.5">
-          <img class="h-10 w-50"
-               width="208"
-               height="40"
-               src="{{ self.community.header_logo_url }}"
-               alt="Logo" />
-        </div>
-        {% if path != "/" %}</a>{% endif %}
+    <div class="flex items-center gap-x-6">
+      {# Logo -#}
+      <div class="me-3">
+        {% if path != "/" %}<a href="/">{% endif %}
+          <div class="-m-1.5 p-1.5">
+            <img class="h-10 w-50"
+                 width="208"
+                 height="40"
+                 src="{{ self.community.header_logo_url }}"
+                 alt="Logo" />
+          </div>
+          {% if path != "/" %}</a>{% endif %}
+      </div>
+      {# End logo -#}
+
+      {# Desktop links -#}
+      <div class="hidden lg:flex lg:gap-x-8">
+        {% call link(content = "Home", href = "/", current_path = path) -%}
+        {% call link(content = "Explore", href = "/explore", current_path = path) -%}
+        {% if let Some(new_group_details) = self.community.new_group_details -%}
+          {% call button(id = "open-new-group-btn", content = "New group") -%}
+          <script type="module">
+            import {
+              toggleModalVisibility
+            } from '/static/js/common/common.js';
+
+            const openNewGroupBtn = document.getElementById('open-new-group-btn');
+            if (openNewGroupBtn) {
+              openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+            }
+          </script>
+        {% endif -%}
+      </div>
+      {# End desktop links -#}
     </div>
-    {# End logo -#}
 
     {# Mobile menu button -#}
     <div class="flex lg:hidden">
@@ -29,33 +51,13 @@
     </div>
     {# End mobile menu button -#}
 
-    {# Desktop links -#}
-    <div class="hidden lg:flex lg:gap-x-8">
-      {% call link(content = "Home", href = "/", current_path = path) -%}
-      {% call link(content = "Explore", href = "/explore", current_path = path) -%}
-      {% if let Some(new_group_details) = self.community.new_group_details -%}
-        {% call button(id = "open-new-group-btn", content = "New group") -%}
-        <script type="module">
-          import {
-            toggleModalVisibility
-          } from '/static/js/common/common.js';
-
-          const openNewGroupBtn = document.getElementById('open-new-group-btn');
-          if (openNewGroupBtn) {
-            openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
-          }
-        </script>
-      {% endif -%}
-    </div>
-    {# End desktop links -#}
-
     {# Desktop buttons -#}
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
       {# Sign up button -#}
-      <button id="signup-btn" class="btn-secondary" disabled>Sign up</button>
+      <button id="signup-btn" class="btn-secondary w-[120px]" disabled>Sign up</button>
 
       {# Log in button -#}
-      <button id="login-btn" class="btn-primary" disabled>Log in</button>
+      <button id="login-btn" class="btn-primary w-[120px]" disabled>Log in</button>
     </div>
     {# End desktop buttons -#}
   </nav>
