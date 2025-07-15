@@ -6,6 +6,8 @@
 {{ template "community/search_community_events.sql" }}
 {{ template "community/search_community_groups.sql" }}
 
+{{ template "event/get_event.sql" }}
+
 {{ template "group/get_group.sql" }}
 {{ template "group/get_group_past_events.sql" }}
 {{ template "group/get_group_upcoming_events.sql" }}

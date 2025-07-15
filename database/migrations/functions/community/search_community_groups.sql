@@ -102,17 +102,18 @@ begin
         (
             select coalesce(json_agg(json_build_object(
                 'category_name', category_name,
+                'created_at', floor(extract(epoch from created_at)),
+                'name', name,
+                'slug', slug,
+                
                 'city', city,
                 'country_code', country_code,
                 'country_name', country_name,
-                'created_at', floor(extract(epoch from created_at)),
                 'description', description,
                 'latitude', latitude,
                 'logo_url', logo_url,
                 'longitude', longitude,
-                'name', name,
                 'region_name', region_name,
-                'slug', slug,
                 'state', state
             )), '[]')
             from (

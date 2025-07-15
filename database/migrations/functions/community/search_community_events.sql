@@ -129,26 +129,27 @@ begin
         (
             select coalesce(json_agg(json_build_object(
                 'canceled', canceled,
-                'description_short', description_short,
-                'ends_at', floor(extract(epoch from ends_at)),
                 'kind', event_kind_id,
-                'latitude', latitude,
-                'longitude', longitude,
-                'logo_url', coalesce(logo_url, group_logo_url),
                 'name', name,
                 'slug', slug,
-                'starts_at', floor(extract(epoch from starts_at)),
                 'timezone', timezone,
-                'venue_address', venue_address,
-                'venue_city', venue_city,
-                'venue_name', venue_name,
+                
+                'description_short', description_short,
+                'ends_at', floor(extract(epoch from ends_at)),
                 'group_category_name', group_category_name,
                 'group_city', group_city,
                 'group_country_code', group_country_code,
                 'group_country_name', group_country_name,
                 'group_name', group_name,
                 'group_slug', group_slug,
-                'group_state', group_state
+                'group_state', group_state,
+                'latitude', latitude,
+                'logo_url', coalesce(logo_url, group_logo_url),
+                'longitude', longitude,
+                'starts_at', floor(extract(epoch from starts_at)),
+                'venue_address', venue_address,
+                'venue_city', venue_city,
+                'venue_name', venue_name
             )), '[]')
             from (
                 select *
