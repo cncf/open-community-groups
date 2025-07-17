@@ -299,7 +299,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             {% for event in upcoming_events -%}
               <div class="block bg-white border border-stone-200 rounded-lg">
-                <div class="p-5 md:p-7">
+                <div class="p-3 md:p-4">
                   <div class="flex flex-1 flex-row items-stretch">
                     {# Event icon -#}
                     <div class="card-logo">
@@ -400,66 +400,60 @@
           <h2 class="text-2xl font-semibold text-stone-900 mb-6">Past Events</h2>
           <div class="grid grid-cols-1 gap-6 md:gap-10 md:grid-cols-2 xl:grid-cols-3">
             {% for event in past_events -%}
-              <div class="flex rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white">
-                <div class="card w-full">
-                  <div class="card-logo">
-                    {# Event icon -#}
-                    {% call common::logo(logo_url = event.logo_url, classes = "size-24 md:size-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
-                    {# End event icon -#}
-                  </div>
+              <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white">
+                <div class="flex items-start gap-3 mb-1">
+                  {# Event icon -#}
+                  {% call common::logo(logo_url = event.logo_url, classes = "size-12 md:size-16 flex-shrink-0", size = 80, color = event.group_color, name = Some(event.group_name)) -%}
+                  {# End event icon -#}
 
-                  <div class="card-content">
-                    <div class="card-body">
-                      <div>
-                        {# Event group name -#}
-                        <div class="card-header">
-                          <span>{{ event.group_name }}</span>
-                        </div>
-                        {# End event group name -#}
-
-                        {# Event title -#}
-                        <div class="card-title">{{ event.name|demoji }}</div>
-                        {# End event title -#}
-                      </div>
-
-                      <div>
-                        {# Event location -#}
-                        <div class="card-meta">
-                          {% match event.kind -%}
-                          {% when EventKind::InPerson -%}
-                          {% if let Some(location) = event.location(25) -%}
-                            {% call common::icon_text(icon_name = "location", text = location) -%}
-                          {% endif -%}
-                          {% when EventKind::Hybrid -%}
-                          <div class="flex items-center">
-                            {% if let Some(location) = event.location(16) -%}
-                              {% call common::icon_text(icon_name = "location", text = location) -%}
-                            {% endif -%}
-                            {% call common::event_badge(kind = event.kind) -%}
-                          </div>
-                          {% when EventKind::Virtual -%}
-                          <div class="flex items-center">
-                            <img height="12"
-                                 width="12"
-                                 src="/static/images/icons/location.svg"
-                                 alt="Location icon"
-                                 class="me-2" />
-                            {% call common::event_badge(kind = event.kind) -%}
-                          </div>
-                        {% endmatch -%}
-                      </div>
-                      {# End event location -#}
-
-                      {# Event date -#}
-                      {% if let Some(starts_at) = event.starts_at -%}
-                        <div class="card-meta">
-                          {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z")) -%}
-                        </div>
-                      {% endif -%}
-                      {# End event date -#}
+                  <div class="min-w-0 flex-1">
+                    {# Event group name -#}
+                    <div class="card-header">
+                      <span class="text-xs">{{ event.group_name }}</span>
                     </div>
+                    {# End event group name -#}
+
+                    {# Event title -#}
+                    <div class="card-title text-sm">{{ event.name|demoji }}</div>
+                    {# End event title -#}
                   </div>
                 </div>
+
+                <div>
+                  {# Event location -#}
+                  <div class="card-meta text-xs">
+                    {% match event.kind -%}
+                    {% when EventKind::InPerson -%}
+                    {% if let Some(location) = event.location(25) -%}
+                      {% call common::icon_text(icon_name = "location", text = location) -%}
+                    {% endif -%}
+                    {% when EventKind::Hybrid -%}
+                    <div class="flex items-center">
+                      {% if let Some(location) = event.location(16) -%}
+                        {% call common::icon_text(icon_name = "location", text = location) -%}
+                      {% endif -%}
+                      {% call common::event_badge(kind = event.kind) -%}
+                    </div>
+                    {% when EventKind::Virtual -%}
+                    <div class="flex items-center">
+                      <img height="12"
+                           width="12"
+                           src="/static/images/icons/location.svg"
+                           alt="Location icon"
+                           class="me-2" />
+                      {% call common::event_badge(kind = event.kind) -%}
+                    </div>
+                  {% endmatch -%}
+                </div>
+                {# End event location -#}
+
+                {# Event date -#}
+                {% if let Some(starts_at) = event.starts_at -%}
+                  <div class="card-meta text-xs">
+                    {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z")) -%}
+                  </div>
+                {% endif -%}
+                {# End event date -#}
               </div>
             </div>
           {% endfor -%}
