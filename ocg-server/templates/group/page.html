@@ -26,7 +26,7 @@
               {# End region/category legend -#}
 
               {# Group name -#}
-              <h1 class="text-3xl md:text-4xl font-semibold text-stone-900">{{ group.name|demoji }}</h1>
+              <h1 class="text-3xl md:text-4xl font-semibold text-stone-900 line-clamp-2">{{ group.name|demoji }}</h1>
               {# End group name -#}
             </div>
 
@@ -403,7 +403,7 @@
               <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white">
                 <div class="flex items-start gap-3 mb-1">
                   {# Event icon -#}
-                  {% call common::logo(logo_url = event.logo_url, classes = "size-12 md:size-16 flex-shrink-0", size = 80, color = event.group_color, name = Some(event.group_name)) -%}
+                  {% call common::logo(logo_url = event.logo_url, classes = "size-12 md:size-16 flex-shrink-0", size = 80, color = event.group_color) -%}
                   {# End event icon -#}
 
                   <div class="min-w-0 flex-1">
@@ -430,7 +430,7 @@
                     {% when EventKind::Hybrid -%}
                     <div class="flex items-center">
                       {% if let Some(location) = event.location(16) -%}
-                        {% call common::icon_text(icon_name = "location", text = location) -%}
+                        <div class="me-2">{% call common::icon_text(icon_name = "location", text = location) -%}</div>
                       {% endif -%}
                       {% call common::event_badge(kind = event.kind) -%}
                     </div>
@@ -449,7 +449,7 @@
 
                 {# Event date -#}
                 {% if let Some(starts_at) = event.starts_at -%}
-                  <div class="card-meta text-xs">
+                  <div class="text-xs mt-1">
                     {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z")) -%}
                   </div>
                 {% endif -%}
