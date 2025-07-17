@@ -240,26 +240,20 @@
             </div>
 
             {# Map initialization script -#}
-            <script>
-              document.addEventListener('DOMContentLoaded', function() {
-                const mapElement = document.getElementById('group-map');
-                if (mapElement && typeof L !== 'undefined') {
-                  const lat = parseFloat(mapElement.dataset.lat);
-                  const lng = parseFloat(mapElement.dataset.lng);
-                  const name = mapElement.dataset.name;
+            <script type="module">
+              import {
+                loadMap
+              } from "/static/js/common/common.js";
 
-                  const map = L.map('group-map').setView([lat, lng], 13);
+              // Initialize the map with group coordinates
+              const mapElement = document.getElementById('group-map');
+              if (mapElement) {
+                const lat = parseFloat(mapElement.dataset.lat);
+                const lng = parseFloat(mapElement.dataset.lng);
+                const name = mapElement.dataset.name;
 
-                  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                  }).addTo(map);
-
-                  L.marker([lat, lng])
-                    .addTo(map)
-                    .bindPopup(name)
-                    .openPopup();
-                }
-              });
+                loadMap('group-map', name, lat, lng);
+              }
             </script>
             {# End map initialization script -#}
           {% endif -%}

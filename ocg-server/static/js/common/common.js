@@ -45,3 +45,48 @@ export const toggleModalVisibility = (modalId) => {
     modal.classList.toggle("hidden");
   }
 };
+
+/**
+ * Loads and initializes a Leaflet map with a marker and popup.
+ * @param {string} divId - The ID of the div element to contain the map
+ * @param {string} title - The title text to display in the marker popup
+ * @param {number} lat - The latitude coordinate for the map center and marker
+ * @param {number} long - The longitude coordinate for the map center and marker
+ */
+export const loadMap = (divId, title, lat, long) => {
+  const map = L.map(divId).setView([lat, long], 13);
+
+  L.tileLayer(
+    `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${
+      L.Browser.retina ? "@2x.png" : ".png"
+    }`,
+    {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    },
+  ).addTo(map);
+
+  // SVG icon for markers
+  const svgIcon = {
+    html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -25],
+  };
+
+  // Create icon for marker
+  const icon = L.divIcon({
+    ...svgIcon,
+    className: "marker-icon",
+  });
+
+  // Create marker
+  const marker = L.marker(L.latLng(lat, long), {
+    icon: icon,
+    autoPanOnFocus: false,
+    bubblingMouseEvents: true,
+  });
+
+  // Add popup to marker
+  marker.addTo(map).bindPopup(title).openPopup();
+};
