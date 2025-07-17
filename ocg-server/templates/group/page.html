@@ -6,27 +6,29 @@
     {# Group header with name and region -#}
     <div>
       <div class="px-4 sm:px-6 lg:px-8 py-8">
-        <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
+        <div class="flex flex-1 flex-row items-stretch gap-6">
           {# Group logo -#}
           {% call common::logo(logo_url = group.logo_url, classes = "h-24 w-24 md:h-32 md:w-32", size = 128, color = group.color, name = Some(group.name)) -%}
           {# End group logo -#}
 
-          <div class="flex-1">
-            {# Region/Category legend -#}
-            <div class="mb-2">
-              <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
-                {% if let Some(region_name) = group.region_name -%}
-                  {{ region_name }}
-                {% else -%}
-                  {{ group.category_name }}
-                {% endif -%}
-              </span>
-            </div>
-            {# End region/category legend -#}
+          <div class="flex-1 flex flex-col justify-between">
+            <div>
+              {# Region/Category legend -#}
+              <div>
+                <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
+                  {% if let Some(region_name) = group.region_name -%}
+                    {{ region_name }}
+                  {% else -%}
+                    {{ group.category_name }}
+                  {% endif -%}
+                </span>
+              </div>
+              {# End region/category legend -#}
 
-            {# Group name -#}
-            <h1 class="text-3xl md:text-4xl font-semibold text-stone-900 mb-4">{{ group.name|demoji }}</h1>
-            {# End group name -#}
+              {# Group name -#}
+              <h1 class="text-3xl md:text-4xl font-semibold text-stone-900">{{ group.name|demoji }}</h1>
+              {# End group name -#}
+            </div>
 
             {# Members count and founded date -#}
             <div class="flex items-center gap-4 text-stone-600">
@@ -146,9 +148,9 @@
         <div>
           <img src="{{ banner_url }}"
                alt="Group banner"
-               class="w-auto h-auto max-h-64 object-contain rounded-lg mx-auto"
-               width="896"
-               height="320" />
+               class="w-full h-auto max-h-64 lg:max-h-80 object-contain rounded-lg mx-auto"
+               width="auto"
+               height="auto" />
         </div>
       </div>
     {% endif -%}
@@ -157,14 +159,14 @@
     {# Organizers and Location section -#}
     <div>
       <div class="px-4 sm:px-6 lg:px-8 py-8">
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
           {# Organizers section -#}
           <div>
             {% if !group.organizers.is_empty() -%}
               <h2 class="text-2xl font-semibold text-stone-900 mb-6">Organizers</h2>
               <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {% for organizer in group.organizers -%}
-                  <div class="flex flex-col items-center p-3 bg-stone-100 rounded-lg text-center">
+                  <div class="flex flex-col items-center p-3 bg-stone-50 rounded-lg text-center">
                     {% if let Some(photo_url) = organizer.photo_url -%}
                       <img src="{{ photo_url }}"
                            alt="Organizer photo"
@@ -273,7 +275,7 @@
         <div class="px-4 sm:px-6 lg:px-8 py-8">
           <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
           <div class="prose prose-stone max-w-none">
-            <div class="text-stone-700 leading-relaxed">{{ description|demoji|safe }}</div>
+            <div class="text-stone-700 text-base/6 markdown">{{ description|demoji|safe }}</div>
           </div>
 
           {# Tags if available -#}
@@ -302,14 +304,13 @@
           <h2 class="text-2xl font-semibold text-stone-900 mb-6">Upcoming Events</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             {% for event in upcoming_events -%}
-              <a href="/events/{{ event.slug }}"
-                 class="block hover:bg-stone-50 transition-colors bg-white border border-stone-200 rounded-lg">
+              <div class="block bg-white border border-stone-200 rounded-lg">
                 <div class="p-5 md:p-7">
                   <div class="flex flex-1 flex-row items-stretch">
                     {# Event icon -#}
                     <div class="card-logo">
-                      {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block h-[100px] w-[100px] min-w-[100px]", size = 100, color = event.group_color, name = Some(event.group_name)) -%}
-                      {% call common::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -%}
+                      {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block size-[100px] min-w-[100px]", size = 100, color = event.group_color, name = Some(event.group_name)) -%}
+                      {% call common::logo(logo_url = event.logo_url, classes = "block size-14 min-w-14 md:hidden", size = 60, color = event.group_color) -%}
                     </div>
                     {# End event icon -#}
 
@@ -390,7 +391,7 @@
                   </div>
                   {# End mobile content -#}
                 </div>
-              </a>
+              </div>
             {% endfor -%}
           </div>
         </div>
@@ -403,14 +404,13 @@
       <div>
         <div class="px-4 sm:px-6 lg:px-8 py-8">
           <h2 class="text-2xl font-semibold text-stone-900 mb-6">Past Events</h2>
-          <div class="grid grid-cols-1 gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
+          <div class="grid grid-cols-1 gap-6 md:gap-10 md:grid-cols-2 xl:grid-cols-3">
             {% for event in past_events -%}
-              <a href="/events/{{ event.slug }}"
-                 class="flex hover:bg-stone-50 transition-colors rounded-lg p-4">
-                <div class="card">
+              <div class="flex rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white">
+                <div class="card w-full">
                   <div class="card-logo">
                     {# Event icon -#}
-                    {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
+                    {% call common::logo(logo_url = event.logo_url, classes = "size-24 md:size-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
                     {# End event icon -#}
                   </div>
 
@@ -467,7 +467,7 @@
                   </div>
                 </div>
               </div>
-            </a>
+            </div>
           {% endfor -%}
         </div>
       </div>
