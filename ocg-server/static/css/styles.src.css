@@ -295,11 +295,13 @@ input:placeholder-shown {
 .icon-marker { --icon-url: url('/static/images/icons/marker.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
+.icon-people { --icon-url: url('/static/images/icons/people.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
+.icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
 .icon-youtube { --icon-url: url('/static/images/icons/youtube.svg'); }
 /* End icons */

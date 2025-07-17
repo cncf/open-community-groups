@@ -1,1 +1,493 @@
-<h1>Group home page</h1>
+{% import "common.html" as common -%}
+{% extends "group/base.html" -%}
+
+{% block content -%}
+  <div class="max-w-7xl mx-auto bg-white border border-stone-200 rounded-lg my-5 md:my-7">
+    {# Group header with name and region -#}
+    <div>
+      <div class="px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
+          {# Group logo -#}
+          {% call common::logo(logo_url = group.logo_url, classes = "h-24 w-24 md:h-32 md:w-32", size = 128, color = group.color, name = Some(group.name)) -%}
+          {# End group logo -#}
+
+          <div class="flex-1">
+            {# Region/Category legend -#}
+            <div class="mb-2">
+              <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
+                {% if let Some(region_name) = group.region_name -%}
+                  {{ region_name }}
+                {% else -%}
+                  {{ group.category_name }}
+                {% endif -%}
+              </span>
+            </div>
+            {# End region/category legend -#}
+
+            {# Group name -#}
+            <h1 class="text-3xl md:text-4xl font-semibold text-stone-900 mb-4">{{ group.name|demoji }}</h1>
+            {# End group name -#}
+
+            {# Members count and founded date -#}
+            <div class="flex items-center gap-4 text-stone-600">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+                <span class="text-sm">{{ group.members_count }} members</span>
+              </div>
+              <div class="flex items-center">
+                <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
+                <span class="text-sm">Founded {{ group.created_at.format("%B %Y") }}</span>
+              </div>
+            </div>
+            {# End members count and founded date -#}
+          </div>
+
+          {# Social networks -#}
+          {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
+          {% if has_social_links -%}
+            <div class="flex flex-col items-end gap-2">
+              <span class="text-xs text-stone-500 uppercase tracking-wide">Connect</span>
+              <div class="flex flex-wrap gap-2">
+                {% if let Some(website_url) = group.website_url -%}
+                  <a href="{{ website_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="Website">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-website"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(twitter_url) = group.twitter_url -%}
+                  <a href="{{ twitter_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="Twitter">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-twitter"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(facebook_url) = group.facebook_url -%}
+                  <a href="{{ facebook_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="Facebook">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-facebook"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(linkedin_url) = group.linkedin_url -%}
+                  <a href="{{ linkedin_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="LinkedIn">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-linkedin"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(github_url) = group.github_url -%}
+                  <a href="{{ github_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="GitHub">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-github"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(instagram_url) = group.instagram_url -%}
+                  <a href="{{ instagram_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="Instagram">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-instagram"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(youtube_url) = group.youtube_url -%}
+                  <a href="{{ youtube_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="YouTube">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-youtube"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(slack_url) = group.slack_url -%}
+                  <a href="{{ slack_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="Slack">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-slack"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(extra_links) = group.extra_links -%}
+                  {% for (name, url) in extra_links -%}
+                    <a href="{{ url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                       title="{{ name }}">
+                      <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-link"></div>
+                    </a>
+                  {% endfor -%}
+                {% endif -%}
+              </div>
+            </div>
+          {% endif -%}
+          {# End social networks -#}
+        </div>
+      </div>
+    </div>
+    {# End group header -#}
+
+    {# Group banner -#}
+    {% if let Some(banner_url) = group.banner_url -%}
+      <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div>
+          <img src="{{ banner_url }}"
+               alt="Group banner"
+               class="w-full h-64 md:h-80 object-cover rounded-lg shadow-lg"
+               width="896"
+               height="320" />
+        </div>
+      </div>
+    {% endif -%}
+    {# End group banner -#}
+
+    {# Organizers and Location section -#}
+    <div>
+      <div class="px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          {# Organizers section -#}
+          <div>
+            {% if !group.organizers.is_empty() -%}
+              <h2 class="text-2xl font-semibold text-stone-900 mb-6">Organizers</h2>
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {% for organizer in group.organizers -%}
+                  <div class="flex flex-col items-center p-3 bg-stone-100 rounded-lg text-center">
+                    {% if let Some(photo_url) = organizer.photo_url -%}
+                      <img src="{{ photo_url }}"
+                           alt="Organizer photo"
+                           class="size-12 rounded-full object-cover mb-2 flex-shrink-0 border-2 border-white"
+                           width="48"
+                           height="48" />
+                    {% else -%}
+                      <div class="size-12 rounded-full bg-stone-200 flex items-center justify-center mb-2 flex-shrink-0 border-2 border-white">
+                        <span class="text-stone-600 font-semibold text-sm">
+                          {% if let Some(first_name) = organizer.first_name -%}
+                            {{ first_name.chars().next().unwrap_or('?').to_uppercase() }}
+                          {% else if let Some(last_name) = organizer.last_name -%}
+                            {{ last_name.chars().next().unwrap_or('?').to_uppercase() }}
+                          {% else -%}
+                            O
+                          {% endif -%}
+                        </span>
+                      </div>
+                    {% endif -%}
+                    <div class="flex-1 min-w-0 w-full">
+                      <h3 class="text-sm font-semibold text-stone-900 truncate w-full">
+                        {% if let Some(first_name) = organizer.first_name -%}
+                          {% if let Some(last_name) = organizer.last_name -%}
+                            {{ first_name }} {{ last_name }}
+                          {% else -%}
+                            {{ first_name }}
+                          {% endif -%}
+                        {% else if let Some(last_name) = organizer.last_name -%}
+                          {{ last_name }}
+                        {% else -%}
+                          Organizer
+                        {% endif -%}
+                      </h3>
+                      {% if let Some(title) = organizer.title -%}
+                        <p class="text-xs text-stone-600 mt-1 w-full line-clamp-2">{{ title }}</p>
+                      {% endif -%}
+                    </div>
+                  </div>
+                {% endfor -%}
+              </div>
+            {% endif -%}
+          </div>
+          {# End organizers section -#}
+
+          {# Location and map section -#}
+          {% if group.latitude.is_some() && group.longitude.is_some() -%}
+            <div>
+              <h2 class="text-2xl font-semibold text-stone-900 mb-6">Location</h2>
+              <div class="space-y-6">
+                {# Location details -#}
+                <div class="space-y-4">
+                  {% if let Some(location) = group.location(100) -%}
+                    <div class="flex items-start">
+                      <div class="svg-icon size-5 mt-1 mr-3 bg-stone-700 icon-location"></div>
+                      <div>
+                        <h3 class="text-lg font-semibold text-stone-900 mb-2">Address</h3>
+                        <p class="text-stone-700">{{ location }}</p>
+                      </div>
+                    </div>
+                  {% endif -%}
+
+                  <div class="flex items-start">
+                    <div class="svg-icon size-5 mt-1 mr-3 bg-stone-700 icon-date"></div>
+                    <div>
+                      <h3 class="text-lg font-semibold text-stone-900 mb-2">Founded</h3>
+                      <p class="text-stone-700">{{ group.created_at.format("%B %e, %Y") }}</p>
+                    </div>
+                  </div>
+                </div>
+                {# End location details -#}
+
+                {# Map -#}
+                <div class="h-64 lg:h-80 rounded-lg overflow-hidden shadow-lg">
+                  <div id="group-map"
+                       class="w-full h-full"
+                       data-lat="{{ group.latitude.unwrap() }}"
+                       data-lng="{{ group.longitude.unwrap() }}"
+                       data-name="{{ group.name|demoji }}"></div>
+                </div>
+                {# End map -#}
+              </div>
+            </div>
+
+            {# Map initialization script -#}
+            <script type="module">
+              import L from '/static/vendor/js/leaflet.v1.9.4.min.js';
+
+              document.addEventListener('DOMContentLoaded', function() {
+                const mapElement = document.getElementById('group-map');
+                if (mapElement) {
+                  const lat = parseFloat(mapElement.dataset.lat);
+                  const lng = parseFloat(mapElement.dataset.lng);
+                  const name = mapElement.dataset.name;
+
+                  const map = L.map('group-map').setView([lat, lng], 13);
+
+                  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                  }).addTo(map);
+
+                  L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup(name)
+                    .openPopup();
+                }
+              });
+            </script>
+            {# End map initialization script -#}
+          {% endif -%}
+          {# End location and map section -#}
+        </div>
+      </div>
+    </div>
+    {# End organizers and location section -#}
+
+    {# Group description -#}
+    {% if let Some(description) = group.description -%}
+      <div>
+        <div class="px-4 sm:px-6 lg:px-8 py-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
+          <div class="prose prose-stone max-w-none">
+            <div class="text-stone-700 leading-relaxed">{{ description|demoji|safe }}</div>
+          </div>
+
+          {# Tags if available -#}
+          {% if let Some(tags) = group.tags -%}
+            {% if !tags.is_empty() -%}
+              <div class="mt-8">
+                <h3 class="text-lg font-semibold text-stone-900 mb-4">Topics</h3>
+                <div class="flex flex-wrap gap-2">
+                  {% for tag in tags -%}
+                    <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full">{{ tag }}</span>
+                  {% endfor -%}
+                </div>
+              </div>
+            {% endif -%}
+          {% endif -%}
+          {# End tags -#}
+        </div>
+      </div>
+    {% endif -%}
+    {# End group description -#}
+
+    {# Next events section -#}
+    {% if !upcoming_events.is_empty() -%}
+      <div>
+        <div class="px-4 sm:px-6 lg:px-8 py-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Upcoming Events</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for event in upcoming_events -%}
+              <a href="/events/{{ event.slug }}"
+                 class="block hover:bg-stone-50 transition-colors bg-white border border-stone-200 rounded-lg">
+                <div class="p-5 md:p-7">
+                  <div class="flex flex-1 flex-row items-stretch">
+                    {# Event icon -#}
+                    <div class="card-logo">
+                      {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block h-[100px] w-[100px] min-w-[100px]", size = 100, color = event.group_color, name = Some(event.group_name)) -%}
+                      {% call common::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -%}
+                    </div>
+                    {# End event icon -#}
+
+                    <div class="min-w-0 pl-4 content-center">
+                      <div class="flex flex-col justify-between h-full">
+                        <div>
+                          {# Event group name -#}
+                          <div class="card-header">
+                            <span>{{ event.group_name }}</span>
+                          </div>
+                          {# End event group name -#}
+
+                          {# Event name -#}
+                          <div class="line-clamp-2 text-[0.9rem] md:text-base font-semibold md:mt-1 md:line-clamp-1">
+                            {{ event.name|demoji }}
+                          </div>
+                          {# End event name -#}
+                        </div>
+
+                        <div class="hidden md:block">
+                          {# Event location -#}
+                          <div class="card-meta h-[24px]">
+                            {% if event.kind != EventKind::Virtual -%}
+                              {% if let Some(location) = event.location(25) -%}
+                                <div class="truncate me-2">
+                                  {% call common::icon_text(icon_name = "location", text = location) -%}
+                                </div>
+                              {% endif -%}
+                            {% else -%}
+                              <div class="icon-text me-2">
+                                <img height="12"
+                                     width="12"
+                                     src="/static/images/icons/location.svg"
+                                     alt="Location icon" />
+                              </div>
+                            {% endif -%}
+                            {% call common::event_badge(kind = event.kind) -%}
+                          </div>
+                          {# End event location -#}
+
+                          {# Event date -#}
+                          <div class="flex items-center pt-0.5">
+                            {% if let Some(starts_at) = event.starts_at -%}
+                              {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
+                            {% endif -%}
+                          </div>
+                          {# End event date -#}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {# Mobile content -#}
+                  <div class="block md:hidden">
+                    {# Event location -#}
+                    <div class="card-meta mt-3 h-[21px]">
+                      {% if event.kind != EventKind::Virtual -%}
+                        {% if let Some(location) = event.location(25) -%}
+                          {% call common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2")) -%}
+                        {% endif -%}
+                      {% else -%}
+                        <div class="icon-text me-2">
+                          <img height="12"
+                               width="12"
+                               src="/static/images/icons/location.svg"
+                               alt="Location icon" />
+                        </div>
+                      {% endif -%}
+                      {% call common::event_badge(kind = event.kind) -%}
+                    </div>
+                    {# End event location -#}
+
+                    {# Event date -#}
+                    <div class="flex items-center pt-1">
+                      {% if let Some(starts_at) = event.starts_at -%}
+                        {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
+                      {% endif -%}
+                    </div>
+                    {# End event date -#}
+                  </div>
+                  {# End mobile content -#}
+                </div>
+              </a>
+            {% endfor -%}
+          </div>
+        </div>
+      </div>
+    {% endif -%}
+    {# End next events section -#}
+
+    {# Past events section -#}
+    {% if !past_events.is_empty() -%}
+      <div>
+        <div class="px-4 sm:px-6 lg:px-8 py-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Past Events</h2>
+          <div class="grid grid-cols-1 gap-8 md:gap-12 md:grid-cols-2 xl:grid-cols-3">
+            {% for event in past_events -%}
+              <a href="/events/{{ event.slug }}"
+                 class="flex hover:bg-stone-50 transition-colors rounded-lg p-4">
+                <div class="card">
+                  <div class="card-logo">
+                    {# Event icon -#}
+                    {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
+                    {# End event icon -#}
+                  </div>
+
+                  <div class="card-content">
+                    <div class="card-body">
+                      <div>
+                        {# Event group name -#}
+                        <div class="card-header">
+                          <span>{{ event.group_name }}</span>
+                        </div>
+                        {# End event group name -#}
+
+                        {# Event title -#}
+                        <div class="card-title">{{ event.name|demoji }}</div>
+                        {# End event title -#}
+                      </div>
+
+                      <div>
+                        {# Event location -#}
+                        <div class="card-meta">
+                          {% match event.kind -%}
+                          {% when EventKind::InPerson -%}
+                          {% if let Some(location) = event.location(25) -%}
+                            {% call common::icon_text(icon_name = "location", text = location) -%}
+                          {% endif -%}
+                          {% when EventKind::Hybrid -%}
+                          <div class="flex items-center">
+                            {% if let Some(location) = event.location(16) -%}
+                              {% call common::icon_text(icon_name = "location", text = location) -%}
+                            {% endif -%}
+                            {% call common::event_badge(kind = event.kind) -%}
+                          </div>
+                          {% when EventKind::Virtual -%}
+                          <div class="flex items-center">
+                            <img height="12"
+                                 width="12"
+                                 src="/static/images/icons/location.svg"
+                                 alt="Location icon"
+                                 class="me-2" />
+                            {% call common::event_badge(kind = event.kind) -%}
+                          </div>
+                        {% endmatch -%}
+                        </div>
+                        {# End event location -#}
+
+                        {# Event date -#}
+                        {% if let Some(starts_at) = event.starts_at -%}
+                          <div class="card-meta">
+                            {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z")) -%}
+                          </div>
+                        {% endif -%}
+                        {# End event date -#}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            {% endfor -%}
+          </div>
+        </div>
+      </div>
+    {% endif -%}
+    {# End past events section -#}
+  </div>
+{% endblock content -%}
