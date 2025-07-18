@@ -122,6 +122,24 @@
                     <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-slack"></div>
                   </a>
                 {% endif -%}
+                {% if let Some(wechat_url) = group.wechat_url -%}
+                  <a href="{{ wechat_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="WeChat">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-wechat"></div>
+                  </a>
+                {% endif -%}
+                {% if let Some(flickr_url) = group.flickr_url -%}
+                  <a href="{{ flickr_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+                     title="Flickr">
+                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-flickr"></div>
+                  </a>
+                {% endif -%}
                 {% if let Some(extra_links) = group.extra_links -%}
                   {% for (name, url) in extra_links -%}
                     <a href="{{ url }}"
