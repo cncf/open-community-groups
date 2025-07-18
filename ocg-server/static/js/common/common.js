@@ -54,15 +54,15 @@ export const toggleModalVisibility = (modalId) => {
  * @param {number} long - The longitude coordinate for the map center and marker
  */
 export const loadMap = (divId, title, lat, long) => {
-  const map = L.map(divId).setView([lat, long], 13);
+  const map = L.map(divId, { zoomControl: false, dragging: false }).setView([lat, long], 13);
 
   L.tileLayer(
     `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${
       L.Browser.retina ? "@2x.png" : ".png"
     }`,
     {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      attribution: "",
+      unloadInvisibleTiles: true,
     },
   ).addTo(map);
 
@@ -88,5 +88,5 @@ export const loadMap = (divId, title, lat, long) => {
   });
 
   // Add popup to marker
-  marker.addTo(map).bindPopup(title).openPopup();
+  marker.addTo(map);
 };

@@ -8,7 +8,7 @@
       <div class="px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex flex-1 flex-row items-stretch gap-6">
           {# Group logo -#}
-          {% call common::logo(logo_url = group.logo_url, classes = "h-24 w-24 md:h-32 md:w-32", size = 128, color = group.color, name = Some(group.name)) -%}
+          {% call common::logo(logo_url = group.logo_url, classes = "h-20 w-20 md:h-28 md:w-28", size = 112, color = group.color, name = Some(group.name)) -%}
           {# End group logo -#}
 
           <div class="flex-1 flex flex-col justify-between">
@@ -48,7 +48,6 @@
           {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
           {% if has_social_links -%}
             <div class="flex flex-col items-end gap-2">
-              <span class="text-xs text-stone-500 uppercase tracking-wide">Connect</span>
               <div class="flex flex-wrap gap-2">
                 {% if let Some(website_url) = group.website_url -%}
                   <a href="{{ website_url }}"
@@ -160,101 +159,77 @@
     </div>
     {# End group header -#}
 
-    {# Group banner -#}
-    {% if let Some(banner_url) = group.banner_url -%}
-      <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div>
-          <img src="{{ banner_url }}"
-               alt="Group banner"
-               class="w-full h-auto max-h-64 lg:max-h-80 object-contain rounded-lg mx-auto"
-               width="auto"
-               height="auto" />
-        </div>
-      </div>
-    {% endif -%}
-    {# End group banner -#}
-
-    {# Organizers and Location section -#}
-    <div>
-      <div class="px-4 sm:px-6 lg:px-8 py-8">
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-10">
-          {# Organizers section -#}
-          <div>
-            {% if !group.organizers.is_empty() -%}
-              <h2 class="text-2xl font-semibold text-stone-900 mb-6">Organizers</h2>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {% for organizer in group.organizers -%}
-                  <div class="flex flex-col items-center p-3 bg-stone-50 rounded-lg text-center h-[136px]">
-                    {% if let Some(photo_url) = organizer.photo_url -%}
-                      <img src="{{ photo_url }}"
-                           alt="Organizer photo"
-                           class="size-12 rounded-full object-cover mb-2 flex-shrink-0 border-2 border-white"
-                           width="48"
-                           height="48" />
-                    {% else -%}
-                      <div class="size-12 rounded-full bg-stone-200 flex items-center justify-center mb-2 flex-shrink-0 border-2 border-white">
-                        <span class="text-stone-600 font-semibold text-sm">
-                          {% if let Some(first_name) = organizer.first_name -%}
-                            {{ first_name.chars().next().unwrap_or('?').to_uppercase() }}
-                          {% else if let Some(last_name) = organizer.last_name -%}
-                            {{ last_name.chars().next().unwrap_or('?').to_uppercase() }}
-                          {% else -%}
-                            O
-                          {% endif -%}
-                        </span>
-                      </div>
-                    {% endif -%}
-                    <div class="flex-1 min-w-0 w-full">
-                      <h3 class="text-sm font-semibold text-stone-900 truncate w-full">
-                        {% if let Some(first_name) = organizer.first_name -%}
-                          {% if let Some(last_name) = organizer.last_name -%}
-                            {{ first_name }} {{ last_name }}
-                          {% else -%}
-                            {{ first_name }}
-                          {% endif -%}
-                        {% else if let Some(last_name) = organizer.last_name -%}
-                          {{ last_name }}
-                        {% else -%}
-                          Organizer
-                        {% endif -%}
-                      </h3>
-                      {% if let Some(title) = organizer.title -%}
-                        <p class="text-xs text-stone-600 mt-1 w-full line-clamp-2">{{ title }}</p>
-                      {% endif -%}
-                    </div>
-                  </div>
-                {% endfor -%}
+    {# Two column layout -#}
+    <div class="px-4 sm:px-6 lg:px-8 py-8">
+      <div class="grid grid-cols-1 lg:grid-cols-10 gap-10">
+        {# Left column (70%) -#}
+        <div class="lg:col-span-7">
+          {# Group banner -#}
+          {% if let Some(banner_url) = group.banner_url -%}
+            <div class="w-full">
+              <div>
+                <img src="{{ banner_url }}"
+                     alt="Group banner"
+                     class="w-full h-auto max-h-64 lg:max-h-80 object-contain rounded-lg mx-auto"
+                     width="auto"
+                     height="auto" />
               </div>
-            {% endif -%}
-          </div>
-          {# End organizers section -#}
+            </div>
+          {% endif -%}
+          {# End group banner -#}
 
+          {# Group description -#}
+          {% if let Some(description) = group.description -%}
+            <div>
+              <div class="py-8">
+                <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
+                <div class="prose prose-stone max-w-none">
+                  <div class="text-stone-700 text-base/6 markdown">{{ description|demoji|safe }}</div>
+                </div>
+              </div>
+            </div>
+          {% endif -%}
+          {# End group description -#}
+        </div>
+        {# End left column -#}
+
+        {# Right column (30%) -#}
+        <div class="lg:col-span-3">
           {# Location and map section -#}
           {% if group.latitude.is_some() && group.longitude.is_some() -%}
-            <div>
-              <h2 class="text-2xl font-semibold text-stone-900 mb-6">Location</h2>
-              <div class="space-y-6">
-                {# Map -#}
-                <div class="h-64 lg:h-80 rounded-lg overflow-hidden shadow-lg">
-                  <div id="group-map"
-                       class="w-full h-full"
-                       data-lat="{{ group.latitude.unwrap() }}"
-                       data-lng="{{ group.longitude.unwrap() }}"
-                       data-name="{{ group.name|demoji }}"></div>
-                </div>
-                {# End map -#}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {# Location details -#}
+              <div class="flex space-y-3">
+                <div class="svg-icon size-4 mr-2 bg-stone-600 icon-location"></div>
+                <div class="text-sm text-stone-900">
+                  {% if let Some(city) = group.city -%}
+                    <div>{{ city }}</div>
+                  {% endif -%}
 
-                {# Location details -#}
-                {% if let Some(location) = group.location(100) -%}
-                  <div class="mt-4">
-                    <div class="flex items-center">
-                      <div class="svg-icon size-4 mr-2 bg-stone-600 icon-location"></div>
-                      <span class="text-sm">{{ location }}</span>
-                    </div>
-                  </div>
-                {% endif -%}
-                {# End location details -#}
+                  {% if let Some(state) = group.state -%}
+                    <div>{{ state }}</div>
+                  {% endif -%}
+
+                  {% if let Some(country_name) = group.country_name -%}
+                    <div>{{ country_name }}</div>
+                  {% endif -%}
+
+                  {% if let Some(region_name) = group.region_name -%}
+                    <div class="text-stone-600">{{ region_name }}</div>
+                  {% endif -%}
+                </div>
               </div>
+              {# End location details -#}
+
+              {# Map -#}
+              <div class="h-32 rounded-lg overflow-hidden">
+                <div id="group-map"
+                     class="w-full h-full"
+                     data-lat="{{ group.latitude.unwrap() }}"
+                     data-lng="{{ group.longitude.unwrap() }}"
+                     data-name="{{ group.name|demoji }}"></div>
+              </div>
+              {# End map -#}
             </div>
 
             {# Map initialization script -#}
@@ -276,19 +251,62 @@
             {# End map initialization script -#}
           {% endif -%}
           {# End location and map section -#}
-        </div>
-      </div>
-    </div>
-    {# End organizers and location section -#}
 
-    {# Group description -#}
-    {% if let Some(description) = group.description -%}
-      <div>
-        <div class="px-4 sm:px-6 lg:px-8 py-8">
-          <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
-          <div class="prose prose-stone max-w-none">
-            <div class="text-stone-700 text-base/6 markdown">{{ description|demoji|safe }}</div>
+          {# Organizers section -#}
+          <div>
+            {% if !group.organizers.is_empty() -%}
+              <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4 mt-8">Organizers</h2>
+              <div class="border border-stone-200 rounded-lg divide-y divide-stone-200">
+                {% for organizer in group.organizers -%}
+                  <div class="flex items-center gap-3 p-3">
+                    {# Avatar -#}
+                    {% if let Some(photo_url) = organizer.photo_url -%}
+                      <img src="{{ photo_url }}"
+                           alt="Organizer photo"
+                           class="size-10 rounded-full object-cover flex-shrink-0 border-2 border-gray-400"
+                           width="40"
+                           height="40" />
+                    {% else -%}
+                      <div class="size-10 rounded-full bg-stone-200 flex items-center justify-center flex-shrink-0 border-2 border-gray-400">
+                        <span class="text-stone-600 font-semibold text-sm">
+                          {% if let Some(first_name) = organizer.first_name -%}
+                            {{ first_name.chars().next().unwrap_or('?').to_uppercase() }}
+                          {% else if let Some(last_name) = organizer.last_name -%}
+                            {{ last_name.chars().next().unwrap_or('?').to_uppercase() }}
+                          {% else -%}
+                            -
+                          {% endif -%}
+                        </span>
+                      </div>
+                    {% endif -%}
+                    {# End avatar -#}
+
+                    {# Name and position -#}
+                    <div class="flex-1 min-w-0">
+                      <h3 class="text-sm font-semibold text-stone-900 truncate">
+                        {% if let Some(first_name) = organizer.first_name -%}
+                          {% if let Some(last_name) = organizer.last_name -%}
+                            {{ first_name }} {{ last_name }}
+                          {% else -%}
+                            {{ first_name }}
+                          {% endif -%}
+                        {% else if let Some(last_name) = organizer.last_name -%}
+                          {{ last_name }}
+                        {% else -%}
+                          Organizer
+                        {% endif -%}
+                      </h3>
+                      {% if let Some(title) = organizer.title -%}
+                        <p class="text-xs text-stone-600 mt-1 truncate">{{ title }}</p>
+                      {% endif -%}
+                    </div>
+                    {# End name and position -#}
+                  </div>
+                {% endfor -%}
+              </div>
+            {% endif -%}
           </div>
+          {# End organizers section -#}
 
           {# Tags if available -#}
           {% if let Some(tags) = group.tags -%}
@@ -305,9 +323,10 @@
           {% endif -%}
           {# End tags -#}
         </div>
+        {# End right column -#}
       </div>
-    {% endif -%}
-    {# End group description -#}
+    </div>
+    {# End two column layout -#}
 
     {# Next events section -#}
     {% if !upcoming_events.is_empty() -%}
