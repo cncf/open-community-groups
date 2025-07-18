@@ -50,94 +50,34 @@
             <div class="flex flex-col items-end gap-2">
               <div class="flex flex-wrap gap-2">
                 {% if let Some(website_url) = group.website_url -%}
-                  <a href="{{ website_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="Website">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-website"></div>
-                  </a>
+                  {% call common::social_link(url = website_url, icon_name = "website", platform_name = "Website") -%}
                 {% endif -%}
                 {% if let Some(twitter_url) = group.twitter_url -%}
-                  <a href="{{ twitter_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="Twitter">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-twitter"></div>
-                  </a>
+                  {% call common::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -%}
                 {% endif -%}
                 {% if let Some(facebook_url) = group.facebook_url -%}
-                  <a href="{{ facebook_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="Facebook">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-facebook"></div>
-                  </a>
+                  {% call common::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -%}
                 {% endif -%}
                 {% if let Some(linkedin_url) = group.linkedin_url -%}
-                  <a href="{{ linkedin_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="LinkedIn">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-linkedin"></div>
-                  </a>
+                  {% call common::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn") -%}
                 {% endif -%}
                 {% if let Some(github_url) = group.github_url -%}
-                  <a href="{{ github_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="GitHub">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-github"></div>
-                  </a>
+                  {% call common::social_link(url = github_url, icon_name = "github", platform_name = "GitHub") -%}
                 {% endif -%}
                 {% if let Some(instagram_url) = group.instagram_url -%}
-                  <a href="{{ instagram_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="Instagram">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-instagram"></div>
-                  </a>
+                  {% call common::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram") -%}
                 {% endif -%}
                 {% if let Some(youtube_url) = group.youtube_url -%}
-                  <a href="{{ youtube_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="YouTube">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-youtube"></div>
-                  </a>
+                  {% call common::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube") -%}
                 {% endif -%}
                 {% if let Some(slack_url) = group.slack_url -%}
-                  <a href="{{ slack_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="Slack">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-slack"></div>
-                  </a>
+                  {% call common::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -%}
                 {% endif -%}
                 {% if let Some(wechat_url) = group.wechat_url -%}
-                  <a href="{{ wechat_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="WeChat">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-wechat"></div>
-                  </a>
+                  {% call common::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -%}
                 {% endif -%}
                 {% if let Some(flickr_url) = group.flickr_url -%}
-                  <a href="{{ flickr_url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-                     title="Flickr">
-                    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-flickr"></div>
-                  </a>
+                  {% call common::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -%}
                 {% endif -%}
                 {% if let Some(extra_links) = group.extra_links -%}
                   {% for (name, url) in extra_links -%}

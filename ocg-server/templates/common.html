@@ -190,3 +190,15 @@
   {% endif -%}
 {% endmacro event_badge -%}
 {# End event badge -#}
+
+{# Social network link -#}
+{% macro social_link(url, icon_name, platform_name) -%}
+  <a href="{{ url }}"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+     title="{{ platform_name }}">
+    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-{{ icon_name }}"></div>
+  </a>
+{% endmacro social_link -%}
+{# End social network link -#}
