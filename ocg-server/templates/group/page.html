@@ -197,39 +197,37 @@
         <div class="lg:col-span-3">
           {# Location and map section -#}
           {% if group.latitude.is_some() && group.longitude.is_some() -%}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {# Location details -#}
-              <div class="flex space-y-3">
-                <div class="svg-icon size-4 mr-2 bg-stone-600 icon-location"></div>
-                <div class="text-sm text-stone-900">
-                  {% if let Some(city) = group.city -%}
-                    <div>{{ city }}</div>
-                  {% endif -%}
-
-                  {% if let Some(state) = group.state -%}
-                    <div>{{ state }}</div>
-                  {% endif -%}
-
-                  {% if let Some(country_name) = group.country_name -%}
-                    <div>{{ country_name }}</div>
-                  {% endif -%}
-
-                  {% if let Some(region_name) = group.region_name -%}
-                    <div class="text-stone-600">{{ region_name }}</div>
-                  {% endif -%}
+            <div class="border border-stone-200 rounded-lg mb-6 overflow-hidden">
+              <div class="grid grid-cols-1 md:grid-cols-2">
+                {# Location details -#}
+                <div class="space-y-3">
+                  <div class="flex items-start p-3">
+                    <div class="svg-icon size-4 mr-2 bg-stone-600 icon-location"></div>
+                    <div class="space-y-1">
+                      {% if let Some(city) = group.city -%}
+                        <div class="text-sm font-medium text-stone-900">{{ city }}</div>
+                      {% endif -%}
+                      {% if let Some(state) = group.state -%}
+                        <div class="text-xs text-stone-700">{{ state }}</div>
+                      {% endif -%}
+                      {% if let Some(country_name) = group.country_name -%}
+                        <div class="text-xs text-stone-700">{{ country_name }}</div>
+                      {% endif -%}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              {# End location details -#}
+                {# End location details -#}
 
-              {# Map -#}
-              <div class="h-32 rounded-lg overflow-hidden">
-                <div id="group-map"
-                     class="w-full h-full"
-                     data-lat="{{ group.latitude.unwrap() }}"
-                     data-lng="{{ group.longitude.unwrap() }}"
-                     data-name="{{ group.name|demoji }}"></div>
+                {# Map -#}
+                <div class="h-full overflow-hidden border-l border-stone-200">
+                  <div id="group-map"
+                       class="w-full h-full"
+                       data-lat="{{ group.latitude.unwrap() }}"
+                       data-lng="{{ group.longitude.unwrap() }}"
+                       data-name="{{ group.name|demoji }}"></div>
+                </div>
+                {# End map -#}
               </div>
-              {# End map -#}
             </div>
 
             {# Map initialization script -#}
