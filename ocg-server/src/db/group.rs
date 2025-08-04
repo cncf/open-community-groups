@@ -7,10 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::{
-        community::{self, common::EventKind},
-        group,
-    },
+    templates::{common::EventKind, community, group},
 };
 
 /// Database trait defining all data access operations for the group site.

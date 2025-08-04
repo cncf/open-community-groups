@@ -10,7 +10,7 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    templates::{community::common::EventKind, group::Page},
+    templates::{common::EventKind, group::Page},
 };
 
 use super::{error::HandlerError, extractors::CommunityId};

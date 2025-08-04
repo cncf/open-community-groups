@@ -9,7 +9,10 @@ use serde_with::skip_serializing_none;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::{common::User, community::common::EventKind, helpers::color};
+use crate::templates::{
+    common::{EventKind, User},
+    helpers::color,
+};
 
 /// Event page template.
 #[allow(dead_code)]

@@ -4,6 +4,29 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
+/// Categorization of event attendance modes.
+///
+/// Distinguishes between physical, online, and mixed attendance events
+/// for filtering and display purposes.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventKind {
+    Hybrid,
+    #[default]
+    InPerson,
+    Virtual,
+}
+
+impl std::fmt::Display for EventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EventKind::Hybrid => write!(f, "hybrid"),
+            EventKind::InPerson => write!(f, "in-person"),
+            EventKind::Virtual => write!(f, "virtual"),
+        }
+    }
+}
+
 /// This struct represents basic user profile information that can be displayed
 /// throughout the application.
 #[skip_serializing_none]

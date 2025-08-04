@@ -20,10 +20,8 @@ use crate::{
     },
 };
 
-use super::{
-    common::{Community, EventKind},
-    home,
-};
+use super::{common::Community, home};
+use crate::templates::common::EventKind;
 
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;

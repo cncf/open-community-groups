@@ -62,29 +62,6 @@ pub(crate) struct Theme {
 /// Lower numbers represent lighter shades, higher numbers darker shades.
 type Palette = BTreeMap<u32, String>;
 
-/// Categorization of event attendance modes.
-///
-/// Distinguishes between physical, online, and mixed attendance events
-/// for filtering and display purposes.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum EventKind {
-    Hybrid,
-    #[default]
-    InPerson,
-    Virtual,
-}
-
-impl std::fmt::Display for EventKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            EventKind::Hybrid => write!(f, "hybrid"),
-            EventKind::InPerson => write!(f, "in-person"),
-            EventKind::Virtual => write!(f, "virtual"),
-        }
-    }
-}
-
 /// Generates a complete color palette from a single primary color.
 ///
 /// Creates lighter and darker variants of the primary color to build palette with shades

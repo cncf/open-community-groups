@@ -15,10 +15,8 @@ use crate::templates::{
     helpers::{LocationParts, build_location, color},
 };
 
-use super::{
-    common::{Community, EventKind},
-    explore,
-};
+use super::{common::Community, explore};
+use crate::templates::common::EventKind;
 
 /// Template for the community home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]

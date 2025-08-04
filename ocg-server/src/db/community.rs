@@ -9,9 +9,9 @@ use uuid::Uuid;
 
 use crate::{
     db::{BBox, PgDB, Total},
-    templates::community::{
-        common::{Community, EventKind},
-        explore, home,
+    templates::{
+        common::EventKind,
+        community::{common::Community, explore, home},
     },
 };
 

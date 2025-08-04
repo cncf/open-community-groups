@@ -15,7 +15,7 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::{common::EventKind, home},
+    templates::{common::EventKind, community::home},
 };
 
 /// Handler that renders the community home page.
