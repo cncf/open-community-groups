@@ -5,7 +5,7 @@ use std::fmt::{self, Display, Formatter};
 use anyhow::Result;
 use askama::Template;
 use axum::http::HeaderMap;
-use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
+use chrono::{Datelike, Months, NaiveDate, Utc};
 use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -13,20 +13,20 @@ use tracing::{instrument, trace};
 
 use crate::{
     db::BBox,
-    templates::{
-        filters,
-        helpers::{LocationParts, build_location, color, extract_location},
+    templates::{filters, helpers::extract_location},
+    types::{
+        event::{EventDetailed, EventKind, EventSummary},
+        group::{GroupDetailed, GroupSummary},
     },
-    types::event::{EventDetailed, EventKind},
 };
 
 use super::{
     common::Community,
-    home,
+    home::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
     pagination::{NavigationLinks, Pagination, ToRawQuery},
 };
 
-// Pages templates.
+// Pages and sections templates.
 
 /// Template for the explore page.
 ///
@@ -126,7 +126,7 @@ pub(crate) struct GroupsSection {
 #[template(path = "community/explore/groups/results.html")]
 pub(crate) struct GroupsResultsSection {
     /// List of groups matching the current filters.
-    pub groups: Vec<Group>,
+    pub groups: Vec<GroupCard>,
     /// Pagination links for navigating results.
     pub navigation_links: NavigationLinks,
     /// Total number of matching groups (for pagination).
@@ -148,85 +148,15 @@ impl GroupsResultsSection {
     }
 }
 
-/// Detailed group information for display in explore results.
+/// Group card template for explore page display.
 ///
-/// This struct contains all the data needed to render a group in the explore page,
-/// including location details and metadata. It can also render itself as a popover for
-/// map views.
+/// This template wraps the `GroupDetailed` data for rendering on the explore page.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/groups/group.html")]
-pub(crate) struct Group {
-    /// Category this group belongs to.
-    pub category_name: String,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub color: String,
-    /// When the group was created.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
-    /// Group name.
-    pub name: String,
-    /// URL slug of the group.
-    pub slug: String,
-
-    /// City where the group is based.
-    pub city: Option<String>,
-    /// ISO country code of the group.
-    pub country_code: Option<String>,
-    /// Full country name of the group.
-    pub country_name: Option<String>,
-    /// Group description text.
-    pub description: Option<String>,
-    /// Latitude for map display.
-    pub latitude: Option<f64>,
-    /// URL to the group logo.
-    pub logo_url: Option<String>,
-    /// Longitude for map display.
-    pub longitude: Option<f64>,
-    /// Pre-rendered HTML for map popovers.
-    pub popover_html: Option<String>,
-    /// Name of the geographic region.
-    pub region_name: Option<String>,
-    /// State/province where the group is based.
-    pub state: Option<String>,
-}
-
-impl Group {
-    /// Build a display-friendly location string from available location data.
-    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.city.as_ref())
-            .group_country_code(self.country_code.as_ref())
-            .group_country_name(self.country_name.as_ref())
-            .group_state(self.state.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Render popover HTML for map views.
-    ///
-    /// Converts this group into a home::Group template and renders it as minified HTML
-    /// for inclusion in map popovers.
-    #[instrument(skip_all, err)]
-    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
-        let home_group: home::Group = self.clone().into();
-        let cfg = MinifyCfg::new();
-        self.popover_html = Some(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?);
-        Ok(())
-    }
-
-    /// Try to create a vector of `Group` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut groups: Vec<Self> = serde_json::from_str(data)?;
-
-        for group in &mut groups {
-            group.color = color(&group.name).to_string();
-        }
-
-        Ok(groups)
-    }
+#[template(path = "community/explore/groups/group_card.html")]
+pub(crate) struct GroupCard {
+    /// Group data
+    pub group: GroupDetailed,
 }
 
 // Types.
@@ -299,8 +229,6 @@ pub(crate) struct EventsFilters {
     pub distance: Option<u64>,
     /// Whether to include bounding box in results (for map view).
     pub include_bbox: Option<bool>,
-    /// Whether to pre-render popover HTML.
-    pub include_popover_html: Option<bool>,
     /// User's latitude for distance-based filtering.
     pub latitude: Option<f64>,
     /// Number of results per page.
@@ -365,7 +293,6 @@ impl EventsFilters {
         if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map) {
             filters.limit = Some(100);
             filters.offset = Some(0);
-            filters.include_popover_html = Some(true);
         }
 
         // Set some defaults when the view mode is map
@@ -441,8 +368,6 @@ pub(crate) struct GroupsFilters {
     pub distance: Option<f64>,
     /// Whether to include bounding box in results.
     pub include_bbox: Option<bool>,
-    /// Whether to pre-render popover HTML.
-    pub include_popover_html: Option<bool>,
     /// User's latitude for distance-based filtering.
     pub latitude: Option<f64>,
     /// Number of results per page.
@@ -477,7 +402,6 @@ impl GroupsFilters {
         if filters.view_mode == Some(ViewMode::Calendar) || filters.view_mode == Some(ViewMode::Map) {
             filters.limit = Some(100);
             filters.offset = Some(0);
-            filters.include_popover_html = Some(true);
         }
 
         // Set some defaults when the view mode is map
@@ -566,4 +490,24 @@ pub(crate) enum ViewMode {
     List,
     /// Interactive map view.
     Map,
+}
+
+// Helpers for rendering popovers.
+
+/// Render popover HTML for map and calendar views for an event.
+#[instrument(skip_all, err)]
+pub(crate) fn render_event_popover(event: &EventDetailed) -> Result<String> {
+    let event_summary = EventSummary::from(event.clone());
+    let home_event = HomeEventCard { event: event_summary };
+    let cfg = MinifyCfg::new();
+    Ok(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?)
+}
+
+/// Render popover HTML for map views for a group.
+#[instrument(skip_all, err)]
+pub(crate) fn render_group_popover(group: &GroupDetailed) -> Result<String> {
+    let group_summary: GroupSummary = group.clone().into();
+    let home_group = HomeGroupCard { group: group_summary };
+    let cfg = MinifyCfg::new();
+    Ok(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?)
 }

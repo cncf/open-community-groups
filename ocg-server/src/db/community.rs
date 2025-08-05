@@ -10,7 +10,10 @@ use uuid::Uuid;
 use crate::{
     db::{BBox, PgDB, Total},
     templates::community::{common::Community, explore, home},
-    types::event::{EventKind, EventSummary, EventDetailed},
+    types::{
+        event::{EventDetailed, EventKind, EventSummary},
+        group::{GroupDetailed, GroupSummary},
+    },
 };
 
 /// Database trait defining all data access operations for the community site.
@@ -29,7 +32,7 @@ pub(crate) trait DBCommunity {
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
 
     /// Retrieves the most recently added groups in the community.
-    async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<home::Group>>;
+    async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
 
     /// Retrieves upcoming events for the community.
     async fn get_community_upcoming_events(
@@ -114,7 +117,7 @@ impl DBCommunity for PgDB {
 
     /// [DB::get_community_recently_added_groups]
     #[instrument(skip(self), err)]
-    async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<home::Group>> {
+    async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -122,7 +125,7 @@ impl DBCommunity for PgDB {
                 &[&community_id],
             )
             .await?;
-        let groups = home::Group::try_new_vec_from_json(&row.get::<_, String>(0))?;
+        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }
@@ -168,7 +171,7 @@ impl DBCommunity for PgDB {
 
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let mut output = SearchCommunityEventsOutput {
+        let output = SearchCommunityEventsOutput {
             events: EventDetailed::try_from_json_array(&row.get::<_, String>("events"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
@@ -177,13 +180,6 @@ impl DBCommunity for PgDB {
             },
             total: row.get::<_, i64>("total") as usize,
         };
-
-        // Render events popover HTML if requested
-        if filters.include_popover_html.unwrap_or_default() {
-            for event in &mut output.events {
-                event.popover_html = Some(event.render_popover_html()?);
-            }
-        }
 
         Ok(output)
     }
@@ -209,8 +205,8 @@ impl DBCommunity for PgDB {
 
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let mut output = SearchCommunityGroupsOutput {
-            groups: explore::Group::try_new_vec_from_json(&row.get::<_, String>("groups"))?,
+        let output = SearchCommunityGroupsOutput {
+            groups: GroupDetailed::try_from_json_array(&row.get::<_, String>("groups"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
             } else {
@@ -218,13 +214,6 @@ impl DBCommunity for PgDB {
             },
             total: row.get::<_, i64>("total") as usize,
         };
-
-        // Render events popover HTML if requested
-        if filters.include_popover_html.unwrap_or_default() {
-            for group in &mut output.groups {
-                group.render_popover_html()?;
-            }
-        }
 
         Ok(output)
     }
@@ -241,7 +230,7 @@ pub(crate) struct SearchCommunityEventsOutput {
 /// Output structure for community groups search operations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityGroupsOutput {
-    pub groups: Vec<explore::Group>,
+    pub groups: Vec<GroupDetailed>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }

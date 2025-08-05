@@ -7,15 +7,17 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::group,
-    types::event::{EventKind, EventSummary},
+    types::{
+        event::{EventKind, EventSummary},
+        group::GroupFull,
+    },
 };
 
 /// Database trait defining all data access operations for the group site.
 #[async_trait]
 pub(crate) trait DBGroup {
     /// Retrieves group information.
-    async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<group::Group>;
+    async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull>;
 
     /// Retrieves past events for a specific group.
     async fn get_group_past_events(
@@ -40,7 +42,7 @@ pub(crate) trait DBGroup {
 impl DBGroup for PgDB {
     /// [DB::get_group]
     #[instrument(skip(self), err)]
-    async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<group::Group> {
+    async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -48,7 +50,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug],
             )
             .await?;
-        let group = group::Group::try_from_json(&row.get::<_, String>(0))?;
+        let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(group)
     }

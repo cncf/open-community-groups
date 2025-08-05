@@ -11,20 +11,14 @@ use crate::{db::PgDB, types::event::EventFull};
 #[async_trait]
 pub(crate) trait DBEvent {
     /// Retrieves detailed event information.
-    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str)
-    -> Result<EventFull>;
+    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull>;
 }
 
 #[async_trait]
 impl DBEvent for PgDB {
     /// [DB::get_event]
     #[instrument(skip(self), err)]
-    async fn get_event(
-        &self,
-        community_id: Uuid,
-        group_slug: &str,
-        event_slug: &str,
-    ) -> Result<EventFull> {
+    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(

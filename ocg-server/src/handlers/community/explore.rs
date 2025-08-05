@@ -22,7 +22,7 @@ use crate::{
     },
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::community::{
-        explore::{self, Entity, EventsFilters, GroupsFilters},
+        explore::{self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover},
         pagination::{self, NavigationLinks},
     },
 };
@@ -101,10 +101,7 @@ pub(crate) async fn events_results_section(
     let SearchCommunityEventsOutput { events, bbox, total } =
         db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
-        events: events
-            .into_iter()
-            .map(|event| explore::EventCard { event })
-            .collect(),
+        events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
         navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
         total,
         bbox,
@@ -155,7 +152,7 @@ pub(crate) async fn groups_results_section(
     let SearchCommunityGroupsOutput { groups, bbox, total } =
         db.search_community_groups(community_id, &filters).await?;
     let template = explore::GroupsResultsSection {
-        groups,
+        groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
         navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
         total,
         bbox,
@@ -187,10 +184,7 @@ async fn prepare_events_section(
         filters: filters.clone(),
         filters_options,
         results_section: explore::EventsResultsSection {
-            events: events
-                .into_iter()
-                .map(|event| explore::EventCard { event })
-                .collect(),
+            events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
             navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
             total,
             bbox,
@@ -217,7 +211,7 @@ async fn prepare_groups_section(
         filters: filters.clone(),
         filters_options,
         results_section: explore::GroupsResultsSection {
-            groups,
+            groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
             navigation_links: NavigationLinks::from_filters(&Entity::Groups, filters, total)?,
             total,
             bbox,
@@ -240,9 +234,14 @@ pub(crate) async fn search_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Search events
-    let mut filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    filters.include_popover_html = Some(true);
-    let search_events_output = db.search_community_events(community_id, &filters).await?;
+    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let mut search_events_output = db.search_community_events(community_id, &filters).await?;
+
+    // Render popover HTML for each event
+    for event in &mut search_events_output.events {
+        event.popover_html = Some(render_event_popover(event)?);
+    }
+
     let json_data = serde_json::to_string(&search_events_output)?;
 
     Ok(json_data)
@@ -257,9 +256,14 @@ pub(crate) async fn search_groups(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Search groups
-    let mut filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    filters.include_popover_html = Some(true);
-    let search_groups_output = db.search_community_groups(community_id, &filters).await?;
+    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let mut search_groups_output = db.search_community_groups(community_id, &filters).await?;
+
+    // Render popover HTML for each group
+    for group in &mut search_groups_output.groups {
+        group.popover_html = Some(render_group_popover(group)?);
+    }
+
     let json_data = serde_json::to_string(&search_groups_output)?;
 
     Ok(json_data)

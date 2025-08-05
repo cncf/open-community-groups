@@ -39,7 +39,10 @@ pub(crate) async fn page(
     let template = home::Page {
         community,
         path: uri.path().to_string(),
-        recently_added_groups,
+        recently_added_groups: recently_added_groups
+            .into_iter()
+            .map(|group| home::GroupCard { group })
+            .collect(),
         upcoming_in_person_events: upcoming_in_person_events
             .into_iter()
             .map(|event| home::EventCard { event })

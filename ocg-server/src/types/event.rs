@@ -1,10 +1,8 @@
 //! Event type definitions.
 
 use anyhow::Result;
-use askama::Template;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
-use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tracing::instrument;
@@ -76,6 +74,28 @@ pub struct EventSummary {
     pub starts_at: Option<DateTime<Utc>>,
     /// City where the event venue is located (for in-person events).
     pub venue_city: Option<String>,
+}
+
+impl From<EventDetailed> for EventSummary {
+    fn from(event: EventDetailed) -> Self {
+        Self {
+            group_color: event.group_color,
+            group_name: event.group_name,
+            group_slug: event.group_slug,
+            kind: event.kind,
+            name: event.name,
+            slug: event.slug,
+            timezone: event.timezone,
+
+            group_city: event.group_city,
+            group_country_code: event.group_country_code,
+            group_country_name: event.group_country_name,
+            group_state: event.group_state,
+            logo_url: event.logo_url,
+            starts_at: event.starts_at,
+            venue_city: event.venue_city,
+        }
+    }
 }
 
 impl EventSummary {
@@ -176,36 +196,6 @@ impl EventDetailed {
             .venue_name(self.venue_name.as_ref());
 
         build_location(&parts, max_len)
-    }
-
-    /// Render popover HTML for map and calendar views.
-    ///
-    /// Returns the rendered HTML as a string that can be assigned to the popover_html field.
-    #[instrument(skip_all, err)]
-    pub fn render_popover_html(&self) -> Result<String> {
-        // Import locally to avoid circular dependency
-        use crate::templates::community::home::EventCard;
-        
-        let event_summary = EventSummary {
-            group_color: self.group_color.clone(),
-            group_name: self.group_name.clone(),
-            group_slug: self.group_slug.clone(),
-            kind: self.kind.clone(),
-            name: self.name.clone(),
-            slug: self.slug.clone(),
-            timezone: self.timezone,
-            group_city: self.group_city.clone(),
-            group_country_code: self.group_country_code.clone(),
-            group_country_name: self.group_country_name.clone(),
-            group_state: self.group_state.clone(),
-            logo_url: self.logo_url.clone(),
-            starts_at: self.starts_at,
-            venue_city: self.venue_city.clone(),
-        };
-        
-        let home_event = EventCard { event: event_summary };
-        let cfg = MinifyCfg::new();
-        Ok(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?)
     }
 
     /// Try to create a vector of `EventDetailed` instances from a JSON string.

@@ -4,7 +4,7 @@ use askama::Template;
 
 use crate::types::event::EventFull;
 
-// Pages templates.
+// Pages and sections templates.
 
 /// Event page template.
 #[allow(dead_code)]
