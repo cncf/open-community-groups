@@ -37,9 +37,6 @@ impl std::fmt::Display for EventKind {
 }
 
 /// Summary event information.
-///
-/// Contains essential event information in a compact format.
-/// Includes group context and location details.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventSummary {
@@ -125,9 +122,6 @@ impl EventSummary {
 }
 
 /// Detailed event information.
-///
-/// Contains comprehensive event data including location details,
-/// timing, and group information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EventDetailed {
@@ -212,9 +206,6 @@ impl EventDetailed {
 }
 
 /// Full event information.
-///
-/// Contains complete event details including sessions,
-/// hosts, organizers, and all metadata.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventFull {

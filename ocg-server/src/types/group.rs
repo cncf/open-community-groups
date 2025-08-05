@@ -14,9 +14,6 @@ use crate::templates::{
 };
 
 /// Summary group information.
-///
-/// Contains essential group information in a compact format.
-/// Typically used for listing groups in home pages or search results.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupSummary {
@@ -73,9 +70,6 @@ impl GroupSummary {
 }
 
 /// Detailed group information.
-///
-/// Contains comprehensive group data including location details
-/// and additional metadata. Used in explore pages and search results.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupDetailed {
@@ -158,9 +152,6 @@ impl From<GroupDetailed> for GroupSummary {
 }
 
 /// Full group information.
-///
-/// Contains complete group details including all metadata,
-/// social links, organizers, and statistics.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupFull {

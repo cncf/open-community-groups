@@ -11,12 +11,11 @@ use tracing::instrument;
 use crate::{
     templates::filters,
     types::{
+        community::Community,
         event::{EventKind, EventSummary},
         group::GroupSummary,
     },
 };
-
-use super::common::Community;
 
 // Pages and sections templates.
 
@@ -39,8 +38,6 @@ pub(crate) struct Page {
 }
 
 /// Event card template for home page display.
-///
-/// This template wraps the `EventSummary` data for rendering on the home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/event_card.html")]
 pub(crate) struct EventCard {
@@ -49,8 +46,6 @@ pub(crate) struct EventCard {
 }
 
 /// Group card template for home page display.
-///
-/// This template wraps the `GroupSummary` data for rendering on the home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/group_card.html")]
 pub(crate) struct GroupCard {

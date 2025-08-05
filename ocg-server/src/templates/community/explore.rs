@@ -15,13 +15,13 @@ use crate::{
     db::BBox,
     templates::{filters, helpers::extract_location},
     types::{
+        community::Community,
         event::{EventDetailed, EventKind, EventSummary},
         group::{GroupDetailed, GroupSummary},
     },
 };
 
 use super::{
-    common::Community,
     home::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
     pagination::{NavigationLinks, Pagination, ToRawQuery},
 };
@@ -94,8 +94,6 @@ impl EventsResultsSection {
 }
 
 /// Event card template for explore page display.
-///
-/// This template wraps the `EventDetailed` data for rendering on the explore page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/events/event_card.html")]
 pub(crate) struct EventCard {
@@ -149,8 +147,6 @@ impl GroupsResultsSection {
 }
 
 /// Group card template for explore page display.
-///
-/// This template wraps the `GroupDetailed` data for rendering on the explore page.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/explore/groups/group_card.html")]

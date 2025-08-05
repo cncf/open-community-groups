@@ -118,6 +118,33 @@ pub(crate) async fn events_results_section(
     Ok((headers, Html(template.render()?)))
 }
 
+/// Prepares the events section template.
+#[instrument(skip(db), err)]
+async fn prepare_events_section(
+    db: &DynDB,
+    community_id: Uuid,
+    filters: &EventsFilters,
+) -> Result<explore::EventsSection> {
+    let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
+        db.get_community_filters_options(community_id),
+        db.search_community_events(community_id, filters)
+    )?;
+    let template = explore::EventsSection {
+        filters: filters.clone(),
+        filters_options,
+        results_section: explore::EventsResultsSection {
+            events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
+            navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
+            total,
+            bbox,
+            offset: filters.offset,
+            view_mode: filters.view_mode.clone(),
+        },
+    };
+
+    Ok(template)
+}
+
 /// Handler that renders the groups section of the explore page.
 #[instrument(skip_all, err)]
 pub(crate) async fn groups_section(
@@ -169,33 +196,6 @@ pub(crate) async fn groups_results_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Prepares the events section template.
-#[instrument(skip(db), err)]
-async fn prepare_events_section(
-    db: &DynDB,
-    community_id: Uuid,
-    filters: &EventsFilters,
-) -> Result<explore::EventsSection> {
-    let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
-        db.get_community_filters_options(community_id),
-        db.search_community_events(community_id, filters)
-    )?;
-    let template = explore::EventsSection {
-        filters: filters.clone(),
-        filters_options,
-        results_section: explore::EventsResultsSection {
-            events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
-            navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
-            total,
-            bbox,
-            offset: filters.offset,
-            view_mode: filters.view_mode.clone(),
-        },
-    };
-
-    Ok(template)
-}
-
 /// Prepares groups section template.
 #[instrument(skip(db), err)]
 async fn prepare_groups_section(
@@ -243,7 +243,6 @@ pub(crate) async fn search_events(
     }
 
     let json_data = serde_json::to_string(&search_events_output)?;
-
     Ok(json_data)
 }
 
@@ -265,6 +264,5 @@ pub(crate) async fn search_groups(
     }
 
     let json_data = serde_json::to_string(&search_groups_output)?;
-
     Ok(json_data)
 }

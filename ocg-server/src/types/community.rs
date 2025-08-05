@@ -1,4 +1,4 @@
-//! This module defines some templates and types used across the community site.
+//! Community-related types used across the application.
 
 use std::collections::BTreeMap;
 
@@ -7,41 +7,62 @@ use palette::{Darken, Lighten, Srgb};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-// Types.
-
 /// Community information used in some community pages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Community {
+pub struct Community {
+    /// Brief description of the community's purpose or focus.
     pub description: String,
+    /// Human-readable name shown in the UI (e.g., "CNCF").
     pub display_name: String,
+    /// URL to the logo image shown in the page header.
     pub header_logo_url: String,
+    /// Unique identifier used in URLs and database references.
     pub name: String,
+    /// Visual theme configuration including primary color and palette.
     pub theme: Theme,
+    /// Title highlighted in the community site and other pages.
     pub title: String,
 
+    /// Target URL when users click on the advertisement banner.
     pub ad_banner_link_url: Option<String>,
+    /// URL to the advertisement banner image.
     pub ad_banner_url: Option<String>,
+    /// Copyright text displayed in the footer.
     pub copyright_notice: Option<String>,
+    /// Additional custom links displayed in the community navigation.
     pub extra_links: Option<BTreeMap<String, String>>,
+    /// Link to the community's Facebook page.
     pub facebook_url: Option<String>,
+    /// Link to the community's Flickr photo collection.
     pub flickr_url: Option<String>,
+    /// URL to the logo image shown in the page footer.
     pub footer_logo_url: Option<String>,
+    /// Link to the community's GitHub organization or repository.
     pub github_url: Option<String>,
+    /// Link to the community's Instagram profile.
     pub instagram_url: Option<String>,
+    /// Link to the community's `LinkedIn` page.
     pub linkedin_url: Option<String>,
+    /// Instructions for creating new groups.
     pub new_group_details: Option<String>,
+    /// Collection of photo URLs for community galleries or slideshows.
     pub photos_urls: Option<Vec<String>>,
+    /// Link to the community's Slack workspace.
     pub slack_url: Option<String>,
+    /// Link to the community's Twitter/X profile.
     pub twitter_url: Option<String>,
+    /// Link to the community's main website.
     pub website_url: Option<String>,
+    /// Link to the community's `WeChat` account or QR code.
     pub wechat_url: Option<String>,
+    /// Link to the community's `YouTube` channel.
     pub youtube_url: Option<String>,
 }
 
 impl Community {
     /// Try to create a `Community` instance from a JSON string.
     #[instrument(skip_all, err)]
-    pub(crate) fn try_from_json(data: &str) -> Result<Self> {
+    pub fn try_from_json(data: &str) -> Result<Self> {
         let mut community: Community = serde_json::from_str(data)?;
         community.theme.palette = generate_palette(&community.theme.primary_color)?;
         Ok(community)
@@ -53,7 +74,7 @@ impl Community {
 /// Defines the primary color and derived color palette used throughout the community's
 /// pages for consistent branding.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Theme {
+pub struct Theme {
     #[serde(default)]
     pub palette: Palette,
     pub primary_color: String,
@@ -62,7 +83,7 @@ pub(crate) struct Theme {
 /// Color palette mapping intensity levels (50-900) to hex color values.
 ///
 /// Lower numbers represent lighter shades, higher numbers darker shades.
-type Palette = BTreeMap<u32, String>;
+pub type Palette = BTreeMap<u32, String>;
 
 /// Generates a complete color palette from a single primary color.
 ///
