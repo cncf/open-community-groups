@@ -21,7 +21,10 @@ use crate::{
         community::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     },
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::explore::{self, Entity, EventsFilters, GroupsFilters, NavigationLinks},
+    templates::community::{
+        explore::{self, Entity, EventsFilters, GroupsFilters},
+        pagination::{self, NavigationLinks},
+    },
 };
 
 /// Handler that renders the community explore page with either events or groups section.
@@ -77,7 +80,7 @@ pub(crate) async fn events_section(
     // Prepare response headers
     let headers = [(
         "HX-Push-Url",
-        explore::build_url("/explore?entity=events", &filters)?,
+        pagination::build_url("/explore?entity=events", &filters)?,
     )];
 
     Ok((headers, Html(template.render()?)))
@@ -107,7 +110,7 @@ pub(crate) async fn events_results_section(
     // Prepare response headers
     let headers = [(
         "HX-Push-Url",
-        explore::build_url("/explore?entity=events", &filters)?,
+        pagination::build_url("/explore?entity=events", &filters)?,
     )];
 
     Ok((headers, Html(template.render()?)))
@@ -128,7 +131,7 @@ pub(crate) async fn groups_section(
     // Prepare response headers
     let headers = [(
         "HX-Push-Url",
-        explore::build_url("/explore?entity=groups", &filters)?,
+        pagination::build_url("/explore?entity=groups", &filters)?,
     )];
 
     Ok((headers, Html(template.render()?)))
@@ -158,7 +161,7 @@ pub(crate) async fn groups_results_section(
     // Prepare response headers
     let headers = [(
         "HX-Push-Url",
-        explore::build_url("/explore?entity=groups", &filters)?,
+        pagination::build_url("/explore?entity=groups", &filters)?,
     )];
 
     Ok((headers, Html(template.render()?)))

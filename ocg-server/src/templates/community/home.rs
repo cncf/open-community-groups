@@ -11,12 +11,12 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::templates::{
+    common::EventKind,
     filters,
     helpers::{LocationParts, build_location, color},
 };
 
 use super::{common::Community, explore};
-use crate::templates::common::EventKind;
 
 // Pages templates.
 
