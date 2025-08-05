@@ -27,6 +27,8 @@ use crate::{
     },
 };
 
+// Pages and sections handlers.
+
 /// Handler that renders the community explore page with either events or groups section.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
@@ -99,7 +101,10 @@ pub(crate) async fn events_results_section(
     let SearchCommunityEventsOutput { events, bbox, total } =
         db.search_community_events(community_id, &filters).await?;
     let template = explore::EventsResultsSection {
-        events,
+        events: events
+            .into_iter()
+            .map(|event| explore::EventCard { event })
+            .collect(),
         navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
         total,
         bbox,
@@ -167,40 +172,6 @@ pub(crate) async fn groups_results_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler for the events search endpoint (JSON format).
-#[instrument(skip_all, err)]
-pub(crate) async fn search_events(
-    State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
-    RawQuery(raw_query): RawQuery,
-    headers: HeaderMap,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Search events
-    let mut filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    filters.include_popover_html = Some(true);
-    let search_events_output = db.search_community_events(community_id, &filters).await?;
-    let json_data = serde_json::to_string(&search_events_output)?;
-
-    Ok(json_data)
-}
-
-/// Handler for the groups search endpoint (JSON format).
-#[instrument(skip_all, err)]
-pub(crate) async fn search_groups(
-    State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
-    RawQuery(raw_query): RawQuery,
-    headers: HeaderMap,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Search groups
-    let mut filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    filters.include_popover_html = Some(true);
-    let search_groups_output = db.search_community_groups(community_id, &filters).await?;
-    let json_data = serde_json::to_string(&search_groups_output)?;
-
-    Ok(json_data)
-}
-
 /// Prepares the events section template.
 #[instrument(skip(db), err)]
 async fn prepare_events_section(
@@ -216,7 +187,10 @@ async fn prepare_events_section(
         filters: filters.clone(),
         filters_options,
         results_section: explore::EventsResultsSection {
-            events,
+            events: events
+                .into_iter()
+                .map(|event| explore::EventCard { event })
+                .collect(),
             navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
             total,
             bbox,
@@ -253,4 +227,40 @@ async fn prepare_groups_section(
     };
 
     Ok(template)
+}
+
+// JSON search handlers.
+
+/// Handler for the events search endpoint (JSON format).
+#[instrument(skip_all, err)]
+pub(crate) async fn search_events(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Search events
+    let mut filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    filters.include_popover_html = Some(true);
+    let search_events_output = db.search_community_events(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&search_events_output)?;
+
+    Ok(json_data)
+}
+
+/// Handler for the groups search endpoint (JSON format).
+#[instrument(skip_all, err)]
+pub(crate) async fn search_groups(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Search groups
+    let mut filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    filters.include_popover_html = Some(true);
+    let search_groups_output = db.search_community_groups(community_id, &filters).await?;
+    let json_data = serde_json::to_string(&search_groups_output)?;
+
+    Ok(json_data)
 }

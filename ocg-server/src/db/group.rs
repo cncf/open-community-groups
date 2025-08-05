@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::{common::EventKind, community, group},
+    templates::group,
+    types::event::{EventKind, EventSummary},
 };
 
 /// Database trait defining all data access operations for the group site.
@@ -23,7 +24,7 @@ pub(crate) trait DBGroup {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<community::home::Event>>;
+    ) -> Result<Vec<EventSummary>>;
 
     /// Retrieves upcoming events for a specific group.
     async fn get_group_upcoming_events(
@@ -32,7 +33,7 @@ pub(crate) trait DBGroup {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<community::home::Event>>;
+    ) -> Result<Vec<EventSummary>>;
 }
 
 #[async_trait]
@@ -60,7 +61,7 @@ impl DBGroup for PgDB {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<community::home::Event>> {
+    ) -> Result<Vec<EventSummary>> {
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
         let db = self.pool.get().await?;
         let row = db
@@ -69,7 +70,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events = community::home::Event::try_new_vec_from_json(&row.get::<_, String>(0))?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
     }
@@ -82,7 +83,7 @@ impl DBGroup for PgDB {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<community::home::Event>> {
+    ) -> Result<Vec<EventSummary>> {
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
         let db = self.pool.get().await?;
         let row = db
@@ -91,7 +92,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events = community::home::Event::try_new_vec_from_json(&row.get::<_, String>(0))?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

@@ -15,8 +15,11 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::{common::EventKind, community::home},
+    templates::community::home,
+    types::event::EventKind,
 };
+
+// Pages handlers.
 
 /// Handler that renders the community home page.
 #[instrument(skip_all, err)]
@@ -26,7 +29,6 @@ pub(crate) async fn page(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    #[rustfmt::skip]
     let (community, recently_added_groups, upcoming_in_person_events, upcoming_virtual_events, stats) = tokio::try_join!(
         db.get_community(community_id),
         db.get_community_recently_added_groups(community_id),
@@ -38,8 +40,14 @@ pub(crate) async fn page(
         community,
         path: uri.path().to_string(),
         recently_added_groups,
-        upcoming_in_person_events,
-        upcoming_virtual_events,
+        upcoming_in_person_events: upcoming_in_person_events
+            .into_iter()
+            .map(|event| home::EventCard { event })
+            .collect(),
+        upcoming_virtual_events: upcoming_virtual_events
+            .into_iter()
+            .map(|event| home::EventCard { event })
+            .collect(),
         stats,
     };
 

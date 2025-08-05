@@ -11,6 +11,8 @@ use crate::{db::DynDB, templates::event::Page};
 
 use super::{error::HandlerError, extractors::CommunityId};
 
+// Pages handlers.
+
 /// Handler that renders the event page.
 #[instrument(skip_all)]
 pub(crate) async fn page(

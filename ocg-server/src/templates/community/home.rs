@@ -6,14 +6,15 @@
 use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
-use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::templates::{
-    common::EventKind,
-    filters,
-    helpers::{LocationParts, build_location, color},
+use crate::{
+    templates::{
+        filters,
+        helpers::{LocationParts, build_location, color},
+    },
+    types::event::{EventKind, EventSummary},
 };
 
 use super::{common::Community, explore};
@@ -31,97 +32,43 @@ pub(crate) struct Page {
     /// List of groups recently added to the community.
     pub recently_added_groups: Vec<Group>,
     /// List of upcoming in-person events across all community groups.
-    pub upcoming_in_person_events: Vec<Event>,
+    pub upcoming_in_person_events: Vec<EventCard>,
     /// List of upcoming virtual events across all community groups.
-    pub upcoming_virtual_events: Vec<Event>,
+    pub upcoming_virtual_events: Vec<EventCard>,
     /// Aggregated statistics about groups, members, events, and attendees.
     pub stats: Stats,
 }
 
-/// Event data structure for home page display.
+/// Event card template for home page display.
 ///
-/// Contains essential event information optimized for the compact home page layout.
-/// Includes group context and location details for proper display.
+/// This template wraps the `EventSummary` data for rendering on the home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/home/event.html")]
-pub(crate) struct Event {
-    /// Color associated with the group hosting this event, used for visual styling.
-    #[serde(default)]
-    pub group_color: String,
-    /// Name of the group hosting this event.
-    pub group_name: String,
-    /// URL-friendly identifier for the group hosting this event.
-    pub group_slug: String,
-    /// Type of event (in-person or virtual).
-    pub kind: EventKind,
-    /// Display name of the event.
-    pub name: String,
-    /// URL-friendly identifier for this event.
-    pub slug: String,
-    /// Timezone in which the event times should be displayed.
-    pub timezone: Tz,
-
-    /// City where the group is located (may differ from venue city).
-    pub group_city: Option<String>,
-    /// ISO country code of the group's location.
-    pub group_country_code: Option<String>,
-    /// Full country name of the group's location.
-    pub group_country_name: Option<String>,
-    /// State or province where the group is located.
-    pub group_state: Option<String>,
-    /// URL to the event or group's logo image.
-    pub logo_url: Option<String>,
-    /// UTC timestamp when the event starts.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub starts_at: Option<DateTime<Utc>>,
-    /// City where the event venue is located (for in-person events).
-    pub venue_city: Option<String>,
+#[template(path = "community/home/event_card.html")]
+pub(crate) struct EventCard {
+    /// Event data
+    pub event: EventSummary,
 }
 
-impl Event {
-    /// Builds a formatted location string for the event.
-    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.group_city.as_ref())
-            .group_country_code(self.group_country_code.as_ref())
-            .group_country_name(self.group_country_name.as_ref())
-            .group_state(self.group_state.as_ref())
-            .venue_city(self.venue_city.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Try to create a vector of `Event` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut events: Vec<Self> = serde_json::from_str(data)?;
-
-        for event in &mut events {
-            event.group_color = color(&event.group_name).to_string();
-        }
-
-        Ok(events)
-    }
-}
-
-impl From<explore::Event> for Event {
-    fn from(ee: explore::Event) -> Self {
+impl From<explore::EventCard> for EventCard {
+    fn from(ee: explore::EventCard) -> Self {
         Self {
-            group_color: ee.group_color,
-            group_name: ee.group_name,
-            group_slug: ee.group_slug,
-            kind: ee.kind,
-            name: ee.name,
-            slug: ee.slug,
-            timezone: ee.timezone,
+            event: EventSummary {
+                group_color: ee.event.group_color,
+                group_name: ee.event.group_name,
+                group_slug: ee.event.group_slug,
+                kind: ee.event.kind,
+                name: ee.event.name,
+                slug: ee.event.slug,
+                timezone: ee.event.timezone,
 
-            group_city: ee.group_city,
-            group_country_code: ee.group_country_code,
-            group_country_name: ee.group_country_name,
-            group_state: ee.group_state,
-            logo_url: ee.logo_url,
-            starts_at: ee.starts_at,
-            venue_city: ee.venue_city,
+                group_city: ee.event.group_city,
+                group_country_code: ee.event.group_country_code,
+                group_country_name: ee.event.group_country_name,
+                group_state: ee.event.group_state,
+                logo_url: ee.event.logo_url,
+                starts_at: ee.event.starts_at,
+                venue_city: ee.event.venue_city,
+            },
         }
     }
 }

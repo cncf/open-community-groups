@@ -26,6 +26,7 @@ mod db;
 mod handlers;
 mod router;
 mod templates;
+mod types;
 
 /// Command-line arguments for the application.
 #[derive(Debug, Parser)]

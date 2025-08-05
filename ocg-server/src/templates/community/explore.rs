@@ -6,7 +6,6 @@ use anyhow::Result;
 use askama::Template;
 use axum::http::HeaderMap;
 use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
-use chrono_tz::Tz;
 use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -15,10 +14,10 @@ use tracing::{instrument, trace};
 use crate::{
     db::BBox,
     templates::{
-        common::EventKind,
         filters,
         helpers::{LocationParts, build_location, color, extract_location},
     },
+    types::event::{EventDetailed, EventKind},
 };
 
 use super::{
@@ -72,7 +71,7 @@ pub(crate) struct EventsSection {
 #[template(path = "community/explore/events/results.html")]
 pub(crate) struct EventsResultsSection {
     /// List of events matching the current filters.
-    pub events: Vec<Event>,
+    pub events: Vec<EventCard>,
     /// Pagination links for navigating results.
     pub navigation_links: NavigationLinks,
     /// Total number of matching events (for pagination).
@@ -94,106 +93,14 @@ impl EventsResultsSection {
     }
 }
 
-/// Detailed event information for display in explore results.
+/// Event card template for explore page display.
 ///
-/// This struct contains all the data needed to render an event in the explore page,
-/// including location details, timing, and group information. It can also render itself
-/// as a popover for map/calendar views.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/events/event.html")]
-pub(crate) struct Event {
-    /// Whether the event has been canceled.
-    pub canceled: bool,
-    /// Category of the hosting group.
-    pub group_category_name: String,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub group_color: String,
-    /// Name of the group hosting the event.
-    pub group_name: String,
-    /// URL slug of the hosting group.
-    pub group_slug: String,
-    /// Type of event (in-person, online, hybrid).
-    pub kind: EventKind,
-    /// Event title.
-    pub name: String,
-    /// URL slug of the event.
-    pub slug: String,
-    /// Timezone for event times.
-    pub timezone: Tz,
-
-    /// Brief event description for listings.
-    pub description_short: Option<String>,
-    /// Event end time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub ends_at: Option<DateTime<Utc>>,
-    /// City where the group is based.
-    pub group_city: Option<String>,
-    /// ISO country code of the group.
-    pub group_country_code: Option<String>,
-    /// Full country name of the group.
-    pub group_country_name: Option<String>,
-    /// State/province where the group is based.
-    pub group_state: Option<String>,
-    /// Latitude for map display.
-    pub latitude: Option<f64>,
-    /// URL to the event or group logo.
-    pub logo_url: Option<String>,
-    /// Longitude for map display.
-    pub longitude: Option<f64>,
-    /// Pre-rendered HTML for map/calendar popovers.
-    pub popover_html: Option<String>,
-    /// Event start time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub starts_at: Option<DateTime<Utc>>,
-    /// Street address of the venue.
-    pub venue_address: Option<String>,
-    /// City where the event takes place.
-    pub venue_city: Option<String>,
-    /// Name of the venue.
-    pub venue_name: Option<String>,
-}
-
-impl Event {
-    /// Build a display-friendly location string from available location data.
-    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.group_city.as_ref())
-            .group_country_code(self.group_country_code.as_ref())
-            .group_country_name(self.group_country_name.as_ref())
-            .group_state(self.group_state.as_ref())
-            .venue_address(self.venue_address.as_ref())
-            .venue_city(self.venue_city.as_ref())
-            .venue_name(self.venue_name.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Render popover HTML for map and calendar views.
-    ///
-    /// Converts this event into a home::Event template and renders it as minified HTML
-    /// for inclusion in map/calendar popovers.
-    #[instrument(skip_all, err)]
-    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
-        let home_event: home::Event = self.clone().into();
-        let cfg = MinifyCfg::new();
-        self.popover_html = Some(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?);
-
-        Ok(())
-    }
-
-    /// Try to create a vector of `Event` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut events: Vec<Self> = serde_json::from_str(data)?;
-
-        for event in &mut events {
-            event.group_color = color(&event.group_name).to_string();
-        }
-
-        Ok(events)
-    }
+/// This template wraps the `EventDetailed` data for rendering on the explore page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/event_card.html")]
+pub(crate) struct EventCard {
+    /// Event data
+    pub event: EventDetailed,
 }
 
 /// Template for the groups section of the explore page.

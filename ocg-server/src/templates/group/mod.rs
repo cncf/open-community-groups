@@ -9,10 +9,13 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tracing::instrument;
 
-use crate::templates::{
-    common::User,
-    community::home::Event,
-    helpers::{LocationParts, build_location, color},
+use crate::{
+    templates::{
+        common::User,
+        filters,
+        helpers::{LocationParts, build_location, color},
+    },
+    types::event::{EventKind, EventSummary},
 };
 
 // Pages templates.
@@ -25,12 +28,22 @@ pub(crate) struct Page {
     /// Detailed information about the group.
     pub group: Group,
     /// List of past events for this group.
-    pub past_events: Vec<Event>,
+    pub past_events: Vec<EventCard>,
     /// List of upcoming events for this group.
-    pub upcoming_events: Vec<Event>,
+    pub upcoming_events: Vec<EventCard>,
 }
 
 // Types.
+
+/// Event card template for group page display.
+///
+/// This template wraps the `EventSummary` data for rendering on the group page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "group/event_card.html")]
+pub(crate) struct EventCard {
+    /// Event data
+    pub event: EventSummary,
+}
 
 /// Comprehensive group information for the group page.
 #[skip_serializing_none]

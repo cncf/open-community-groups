@@ -5,8 +5,8 @@
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
     <div class="card-logo">
-      {% call common::logo(logo_url = logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group_color, name = Some(group_name)) -%}
-      {% call common::logo(logo_url = logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group_color) -%}
+      {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = event.group_color, name = Some(event.group_name)) -%}
+      {% call common::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -%}
     </div>
     {# End event icon -#}
 
@@ -15,19 +15,19 @@
         <div>
           {# Event group name -#}
           <div class="card-header">
-            <span>{{ group_name }}</span>
+            <span>{{ event.group_name }}</span>
           </div>
           {# End event group name -#}
 
           {# Event name -#}
           <div class="line-clamp-2 text-[0.9rem] md:text-base font-semibold md:mt-1 md:line-clamp-1">
-            {{ name|demoji }}
+            {{ event.name|demoji }}
           </div>
           {# End event name -#}
         </div>
 
         {# Event description on desktop -#}
-        {% if let Some(description_short) = description_short -%}
+        {% if let Some(description_short) = event.description_short -%}
           <div class="hidden h-[36px] md:my-2 md:block">
             <p class="text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2">{{ description_short|demoji }}</p>
           </div>
@@ -37,10 +37,10 @@
         <div class="hidden md:block">
           {# Event location -#}
           <div class="card-meta h-[32px]">
-            {% if kind != EventKind::Virtual -%}
-              {% if let Some(location) = self.location(36) -%}
+            {% if event.kind != EventKind::Virtual -%}
+              {% if let Some(location) = self.event.location(36) -%}
                 <div class="hidden truncate me-2 xl:block">
-                  {% call common::icon_text(icon_name = "location", text = self.location(57).expect("location to exist")) -%}
+                  {% call common::icon_text(icon_name = "location", text = self.event.location(57).expect("location to exist")) -%}
                 </div>
                 <div class="block truncate me-2 xl:hidden">
                   {% call common::icon_text(icon_name = "location", text = location) -%}
@@ -54,17 +54,17 @@
                      alt="Location icon" />
               </div>
             {% endif -%}
-            {% call common::event_badge(kind = kind) -%}
+            {% call common::event_badge(kind = event.kind) -%}
           </div>
           {# End event location -#}
 
           {# Event date -#}
           <div class="flex items-center pt-0.5">
-            {% if let Some(starts_at) = starts_at -%}
-              {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
+            {% if let Some(starts_at) = event.starts_at -%}
+              {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
             {% endif -%}
-            {% if canceled -%}
-              {% call common::event_badge(kind = kind, canceled = true, extra_styles = Some("ms-3")) -%}
+            {% if event.canceled -%}
+              {% call common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3")) -%}
             {% endif -%}
           </div>
           {# End event date -#}
@@ -77,8 +77,8 @@
   <div class="block md:hidden">
     {# Event location -#}
     <div class="card-meta mt-3 h-[21px]">
-      {% if kind != EventKind::Virtual -%}
-        {% if let Some(location) = self.location(25) -%}
+      {% if event.kind != EventKind::Virtual -%}
+        {% if let Some(location) = self.event.location(25) -%}
           {% call common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2")) -%}
         {% endif -%}
       {% else -%}
@@ -89,17 +89,17 @@
                alt="Location icon" />
         </div>
       {% endif -%}
-      {% call common::event_badge(kind = kind) -%}
+      {% call common::event_badge(kind = event.kind) -%}
     </div>
     {# End event location -#}
 
     {# Event date -#}
     <div class="flex items-center pt-1">
-      {% if let Some(starts_at) = starts_at -%}
-        {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
+      {% if let Some(starts_at) = event.starts_at -%}
+        {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
       {% endif -%}
-      {% if canceled -%}
-        {% call common::event_badge(kind = kind, canceled = true, extra_styles = Some("ms-3")) -%}
+      {% if event.canceled -%}
+        {% call common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3")) -%}
       {% endif -%}
     </div>
     {# End event date -#}
@@ -107,7 +107,7 @@
   {# End mobile content -#}
 
   {# Description -#}
-  {% if let Some(description_short) = description_short -%}
+  {% if let Some(description_short) = event.description_short -%}
     <div class="block md:hidden">
       <p class="text-xs text-stone-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>
     </div>

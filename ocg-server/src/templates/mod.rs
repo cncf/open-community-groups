@@ -9,4 +9,4 @@ pub(crate) mod community;
 pub(crate) mod event;
 mod filters;
 pub(crate) mod group;
-mod helpers;
+pub(crate) mod helpers;

@@ -9,10 +9,8 @@ use uuid::Uuid;
 
 use crate::{
     db::{BBox, PgDB, Total},
-    templates::{
-        common::EventKind,
-        community::{common::Community, explore, home},
-    },
+    templates::community::{common::Community, explore, home},
+    types::event::{EventKind, EventSummary, EventDetailed},
 };
 
 /// Database trait defining all data access operations for the community site.
@@ -38,7 +36,7 @@ pub(crate) trait DBCommunity {
         &self,
         community_id: Uuid,
         event_kinds: Vec<EventKind>,
-    ) -> Result<Vec<home::Event>>;
+    ) -> Result<Vec<EventSummary>>;
 
     /// Searches for events within a community based on filter criteria.
     async fn search_community_events(
@@ -135,7 +133,7 @@ impl DBCommunity for PgDB {
         &self,
         community_id: Uuid,
         event_kinds: Vec<EventKind>,
-    ) -> Result<Vec<home::Event>> {
+    ) -> Result<Vec<EventSummary>> {
         let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
         let db = self.pool.get().await?;
         let row = db
@@ -144,7 +142,7 @@ impl DBCommunity for PgDB {
                 &[&community_id, &event_kinds],
             )
             .await?;
-        let events = home::Event::try_new_vec_from_json(&row.get::<_, String>(0))?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
     }
@@ -171,7 +169,7 @@ impl DBCommunity for PgDB {
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let mut output = SearchCommunityEventsOutput {
-            events: explore::Event::try_new_vec_from_json(&row.get::<_, String>("events"))?,
+            events: EventDetailed::try_from_json_array(&row.get::<_, String>("events"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
             } else {
@@ -182,8 +180,8 @@ impl DBCommunity for PgDB {
 
         // Render events popover HTML if requested
         if filters.include_popover_html.unwrap_or_default() {
-            for group in &mut output.events {
-                group.render_popover_html()?;
+            for event in &mut output.events {
+                event.popover_html = Some(event.render_popover_html()?);
             }
         }
 
@@ -235,7 +233,7 @@ impl DBCommunity for PgDB {
 /// Output structure for community events search operations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityEventsOutput {
-    pub events: Vec<explore::Event>,
+    pub events: Vec<EventDetailed>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }

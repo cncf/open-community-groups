@@ -1,0 +1,372 @@
+//! Event type definitions.
+
+use anyhow::Result;
+use askama::Template;
+use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
+use minify_html::{Cfg as MinifyCfg, minify};
+use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
+use tracing::instrument;
+use uuid::Uuid;
+
+use crate::templates::{
+    common::User,
+    helpers::{LocationParts, build_location, color},
+};
+
+/// Categorization of event attendance modes.
+///
+/// Distinguishes between physical, online, and mixed attendance events
+/// for filtering and display purposes.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EventKind {
+    Hybrid,
+    #[default]
+    InPerson,
+    Virtual,
+}
+
+impl std::fmt::Display for EventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EventKind::Hybrid => write!(f, "hybrid"),
+            EventKind::InPerson => write!(f, "in-person"),
+            EventKind::Virtual => write!(f, "virtual"),
+        }
+    }
+}
+
+/// Summary event information.
+///
+/// Contains essential event information in a compact format.
+/// Includes group context and location details.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventSummary {
+    /// Color associated with the group hosting this event, used for visual styling.
+    #[serde(default)]
+    pub group_color: String,
+    /// Name of the group hosting this event.
+    pub group_name: String,
+    /// URL-friendly identifier for the group hosting this event.
+    pub group_slug: String,
+    /// Type of event (in-person or virtual).
+    pub kind: EventKind,
+    /// Display name of the event.
+    pub name: String,
+    /// URL-friendly identifier for this event.
+    pub slug: String,
+    /// Timezone in which the event times should be displayed.
+    pub timezone: Tz,
+
+    /// City where the group is located (may differ from venue city).
+    pub group_city: Option<String>,
+    /// ISO country code of the group's location.
+    pub group_country_code: Option<String>,
+    /// Full country name of the group's location.
+    pub group_country_name: Option<String>,
+    /// State or province where the group is located.
+    pub group_state: Option<String>,
+    /// URL to the event or group's logo image.
+    pub logo_url: Option<String>,
+    /// UTC timestamp when the event starts.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+    /// City where the event venue is located (for in-person events).
+    pub venue_city: Option<String>,
+}
+
+impl EventSummary {
+    /// Build a display-friendly location string from available location data.
+    pub fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(self.group_city.as_ref())
+            .group_country_code(self.group_country_code.as_ref())
+            .group_country_name(self.group_country_name.as_ref())
+            .group_state(self.group_state.as_ref())
+            .venue_city(self.venue_city.as_ref());
+
+        build_location(&parts, max_len)
+    }
+
+    /// Try to create a vector of `EventSummary` instances from a JSON string.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
+        let mut events: Vec<Self> = serde_json::from_str(data)?;
+
+        for event in &mut events {
+            event.group_color = color(&event.group_name).to_string();
+        }
+
+        Ok(events)
+    }
+}
+
+/// Detailed event information.
+///
+/// Contains comprehensive event data including location details,
+/// timing, and group information.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct EventDetailed {
+    /// Whether the event has been canceled.
+    pub canceled: bool,
+    /// Category of the hosting group.
+    pub group_category_name: String,
+    /// Generated color for visual distinction.
+    #[serde(default)]
+    pub group_color: String,
+    /// Name of the group hosting the event.
+    pub group_name: String,
+    /// URL slug of the hosting group.
+    pub group_slug: String,
+    /// Type of event (in-person, online, hybrid).
+    pub kind: EventKind,
+    /// Event title.
+    pub name: String,
+    /// URL slug of the event.
+    pub slug: String,
+    /// Timezone for event times.
+    pub timezone: Tz,
+
+    /// Brief event description for listings.
+    pub description_short: Option<String>,
+    /// Event end time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub ends_at: Option<DateTime<Utc>>,
+    /// City where the group is based.
+    pub group_city: Option<String>,
+    /// ISO country code of the group.
+    pub group_country_code: Option<String>,
+    /// Full country name of the group.
+    pub group_country_name: Option<String>,
+    /// State/province where the group is based.
+    pub group_state: Option<String>,
+    /// Latitude for map display.
+    pub latitude: Option<f64>,
+    /// URL to the event or group logo.
+    pub logo_url: Option<String>,
+    /// Longitude for map display.
+    pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map/calendar popovers.
+    pub popover_html: Option<String>,
+    /// Event start time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+    /// Street address of the venue.
+    pub venue_address: Option<String>,
+    /// City where the event takes place.
+    pub venue_city: Option<String>,
+    /// Name of the venue.
+    pub venue_name: Option<String>,
+}
+
+impl EventDetailed {
+    /// Build a display-friendly location string from available location data.
+    pub fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(self.group_city.as_ref())
+            .group_country_code(self.group_country_code.as_ref())
+            .group_country_name(self.group_country_name.as_ref())
+            .group_state(self.group_state.as_ref())
+            .venue_address(self.venue_address.as_ref())
+            .venue_city(self.venue_city.as_ref())
+            .venue_name(self.venue_name.as_ref());
+
+        build_location(&parts, max_len)
+    }
+
+    /// Render popover HTML for map and calendar views.
+    ///
+    /// Returns the rendered HTML as a string that can be assigned to the popover_html field.
+    #[instrument(skip_all, err)]
+    pub fn render_popover_html(&self) -> Result<String> {
+        // Import locally to avoid circular dependency
+        use crate::templates::community::home::EventCard;
+        
+        let event_summary = EventSummary {
+            group_color: self.group_color.clone(),
+            group_name: self.group_name.clone(),
+            group_slug: self.group_slug.clone(),
+            kind: self.kind.clone(),
+            name: self.name.clone(),
+            slug: self.slug.clone(),
+            timezone: self.timezone,
+            group_city: self.group_city.clone(),
+            group_country_code: self.group_country_code.clone(),
+            group_country_name: self.group_country_name.clone(),
+            group_state: self.group_state.clone(),
+            logo_url: self.logo_url.clone(),
+            starts_at: self.starts_at,
+            venue_city: self.venue_city.clone(),
+        };
+        
+        let home_event = EventCard { event: event_summary };
+        let cfg = MinifyCfg::new();
+        Ok(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?)
+    }
+
+    /// Try to create a vector of `EventDetailed` instances from a JSON string.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
+        let mut events: Vec<Self> = serde_json::from_str(data)?;
+
+        for event in &mut events {
+            event.group_color = color(&event.group_name).to_string();
+        }
+
+        Ok(events)
+    }
+}
+
+/// Full event information.
+///
+/// Contains complete event details including sessions,
+/// hosts, organizers, and all metadata.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventFull {
+    /// Whether the event has been canceled.
+    pub canceled: bool,
+    /// Event category information.
+    pub category_name: String,
+    /// Generated color for visual distinction.
+    #[serde(default)]
+    pub color: String,
+    /// When the event was created.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+    /// Full event description.
+    pub description: String,
+    /// Group hosting the event.
+    pub group: GroupInfo,
+    /// Event hosts.
+    pub hosts: Vec<User>,
+    /// Unique identifier for the event.
+    #[serde(rename = "event_id")]
+    pub id: Uuid,
+    /// Type of event (in-person, online, hybrid).
+    pub kind: EventKind,
+    /// Event title.
+    pub name: String,
+    /// Event organizers (from group team).
+    pub organizers: Vec<User>,
+    /// Whether the event is published.
+    pub published: bool,
+    /// Event sessions.
+    pub sessions: Vec<Session>,
+    /// URL slug of the event.
+    pub slug: String,
+    /// Timezone for event times.
+    pub timezone: Tz,
+
+    /// URL to the event banner image.
+    pub banner_url: Option<String>,
+    /// Maximum capacity for the event.
+    pub capacity: Option<i32>,
+    /// Brief event description.
+    pub description_short: Option<String>,
+    /// Event end time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub ends_at: Option<DateTime<Utc>>,
+    /// URL to the event logo.
+    pub logo_url: Option<String>,
+    /// Meetup.com URL for the event.
+    pub meetup_url: Option<String>,
+    /// URLs to event photos.
+    pub photos_urls: Option<Vec<String>>,
+    /// When the event was published.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub published_at: Option<DateTime<Utc>>,
+    /// URL for event recording.
+    pub recording_url: Option<String>,
+    /// Whether registration is required.
+    pub registration_required: Option<bool>,
+    /// Event start time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+    /// URL for live streaming.
+    pub streaming_url: Option<String>,
+    /// Event tags for categorization.
+    pub tags: Option<Vec<String>>,
+    /// Street address of the venue.
+    pub venue_address: Option<String>,
+    /// City where the event takes place.
+    pub venue_city: Option<String>,
+    /// Name of the venue.
+    pub venue_name: Option<String>,
+    /// Venue zip code.
+    pub venue_zip_code: Option<String>,
+}
+
+impl EventFull {
+    /// Try to create an `EventFull` instance from a JSON string.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json(data: &str) -> Result<Self> {
+        let mut event: EventFull = serde_json::from_str(data)?;
+        event.color = color(&event.name).to_string();
+        Ok(event)
+    }
+}
+
+/// Basic group information for event context.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupInfo {
+    /// Category of the hosting group.
+    pub category_name: String,
+    /// Group name.
+    pub name: String,
+    /// URL slug of the hosting group.
+    pub slug: String,
+}
+
+/// Session information within an event.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Session {
+    /// Full session description.
+    pub description: String,
+    /// Session end time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub ends_at: DateTime<Utc>,
+    /// Unique identifier for the session.
+    #[serde(rename = "session_id")]
+    pub id: Uuid,
+    /// Type of session (in-person, virtual).
+    pub kind: SessionKind,
+    /// Session title.
+    pub name: String,
+    /// Session speakers.
+    pub speakers: Vec<User>,
+    /// Session start time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub starts_at: DateTime<Utc>,
+
+    /// Location details for the session.
+    pub location: Option<String>,
+    /// URL for session recording.
+    pub recording_url: Option<String>,
+    /// URL for session live stream.
+    pub streaming_url: Option<String>,
+}
+
+/// Categorization of session attendance modes.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SessionKind {
+    #[default]
+    InPerson,
+    Virtual,
+}
+
+impl std::fmt::Display for SessionKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SessionKind::InPerson => write!(f, "in-person"),
+            SessionKind::Virtual => write!(f, "virtual"),
+        }
+    }
+}
