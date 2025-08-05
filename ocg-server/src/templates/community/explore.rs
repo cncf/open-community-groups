@@ -26,6 +26,8 @@ use crate::templates::common::EventKind;
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
 
+// Pages templates.
+
 /// Template for the explore page.
 ///
 /// This is the root template that renders the explore page with either events or groups
@@ -45,6 +47,281 @@ pub(crate) struct Page {
     /// Groups section data, populated when exploring groups.
     pub groups_section: Option<GroupsSection>,
 }
+
+/// Template for the events section of the explore page.
+///
+/// This template renders the events exploration interface, including filters panel and
+/// results. It's used when `Entity::Events` is selected.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/section.html")]
+pub(crate) struct EventsSection {
+    /// Active filters for events search.
+    pub filters: EventsFilters,
+    /// Available filter options (categories, regions, etc.).
+    pub filters_options: FiltersOptions,
+    /// Results section containing matching events.
+    pub results_section: EventsResultsSection,
+}
+
+/// Template for displaying event search results.
+///
+/// This template renders the list of matching events along with pagination controls. It
+/// supports different view modes and includes geographic bounds for map display.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/results.html")]
+pub(crate) struct EventsResultsSection {
+    /// List of events matching the current filters.
+    pub events: Vec<Event>,
+    /// Pagination links for navigating results.
+    pub navigation_links: NavigationLinks,
+    /// Total number of matching events (for pagination).
+    pub total: usize,
+
+    /// Geographic bounds of all events (for map centering).
+    pub bbox: Option<BBox>,
+    /// Current pagination offset.
+    pub offset: Option<usize>,
+    /// Current display mode.
+    pub view_mode: Option<ViewMode>,
+}
+
+impl EventsResultsSection {
+    /// Return the entity to which the results belong.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn entity(&self) -> Entity {
+        Entity::Events
+    }
+}
+
+/// Detailed event information for display in explore results.
+///
+/// This struct contains all the data needed to render an event in the explore page,
+/// including location details, timing, and group information. It can also render itself
+/// as a popover for map/calendar views.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/events/event.html")]
+pub(crate) struct Event {
+    /// Whether the event has been canceled.
+    pub canceled: bool,
+    /// Category of the hosting group.
+    pub group_category_name: String,
+    /// Generated color for visual distinction.
+    #[serde(default)]
+    pub group_color: String,
+    /// Name of the group hosting the event.
+    pub group_name: String,
+    /// URL slug of the hosting group.
+    pub group_slug: String,
+    /// Type of event (in-person, online, hybrid).
+    pub kind: EventKind,
+    /// Event title.
+    pub name: String,
+    /// URL slug of the event.
+    pub slug: String,
+    /// Timezone for event times.
+    pub timezone: Tz,
+
+    /// Brief event description for listings.
+    pub description_short: Option<String>,
+    /// Event end time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub ends_at: Option<DateTime<Utc>>,
+    /// City where the group is based.
+    pub group_city: Option<String>,
+    /// ISO country code of the group.
+    pub group_country_code: Option<String>,
+    /// Full country name of the group.
+    pub group_country_name: Option<String>,
+    /// State/province where the group is based.
+    pub group_state: Option<String>,
+    /// Latitude for map display.
+    pub latitude: Option<f64>,
+    /// URL to the event or group logo.
+    pub logo_url: Option<String>,
+    /// Longitude for map display.
+    pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map/calendar popovers.
+    pub popover_html: Option<String>,
+    /// Event start time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub starts_at: Option<DateTime<Utc>>,
+    /// Street address of the venue.
+    pub venue_address: Option<String>,
+    /// City where the event takes place.
+    pub venue_city: Option<String>,
+    /// Name of the venue.
+    pub venue_name: Option<String>,
+}
+
+impl Event {
+    /// Build a display-friendly location string from available location data.
+    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(self.group_city.as_ref())
+            .group_country_code(self.group_country_code.as_ref())
+            .group_country_name(self.group_country_name.as_ref())
+            .group_state(self.group_state.as_ref())
+            .venue_address(self.venue_address.as_ref())
+            .venue_city(self.venue_city.as_ref())
+            .venue_name(self.venue_name.as_ref());
+
+        build_location(&parts, max_len)
+    }
+
+    /// Render popover HTML for map and calendar views.
+    ///
+    /// Converts this event into a home::Event template and renders it as minified HTML
+    /// for inclusion in map/calendar popovers.
+    #[instrument(skip_all, err)]
+    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
+        let home_event: home::Event = self.clone().into();
+        let cfg = MinifyCfg::new();
+        self.popover_html = Some(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?);
+
+        Ok(())
+    }
+
+    /// Try to create a vector of `Event` instances from a JSON string.
+    #[instrument(skip_all, err)]
+    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
+        let mut events: Vec<Self> = serde_json::from_str(data)?;
+
+        for event in &mut events {
+            event.group_color = color(&event.group_name).to_string();
+        }
+
+        Ok(events)
+    }
+}
+
+/// Template for the groups section of the explore page.
+///
+/// This template renders the groups exploration interface, including filters panel and
+/// results. It's used when `Entity::Groups` is selected.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/groups/section.html")]
+pub(crate) struct GroupsSection {
+    /// Active filters for groups search.
+    pub filters: GroupsFilters,
+    /// Available filter options (categories, regions, etc.).
+    pub filters_options: FiltersOptions,
+    /// Results section containing matching groups.
+    pub results_section: GroupsResultsSection,
+}
+
+/// Template for displaying group search results.
+///
+/// This template renders the list of matching groups along with pagination controls. It
+/// supports different view modes and includes geographic bounds for map display.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/groups/results.html")]
+pub(crate) struct GroupsResultsSection {
+    /// List of groups matching the current filters.
+    pub groups: Vec<Group>,
+    /// Pagination links for navigating results.
+    pub navigation_links: NavigationLinks,
+    /// Total number of matching groups (for pagination).
+    pub total: usize,
+
+    /// Geographic bounds of all groups (for map centering).
+    pub bbox: Option<BBox>,
+    /// Current pagination offset.
+    pub offset: Option<usize>,
+    /// Current display mode.
+    pub view_mode: Option<ViewMode>,
+}
+
+impl GroupsResultsSection {
+    /// Return the entity to which the results belong.
+    #[allow(clippy::unused_self)]
+    pub(crate) fn entity(&self) -> Entity {
+        Entity::Groups
+    }
+}
+
+/// Detailed group information for display in explore results.
+///
+/// This struct contains all the data needed to render a group in the explore page,
+/// including location details and metadata. It can also render itself as a popover for
+/// map views.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/explore/groups/group.html")]
+pub(crate) struct Group {
+    /// Category this group belongs to.
+    pub category_name: String,
+    /// Generated color for visual distinction.
+    #[serde(default)]
+    pub color: String,
+    /// When the group was created.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+    /// Group name.
+    pub name: String,
+    /// URL slug of the group.
+    pub slug: String,
+
+    /// City where the group is based.
+    pub city: Option<String>,
+    /// ISO country code of the group.
+    pub country_code: Option<String>,
+    /// Full country name of the group.
+    pub country_name: Option<String>,
+    /// Group description text.
+    pub description: Option<String>,
+    /// Latitude for map display.
+    pub latitude: Option<f64>,
+    /// URL to the group logo.
+    pub logo_url: Option<String>,
+    /// Longitude for map display.
+    pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map popovers.
+    pub popover_html: Option<String>,
+    /// Name of the geographic region.
+    pub region_name: Option<String>,
+    /// State/province where the group is based.
+    pub state: Option<String>,
+}
+
+impl Group {
+    /// Build a display-friendly location string from available location data.
+    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(self.city.as_ref())
+            .group_country_code(self.country_code.as_ref())
+            .group_country_name(self.country_name.as_ref())
+            .group_state(self.state.as_ref());
+
+        build_location(&parts, max_len)
+    }
+
+    /// Render popover HTML for map views.
+    ///
+    /// Converts this group into a home::Group template and renders it as minified HTML
+    /// for inclusion in map popovers.
+    #[instrument(skip_all, err)]
+    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
+        let home_group: home::Group = self.clone().into();
+        let cfg = MinifyCfg::new();
+        self.popover_html = Some(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?);
+        Ok(())
+    }
+
+    /// Try to create a vector of `Group` instances from a JSON string.
+    #[instrument(skip_all, err)]
+    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
+        let mut groups: Vec<Self> = serde_json::from_str(data)?;
+
+        for group in &mut groups {
+            group.color = color(&group.name).to_string();
+        }
+
+        Ok(groups)
+    }
+}
+
+// Types.
 
 /// Represents the type of content being explored.
 ///
@@ -75,21 +352,6 @@ impl Display for Entity {
             Entity::Groups => write!(f, "groups"),
         }
     }
-}
-
-/// Template for the events section of the explore page.
-///
-/// This template renders the events exploration interface, including filters panel and
-/// results. It's used when `Entity::Events` is selected.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/events/section.html")]
-pub(crate) struct EventsSection {
-    /// Active filters for events search.
-    pub filters: EventsFilters,
-    /// Available filter options (categories, regions, etc.).
-    pub filters_options: FiltersOptions,
-    /// Results section containing matching events.
-    pub results_section: EventsResultsSection,
 }
 
 /// Filter parameters for event searches.
@@ -245,153 +507,6 @@ impl Pagination for EventsFilters {
     }
 }
 
-/// Template for displaying event search results.
-///
-/// This template renders the list of matching events along with pagination controls. It
-/// supports different view modes and includes geographic bounds for map display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/events/results.html")]
-pub(crate) struct EventsResultsSection {
-    /// List of events matching the current filters.
-    pub events: Vec<Event>,
-    /// Pagination links for navigating results.
-    pub navigation_links: NavigationLinks,
-    /// Total number of matching events (for pagination).
-    pub total: usize,
-
-    /// Geographic bounds of all events (for map centering).
-    pub bbox: Option<BBox>,
-    /// Current pagination offset.
-    pub offset: Option<usize>,
-    /// Current display mode.
-    pub view_mode: Option<ViewMode>,
-}
-
-impl EventsResultsSection {
-    /// Return the entity to which the results belong.
-    #[allow(clippy::unused_self)]
-    pub(crate) fn entity(&self) -> Entity {
-        Entity::Events
-    }
-}
-
-/// Detailed event information for display in explore results.
-///
-/// This struct contains all the data needed to render an event in the explore page,
-/// including location details, timing, and group information. It can also render itself
-/// as a popover for map/calendar views.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/events/event.html")]
-pub(crate) struct Event {
-    /// Whether the event has been canceled.
-    pub canceled: bool,
-    /// Category of the hosting group.
-    pub group_category_name: String,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub group_color: String,
-    /// Name of the group hosting the event.
-    pub group_name: String,
-    /// URL slug of the hosting group.
-    pub group_slug: String,
-    /// Type of event (in-person, online, hybrid).
-    pub kind: EventKind,
-    /// Event title.
-    pub name: String,
-    /// URL slug of the event.
-    pub slug: String,
-    /// Timezone for event times.
-    pub timezone: Tz,
-
-    /// Brief event description for listings.
-    pub description_short: Option<String>,
-    /// Event end time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub ends_at: Option<DateTime<Utc>>,
-    /// City where the group is based.
-    pub group_city: Option<String>,
-    /// ISO country code of the group.
-    pub group_country_code: Option<String>,
-    /// Full country name of the group.
-    pub group_country_name: Option<String>,
-    /// State/province where the group is based.
-    pub group_state: Option<String>,
-    /// Latitude for map display.
-    pub latitude: Option<f64>,
-    /// URL to the event or group logo.
-    pub logo_url: Option<String>,
-    /// Longitude for map display.
-    pub longitude: Option<f64>,
-    /// Pre-rendered HTML for map/calendar popovers.
-    pub popover_html: Option<String>,
-    /// Event start time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
-    pub starts_at: Option<DateTime<Utc>>,
-    /// Street address of the venue.
-    pub venue_address: Option<String>,
-    /// City where the event takes place.
-    pub venue_city: Option<String>,
-    /// Name of the venue.
-    pub venue_name: Option<String>,
-}
-
-impl Event {
-    /// Build a display-friendly location string from available location data.
-    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.group_city.as_ref())
-            .group_country_code(self.group_country_code.as_ref())
-            .group_country_name(self.group_country_name.as_ref())
-            .group_state(self.group_state.as_ref())
-            .venue_address(self.venue_address.as_ref())
-            .venue_city(self.venue_city.as_ref())
-            .venue_name(self.venue_name.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Render popover HTML for map and calendar views.
-    ///
-    /// Converts this event into a home::Event template and renders it as minified HTML
-    /// for inclusion in map/calendar popovers.
-    #[instrument(skip_all, err)]
-    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
-        let home_event: home::Event = self.clone().into();
-        let cfg = MinifyCfg::new();
-        self.popover_html = Some(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?);
-
-        Ok(())
-    }
-
-    /// Try to create a vector of `Event` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut events: Vec<Self> = serde_json::from_str(data)?;
-
-        for event in &mut events {
-            event.group_color = color(&event.group_name).to_string();
-        }
-
-        Ok(events)
-    }
-}
-
-/// Template for the groups section of the explore page.
-///
-/// This template renders the groups exploration interface, including filters panel and
-/// results. It's used when `Entity::Groups` is selected.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/groups/section.html")]
-pub(crate) struct GroupsSection {
-    /// Active filters for groups search.
-    pub filters: GroupsFilters,
-    /// Available filter options (categories, regions, etc.).
-    pub filters_options: FiltersOptions,
-    /// Results section containing matching groups.
-    pub results_section: GroupsResultsSection,
-}
-
 /// Filter parameters for group searches.
 ///
 /// Similar to `EventsFilters` but without temporal filters since groups are ongoing
@@ -497,117 +612,6 @@ impl Pagination for GroupsFilters {
     }
 }
 
-/// Template for displaying group search results.
-///
-/// This template renders the list of matching groups along with pagination controls. It
-/// supports different view modes and includes geographic bounds for map display.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/groups/results.html")]
-pub(crate) struct GroupsResultsSection {
-    /// List of groups matching the current filters.
-    pub groups: Vec<Group>,
-    /// Pagination links for navigating results.
-    pub navigation_links: NavigationLinks,
-    /// Total number of matching groups (for pagination).
-    pub total: usize,
-
-    /// Geographic bounds of all groups (for map centering).
-    pub bbox: Option<BBox>,
-    /// Current pagination offset.
-    pub offset: Option<usize>,
-    /// Current display mode.
-    pub view_mode: Option<ViewMode>,
-}
-
-impl GroupsResultsSection {
-    /// Return the entity to which the results belong.
-    #[allow(clippy::unused_self)]
-    pub(crate) fn entity(&self) -> Entity {
-        Entity::Groups
-    }
-}
-
-/// Detailed group information for display in explore results.
-///
-/// This struct contains all the data needed to render a group in the explore page,
-/// including location details and metadata. It can also render itself as a popover for
-/// map views.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/explore/groups/group.html")]
-pub(crate) struct Group {
-    /// Category this group belongs to.
-    pub category_name: String,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub color: String,
-    /// When the group was created.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
-    /// Group name.
-    pub name: String,
-    /// URL slug of the group.
-    pub slug: String,
-
-    /// City where the group is based.
-    pub city: Option<String>,
-    /// ISO country code of the group.
-    pub country_code: Option<String>,
-    /// Full country name of the group.
-    pub country_name: Option<String>,
-    /// Group description text.
-    pub description: Option<String>,
-    /// Latitude for map display.
-    pub latitude: Option<f64>,
-    /// URL to the group logo.
-    pub logo_url: Option<String>,
-    /// Longitude for map display.
-    pub longitude: Option<f64>,
-    /// Pre-rendered HTML for map popovers.
-    pub popover_html: Option<String>,
-    /// Name of the geographic region.
-    pub region_name: Option<String>,
-    /// State/province where the group is based.
-    pub state: Option<String>,
-}
-
-impl Group {
-    /// Build a display-friendly location string from available location data.
-    pub(crate) fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.city.as_ref())
-            .group_country_code(self.country_code.as_ref())
-            .group_country_name(self.country_name.as_ref())
-            .group_state(self.state.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Render popover HTML for map views.
-    ///
-    /// Converts this group into a home::Group template and renders it as minified HTML
-    /// for inclusion in map popovers.
-    #[instrument(skip_all, err)]
-    pub(crate) fn render_popover_html(&mut self) -> Result<()> {
-        let home_group: home::Group = self.clone().into();
-        let cfg = MinifyCfg::new();
-        self.popover_html = Some(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?);
-        Ok(())
-    }
-
-    /// Try to create a vector of `Group` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_new_vec_from_json(data: &str) -> Result<Vec<Self>> {
-        let mut groups: Vec<Self> = serde_json::from_str(data)?;
-
-        for group in &mut groups {
-            group.color = color(&group.name).to_string();
-        }
-
-        Ok(groups)
-    }
-}
-
 /// Available options for filters.
 ///
 /// This struct provides the lists of available options for some filters.
@@ -640,6 +644,48 @@ pub(crate) struct FilterOption {
     pub name: String,
     /// Technical value used in queries.
     pub value: String,
+}
+
+/// Display mode for explore results.
+///
+/// Determines how results are displayed - as a traditional list, on a calendar view, or
+/// as markers on a map.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ViewMode {
+    /// Calendar grid view (events only).
+    Calendar,
+    /// Traditional list view (default).
+    #[default]
+    List,
+    /// Interactive map view.
+    Map,
+}
+
+// Pagination.
+
+/// Trait for types that support pagination.
+///
+/// Provides methods to access and modify pagination parameters, used by the navigation
+/// link generation logic to create appropriate URLs for different pages.
+pub(crate) trait Pagination {
+    /// Get the current page size limit.
+    fn limit(&self) -> Option<usize>;
+
+    /// Get the current offset (starting position).
+    fn offset(&self) -> Option<usize>;
+
+    /// Update the offset for navigation.
+    fn set_offset(&mut self, offset: Option<usize>);
+}
+
+/// Trait for converting filter structs to URL query strings.
+///
+/// Implemented by filter types to provide custom serialization logic for URL query
+/// strings.
+pub(crate) trait ToRawQuery {
+    /// Convert the implementing type to a URL query string.
+    fn to_raw_query(&self) -> Result<String>;
 }
 
 /// Pagination navigation links for result sets.
@@ -777,22 +823,6 @@ impl NavigationLinksOffsets {
     }
 }
 
-/// Display mode for explore results.
-///
-/// Determines how results are displayed - as a traditional list, on a calendar view, or
-/// as markers on a map.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum ViewMode {
-    /// Calendar grid view (events only).
-    Calendar,
-    /// Traditional list view (default).
-    #[default]
-    List,
-    /// Interactive map view.
-    Map,
-}
-
 /// Build a URL with filter parameters appended as query string.
 ///
 /// Takes a base URL and a serializable filter object, converts the filters to URL query
@@ -824,30 +854,6 @@ fn get_url_filters_separator(url: &str) -> &str {
     } else {
         "?"
     }
-}
-
-/// Trait for converting filter structs to URL query strings.
-///
-/// Implemented by filter types to provide custom serialization logic for URL query
-/// strings.
-pub(crate) trait ToRawQuery {
-    /// Convert the implementing type to a URL query string.
-    fn to_raw_query(&self) -> Result<String>;
-}
-
-/// Trait for types that support pagination.
-///
-/// Provides methods to access and modify pagination parameters, used by the navigation
-/// link generation logic to create appropriate URLs for different pages.
-pub(crate) trait Pagination {
-    /// Get the current page size limit.
-    fn limit(&self) -> Option<usize>;
-
-    /// Get the current offset (starting position).
-    fn offset(&self) -> Option<usize>;
-
-    /// Update the offset for navigation.
-    fn set_offset(&mut self, offset: Option<usize>);
 }
 
 #[cfg(test)]

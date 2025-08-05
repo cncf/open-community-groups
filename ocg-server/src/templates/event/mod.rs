@@ -14,6 +14,8 @@ use crate::templates::{
     helpers::color,
 };
 
+// Pages templates.
+
 /// Event page template.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
@@ -22,6 +24,8 @@ pub(crate) struct Page {
     /// Detailed information about the event.
     pub event: Event,
 }
+
+// Types.
 
 /// Detailed event information for the event page.
 #[skip_serializing_none]

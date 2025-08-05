@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
+// Types.
+
 /// Categorization of event attendance modes.
 ///
 /// Distinguishes between physical, online, and mixed attendance events

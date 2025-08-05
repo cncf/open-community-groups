@@ -15,6 +15,8 @@ use crate::templates::{
     helpers::{LocationParts, build_location, color},
 };
 
+// Pages templates.
+
 /// Group page template.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
@@ -27,6 +29,8 @@ pub(crate) struct Page {
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<Event>,
 }
+
+// Types.
 
 /// Comprehensive group information for the group page.
 #[skip_serializing_none]

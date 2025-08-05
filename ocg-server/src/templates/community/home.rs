@@ -18,6 +18,8 @@ use crate::templates::{
 use super::{common::Community, explore};
 use crate::templates::common::EventKind;
 
+// Pages templates.
+
 /// Template for the community home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/home/page.html")]

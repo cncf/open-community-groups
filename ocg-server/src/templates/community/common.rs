@@ -7,6 +7,8 @@ use palette::{Darken, Lighten, Srgb};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+// Types.
+
 /// Community information used in some community pages.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Community {
