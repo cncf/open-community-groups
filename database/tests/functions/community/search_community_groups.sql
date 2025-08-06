@@ -63,15 +63,15 @@ insert into "group" (
     (:'group1ID', 'Kubernetes Meetup', 'kubernetes-meetup', :'community1ID', :'category1ID',
      array['kubernetes', 'cloud'], 'San Francisco', 'CA', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-122.4194 37.7749)'), 'SF Bay Area Kubernetes enthusiasts',
-     'https://example.com/k8s-logo.png', '2024-01-03 10:00:00'),
+     'https://example.com/k8s-logo.png', '2024-01-03 10:00:00+00'),
     (:'group2ID', 'Docker Users', 'docker-users', :'community1ID', :'category1ID',
      array['docker', 'containers'], 'New York', 'NY', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-74.0060 40.7128)'), 'NYC Docker community meetup group',
-     'https://example.com/docker-logo.png', '2024-01-02 10:00:00'),
+     'https://example.com/docker-logo.png', '2024-01-02 10:00:00+00'),
     (:'group3ID', 'Business Leaders', 'business-leaders', :'community1ID', :'category2ID',
      array['leadership', 'management'], 'London', null, 'GB', 'United Kingdom', null,
      ST_GeogFromText('POINT(-0.1278 51.5074)'), 'London business leadership forum',
-     'https://example.com/business-logo.png', '2024-01-01 10:00:00');
+     'https://example.com/business-logo.png', '2024-01-01 10:00:00+00');
 
 -- Test search without filters returns all groups with full JSON verification
 select is(
@@ -118,9 +118,7 @@ select is(
             "description": "London business leadership forum",
             "latitude": 51.5074,
             "logo_url": "https://example.com/business-logo.png",
-            "longitude": -0.1278,
-            "region_name": null,
-            "state": null
+            "longitude": -0.1278
         }
     ]'::jsonb,
     'search_community_groups without filters should return all active groups with correct JSON structure'

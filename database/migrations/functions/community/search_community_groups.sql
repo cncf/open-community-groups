@@ -52,29 +52,9 @@ begin
     return query
     with filtered_groups as (
         select
-            g.city,
-            g.country_code,
-            g.country_name,
+            g.group_id,
             g.created_at,
-            case
-                when
-                    g.description like '%PLEASE ADD A DESCRIPTION HERE%'
-                    or g.description like '%DESCRIPTION GOES HERE%'
-                    or g.description like '%ADD DESCRIPTION HERE%'
-                    or g.description like '%PLEASE UPDATE THE BELOW DESCRIPTION%'
-                    or g.description like '%PLEASE UPDATE THE DESCRIPTION HERE%'
-                then null else
-                    replace(regexp_replace(substring(g.description for 500), E'<[^>]+>', '', 'gi'), '&nbsp;', ' ')
-            end as description,
             g.location,
-            g.logo_url,
-            g.name,
-            g.slug,
-            g.state,
-            gc.name as category_name,
-            r.name as region_name,
-            st_y(g.location::geometry) as latitude,
-            st_x(g.location::geometry) as longitude,
             st_distance(g.location, v_user_location) as distance
         from "group" g
         join group_category gc using (group_category_id)
@@ -100,24 +80,23 @@ begin
     )
     select
         (
-            select coalesce(json_agg(json_build_object(
-                'category_name', category_name,
-                'created_at', floor(extract(epoch from created_at)),
-                'name', name,
-                'slug', slug,
-                
-                'city', city,
-                'country_code', country_code,
-                'country_name', country_name,
-                'description', description,
-                'latitude', latitude,
-                'logo_url', logo_url,
-                'longitude', longitude,
-                'region_name', region_name,
-                'state', state
-            )), '[]')
+            select coalesce(json_agg(
+                jsonb_set(
+                    get_group_detailed(group_id)::jsonb,
+                    '{description}',
+                    case
+                        when json_extract_path_text(get_group_detailed(group_id), 'description') like '%PLEASE ADD A DESCRIPTION HERE%'
+                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%DESCRIPTION GOES HERE%'
+                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%ADD DESCRIPTION HERE%'
+                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%PLEASE UPDATE THE BELOW DESCRIPTION%'
+                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%PLEASE UPDATE THE DESCRIPTION HERE%'
+                        then to_jsonb(null::text)
+                        else to_jsonb(replace(regexp_replace(substring(json_extract_path_text(get_group_detailed(group_id), 'description') for 500), E'<[^>]+>', '', 'gi'), '&nbsp;', ' '))
+                    end
+                )::json
+            ), '[]')
             from (
-                select *
+                select group_id
                 from filtered_groups
                 order by
                     (case when v_sort_by = 'date' then created_at end) desc,

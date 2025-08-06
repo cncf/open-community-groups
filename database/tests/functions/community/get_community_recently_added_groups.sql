@@ -46,13 +46,13 @@ values
 insert into "group" (group_id, name, slug, community_id, group_category_id, created_at, logo_url, description,
                      city, state, country_code, country_name, region_id)
 values
-    (:'group1ID', 'Test Group 1', 'test-group-1', :'community1ID', :'category1ID', 
+    (:'group1ID', 'Test Group 1', 'test-group-1', :'community1ID', :'category1ID',
      '2024-01-01 09:00:00+00', 'https://example.com/logo1.png', 'First group',
      'New York', 'NY', 'US', 'United States', :'region1ID'),
-    (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID', 
+    (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID',
      '2024-01-02 09:00:00+00', 'https://example.com/logo2.png', 'Second group',
      'San Francisco', 'CA', 'US', 'United States', :'region1ID'),
-    (:'group3ID', 'Test Group 3', 'test-group-3', :'community1ID', :'category1ID', 
+    (:'group3ID', 'Test Group 3', 'test-group-3', :'community1ID', :'category1ID',
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
      'London', null, 'GB', 'United Kingdom', :'region2ID');
 
@@ -64,7 +64,6 @@ select is(
             "city": "London",
             "name": "Test Group 3",
             "slug": "test-group-3",
-            "state": null,
             "logo_url": "https://example.com/logo3.png",
             "created_at": 1704272400,
             "region_name": "Europe",

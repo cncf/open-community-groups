@@ -64,29 +64,9 @@ begin
     return query
     with filtered_events as (
         select
-            e.canceled,
-            e.description_short,
-            e.ends_at,
-            e.event_kind_id,
-            e.logo_url,
-            e.name,
-            e.slug,
+            e.event_id,
             e.starts_at,
-            e.timezone,
-            e.venue_address,
-            e.venue_city,
-            e.venue_name,
-            g.city as group_city,
-            g.country_code as group_country_code,
-            g.country_name as group_country_name,
             g.location,
-            g.logo_url as group_logo_url,
-            g.name as group_name,
-            g.slug as group_slug,
-            g.state as group_state,
-            gc.name as group_category_name,
-            st_y(g.location::geometry) as latitude,
-            st_x(g.location::geometry) as longitude,
             st_distance(g.location, v_user_location) as distance
         from event e
         join "group" g using (group_id)
@@ -127,32 +107,11 @@ begin
     )
     select
         (
-            select coalesce(json_agg(json_build_object(
-                'canceled', canceled,
-                'kind', event_kind_id,
-                'name', name,
-                'slug', slug,
-                'timezone', timezone,
-                
-                'description_short', description_short,
-                'ends_at', floor(extract(epoch from ends_at)),
-                'group_category_name', group_category_name,
-                'group_city', group_city,
-                'group_country_code', group_country_code,
-                'group_country_name', group_country_name,
-                'group_name', group_name,
-                'group_slug', group_slug,
-                'group_state', group_state,
-                'latitude', latitude,
-                'logo_url', coalesce(logo_url, group_logo_url),
-                'longitude', longitude,
-                'starts_at', floor(extract(epoch from starts_at)),
-                'venue_address', venue_address,
-                'venue_city', venue_city,
-                'venue_name', venue_name
-            )), '[]')
+            select coalesce(json_agg(
+                get_event_detailed(event_id)
+            ), '[]')
             from (
-                select *
+                select event_id
                 from filtered_events
                 order by
                     (case when v_sort_by = 'date' then starts_at end) asc,

@@ -1,3 +1,10 @@
+{{ template "common/get_event_detailed.sql" }}
+{{ template "common/get_event_full.sql" }}
+{{ template "common/get_event_summary.sql" }}
+{{ template "common/get_group_detailed.sql" }}
+{{ template "common/get_group_full.sql" }}
+{{ template "common/get_group_summary.sql" }}
+
 {{ template "community/get_community.sql" }}
 {{ template "community/get_community_filters_options.sql" }}
 {{ template "community/get_community_home_stats.sql" }}
