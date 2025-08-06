@@ -57,6 +57,8 @@ jobs:
 
   test-database:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     container: ghcr.io/cncf/open-community-groups/db-tests
     services:
       postgres:
