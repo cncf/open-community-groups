@@ -6,7 +6,7 @@ returns json as $$
         'created_at', floor(extract(epoch from g.created_at)),
         'name', g.name,
         'slug', g.slug,
-        
+
         'banner_url', g.banner_url,
         'city', g.city,
         'country_code', g.country_code,
@@ -30,7 +30,7 @@ returns json as $$
         'website_url', g.website_url,
         'wechat_url', g.wechat_url,
         'youtube_url', g.youtube_url,
-        
+
         'members_count', (
             select count(*)
             from group_member
@@ -48,12 +48,11 @@ returns json as $$
                 'linkedin_url', u.linkedin_url,
                 'twitter_url', u.twitter_url,
                 'website_url', u.website_url
-            ))), '[]')
+            )) order by gt."order" nulls last, u.first_name, u.last_name), '[]')
             from group_team gt
             join "user" u using (user_id)
             where gt.group_id = g.group_id
             and gt.role = 'organizer'
-            order by gt."order" nulls last, u.first_name, u.last_name
         )
     )) as json_data
     from "group" g
