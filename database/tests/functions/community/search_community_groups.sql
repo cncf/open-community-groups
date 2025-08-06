@@ -79,7 +79,7 @@ select is(
     '[
         {
             "category_name": "Technology",
-            "created_at": 1704272400,
+            "created_at": 1704276000,
             "name": "Kubernetes Meetup",
             "slug": "kubernetes-meetup",
             "city": "San Francisco",
@@ -94,7 +94,7 @@ select is(
         },
         {
             "category_name": "Technology",
-            "created_at": 1704186000,
+            "created_at": 1704189600,
             "name": "Docker Users",
             "slug": "docker-users",
             "city": "New York",
@@ -109,7 +109,7 @@ select is(
         },
         {
             "category_name": "Business",
-            "created_at": 1704099600,
+            "created_at": 1704103200,
             "name": "Business Leaders",
             "slug": "business-leaders",
             "city": "London",
