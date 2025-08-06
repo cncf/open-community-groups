@@ -58,6 +58,7 @@ jobs:
   test-database:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: read
     container: ghcr.io/cncf/open-community-groups/db-tests
     services:
