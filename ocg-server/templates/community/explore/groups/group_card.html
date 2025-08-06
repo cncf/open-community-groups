@@ -1,7 +1,7 @@
 {% import "common.html" as common -%}
 
 {# Group card -#}
-<a class="p-5 md:p-7" href="/group/{{ slug }}">
+<a class="p-5 md:p-7" href="/group/{{ group.slug }}">
   <div class="flex flex-1 flex-row items-stretch">
     {# Group icon -#}
     {% call common::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name)) -%}
