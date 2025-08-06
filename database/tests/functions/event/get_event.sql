@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(1);
+select plan(3);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -10,6 +10,8 @@ select plan(1);
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
+\set user3ID '00000000-0000-0000-0000-000000000053'
+\set user4ID '00000000-0000-0000-0000-000000000054'
 
 -- Seed community
 insert into community (
@@ -45,10 +47,12 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, first_name, last_name, photo_url, created_at)
+insert into "user" (user_id, email, community_id, first_name, last_name, photo_url, company, title, created_at)
 values
-    (:'user1ID', 'host1@example.com', :'community1ID', 'John', 'Doe', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', '2024-01-01 00:00:00');
+    (:'user1ID', 'host1@example.com', :'community1ID', 'John', 'Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
+    (:'user3ID', 'organizer1@example.com', :'community1ID', 'Alice', 'Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
+    (:'user4ID', 'organizer2@example.com', :'community1ID', 'Bob', 'Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
 -- Seed event with all fields
 insert into event (
@@ -117,6 +121,12 @@ values
     (:'event1ID', :'user1ID', true, '2024-01-01 00:00:00'),
     (:'event1ID', :'user2ID', false, '2024-01-01 00:00:00');
 
+-- Add group team members (organizers)
+insert into group_team (group_id, user_id, role, "order", created_at)
+values
+    (:'group1ID', :'user3ID', 'organizer', 1, '2024-01-01 00:00:00'),
+    (:'group1ID', :'user4ID', 'organizer', 2, '2024-01-01 00:00:00');
+
 -- Test get_event function returns correct data
 select is(
     get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
@@ -132,12 +142,16 @@ select is(
         },
         "hosts": [
             {
+                "title": "Lead Dev",
+                "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000052",
                 "last_name": "Smith",
                 "photo_url": "https://example.com/jane.png",
                 "first_name": "Jane"
             },
             {
+                "title": "CTO",
+                "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000051",
                 "last_name": "Doe",
                 "photo_url": "https://example.com/john.png",
@@ -155,7 +169,24 @@ select is(
         "starts_at": 1718442000,
         "banner_url": "https://example.com/event-banner.png",
         "meetup_url": "https://meetup.com/event123",
-        "organizers": [],
+        "organizers": [
+            {
+                "title": "Manager",
+                "company": "Cloud Co",
+                "user_id": "00000000-0000-0000-0000-000000000053",
+                "last_name": "Johnson",
+                "photo_url": "https://example.com/alice.png",
+                "first_name": "Alice"
+            },
+            {
+                "title": "Engineer",
+                "company": "StartUp",
+                "user_id": "00000000-0000-0000-0000-000000000054",
+                "last_name": "Wilson",
+                "photo_url": "https://example.com/bob.png",
+                "first_name": "Bob"
+            }
+        ],
         "venue_city": "New York",
         "venue_name": "Convention Center",
         "description": "Annual technology conference with workshops and talks",
@@ -168,6 +199,18 @@ select is(
         "registration_required": true
     }'::jsonb,
     'get_event should return correct event data as JSON'
+);
+
+-- Test get_event with non-existing event slug
+select ok(
+    get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'non-existing-event') is null,
+    'get_event with non-existing event slug should return null'
+);
+
+-- Test get_event with non-existing group slug
+select ok(
+    get_event('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group', 'tech-conference-2024') is null,
+    'get_event with non-existing group slug should return null'
 );
 
 -- Finish tests and rollback transaction

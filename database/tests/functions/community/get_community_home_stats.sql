@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(1);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -75,16 +75,41 @@ insert into event (
     true
 );
 
+-- Add group members
+insert into group_member (group_id, user_id, created_at)
+values
+    (:'group1ID', :'user1ID', '2024-01-01 00:00:00'),
+    (:'group1ID', :'user2ID', '2024-01-01 00:00:00'),
+    (:'group2ID', :'user1ID', '2024-01-01 00:00:00');
+
+-- Add event attendees
+insert into event_attendee (event_id, user_id, created_at)
+values
+    (:'event1ID', :'user1ID', '2024-01-01 00:00:00'),
+    (:'event1ID', :'user2ID', '2024-01-01 00:00:00');
+
 -- Test get_community_home_stats function returns correct data
 select is(
     get_community_home_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
         "events": 1,
         "groups": 2,
+        "groups_members": 3,
+        "events_attendees": 2
+    }'::jsonb,
+    'get_community_home_stats should return correct stats as JSON'
+);
+
+-- Test get_community_home_stats with non-existing community
+select is(
+    get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    '{
+        "events": 0,
+        "groups": 0,
         "groups_members": 0,
         "events_attendees": 0
     }'::jsonb,
-    'get_community_home_stats should return correct stats as JSON'
+    'get_community_home_stats with non-existing community should return zeros'
 );
 
 -- Finish tests and rollback transaction

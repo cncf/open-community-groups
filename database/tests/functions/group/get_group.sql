@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(1);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -149,6 +149,12 @@ select is(
         "members_count": 3
     }'::jsonb,
     'get_group should return correct group data as JSON'
+);
+
+-- Test get_group with non-existing group slug
+select ok(
+    get_group('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group') is null,
+    'get_group with non-existing group slug should return null'
 );
 
 -- Finish tests and rollback transaction

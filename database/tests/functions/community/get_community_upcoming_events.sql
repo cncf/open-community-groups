@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(1);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -36,9 +36,9 @@ insert into community (
 insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'community1ID');
 
--- Seed group with city
-insert into "group" (group_id, name, slug, community_id, group_category_id, city)
-values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'New York');
+-- Seed group with location data
+insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
+values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'New York', 'NY', 'US', 'United States');
 
 -- Seed event category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -77,11 +77,11 @@ select is(
     '[
         {
             "group_city": "New York",
-            "group_country_code": null,
-            "group_country_name": null,
+            "group_country_code": "US",
+            "group_country_name": "United States",
             "group_name": "Test Group",
             "group_slug": "test-group",
-            "group_state": null,
+            "group_state": "NY",
             "kind": "virtual",
             "logo_url": null,
             "name": "Future Event 1",
@@ -92,6 +92,13 @@ select is(
         }
     ]'::jsonb,
     'get_community_upcoming_events should return only published future events as JSON'
+);
+
+-- Test get_community_upcoming_events with non-existing community
+select is(
+    get_community_upcoming_events('00000000-0000-0000-0000-999999999999'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
+    '[]'::jsonb,
+    'get_community_upcoming_events with non-existing community should return empty array'
 );
 
 -- Finish tests and rollback transaction
