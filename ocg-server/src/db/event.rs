@@ -5,26 +5,20 @@ use async_trait::async_trait;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{db::PgDB, templates::event};
+use crate::{db::PgDB, types::event::EventFull};
 
 /// Database trait defining all data access operations for event page.
 #[async_trait]
 pub(crate) trait DBEvent {
     /// Retrieves detailed event information.
-    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str)
-    -> Result<event::Event>;
+    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull>;
 }
 
 #[async_trait]
 impl DBEvent for PgDB {
     /// [DB::get_event]
     #[instrument(skip(self), err)]
-    async fn get_event(
-        &self,
-        community_id: Uuid,
-        group_slug: &str,
-        event_slug: &str,
-    ) -> Result<event::Event> {
+    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull> {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -33,6 +27,6 @@ impl DBEvent for PgDB {
             )
             .await?;
         let value: String = row.get(0);
-        event::Event::try_from_json(&value)
+        EventFull::try_from_json(&value)
     }
 }

@@ -10,10 +10,13 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    templates::{community::common::EventKind, group::Page},
+    templates::group::{self, Page},
+    types::event::EventKind,
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
+
+// Pages handlers.
 
 /// Handler that renders the group home page.
 #[instrument(skip_all)]
@@ -31,8 +34,14 @@ pub(crate) async fn page(
     )?;
     let template = Page {
         group,
-        past_events,
-        upcoming_events,
+        past_events: past_events
+            .into_iter()
+            .map(|event| group::EventCard { event })
+            .collect(),
+        upcoming_events: upcoming_events
+            .into_iter()
+            .map(|event| group::EventCard { event })
+            .collect(),
     };
 
     Ok(Html(template.render()?))

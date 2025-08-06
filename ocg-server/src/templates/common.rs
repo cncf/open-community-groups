@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
+// Types.
+
 /// This struct represents basic user profile information that can be displayed
 /// throughout the application.
 #[skip_serializing_none]
