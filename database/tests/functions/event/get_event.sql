@@ -45,10 +45,10 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, first_name, last_name, photo_url)
+insert into "user" (user_id, email, community_id, first_name, last_name, photo_url, created_at)
 values
-    (:'user1ID', 'host1@example.com', :'community1ID', 'John', 'Doe', 'https://example.com/john.png'),
-    (:'user2ID', 'host2@example.com', :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png');
+    (:'user1ID', 'host1@example.com', :'community1ID', 'John', 'Doe', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', '2024-01-01 00:00:00');
 
 -- Seed event with all fields
 insert into event (
@@ -106,16 +106,16 @@ insert into event (
 );
 
 -- Add event hosts
-insert into event_host (event_id, user_id)
+insert into event_host (event_id, user_id, created_at)
 values
-    (:'event1ID', :'user1ID'),
-    (:'event1ID', :'user2ID');
+    (:'event1ID', :'user1ID', '2024-01-01 00:00:00'),
+    (:'event1ID', :'user2ID', '2024-01-01 00:00:00');
 
 -- Add event attendees
-insert into event_attendee (event_id, user_id, checked_in)
+insert into event_attendee (event_id, user_id, checked_in, created_at)
 values
-    (:'event1ID', :'user1ID', true),
-    (:'event1ID', :'user2ID', false);
+    (:'event1ID', :'user1ID', true, '2024-01-01 00:00:00'),
+    (:'event1ID', :'user2ID', false, '2024-01-01 00:00:00');
 
 -- Test get_event function returns correct data
 select is(

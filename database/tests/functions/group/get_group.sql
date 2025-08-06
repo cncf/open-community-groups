@@ -41,11 +41,11 @@ insert into region (region_id, name, community_id)
 values (:'region1ID', 'North America', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, first_name, last_name, company, title, photo_url)
+insert into "user" (user_id, email, community_id, first_name, last_name, company, title, photo_url, created_at)
 values
-    (:'user1ID', 'organizer1@example.com', :'community1ID', 'John', 'Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png'),
-    (:'user2ID', 'organizer2@example.com', :'community1ID', 'Jane', 'Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png'),
-    (:'user3ID', 'member@example.com', :'community1ID', 'Bob', 'Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png');
+    (:'user1ID', 'organizer1@example.com', :'community1ID', 'John', 'Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'user2ID', 'organizer2@example.com', :'community1ID', 'Jane', 'Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
+    (:'user3ID', 'member@example.com', :'community1ID', 'Bob', 'Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
 -- Seed group with all fields
 insert into "group" (
@@ -93,17 +93,17 @@ insert into "group" (
 );
 
 -- Add group members
-insert into group_member (group_id, user_id)
+insert into group_member (group_id, user_id, created_at)
 values
-    (:'group1ID', :'user1ID'),
-    (:'group1ID', :'user2ID'),
-    (:'group1ID', :'user3ID');
+    (:'group1ID', :'user1ID', '2024-01-01 00:00:00'),
+    (:'group1ID', :'user2ID', '2024-01-01 00:00:00'),
+    (:'group1ID', :'user3ID', '2024-01-01 00:00:00');
 
 -- Add group team (organizers)
-insert into group_team (group_id, user_id, role, "order")
+insert into group_team (group_id, user_id, role, "order", created_at)
 values
-    (:'group1ID', :'user1ID', 'organizer', 1),
-    (:'group1ID', :'user2ID', 'organizer', 2);
+    (:'group1ID', :'user1ID', 'organizer', 1, '2024-01-01 00:00:00'),
+    (:'group1ID', :'user2ID', 'organizer', 2, '2024-01-01 00:00:00');
 
 -- Test get_group function returns correct data
 select is(

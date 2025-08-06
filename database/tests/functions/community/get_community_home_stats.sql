@@ -43,10 +43,10 @@ values
     (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id)
+insert into "user" (user_id, email, community_id, created_at)
 values
-    (:'user1ID', 'user1@example.com', :'community1ID'),
-    (:'user2ID', 'user2@example.com', :'community1ID');
+    (:'user1ID', 'user1@example.com', :'community1ID', '2024-01-01 00:00:00'),
+    (:'user2ID', 'user2@example.com', :'community1ID', '2024-01-01 00:00:00');
 
 -- Seed event category
 insert into event_category (event_category_id, name, slug, community_id)
