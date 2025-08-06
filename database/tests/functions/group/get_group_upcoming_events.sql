@@ -62,19 +62,19 @@ insert into event (
     -- Past event (should not be included)
     (:'event1ID', 'Past Event', 'past-event', 'A past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2024-01-01 10:00:00', '2024-01-01 12:00:00'),
+     '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00'),
     -- Future published event (closest)
     (:'event2ID', 'Future Event 1', 'future-event-1', 'First future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-01 10:00:00', '2026-02-01 12:00:00'),
+     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00'),
     -- Future published event (later)
     (:'event3ID', 'Future Event 2', 'future-event-2', 'Second future event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
-     '2026-02-10 10:00:00', '2026-02-10 12:00:00'),
+     '2026-02-10 09:00:00+00', '2026-02-10 11:00:00+00'),
     -- Future unpublished event (should not be included)
     (:'event4ID', 'Future Event 3', 'future-event-3', 'Unpublished future event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
-     '2026-02-20 10:00:00', '2026-02-20 12:00:00');
+     '2026-02-20 09:00:00+00', '2026-02-20 11:00:00+00');
 
 -- Test get_group_upcoming_events function returns correct data
 select is(

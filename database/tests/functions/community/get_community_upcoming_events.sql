@@ -61,15 +61,15 @@ insert into event (
     -- Past event
     (:'event1ID', 'Past Event', 'past-event', 'A past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2024-01-01 10:00:00', '2024-01-01 12:00:00'),
+     '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00'),
     -- Future event 1
     (:'event2ID', 'Future Event 1', 'future-event-1', 'A future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-01 10:00:00', '2026-02-01 12:00:00'),
+     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00'),
     -- Future event 2 (unpublished)
     (:'event3ID', 'Future Event 2', 'future-event-2', 'An unpublished event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
-     '2026-03-01 10:00:00', '2026-03-01 12:00:00');
+     '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00');
 
 -- Test get_community_upcoming_events function returns correct data
 select is(

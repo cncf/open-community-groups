@@ -89,8 +89,8 @@ insert into event (
     'hybrid',
     :'group1ID',
     true,
-    '2024-06-15 09:00:00',
-    '2024-06-15 18:00:00',
+    '2024-06-15 09:00:00+00',
+    '2024-06-15 17:00:00+00',
     array['technology', 'conference', 'workshops'],
     'Convention Center',
     '123 Main St',
@@ -144,7 +144,7 @@ select is(
                 "first_name": "John"
             }
         ],
-        "ends_at": 1718467200,
+        "ends_at": 1718470800,
         "canceled": false,
         "capacity": 500,
         "event_id": "00000000-0000-0000-0000-000000000041",
@@ -152,7 +152,7 @@ select is(
         "sessions": [],
         "timezone": "America/New_York",
         "published": true,
-        "starts_at": 1718434800,
+        "starts_at": 1718442000,
         "banner_url": "https://example.com/event-banner.png",
         "meetup_url": "https://meetup.com/event123",
         "organizers": [],

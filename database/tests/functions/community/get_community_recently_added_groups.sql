@@ -38,11 +38,11 @@ values (:'category1ID', 'Technology', :'community1ID');
 insert into "group" (group_id, name, slug, community_id, group_category_id, created_at, logo_url, description)
 values
     (:'group1ID', 'Test Group 1', 'test-group-1', :'community1ID', :'category1ID', 
-     '2024-01-01 10:00:00', 'https://example.com/logo1.png', 'First group'),
+     '2024-01-01 09:00:00+00', 'https://example.com/logo1.png', 'First group'),
     (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID', 
-     '2024-01-02 10:00:00', 'https://example.com/logo2.png', 'Second group'),
+     '2024-01-02 09:00:00+00', 'https://example.com/logo2.png', 'Second group'),
     (:'group3ID', 'Test Group 3', 'test-group-3', :'community1ID', :'category1ID', 
-     '2024-01-03 10:00:00', 'https://example.com/logo3.png', 'Third group');
+     '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group');
 
 -- Test get_community_recently_added_groups function returns correct data
 select is(

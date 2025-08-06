@@ -62,19 +62,19 @@ insert into event (
     -- Past published event (oldest)
     (:'event1ID', 'Past Event 1', 'past-event-1', 'First past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2024-01-01 10:00:00', '2024-01-01 12:00:00'),
+     '2024-01-01 09:00:00+00', '2024-01-01 11:00:00+00'),
     -- Past published event (newer)
     (:'event2ID', 'Past Event 2', 'past-event-2', 'Second past event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2024-01-10 10:00:00', '2024-01-10 12:00:00'),
+     '2024-01-10 09:00:00+00', '2024-01-10 11:00:00+00'),
     -- Past unpublished event (should not be included)
     (:'event3ID', 'Past Event 3', 'past-event-3', 'Unpublished past event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
-     '2024-01-05 10:00:00', '2024-01-05 12:00:00'),
+     '2024-01-05 09:00:00+00', '2024-01-05 11:00:00+00'),
     -- Future event (should not be included)
     (:'event4ID', 'Future Event', 'future-event', 'A future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-01 10:00:00', '2026-02-01 12:00:00');
+     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00');
 
 -- Test get_group_past_events function returns correct data
 select is(
