@@ -98,6 +98,7 @@ impl EventsResultsSection {
 #[template(path = "community/explore/events/event_card.html")]
 pub(crate) struct EventCard {
     /// Event data
+    #[serde(flatten)]
     pub event: EventDetailed,
 }
 
@@ -152,6 +153,7 @@ impl GroupsResultsSection {
 #[template(path = "community/explore/groups/group_card.html")]
 pub(crate) struct GroupCard {
     /// Group data
+    #[serde(flatten)]
     pub group: GroupDetailed,
 }
 
