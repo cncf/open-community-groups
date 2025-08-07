@@ -7,7 +7,7 @@ use crate::{
     templates::filters,
     types::{
         community::Community,
-        event::{EventKind, EventSummary},
+        event::{EventDetailed, EventKind, EventSummary},
         group::GroupFull,
     },
 };
@@ -24,17 +24,29 @@ pub(crate) struct Page {
     /// Detailed information about the group.
     pub group: GroupFull,
     /// List of past events for this group.
+<<<<<<< HEAD
     pub past_events: Vec<EventCard>,
     /// Current URL path.
     pub path: String,
+=======
+    pub past_events: Vec<PastEventCard>,
+>>>>>>> 70d355f (Update cards)
     /// List of upcoming events for this group.
-    pub upcoming_events: Vec<EventCard>,
+    pub upcoming_events: Vec<UpcomingEventCard>,
 }
 
-/// Event card template for group page display.
+/// Event card template for upcoming events using detailed information.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "group/event_card.html")]
-pub(crate) struct EventCard {
+#[template(path = "common/event_card.html")]
+pub(crate) struct UpcomingEventCard {
+    /// Event data
+    pub event: EventDetailed,
+}
+
+/// Event card template for past events using summary information.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "common/small_event_card.html")]
+pub(crate) struct PastEventCard {
     /// Event data
     pub event: EventSummary,
 }

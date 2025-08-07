@@ -1,7 +1,8 @@
 {% import "common.html" as common -%}
 
 {# Event card -#}
-<div class="p-5 md:p-7">
+<a class="p-5 md:p-7"
+   href="/group/{{ event.group_slug }}/event/{{ event.slug }}">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
     <div class="card-logo">
@@ -36,7 +37,7 @@
 
         <div class="hidden md:block">
           {# Event location -#}
-          <div class="card-meta h-[32px]">
+          <div class="card-meta h-[28px]">
             {% if event.kind != EventKind::Virtual -%}
               {% if let Some(location) = self.event.location(36) -%}
                 <div class="hidden truncate me-2 xl:block">
@@ -113,5 +114,5 @@
     </div>
   {% endif -%}
   {# End description -#}
-</div>
+</a>
 {# End event card -#}

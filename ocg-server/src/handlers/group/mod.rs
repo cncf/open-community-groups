@@ -10,7 +10,7 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    templates::group::{self, Page},
+    templates::group::{Page, PastEventCard, UpcomingEventCard},
     types::event::EventKind,
 };
 
@@ -39,12 +39,11 @@ pub(crate) async fn page(
         group,
         past_events: past_events
             .into_iter()
-            .map(|event| group::EventCard { event })
+            .map(|event| PastEventCard { event })
             .collect(),
-        path: uri.path().to_string(),
         upcoming_events: upcoming_events
             .into_iter()
-            .map(|event| group::EventCard { event })
+            .map(|event| UpcomingEventCard { event })
             .collect(),
     };
 

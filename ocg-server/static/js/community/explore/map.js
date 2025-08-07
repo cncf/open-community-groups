@@ -251,12 +251,23 @@ export class Map {
         );
       }
 
+      // Add click handler to navigate to item page
+      marker.on("click", () => {
+        let url;
+        if (this.entity === "events") {
+          url = `/group/${item.group_slug}/event/${item.slug}`;
+        } else if (this.entity === "groups") {
+          url = `/group/${item.slug}`;
+        }
+        window.location.href = url;
+      });
+
       // Add marker to the marker cluster group
       markers.addLayer(marker);
-
-      // Add marker cluster group to the map
-      this.map.addLayer(markers);
     });
+
+    // Add marker cluster group to the map
+    this.map.addLayer(markers);
 
     // Hide loading spinner
     hideLoadingSpinner("loading-map");

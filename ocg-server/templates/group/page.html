@@ -2,6 +2,12 @@
 {% extends "group/base.html" -%}
 
 {% block content -%}
+  {# Scripts -#}
+  <script type="text/javascript" src="/static/vendor/js/leaflet.v1.9.4.min.js"></script>
+  <script type="text/javascript"
+          src="/static/vendor/js/leaflet.markercluster.v1.5.3.min.js"></script>
+  {# End scripts -#}
+
   <div class="max-w-7xl bg-white border border-stone-200 rounded-lg mx-4 lg:mx-5 xl:mx-auto my-5 md:my-7">
     {# Group header with name and region -#}
     <div>
@@ -106,7 +112,7 @@
         <div class="lg:col-span-7">
           {# Group banner -#}
           {% if let Some(banner_url) = group.banner_url -%}
-            <div class="w-full">
+            <div class="w-full mb-8">
               <div>
                 <img src="{{ banner_url }}"
                      alt="Group banner"
@@ -121,7 +127,7 @@
           {# Group description -#}
           {% if let Some(description) = group.description -%}
             <div>
-              <div class="py-8">
+              <div class="pb-8">
                 <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
                 <div class="prose prose-stone max-w-none">
                   <div class="text-stone-700 text-base/6 markdown">{{ description|demoji|safe }}</div>
@@ -275,9 +281,7 @@
           <h2 class="text-2xl font-semibold text-stone-900 mb-6">Upcoming Events</h2>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {% for event in upcoming_events -%}
-              <div class="block bg-white border border-stone-200 rounded-lg">
-                <div class="p-3 md:p-4">{{ event|safe }}</div>
-              </div>
+              {{ event|safe }}
             {% endfor -%}
           </div>
         </div>

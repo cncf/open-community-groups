@@ -60,6 +60,14 @@ export class Calendar {
       moreLinkClick: "popover",
       initialDate: initialDate,
 
+      // Handle event clicks to navigate to event page
+      eventClick: (info) => {
+        const event = info.event.extendedProps.event;
+        if (event.group_slug && event.slug) {
+          window.location.href = `/group/${event.group_slug}/event/${event.slug}`;
+        }
+      },
+
       // Add popover to events when they are mounted
       eventDidMount: (info) => {
         if (info.event.extendedProps.event.popover_html) {

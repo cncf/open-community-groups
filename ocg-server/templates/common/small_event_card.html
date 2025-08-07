@@ -1,7 +1,8 @@
 {% import "common.html" as common -%}
 
 {# Event card -#}
-<div class="card">
+<a class="card"
+   href="/group/{{ event.group_slug }}/event/{{ event.slug }}">
   <div class="card-logo">
     {# Event icon -#}
     {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
@@ -33,7 +34,7 @@
           {% when EventKind::Hybrid -%}
           <div class="flex items-center">
             {% if let Some(location) = self.event.location(16) -%}
-              {% call common::icon_text(icon_name = "location", text = location) -%}
+              {% call common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2")) -%}
             {% endif -%}
             {% call common::event_badge(kind = event.kind) -%}
           </div>
@@ -60,5 +61,5 @@
     </div>
   </div>
 </div>
-</div>
+</a>
 {# End event card -#}
