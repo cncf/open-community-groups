@@ -82,12 +82,13 @@
           {# Group banner -#}
           {% if let Some(banner_url) = group.banner_url -%}
             <div class="w-full mb-8">
-              <div>
+              <div class="relative w-full aspect-[4/1] overflow-hidden rounded-lg bg-white max-h-64 lg:max-h-80">
                 <img src="{{ banner_url }}"
                      alt="Group banner"
-                     class="w-full h-auto max-h-64 lg:max-h-80 object-contain rounded-lg mx-auto"
+                     class="absolute inset-0 w-full h-full object-cover"
+                     height="auto"
                      width="auto"
-                     height="auto" />
+                     loading="lazy" />
               </div>
             </div>
           {% endif -%}
