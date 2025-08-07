@@ -204,25 +204,7 @@
                 {% for organizer in group.organizers -%}
                   <div class="flex items-center gap-3 p-3">
                     {# Avatar -#}
-                    {% if let Some(photo_url) = organizer.photo_url -%}
-                      <img src="{{ photo_url }}"
-                           alt="Organizer photo"
-                           class="size-10 rounded-full object-cover flex-shrink-0 border-2 border-gray-400"
-                           width="40"
-                           height="40" />
-                    {% else -%}
-                      <div class="size-10 rounded-full bg-stone-200 flex items-center justify-center flex-shrink-0 border-2 border-gray-400">
-                        <span class="text-stone-600 font-semibold text-sm">
-                          {% if let Some(first_name) = organizer.first_name -%}
-                            {{ first_name.chars().next().unwrap_or('?').to_uppercase() }}
-                          {% else if let Some(last_name) = organizer.last_name -%}
-                            {{ last_name.chars().next().unwrap_or('?').to_uppercase() }}
-                          {% else -%}
-                            -
-                          {% endif -%}
-                        </span>
-                      </div>
-                    {% endif -%}
+                    {% call common::avatar(avatar_url = organizer.photo_url, first_name = organizer.first_name, last_name = organizer.last_name) -%}
                     {# End avatar -#}
 
                     {# Name and position -#}
@@ -248,6 +230,13 @@
                   </div>
                 {% endfor -%}
               </div>
+              <script type="module">
+                import {
+                  initializeAvatars
+                } from '/static/js/common/common.js';
+                // Initialize all avatars on page load
+                initializeAvatars();
+              </script>
             {% endif -%}
           </div>
           {# End organizers section -#}

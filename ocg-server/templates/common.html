@@ -202,3 +202,39 @@
   </a>
 {% endmacro social_link -%}
 {# End social network link -#}
+
+{# Avatar -#}
+{% macro avatar(avatar_url, first_name, last_name, size = 40, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <div class="relative avatar-container flex-shrink-0 {{ extra_styles_ }}"
+       style="width: {{ size }}px;
+              height: {{ size }}px">
+    {# Initials placeholder (visible by default) -#}
+    <div class="avatar-initials absolute inset-0 flex items-center justify-center rounded-full bg-stone-400 border-2 border-gray-400 text-white font-semibold">
+      {% if let Some(first_name) = first_name -%}
+        {% if let Some(last_name) = last_name -%}
+          {{ first_name.chars().next().unwrap_or('?').to_uppercase() }}{{ last_name.chars().next().unwrap_or('?').to_uppercase() }}
+        {% else -%}
+          {{ first_name.chars().next().unwrap_or('?').to_uppercase() }}
+        {% endif -%}
+      {% else if let Some(last_name) = last_name -%}
+        {{ last_name.chars().next().unwrap_or('?').to_uppercase() }}
+      {% else -%}
+        -
+      {% endif -%}
+    </div>
+    {# End initials placeholder -#}
+
+    {# Avatar image (hidden initially) -#}
+    {% if let Some(url) = avatar_url -%}
+      <img class="avatar-image hidden absolute inset-0 w-full h-full rounded-full border-2 border-gray-400 object-cover"
+           data-src="{{ url }}"
+           alt="Avatar"
+           height="{{ size }}"
+           width="{{ size }}" />
+    {% endif -%}
+    {# End avatar image -#}
+  </div>
+{% endmacro avatar -%}
+{# End avatar -#}
