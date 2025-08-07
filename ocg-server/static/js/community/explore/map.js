@@ -1,4 +1,4 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 
 export class Map {
@@ -259,7 +259,7 @@ export class Map {
         } else if (this.entity === "groups") {
           url = `/group/${item.slug}`;
         }
-        window.location.href = url;
+        navigateWithHtmx(url);
       });
 
       // Add marker to the marker cluster group

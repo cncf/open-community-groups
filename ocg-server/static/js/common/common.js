@@ -49,11 +49,10 @@ export const toggleModalVisibility = (modalId) => {
 /**
  * Loads and initializes a Leaflet map with a marker and popup.
  * @param {string} divId - The ID of the div element to contain the map
- * @param {string} title - The title text to display in the marker popup
  * @param {number} lat - The latitude coordinate for the map center and marker
  * @param {number} long - The longitude coordinate for the map center and marker
  */
-export const loadMap = (divId, title, lat, long) => {
+export const loadMap = (divId, lat, long) => {
   const map = L.map(divId, { zoomControl: false, dragging: false }).setView([lat, long], 13);
 
   L.tileLayer(
@@ -68,7 +67,7 @@ export const loadMap = (divId, title, lat, long) => {
 
   // SVG icon for markers
   const svgIcon = {
-    html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
+    html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker"></div>',
     iconSize: [30, 30],
     iconAnchor: [15, 30],
     popupAnchor: [0, -25],
@@ -83,10 +82,39 @@ export const loadMap = (divId, title, lat, long) => {
   // Create marker
   const marker = L.marker(L.latLng(lat, long), {
     icon: icon,
+    interactive: false,
     autoPanOnFocus: false,
-    bubblingMouseEvents: true,
+    bubblingMouseEvents: false,
   });
 
   // Add popup to marker
   marker.addTo(map);
+};
+
+/**
+ * Navigates to a URL using HTMX by creating a temporary anchor with hx-boost.
+ * This function creates an anchor element with the hx-boost attribute, triggers
+ * a click event on it, and then removes it from the DOM.
+ * @param {string} url - The URL to navigate to
+ */
+export const navigateWithHtmx = (url) => {
+  // Create a temporary anchor element
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.setAttribute("hx-boost", "true");
+  anchor.style.display = "none";
+
+  // Append to body temporarily
+  document.body.appendChild(anchor);
+
+  // Critical: Process with HTMX
+  htmx.process(anchor);
+
+  // Trigger click
+  anchor.click();
+
+  // Remove the anchor after a small delay to ensure HTMX processes it
+  setTimeout(() => {
+    document.body.removeChild(anchor);
+  }, 100);
 };

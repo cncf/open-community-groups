@@ -1,4 +1,4 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import { getFirstAndLastDayOfMonth, updateDateInput } from "/static/js/community/explore/filters.js";
 
@@ -64,7 +64,7 @@ export class Calendar {
       eventClick: (info) => {
         const event = info.event.extendedProps.event;
         if (event.group_slug && event.slug) {
-          window.location.href = `/group/${event.group_slug}/event/${event.slug}`;
+          navigateWithHtmx(`/group/${event.group_slug}/event/${event.slug}`);
         }
       },
 
