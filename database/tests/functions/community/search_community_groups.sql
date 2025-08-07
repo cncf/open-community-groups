@@ -10,6 +10,7 @@ select plan(3);
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set group4ID '00000000-0000-0000-0000-000000000034'
 
 -- Seed community
 insert into community (
@@ -63,20 +64,38 @@ insert into "group" (
     (:'group1ID', 'Kubernetes Meetup', 'kubernetes-meetup', :'community1ID', :'category1ID',
      array['kubernetes', 'cloud'], 'San Francisco', 'CA', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-122.4194 37.7749)'), 'SF Bay Area Kubernetes enthusiasts',
-     'https://example.com/k8s-logo.png', '2024-01-03 10:00:00'),
+     'https://example.com/k8s-logo.png', '2024-01-03 10:00:00+00'),
     (:'group2ID', 'Docker Users', 'docker-users', :'community1ID', :'category1ID',
      array['docker', 'containers'], 'New York', 'NY', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-74.0060 40.7128)'), 'NYC Docker community meetup group',
-     'https://example.com/docker-logo.png', '2024-01-02 10:00:00'),
+     'https://example.com/docker-logo.png', '2024-01-02 10:00:00+00'),
     (:'group3ID', 'Business Leaders', 'business-leaders', :'community1ID', :'category2ID',
      array['leadership', 'management'], 'London', null, 'GB', 'United Kingdom', null,
      ST_GeogFromText('POINT(-0.1278 51.5074)'), 'London business leadership forum',
-     'https://example.com/business-logo.png', '2024-01-01 10:00:00');
+     'https://example.com/business-logo.png', '2024-01-01 10:00:00+00'),
+    (:'group4ID', 'Tech Innovators', 'tech-innovators', :'community1ID', :'category1ID',
+     array['innovation', 'tech'], 'Austin', 'TX', 'US', 'United States', :'region1ID',
+     ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group. PLEASE ADD A DESCRIPTION HERE for this meetup',
+     'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00');
 
 -- Test search without filters returns all groups with full JSON verification
 select is(
     (select groups from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb))::jsonb,
     '[
+        {
+            "category_name": "Technology",
+            "created_at": 1704362400,
+            "name": "Tech Innovators",
+            "slug": "tech-innovators",
+            "city": "Austin",
+            "country_code": "US",
+            "country_name": "United States",
+            "latitude": 30.2672,
+            "logo_url": "https://example.com/tech-logo.png",
+            "longitude": -97.7431,
+            "region_name": "North America",
+            "state": "TX"
+        },
         {
             "category_name": "Technology",
             "created_at": 1704276000,
@@ -118,9 +137,7 @@ select is(
             "description": "London business leadership forum",
             "latitude": 51.5074,
             "logo_url": "https://example.com/business-logo.png",
-            "longitude": -0.1278,
-            "region_name": null,
-            "state": null
+            "longitude": -0.1278
         }
     ]'::jsonb,
     'search_community_groups without filters should return all active groups with correct JSON structure'
@@ -129,7 +146,7 @@ select is(
 -- Test total count
 select is(
     (select total from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb)),
-    3::bigint,
+    4::bigint,
     'search_community_groups should return correct total count'
 );
 

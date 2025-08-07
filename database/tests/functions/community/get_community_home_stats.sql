@@ -101,15 +101,9 @@ select is(
 );
 
 -- Test get_community_home_stats with non-existing community
-select is(
-    get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
-    '{
-        "events": 0,
-        "groups": 0,
-        "groups_members": 0,
-        "events_attendees": 0
-    }'::jsonb,
-    'get_community_home_stats with non-existing community should return zeros'
+select is_empty(
+    'select * from get_community_home_stats(''00000000-0000-0000-0000-999999999999''::uuid)',
+    'get_community_home_stats with non-existing community should return no rows'
 );
 
 -- Finish tests and rollback transaction

@@ -76,19 +76,17 @@ select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[
         {
+            "group_name": "Test Group",
+            "group_slug": "test-group",
+            "kind": "virtual",
+            "name": "Future Event 1",
+            "slug": "future-event-1",
+            "timezone": "UTC",
             "group_city": "New York",
             "group_country_code": "US",
             "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
             "group_state": "NY",
-            "kind": "virtual",
-            "logo_url": null,
-            "name": "Future Event 1",
-            "slug": "future-event-1",
-            "starts_at": 1769936400,
-            "timezone": "UTC",
-            "venue_city": null
+            "starts_at": 1769936400
         }
     ]'::jsonb,
     'get_community_upcoming_events should return only published future events as JSON'

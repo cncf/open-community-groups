@@ -68,15 +68,15 @@ insert into event (
 ) values
     (:'event1ID', 'Kubernetes Workshop', 'kubernetes-workshop', 'Learn Kubernetes', 'K8s intro workshop', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2026-02-01 10:00:00', '2026-02-01 12:00:00', array['kubernetes', 'cloud'],
+     '2026-02-01 10:00:00+00', '2026-02-01 12:00:00+00', array['kubernetes', 'cloud'],
      'San Francisco', 'Tech Hub', '123 Market St', 'https://example.com/k8s-workshop.png'),
     (:'event2ID', 'Docker Training', 'docker-training', 'Docker fundamentals', 'Docker basics', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-02 10:00:00', '2026-02-02 13:00:00', array['docker', 'containers'],
+     '2026-02-02 10:00:00+00', '2026-02-02 13:00:00+00', array['docker', 'containers'],
      'New York', 'Online', null, 'https://example.com/docker-training.png'),
     (:'event3ID', 'Cloud Summit', 'cloud-summit', 'Annual cloud conference', 'Cloud conf 2026', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
-     '2026-02-03 10:00:00', '2026-02-03 17:00:00', array['cloud', 'aws'],
+     '2026-02-03 10:00:00+00', '2026-02-03 17:00:00+00', array['cloud', 'aws'],
      'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png');
 
 -- Test search without filters returns all events with full JSON verification
@@ -126,8 +126,7 @@ select is(
             "longitude": -122.4194,
             "starts_at": 1770026400,
             "venue_city": "New York",
-            "venue_name": "Online",
-            "venue_address": null
+            "venue_name": "Online"
         },
         {
             "canceled": false,

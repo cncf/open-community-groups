@@ -1,6 +1,6 @@
 -- Returns the filters options used in the community explore page.
 create or replace function get_community_filters_options(p_community_id uuid)
-returns json as $$
+returns setof json as $$
     select json_build_object(
         'distance', json_build_array(
             json_build_object(
@@ -60,5 +60,8 @@ returns json as $$
                 order by "order" asc nulls last
             ) as regions
         )
+    )
+    where exists (
+        select 1 from community where community_id = p_community_id
     );
 $$ language sql;

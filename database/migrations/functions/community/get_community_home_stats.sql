@@ -1,6 +1,6 @@
 -- Returns some stats for the community home page.
 create or replace function get_community_home_stats(p_community_id uuid)
-returns json as $$
+returns setof json as $$
     select json_build_object(
         'groups', (
             select count(*)
@@ -32,5 +32,8 @@ returns json as $$
             and g.active = true
             and e.published = true
         )
+    )
+    where exists (
+        select 1 from community where community_id = p_community_id
     );
 $$ language sql;
