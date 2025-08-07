@@ -98,16 +98,7 @@ pub(crate) async fn events_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
     let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let SearchCommunityEventsOutput { events, bbox, total } =
-        db.search_community_events(community_id, &filters).await?;
-    let template = explore::EventsResultsSection {
-        events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
-        navigation_links: NavigationLinks::from_filters(&Entity::Events, &filters, total)?,
-        total,
-        bbox,
-        offset: filters.offset,
-        view_mode: filters.view_mode.clone(),
-    };
+    let template = prepare_events_result_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
     let headers = [(
@@ -125,21 +116,50 @@ async fn prepare_events_section(
     community_id: Uuid,
     filters: &EventsFilters,
 ) -> Result<explore::EventsSection> {
-    let (filters_options, SearchCommunityEventsOutput { events, bbox, total }) = tokio::try_join!(
+    let (filters_options, results_section) = tokio::try_join!(
         db.get_community_filters_options(community_id),
-        db.search_community_events(community_id, filters)
+        prepare_events_result_section(db, community_id, filters)
     )?;
     let template = explore::EventsSection {
         filters: filters.clone(),
         filters_options,
-        results_section: explore::EventsResultsSection {
-            events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
-            navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
-            total,
-            bbox,
-            offset: filters.offset,
-            view_mode: filters.view_mode.clone(),
-        },
+        results_section,
+    };
+
+    Ok(template)
+}
+
+/// Prepares the events result section template.
+#[instrument(skip(db), err)]
+async fn prepare_events_result_section(
+    db: &DynDB,
+    community_id: Uuid,
+    filters: &EventsFilters,
+) -> Result<explore::EventsResultsSection> {
+    // Search for community events based on filters
+    let SearchCommunityEventsOutput {
+        mut events,
+        bbox,
+        total,
+    } = db.search_community_events(community_id, filters).await?;
+
+    // Render popover HTML for map and calendar views
+    if filters.view_mode == Some(explore::ViewMode::Map)
+        || filters.view_mode == Some(explore::ViewMode::Calendar)
+    {
+        for event in &mut events {
+            event.popover_html = Some(render_event_popover(event)?);
+        }
+    }
+
+    // Prepare template
+    let template = explore::EventsResultsSection {
+        events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
+        navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
+        total,
+        bbox,
+        offset: filters.offset,
+        view_mode: filters.view_mode.clone(),
     };
 
     Ok(template)
@@ -176,16 +196,7 @@ pub(crate) async fn groups_results_section(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
     let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let SearchCommunityGroupsOutput { groups, bbox, total } =
-        db.search_community_groups(community_id, &filters).await?;
-    let template = explore::GroupsResultsSection {
-        groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
-        navigation_links: NavigationLinks::from_filters(&Entity::Groups, &filters, total)?,
-        total,
-        bbox,
-        offset: filters.offset,
-        view_mode: filters.view_mode.clone(),
-    };
+    let template = prepare_groups_result_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
     let headers = [(
@@ -203,21 +214,50 @@ async fn prepare_groups_section(
     community_id: Uuid,
     filters: &GroupsFilters,
 ) -> Result<explore::GroupsSection> {
-    let (filters_options, SearchCommunityGroupsOutput { groups, bbox, total }) = tokio::try_join!(
+    let (filters_options, results_section) = tokio::try_join!(
         db.get_community_filters_options(community_id),
-        db.search_community_groups(community_id, filters)
+        prepare_groups_result_section(db, community_id, filters)
     )?;
     let template = explore::GroupsSection {
         filters: filters.clone(),
         filters_options,
-        results_section: explore::GroupsResultsSection {
-            groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
-            navigation_links: NavigationLinks::from_filters(&Entity::Groups, filters, total)?,
-            total,
-            bbox,
-            offset: filters.offset,
-            view_mode: filters.view_mode.clone(),
-        },
+        results_section,
+    };
+
+    Ok(template)
+}
+
+/// Prepares the groups result section template.
+#[instrument(skip(db), err)]
+async fn prepare_groups_result_section(
+    db: &DynDB,
+    community_id: Uuid,
+    filters: &GroupsFilters,
+) -> Result<explore::GroupsResultsSection> {
+    // Search for community groups based on filters
+    let SearchCommunityGroupsOutput {
+        mut groups,
+        bbox,
+        total,
+    } = db.search_community_groups(community_id, filters).await?;
+
+    // Render popover HTML for map and calendar views
+    if filters.view_mode == Some(explore::ViewMode::Map)
+        || filters.view_mode == Some(explore::ViewMode::Calendar)
+    {
+        for group in &mut groups {
+            group.popover_html = Some(render_group_popover(group)?);
+        }
+    }
+
+    // Prepare template
+    let template = explore::GroupsResultsSection {
+        groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
+        navigation_links: NavigationLinks::from_filters(&Entity::Groups, filters, total)?,
+        total,
+        bbox,
+        offset: filters.offset,
+        view_mode: filters.view_mode.clone(),
     };
 
     Ok(template)
