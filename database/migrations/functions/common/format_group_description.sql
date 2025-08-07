@@ -1,4 +1,6 @@
--- Formats the group description by removing placeholder text and cleaning HTML.
+-- Formats the group description. If the description is null or contains placeholder
+-- text, it will be set to null. Otherwise, it will clean up the description by removing
+-- HTML tags, replacing non-breaking spaces and trimming it to a maximum length of 500.
 create or replace function format_group_description(p_group json)
 returns json as $$
     select json_strip_nulls(jsonb_set(

@@ -205,7 +205,6 @@ impl DBCommunity for PgDB {
             .await?;
 
         // Prepare search output
-        println!("{}", row.get::<_, String>("groups"));
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let output = SearchCommunityGroupsOutput {
             groups: GroupDetailed::try_from_json_array(&row.get::<_, String>("groups"))?,
