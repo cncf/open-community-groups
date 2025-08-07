@@ -19,7 +19,5 @@ returns json as $$
     )) as json_data
     from event e
     join "group" g using (group_id)
-    where e.event_id = p_event_id
-    and g.active = true
-    and e.published = true;
+    where e.event_id = p_event_id;
 $$ language sql;

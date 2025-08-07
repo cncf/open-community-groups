@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(4);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -128,7 +128,7 @@ insert into event (
     'hybrid',
     :'group1ID',
     true,
-    '2024-05-01 12:00:00+00'::timestamptz,
+    '2024-05-01 12:00:00+00',
     false,
     '2024-06-15 09:00:00+00',
     '2024-06-15 17:00:00+00',
@@ -145,7 +145,7 @@ insert into event (
     'https://stream.example.com/live',
     'https://youtube.com/watch?v=123',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
-    '2024-04-01 10:00:00+00'::timestamptz
+    '2024-04-01 10:00:00+00'
 );
 
 -- Add event host
@@ -174,8 +174,8 @@ insert into session (
     'Opening Keynote',
     'Welcome and opening remarks',
     'in-person',
-    '2024-06-15 09:00:00+00'::timestamptz,
-    '2024-06-15 10:00:00+00'::timestamptz,
+    '2024-06-15 09:00:00+00',
+    '2024-06-15 10:00:00+00',
     'Main Hall',
     'https://stream.example.com/session1',
     'https://youtube.com/watch?v=session1'
@@ -186,8 +186,8 @@ insert into session (
     'Tech Talk: AI in 2024',
     'Latest trends in artificial intelligence',
     'virtual',
-    '2024-06-15 10:30:00+00'::timestamptz,
-    '2024-06-15 11:30:00+00'::timestamptz,
+    '2024-06-15 10:30:00+00',
+    '2024-06-15 11:30:00+00',
     'Room A',
     null,
     null
@@ -353,18 +353,6 @@ select is(
 select ok(
     get_event_full('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_full with non-existent event ID should return null'
-);
-
--- Test get_event_full with unpublished event
-select ok(
-    get_event_full('00000000-0000-0000-0000-000000000032'::uuid) is null,
-    'get_event_full with unpublished event should return null'
-);
-
--- Test get_event_full with inactive group
-select ok(
-    get_event_full('00000000-0000-0000-0000-000000000033'::uuid) is null,
-    'get_event_full with inactive group should return null'
 );
 
 -- Finish tests and rollback transaction

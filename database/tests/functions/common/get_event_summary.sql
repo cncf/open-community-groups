@@ -8,7 +8,6 @@ select plan(2);
 \set eventCategory1ID '00000000-0000-0000-0000-000000000012'
 \set group1ID '00000000-0000-0000-0000-000000000021'
 \set event1ID '00000000-0000-0000-0000-000000000031'
-\set eventInactiveID '00000000-0000-0000-0000-000000000032'
 
 -- Seed community
 insert into community (
@@ -95,30 +94,6 @@ insert into event (
     'https://example.com/event-logo.png'
 );
 
--- Seed unpublished event for testing
-insert into event (
-    event_id,
-    name,
-    slug,
-    description,
-    event_kind_id,
-    event_category_id,
-    group_id,
-    published,
-    starts_at,
-    timezone
-) values (
-    :'eventInactiveID',
-    'Unpublished Event',
-    'unpublished-event',
-    'This is an unpublished event',
-    'virtual',
-    :'eventCategory1ID',
-    :'group1ID',
-    false,
-    '2024-07-15 09:00:00+00',
-    'America/New_York'
-);
 
 -- Test get_event_summary function returns correct data
 select is(

@@ -1,3 +1,4 @@
+{{ template "common/format_group_description.sql" }}
 {{ template "common/get_event_detailed.sql" }}
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}

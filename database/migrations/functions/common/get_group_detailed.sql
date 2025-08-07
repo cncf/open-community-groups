@@ -20,6 +20,5 @@ returns json as $$
     from "group" g
     join group_category gc using (group_category_id)
     left join region r using (region_id)
-    where g.group_id = p_group_id
-    and g.active = true;
+    where g.group_id = p_group_id;
 $$ language sql;

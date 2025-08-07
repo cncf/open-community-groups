@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(3);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -110,7 +110,7 @@ insert into "group" (
     'https://wechat.com/testgroup',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     jsonb '[{"name": "Discord", "url": "https://discord.gg/testgroup"}, {"name": "Forum", "url": "https://forum.testgroup.com"}]',
-    '2024-01-15 10:00:00+00'::timestamptz
+    '2024-01-15 10:00:00+00'
 );
 
 -- Add group organizers
@@ -143,7 +143,7 @@ insert into "group" (
     :'community1ID',
     :'category1ID',
     false,
-    '2024-02-15 10:00:00+00'::timestamptz
+    '2024-02-15 10:00:00+00'
 );
 
 -- Test get_group_full function returns correct data
@@ -210,12 +210,6 @@ select is(
 select ok(
     get_group_full('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_full with non-existent group ID should return null'
-);
-
--- Test get_group_full with inactive group
-select ok(
-    get_group_full('00000000-0000-0000-0000-000000000022'::uuid) is null,
-    'get_group_full with inactive group should return null'
 );
 
 -- Finish tests and rollback transaction

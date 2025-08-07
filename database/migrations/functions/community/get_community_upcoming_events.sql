@@ -9,6 +9,7 @@ returns json as $$
         from event e
         join "group" g using (group_id)
         where g.community_id = p_community_id
+        and g.active = true
         and e.published = true
         and e.event_kind_id = any(p_event_kind_ids)
         and (g.city is not null or e.venue_city is not null)

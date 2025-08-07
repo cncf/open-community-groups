@@ -113,7 +113,5 @@ returns json as $$
     join "group" g using (group_id)
     join group_category gc on g.group_category_id = gc.group_category_id
     join event_category ec using (event_category_id)
-    where e.event_id = p_event_id
-    and g.active = true
-    and e.published = true;
+    where e.event_id = p_event_id;
 $$ language sql;

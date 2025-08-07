@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(4);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -207,18 +207,6 @@ select is(
 select ok(
     get_event_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_detailed with non-existent event ID should return null'
-);
-
--- Test get_event_detailed with unpublished event
-select ok(
-    get_event_detailed('00000000-0000-0000-0000-000000000032'::uuid) is null,
-    'get_event_detailed with unpublished event should return null'
-);
-
--- Test get_event_detailed with inactive group
-select ok(
-    get_event_detailed('00000000-0000-0000-0000-000000000033'::uuid) is null,
-    'get_event_detailed with inactive group should return null'
 );
 
 -- Finish tests and rollback transaction

@@ -81,19 +81,7 @@ begin
     select
         (
             select coalesce(json_agg(
-                jsonb_set(
-                    get_group_detailed(group_id)::jsonb,
-                    '{description}',
-                    case
-                        when json_extract_path_text(get_group_detailed(group_id), 'description') like '%PLEASE ADD A DESCRIPTION HERE%'
-                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%DESCRIPTION GOES HERE%'
-                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%ADD DESCRIPTION HERE%'
-                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%PLEASE UPDATE THE BELOW DESCRIPTION%'
-                        or json_extract_path_text(get_group_detailed(group_id), 'description') like '%PLEASE UPDATE THE DESCRIPTION HERE%'
-                        then to_jsonb(null::text)
-                        else to_jsonb(replace(regexp_replace(substring(json_extract_path_text(get_group_detailed(group_id), 'description') for 500), E'<[^>]+>', '', 'gi'), '&nbsp;', ' '))
-                    end
-                )::json
+                format_group_description(get_group_detailed(group_id))
             ), '[]')
             from (
                 select group_id

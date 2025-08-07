@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(3);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -70,7 +70,7 @@ insert into "group" (
     'A technology group focused on software development and innovation',
     'https://example.com/group-logo.png',
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
-    '2024-01-15 10:00:00+00'::timestamptz
+    '2024-01-15 10:00:00+00'
 );
 
 -- Seed inactive group
@@ -89,7 +89,7 @@ insert into "group" (
     :'community1ID',
     :'category1ID',
     false,
-    '2024-02-15 10:00:00+00'::timestamptz
+    '2024-02-15 10:00:00+00'
 );
 
 -- Test get_group_detailed function returns correct data
@@ -117,12 +117,6 @@ select is(
 select ok(
     get_group_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_detailed with non-existent group ID should return null'
-);
-
--- Test get_group_detailed with inactive group
-select ok(
-    get_group_detailed('00000000-0000-0000-0000-000000000022'::uuid) is null,
-    'get_group_detailed with inactive group should return null'
 );
 
 -- Finish tests and rollback transaction
