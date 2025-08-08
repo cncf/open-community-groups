@@ -15,4 +15,6 @@ pub(crate) struct Page {
     pub community: Community,
     /// Detailed information about the event.
     pub event: EventFull,
+    /// Current URL path.
+    pub path: String,
 }
