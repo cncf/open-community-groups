@@ -59,7 +59,7 @@ pub(crate) trait DBCommunity {
 
 #[async_trait]
 impl DBCommunity for PgDB {
-    /// [DB::get_community]
+    /// [`DB::get_community`]
     #[instrument(skip(self), err)]
     async fn get_community(&self, community_id: Uuid) -> Result<Community> {
         let db = self.pool.get().await?;
@@ -71,7 +71,7 @@ impl DBCommunity for PgDB {
         Ok(community)
     }
 
-    /// [DB::get_community_filters_options]
+    /// [`DB::get_community_filters_options`]
     #[instrument(skip(self), err)]
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions> {
         let db = self.pool.get().await?;
@@ -86,7 +86,7 @@ impl DBCommunity for PgDB {
         Ok(filters_options)
     }
 
-    /// [DB::get_community_home_stats]
+    /// [`DB::get_community_home_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats> {
         let db = self.pool.get().await?;
@@ -101,7 +101,7 @@ impl DBCommunity for PgDB {
         Ok(stats)
     }
 
-    /// [DB::get_community_id]
+    /// [`DB::get_community_id`]
     #[instrument(skip(self), err)]
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>> {
         let db = self.pool.get().await?;
@@ -116,7 +116,7 @@ impl DBCommunity for PgDB {
         Ok(community_id)
     }
 
-    /// [DB::get_community_recently_added_groups]
+    /// [`DB::get_community_recently_added_groups`]
     #[instrument(skip(self), err)]
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
         let db = self.pool.get().await?;
@@ -131,7 +131,7 @@ impl DBCommunity for PgDB {
         Ok(groups)
     }
 
-    /// [DB::get_community_upcoming_events]
+    /// [`DB::get_community_upcoming_events`]
     #[instrument(skip(self), err)]
     async fn get_community_upcoming_events(
         &self,
@@ -151,7 +151,7 @@ impl DBCommunity for PgDB {
         Ok(events)
     }
 
-    /// [DB::search_community_events]
+    /// [`DB::search_community_events`]
     #[instrument(skip(self), err)]
     async fn search_community_events(
         &self,
@@ -185,7 +185,7 @@ impl DBCommunity for PgDB {
         Ok(output)
     }
 
-    /// [DB::search_community_groups]
+    /// [`DB::search_community_groups`]
     #[instrument(skip(self), err)]
     async fn search_community_groups(
         &self,

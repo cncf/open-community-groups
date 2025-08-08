@@ -16,7 +16,7 @@ pub(crate) trait DBEvent {
 
 #[async_trait]
 impl DBEvent for PgDB {
-    /// [DB::get_event]
+    /// [`DB::get_event`]
     #[instrument(skip(self), err)]
     async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull> {
         let db = self.pool.get().await?;

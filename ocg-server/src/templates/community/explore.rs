@@ -310,10 +310,10 @@ impl ToRawQuery for EventsFilters {
         if filters.date_from == Some(Utc::now().date_naive().to_string()) {
             filters.date_from = None;
         }
-        if let Some(date_to) = Utc::now().date_naive().checked_add_months(Months::new(12)) {
-            if filters.date_to == Some(date_to.to_string()) {
-                filters.date_to = None;
-            }
+        if let Some(date_to) = Utc::now().date_naive().checked_add_months(Months::new(12))
+            && filters.date_to == Some(date_to.to_string())
+        {
+            filters.date_to = None;
         }
         filters.latitude = None;
         filters.longitude = None;
