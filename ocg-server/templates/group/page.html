@@ -116,7 +116,7 @@
         {# End left column -#}
 
         {# Right column (30%) -#}
-        <div class="lg:col-span-3">
+        <div class="max-w-[450px] lg:col-span-3">
           {# Location and map section -#}
           {% if group.latitude.is_some() && group.longitude.is_some() -%}
             <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4">Location</h2>
