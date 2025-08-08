@@ -21,8 +21,11 @@ pub(crate) async fn page(
     Path((group_slug, event_slug)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let event = db.get_event(community_id, &group_slug, &event_slug).await?;
-    let template = Page { event };
+    let (community, event) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_event(community_id, &group_slug, &event_slug)
+    )?;
+    let template = Page { community, event };
 
     Ok(Html(template.render()?))
 }

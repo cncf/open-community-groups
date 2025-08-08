@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::filters,
     types::{
+        community::Community,
         event::{EventKind, EventSummary},
         group::GroupFull,
     },
@@ -18,6 +19,8 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "group/page.html")]
 pub(crate) struct Page {
+    /// Community information.
+    pub community: Community,
     /// Detailed information about the group.
     pub group: GroupFull,
     /// List of past events for this group.

@@ -5,7 +5,6 @@ use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse},
 };
-use tokio::try_join;
 use tracing::instrument;
 
 use crate::{
@@ -27,12 +26,14 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
-    let (group, upcoming_events, past_events) = try_join!(
+    let (community, group, upcoming_events, past_events) = tokio::try_join!(
+        db.get_community(community_id),
         db.get_group(community_id, &group_slug),
         db.get_group_upcoming_events(community_id, &group_slug, event_kinds.clone(), 9),
         db.get_group_past_events(community_id, &group_slug, event_kinds, 9)
     )?;
     let template = Page {
+        community,
         group,
         past_events: past_events
             .into_iter()
