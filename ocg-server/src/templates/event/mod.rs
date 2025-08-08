@@ -2,7 +2,7 @@
 
 use askama::Template;
 
-use crate::types::event::EventFull;
+use crate::types::{community::Community, event::EventFull};
 
 // Pages and sections templates.
 
@@ -11,6 +11,8 @@ use crate::types::event::EventFull;
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/page.html")]
 pub(crate) struct Page {
+    /// Community information.
+    pub community: Community,
     /// Detailed information about the event.
     pub event: EventFull,
 }

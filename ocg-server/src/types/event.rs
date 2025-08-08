@@ -252,8 +252,12 @@ pub struct EventFull {
     /// Event end time in UTC.
     #[serde(with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
+    /// Latitude for map display.
+    pub latitude: Option<f64>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
+    /// Longitude for map display.
+    pub longitude: Option<f64>,
     /// Meetup.com URL for the event.
     pub meetup_url: Option<String>,
     /// URLs to event photos.
