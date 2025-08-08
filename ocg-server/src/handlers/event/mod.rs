@@ -3,6 +3,7 @@
 use askama::Template;
 use axum::{
     extract::{Path, State},
+    http::Uri,
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -19,13 +20,18 @@ pub(crate) async fn page(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((group_slug, event_slug)): Path<(String, String)>,
+    uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (community, event) = tokio::try_join!(
         db.get_community(community_id),
         db.get_event(community_id, &group_slug, &event_slug)
     )?;
-    let template = Page { community, event };
+    let template = Page {
+        community,
+        event,
+        path: uri.path().to_string(),
+    };
 
     Ok(Html(template.render()?))
 }

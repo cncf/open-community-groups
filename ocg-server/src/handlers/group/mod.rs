@@ -3,6 +3,7 @@
 use askama::Template;
 use axum::{
     extract::{Path, State},
+    http::Uri,
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -23,6 +24,7 @@ pub(crate) async fn page(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path(group_slug): Path<String>,
+    uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
@@ -39,6 +41,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| group::EventCard { event })
             .collect(),
+        path: uri.path().to_string(),
         upcoming_events: upcoming_events
             .into_iter()
             .map(|event| group::EventCard { event })
