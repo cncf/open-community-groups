@@ -40,7 +40,7 @@ pub(crate) trait DBGroup {
 
 #[async_trait]
 impl DBGroup for PgDB {
-    /// [DB::get_group]
+    /// [`DB::get_group`]
     #[instrument(skip(self), err)]
     async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
         let db = self.pool.get().await?;
@@ -55,7 +55,7 @@ impl DBGroup for PgDB {
         Ok(group)
     }
 
-    /// [DB::get_group_past_events]
+    /// [`DB::get_group_past_events`]
     #[instrument(skip(self), err)]
     async fn get_group_past_events(
         &self,
@@ -77,7 +77,7 @@ impl DBGroup for PgDB {
         Ok(events)
     }
 
-    /// [DB::get_group_upcoming_events]
+    /// [`DB::get_group_upcoming_events`]
     #[instrument(skip(self), err)]
     async fn get_group_upcoming_events(
         &self,

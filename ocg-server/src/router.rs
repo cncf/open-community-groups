@@ -83,13 +83,13 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
         .with_state(State { db });
 
     // Setup basic auth
-    if let Some(basic_auth) = &cfg.basic_auth {
-        if basic_auth.enabled {
-            router = router.layer(ValidateRequestHeaderLayer::basic(
-                &basic_auth.username,
-                &basic_auth.password,
-            ));
-        }
+    if let Some(basic_auth) = &cfg.basic_auth
+        && basic_auth.enabled
+    {
+        router = router.layer(ValidateRequestHeaderLayer::basic(
+            &basic_auth.username,
+            &basic_auth.password,
+        ));
     }
 
     router
