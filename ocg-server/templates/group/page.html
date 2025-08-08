@@ -173,48 +173,11 @@
           {# End location and map section -#}
 
           {# Organizers section -#}
-          <div>
-            {% if !group.organizers.is_empty() -%}
-              <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4 mt-8">Organizers</h2>
-              <div class="border border-stone-200 rounded-lg divide-y divide-stone-200">
-                {% for organizer in group.organizers -%}
-                  <div class="flex items-center gap-3 p-3">
-                    {# Avatar -#}
-                    {% call common::avatar(avatar_url = organizer.photo_url, first_name = organizer.first_name, last_name = organizer.last_name) -%}
-                    {# End avatar -#}
-
-                    {# Name and position -#}
-                    <div class="flex-1 min-w-0">
-                      <h3 class="text-sm font-semibold text-stone-900 truncate">
-                        {% if let Some(first_name) = organizer.first_name -%}
-                          {% if let Some(last_name) = organizer.last_name -%}
-                            {{ first_name }} {{ last_name }}
-                          {% else -%}
-                            {{ first_name }}
-                          {% endif -%}
-                        {% else if let Some(last_name) = organizer.last_name -%}
-                          {{ last_name }}
-                        {% else -%}
-                          Organizer
-                        {% endif -%}
-                      </h3>
-                      {% if let Some(title) = organizer.title -%}
-                        <p class="text-xs text-stone-600 mt-1 truncate">{{ title }}</p>
-                      {% endif -%}
-                    </div>
-                    {# End name and position -#}
-                  </div>
-                {% endfor -%}
-              </div>
-              <script type="module">
-                import {
-                  initializeAvatars
-                } from '/static/js/common/common.js';
-                // Initialize all avatars on page load
-                initializeAvatars();
-              </script>
-            {% endif -%}
-          </div>
+          {% if !group.organizers.is_empty() -%}
+            <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4 mt-8">Organizers</h2>
+            <people-list id="organizers-list" people="{{ group.organizers|json }}">
+            </people-list>
+          {% endif -%}
           {# End organizers section -#}
 
           {# Tags if available -#}
