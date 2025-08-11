@@ -41,6 +41,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| PastEventCard { event })
             .collect(),
+        path: uri.path().to_string(),
         upcoming_events: upcoming_events
             .into_iter()
             .map(|event| UpcomingEventCard { event })

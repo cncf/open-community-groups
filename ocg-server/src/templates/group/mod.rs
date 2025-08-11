@@ -23,6 +23,8 @@ pub(crate) struct Page {
     pub community: Community,
     /// Detailed information about the group.
     pub group: GroupFull,
+    /// Current URL path.
+    pub path: String,
     /// List of past events for this group.
     pub past_events: Vec<PastEventCard>,
     /// List of upcoming events for this group.
