@@ -1,11 +1,12 @@
 {% import "common.html" as common -%}
-{% extends "group/base.html" -%}
+{% extends "community/base.html" -%}
 
 {% block content -%}
   {# Scripts -#}
   <script type="text/javascript" src="/static/vendor/js/leaflet.v1.9.4.min.js"></script>
   <script type="text/javascript"
           src="/static/vendor/js/leaflet.markercluster.v1.5.3.min.js"></script>
+  <script type="module" src="/static/js/common/people-list.js"></script>
   {# End scripts -#}
 
   {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}

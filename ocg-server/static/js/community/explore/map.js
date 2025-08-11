@@ -253,13 +253,9 @@ export class Map {
 
       // Add click handler to navigate to item page
       marker.on("click", () => {
-        let url;
-        if (this.entity === "events") {
-          url = `/group/${item.group_slug}/event/${item.slug}`;
-        } else if (this.entity === "groups") {
-          url = `/group/${item.slug}`;
+        if (this.entity === "groups") {
+          navigateWithHtmx(`/group/${item.slug}`);
         }
-        navigateWithHtmx(url);
       });
 
       // Add marker to the marker cluster group
