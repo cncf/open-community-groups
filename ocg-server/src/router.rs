@@ -23,7 +23,7 @@ use tracing::instrument;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{community, event, group},
+    handlers::{community, dashboard, event, group},
 };
 
 /// Default cache duration for HTTP responses in seconds.
@@ -55,9 +55,15 @@ pub(crate) struct State {
 /// authentication if configured.
 #[instrument(skip_all)]
 pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
+    // Setup sub-routers
+    let admin_dashboard_router = setup_admin_dashboard_router();
+    let group_dashboard_router = setup_group_dashboard_router();
+
     // Setup router
     let mut router = Router::new()
         .route("/", get(community::home::page))
+        .nest("/dashboard/admin", admin_dashboard_router)
+        .nest("/dashboard/group", group_dashboard_router)
         .route("/explore", get(community::explore::page))
         .route("/explore/events-section", get(community::explore::events_section))
         .route(
@@ -138,4 +144,14 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         }
         None => StatusCode::NOT_FOUND.into_response(),
     }
+}
+
+/// Sets up the admin dashboard router and its routes.
+fn setup_admin_dashboard_router() -> Router<State> {
+    Router::new().route("/", get(dashboard::admin::home::page))
+}
+
+/// Sets up the group dashboard router and its routes.
+fn setup_group_dashboard_router() -> Router<State> {
+    Router::new().route("/{group_id}", get(dashboard::group::home::page))
 }
