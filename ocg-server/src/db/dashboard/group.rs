@@ -2,10 +2,10 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use uuid::Uuid;
 
-use crate::db::PgDB;
+use crate::{db::PgDB, types::event::EventSummary};
 
 /// Database trait for group dashboard operations.
 #[async_trait]
@@ -16,20 +16,15 @@ pub(crate) trait DBDashboardGroup {
 
 #[async_trait]
 impl DBDashboardGroup for PgDB {
-    async fn list_group_events(&self, _group_id: Uuid) -> Result<Vec<EventSummary>> {
-        // Placeholder implementation - will be implemented later
-        Ok(vec![])
+    /// [`DBDashboardGroup::list_group_events`]
+    #[instrument(skip(self), err)]
+    async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>> {
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_group_events($1::uuid)::text", &[&group_id])
+            .await?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(events)
     }
-}
-
-/// Summary of an event for listing in the group dashboard.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct EventSummary {
-    pub event_id: Uuid,
-    pub name: String,
-    pub slug: String,
-
-    pub attendees_count: Option<i64>,
-    pub date: Option<String>,
-    pub status: Option<String>,
 }

@@ -3,7 +3,7 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::db::dashboard::admin::GroupSummary;
+use crate::types::group::GroupSummary;
 
 pub(crate) mod home;
 

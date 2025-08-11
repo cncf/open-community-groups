@@ -2,10 +2,10 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use uuid::Uuid;
 
-use crate::db::PgDB;
+use crate::{db::PgDB, types::group::GroupSummary};
 
 /// Database trait for admin dashboard operations.
 #[async_trait]
@@ -16,19 +16,15 @@ pub(crate) trait DBDashboardAdmin {
 
 #[async_trait]
 impl DBDashboardAdmin for PgDB {
-    async fn list_community_groups(&self, _community_id: Uuid) -> Result<Vec<GroupSummary>> {
-        // Placeholder implementation - will be implemented later
-        Ok(vec![])
+    /// [`DBDashboardAdmin::list_community_groups`]
+    #[instrument(skip(self), err)]
+    async fn list_community_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_community_groups($1::uuid)::text", &[&community_id])
+            .await?;
+        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(groups)
     }
-}
-
-/// Summary of a group for listing in the admin dashboard.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupSummary {
-    pub group_id: Uuid,
-    pub name: String,
-    pub slug: String,
-
-    pub description: Option<String>,
-    pub members_count: Option<i64>,
 }

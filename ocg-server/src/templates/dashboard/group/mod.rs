@@ -3,7 +3,7 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::db::dashboard::group::EventSummary;
+use crate::types::event::EventSummary;
 
 pub(crate) mod home;
 

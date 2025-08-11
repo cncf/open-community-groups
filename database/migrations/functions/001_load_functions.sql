@@ -14,6 +14,9 @@
 {{ template "community/search_community_events.sql" }}
 {{ template "community/search_community_groups.sql" }}
 
+{{ template "dashboard/list_community_groups.sql" }}
+{{ template "dashboard/list_group_events.sql" }}
+
 {{ template "event/get_event.sql" }}
 
 {{ template "group/get_group.sql" }}
