@@ -14,8 +14,13 @@
 {{ template "community/search_community_events.sql" }}
 {{ template "community/search_community_groups.sql" }}
 
+{{ template "dashboard/add_group.sql" }}
+{{ template "dashboard/delete_group.sql" }}
 {{ template "dashboard/list_community_groups.sql" }}
+{{ template "dashboard/list_group_categories.sql" }}
 {{ template "dashboard/list_group_events.sql" }}
+{{ template "dashboard/list_regions.sql" }}
+{{ template "dashboard/update_group.sql" }}
 
 {{ template "event/get_event.sql" }}
 

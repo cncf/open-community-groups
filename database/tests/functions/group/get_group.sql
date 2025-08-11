@@ -138,14 +138,22 @@ select is(
             }
         ],
         "description": "New York Kubernetes meetup group for cloud native enthusiasts",
-        "region_name": "North America",
+        "region": {
+            "id": "00000000-0000-0000-0000-000000000021",
+            "name": "North America",
+            "normalized_name": "north-america"
+        },
         "twitter_url": "https://twitter.com/k8snyc",
         "website_url": "https://k8s-nyc.example.com",
         "country_code": "US",
         "country_name": "United States",
         "facebook_url": "https://facebook.com/k8snyc",
         "linkedin_url": "https://linkedin.com/company/k8snyc",
-        "category_name": "Technology",
+        "category": {
+            "id": "00000000-0000-0000-0000-000000000011",
+            "name": "Technology",
+            "normalized_name": "technology"
+        },
         "members_count": 3
     }'::jsonb,
     'get_group should return correct group data as JSON'

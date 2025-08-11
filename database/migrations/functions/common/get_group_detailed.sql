@@ -2,7 +2,12 @@
 create or replace function get_group_detailed(p_group_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
-        'category_name', gc.name,
+        'category', json_build_object(
+            'id', gc.group_category_id,
+            'name', gc.name,
+            'normalized_name', gc.normalized_name,
+            'order', gc.order
+        ),
         'created_at', floor(extract(epoch from g.created_at)),
         'name', g.name,
         'slug', g.slug,
@@ -14,7 +19,14 @@ returns json as $$
         'latitude', st_y(g.location::geometry),
         'logo_url', g.logo_url,
         'longitude', st_x(g.location::geometry),
-        'region_name', r.name,
+        'region', case when r.region_id is not null then
+            json_build_object(
+                'id', r.region_id,
+                'name', r.name,
+                'normalized_name', r.normalized_name,
+                'order', r.order
+            )
+        else null end,
         'state', g.state
     )) as json_data
     from "group" g

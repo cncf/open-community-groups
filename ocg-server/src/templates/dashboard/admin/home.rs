@@ -3,9 +3,10 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::{templates::dashboard::admin, types::community::Community};
+use crate::{templates::dashboard::admin::groups, types::community::Community};
 
 /// Home page template for the admin dashboard.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/admin/home.html")]
 pub(crate) struct Page {
@@ -21,11 +22,12 @@ pub(crate) struct Page {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
     /// Groups management page.
-    Groups(admin::GroupsPage),
+    Groups(groups::ListPage),
 }
 
 impl Content {
     /// Check if the content is the groups page.
+    #[allow(dead_code)]
     fn is_groups(&self) -> bool {
         matches!(self, Content::Groups(_))
     }

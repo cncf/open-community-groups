@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::{templates::dashboard::group, types::community::Community};
 
 /// Home page template for the group dashboard.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/home.html")]
 pub(crate) struct Page {
@@ -31,6 +32,7 @@ pub(crate) enum Content {
 
 impl Content {
     /// Check if the content is the events page.
+    #[allow(dead_code)]
     fn is_events(&self) -> bool {
         matches!(self, Content::Events(_))
     }

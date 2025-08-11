@@ -13,7 +13,10 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::dashboard::admin::home::{Content, Page, Tab},
+    templates::dashboard::admin::{
+        groups,
+        home::{Content, Page, Tab},
+    },
 };
 
 /// Handler that returns the admin dashboard home page.
@@ -36,7 +39,7 @@ pub(crate) async fn page(
     let content = match tab {
         Tab::Groups => {
             let groups = db.list_community_groups(community_id).await?;
-            Content::Groups(crate::templates::dashboard::admin::GroupsPage { groups })
+            Content::Groups(groups::ListPage { groups })
         }
     };
 

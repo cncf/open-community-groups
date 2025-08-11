@@ -8,17 +8,50 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tracing::instrument;
 
+use uuid::Uuid;
+
 use crate::templates::{
     common::User,
     helpers::{LocationParts, build_location, color},
 };
 
+/// Group category information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Category {
+    /// Unique identifier for the category.
+    #[serde(rename = "group_category_id", alias = "id")]
+    pub id: Uuid,
+    /// Display name of the category.
+    pub name: String,
+    /// URL-friendly normalized name.
+    #[serde(rename = "slug", alias = "normalized_name")]
+    pub normalized_name: String,
+
+    /// Sort order for display.
+    pub order: Option<i32>,
+}
+
+/// Geographic region information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Region {
+    /// Unique identifier for the region.
+    #[serde(rename = "region_id", alias = "id")]
+    pub id: Uuid,
+    /// Display name of the region.
+    pub name: String,
+    /// URL-friendly normalized name.
+    pub normalized_name: String,
+
+    /// Sort order for display.
+    pub order: Option<i32>,
+}
+
 /// Summary group information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupSummary {
-    /// Name of the category this group belongs to.
-    pub category_name: String,
+    /// Category this group belongs to.
+    pub category: Category,
     /// Color associated with this group, used for visual styling.
     #[serde(default)]
     pub color: String,
@@ -38,8 +71,8 @@ pub struct GroupSummary {
     pub country_name: Option<String>,
     /// URL to the group's logo image.
     pub logo_url: Option<String>,
-    /// Geographic region name where the group is located.
-    pub region_name: Option<String>,
+    /// Geographic region this group belongs to.
+    pub region: Option<Region>,
     /// State or province where the group is located.
     pub state: Option<String>,
 }
@@ -74,7 +107,7 @@ impl GroupSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupDetailed {
     /// Category this group belongs to.
-    pub category_name: String,
+    pub category: Category,
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
@@ -102,8 +135,8 @@ pub struct GroupDetailed {
     pub longitude: Option<f64>,
     /// Pre-rendered HTML for map popovers.
     pub popover_html: Option<String>,
-    /// Name of the geographic region.
-    pub region_name: Option<String>,
+    /// Geographic region this group belongs to.
+    pub region: Option<Region>,
     /// State/province where the group is based.
     pub state: Option<String>,
 }
@@ -136,7 +169,7 @@ impl GroupDetailed {
 impl From<GroupDetailed> for GroupSummary {
     fn from(detailed: GroupDetailed) -> Self {
         Self {
-            category_name: detailed.category_name,
+            category: detailed.category,
             color: detailed.color,
             created_at: detailed.created_at,
             name: detailed.name,
@@ -145,7 +178,7 @@ impl From<GroupDetailed> for GroupSummary {
             country_code: detailed.country_code,
             country_name: detailed.country_name,
             logo_url: detailed.logo_url,
-            region_name: detailed.region_name,
+            region: detailed.region,
             state: detailed.state,
         }
     }
@@ -156,7 +189,7 @@ impl From<GroupDetailed> for GroupSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupFull {
     /// Category this group belongs to.
-    pub category_name: String,
+    pub category: Category,
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
@@ -202,8 +235,8 @@ pub struct GroupFull {
     pub longitude: Option<f64>,
     /// Gallery of photo URLs.
     pub photos_urls: Option<Vec<String>>,
-    /// Name of the geographic region.
-    pub region_name: Option<String>,
+    /// Geographic region this group belongs to.
+    pub region: Option<Region>,
     /// Slack workspace URL.
     pub slack_url: Option<String>,
     /// State/province where the group is based.

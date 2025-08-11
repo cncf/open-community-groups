@@ -8,6 +8,7 @@ returns json as $$
         select g.group_id
         from "group" g
         where g.community_id = p_community_id
+        and g.deleted = false
         order by g.name asc
     ) g;
 $$ language sql;

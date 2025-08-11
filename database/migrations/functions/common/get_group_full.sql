@@ -2,7 +2,12 @@
 create or replace function get_group_full(p_group_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
-        'category_name', gc.name,
+        'category', json_build_object(
+            'id', gc.group_category_id,
+            'name', gc.name,
+            'normalized_name', gc.normalized_name,
+            'order', gc.order
+        ),
         'created_at', floor(extract(epoch from g.created_at)),
         'members_count', (
             select count(*)
@@ -11,7 +16,7 @@ returns json as $$
         ),
         'name', g.name,
         'slug', g.slug,
-        
+
         'banner_url', g.banner_url,
         'city', g.city,
         'country_code', g.country_code,
@@ -27,7 +32,14 @@ returns json as $$
         'logo_url', g.logo_url,
         'longitude', st_x(g.location::geometry),
         'photos_urls', g.photos_urls,
-        'region_name', r.name,
+        'region', case when r.region_id is not null then
+            json_build_object(
+                'id', r.region_id,
+                'name', r.name,
+                'normalized_name', r.normalized_name,
+                'order', r.order
+            )
+        else null end,
         'slack_url', g.slack_url,
         'state', g.state,
         'tags', g.tags,
@@ -35,13 +47,13 @@ returns json as $$
         'wechat_url', g.wechat_url,
         'website_url', g.website_url,
         'youtube_url', g.youtube_url,
-        
+
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
                 'first_name', u.first_name,
                 'last_name', u.last_name,
-                
+
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,
