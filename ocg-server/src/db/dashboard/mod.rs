@@ -6,14 +6,14 @@ use async_trait::async_trait;
 
 use crate::db::PgDB;
 
-use admin::DBDashboardAdmin;
+use community::DBDashboardCommunity;
 use group::DBDashboardGroup;
 
-pub(crate) mod admin;
+pub(crate) mod community;
 pub(crate) mod group;
 
 /// Unified database trait for all dashboards operations.
 #[async_trait]
-pub(crate) trait DBDashboard: DBDashboardAdmin + DBDashboardGroup {}
+pub(crate) trait DBDashboard: DBDashboardCommunity + DBDashboardGroup {}
 
 impl DBDashboard for PgDB {}

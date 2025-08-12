@@ -54,7 +54,8 @@ insert into "group" (
     community_id,
     group_category_id,
     active,
-    created_at
+    created_at,
+    location
 ) values (
     :'group1ID',
     'Test Group',
@@ -62,7 +63,8 @@ insert into "group" (
     :'community1ID',
     :'groupCategory1ID',
     true,
-    '2024-03-01 10:00:00+00'
+    '2024-03-01 10:00:00+00',
+    ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326)  -- New York coordinates
 );
 
 -- Seed inactive group
@@ -267,7 +269,9 @@ select is(
         "capacity": 500,
         "description_short": "Annual tech conference",
         "ends_at": 1718470800,
+        "latitude": 40.73061,
         "logo_url": "https://example.com/event-logo.png",
+        "longitude": -73.935242,
         "meetup_url": "https://meetup.com/event123",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "published_at": 1714564800,

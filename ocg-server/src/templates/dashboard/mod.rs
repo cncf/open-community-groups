@@ -1,4 +1,4 @@
 //! Templates for dashboard pages.
 
-pub(crate) mod admin;
+pub(crate) mod community;
 pub(crate) mod group;

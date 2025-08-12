@@ -58,13 +58,13 @@ pub(crate) struct State {
 #[instrument(skip_all)]
 pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
     // Setup sub-routers
-    let admin_dashboard_router = setup_admin_dashboard_router();
+    let community_dashboard_router = setup_community_dashboard_router();
     let group_dashboard_router = setup_group_dashboard_router();
 
     // Setup router
     let mut router = Router::new()
         .route("/", get(community::home::page))
-        .nest("/dashboard/admin", admin_dashboard_router)
+        .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
         .route("/explore", get(community::explore::page))
         .route("/explore/events-section", get(community::explore::events_section))
@@ -151,22 +151,22 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-/// Sets up the admin dashboard router and its routes.
-fn setup_admin_dashboard_router() -> Router<State> {
+/// Sets up the community dashboard router and its routes.
+fn setup_community_dashboard_router() -> Router<State> {
     Router::new()
-        .route("/", get(dashboard::admin::home::page))
-        .route("/groups", get(dashboard::admin::groups::list_page))
+        .route("/", get(dashboard::community::home::page))
+        .route("/groups", get(dashboard::community::groups::list_page))
         .route(
             "/groups/add",
-            get(dashboard::admin::groups::add_page).post(dashboard::admin::groups::add),
+            get(dashboard::community::groups::add_page).post(dashboard::community::groups::add),
         )
         .route(
             "/groups/{group_id}/update",
-            get(dashboard::admin::groups::update_page).put(dashboard::admin::groups::update),
+            get(dashboard::community::groups::update_page).put(dashboard::community::groups::update),
         )
         .route(
             "/groups/{group_id}/delete",
-            delete(dashboard::admin::groups::delete),
+            delete(dashboard::community::groups::delete),
         )
 }
 

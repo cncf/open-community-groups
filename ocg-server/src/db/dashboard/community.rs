@@ -1,4 +1,4 @@
-//! Database interface for admin dashboard operations.
+//! Database interface for community dashboard operations.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -8,13 +8,13 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::admin::groups::Group,
+    templates::dashboard::community::groups::Group,
     types::group::{GroupCategory, GroupRegion, GroupSummary},
 };
 
-/// Database trait for admin dashboard operations.
+/// Database trait for community dashboard operations.
 #[async_trait]
-pub(crate) trait DBDashboardAdmin {
+pub(crate) trait DBDashboardCommunity {
     /// Adds a new group to the database.
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid>;
 
@@ -35,8 +35,8 @@ pub(crate) trait DBDashboardAdmin {
 }
 
 #[async_trait]
-impl DBDashboardAdmin for PgDB {
-    /// [`DBDashboardAdmin::add_group`]
+impl DBDashboardCommunity for PgDB {
+    /// [`DBDashboardCommunity::add_group`]
     #[instrument(skip(self, group), err)]
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid> {
         let db = self.pool.get().await?;
@@ -49,7 +49,7 @@ impl DBDashboardAdmin for PgDB {
         Ok(row.get(0))
     }
 
-    /// [`DBDashboardAdmin::delete_group`]
+    /// [`DBDashboardCommunity::delete_group`]
     #[instrument(skip(self), err)]
     async fn delete_group(&self, group_id: Uuid) -> Result<()> {
         let db = self.pool.get().await?;
@@ -57,7 +57,7 @@ impl DBDashboardAdmin for PgDB {
         Ok(())
     }
 
-    /// [`DBDashboardAdmin::list_community_groups`]
+    /// [`DBDashboardCommunity::list_community_groups`]
     #[instrument(skip(self), err)]
     async fn list_community_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
         let db = self.pool.get().await?;
@@ -69,7 +69,7 @@ impl DBDashboardAdmin for PgDB {
         Ok(groups)
     }
 
-    /// [`DBDashboardAdmin::list_group_categories`]
+    /// [`DBDashboardCommunity::list_group_categories`]
     #[instrument(skip(self), err)]
     async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<GroupCategory>> {
         let db = self.pool.get().await?;
@@ -80,7 +80,7 @@ impl DBDashboardAdmin for PgDB {
         Ok(categories)
     }
 
-    /// [`DBDashboardAdmin::list_regions`]
+    /// [`DBDashboardCommunity::list_regions`]
     #[instrument(skip(self), err)]
     async fn list_regions(&self, community_id: Uuid) -> Result<Vec<GroupRegion>> {
         let db = self.pool.get().await?;
@@ -91,7 +91,7 @@ impl DBDashboardAdmin for PgDB {
         Ok(regions)
     }
 
-    /// [`DBDashboardAdmin::update_group`]
+    /// [`DBDashboardCommunity::update_group`]
     #[instrument(skip(self, group), err)]
     async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()> {
         let db = self.pool.get().await?;

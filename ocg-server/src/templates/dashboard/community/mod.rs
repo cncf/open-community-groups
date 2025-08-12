@@ -1,4 +1,4 @@
-//! HTTP handlers for the admin dashboard.
+//! Templates for the community dashboard.
 
 pub(crate) mod groups;
 pub(crate) mod home;

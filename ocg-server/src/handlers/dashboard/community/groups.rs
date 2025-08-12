@@ -1,4 +1,4 @@
-//! HTTP handlers for managing groups in the admin dashboard.
+//! HTTP handlers for managing groups in the community dashboard.
 
 use anyhow::Result;
 use askama::Template;
@@ -13,12 +13,12 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::dashboard::admin::groups::{self, Group},
+    templates::dashboard::community::groups::{self, Group},
 };
 
 // Pages handlers.
 
-/// Displays the list of groups for the admin dashboard.
+/// Displays the list of groups for the community dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CommunityId(community_id): CommunityId,
@@ -89,7 +89,7 @@ pub(crate) async fn add(
         StatusCode::CREATED,
         [(
             "HX-Location",
-            r#"{"path":"/dashboard/admin?tab=groups", "target":"body"}"#,
+            r#"{"path":"/dashboard/community?tab=groups", "target":"body"}"#,
         )],
     )
         .into_response())
@@ -116,7 +116,7 @@ pub(crate) async fn update(
         StatusCode::NO_CONTENT,
         [(
             "HX-Location",
-            r#"{"path":"/dashboard/admin?tab=groups", "target":"body"}"#,
+            r#"{"path":"/dashboard/community?tab=groups", "target":"body"}"#,
         )],
     )
         .into_response())
@@ -135,7 +135,7 @@ pub(crate) async fn delete(
         StatusCode::NO_CONTENT,
         [(
             "HX-Location",
-            r#"{"path":"/dashboard/admin?tab=groups", "target":"body"}"#,
+            r#"{"path":"/dashboard/community?tab=groups", "target":"body"}"#,
         )],
     )
         .into_response())
