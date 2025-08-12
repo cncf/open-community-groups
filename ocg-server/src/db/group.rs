@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     types::{
-        event::{EventKind, EventSummary},
+        event::{EventDetailed, EventKind, EventSummary},
         group::GroupFull,
     },
 };
@@ -35,7 +35,7 @@ pub(crate) trait DBGroup {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<EventSummary>>;
+    ) -> Result<Vec<EventDetailed>>;
 }
 
 #[async_trait]
@@ -85,7 +85,7 @@ impl DBGroup for PgDB {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<EventSummary>> {
+    ) -> Result<Vec<EventDetailed>> {
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
         let db = self.pool.get().await?;
         let row = db
@@ -94,7 +94,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let events = EventDetailed::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

@@ -22,7 +22,7 @@
 
     {# Virtual -#}
     <li>
-      <label class="group flex flex-row items-center w-full px-2 py-1 bg-white border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-stone-200 opacity-40 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%+ else %}border-stone-200{%- endif %} cursor-pointer hover:bg-stone-50{%- endif %}">
+      <label class="group flex flex-row items-center w-full px-2 py-1 border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-stone-50 border-stone-200 opacity-30 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%+ else %}border-stone-200{%- endif %} cursor-pointer hover:bg-stone-50 bg-white{%- endif %}">
         {% if view_mode == ViewMode::Map -%}
           <input type="checkbox"
                  name="kind"

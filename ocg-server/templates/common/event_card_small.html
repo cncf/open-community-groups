@@ -1,16 +1,22 @@
 {% import "common.html" as common -%}
 
-{# Event card for group page -#}
+{# Event card -#}
 <div class="card">
   <div class="card-logo">
     {# Event icon -#}
-    {% call common::logo(logo_url = event.logo_url, classes = "h-20 w-20", size = 80, color = event.group_color, name = Some(event.group_name)) -%}
+    {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
     {# End event icon -#}
   </div>
 
   <div class="card-content">
     <div class="card-body">
       <div>
+        {# Event group name -#}
+        <div class="card-header">
+          <span>{{ event.group_name }}</span>
+        </div>
+        {# End event group name -#}
+
         {# Event title -#}
         <div class="card-title">{{ event.name|demoji }}</div>
         {# End event title -#}
@@ -27,7 +33,7 @@
           {% when EventKind::Hybrid -%}
           <div class="flex items-center">
             {% if let Some(location) = self.event.location(16) -%}
-              {% call common::icon_text(icon_name = "location", text = location) -%}
+              {% call common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2")) -%}
             {% endif -%}
             {% call common::event_badge(kind = event.kind) -%}
           </div>

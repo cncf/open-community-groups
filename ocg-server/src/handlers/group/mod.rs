@@ -39,12 +39,12 @@ pub(crate) async fn page(
         group,
         past_events: past_events
             .into_iter()
-            .map(|event| group::EventCard { event })
+            .map(|event| group::PastEventCard { event })
             .collect(),
         path: uri.path().to_string(),
         upcoming_events: upcoming_events
             .into_iter()
-            .map(|event| group::EventCard { event })
+            .map(|event| group::UpcomingEventCard { event })
             .collect(),
     };
 

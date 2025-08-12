@@ -1,1 +1,277 @@
-<h1>Group home page</h1>
+{% import "common.html" as common -%}
+{% extends "community/base.html" -%}
+
+{% block content -%}
+  {# Scripts -#}
+  <script type="text/javascript" src="/static/vendor/js/leaflet.v1.9.4.min.js"></script>
+  <script type="text/javascript"
+          src="/static/vendor/js/leaflet.markercluster.v1.5.3.min.js"></script>
+  <script type="module" src="/static/js/common/people-list.js"></script>
+  {# End scripts -#}
+
+  {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
+
+  <div class="max-w-7xl bg-white border border-stone-200 rounded-lg mx-4 lg:mx-5 xl:mx-auto my-5 md:my-7 flex flex-col gap-y-8 py-8">
+    {# Group header with name and region -#}
+    <div class="px-4 sm:px-6 lg:px-8">
+      {# Main flex container for logo, name/region, and social networks -#}
+      <div class="flex flex-1 flex-row items-stretch gap-6">
+        {# Group logo -#}
+        {% call common::logo(logo_url = group.logo_url, classes = "hidden sm:block h-20 w-20 md:h-28 md:w-28", size = 112, color = group.color, name = Some(group.name)) -%}
+        {# End group logo -#}
+
+        <div class="flex-1 flex flex-col justify-between">
+          <div class="flex-1 flex justify-between">
+            <div class="flex flex-col justify-between">
+              <div>
+                {# Region/Category legend -#}
+                <div>
+                  <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
+                    {% if let Some(region) = &group.region -%}
+                      {{ region.name }}
+                    {% else -%}
+                      {{ group.category.name }}
+                    {% endif -%}
+                  </span>
+                </div>
+                {# End region/category legend -#}
+
+                {# Group name -#}
+                <h1 class="text-xl lg:text-3xl font-semibold text-stone-900 line-clamp-1 lg:line-clamp-2">
+                  {{ group.name|demoji }}
+                </h1>
+                {# End group name -#}
+              </div>
+            </div>
+
+            {# Social networks -#}
+            {% if has_social_links -%}
+              <div class="hidden md:flex flex-col items-end gap-2">
+                <div class="flex flex-wrap gap-2">{% call social_networks() -%}</div>
+              </div>
+            {% endif -%}
+            {# End social networks -#}
+          </div>
+
+          {# Members count and founded date -#}
+          <div class="mt-auto flex items-center gap-4 text-stone-600">
+            <div class="flex items-center">
+              <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+              <span class="text-sm">{{ group.members_count }} members</span>
+            </div>
+            <div class="flex items-center">
+              <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
+              <span class="text-sm">Founded {{ group.created_at.format("%B %Y") }}</span>
+            </div>
+          </div>
+          {# End members count and founded date -#}
+        </div>
+
+      </div>
+      {# End main flex container -#}
+
+    </div>
+    {# End group header -#}
+
+    {# Two column layout -#}
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-10 lg:gap-10">
+        {# Left column (70%) -#}
+        <div class="lg:col-span-7">
+          {# Group banner -#}
+          {% if let Some(banner_url) = group.banner_url -%}
+            <div class="w-full mb-8">
+              <div class="relative w-full aspect-[4/1] overflow-hidden rounded-lg bg-white max-h-64 lg:max-h-80">
+                <img src="{{ banner_url }}"
+                     alt="Group banner"
+                     class="absolute inset-0 w-full h-full object-cover"
+                     height="auto"
+                     width="auto"
+                     loading="lazy" />
+              </div>
+            </div>
+          {% endif -%}
+          {# End group banner -#}
+
+          {# Group description -#}
+          {% if let Some(description) = group.description -%}
+            <div>
+              <div class="pb-8">
+                <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
+                <div class="prose prose-stone max-w-none">
+                  <div class="text-stone-700 text-base/6 markdown">{{ description|demoji|safe }}</div>
+                </div>
+              </div>
+            </div>
+          {% endif -%}
+          {# End group description -#}
+
+          {# Social networks (mobile only) -#}
+          {% if has_social_links -%}
+            <div class="md:hidden mb-8 md:mb-0">
+              <div class="flex flex-wrap gap-2">{% call social_networks() -%}</div>
+            </div>
+          {% endif -%}
+          {# End social networks (mobile) -#}
+        </div>
+        {# End left column -#}
+
+        {# Right column (30%) -#}
+        <div class="max-w-[450px] lg:col-span-3">
+          {# Location and map section -#}
+          {% if group.latitude.is_some() && group.longitude.is_some() -%}
+            <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4">Location</h2>
+            <div class="border border-stone-200 rounded-lg mb-6 overflow-hidden">
+              <div class="grid grid-cols-2">
+                {# Location details -#}
+                <div class="space-y-3">
+                  <div class="flex items-start p-3">
+                    <div class="svg-icon size-3 mr-2 mt-[0.175rem] bg-stone-600 icon-location shrink-0"></div>
+                    <div class="space-y-1">
+                      {% if let Some(city) = group.city -%}
+                        <div class="text-sm font-medium text-stone-900">{{ city }}</div>
+                      {% endif -%}
+                      {% if let Some(state) = group.state -%}
+                        <div class="text-xs text-stone-700">{{ state }}</div>
+                      {% endif -%}
+                      {% if let Some(country_name) = group.country_name -%}
+                        <div class="text-xs text-stone-700">{{ country_name }}</div>
+                      {% endif -%}
+                    </div>
+                  </div>
+                </div>
+                {# End location details -#}
+
+                {# Map -#}
+                <div class="h-full overflow-hidden border-l border-stone-200">
+                  <div id="group-map"
+                       class="w-full h-full"
+                       data-lat="{{ group.latitude.unwrap() }}"
+                       data-lng="{{ group.longitude.unwrap() }}"
+                       data-name="{{ group.name|demoji }}"></div>
+                </div>
+                {# End map -#}
+              </div>
+            </div>
+
+            {# Map initialization script -#}
+            <script type="module">
+              import {
+                loadMap
+              } from "/static/js/common/common.js";
+
+              // Initialize the map with group coordinates
+              const mapElement = document.getElementById('group-map');
+              if (mapElement) {
+                const lat = parseFloat(mapElement.dataset.lat);
+                const lng = parseFloat(mapElement.dataset.lng);
+
+                loadMap('group-map', lat, lng);
+              }
+            </script>
+            {# End map initialization script -#}
+          {% endif -%}
+          {# End location and map section -#}
+
+          {# Organizers section -#}
+          {% if !group.organizers.is_empty() -%}
+            <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4 mt-8">Organizers</h2>
+            <people-list id="organizers-list" people="{{ group.organizers|json }}">
+            </people-list>
+          {% endif -%}
+          {# End organizers section -#}
+
+          {# Tags if available -#}
+          {% if let Some(tags) = group.tags -%}
+            {% if !tags.is_empty() -%}
+              <div class="mt-8">
+                <h3 class="text-lg font-semibold text-stone-900 mb-4">Topics</h3>
+                <div class="flex flex-wrap gap-2">
+                  {% for tag in tags -%}
+                    <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+                  {% endfor -%}
+                </div>
+              </div>
+            {% endif -%}
+          {% endif -%}
+          {# End tags -#}
+        </div>
+        {# End right column -#}
+      </div>
+    </div>
+    {# End two column layout -#}
+
+    {# Next events section -#}
+    {% if !upcoming_events.is_empty() -%}
+      <div class="px-4 sm:px-6 lg:px-8">
+        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Upcoming Events</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {% for event in upcoming_events -%}
+            {{ event|safe }}
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+    {# End next events section -#}
+
+    {# Past events section -#}
+    {% if !past_events.is_empty() -%}
+      <div class="px-4 sm:px-6 lg:px-8">
+        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Past Events</h2>
+        <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
+          {% for event in past_events -%}
+            <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white">
+              {{ event|safe }}
+            </div>
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+    {# End past events section -#}
+  </div>
+{% endblock content -%}
+
+{# Macro for rendering social network links -#}
+{% macro social_networks() -%}
+  {% if let Some(website_url) = group.website_url -%}
+    {% call common::social_link(url = website_url, icon_name = "website", platform_name = "Website") -%}
+  {% endif -%}
+  {% if let Some(twitter_url) = group.twitter_url -%}
+    {% call common::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -%}
+  {% endif -%}
+  {% if let Some(facebook_url) = group.facebook_url -%}
+    {% call common::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -%}
+  {% endif -%}
+  {% if let Some(linkedin_url) = group.linkedin_url -%}
+    {% call common::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn") -%}
+  {% endif -%}
+  {% if let Some(github_url) = group.github_url -%}
+    {% call common::social_link(url = github_url, icon_name = "github", platform_name = "GitHub") -%}
+  {% endif -%}
+  {% if let Some(instagram_url) = group.instagram_url -%}
+    {% call common::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram") -%}
+  {% endif -%}
+  {% if let Some(youtube_url) = group.youtube_url -%}
+    {% call common::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube") -%}
+  {% endif -%}
+  {% if let Some(slack_url) = group.slack_url -%}
+    {% call common::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -%}
+  {% endif -%}
+  {% if let Some(wechat_url) = group.wechat_url -%}
+    {% call common::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -%}
+  {% endif -%}
+  {% if let Some(flickr_url) = group.flickr_url -%}
+    {% call common::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -%}
+  {% endif -%}
+  {% if let Some(extra_links) = group.extra_links -%}
+    {% for (name, url) in extra_links -%}
+      <a href="{{ url }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
+         title="{{ name }}">
+        <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-link"></div>
+      </a>
+    {% endfor -%}
+  {% endif -%}
+{% endmacro -%}

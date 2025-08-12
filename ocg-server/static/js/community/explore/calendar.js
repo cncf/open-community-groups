@@ -1,4 +1,4 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import { getFirstAndLastDayOfMonth, updateDateInput } from "/static/js/community/explore/filters.js";
 

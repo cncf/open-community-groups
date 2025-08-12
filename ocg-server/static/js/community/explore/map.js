@@ -1,4 +1,4 @@
-import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/common.js";
+import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 
 export class Map {
@@ -251,12 +251,19 @@ export class Map {
         );
       }
 
+      // Add click handler to navigate to item page
+      marker.on("click", () => {
+        if (this.entity === "groups") {
+          navigateWithHtmx(`/group/${item.slug}`);
+        }
+      });
+
       // Add marker to the marker cluster group
       markers.addLayer(marker);
-
-      // Add marker cluster group to the map
-      this.map.addLayer(markers);
     });
+
+    // Add marker cluster group to the map
+    this.map.addLayer(markers);
 
     // Hide loading spinner
     hideLoadingSpinner("loading-map");
