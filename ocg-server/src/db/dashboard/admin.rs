@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::admin::groups::Group,
-    types::group::{GroupCategory, GroupSummary, GroupRegion},
+    types::group::{GroupCategory, GroupRegion, GroupSummary},
 };
 
 /// Database trait for admin dashboard operations.

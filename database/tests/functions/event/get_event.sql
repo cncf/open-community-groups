@@ -39,8 +39,8 @@ insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'community1ID');
 
 -- Seed group
-insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url)
-values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'https://example.com/group-logo.png');
+insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active, created_at)
+values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
 
 -- Seed event category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -138,7 +138,13 @@ select is(
         "group": {
             "name": "Test Group",
             "slug": "test-group",
-            "category_name": "Technology"
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            },
+            "created_at": 1739268000,
+            "logo_url": "https://example.com/group-logo.png"
         },
         "hosts": [
             {

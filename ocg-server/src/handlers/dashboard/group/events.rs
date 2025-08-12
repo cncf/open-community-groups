@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::{CommunityId, SelectedGroupId}},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, SelectedGroupId},
+    },
     templates::dashboard::group::events::{self, Event},
 };
 
