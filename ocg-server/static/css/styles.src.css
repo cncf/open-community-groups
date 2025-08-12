@@ -275,6 +275,7 @@ input:placeholder-shown {
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
+.icon-clock { --icon-url: url('/static/images/icons/clock.svg'); }
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }

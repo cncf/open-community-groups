@@ -47,12 +47,39 @@ export const toggleModalVisibility = (modalId) => {
 };
 
 /**
+ * Dynamically loads Leaflet script if not already loaded.
+ * @returns {Promise} Promise that resolves when Leaflet is loaded
+ */
+const loadLeafletScript = () => {
+  return new Promise((resolve, reject) => {
+    // Check if Leaflet is already loaded
+    if (window.L) {
+      resolve();
+      return;
+    }
+
+    // Create and load the Leaflet script
+    const script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src = "/static/vendor/js/leaflet.v1.9.4.min.js";
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
+
+/**
  * Loads and initializes a Leaflet map with a marker and popup.
+ * Dynamically loads Leaflet if not already present.
  * @param {string} divId - The ID of the div element to contain the map
  * @param {number} lat - The latitude coordinate for the map center and marker
  * @param {number} long - The longitude coordinate for the map center and marker
+ * @returns {Promise} Promise that resolves when the map is loaded
  */
-export const loadMap = (divId, lat, long) => {
+export const loadMap = async (divId, lat, long) => {
+  // Ensure Leaflet is loaded
+  await loadLeafletScript();
+
   const map = L.map(divId, { zoomControl: false, dragging: false }).setView([lat, long], 13);
 
   L.tileLayer(
@@ -94,7 +121,7 @@ export const loadMap = (divId, lat, long) => {
 /**
  * Navigates to a URL using HTMX by creating a temporary anchor with hx-boost.
  * This function creates an anchor element with the hx-boost attribute, triggers
- * a click event on it, and then removes it from the DOM.
+ * a click event on it, and then safely removes it from the DOM after a delay.
  * @param {string} url - The URL to navigate to
  */
 export const navigateWithHtmx = (url) => {
@@ -115,6 +142,8 @@ export const navigateWithHtmx = (url) => {
 
   // Remove the anchor after a small delay to ensure HTMX processes it
   setTimeout(() => {
-    document.body.removeChild(anchor);
+    if (document.body.contains(anchor)) {
+      document.body.removeChild(anchor);
+    }
   }, 100);
 };
