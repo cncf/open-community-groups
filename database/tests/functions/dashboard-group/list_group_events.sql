@@ -105,8 +105,8 @@ insert into event (
         :'category1ID',
         'in-person',
         'America/New_York',
-        '2025-12-01 10:00:00'::timestamp,
-        '2024-01-01'::timestamp,
+        '2025-12-01 10:00:00+00',
+        '2024-01-01 00:00:00',
         'https://example.com/future-logo.png',
         'San Francisco'
     ),
@@ -119,8 +119,8 @@ insert into event (
         :'category1ID',
         'virtual',
         'America/Los_Angeles',
-        '2024-01-15 14:00:00'::timestamp,
-        '2024-01-02'::timestamp,
+        '2024-01-15 14:00:00+00',
+        '2024-01-02 00:00:00',
         null,
         null
     ),
@@ -134,7 +134,7 @@ insert into event (
         'hybrid',
         'Europe/London',
         null,
-        '2024-01-03'::timestamp,
+        '2024-01-03 00:00:00',
         'https://example.com/no-date-logo.png',
         'London'
     ),
@@ -147,8 +147,8 @@ insert into event (
         :'category1ID',
         'in-person',
         'America/Chicago',
-        '2025-06-01 09:00:00'::timestamp,
-        '2024-01-04'::timestamp,
+        '2025-06-01 09:00:00+00',
+        '2024-01-04 00:00:00',
         null,
         'Chicago'
     );
@@ -176,7 +176,7 @@ select is(
             "group_country_name": "United States",
             "group_state": "CA",
             "logo_url": "https://example.com/future-logo.png",
-            "starts_at": 1764579600,
+            "starts_at": 1764583200,
             "venue_city": "San Francisco"
         },
         {
@@ -190,7 +190,7 @@ select is(
             "group_country_code": "US",
             "group_country_name": "United States",
             "group_state": "CA",
-            "starts_at": 1705323600
+            "starts_at": 1705327200
         },
         {
             "group_name": "Test Group",
@@ -225,7 +225,7 @@ select is(
             "group_country_code": "US",
             "group_country_name": "United States",
             "group_state": "NY",
-            "starts_at": 1748761200,
+            "starts_at": 1748768400,
             "venue_city": "Chicago"
         }
     ]'::jsonb,
