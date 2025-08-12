@@ -1,4 +1,4 @@
-//! HTTP handlers for the admin dashboard.
+//! HTTP handlers for the community dashboard.
 
 use std::collections::HashMap;
 
@@ -13,15 +13,15 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::dashboard::admin::{
+    templates::dashboard::community::{
         groups,
         home::{Content, Page, Tab},
     },
 };
 
-/// Handler that returns the admin dashboard home page.
+/// Handler that returns the community dashboard home page.
 ///
-/// This handler manages the main admin dashboard page, selecting the appropriate tab
+/// This handler manages the main community dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
@@ -46,7 +46,7 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         community,
-        path: "/dashboard/admin".to_string(),
+        path: "/dashboard/community".to_string(),
         content,
     };
 

@@ -1,4 +1,4 @@
-//! Templates and types for managing groups in the admin dashboard.
+//! Templates and types for managing groups in the community dashboard.
 
 use std::collections::BTreeMap;
 
@@ -13,7 +13,7 @@ use crate::types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary};
 
 /// Add group page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "dashboard/admin/groups_add.html")]
+#[template(path = "dashboard/community/groups_add.html")]
 pub(crate) struct AddPage {
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
@@ -23,7 +23,7 @@ pub(crate) struct AddPage {
 
 /// List groups page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "dashboard/admin/groups_list.html")]
+#[template(path = "dashboard/community/groups_list.html")]
 pub(crate) struct ListPage {
     /// List of groups in the community.
     pub groups: Vec<GroupSummary>,
@@ -31,7 +31,7 @@ pub(crate) struct ListPage {
 
 /// Update group page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "dashboard/admin/groups_update.html")]
+#[template(path = "dashboard/community/groups_update.html")]
 pub(crate) struct UpdatePage {
     /// Group details to update.
     pub group: GroupFull,

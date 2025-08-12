@@ -1,14 +1,14 @@
-//! Templates for the admin dashboard home page.
+//! Templates for the community dashboard home page.
 
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::{templates::dashboard::admin::groups, types::community::Community};
+use crate::{templates::dashboard::community::groups, types::community::Community};
 
-/// Home page template for the admin dashboard.
+/// Home page template for the community dashboard.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
-#[template(path = "dashboard/admin/home.html")]
+#[template(path = "dashboard/community/home.html")]
 pub(crate) struct Page {
     /// Community information.
     pub community: Community,
@@ -18,7 +18,7 @@ pub(crate) struct Page {
     pub content: Content,
 }
 
-/// Content section for the admin dashboard home page.
+/// Content section for the community dashboard home page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
     /// Groups management page.
@@ -41,7 +41,7 @@ impl std::fmt::Display for Content {
     }
 }
 
-/// Tab selection for the admin dashboard home page.
+/// Tab selection for the community dashboard home page.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
