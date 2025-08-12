@@ -125,20 +125,20 @@ export const navigateWithHtmx = (url) => {
  * @param {HTMLElement} container - The avatar container element
  */
 export const initializeAvatar = (container) => {
-  const initialsEl = container.querySelector('.avatar-initials');
-  const imgEl = container.querySelector('.avatar-image');
-  
+  const initialsEl = container.querySelector(".avatar-initials");
+  const imgEl = container.querySelector(".avatar-image");
+
   if (imgEl && imgEl.dataset.src) {
     imgEl.src = imgEl.dataset.src;
-    
+
     imgEl.onload = () => {
-      initialsEl?.classList.add('hidden');
-      imgEl.classList.remove('hidden');
+      initialsEl?.classList.add("hidden");
+      imgEl.classList.remove("hidden");
     };
-    
+
     imgEl.onerror = () => {
       // Keep initials visible on error
-      imgEl.classList.add('hidden');
+      imgEl.classList.add("hidden");
     };
   }
 };
@@ -148,5 +148,5 @@ export const initializeAvatar = (container) => {
  * Finds all elements with the 'avatar-container' class and initializes them.
  */
 export const initializeAvatars = () => {
-  document.querySelectorAll('.avatar-container').forEach(initializeAvatar);
+  document.querySelectorAll(".avatar-container").forEach(initializeAvatar);
 };

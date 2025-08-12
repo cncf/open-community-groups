@@ -31,13 +31,7 @@ pub(crate) struct Page {
     pub upcoming_events: Vec<UpcomingEventCard>,
 }
 
-/// Event card template for upcoming events using detailed information.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "common/event_card_medium.html")]
-pub(crate) struct UpcomingEventCard {
-    /// Event data
-    pub event: EventDetailed,
-}
+// Types
 
 /// Event card template for past events using summary information.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -45,4 +39,12 @@ pub(crate) struct UpcomingEventCard {
 pub(crate) struct PastEventCard {
     /// Event data
     pub event: EventSummary,
+}
+
+/// Event card template for upcoming events using detailed information.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "common/event_card_medium.html")]
+pub(crate) struct UpcomingEventCard {
+    /// Event data
+    pub event: EventDetailed,
 }
