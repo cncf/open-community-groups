@@ -33,7 +33,7 @@ pub(crate) struct Page {
 
 /// Event card template for upcoming events using detailed information.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "common/event_card.html")]
+#[template(path = "common/event_card_medium.html")]
 pub(crate) struct UpcomingEventCard {
     /// Event data
     pub event: EventDetailed,
@@ -41,7 +41,7 @@ pub(crate) struct UpcomingEventCard {
 
 /// Event card template for past events using summary information.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "common/small_event_card.html")]
+#[template(path = "common/event_card_small.html")]
 pub(crate) struct PastEventCard {
     /// Event data
     pub event: EventSummary,

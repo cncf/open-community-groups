@@ -12,7 +12,6 @@ create or replace function get_group_upcoming_events(
         select e.event_id
         from event e
         join "group" g using (group_id)
-        join group_category gc using (group_category_id)
         where g.community_id = p_community_id
         and g.slug = p_group_slug
         and g.active = true
