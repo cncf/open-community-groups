@@ -51,6 +51,7 @@ insert into event (
     name,
     slug,
     description,
+    description_short,
     timezone,
     event_category_id,
     event_kind_id,
@@ -62,22 +63,22 @@ insert into event (
     venue_city
 ) values
     -- Past event (should not be included)
-    (:'event1ID', 'Past Event', 'past-event', 'A past event', 'UTC',
+    (:'event1ID', 'Past Event', 'past-event', 'A past event', 'A past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
      '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00',
      null, 'San Francisco'),
     -- Future published event (closest)
-    (:'event2ID', 'Future Event 1', 'future-event-1', 'First future event', 'UTC',
+    (:'event2ID', 'Future Event 1', 'future-event-1', 'First future event', 'First future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
      '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00',
      'https://example.com/future-event-1.png', 'Online'),
     -- Future published event (later)
-    (:'event3ID', 'Future Event 2', 'future-event-2', 'Second future event', 'UTC',
+    (:'event3ID', 'Future Event 2', 'future-event-2', 'Second future event', 'Second future event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
      '2026-02-10 09:00:00+00', '2026-02-10 11:00:00+00',
      'https://example.com/future-event-2.png', 'Los Angeles'),
     -- Future unpublished event (should not be included)
-    (:'event4ID', 'Future Event 3', 'future-event-3', 'Unpublished future event', 'UTC',
+    (:'event4ID', 'Future Event 3', 'future-event-3', 'Unpublished future event', 'Unpublished future event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      '2026-02-20 09:00:00+00', '2026-02-20 11:00:00+00',
      null, 'New York');
@@ -87,12 +88,16 @@ select is(
     get_group_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
         {
+            "canceled": false,
+            "group_category_name": "Technology",
             "kind": "virtual",
             "name": "Future Event 1",
             "slug": "future-event-1",
             "logo_url": "https://example.com/future-event-1.png",
             "timezone": "UTC",
             "starts_at": 1769936400,
+            "ends_at": 1769943600,
+            "description_short": "First future event",
             "group_city": "Los Angeles",
             "group_name": "Test Group",
             "group_slug": "test-group",
@@ -102,12 +107,16 @@ select is(
             "group_country_name": "United States"
         },
         {
+            "canceled": false,
+            "group_category_name": "Technology",
             "kind": "hybrid",
             "name": "Future Event 2",
             "slug": "future-event-2",
             "logo_url": "https://example.com/future-event-2.png",
             "timezone": "UTC",
             "starts_at": 1770714000,
+            "ends_at": 1770721200,
+            "description_short": "Second future event",
             "group_city": "Los Angeles",
             "group_name": "Test Group",
             "group_slug": "test-group",
