@@ -7,8 +7,7 @@ use deadpool_postgres::Pool;
 use serde::{Deserialize, Serialize};
 
 use crate::db::{
-    common::DBCommon, community::DBCommunity, dashboard::DBDashboard, event::DBEvent,
-    group::DBGroup,
+    common::DBCommon, community::DBCommunity, dashboard::DBDashboard, event::DBEvent, group::DBGroup,
 };
 
 /// Module containing common database operations.

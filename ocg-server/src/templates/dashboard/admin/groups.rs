@@ -7,9 +7,19 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::types::group::{Category, GroupFull, GroupSummary, Region};
+use crate::types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary};
 
 // Pages templates.
+
+/// Add group page template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "dashboard/admin/groups_add.html")]
+pub(crate) struct AddPage {
+    /// List of available group categories.
+    pub categories: Vec<GroupCategory>,
+    /// List of available regions.
+    pub regions: Vec<GroupRegion>,
+}
 
 /// List groups page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -19,16 +29,6 @@ pub(crate) struct ListPage {
     pub groups: Vec<GroupSummary>,
 }
 
-/// Add group page template.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "dashboard/admin/groups_add.html")]
-pub(crate) struct AddPage {
-    /// List of available group categories.
-    pub categories: Vec<Category>,
-    /// List of available regions.
-    pub regions: Vec<Region>,
-}
-
 /// Update group page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/admin/groups_update.html")]
@@ -36,9 +36,9 @@ pub(crate) struct UpdatePage {
     /// Group details to update.
     pub group: GroupFull,
     /// List of available group categories.
-    pub categories: Vec<Category>,
+    pub categories: Vec<GroupCategory>,
     /// List of available regions.
-    pub regions: Vec<Region>,
+    pub regions: Vec<GroupRegion>,
 }
 
 // Types.

@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{templates::dashboard::group, types::community::Community};
+use crate::{templates::dashboard::group::events, types::community::Community};
 
 /// Home page template for the group dashboard.
 #[allow(dead_code)]
@@ -27,7 +27,7 @@ pub(crate) struct Page {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
     /// Events management page.
-    Events(group::EventsPage),
+    Events(events::ListPage),
 }
 
 impl Content {

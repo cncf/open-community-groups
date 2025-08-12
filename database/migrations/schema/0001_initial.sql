@@ -227,6 +227,7 @@ create table event (
     event_id uuid primary key default gen_random_uuid(),
     canceled boolean default false not null,
     created_at timestamptz default current_timestamp not null,
+    deleted boolean default false not null,
     description text not null check (description <> ''),
     name text not null check (name <> ''),
     published boolean default false not null,
@@ -246,6 +247,7 @@ create table event (
 
     banner_url text check (banner_url <> ''),
     capacity int check (capacity >= 0),
+    deleted_at timestamptz,
     description_short text check (description_short <> ''),
     ends_at timestamptz,
     logo_url text check (logo_url <> ''),
@@ -264,7 +266,8 @@ create table event (
     venue_zip_code text check (venue_zip_code <> ''),
     published_by uuid references "user",
 
-    unique (slug, group_id)
+    unique (slug, group_id),
+    check ((deleted = false) or (deleted = true and published = false))
 );
 
 create index event_group_id_idx on event (group_id);

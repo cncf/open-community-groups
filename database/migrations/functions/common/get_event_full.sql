@@ -33,11 +33,7 @@ returns json as $$
         'venue_name', e.venue_name,
         'venue_zip_code', e.venue_zip_code,
         
-        'group', json_build_object(
-            'category_name', gc.name,
-            'name', g.name,
-            'slug', g.slug
-        ),
+        'group', get_group_summary(g.group_id),
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
@@ -113,7 +109,6 @@ returns json as $$
     )) as json_data
     from event e
     join "group" g using (group_id)
-    join group_category gc on g.group_category_id = gc.group_category_id
     join event_category ec using (event_category_id)
     where e.event_id = p_event_id;
 $$ language sql;

@@ -172,5 +172,19 @@ fn setup_admin_dashboard_router() -> Router<State> {
 
 /// Sets up the group dashboard router and its routes.
 fn setup_group_dashboard_router() -> Router<State> {
-    Router::new().route("/{group_id}", get(dashboard::group::home::page))
+    Router::new()
+        .route("/", get(dashboard::group::home::page))
+        .route("/events", get(dashboard::group::events::list_page))
+        .route(
+            "/events/add",
+            get(dashboard::group::events::add_page).post(dashboard::group::events::add),
+        )
+        .route(
+            "/events/{event_id}/update",
+            get(dashboard::group::events::update_page).put(dashboard::group::events::update),
+        )
+        .route(
+            "/events/{event_id}/delete",
+            delete(dashboard::group::events::delete),
+        )
 }

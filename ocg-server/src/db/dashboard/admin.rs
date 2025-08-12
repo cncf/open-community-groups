@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::admin::groups::Group,
-    types::group::{Category, GroupSummary, Region},
+    types::group::{GroupCategory, GroupSummary, GroupRegion},
 };
 
 /// Database trait for admin dashboard operations.
@@ -25,10 +25,10 @@ pub(crate) trait DBDashboardAdmin {
     async fn list_community_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
 
     /// Lists all group categories for a community.
-    async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<Category>>;
+    async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<GroupCategory>>;
 
     /// Lists all regions for a community.
-    async fn list_regions(&self, community_id: Uuid) -> Result<Vec<Region>>;
+    async fn list_regions(&self, community_id: Uuid) -> Result<Vec<GroupRegion>>;
 
     /// Updates an existing group.
     async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()>;
@@ -71,23 +71,23 @@ impl DBDashboardAdmin for PgDB {
 
     /// [`DBDashboardAdmin::list_group_categories`]
     #[instrument(skip(self), err)]
-    async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<Category>> {
+    async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<GroupCategory>> {
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_group_categories($1::uuid)::text", &[&community_id])
             .await?;
-        let categories: Vec<Category> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let categories: Vec<GroupCategory> = serde_json::from_str(&row.get::<_, String>(0))?;
         Ok(categories)
     }
 
     /// [`DBDashboardAdmin::list_regions`]
     #[instrument(skip(self), err)]
-    async fn list_regions(&self, community_id: Uuid) -> Result<Vec<Region>> {
+    async fn list_regions(&self, community_id: Uuid) -> Result<Vec<GroupRegion>> {
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_regions($1::uuid)::text", &[&community_id])
             .await?;
-        let regions: Vec<Region> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let regions: Vec<GroupRegion> = serde_json::from_str(&row.get::<_, String>(0))?;
         Ok(regions)
     }
 

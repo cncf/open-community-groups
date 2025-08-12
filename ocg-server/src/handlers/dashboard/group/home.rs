@@ -5,16 +5,21 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Query, State},
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
-use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
-    templates::dashboard::group::home::{Content, Page, Tab},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, SelectedGroupId},
+    },
+    templates::dashboard::group::{
+        events,
+        home::{Content, Page, Tab},
+    },
 };
 
 /// Handler that returns the group dashboard home page.
@@ -24,8 +29,8 @@ use crate::{
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     CommunityId(community_id): CommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    Path(group_id): Path<Uuid>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get selected tab from query
@@ -38,14 +43,14 @@ pub(crate) async fn page(
     let content = match tab {
         Tab::Events => {
             let events = db.list_group_events(group_id).await?;
-            Content::Events(crate::templates::dashboard::group::EventsPage { events })
+            Content::Events(events::ListPage { events })
         }
     };
 
     // Render the page
     let page = Page {
         community,
-        path: format!("/dashboard/group/{group_id}"),
+        path: "/dashboard/group".to_string(),
         group_id,
         group_name: "Group".to_string(), // TODO: Get actual group name
         content,

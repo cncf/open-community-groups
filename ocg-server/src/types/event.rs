@@ -8,33 +8,13 @@ use serde_with::skip_serializing_none;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::{
-    common::User,
-    helpers::{LocationParts, build_location, color},
+use crate::{
+    templates::{
+        common::User,
+        helpers::{LocationParts, build_location, color},
+    },
+    types::group::GroupSummary,
 };
-
-/// Categorization of event attendance modes.
-///
-/// Distinguishes between physical, online, and mixed attendance events
-/// for filtering and display purposes.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum EventKind {
-    Hybrid,
-    #[default]
-    InPerson,
-    Virtual,
-}
-
-impl std::fmt::Display for EventKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            EventKind::Hybrid => write!(f, "hybrid"),
-            EventKind::InPerson => write!(f, "in-person"),
-            EventKind::Virtual => write!(f, "virtual"),
-        }
-    }
-}
 
 /// Summary event information.
 #[skip_serializing_none]
@@ -222,7 +202,7 @@ pub struct EventFull {
     /// Full event description.
     pub description: String,
     /// Group hosting the event.
-    pub group: GroupInfo,
+    pub group: GroupSummary,
     /// Event hosts.
     pub hosts: Vec<User>,
     /// Unique identifier for the event.
@@ -296,16 +276,49 @@ impl EventFull {
     }
 }
 
-/// Basic group information for event context.
-#[skip_serializing_none]
+/// Event category information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GroupInfo {
-    /// Category of the hosting group.
-    pub category_name: String,
-    /// Group name.
+pub struct EventCategory {
+    /// Category identifier.
+    #[serde(rename = "event_category_id")]
+    pub id: Uuid,
+    /// Category name.
     pub name: String,
-    /// URL slug of the hosting group.
+    /// URL-friendly identifier.
     pub slug: String,
+}
+
+/// Categorization of event attendance modes.
+///
+/// Distinguishes between physical, online, and mixed attendance events
+/// for filtering and display purposes.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EventKind {
+    Hybrid,
+    #[default]
+    InPerson,
+    Virtual,
+}
+
+impl std::fmt::Display for EventKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EventKind::Hybrid => write!(f, "hybrid"),
+            EventKind::InPerson => write!(f, "in-person"),
+            EventKind::Virtual => write!(f, "virtual"),
+        }
+    }
+}
+
+/// Event kind summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventKindSummary {
+    /// Kind identifier.
+    #[serde(rename = "event_kind_id")]
+    pub id: String,
+    /// Display name.
+    pub display_name: String,
 }
 
 /// Session information within an event.

@@ -15,43 +15,12 @@ use crate::templates::{
     helpers::{LocationParts, build_location, color},
 };
 
-/// Group category information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Category {
-    /// Unique identifier for the category.
-    #[serde(rename = "group_category_id", alias = "id")]
-    pub id: Uuid,
-    /// Display name of the category.
-    pub name: String,
-    /// URL-friendly normalized name.
-    #[serde(rename = "slug", alias = "normalized_name")]
-    pub normalized_name: String,
-
-    /// Sort order for display.
-    pub order: Option<i32>,
-}
-
-/// Geographic region information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Region {
-    /// Unique identifier for the region.
-    #[serde(rename = "region_id", alias = "id")]
-    pub id: Uuid,
-    /// Display name of the region.
-    pub name: String,
-    /// URL-friendly normalized name.
-    pub normalized_name: String,
-
-    /// Sort order for display.
-    pub order: Option<i32>,
-}
-
 /// Summary group information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupSummary {
     /// Category this group belongs to.
-    pub category: Category,
+    pub category: GroupCategory,
     /// Color associated with this group, used for visual styling.
     #[serde(default)]
     pub color: String,
@@ -72,7 +41,7 @@ pub struct GroupSummary {
     /// URL to the group's logo image.
     pub logo_url: Option<String>,
     /// Geographic region this group belongs to.
-    pub region: Option<Region>,
+    pub region: Option<GroupRegion>,
     /// State or province where the group is located.
     pub state: Option<String>,
 }
@@ -107,7 +76,7 @@ impl GroupSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupDetailed {
     /// Category this group belongs to.
-    pub category: Category,
+    pub category: GroupCategory,
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
@@ -136,7 +105,7 @@ pub struct GroupDetailed {
     /// Pre-rendered HTML for map popovers.
     pub popover_html: Option<String>,
     /// Geographic region this group belongs to.
-    pub region: Option<Region>,
+    pub region: Option<GroupRegion>,
     /// State/province where the group is based.
     pub state: Option<String>,
 }
@@ -189,7 +158,7 @@ impl From<GroupDetailed> for GroupSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupFull {
     /// Category this group belongs to.
-    pub category: Category,
+    pub category: GroupCategory,
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
@@ -236,7 +205,7 @@ pub struct GroupFull {
     /// Gallery of photo URLs.
     pub photos_urls: Option<Vec<String>>,
     /// Geographic region this group belongs to.
-    pub region: Option<Region>,
+    pub region: Option<GroupRegion>,
     /// Slack workspace URL.
     pub slack_url: Option<String>,
     /// State/province where the group is based.
@@ -273,4 +242,35 @@ impl GroupFull {
         group.color = color(&group.name).to_string();
         Ok(group)
     }
+}
+
+/// Group category information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupCategory {
+    /// Unique identifier for the category.
+    #[serde(rename = "group_category_id", alias = "id")]
+    pub id: Uuid,
+    /// Display name of the category.
+    pub name: String,
+    /// URL-friendly normalized name.
+    #[serde(rename = "slug", alias = "normalized_name")]
+    pub normalized_name: String,
+
+    /// Sort order for display.
+    pub order: Option<i32>,
+}
+
+/// Geographic region information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupRegion {
+    /// Unique identifier for the region.
+    #[serde(rename = "region_id", alias = "id")]
+    pub id: Uuid,
+    /// Display name of the region.
+    pub name: String,
+    /// URL-friendly normalized name.
+    pub normalized_name: String,
+
+    /// Sort order for display.
+    pub order: Option<i32>,
 }
