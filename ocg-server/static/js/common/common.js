@@ -118,35 +118,3 @@ export const navigateWithHtmx = (url) => {
     document.body.removeChild(anchor);
   }, 100);
 };
-
-/**
- * Initializes avatar image loading for a single avatar container.
- * Shows the image when loaded successfully, keeps initials on error.
- * @param {HTMLElement} container - The avatar container element
- */
-export const initializeAvatar = (container) => {
-  const initialsEl = container.querySelector(".avatar-initials");
-  const imgEl = container.querySelector(".avatar-image");
-
-  if (imgEl && imgEl.dataset.src) {
-    imgEl.src = imgEl.dataset.src;
-
-    imgEl.onload = () => {
-      initialsEl?.classList.add("hidden");
-      imgEl.classList.remove("hidden");
-    };
-
-    imgEl.onerror = () => {
-      // Keep initials visible on error
-      imgEl.classList.add("hidden");
-    };
-  }
-};
-
-/**
- * Initializes all avatar containers on the page.
- * Finds all elements with the 'avatar-container' class and initializes them.
- */
-export const initializeAvatars = () => {
-  document.querySelectorAll(".avatar-container").forEach(initializeAvatar);
-};
