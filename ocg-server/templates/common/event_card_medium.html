@@ -1,7 +1,8 @@
 {% import "common.html" as common -%}
 
 {# Event card -#}
-<div>
+<a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+   hx-boost="true">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
     <div class="card-logo">
@@ -113,5 +114,5 @@
     </div>
   {% endif -%}
   {# End description -#}
-</div>
+</a>
 {# End event card -#}
