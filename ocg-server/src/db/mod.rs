@@ -6,10 +6,18 @@ use async_trait::async_trait;
 use deadpool_postgres::Pool;
 use serde::{Deserialize, Serialize};
 
-use crate::db::{community::DBCommunity, event::DBEvent, group::DBGroup};
+use crate::db::{
+    common::DBCommon, community::DBCommunity, dashboard::DBDashboard, event::DBEvent, group::DBGroup,
+};
+
+/// Module containing common database operations.
+pub(crate) mod common;
 
 /// Module containing database functionality for the community site.
 pub(crate) mod community;
+
+/// Module containing database functionality for dashboards.
+pub(crate) mod dashboard;
 
 /// Module containing database functionality for the event page.
 pub(crate) mod event;
@@ -20,7 +28,7 @@ pub(crate) mod group;
 /// Database trait defining all data access operations. This is the parent trait
 /// that includes all the functionality defined in other traits (e.g. `DBCommunity`).
 #[async_trait]
-pub(crate) trait DB: DBCommunity + DBEvent + DBGroup {}
+pub(crate) trait DB: DBCommon + DBCommunity + DBDashboard + DBEvent + DBGroup {}
 
 /// Type alias for a thread-safe, shared database trait object.
 pub(crate) type DynDB = Arc<dyn DB + Send + Sync>;

@@ -1,0 +1,4 @@
+//! HTTP handlers for the group dashboard.
+
+pub(crate) mod events;
+pub(crate) mod home;

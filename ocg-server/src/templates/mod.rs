@@ -6,6 +6,7 @@
 
 pub(crate) mod common;
 pub(crate) mod community;
+pub(crate) mod dashboard;
 pub(crate) mod event;
 mod filters;
 pub(crate) mod group;

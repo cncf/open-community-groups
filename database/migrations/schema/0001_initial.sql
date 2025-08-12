@@ -109,6 +109,7 @@ create table "group" (
     group_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
     created_at timestamptz default current_timestamp not null,
+    deleted boolean default false not null,
     name text not null check (name <> ''),
     slug text not null check (slug <> ''),
     tsdoc tsvector not null
@@ -129,6 +130,7 @@ create table "group" (
     city text check (city <> ''),
     country_code text check (country_code <> ''),
     country_name text check (country_name <> ''),
+    deleted_at timestamptz,
 
     extra_links jsonb,
     facebook_url text check (facebook_url <> ''),
@@ -148,7 +150,8 @@ create table "group" (
     youtube_url text check (youtube_url <> ''),
     region_id uuid references region,
 
-    unique (slug, community_id)
+    unique (slug, community_id),
+    check ((deleted = false) or (deleted = true and active = false))
 );
 
 create index group_community_id_idx on "group" (community_id);
@@ -224,6 +227,7 @@ create table event (
     event_id uuid primary key default gen_random_uuid(),
     canceled boolean default false not null,
     created_at timestamptz default current_timestamp not null,
+    deleted boolean default false not null,
     description text not null check (description <> ''),
     name text not null check (name <> ''),
     published boolean default false not null,
@@ -243,6 +247,7 @@ create table event (
 
     banner_url text check (banner_url <> ''),
     capacity int check (capacity >= 0),
+    deleted_at timestamptz,
     description_short text check (description_short <> ''),
     ends_at timestamptz,
     logo_url text check (logo_url <> ''),
@@ -261,7 +266,8 @@ create table event (
     venue_zip_code text check (venue_zip_code <> ''),
     published_by uuid references "user",
 
-    unique (slug, group_id)
+    unique (slug, group_id),
+    check ((deleted = false) or (deleted = true and published = false))
 );
 
 create index event_group_id_idx on event (group_id);

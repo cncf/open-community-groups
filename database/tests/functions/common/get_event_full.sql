@@ -53,14 +53,16 @@ insert into "group" (
     slug,
     community_id,
     group_category_id,
-    active
+    active,
+    created_at
 ) values (
     :'group1ID',
     'Test Group',
     'test-group',
     :'community1ID',
     :'groupCategory1ID',
-    true
+    true,
+    '2024-03-01 10:00:00+00'
 );
 
 -- Seed inactive group
@@ -279,7 +281,12 @@ select is(
         "venue_name": "Convention Center",
         "venue_zip_code": "10001",
         "group": {
-            "category_name": "Technology",
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            },
+            "created_at": 1709287200,
             "name": "Test Group",
             "slug": "test-group"
         },

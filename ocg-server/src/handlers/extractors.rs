@@ -47,6 +47,19 @@ impl FromRequestParts<router::State> for CommunityId {
     }
 }
 
+/// Extractor for the selected group ID from the session.
+pub(crate) struct SelectedGroupId(pub Uuid);
+
+impl FromRequestParts<router::State> for SelectedGroupId {
+    type Rejection = (StatusCode, &'static str);
+
+    #[instrument(skip_all, err(Debug))]
+    async fn from_request_parts(_parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
+        // TODO
+        Ok(SelectedGroupId(Uuid::nil()))
+    }
+}
+
 /// Cached lookup function for resolving community IDs from hostnames.
 ///
 /// Results are cached for 24 hours (86400 seconds) to minimize database queries. The

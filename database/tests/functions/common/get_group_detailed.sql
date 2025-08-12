@@ -96,7 +96,11 @@ insert into "group" (
 select is(
     get_group_detailed('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
-        "category_name": "Technology",
+        "category": {
+            "id": "00000000-0000-0000-0000-000000000011",
+            "name": "Technology",
+            "normalized_name": "technology"
+        },
         "created_at": 1705312800,
         "name": "Test Group",
         "slug": "test-group",
@@ -107,7 +111,11 @@ select is(
         "latitude": 40.7128,
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,
-        "region_name": "North America",
+        "region": {
+            "id": "00000000-0000-0000-0000-000000000012",
+            "name": "North America",
+            "normalized_name": "north-america"
+        },
         "state": "NY"
     }'::jsonb,
     'get_group_detailed should return correct detailed group data with location as JSON'

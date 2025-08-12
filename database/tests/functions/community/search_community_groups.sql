@@ -83,7 +83,11 @@ select is(
     (select groups from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb))::jsonb,
     '[
         {
-            "category_name": "Technology",
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            },
             "created_at": 1704362400,
             "name": "Tech Innovators",
             "slug": "tech-innovators",
@@ -93,11 +97,19 @@ select is(
             "latitude": 30.2672,
             "logo_url": "https://example.com/tech-logo.png",
             "longitude": -97.7431,
-            "region_name": "North America",
+            "region": {
+                "id": "00000000-0000-0000-0000-000000000021",
+                "name": "North America",
+                "normalized_name": "north-america"
+            },
             "state": "TX"
         },
         {
-            "category_name": "Technology",
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            },
             "created_at": 1704276000,
             "name": "Kubernetes Meetup",
             "slug": "kubernetes-meetup",
@@ -108,11 +120,19 @@ select is(
             "latitude": 37.7749,
             "logo_url": "https://example.com/k8s-logo.png",
             "longitude": -122.4194,
-            "region_name": "North America",
+            "region": {
+                "id": "00000000-0000-0000-0000-000000000021",
+                "name": "North America",
+                "normalized_name": "north-america"
+            },
             "state": "CA"
         },
         {
-            "category_name": "Technology",
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            },
             "created_at": 1704189600,
             "name": "Docker Users",
             "slug": "docker-users",
@@ -123,11 +143,19 @@ select is(
             "latitude": 40.7128,
             "logo_url": "https://example.com/docker-logo.png",
             "longitude": -74.006,
-            "region_name": "North America",
+            "region": {
+                "id": "00000000-0000-0000-0000-000000000021",
+                "name": "North America",
+                "normalized_name": "north-america"
+            },
             "state": "NY"
         },
         {
-            "category_name": "Business",
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000012",
+                "name": "Business",
+                "normalized_name": "business"
+            },
             "created_at": 1704103200,
             "name": "Business Leaders",
             "slug": "business-leaders",

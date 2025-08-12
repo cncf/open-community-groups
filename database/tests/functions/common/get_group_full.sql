@@ -150,7 +150,11 @@ insert into "group" (
 select is(
     get_group_full('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
-        "category_name": "Technology",
+        "category": {
+            "id": "00000000-0000-0000-0000-000000000011",
+            "name": "Technology",
+            "normalized_name": "technology"
+        },
         "created_at": 1705312800,
         "members_count": 4,
         "name": "Test Group",
@@ -170,7 +174,11 @@ select is(
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "region_name": "North America",
+        "region": {
+            "id": "00000000-0000-0000-0000-000000000012",
+            "name": "North America",
+            "normalized_name": "north-america"
+        },
         "slack_url": "https://testgroup.slack.com",
         "state": "NY",
         "tags": ["technology", "software", "innovation"],

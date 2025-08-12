@@ -66,10 +66,18 @@ select is(
             "slug": "test-group-3",
             "logo_url": "https://example.com/logo3.png",
             "created_at": 1704272400,
-            "region_name": "Europe",
+            "region": {
+                "id": "00000000-0000-0000-0000-000000000022",
+                "name": "Europe",
+                "normalized_name": "europe"
+            },
             "country_code": "GB",
             "country_name": "United Kingdom",
-            "category_name": "Technology"
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            }
         },
         {
             "city": "San Francisco",
@@ -78,10 +86,18 @@ select is(
             "state": "CA",
             "logo_url": "https://example.com/logo2.png",
             "created_at": 1704186000,
-            "region_name": "North America",
+            "region": {
+                "id": "00000000-0000-0000-0000-000000000021",
+                "name": "North America",
+                "normalized_name": "north-america"
+            },
             "country_code": "US",
             "country_name": "United States",
-            "category_name": "Technology"
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            }
         },
         {
             "city": "New York",
@@ -90,10 +106,18 @@ select is(
             "state": "NY",
             "logo_url": "https://example.com/logo1.png",
             "created_at": 1704099600,
-            "region_name": "North America",
+            "region": {
+                "id": "00000000-0000-0000-0000-000000000021",
+                "name": "North America",
+                "normalized_name": "north-america"
+            },
             "country_code": "US",
             "country_name": "United States",
-            "category_name": "Technology"
+            "category": {
+                "id": "00000000-0000-0000-0000-000000000011",
+                "name": "Technology",
+                "normalized_name": "technology"
+            }
         }
     ]'::jsonb,
     'get_community_recently_added_groups should return groups ordered by creation date DESC as JSON'

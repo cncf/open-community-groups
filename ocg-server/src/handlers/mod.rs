@@ -5,6 +5,8 @@
 
 /// Community site handlers.
 pub(crate) mod community;
+/// Dashboards handlers.
+pub(crate) mod dashboard;
 /// Error handling utilities for HTTP handlers.
 mod error;
 /// Event page handlers.

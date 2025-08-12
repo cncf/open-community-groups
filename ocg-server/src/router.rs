@@ -11,7 +11,7 @@ use axum::{
         header::{CACHE_CONTROL, CONTENT_TYPE},
     },
     response::IntoResponse,
-    routing::get,
+    routing::{delete, get},
 };
 use rust_embed::Embed;
 use tower::ServiceBuilder;
@@ -23,7 +23,7 @@ use tracing::instrument;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{community, event, group},
+    handlers::{community, dashboard, event, group},
 };
 
 /// Default cache duration for HTTP responses in seconds.
@@ -47,6 +47,8 @@ struct StaticFile;
 pub(crate) struct State {
     /// Database handle.
     pub db: DynDB,
+    /// `serde_qs` config for query string parsing.
+    pub serde_qs_de: serde_qs::Config,
 }
 
 /// Configures and returns the application router.
@@ -55,9 +57,15 @@ pub(crate) struct State {
 /// authentication if configured.
 #[instrument(skip_all)]
 pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
+    // Setup sub-routers
+    let admin_dashboard_router = setup_admin_dashboard_router();
+    let group_dashboard_router = setup_group_dashboard_router();
+
     // Setup router
     let mut router = Router::new()
         .route("/", get(community::home::page))
+        .nest("/dashboard/admin", admin_dashboard_router)
+        .nest("/dashboard/group", group_dashboard_router)
         .route("/explore", get(community::explore::page))
         .route("/explore/events-section", get(community::explore::events_section))
         .route(
@@ -80,7 +88,10 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
             HeaderValue::try_from(format!("max-age={DEFAULT_CACHE_DURATION}")).expect("valid header value"),
         ))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .with_state(State { db });
+        .with_state(State {
+            db,
+            serde_qs_de: serde_qs::Config::new(3, false),
+        });
 
     // Setup basic auth
     if let Some(basic_auth) = &cfg.basic_auth
@@ -138,4 +149,42 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         }
         None => StatusCode::NOT_FOUND.into_response(),
     }
+}
+
+/// Sets up the admin dashboard router and its routes.
+fn setup_admin_dashboard_router() -> Router<State> {
+    Router::new()
+        .route("/", get(dashboard::admin::home::page))
+        .route("/groups", get(dashboard::admin::groups::list_page))
+        .route(
+            "/groups/add",
+            get(dashboard::admin::groups::add_page).post(dashboard::admin::groups::add),
+        )
+        .route(
+            "/groups/{group_id}/update",
+            get(dashboard::admin::groups::update_page).put(dashboard::admin::groups::update),
+        )
+        .route(
+            "/groups/{group_id}/delete",
+            delete(dashboard::admin::groups::delete),
+        )
+}
+
+/// Sets up the group dashboard router and its routes.
+fn setup_group_dashboard_router() -> Router<State> {
+    Router::new()
+        .route("/", get(dashboard::group::home::page))
+        .route("/events", get(dashboard::group::events::list_page))
+        .route(
+            "/events/add",
+            get(dashboard::group::events::add_page).post(dashboard::group::events::add),
+        )
+        .route(
+            "/events/{event_id}/update",
+            get(dashboard::group::events::update_page).put(dashboard::group::events::update),
+        )
+        .route(
+            "/events/{event_id}/delete",
+            delete(dashboard::group::events::delete),
+        )
 }
