@@ -4,7 +4,10 @@ use askama::Template;
 
 use crate::{
     templates::filters,
-    types::{community::Community, event::EventFull},
+    types::{
+        community::Community,
+        event::{EventFull, EventKind},
+    },
 };
 
 // Pages and sections templates.
