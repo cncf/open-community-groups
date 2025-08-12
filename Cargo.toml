@@ -54,5 +54,5 @@ tower-http = { version = "0.6.6", features = ["auth", "fs", "set-header", "trace
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 unicode-segmentation = "1.12.0"
-uuid = { version = "1.17.0", features = ["serde", "v4"] }
+uuid = { version = "1.18.0", features = ["serde", "v4"] }
 which = "8.0.0"
