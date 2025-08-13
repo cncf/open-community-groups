@@ -57,3 +57,12 @@
   {% endif -%}
 {% endmacro menu_item -%}
 {# End menu item -#}
+
+{# Form title #}
+{% macro form_title(title, description = "") -%}
+  <div class="text-xl lg:text-2xl font-medium text-stone-900 h-[38px]">{{ title }}</div>
+  {% if !description.is_empty() -%}
+    <p class="mt-1 text-sm/6 text-stone-500">{{ description }}</p>
+  {% endif -%}
+{% endmacro form_title -%}
+{# End form title #}

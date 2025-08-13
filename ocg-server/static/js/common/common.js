@@ -147,3 +147,16 @@ export const navigateWithHtmx = (url) => {
     }
   }, 100);
 };
+
+/**
+ * Checks if an HTTP status code indicates success (2xx range).
+ * @param {number} status - The HTTP status code
+ * @returns {boolean} True if status is between 200-299
+ */
+export const isSuccessfulXHRStatus = (status) => {
+  if (status >= 200 && status < 300) {
+    return true;
+  } else {
+    return false;
+  }
+};

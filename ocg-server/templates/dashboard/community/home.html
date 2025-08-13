@@ -27,11 +27,12 @@
 {% endblock menu -%}
 
 {% block dashboard_main -%}
-  <div id="dashboard-content" class="p-4 sm:p-6 lg:p-12">
-    {# Content will be loaded here via HTMX -#}
-    <div class="text-center py-12">
-      <h2 class="text-2xl font-semibold text-stone-900 mb-4">Community Dashboard</h2>
-      <p class="text-stone-600">Welcome to your community management dashboard.</p>
-    </div>
+  <div id="dashboard-content"
+       hx-get="/dashboard/community/groups"
+       hx-trigger="refresh-groups-table"
+       class="p-4 sm:p-6 lg:p-12">
+    {# Content -#}
+    {{ content|safe }}
+    {# End Content -#}
   </div>
 {% endblock dashboard_main -%}
