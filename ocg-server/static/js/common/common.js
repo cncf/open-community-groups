@@ -80,7 +80,7 @@ export const loadMap = async (divId, lat, long) => {
   // Ensure Leaflet is loaded
   await loadLeafletScript();
 
-  const map = L.map(divId, { zoomControl: false, dragging: false }).setView([lat, long], 13);
+  const map = L.map(divId, { zoomControl: false }).setView([lat, long], 13);
 
   L.tileLayer(
     `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${
