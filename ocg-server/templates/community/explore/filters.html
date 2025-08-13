@@ -32,7 +32,7 @@
                 hx-trigger="click"
                 hx-target="#entity-section"
                 hx-boost="true"
-                class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50">
+                class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
           {% call entity_content(kind = "events", title = "Events", icon_styles = Some("bg-stone-500")) -%}
         </button>
         {# End events button -#}
@@ -73,7 +73,7 @@
                 hx-trigger="click"
                 hx-target="#entity-section"
                 hx-boost="true"
-                class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50">
+                class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
           {% call entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-stone-500")) -%}
         </button>
         {# End groups button -#}
@@ -123,7 +123,7 @@
              validate="false"
              value="{%- if let Some(date) = value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50"
+             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors"
              placeholder="Date {{ label }}">
     </div>
   </div>

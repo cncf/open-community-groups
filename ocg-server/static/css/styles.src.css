@@ -21,23 +21,23 @@
 
 @layer components {
   .btn-primary {
-     @apply py-1.5 px-5 h-[40px] text-sm text-center text-white rounded-full bg-primary-500 enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white;
+     @apply py-1.5 px-5 h-[40px] text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white;
   }
 
   .btn-primary-anchor {
-    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
+    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
   }
 
   .btn-secondary {
-    @apply py-1.5 px-5 h-[40px] bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 enabled:hover:bg-primary-500 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white;
+    @apply py-1.5 px-5 h-[40px] bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors enabled:hover:bg-primary-500 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white;
   }
 
   .btn-secondary-anchor {
-    @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
+    @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
   }
 
   .btn-mini {
-    @apply bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white
+    @apply bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white
   }
 
   .icon-text {

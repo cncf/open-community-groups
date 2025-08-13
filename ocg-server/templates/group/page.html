@@ -211,7 +211,7 @@
         <h2 class="text-2xl font-semibold text-stone-900 mb-6">Past Events</h2>
         <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
           {% for event in past_events -%}
-            <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white">
+            <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white transition-colors">
               {{ event|safe }}
             </div>
           {% endfor -%}
@@ -261,7 +261,7 @@
          rel="noopener noreferrer"
          class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
          title="{{ name }}">
-        <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white icon-link"></div>
+        <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white transition-colors icon-link"></div>
       </a>
     {% endfor -%}
   {% endif -%}
