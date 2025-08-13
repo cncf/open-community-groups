@@ -1,16 +1,16 @@
-<h1>Event home page</h1>
-{% import "common.html" as common -%}
 {% extends "community/base.html" -%}
+{% import "common.html" as common -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/people-list.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
+  {% let has_social_links = event.meetup_url.is_some() -%}
   <div class="max-w-7xl bg-white border border-stone-200 rounded-lg mx-4 lg:mx-5 xl:mx-auto my-5 md:my-7 flex flex-col gap-y-8 py-8">
     {# Event header with name and group -#}
     <div class="px-4 sm:px-6 lg:px-8">
-      {# Main flex container for logo, name/group, and status/actions -#}
+      {# Main flex container for logo, name/group, and social networks -#}
       <div class="flex flex-1 flex-row items-stretch gap-6">
         {# Event logo -#}
         {% call common::logo(logo_url = event.logo_url, classes = "hidden sm:block h-20 w-20 md:h-28 md:w-28", size = 112, color = event.color, name = Some(event.group.name)) -%}
@@ -34,7 +34,7 @@
               </div>
             </div>
 
-            {# Event status and actions -#}
+            {# Event status and social networks -#}
             <div class="hidden md:flex flex-col items-end gap-2">
               {# Event status badge -#}
               {% if event.canceled -%}
@@ -44,23 +44,20 @@
               {% endif -%}
               {# End event status badge -#}
 
-              {# Meetup button -#}
-              {% if let Some(meetup_url) = event.meetup_url -%}
-                <a href="{{ meetup_url }}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="btn-primary px-6 py-2 text-sm">View on Meetup</a>
+              {# Social networks -#}
+              {% if has_social_links -%}
+                <div class="flex flex-wrap gap-2">{% call social_networks(event = event) -%}</div>
               {% endif -%}
-              {# End meetup button -#}
+              {# End social networks -#}
             </div>
-            {# End event status and actions -#}
+            {# End event status and social networks -#}
           </div>
 
           {# Event details and date -#}
           <div class="mt-auto flex items-center gap-4 text-stone-600">
             {% if let Some(starts_at) = event.starts_at -%}
               <div class="flex items-center">
-                <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
+                <div class="svg-icon size-3.5 mr-2 bg-stone-600 icon-date"></div>
                 <span class="text-sm">{{ starts_at.with_timezone(event.timezone).format("%B %e, %Y") }}</span>
               </div>
             {% endif -%}
@@ -78,7 +75,7 @@
       </div>
       {# End main flex container -#}
 
-      {# Event status and actions (mobile only) -#}
+      {# Event status and social networks (mobile only) -#}
       <div class="md:hidden flex flex-wrap gap-2 mt-4">
         {# Event status badge -#}
         {% if event.canceled -%}
@@ -88,21 +85,18 @@
         {% endif -%}
         {# End event status badge -#}
 
-        {# Meetup button -#}
-        {% if let Some(meetup_url) = event.meetup_url -%}
-          <a href="{{ meetup_url }}"
-             target="_blank"
-             rel="noopener noreferrer"
-             class="btn-primary px-6 py-2 text-sm">View on Meetup</a>
+        {# Social networks -#}
+        {% if has_social_links -%}
+          <div class="flex flex-wrap gap-2">{% call social_networks(event = event) -%}</div>
         {% endif -%}
-        {# End meetup button -#}
+        {# End social networks -#}
       </div>
-      {# End event status and actions (mobile) -#}
+      {# End event status and social networks (mobile) -#}
 
     </div>
     {# End event header -#}
 
-    {# Two column layout -#}
+    {# Two column layout for about and sidebar -#}
     <div class="px-4 sm:px-6 lg:px-8">
       <div class="grid grid-cols-1 lg:grid-cols-10 lg:gap-10">
         {# Left column (70%) -#}
@@ -132,64 +126,6 @@
             </div>
           </div>
           {# End event description -#}
-
-          {# Sessions section -#}
-          {% if !event.sessions.is_empty() -%}
-            <div>
-              <div class="py-8">
-                <h2 class="text-2xl font-semibold text-stone-900 mb-6">Sessions</h2>
-                <div class="space-y-6">
-                  {% for session in event.sessions -%}
-                    <div class="border border-stone-200 rounded-lg p-4">
-                      <div class="flex items-start justify-between mb-2">
-                        <h3 class="text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-                        {% call common::event_badge(kind = session.kind, extra_styles = None) -%}
-                      </div>
-                      <div class="flex items-center text-sm text-stone-600 mb-2">
-                        <div class="svg-icon size-3 mr-1 bg-stone-600 icon-clock"></div>
-                        {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ session.ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
-                      </div>
-                      {% if let Some(location) = session.location -%}
-                        <div class="flex items-center text-sm text-stone-600 mb-2">
-                          <div class="svg-icon size-3 mr-1 bg-stone-600 icon-location"></div>
-                          {{ location }}
-                        </div>
-                      {% endif -%}
-                      <div class="text-stone-700 text-sm">{{ session.description|demoji|safe }}</div>
-                      {% if !session.speakers.is_empty() -%}
-                        <div class="mt-3">
-                          <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
-                          <div class="flex flex-wrap gap-2">
-                            {% for speaker in session.speakers -%}
-                              <div class="flex items-center gap-2 bg-stone-50 rounded-full px-3 py-1">
-                                {% if let Some(photo_url) = speaker.photo_url -%}
-                                  <avatar-image image-url="{{ photo_url }}" size="size-[24px]" hide-on-error="true" hide-border="true"></avatar-image>
-                                {% endif -%}
-                                <span class="text-sm text-stone-700">
-                                  {% if let Some(first_name) = speaker.first_name -%}
-                                    {% if let Some(last_name) = speaker.last_name -%}
-                                      {{ first_name }} {{ last_name }}
-                                    {% else -%}
-                                      {{ first_name }}
-                                    {% endif -%}
-                                  {% else if let Some(last_name) = speaker.last_name -%}
-                                    {{ last_name }}
-                                  {% else -%}
-                                    Speaker
-                                  {% endif -%}
-                                </span>
-                              </div>
-                            {% endfor -%}
-                          </div>
-                        </div>
-                      {% endif -%}
-                    </div>
-                  {% endfor -%}
-                </div>
-              </div>
-            </div>
-          {% endif -%}
-          {# End sessions section -#}
         </div>
         {# End left column -#}
 
@@ -285,14 +221,6 @@
         {% endif -%}
         {# End organizers section -#}
 
-        {# Hosts section -#}
-        {% if !event.hosts.is_empty() -%}
-          <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4 mt-8">Hosts</h2>
-          <people-list id="hosts-list" people="{{ event.hosts|json }}">
-          </people-list>
-        {% endif -%}
-        {# End hosts section -#}
-
         {# Tags if available -#}
         {% if let Some(tags) = event.tags -%}
           {% if !tags.is_empty() -%}
@@ -313,6 +241,165 @@
   </div>
   {# End two column layout -#}
 
+  {# Sessions section - Full width -#}
+  {% if !event.sessions.is_empty() -%}
+    <div class="px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-semibold text-stone-900 mb-6">Sessions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for session in event.sessions -%}
+          <div class="border border-stone-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between mb-2">
+              <h3 class="text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
+              {% call common::event_badge(kind = session.kind, extra_styles = None) -%}
+            </div>
+            <div class="flex items-center text-sm text-stone-600 mb-2">
+              <div class="svg-icon size-3 mr-1 bg-stone-600 icon-clock"></div>
+              {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ session.ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
+            </div>
+            {% if let Some(location) = session.location -%}
+              <div class="flex items-center text-sm text-stone-600 mb-2">
+                <div class="svg-icon size-3 mr-1 bg-stone-600 icon-location"></div>
+                {{ location }}
+              </div>
+            {% endif -%}
+            <div class="text-stone-700 text-sm line-clamp-3">{{ session.description|demoji|safe }}</div>
+            {% if !session.speakers.is_empty() -%}
+              <div class="mt-3">
+                <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
+                <div class="flex flex-wrap gap-2">
+                  {% for speaker in session.speakers -%}
+                    <div class="flex items-center gap-2 bg-stone-50 rounded-full px-3 py-1">
+                      <avatar-image 
+                        {% if let Some(photo_url) = speaker.photo_url -%}
+                          image-url="{{ photo_url }}"
+                        {% endif -%}
+                        size="size-[24px]" 
+                        hide-border="true" 
+                        placeholder="{{ speaker|user_initials(1) }}">
+                      </avatar-image>
+                      <span class="text-sm text-stone-700">
+                        {% if let Some(first_name) = speaker.first_name -%}
+                          {% if let Some(last_name) = speaker.last_name -%}
+                            {{ first_name }} {{ last_name }}
+                          {% else -%}
+                            {{ first_name }}
+                          {% endif -%}
+                        {% else if let Some(last_name) = speaker.last_name -%}
+                          {{ last_name }}
+                        {% else -%}
+                          Speaker
+                        {% endif -%}
+                      </span>
+                    </div>
+                  {% endfor -%}
+                </div>
+              </div>
+            {% endif -%}
+          </div>
+        {% endfor -%}
+      </div>
+    </div>
+  {% endif -%}
+  {# End sessions section -#}
+
+  {# Hosts section - Full width -#}
+  {% if !event.hosts.is_empty() -%}
+    <div class="px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-semibold text-stone-900 mb-6">Hosts</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for host in event.hosts -%}
+          <div class="border border-stone-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-start gap-3">
+              {# Host photo -#}
+              <div class="flex-shrink-0">
+                <avatar-image
+                {% if let Some(photo_url) = host.photo_url -%}
+                  image-url="{{ photo_url }}"
+                {% endif -%}
+                size="size-12" placeholder="{{ host|user_initials(2) }}">
+                </avatar-image>
+              </div>
+              {# End host photo -#}
+
+              {# Host details -#}
+              <div class="flex-1">
+                {# Host name -#}
+                <div class="font-semibold text-stone-900">
+                  {% if let Some(first_name) = host.first_name -%}
+                    {% if let Some(last_name) = host.last_name -%}
+                      {{ first_name }} {{ last_name }}
+                    {% else -%}
+                      {{ first_name }}
+                    {% endif -%}
+                  {% else if let Some(last_name) = host.last_name -%}
+                    {{ last_name }}
+                  {% else -%}
+                    Host
+                  {% endif -%}
+                </div>
+                {# End host name -#}
+
+                {# Host role/title and company if available -#}
+                <div class="text-sm text-stone-600 mt-0.5">
+                  {% if let Some(title) = host.title -%}
+                    <span>{{ title }}</span>
+                    {% if let Some(company) = host.company -%}
+                      <span>at {{ company }}</span>
+                    {% endif -%}
+                  {% else if let Some(company) = host.company -%}
+                    <span>{{ company }}</span>
+                  {% endif -%}
+                </div>
+
+                {# Host social links if available -#}
+                <div class="flex gap-2 mt-2">
+                  {% if let Some(linkedin_url) = host.linkedin_url -%}
+                    <a href="{{ linkedin_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
+                       aria-label="LinkedIn profile">
+                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-linkedin"></div>
+                    </a>
+                  {% endif -%}
+                  {% if let Some(twitter_url) = host.twitter_url -%}
+                    <a href="{{ twitter_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
+                       aria-label="Twitter profile">
+                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-twitter"></div>
+                    </a>
+                  {% endif -%}
+                  {% if let Some(facebook_url) = host.facebook_url -%}
+                    <a href="{{ facebook_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
+                       aria-label="Facebook profile">
+                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-facebook"></div>
+                    </a>
+                  {% endif -%}
+                  {% if let Some(website_url) = host.website_url -%}
+                    <a href="{{ website_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
+                       aria-label="Personal website">
+                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-website"></div>
+                    </a>
+                  {% endif -%}
+                </div>
+              </div>
+              {# End host details -#}
+            </div>
+          </div>
+        {% endfor -%}
+      </div>
+    </div>
+  {% endif -%}
+  {# End hosts section -#}
+
 </div>
 {% endblock content -%}
 
@@ -331,5 +418,12 @@
       {% endif -%}
       <span class="text-xs text-stone-600">{{ city }}</span>
     </div>
+  {% endif -%}
+{% endmacro -%}
+
+{# Macro for rendering social network links -#}
+{% macro social_networks(event) -%}
+  {% if let Some(meetup_url) = event.meetup_url -%}
+    {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
   {% endif -%}
 {% endmacro -%}

@@ -294,6 +294,7 @@ input:placeholder-shown {
 .icon-magnifying-glass { --icon-url: url('/static/images/icons/magnifying_glass.svg'); }
 .icon-map { --icon-url: url('/static/images/icons/map.svg'); }
 .icon-marker { --icon-url: url('/static/images/icons/marker.svg'); }
+.icon-meetup { --icon-url: url('/static/images/icons/meetup.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-people { --icon-url: url('/static/images/icons/people.svg'); }
