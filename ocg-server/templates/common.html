@@ -169,11 +169,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <div class="icon-text {{ extra_styles_ }}">
-    <img height="12"
-         width="12"
-         src="/static/images/icons/{{ icon_name }}.svg"
-         alt="{{ icon_name | capitalize }} icon"
-         class="mr-2" />
+    <div class="svg-icon w-3 h-3 mr-2 bg-stone-700 icon-{{ icon_name }}"></div>
     <span>{{ text }}</span>
   </div>
 {% endmacro icon_text -%}

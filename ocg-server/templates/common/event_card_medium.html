@@ -49,10 +49,7 @@
               {% endif -%}
             {% else -%}
               <div class="icon-text me-2">
-                <img height="12"
-                     width="12"
-                     src="/static/images/icons/location.svg"
-                     alt="Location icon" />
+                <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
               </div>
             {% endif -%}
             {% call common::event_badge(kind = event.kind) -%}
@@ -84,10 +81,7 @@
         {% endif -%}
       {% else -%}
         <div class="icon-text me-2">
-          <img height="12"
-               width="12"
-               src="/static/images/icons/location.svg"
-               alt="Location icon" />
+          <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
         </div>
       {% endif -%}
       {% call common::event_badge(kind = event.kind) -%}

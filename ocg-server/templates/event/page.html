@@ -269,13 +269,11 @@
                 <div class="flex flex-wrap gap-2">
                   {% for speaker in session.speakers -%}
                     <div class="flex items-center gap-2 bg-stone-50 rounded-full px-3 py-1">
-                      <avatar-image 
-                        {% if let Some(photo_url) = speaker.photo_url -%}
-                          image-url="{{ photo_url }}"
-                        {% endif -%}
-                        size="size-[24px]" 
-                        hide-border="true" 
-                        placeholder="{{ speaker|user_initials(1) }}">
+                      <avatar-image
+                      {% if let Some(photo_url) = speaker.photo_url -%}
+                        image-url="{{ photo_url }}"
+                      {% endif -%}
+                      size="size-[24px]" hide-border="true" placeholder="{{ speaker|user_initials(1) }}">
                       </avatar-image>
                       <span class="text-sm text-stone-700">
                         {% if let Some(first_name) = speaker.first_name -%}
@@ -308,7 +306,7 @@
       <h2 class="text-2xl font-semibold text-stone-900 mb-6">Hosts</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for host in event.hosts -%}
-          <div class="border border-stone-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div class="border border-stone-200 rounded-lg p-4">
             <div class="flex items-start gap-3">
               {# Host photo -#}
               <div class="flex-shrink-0">
