@@ -47,9 +47,9 @@
     </script>
   </head>
   {# djlint:off #}
-  <body class='h-full {% if path == "/explore" %}bg-stone-100{% else %}bg-white{% endif %}'>
+  <body class='h-full {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
     <div class="min-h-full flex flex-col">
-      <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- else -%}bg-white{%- endif -%}'>
+      <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {# Header -#}
         {% include "community/header.html" -%}
         {# End header -#}
