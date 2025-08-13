@@ -1,6 +1,10 @@
 {% import "common.html" as common -%}
 {% extends "community/base.html" -%}
 
+{% block scripts -%}
+  <script type="module" src="/static/js/common/images-gallery.js"></script>
+{% endblock scripts -%}
+
 {% block jumbotron -%}
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">

@@ -153,8 +153,8 @@
           {# Close button -#}
           <button id="close-new-group-modal"
                   type="button"
-                  class="group bg-transparent hover:bg-stone-200 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-            <div class="svg-icon h-5 w-5 bg-stone-400 grouphover:bg-stone-900 icon-close"></div>
+                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
             <span class="sr-only">Close modal</span>
           </button>
           {# End close button -#}
@@ -190,7 +190,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
-     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2
+     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
             {% if current_path == href -%}
               border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
@@ -201,7 +201,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
-          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 {{ extra_styles_ }}">
+          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro button -%}
@@ -212,7 +212,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
-     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 {{ extra_styles_ }}">
+     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors {{ extra_styles_ }}">
     {{ content }}
   </a>
 {% endmacro mobile_link -%}
@@ -223,7 +223,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
-          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 {{ extra_styles_ }}">
+          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro mobile_button -%}

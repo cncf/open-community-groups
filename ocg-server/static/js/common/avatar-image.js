@@ -13,6 +13,8 @@ export class AvatarImage extends LitWrapper {
    * @property {string} imageUrl - URL of the avatar image to display
    * @property {string} placeholder - Text to show when image is not available (typically initials)
    * @property {number} size - Size of the avatar in pixels (default: 40)
+   * @property {boolean} hideOnError - If true, hides the entire component when image fails to load
+   * @property {boolean} hideBorder - If true, removes the border from the avatar
    * @property {boolean} _hasError - Internal state tracking if image failed to load
    * @property {boolean} _hasLoaded - Internal state tracking if image loaded successfully
    */
@@ -20,7 +22,9 @@ export class AvatarImage extends LitWrapper {
     return {
       imageUrl: { type: String, attribute: "image-url" },
       placeholder: { type: String },
-      size: { type: Number },
+      size: { type: String },
+      hideOnError: { type: Boolean, attribute: "hide-on-error" },
+      hideBorder: { type: Boolean, attribute: "hide-border" },
       _hasError: { type: Boolean },
       _hasLoaded: { type: Boolean },
     };
@@ -30,7 +34,9 @@ export class AvatarImage extends LitWrapper {
     super();
     this.imageUrl = "";
     this.placeholder = "-";
-    this.size = 40; // Default size in pixels
+    this.size = "size-10";
+    this.hideOnError = false; // Default to showing placeholder on error
+    this.hideBorder = false; // Default to showing border
     this._hasError = false;
     this._hasLoaded = false;
   }
@@ -82,20 +88,26 @@ export class AvatarImage extends LitWrapper {
   /**
    * Renders the avatar component with image or placeholder.
    * Shows placeholder during loading, on error, or when no image URL provided.
+   * If hideOnError is true, hides the entire component when image fails to load.
    * @returns {TemplateResult} Lit HTML template
    */
   render() {
-    const sizeClass = this.size === 40 ? "size-10" : `size-[${this.size}px]`;
+    // Hide entire component if hideOnError is true and image has error
+    if (this.hideOnError && this._hasError) {
+      return html``;
+    }
+
     const showPlaceholder = !this.imageUrl || this._hasError || !this._hasLoaded;
     const showImage = this.imageUrl && !this._hasError && this._hasLoaded;
+    const borderClass = this.hideBorder ? "" : "border-2 border-stone-400";
 
     return html`
-      <div class="relative flex-shrink-0 ${sizeClass}">
+      <div class="relative flex-shrink-0 ${this.size}">
         <!-- Initials placeholder (visible when no image, loading, or on error) -->
         <div
           class="${showPlaceholder
             ? "flex"
-            : "hidden"} absolute inset-0 items-center justify-center rounded-full bg-stone-400 border-2 border-gray-400 text-white font-semibold text-sm"
+            : "hidden"} absolute inset-0 items-center justify-center rounded-full bg-stone-200 ${borderClass} text-stone-700 font-semibold text-sm"
         >
           ${this.placeholder}
         </div>
@@ -110,7 +122,7 @@ export class AvatarImage extends LitWrapper {
                 @error="${this._handleImageError}"
                 class="${showImage
                   ? ""
-                  : "opacity-0 pointer-events-none"} absolute inset-0 w-full h-full object-cover rounded-full border-2 border-gray-400"
+                  : "opacity-0 pointer-events-none"} absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
                 loading="lazy"
               />
             `

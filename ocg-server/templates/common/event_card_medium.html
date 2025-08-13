@@ -1,7 +1,8 @@
 {% import "common.html" as common -%}
 
 {# Event card -#}
-<div>
+<a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+   hx-boost="true">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
     <div class="card-logo">
@@ -48,10 +49,7 @@
               {% endif -%}
             {% else -%}
               <div class="icon-text me-2">
-                <img height="12"
-                     width="12"
-                     src="/static/images/icons/location.svg"
-                     alt="Location icon" />
+                <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
               </div>
             {% endif -%}
             {% call common::event_badge(kind = event.kind) -%}
@@ -83,10 +81,7 @@
         {% endif -%}
       {% else -%}
         <div class="icon-text me-2">
-          <img height="12"
-               width="12"
-               src="/static/images/icons/location.svg"
-               alt="Location icon" />
+          <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
         </div>
       {% endif -%}
       {% call common::event_badge(kind = event.kind) -%}
@@ -113,5 +108,5 @@
     </div>
   {% endif -%}
   {# End description -#}
-</div>
+</a>
 {# End event card -#}

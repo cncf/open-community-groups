@@ -1,8 +1,10 @@
 {% import "common.html" as common -%}
 
 {# Event card -#}
-<div class="card">
-  <div class="card-logo">
+<a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+   class="flex flex-1 flex-row items-center"
+   hx-boost="true">
+  <div class="relative">
     {# Event icon -#}
     {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
     {# End event icon -#}
@@ -39,11 +41,7 @@
           </div>
           {% when EventKind::Virtual -%}
           <div class="flex items-center">
-            <img height="12"
-                 width="12"
-                 src="/static/images/icons/location.svg"
-                 alt="Location icon"
-                 class="me-2" />
+            <div class="svg-icon w-3 h-3 bg-stone-700 icon-location me-2"></div>
             {% call common::event_badge(kind = event.kind) -%}
           </div>
         {% endmatch -%}
@@ -60,5 +58,5 @@
     </div>
   </div>
 </div>
-</div>
+</a>
 {# End event card -#}

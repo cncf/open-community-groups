@@ -2,7 +2,13 @@
 
 use askama::Template;
 
-use crate::types::{community::Community, event::EventFull};
+use crate::{
+    templates::filters,
+    types::{
+        community::Community,
+        event::{EventFull, EventKind},
+    },
+};
 
 // Pages and sections templates.
 

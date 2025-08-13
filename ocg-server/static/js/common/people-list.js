@@ -109,7 +109,7 @@ export class PeopleList extends LitWrapper {
     const initials = this._getInitials(person.first_name, person.last_name);
 
     return html`
-      <avatar-image image-url="${person.photo_url || ""}" placeholder="${initials}" size="40"></avatar-image>
+      <avatar-image image-url="${person.photo_url || ""}" placeholder="${initials}"></avatar-image>
     `;
   }
 

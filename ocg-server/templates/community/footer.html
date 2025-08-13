@@ -41,7 +41,7 @@
             <span class="px-2 text-stone-300 md:px-3">·</span>
           {% endif -%}
           <a href="{{ url }}"
-             class="tracking-wider text-sm text-white hover:text-primary-500"
+             class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
              target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
              rel="noopener noreferrer">{{ name }}</a>
           {# End extra link -#}
@@ -74,7 +74,7 @@
        class="ms-0 md:ms-6 content-center"
        target="_blank"
        rel="noopener noreferrer">
-      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 icon-{{ kind }}"></div>
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 transition-colors icon-{{ kind }}"></div>
     </a>
   {% endif -%}
 {% endmacro social_icon_link -%}
