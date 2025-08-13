@@ -255,14 +255,10 @@
       <h2 class="text-2xl font-semibold text-stone-900 mb-6">Sessions</h2>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {% for session in event.sessions -%}
-          <div class="border border-stone-200 rounded-lg p-4 hover:shadow-md transition-shadow flex flex-col h-full">
+          <div class="border border-stone-200 rounded-lg p-4 flex flex-col h-full">
             <div class="flex items-start justify-between mb-2">
-              <h3 class="text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-              {% call common::event_badge(kind = session.kind, extra_styles = None) -%}
-            </div>
-            <div class="flex items-center text-sm text-stone-600 mb-2">
-              <div class="svg-icon size-3 mr-1 bg-stone-600 icon-clock"></div>
-              {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ session.ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
+              <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
+              {% call common::event_badge(kind = session.kind, extra_styles = Some("hidden sm:flex ms-3")) -%}
             </div>
             {% if let Some(location) = session.location -%}
               <div class="flex items-center text-sm text-stone-600 mb-2">
@@ -270,6 +266,11 @@
                 {{ location }}
               </div>
             {% endif -%}
+            <div class="flex items-center text-sm text-stone-600 mb-2">
+              <div class="svg-icon size-3 mr-1 bg-stone-600 icon-clock"></div>
+              {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ session.ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
+              {% call common::event_badge(kind = session.kind, extra_styles = Some("flex sm:hidden ms-3")) -%}
+            </div>
             <div class="text-stone-700 text-sm line-clamp-3 flex-grow">{{ session.description|demoji|safe }}</div>
             {% if !session.speakers.is_empty() -%}
               <div class="mt-4">
