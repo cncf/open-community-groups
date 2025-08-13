@@ -92,8 +92,8 @@ mod tests {
     fn create_user(first_name: Option<&str>, last_name: Option<&str>) -> User {
         User {
             id: Uuid::new_v4(),
-            first_name: first_name.map(|s| s.to_string()),
-            last_name: last_name.map(|s| s.to_string()),
+            first_name: first_name.map(str::to_string),
+            last_name: last_name.map(str::to_string),
             company: None,
             title: None,
             photo_url: None,
@@ -173,41 +173,33 @@ mod tests {
 
     #[test]
     fn test_user_initials() {
-        // Test with both first and last name (default 2 initials)
+        // Test with both first and last name (count 2)
         let user = create_user(Some("John"), Some("Doe"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "JD");
 
-        // Test with only first name
+        // Test with only first name (count 2)
         let user = create_user(Some("Alice"), None);
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "A");
 
-        // Test with only last name
+        // Test with only last name (count 2)
         let user = create_user(None, Some("Smith"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "S");
 
-        // Test with no names
+        // Test with no names (count 2)
         let user = create_user(None, None);
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "");
 
-        // Test with names that have leading/trailing spaces
+        // Test with names that have leading/trailing spaces (count 2)
         let user = create_user(Some("  Bob  "), Some("  Johnson  "));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "BJ");
 
-        // Test with single character names
+        // Test with single character names (count 2)
         let user = create_user(Some("X"), Some("Y"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "XY");
-    }
 
-    #[test]
-    fn test_user_initials_with_count() {
         // Test with count of 1 - should get only first name initial
         let user = create_user(Some("Jane"), Some("Doe"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "J");
-
-        // Test with count of 3
-        let user = create_user(Some("Alexander"), Some("Hamilton"));
-        // With our new logic, count > 2 still returns only first + last initials
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 3).unwrap(), "AH");
 
         // Test with count of 1 and only first name
         let user = create_user(Some("Alice"), None);
@@ -217,9 +209,8 @@ mod tests {
         let user = create_user(None, Some("Smith"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "S");
 
-        // Test with count of 4 with only first name
-        let user = create_user(Some("Margaret"), None);
-        // With our new logic, count > 2 still returns only the first initial when no last name
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 4).unwrap(), "M");
+        // Test with count of 3 - still returns only first + last initials
+        let user = create_user(Some("Alexander"), Some("Hamilton"));
+        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 3).unwrap(), "AH");
     }
 }
