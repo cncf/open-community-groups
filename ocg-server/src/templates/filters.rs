@@ -4,20 +4,15 @@
 //! transform data during rendering. These filters extend Askama's built-in
 //! functionality with application-specific formatting needs.
 
-use crate::templates::common::User;
 use num_format::{Locale, ToFormattedString};
 use unicode_segmentation::UnicodeSegmentation;
+
+use crate::templates::common::User;
 
 /// Removes all emoji characters from a string.
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn demoji(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
     Ok(s.graphemes(true).filter(|gc| emojis::get(gc).is_none()).collect())
-}
-
-/// Formats numbers with thousands separators.
-#[allow(clippy::unnecessary_wraps)]
-pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> askama::Result<String> {
-    Ok(n.to_formatted_string(&Locale::en))
 }
 
 /// Gets the full name of a User.
@@ -39,6 +34,12 @@ pub(crate) fn full_name(user: &User, _: &dyn askama::Values) -> askama::Result<S
     }
 }
 
+/// Formats numbers with thousands separators.
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> askama::Result<String> {
+    Ok(n.to_formatted_string(&Locale::en))
+}
+
 /// Gets initials from a User with specified count.
 ///
 /// Extracts initials from the user's first and last names:
@@ -48,8 +49,6 @@ pub(crate) fn full_name(user: &User, _: &dyn askama::Values) -> askama::Result<S
 /// Usage in templates:
 /// - For 2 initials: {{ `user|user_initials(2)` }}
 /// - For 1 initial: {{ `user|user_initials(1)` }}
-///
-/// Note: Askama passes Values as second argument when filter has parameters.
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn user_initials(user: &User, _: &dyn askama::Values, count: usize) -> askama::Result<String> {
     let mut initials = String::new();
@@ -86,7 +85,24 @@ pub(crate) fn user_initials(user: &User, _: &dyn askama::Values, count: usize) -
 
 #[cfg(test)]
 mod tests {
+    use uuid::Uuid;
+
     use super::*;
+
+    fn create_user(first_name: Option<&str>, last_name: Option<&str>) -> User {
+        User {
+            id: Uuid::new_v4(),
+            first_name: first_name.map(|s| s.to_string()),
+            last_name: last_name.map(|s| s.to_string()),
+            company: None,
+            title: None,
+            photo_url: None,
+            facebook_url: None,
+            linkedin_url: None,
+            twitter_url: None,
+            website_url: None,
+        }
+    }
 
     #[test]
     fn test_demoji() {
@@ -134,257 +150,75 @@ mod tests {
 
     #[test]
     fn test_full_name() {
-        use uuid::Uuid;
-
         // Test with both first and last name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("John".to_string()),
-            last_name: Some("Doe".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("John"), Some("Doe"));
         assert_eq!(full_name(&user, &()).unwrap(), "John Doe");
 
         // Test with only first name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("Alice".to_string()),
-            last_name: None,
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("Alice"), None);
         assert_eq!(full_name(&user, &()).unwrap(), "Alice");
 
         // Test with only last name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: None,
-            last_name: Some("Smith".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(None, Some("Smith"));
         assert_eq!(full_name(&user, &()).unwrap(), "Smith");
 
         // Test with no names
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: None,
-            last_name: None,
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(None, None);
         assert_eq!(full_name(&user, &()).unwrap(), "");
 
         // Test with names that have leading/trailing spaces
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("  Bob  ".to_string()),
-            last_name: Some("  Johnson  ".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("  Bob  "), Some("  Johnson  "));
         assert_eq!(full_name(&user, &()).unwrap(), "Bob Johnson");
     }
 
     #[test]
     fn test_user_initials() {
-        use uuid::Uuid;
-
         // Test with both first and last name (default 2 initials)
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("John".to_string()),
-            last_name: Some("Doe".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("John"), Some("Doe"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "JD");
 
         // Test with only first name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("Alice".to_string()),
-            last_name: None,
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("Alice"), None);
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "A");
 
         // Test with only last name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: None,
-            last_name: Some("Smith".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(None, Some("Smith"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "S");
 
         // Test with no names
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: None,
-            last_name: None,
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(None, None);
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "");
 
         // Test with names that have leading/trailing spaces
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("  Bob  ".to_string()),
-            last_name: Some("  Johnson  ".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("  Bob  "), Some("  Johnson  "));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "BJ");
 
         // Test with single character names
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("X".to_string()),
-            last_name: Some("Y".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("X"), Some("Y"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "XY");
     }
 
     #[test]
     fn test_user_initials_with_count() {
-        use uuid::Uuid;
-
         // Test with count of 1 - should get only first name initial
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("Jane".to_string()),
-            last_name: Some("Doe".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("Jane"), Some("Doe"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "J");
 
         // Test with count of 3
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("Alexander".to_string()),
-            last_name: Some("Hamilton".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("Alexander"), Some("Hamilton"));
         // With our new logic, count > 2 still returns only first + last initials
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 3).unwrap(), "AH");
 
         // Test with count of 1 and only first name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("Alice".to_string()),
-            last_name: None,
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("Alice"), None);
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "A");
 
         // Test with count of 1 and only last name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: None,
-            last_name: Some("Smith".to_string()),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(None, Some("Smith"));
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "S");
 
         // Test with count of 4 with only first name
-        let user = User {
-            id: Uuid::new_v4(),
-            first_name: Some("Margaret".to_string()),
-            last_name: None,
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        };
+        let user = create_user(Some("Margaret"), None);
         // With our new logic, count > 2 still returns only the first initial when no last name
         assert_eq!(user_initials(&user, &() as &dyn askama::Values, 4).unwrap(), "M");
     }
