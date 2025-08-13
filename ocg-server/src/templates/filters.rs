@@ -63,7 +63,8 @@ pub(crate) fn user_initials(user: &User, _: &dyn askama::Values, count: usize) -
     }
 
     // If count is 2 and we need a second initial, get first character of last name
-    if count >= 2 && initials.len() < 2
+    if count >= 2
+        && initials.len() < 2
         && let Some(last_name) = &user.last_name
         && let Some(first_char) = last_name.trim().chars().next()
         && first_char.is_alphabetic()
