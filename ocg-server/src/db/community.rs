@@ -11,7 +11,6 @@ use crate::{
     db::{BBox, PgDB, Total},
     templates::community::{explore, home},
     types::{
-        community::Community,
         event::{EventDetailed, EventKind, EventSummary},
         group::{GroupDetailed, GroupSummary},
     },
@@ -20,9 +19,6 @@ use crate::{
 /// Database trait defining all data access operations for the community site.
 #[async_trait]
 pub(crate) trait DBCommunity {
-    /// Retrieves community information by its unique identifier.
-    async fn get_community(&self, community_id: Uuid) -> Result<Community>;
-
     /// Retrieves available filter options for the community explore page.
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions>;
 
@@ -59,18 +55,6 @@ pub(crate) trait DBCommunity {
 
 #[async_trait]
 impl DBCommunity for PgDB {
-    /// [`DB::get_community`]
-    #[instrument(skip(self), err)]
-    async fn get_community(&self, community_id: Uuid) -> Result<Community> {
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select get_community($1::uuid)::text", &[&community_id])
-            .await?;
-        let community = Community::try_from_json(&row.get::<_, String>(0))?;
-
-        Ok(community)
-    }
-
     /// [`DB::get_community_filters_options`]
     #[instrument(skip(self), err)]
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions> {

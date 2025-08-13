@@ -19,6 +19,7 @@
 {{ template "dashboard-community/list_community_groups.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}
+{{ template "dashboard-community/update_community.sql" }}
 {{ template "dashboard-community/update_group.sql" }}
 
 {{ template "dashboard-group/add_event.sql" }}

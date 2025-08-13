@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::community::groups::Group,
+    templates::dashboard::community::{groups::Group, settings::CommunityUpdate},
     types::group::{GroupCategory, GroupRegion, GroupSummary},
 };
 
@@ -29,6 +29,9 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Lists all regions for a community.
     async fn list_regions(&self, community_id: Uuid) -> Result<Vec<GroupRegion>>;
+
+    /// Updates a community's settings.
+    async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()>;
 
     /// Updates an existing group.
     async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()>;
@@ -89,6 +92,18 @@ impl DBDashboardCommunity for PgDB {
             .await?;
         let regions: Vec<GroupRegion> = serde_json::from_str(&row.get::<_, String>(0))?;
         Ok(regions)
+    }
+
+    /// [`DBDashboardCommunity::update_community`]
+    #[instrument(skip(self, community), err)]
+    async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()> {
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_community($1::uuid, $2::jsonb)",
+            &[&community_id, &Json(community)],
+        )
+        .await?;
+        Ok(())
     }
 
     /// [`DBDashboardCommunity::update_group`]

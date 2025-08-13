@@ -2,3 +2,4 @@
 
 pub(crate) mod groups;
 pub(crate) mod home;
+pub(crate) mod settings;
