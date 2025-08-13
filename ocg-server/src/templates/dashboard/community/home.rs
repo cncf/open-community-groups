@@ -3,7 +3,10 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::{templates::dashboard::community::groups, types::community::Community};
+use crate::{
+    templates::dashboard::community::{groups, settings},
+    types::community::Community,
+};
 
 /// Home page template for the community dashboard.
 #[allow(dead_code)]
@@ -23,6 +26,8 @@ pub(crate) struct Page {
 pub(crate) enum Content {
     /// Groups management page.
     Groups(groups::ListPage),
+    /// Settings page.
+    Settings(Box<settings::UpdatePage>),
 }
 
 impl Content {
@@ -31,12 +36,19 @@ impl Content {
     fn is_groups(&self) -> bool {
         matches!(self, Content::Groups(_))
     }
+
+    /// Check if the content is the settings page.
+    #[allow(dead_code)]
+    fn is_settings(&self) -> bool {
+        matches!(self, Content::Settings(_))
+    }
 }
 
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Groups(template) => write!(f, "{}", template.render()?),
+            Content::Settings(template) => write!(f, "{}", template.render()?),
         }
     }
 }
@@ -48,4 +60,6 @@ pub(crate) enum Tab {
     /// Groups management tab (default).
     #[default]
     Groups,
+    /// Settings tab.
+    Settings,
 }

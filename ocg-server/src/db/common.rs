@@ -7,12 +7,15 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    types::{event::EventFull, group::GroupFull},
+    types::{community::Community, event::EventFull, group::GroupFull},
 };
 
 /// Common database operations trait.
 #[async_trait]
 pub(crate) trait DBCommon {
+    /// Retrieves community information by its unique identifier.
+    async fn get_community(&self, community_id: Uuid) -> Result<Community>;
+
     /// Gets full event details.
     async fn get_event_full(&self, event_id: Uuid) -> Result<EventFull>;
 
@@ -22,6 +25,18 @@ pub(crate) trait DBCommon {
 
 #[async_trait]
 impl DBCommon for PgDB {
+    /// [`DBCommon::get_community`]
+    #[instrument(skip(self), err)]
+    async fn get_community(&self, community_id: Uuid) -> Result<Community> {
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select get_community($1::uuid)::text", &[&community_id])
+            .await?;
+        let community = Community::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(community)
+    }
+
     /// [`DBCommon::get_event_full`]
     #[instrument(skip(self), err)]
     async fn get_event_full(&self, event_id: Uuid) -> Result<EventFull> {

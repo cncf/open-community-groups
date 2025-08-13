@@ -168,6 +168,10 @@ fn setup_community_dashboard_router() -> Router<State> {
             "/groups/{group_id}/delete",
             delete(dashboard::community::groups::delete),
         )
+        .route(
+            "/settings/update",
+            get(dashboard::community::settings::update_page).put(dashboard::community::settings::update),
+        )
 }
 
 /// Sets up the group dashboard router and its routes.
@@ -186,5 +190,9 @@ fn setup_group_dashboard_router() -> Router<State> {
         .route(
             "/events/{event_id}/delete",
             delete(dashboard::group::events::delete),
+        )
+        .route(
+            "/settings/update",
+            get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )
 }

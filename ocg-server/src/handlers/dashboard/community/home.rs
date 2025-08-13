@@ -16,6 +16,7 @@ use crate::{
     templates::dashboard::community::{
         groups,
         home::{Content, Page, Tab},
+        settings,
     },
 };
 
@@ -41,6 +42,9 @@ pub(crate) async fn page(
             let groups = db.list_community_groups(community_id).await?;
             Content::Groups(groups::ListPage { groups })
         }
+        Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
+            community: community.clone(),
+        })),
     };
 
     // Render the page

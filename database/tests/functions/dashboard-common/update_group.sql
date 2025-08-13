@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(2);
+select plan(3);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -134,6 +134,97 @@ select throws_ok(
     'P0001',
     'group not found',
     'update_group should throw error when trying to update deleted group'
+);
+
+-- Test update_group converts empty strings to null for nullable fields
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    description,
+    banner_url,
+    city,
+    state,
+    country_code,
+    country_name,
+    website_url,
+    created_at
+) values (
+    '00000000-0000-0000-0000-000000000023'::uuid,
+    'Test Group for Empty Strings',
+    'test-group-empty-strings',
+    :'community1ID',
+    :'category1ID',
+    'Has some values',
+    'https://example.com/banner.jpg',
+    'San Francisco',
+    'CA',
+    'US',
+    'United States',
+    'https://example.com',
+    '2024-01-15 10:00:00+00'
+);
+
+select update_group(
+    '00000000-0000-0000-0000-000000000023'::uuid,
+    '{
+        "name": "Updated Group Empty Strings",
+        "slug": "updated-group-empty-strings",
+        "category_id": "00000000-0000-0000-0000-000000000011",
+        "description": "",
+        "banner_url": "",
+        "city": "",
+        "state": "",
+        "country_code": "",
+        "country_name": "",
+        "website_url": "",
+        "facebook_url": "",
+        "twitter_url": "",
+        "linkedin_url": "",
+        "github_url": "",
+        "slack_url": "",
+        "youtube_url": "",
+        "instagram_url": "",
+        "flickr_url": "",
+        "wechat_url": "",
+        "logo_url": "",
+        "region_id": ""
+    }'::jsonb
+);
+
+select is(
+    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location'
+     from (
+        select * from "group" where group_id = '00000000-0000-0000-0000-000000000023'::uuid
+     ) t),
+    '{
+        "name": "Updated Group Empty Strings",
+        "slug": "updated-group-empty-strings",
+        "description": null,
+        "banner_url": null,
+        "city": null,
+        "state": null,
+        "country_code": null,
+        "country_name": null,
+        "website_url": null,
+        "facebook_url": null,
+        "twitter_url": null,
+        "linkedin_url": null,
+        "github_url": null,
+        "slack_url": null,
+        "youtube_url": null,
+        "instagram_url": null,
+        "flickr_url": null,
+        "wechat_url": null,
+        "logo_url": null,
+        "region_id": null,
+        "extra_links": null,
+        "photos_urls": null,
+        "tags": null
+    }'::jsonb,
+    'update_group should convert empty strings to null for nullable fields'
 );
 
 -- Finish tests and rollback transaction

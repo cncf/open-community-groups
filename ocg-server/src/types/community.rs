@@ -6,16 +6,28 @@ use anyhow::Result;
 use palette::{Darken, Lighten, Srgb};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+use uuid::Uuid;
 
 /// Community information used in some community pages.
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Community {
+    /// Whether the community is active.
+    pub active: bool,
+    /// Unique identifier for the community.
+    pub community_id: Uuid,
+    /// Layout identifier for the community site.
+    pub community_site_layout_id: String,
+    /// Creation timestamp in milliseconds since epoch.
+    pub created_at: i64,
     /// Brief description of the community's purpose or focus.
     pub description: String,
     /// Human-readable name shown in the UI (e.g., "CNCF").
     pub display_name: String,
     /// URL to the logo image shown in the page header.
     pub header_logo_url: String,
+    /// Host domain for the community.
+    pub host: String,
     /// Unique identifier used in URLs and database references.
     pub name: String,
     /// Visual theme configuration including primary color and palette.

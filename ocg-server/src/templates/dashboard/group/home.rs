@@ -2,9 +2,11 @@
 
 use askama::Template;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
-use crate::{templates::dashboard::group::events, types::community::Community};
+use crate::{
+    templates::dashboard::group::{events, settings},
+    types::community::Community,
+};
 
 /// Home page template for the group dashboard.
 #[allow(dead_code)]
@@ -15,10 +17,6 @@ pub(crate) struct Page {
     pub community: Community,
     /// Current request path.
     pub path: String,
-    /// Group identifier.
-    pub group_id: Uuid,
-    /// Group name.
-    pub group_name: String,
     /// Main content section for the page.
     pub content: Content,
 }
@@ -28,6 +26,8 @@ pub(crate) struct Page {
 pub(crate) enum Content {
     /// Events management page.
     Events(events::ListPage),
+    /// Settings management page.
+    Settings(Box<settings::UpdatePage>),
 }
 
 impl Content {
@@ -36,12 +36,19 @@ impl Content {
     fn is_events(&self) -> bool {
         matches!(self, Content::Events(_))
     }
+
+    /// Check if the content is the settings page.
+    #[allow(dead_code)]
+    fn is_settings(&self) -> bool {
+        matches!(self, Content::Settings(_))
+    }
 }
 
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Events(template) => write!(f, "{}", template.render()?),
+            Content::Settings(template) => write!(f, "{}", template.render()?),
         }
     }
 }
@@ -53,4 +60,6 @@ pub(crate) enum Tab {
     /// Events management tab (default).
     #[default]
     Events,
+    /// Settings management tab.
+    Settings,
 }
