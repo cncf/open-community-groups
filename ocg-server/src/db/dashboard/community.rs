@@ -32,9 +32,6 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Updates a community's settings.
     async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()>;
-
-    /// Updates an existing group.
-    async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()>;
 }
 
 #[async_trait]
@@ -101,18 +98,6 @@ impl DBDashboardCommunity for PgDB {
         db.execute(
             "select update_community($1::uuid, $2::jsonb)",
             &[&community_id, &Json(community)],
-        )
-        .await?;
-        Ok(())
-    }
-
-    /// [`DBDashboardCommunity::update_group`]
-    #[instrument(skip(self, group), err)]
-    async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()> {
-        let db = self.pool.get().await?;
-        db.execute(
-            "select update_group($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(group)],
         )
         .await?;
         Ok(())

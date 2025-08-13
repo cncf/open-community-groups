@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(2);
+select plan(3);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -177,6 +177,53 @@ select is(
         "youtube_url": "https://youtube.com/new"
     }'::jsonb,
     'update_community should update all fields correctly including optional ones'
+);
+
+-- Test update_community converts empty strings to null for nullable fields
+select update_community(
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    '{
+        "ad_banner_url": "",
+        "ad_banner_link_url": "",
+        "copyright_notice": "",
+        "facebook_url": "",
+        "flickr_url": "",
+        "footer_logo_url": "",
+        "github_url": "",
+        "instagram_url": "",
+        "linkedin_url": "",
+        "new_group_details": "",
+        "slack_url": "",
+        "twitter_url": "",
+        "website_url": "",
+        "wechat_url": "",
+        "youtube_url": ""
+    }'::jsonb
+);
+
+select is(
+    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'community_site_layout_id' - 'description' - 'display_name' - 'header_logo_url' - 'host' - 'name' - 'theme' - 'title' - 'extra_links' - 'photos_urls'
+     from (
+        select * from community where community_id = '00000000-0000-0000-0000-000000000001'::uuid
+     ) t),
+    '{
+        "ad_banner_url": null,
+        "ad_banner_link_url": null,
+        "copyright_notice": null,
+        "facebook_url": null,
+        "flickr_url": null,
+        "footer_logo_url": null,
+        "github_url": null,
+        "instagram_url": null,
+        "linkedin_url": null,
+        "new_group_details": null,
+        "slack_url": null,
+        "twitter_url": null,
+        "website_url": null,
+        "wechat_url": null,
+        "youtube_url": null
+    }'::jsonb,
+    'update_community should convert empty strings to null for nullable fields'
 );
 
 -- Finish tests and rollback transaction

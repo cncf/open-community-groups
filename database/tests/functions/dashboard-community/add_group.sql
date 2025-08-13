@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(2);
+select plan(3);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -127,6 +127,73 @@ select is(
         "organizers": []
     }'::jsonb,
     'add_group should create group with all fields and return expected structure'
+);
+
+-- Test add_group function converts empty strings to null for nullable fields
+do $$
+declare
+    v_group_id uuid;
+begin
+    v_group_id := add_group(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '{
+            "name": "Empty String Test Group",
+            "slug": "empty-string-test-group-unique",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "",
+            "banner_url": "",
+            "city": "",
+            "country_code": "",
+            "country_name": "",
+            "state": "",
+            "region_id": "",
+            "logo_url": "",
+            "website_url": "",
+            "facebook_url": "",
+            "twitter_url": "",
+            "linkedin_url": "",
+            "github_url": "",
+            "slack_url": "",
+            "youtube_url": "",
+            "instagram_url": "",
+            "flickr_url": "",
+            "wechat_url": ""
+        }'::jsonb
+    );
+end $$;
+
+select is(
+    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location' 
+     from (
+        select * from "group" 
+        where slug = 'empty-string-test-group-unique'
+     ) t),
+    '{
+        "name": "Empty String Test Group",
+        "slug": "empty-string-test-group-unique",
+        "description": null,
+        "banner_url": null,
+        "city": null,
+        "country_code": null,
+        "country_name": null,
+        "state": null,
+        "region_id": null,
+        "logo_url": null,
+        "website_url": null,
+        "facebook_url": null,
+        "twitter_url": null,
+        "linkedin_url": null,
+        "github_url": null,
+        "slack_url": null,
+        "youtube_url": null,
+        "instagram_url": null,
+        "flickr_url": null,
+        "wechat_url": null,
+        "extra_links": null,
+        "photos_urls": null,
+        "tags": null
+    }'::jsonb,
+    'add_group should convert empty strings to null for nullable fields'
 );
 
 -- Finish tests and rollback transaction

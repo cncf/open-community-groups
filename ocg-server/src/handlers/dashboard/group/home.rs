@@ -19,6 +19,7 @@ use crate::{
     templates::dashboard::group::{
         events,
         home::{Content, Page, Tab},
+        settings,
     },
 };
 
@@ -45,14 +46,16 @@ pub(crate) async fn page(
             let events = db.list_group_events(group_id).await?;
             Content::Events(events::ListPage { events })
         }
+        Tab::Settings => {
+            let group = db.get_group_full(group_id).await?;
+            Content::Settings(Box::new(settings::UpdatePage { group }))
+        }
     };
 
     // Render the page
     let page = Page {
         community,
         path: "/dashboard/group".to_string(),
-        group_id,
-        group_name: "Group".to_string(), // TODO: Get actual group name
         content,
     };
 

@@ -191,4 +191,8 @@ fn setup_group_dashboard_router() -> Router<State> {
             "/events/{event_id}/delete",
             delete(dashboard::group::events::delete),
         )
+        .route(
+            "/settings/update",
+            get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
+        )
 }
