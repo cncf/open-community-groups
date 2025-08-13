@@ -28,7 +28,7 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> as
 /// - If neither exists, returns an empty string
 ///
 /// Usage in templates:
-/// {{ user|full_name }}
+/// {{ `user|full_name` }}
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn full_name(user: &User, _: &dyn askama::Values) -> askama::Result<String> {
     match (&user.first_name, &user.last_name) {
@@ -46,8 +46,8 @@ pub(crate) fn full_name(user: &User, _: &dyn askama::Values) -> askama::Result<S
 /// - If count is 2: Returns first letter of first name + first letter of last name
 ///
 /// Usage in templates:
-/// - For 2 initials: {{ user|user_initials(2) }}
-/// - For 1 initial: {{ user|user_initials(1) }}
+/// - For 2 initials: {{ `user|user_initials(2)` }}
+/// - For 1 initial: {{ `user|user_initials(1)` }}
 ///
 /// Note: Askama passes Values as second argument when filter has parameters.
 #[allow(clippy::unnecessary_wraps)]
@@ -55,34 +55,29 @@ pub(crate) fn user_initials(user: &User, _: &dyn askama::Values, count: usize) -
     let mut initials = String::new();
 
     // Get the first character of first name
-    if let Some(first_name) = &user.first_name {
-        if let Some(first_char) = first_name.trim().chars().next() {
-            if first_char.is_alphabetic() {
-                initials.push(first_char.to_ascii_uppercase());
-            }
-        }
+    if let Some(first_name) = &user.first_name
+        && let Some(first_char) = first_name.trim().chars().next()
+        && first_char.is_alphabetic()
+    {
+        initials.push(first_char.to_ascii_uppercase());
     }
 
     // If count is 2 and we need a second initial, get first character of last name
-    if count >= 2 && initials.len() < 2 {
-        if let Some(last_name) = &user.last_name {
-            if let Some(first_char) = last_name.trim().chars().next() {
-                if first_char.is_alphabetic() {
-                    initials.push(first_char.to_ascii_uppercase());
-                }
-            }
-        }
+    if count >= 2 && initials.len() < 2
+        && let Some(last_name) = &user.last_name
+        && let Some(first_char) = last_name.trim().chars().next()
+        && first_char.is_alphabetic()
+    {
+        initials.push(first_char.to_ascii_uppercase());
     }
 
     // If no first name but we have a last name, use it as the first initial
-    if initials.is_empty() {
-        if let Some(last_name) = &user.last_name {
-            if let Some(first_char) = last_name.trim().chars().next() {
-                if first_char.is_alphabetic() {
-                    initials.push(first_char.to_ascii_uppercase());
-                }
-            }
-        }
+    if initials.is_empty()
+        && let Some(last_name) = &user.last_name
+        && let Some(first_char) = last_name.trim().chars().next()
+        && first_char.is_alphabetic()
+    {
+        initials.push(first_char.to_ascii_uppercase());
     }
 
     Ok(initials)
