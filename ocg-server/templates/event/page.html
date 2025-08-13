@@ -46,7 +46,11 @@
 
               {# Social networks -#}
               {% if has_social_links -%}
-                <div class="flex flex-wrap gap-2">{% call social_networks(event = event) -%}</div>
+                <div class="flex flex-wrap gap-2">
+                  {% if let Some(meetup_url) = event.meetup_url -%}
+                    {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
+                  {% endif -%}
+                </div>
               {% endif -%}
               {# End social networks -#}
             </div>
@@ -87,7 +91,11 @@
 
         {# Social networks -#}
         {% if has_social_links -%}
-          <div class="flex flex-wrap gap-2">{% call social_networks(event = event) -%}</div>
+          <div class="flex flex-wrap gap-2">
+            {% if let Some(meetup_url) = event.meetup_url -%}
+              {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
+            {% endif -%}
+          </div>
         {% endif -%}
         {# End social networks -#}
       </div>
@@ -268,27 +276,18 @@
                 <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
                 <div class="flex flex-wrap gap-2">
                   {% for speaker in session.speakers -%}
-                    <div class="flex items-center gap-2 bg-stone-50 rounded-full px-3 py-1">
-                      <avatar-image
-                      {% if let Some(photo_url) = speaker.photo_url -%}
-                        image-url="{{ photo_url }}"
-                      {% endif -%}
-                      size="size-[24px]" hide-border="true" placeholder="{{ speaker|user_initials(1) }}">
-                      </avatar-image>
-                      <span class="text-sm text-stone-700">
-                        {% if let Some(first_name) = speaker.first_name -%}
-                          {% if let Some(last_name) = speaker.last_name -%}
-                            {{ first_name }} {{ last_name }}
-                          {% else -%}
-                            {{ first_name }}
-                          {% endif -%}
-                        {% else if let Some(last_name) = speaker.last_name -%}
-                          {{ last_name }}
-                        {% else -%}
-                          Speaker
+                    {# Only display speakers that have a first name or last name defined -#}
+                    {% if speaker.first_name.is_some() || speaker.last_name.is_some() -%}
+                      <div class="flex items-center gap-2 bg-stone-50 rounded-full px-3 py-1">
+                        <avatar-image
+                        {% if let Some(photo_url) = speaker.photo_url -%}
+                          image-url="{{ photo_url }}"
                         {% endif -%}
-                      </span>
-                    </div>
+                        size="size-[24px]" hide-border="true" placeholder="{{ speaker|user_initials(1) }}">
+                        </avatar-image>
+                        <span class="text-sm text-stone-700">{{ speaker|full_name }}</span>
+                      </div>
+                    {% endif -%}
                   {% endfor -%}
                 </div>
               </div>
@@ -306,92 +305,59 @@
       <h2 class="text-2xl font-semibold text-stone-900 mb-6">Hosts</h2>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for host in event.hosts -%}
-          <div class="border border-stone-200 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-              {# Host photo -#}
-              <div class="flex-shrink-0">
-                <avatar-image
-                {% if let Some(photo_url) = host.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
-                size="size-12" placeholder="{{ host|user_initials(2) }}">
-                </avatar-image>
-              </div>
-              {# End host photo -#}
+          {# Only display hosts that have a first name or last name defined -#}
+          {% if host.first_name.is_some() || host.last_name.is_some() -%}
+            <div class="border border-stone-200 rounded-lg p-4">
+              <div class="flex items-start gap-3">
+                {# Host photo -#}
+                <div class="flex-shrink-0">
+                  <avatar-image
+                  {% if let Some(photo_url) = host.photo_url -%}
+                    image-url="{{ photo_url }}"
+                  {% endif -%}
+                  size="size-12" placeholder="{{ host|user_initials(2) }}">
+                  </avatar-image>
+                </div>
+                {# End host photo -#}
 
-              {# Host details -#}
-              <div class="flex-1">
-                {# Host name -#}
-                <div class="font-semibold text-stone-900">
-                  {% if let Some(first_name) = host.first_name -%}
-                    {% if let Some(last_name) = host.last_name -%}
-                      {{ first_name }} {{ last_name }}
-                    {% else -%}
-                      {{ first_name }}
+                {# Host details -#}
+                <div class="flex-1">
+                  {# Host name -#}
+                  <div class="font-semibold text-stone-900">{{ host|full_name }}</div>
+                  {# End host name -#}
+
+                  {# Host role/title and company if available -#}
+                  <div class="text-sm text-stone-600 mt-0.5">
+                    {% if let Some(title) = host.title -%}
+                      <span>{{ title }}</span>
+                      {% if let Some(company) = host.company -%}
+                        <span>at {{ company }}</span>
+                      {% endif -%}
+                    {% else if let Some(company) = host.company -%}
+                      <span>{{ company }}</span>
                     {% endif -%}
-                  {% else if let Some(last_name) = host.last_name -%}
-                    {{ last_name }}
-                  {% else -%}
-                    Host
-                  {% endif -%}
-                </div>
-                {# End host name -#}
+                  </div>
 
-                {# Host role/title and company if available -#}
-                <div class="text-sm text-stone-600 mt-0.5">
-                  {% if let Some(title) = host.title -%}
-                    <span>{{ title }}</span>
-                    {% if let Some(company) = host.company -%}
-                      <span>at {{ company }}</span>
+                  {# Host social links if available -#}
+                  <div class="flex gap-2 mt-2">
+                    {% if let Some(linkedin_url) = host.linkedin_url -%}
+                      {% call host_social_link(url = linkedin_url, label = "LinkedIn profile", icon = "linkedin") -%}
                     {% endif -%}
-                  {% else if let Some(company) = host.company -%}
-                    <span>{{ company }}</span>
-                  {% endif -%}
+                    {% if let Some(twitter_url) = host.twitter_url -%}
+                      {% call host_social_link(url = twitter_url, label = "Twitter profile", icon = "twitter") -%}
+                    {% endif -%}
+                    {% if let Some(facebook_url) = host.facebook_url -%}
+                      {% call host_social_link(url = facebook_url, label = "Facebook profile", icon = "facebook") -%}
+                    {% endif -%}
+                    {% if let Some(website_url) = host.website_url -%}
+                      {% call host_social_link(url = website_url, label = "Personal website", icon = "website") -%}
+                    {% endif -%}
+                  </div>
                 </div>
-
-                {# Host social links if available -#}
-                <div class="flex gap-2 mt-2">
-                  {% if let Some(linkedin_url) = host.linkedin_url -%}
-                    <a href="{{ linkedin_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
-                       aria-label="LinkedIn profile">
-                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-linkedin"></div>
-                    </a>
-                  {% endif -%}
-                  {% if let Some(twitter_url) = host.twitter_url -%}
-                    <a href="{{ twitter_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
-                       aria-label="Twitter profile">
-                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-twitter"></div>
-                    </a>
-                  {% endif -%}
-                  {% if let Some(facebook_url) = host.facebook_url -%}
-                    <a href="{{ facebook_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
-                       aria-label="Facebook profile">
-                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-facebook"></div>
-                    </a>
-                  {% endif -%}
-                  {% if let Some(website_url) = host.website_url -%}
-                    <a href="{{ website_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
-                       aria-label="Personal website">
-                      <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-website"></div>
-                    </a>
-                  {% endif -%}
-                </div>
+                {# End host details -#}
               </div>
-              {# End host details -#}
             </div>
-          </div>
+          {% endif -%}
         {% endfor -%}
       </div>
     </div>
@@ -419,9 +385,14 @@
   {% endif -%}
 {% endmacro -%}
 
-{# Macro for rendering social network links -#}
-{% macro social_networks(event) -%}
-  {% if let Some(meetup_url) = event.meetup_url -%}
-    {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
-  {% endif -%}
+{# Macro for rendering a single host social link -#}
+{% macro host_social_link(url, label, icon) -%}
+  <a href="{{ url }}"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
+     aria-label="{{ label }}">
+    <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-{{ icon }}"></div>
+  </a>
 {% endmacro -%}
+{# End macro for rendering a single host social link -#}

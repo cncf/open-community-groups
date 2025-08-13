@@ -20,6 +20,25 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> as
     Ok(n.to_formatted_string(&Locale::en))
 }
 
+/// Gets the full name of a User.
+///
+/// Returns the user's full name in the format "First Last".
+/// - If only first name exists, returns just the first name
+/// - If only last name exists, returns just the last name
+/// - If neither exists, returns an empty string
+///
+/// Usage in templates:
+/// {{ user|full_name }}
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn full_name(user: &User, _: &dyn askama::Values) -> askama::Result<String> {
+    match (&user.first_name, &user.last_name) {
+        (Some(first), Some(last)) => Ok(format!("{} {}", first.trim(), last.trim())),
+        (Some(first), None) => Ok(first.trim().to_string()),
+        (None, Some(last)) => Ok(last.trim().to_string()),
+        (None, None) => Ok(String::new()),
+    }
+}
+
 /// Gets initials from a User with specified count.
 ///
 /// Extracts initials from the user's first and last names:
@@ -115,6 +134,86 @@ mod tests {
         // Different integer types
         assert_eq!(num_fmt(&1_234u32, &()).unwrap(), "1,234");
         assert_eq!(num_fmt(&1_234i64, &()).unwrap(), "1,234");
+    }
+
+    #[test]
+    fn test_full_name() {
+        use uuid::Uuid;
+
+        // Test with both first and last name
+        let user = User {
+            id: Uuid::new_v4(),
+            first_name: Some("John".to_string()),
+            last_name: Some("Doe".to_string()),
+            company: None,
+            title: None,
+            photo_url: None,
+            facebook_url: None,
+            linkedin_url: None,
+            twitter_url: None,
+            website_url: None,
+        };
+        assert_eq!(full_name(&user, &()).unwrap(), "John Doe");
+
+        // Test with only first name
+        let user = User {
+            id: Uuid::new_v4(),
+            first_name: Some("Alice".to_string()),
+            last_name: None,
+            company: None,
+            title: None,
+            photo_url: None,
+            facebook_url: None,
+            linkedin_url: None,
+            twitter_url: None,
+            website_url: None,
+        };
+        assert_eq!(full_name(&user, &()).unwrap(), "Alice");
+
+        // Test with only last name
+        let user = User {
+            id: Uuid::new_v4(),
+            first_name: None,
+            last_name: Some("Smith".to_string()),
+            company: None,
+            title: None,
+            photo_url: None,
+            facebook_url: None,
+            linkedin_url: None,
+            twitter_url: None,
+            website_url: None,
+        };
+        assert_eq!(full_name(&user, &()).unwrap(), "Smith");
+
+        // Test with no names
+        let user = User {
+            id: Uuid::new_v4(),
+            first_name: None,
+            last_name: None,
+            company: None,
+            title: None,
+            photo_url: None,
+            facebook_url: None,
+            linkedin_url: None,
+            twitter_url: None,
+            website_url: None,
+        };
+        assert_eq!(full_name(&user, &()).unwrap(), "");
+
+        // Test with names that have leading/trailing spaces
+        let user = User {
+            id: Uuid::new_v4(),
+            first_name: Some("  Bob  ".to_string()),
+            last_name: Some("  Johnson  ".to_string()),
+            company: None,
+            title: None,
+            photo_url: None,
+            facebook_url: None,
+            linkedin_url: None,
+            twitter_url: None,
+            website_url: None,
+        };
+        assert_eq!(full_name(&user, &()).unwrap(), "Bob Johnson");
     }
 
     #[test]
