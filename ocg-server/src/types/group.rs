@@ -27,6 +27,9 @@ pub struct GroupSummary {
     /// UTC timestamp when the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Unique identifier for the group.
+    #[serde(rename = "group_id", alias = "id")]
+    pub id: Uuid,
     /// Display name of the group.
     pub name: String,
     /// URL-friendly identifier for this group.
@@ -83,6 +86,9 @@ pub struct GroupDetailed {
     /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Unique identifier for the group.
+    #[serde(rename = "group_id", alias = "id")]
+    pub id: Uuid,
     /// Group name.
     pub name: String,
     /// URL slug of the group.
@@ -141,6 +147,7 @@ impl From<GroupDetailed> for GroupSummary {
             category: detailed.category,
             color: detailed.color,
             created_at: detailed.created_at,
+            id: detailed.id,
             name: detailed.name,
             slug: detailed.slug,
             city: detailed.city,
@@ -165,6 +172,9 @@ pub struct GroupFull {
     /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Unique identifier for the group.
+    #[serde(rename = "group_id", alias = "id")]
+    pub id: Uuid,
     /// Total number of group members.
     pub members_count: i64,
     /// Group name.

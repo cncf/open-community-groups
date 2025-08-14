@@ -144,6 +144,7 @@ select is(
                 "normalized_name": "technology"
             },
             "created_at": 1739268000,
+            "group_id": "00000000-0000-0000-0000-000000000031",
             "logo_url": "https://example.com/group-logo.png"
         },
         "hosts": [

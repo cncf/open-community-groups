@@ -110,6 +110,7 @@ select is(
             "name": "Business",
             "normalized_name": "business"
         },
+        "group_id": "00000000-0000-0000-0000-000000000021",
         "description": "Updated description",
         "city": "New York",
         "state": "NY",
