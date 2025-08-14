@@ -64,6 +64,7 @@ select is(
             "city": "London",
             "name": "Test Group 3",
             "slug": "test-group-3",
+            "group_id": "00000000-0000-0000-0000-000000000033",
             "logo_url": "https://example.com/logo3.png",
             "created_at": 1704272400,
             "region": {
@@ -84,6 +85,7 @@ select is(
             "name": "Test Group 2",
             "slug": "test-group-2",
             "state": "CA",
+            "group_id": "00000000-0000-0000-0000-000000000032",
             "logo_url": "https://example.com/logo2.png",
             "created_at": 1704186000,
             "region": {
@@ -104,6 +106,7 @@ select is(
             "name": "Test Group 1",
             "slug": "test-group-1",
             "state": "NY",
+            "group_id": "00000000-0000-0000-0000-000000000031",
             "logo_url": "https://example.com/logo1.png",
             "created_at": 1704099600,
             "region": {

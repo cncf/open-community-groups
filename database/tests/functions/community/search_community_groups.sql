@@ -89,6 +89,7 @@ select is(
                 "normalized_name": "technology"
             },
             "created_at": 1704362400,
+            "group_id": "00000000-0000-0000-0000-000000000034",
             "name": "Tech Innovators",
             "slug": "tech-innovators",
             "city": "Austin",
@@ -111,6 +112,7 @@ select is(
                 "normalized_name": "technology"
             },
             "created_at": 1704276000,
+            "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Kubernetes Meetup",
             "slug": "kubernetes-meetup",
             "city": "San Francisco",
@@ -134,6 +136,7 @@ select is(
                 "normalized_name": "technology"
             },
             "created_at": 1704189600,
+            "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Docker Users",
             "slug": "docker-users",
             "city": "New York",
@@ -157,6 +160,7 @@ select is(
                 "normalized_name": "business"
             },
             "created_at": 1704103200,
+            "group_id": "00000000-0000-0000-0000-000000000033",
             "name": "Business Leaders",
             "slug": "business-leaders",
             "city": "London",

@@ -132,6 +132,7 @@ select is(
                 "order": 1
             },
             "created_at": 1704103200,
+            "group_id": "00000000-0000-0000-0000-000000000021",
             "name": "Alpha Group",
             "slug": "alpha-group",
             "city": "San Francisco",
@@ -154,6 +155,7 @@ select is(
                 "order": 1
             },
             "created_at": 1704205800,
+            "group_id": "00000000-0000-0000-0000-000000000022",
             "name": "Zeta Group",
             "slug": "zeta-group",
             "city": "New York",

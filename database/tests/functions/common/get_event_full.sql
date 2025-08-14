@@ -291,6 +291,7 @@ select is(
                 "normalized_name": "technology"
             },
             "created_at": 1709287200,
+            "group_id": "00000000-0000-0000-0000-000000000021",
             "name": "Test Group",
             "slug": "test-group"
         },

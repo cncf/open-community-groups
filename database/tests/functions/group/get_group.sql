@@ -114,6 +114,7 @@ select is(
         "slug": "kubernetes-nyc",
         "tags": ["kubernetes", "cloud-native", "devops"],
         "state": "NY",
+        "group_id": "00000000-0000-0000-0000-000000000031",
         "latitude": 40.7128,
         "logo_url": "https://example.com/k8s-logo.png",
         "longitude": -74.006,
