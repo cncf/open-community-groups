@@ -24,7 +24,10 @@
         {% call link(content = "Home", href = "/", current_path = path) -%}
         {% call link(content = "Explore", href = "/explore", current_path = path) -%}
         {% if let Some(new_group_details) = self.community.new_group_details -%}
-          {% call button(id = "open-new-group-btn", content = "New group") -%}
+          <button id="open-new-group-btn"
+                  class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors">
+            New group
+          </button>
           <script type="module">
             import {
               toggleModalVisibility
@@ -88,7 +91,10 @@
           <div class="space-y-2 py-6">
             {% call mobile_link(content = "Home", href = "/") -%}
             {% call mobile_link(content = "Explore", href = "/explore") -%}
-            {% call mobile_button(content = "New group", id = "open-new-group-mobile-btn") -%}
+            <button id="open-new-group-mobile-btn"
+                    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors">
+              New group
+            </button>
             <script type="module">
               import {
                 toggleMobileNavbarVisibility,
@@ -198,16 +204,6 @@
 {% endmacro link -%}
 {# End link -#}
 
-{# Button -#}
-{% macro button(id, content, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <button id="{{ id }}"
-          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors {{ extra_styles_ }}">
-    {{ content }}
-  </button>
-{% endmacro button -%}
-{# End button -#}
 
 {# Mobile link -#}
 {% macro mobile_link(content, href, extra_styles = None) -%}
@@ -221,13 +217,3 @@
 {% endmacro mobile_link -%}
 {# End mobile link -#}
 
-{# Mobile button -#}
-{% macro mobile_button(content, id, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <button id="{{ id }}"
-          class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors {{ extra_styles_ }}">
-    {{ content }}
-  </button>
-{% endmacro mobile_button -%}
-{# End mobile button -#}
