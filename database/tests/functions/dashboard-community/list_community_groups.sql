@@ -31,7 +31,7 @@ insert into community (
     description,
     header_logo_url,
     theme
-) values
+) values 
     (
         :'community1ID',
         'cloud-native-seattle',
@@ -76,7 +76,7 @@ insert into "group" (
     country_name,
     logo_url,
     region_id
-) values
+) values 
     (
         :'group1ID',
         :'community1ID',
