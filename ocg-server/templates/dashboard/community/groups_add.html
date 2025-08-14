@@ -48,11 +48,9 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
-              <option value="30761651-f4b4-5beb-ad07-d259ae7daad1">Regional</option>
-              <option value="bb0618f0-1414-5015-968b-e7c960f58ebc">CNCF Hosted Projects</option>
-              <option value="1d949d3b-107e-5836-8fa6-8296b5826e75">Community Days</option>
-              <option value="a8403794-97e7-5852-a224-5207a479581a">Technical Advisory Groups</option>
-              <option value="5debb4ca-66f9-5d15-95d7-5a3d396af05f">Virtual</option>
+              {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+              {% endfor %}
             </select>
           </div>
           <p class="form-legend">Type of group or event series.</p>
@@ -65,12 +63,9 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="region_id" name="region_id" class="select-primary">
               <option value="">Select a region (optional)</option>
-              <option value="42743170-fc48-5115-ae0b-8a50292ff86a">North America</option>
-              <option value="7bde7e72-642b-5075-867b-ce309f33a8b0">Europe</option>
-              <option value="9ce8ff39-a35a-5df5-bc97-8942875509e5">Latin America</option>
-              <option value="0bb2cc28-9159-579c-aada-d560a62e696f">Africa</option>
-              <option value="432b0a6a-2d36-5e71-bedf-0d9797a93df5">Asia</option>
-              <option value="c1372306-b066-59ed-b5b2-b396210f04be">Oceania</option>
+              {% for region in regions %}
+                <option value="{{ region.id }}">{{ region.name }}</option>
+              {% endfor %}
             </select>
           </div>
           <p class="form-legend">Geographic region where the group is primarily based.</p>
