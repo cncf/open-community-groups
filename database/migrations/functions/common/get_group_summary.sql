@@ -12,7 +12,7 @@ returns json as $$
         'group_id', g.group_id,
         'name', g.name,
         'slug', g.slug,
-
+        
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,
