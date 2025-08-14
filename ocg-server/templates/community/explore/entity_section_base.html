@@ -20,7 +20,7 @@
 
   {# Filters content -#}
   {# Header Filters -#}
-  {% call macros::header() -%}
+  {% include "community/explore/filters_header.html" -%}
   {# End header filters -#}
 
   {# Entity selector -#}
@@ -60,7 +60,7 @@
   <div id="explore-filters"
        class="relative hidden w-[28%] xl:w-1/4 lg:block bg-white border border-stone-200 rounded-lg">
     {# Header Filters -#}
-    {% call macros::header() -%}
+    {% include "community/explore/filters_header.html" -%}
     {# End header filters -#}
 
     {# Entity selector -#}

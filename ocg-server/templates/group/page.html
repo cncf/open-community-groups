@@ -44,7 +44,7 @@
             {# Social networks -#}
             {% if has_social_links -%}
               <div class="hidden md:flex flex-col items-end gap-2">
-                <div class="flex flex-wrap gap-2">{% call social_networks() -%}</div>
+                <div class="flex flex-wrap gap-2">{% include "dashboard/group/social_networks.html" -%}</div>
               </div>
             {% endif -%}
             {# End social networks -#}
@@ -106,7 +106,7 @@
           {# Social networks (mobile only) -#}
           {% if has_social_links -%}
             <div class="md:hidden mb-8 md:mb-0">
-              <div class="flex flex-wrap gap-2">{% call social_networks() -%}</div>
+              <div class="flex flex-wrap gap-2">{% include "dashboard/group/social_networks.html" -%}</div>
             </div>
           {% endif -%}
           {# End social networks (mobile) -#}
@@ -221,48 +221,3 @@
     {# End past events section -#}
   </div>
 {% endblock content -%}
-
-{# Macro for rendering social network links -#}
-{% macro social_networks() -%}
-  {% if let Some(website_url) = group.website_url -%}
-    {% call common::social_link(url = website_url, icon_name = "website", platform_name = "Website") -%}
-  {% endif -%}
-  {% if let Some(twitter_url) = group.twitter_url -%}
-    {% call common::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -%}
-  {% endif -%}
-  {% if let Some(facebook_url) = group.facebook_url -%}
-    {% call common::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -%}
-  {% endif -%}
-  {% if let Some(linkedin_url) = group.linkedin_url -%}
-    {% call common::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn") -%}
-  {% endif -%}
-  {% if let Some(github_url) = group.github_url -%}
-    {% call common::social_link(url = github_url, icon_name = "github", platform_name = "GitHub") -%}
-  {% endif -%}
-  {% if let Some(instagram_url) = group.instagram_url -%}
-    {% call common::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram") -%}
-  {% endif -%}
-  {% if let Some(youtube_url) = group.youtube_url -%}
-    {% call common::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube") -%}
-  {% endif -%}
-  {% if let Some(slack_url) = group.slack_url -%}
-    {% call common::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -%}
-  {% endif -%}
-  {% if let Some(wechat_url) = group.wechat_url -%}
-    {% call common::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -%}
-  {% endif -%}
-  {% if let Some(flickr_url) = group.flickr_url -%}
-    {% call common::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -%}
-  {% endif -%}
-  {% if let Some(extra_links) = group.extra_links -%}
-    {% for (name, url) in extra_links -%}
-      <a href="{{ url }}"
-         target="_blank"
-         rel="noopener noreferrer"
-         class="group btn-secondary-anchor p-1.5 h-[30px] w-[30px] flex items-center justify-center"
-         title="{{ name }}">
-        <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white transition-colors icon-link"></div>
-      </a>
-    {% endfor -%}
-  {% endif -%}
-{% endmacro -%}
