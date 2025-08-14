@@ -9,6 +9,7 @@ returns json as $$
             'order', gc.order
         ),
         'created_at', floor(extract(epoch from g.created_at)),
+        'group_id', g.group_id,
         'members_count', (
             select count(*)
             from group_member
