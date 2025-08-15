@@ -1,0 +1,202 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Events list header with title -#}
+{% call macros::form_title(title = "Events") -%}
+
+<div class="flex justify-between my-10">
+  <div class="flex items-center gap-x-6">
+    {# Search events input (display only) -#}
+    <div class="relative">
+      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <input id="search_events"
+             name="search_events"
+             type="text"
+             value=""
+             class="input-primary peer ps-9 w-96"
+             placeholder="Search events"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false"
+             disabled>
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button id="clean-search-events"
+                type="button"
+                class="cursor-pointer mt-[2px]"
+                disabled>
+          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+        </button>
+      </div>
+    </div>
+    {# End search events input -#}
+  </div>
+
+  {# Add event button -#}
+  <div>
+    <button id="add-event-button"
+            hx-get="/dashboard/group/events/add"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary">Add Event</button>
+  </div>
+  {# End add event button -#}
+
+  <script type="module">
+    const addEventButton = document.getElementById('add-event-button');
+    if (addEventButton) {
+      addEventButton.addEventListener('htmx:afterRequest', () => {
+        history.pushState({}, "Events list", '/dashboard/group?tab=events');
+      });
+    }
+  </script>
+</div>
+
+{# Events Table -#}
+<div class="relative overflow-visible">
+  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      {# Header -#}
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date & Time</th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="events-list">
+      {% if events.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-20 text-center" colspan="5">
+            <div class="text-xl lg:text-2xl mb-10">It looks like you haven't created any events yet.</div>
+
+            <p class="text-sm lg:text-md text-stone-700">
+              Events created for this group will be listed here. You can create a new event by clicking on the <span class="italic">Add Event</span> button in the top right corner.
+            </p>
+          </td>
+        </tr>
+      {% else -%}
+        {% for event in events -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <th scope="row"
+                class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+              <div class="flex items-center">
+                {# Event logo/icon -#}
+                <div class="mr-3">
+                  {% call common::logo(logo_url = event.logo_url, classes = "h-10 w-10 min-w-10", size = 40, color = event.group_color) -%}
+                </div>
+                {# End event logo/icon -#}
+
+                <div class="min-w-0">
+                  {# Event name -#}
+                  <div class="max-w-full truncate">{{ event.name }}</div>
+                  {# End event name -#}
+
+                  {# Mobile type and date -#}
+                  <div class="block xl:hidden text-xs text-stone-500">
+                    <div class="max-w-full truncate">{{ event.kind }}</div>
+                    {% if let Some(start_time) = event.starts_at -%}
+                      <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}</div>
+                    {% endif -%}
+                  </div>
+                  {# End mobile type and date -#}
+                </div>
+              </div>
+            </th>
+
+            {# Event Type -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+              {% call common::event_badge(kind = event.kind) -%}
+            </td>
+            {# End event type -#}
+
+            {# Date & Time -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
+              {% if let Some(start_time) = event.starts_at -%}
+                <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
+                <div class="max-w-full truncate text-xs text-stone-400">{{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}</div>
+              {% else -%}
+                <span class="text-stone-400">TBD</span>
+              {% endif -%}
+            </td>
+            {# End date & time -#}
+
+            {# Location -#}
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
+              {% let kind_str = event.kind.to_string() -%}
+              {% if kind_str == "virtual" -%}
+                <span class="text-stone-500">Virtual</span>
+              {% elif let Some(venue_city) = event.venue_city -%}
+                <div class="max-w-full truncate">{{ venue_city }}</div>
+              {% else -%}
+                <span class="text-stone-400">-</span>
+              {% endif -%}
+            </td>
+            {# End location -#}
+
+            {# Actions -#}
+            <td class="px-3 xl:px-5 py-4 w-32 xl:w-40">
+              <div class="flex items-center gap-x-1 xl:gap-x-3">
+                {# Update event button -#}
+                <div>
+                  <button hx-get="/dashboard/group/events/{{ event.id }}/update"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-swap="innerHTML show:body:top"
+                          hx-disabled-elt="this"
+                          class="btn-tertiary p-2">
+                    <div class="svg-icon size-4 icon-pencil"></div>
+                  </button>
+                </div>
+                {# End update event button -#}
+
+                {# Delete event button -#}
+                <div>
+                  <button id="delete-event-{{ event.id }}"
+                          hx-delete="/dashboard/group/events/{{ event.id }}/delete"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-trigger="confirmed"
+                          class="btn-tertiary p-2 text-red-600 hover:bg-red-50">
+                    <div class="svg-icon size-4 icon-trash bg-red-600"></div>
+                  </button>
+                  <script type="module">
+                    import {
+                      showConfirmAlert,
+                      showErrorAlert,
+                      showSuccessAlert,
+                    } from '/static/js/common/alerts.js';
+                    import {
+                      isSuccessfulXHRStatus
+                    } from '/static/js/common/common.js';
+
+                    const deleteEventButton = document.getElementById('delete-event-{{ event.id }}');
+                    if (deleteEventButton) {
+                      deleteEventButton.addEventListener('click', (event) => {
+                        showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.id }}", "Yes");
+                      });
+
+                      deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
+                        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                          showSuccessAlert("You have successfully deleted the event.");
+                        } else {
+                          showErrorAlert("An error occurred deleting this event, please try again later.");
+                        }
+                      });
+                    }
+                  </script>
+                </div>
+                {# End delete event button -#}
+              </div>
+            </td>
+            {# End actions -#}
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End Events Table -#}
