@@ -30,7 +30,7 @@ export class MultipleInputs extends LitWrapper {
 
   constructor() {
     super();
-    this.items = [{ id: 0, value: "" }];
+    this.items = null;
     this.fieldName = "";
     this.inputType = "text";
     this.placeholder = "";
@@ -66,6 +66,8 @@ export class MultipleInputs extends LitWrapper {
       });
       // Set _nextId to prevent future ID collisions
       this._nextId = this.items.length;
+    } else {
+      this.items = [{ id: 0, value: "" }];
     }
   }
 
