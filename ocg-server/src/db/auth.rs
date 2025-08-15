@@ -27,7 +27,7 @@ pub(crate) trait DBAuth {
     async fn get_user_by_email(&self, email: &str) -> Result<Option<User>>;
 
     /// Retrieves a user by their unique ID.
-    async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
+    async fn get_user_by_id(&self, user_id: &Uuid, include_password: bool) -> Result<Option<User>>;
 
     /// Retrieves a user by their username.
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
@@ -47,7 +47,7 @@ pub(crate) trait DBAuth {
     async fn update_session(&self, record: &session::Record) -> Result<()>;
 
     /// Updates user details in the database.
-    async fn update_user_details(&self, user_id: &Uuid, user_summary: &UserSummary) -> Result<()>;
+    async fn update_user_details(&self, user_id: &Uuid, user: &User) -> Result<()>;
 
     /// Updates a user's password in the database.
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
@@ -132,7 +132,8 @@ impl DBAuth for PgDB {
             .query_opt(
                 "
                 select * from get_user_by_id(
-                    (select user_id from \"user\" where email = $1::text)
+                    (select user_id from \"user\" where email = $1::text),
+                    false
                 );
                 ",
                 &[&email],
@@ -145,12 +146,15 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, user_id), err)]
-    async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>> {
+    async fn get_user_by_id(&self, user_id: &Uuid, include_password: bool) -> Result<Option<User>> {
         trace!("db: get user (by id)");
 
         let db = self.pool.get().await?;
         let user = db
-            .query_opt("select * from get_user_by_id($1::uuid);", &[&user_id])
+            .query_opt(
+                "select * from get_user_by_id($1::uuid, $2::boolean);",
+                &[&user_id, &include_password],
+            )
             .await?
             .map(|row| serde_json::from_value(row.get(0)))
             .transpose()?;
@@ -167,7 +171,8 @@ impl DBAuth for PgDB {
             .query_opt(
                 "
                 select * from get_user_by_id(
-                    (select user_id from \"user\" where username = $1::text)
+                    (select user_id from \"user\" where username = $1::text),
+                    true
                 );
                 ",
                 &[&username],
@@ -245,28 +250,16 @@ impl DBAuth for PgDB {
         Ok(())
     }
 
-    #[instrument(skip(self, user_summary), err)]
-    async fn update_user_details(&self, user_id: &Uuid, user_summary: &UserSummary) -> Result<()> {
+    #[instrument(skip(self, user), err)]
+    async fn update_user_details(&self, user_id: &Uuid, user: &User) -> Result<()> {
         trace!("db: update user details");
 
+        let mut user_data = serde_json::to_value(user)?;
+        user_data["user_id"] = serde_json::Value::String(user_id.to_string());
+
         let db = self.pool.get().await?;
-        db.execute(
-            "
-            update \"user\"
-            set
-                email = $2::text,
-                username = $3::text,
-                name = $4::text
-            where user_id = $1::uuid;
-            ",
-            &[
-                &user_id,
-                &user_summary.email,
-                &user_summary.username,
-                &user_summary.name,
-            ],
-        )
-        .await?;
+        db.execute("select update_user_details($1::jsonb);", &[&user_data])
+            .await?;
 
         Ok(())
     }

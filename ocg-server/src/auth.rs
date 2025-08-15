@@ -298,7 +298,7 @@ impl axum_login::AuthnBackend for AuthnBackend {
 
     /// Retrieve a user by user ID from the database.
     async fn get_user(&self, user_id: &axum_login::UserId<Self>) -> Result<Option<Self::User>, Self::Error> {
-        self.db.get_user_by_id(user_id).await.map_err(AuthError)
+        self.db.get_user_by_id(user_id, false).await.map_err(AuthError)
     }
 }
 
@@ -409,10 +409,34 @@ pub(crate) struct User {
     /// User's username.
     pub username: String,
 
+    /// User's biography.
+    pub bio: Option<String>,
+    /// User's city.
+    pub city: Option<String>,
+    /// User's company.
+    pub company: Option<String>,
+    /// User's country.
+    pub country: Option<String>,
+    /// User's Facebook URL.
+    pub facebook_url: Option<String>,
     /// Whether the user has a password set.
     pub has_password: Option<bool>,
+    /// User's interests.
+    pub interests: Option<Vec<String>>,
+    /// User's `LinkedIn` URL.
+    pub linkedin_url: Option<String>,
     /// User's password hash (if present).
     pub password: Option<String>,
+    /// User's photo URL.
+    pub photo_url: Option<String>,
+    /// User's timezone.
+    pub timezone: Option<String>,
+    /// User's title.
+    pub title: Option<String>,
+    /// User's Twitter URL.
+    pub twitter_url: Option<String>,
+    /// User's website URL.
+    pub website_url: Option<String>,
 }
 
 impl axum_login::AuthUser for User {

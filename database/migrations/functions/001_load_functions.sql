@@ -1,5 +1,6 @@
 {{ template "auth/get_user_by_id.sql" }}
 {{ template "auth/sign_up_user.sql" }}
+{{ template "auth/update_user_details.sql" }}
 
 {{ template "common/format_group_description.sql" }}
 {{ template "common/get_group_summary.sql" }}

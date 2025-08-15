@@ -12,7 +12,7 @@ use axum::{
         header::{CACHE_CONTROL, CONTENT_TYPE},
     },
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
 };
 use axum_messages::MessagesManagerLayer;
 use rust_embed::Embed;
@@ -73,6 +73,14 @@ pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
     // Setup router
     let mut router = Router::new()
         .route("/", get(community::home::page))
+        .route(
+            "/dashboard/account/update/details",
+            put(auth::update_user_details),
+        )
+        .route(
+            "/dashboard/account/update/password",
+            put(auth::update_user_password),
+        )
         .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
         .route("/explore", get(community::explore::page))

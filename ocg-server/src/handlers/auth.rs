@@ -360,13 +360,12 @@ pub(crate) async fn sign_up(
 }
 
 /// Handler that updates the user's details.
-#[allow(dead_code)]
 #[instrument(skip_all, err)]
 pub(crate) async fn update_user_details(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    Form(user_summary): Form<auth::UserSummary>,
+    Form(user_data): Form<auth::User>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session
     let Some(user) = auth_session.user else {
@@ -375,14 +374,13 @@ pub(crate) async fn update_user_details(
 
     // Update user in database
     let user_id = user.user_id;
-    db.update_user_details(&user_id, &user_summary).await?;
+    db.update_user_details(&user_id, &user_data).await?;
     messages.success("User details updated successfully.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
 /// Handler that updates the user's password.
-#[allow(dead_code)]
 #[instrument(skip_all, err)]
 pub(crate) async fn update_user_password(
     auth_session: AuthSession,

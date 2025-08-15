@@ -46,6 +46,14 @@ pub(crate) struct SignUpPage {
     pub next_url: Option<String>,
 }
 
+/// Template for the update user page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "auth/update_user.html")]
+pub(crate) struct UpdateUserPage {
+    /// Authenticated user information.
+    pub user: User,
+}
+
 // Types.
 
 /// User information for authentication templates and session state.
