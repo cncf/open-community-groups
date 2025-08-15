@@ -99,7 +99,9 @@
                   <div class="block xl:hidden text-xs text-stone-500">
                     <div class="max-w-full truncate">{{ event.kind }}</div>
                     {% if let Some(start_time) = event.starts_at -%}
-                      <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}</div>
+                      <div class="max-w-full truncate">
+                        {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
+                      </div>
                     {% endif -%}
                   </div>
                   {# End mobile type and date -#}
@@ -117,7 +119,9 @@
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
               {% if let Some(start_time) = event.starts_at -%}
                 <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
-                <div class="max-w-full truncate text-xs text-stone-400">{{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}</div>
+                <div class="max-w-full truncate text-xs text-stone-400">
+                  {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
+                </div>
               {% else -%}
                 <span class="text-stone-400">TBD</span>
               {% endif -%}
@@ -126,13 +130,14 @@
 
             {# Location -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
-              {% let kind_str = event.kind.to_string() -%}
-              {% if kind_str == "virtual" -%}
-                <span class="text-stone-500">Virtual</span>
-              {% elif let Some(venue_city) = event.venue_city -%}
-                <div class="max-w-full truncate">{{ venue_city }}</div>
+              {% if event.kind != EventKind::Virtual -%}
+                {% if let Some(venue_city) = event.venue_city -%}
+                  <div class="max-w-full truncate">{{ venue_city }}</div>
+                {% else -%}
+                  <span class="text-stone-400">-</span>
+                {% endif -%}
               {% else -%}
-                <span class="text-stone-400">-</span>
+                <span class="text-stone-500">Virtual</span>
               {% endif -%}
             </td>
             {# End location -#}
