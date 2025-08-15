@@ -217,10 +217,12 @@ select columns_are('region', array[
 
 select columns_are('user', array[
     'user_id',
+    'auth_hash',
     'email',
+    'email_verified',
+    'username',
     'created_at',
     'community_id',
-    'auth_providers',
     'bio',
     'city',
     'company',
@@ -230,6 +232,7 @@ select columns_are('user', array[
     'interests',
     'last_name',
     'linkedin_url',
+    'password',
     'photo_url',
     'timezone',
     'title',
@@ -288,6 +291,7 @@ select indexes_are('group', array[
 select indexes_are('user', array[
     'user_pkey',
     'user_email_key',
+    'user_username_key',
     'user_community_id_idx'
 ]);
 

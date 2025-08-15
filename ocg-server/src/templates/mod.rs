@@ -4,6 +4,7 @@
 //! compile-time checked using Askama, providing type safety and performance. The
 //! structure mirrors the handler organization.
 
+pub(crate) mod auth;
 pub(crate) mod common;
 pub(crate) mod community;
 pub(crate) mod dashboard;

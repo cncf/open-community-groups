@@ -1,3 +1,6 @@
+{{ template "auth/get_user_by_id.sql" }}
+{{ template "auth/sign_up_user.sql" }}
+
 {{ template "common/format_group_description.sql" }}
 {{ template "common/get_group_summary.sql" }}
 {{ template "common/get_event_detailed.sql" }}

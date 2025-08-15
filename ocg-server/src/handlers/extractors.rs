@@ -1,15 +1,22 @@
 //! Custom extractors for handlers.
 
+use std::{sync::Arc, time::Duration};
+
 use anyhow::Result;
 use axum::{
-    extract::FromRequestParts,
+    extract::{FromRequestParts, Path},
     http::{StatusCode, header::HOST, request::Parts},
 };
 use cached::proc_macro::cached;
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use crate::{db::DynDB, router};
+use crate::{
+    auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails},
+    config::{OAuth2Provider, OidcProvider},
+    db::DynDB,
+    router,
+};
 
 /// Extractor that resolves a community ID from the request's Host header.
 ///
@@ -47,19 +54,6 @@ impl FromRequestParts<router::State> for CommunityId {
     }
 }
 
-/// Extractor for the selected group ID from the session.
-pub(crate) struct SelectedGroupId(pub Uuid);
-
-impl FromRequestParts<router::State> for SelectedGroupId {
-    type Rejection = (StatusCode, &'static str);
-
-    #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(_parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
-        // TODO
-        Ok(SelectedGroupId(Uuid::nil()))
-    }
-}
-
 /// Cached lookup function for resolving community IDs from hostnames.
 ///
 /// Results are cached for 24 hours (86400 seconds) to minimize database queries. The
@@ -77,4 +71,59 @@ async fn lookup_community_id(db: DynDB, host: &str) -> Result<Option<Uuid>> {
         return Ok(None);
     }
     db.get_community_id(host).await
+}
+
+/// Extractor for `OAuth2` provider details from the authenticated session.
+pub(crate) struct OAuth2(pub Arc<OAuth2ProviderDetails>);
+
+impl FromRequestParts<router::State> for OAuth2 {
+    type Rejection = (StatusCode, &'static str);
+
+    #[instrument(skip_all, err(Debug))]
+    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+        let Ok(provider) = Path::<OAuth2Provider>::from_request_parts(parts, state).await else {
+            return Err((StatusCode::BAD_REQUEST, "missing oauth2 provider"));
+        };
+        let Ok(auth_session) = AuthSession::from_request_parts(parts, state).await else {
+            return Err((StatusCode::BAD_REQUEST, "missing auth session"));
+        };
+        let Some(provider_details) = auth_session.backend.oauth2_providers.get(&provider) else {
+            return Err((StatusCode::BAD_REQUEST, "oauth2 provider not supported"));
+        };
+        Ok(OAuth2(provider_details.clone()))
+    }
+}
+
+/// Extractor for `Oidc` provider details from the authenticated session.
+pub(crate) struct Oidc(pub Arc<OidcProviderDetails>);
+
+impl FromRequestParts<router::State> for Oidc {
+    type Rejection = (StatusCode, &'static str);
+
+    #[instrument(skip_all, err(Debug))]
+    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+        let Ok(provider) = Path::<OidcProvider>::from_request_parts(parts, state).await else {
+            return Err((StatusCode::BAD_REQUEST, "missing oidc provider"));
+        };
+        let Ok(auth_session) = AuthSession::from_request_parts(parts, state).await else {
+            return Err((StatusCode::BAD_REQUEST, "missing auth session"));
+        };
+        let Some(provider_details) = auth_session.backend.oidc_providers.get(&provider) else {
+            return Err((StatusCode::BAD_REQUEST, "oidc provider not supported"));
+        };
+        Ok(Oidc(provider_details.clone()))
+    }
+}
+
+/// Extractor for the selected group ID from the session.
+pub(crate) struct SelectedGroupId(pub Uuid);
+
+impl FromRequestParts<router::State> for SelectedGroupId {
+    type Rejection = (StatusCode, &'static str);
+
+    #[instrument(skip_all, err(Debug))]
+    async fn from_request_parts(_parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
+        // TODO
+        Ok(SelectedGroupId(Uuid::nil()))
+    }
 }

@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tracing::instrument;
+use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{
@@ -28,6 +28,8 @@ impl DBCommon for PgDB {
     /// [`DBCommon::get_community`]
     #[instrument(skip(self), err)]
     async fn get_community(&self, community_id: Uuid) -> Result<Community> {
+        trace!("db: get community");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one("select get_community($1::uuid)::text", &[&community_id])
@@ -40,22 +42,28 @@ impl DBCommon for PgDB {
     /// [`DBCommon::get_event_full`]
     #[instrument(skip(self), err)]
     async fn get_event_full(&self, event_id: Uuid) -> Result<EventFull> {
+        trace!("db: get event full");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one("select get_event_full($1::uuid)::text", &[&event_id])
             .await?;
         let event = EventFull::try_from_json(&row.get::<_, String>(0))?;
+
         Ok(event)
     }
 
     /// [`DBCommon::get_group_full`]
     #[instrument(skip(self), err)]
     async fn get_group_full(&self, group_id: Uuid) -> Result<GroupFull> {
+        trace!("db: get group full");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one("select get_group_full($1::uuid)::text", &[&group_id])
             .await?;
         let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
+
         Ok(group)
     }
 }

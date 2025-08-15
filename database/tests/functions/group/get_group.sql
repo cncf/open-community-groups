@@ -41,11 +41,11 @@ insert into region (region_id, name, community_id)
 values (:'region1ID', 'North America', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, first_name, last_name, company, title, photo_url, created_at)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, first_name, last_name, company, title, photo_url, created_at)
 values
-    (:'user1ID', 'organizer1@example.com', :'community1ID', 'John', 'Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'user2ID', 'organizer2@example.com', :'community1ID', 'Jane', 'Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
-    (:'user3ID', 'member@example.com', :'community1ID', 'Bob', 'Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
+    (:'user1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'John', 'Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'user2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Jane', 'Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
+    (:'user3ID', 'member@example.com', 'member1', false, 'test_hash'::bytea, :'community1ID', 'Bob', 'Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
 -- Seed group with all fields
 insert into "group" (

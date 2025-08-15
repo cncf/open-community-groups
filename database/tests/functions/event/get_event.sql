@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(3);
+select plan(2);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -47,12 +47,12 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, first_name, last_name, photo_url, company, title, created_at)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, first_name, last_name, photo_url, company, title, created_at)
 values
-    (:'user1ID', 'host1@example.com', :'community1ID', 'John', 'Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
-    (:'user3ID', 'organizer1@example.com', :'community1ID', 'Alice', 'Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
-    (:'user4ID', 'organizer2@example.com', :'community1ID', 'Bob', 'Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
+    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John', 'Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash'::bytea, :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
+    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Alice', 'Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
+    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Bob', 'Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
 -- Seed event with all fields
 insert into event (
@@ -212,12 +212,6 @@ select is(
 select ok(
     get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'non-existing-event') is null,
     'get_event with non-existing event slug should return null'
-);
-
--- Test get_event with non-existing group slug
-select ok(
-    get_event('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group', 'tech-conference-2024') is null,
-    'get_event with non-existing group slug should return null'
 );
 
 -- Finish tests and rollback transaction

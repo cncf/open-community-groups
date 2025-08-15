@@ -46,11 +46,13 @@ create index community_community_site_layout_id_idx on community (community_site
 
 create table "user" (
     user_id uuid primary key default gen_random_uuid(),
-    email text not null unique check (email <> ''),
-    created_at timestamptz default current_timestamp not null,
+    auth_hash bytea not null check (auth_hash <> ''),
     community_id uuid not null references community,
+    created_at timestamptz default current_timestamp not null,
+    email text not null unique check (email <> ''),
+    email_verified boolean not null default false,
+    username text not null check (username <> '') unique,
 
-    auth_providers jsonb,
     bio text check (bio <> ''),
     city text check (city <> ''),
     company text check (company <> ''),
@@ -60,6 +62,7 @@ create table "user" (
     interests text[],
     last_name text check (last_name <> ''),
     linkedin_url text check (linkedin_url <> ''),
+    password text check (password <> ''),
     photo_url text check (photo_url <> ''),
     timezone text check (timezone <> ''),
     title text check (title <> ''),
@@ -349,3 +352,10 @@ create table session_speaker (
 
 create index session_speaker_session_id_idx on session_speaker (session_id);
 create index session_speaker_user_id_idx on session_speaker (user_id);
+
+create table auth_session (
+    session_id text primary key,
+
+    data jsonb not null,
+    expires_at timestamptz not null
+);
