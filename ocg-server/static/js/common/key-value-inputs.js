@@ -81,21 +81,6 @@ export class KeyValueInputs extends LitWrapper {
     this._updateItem(index, field, value);
   }
 
-  _handleInputBlur(index, field, event) {
-    const value = event.target.value.trim();
-    const currentPair = this._itemsArray[index];
-
-    // Auto-add new input if this is the last item and both fields have content
-    if (
-      index === this._itemsArray.length - 1 &&
-      currentPair.key.trim() !== "" &&
-      currentPair.value.trim() !== "" &&
-      (this.maxItems === 0 || this._itemsArray.length < this.maxItems)
-    ) {
-      this._addItem();
-    }
-  }
-
   _isAddButtonDisabled() {
     return this.maxItems > 0 && this._itemsArray.length >= this.maxItems;
   }
@@ -119,7 +104,6 @@ export class KeyValueInputs extends LitWrapper {
                   placeholder="${this.keyPlaceholder}"
                   value="${item.key}"
                   @input="${(e) => this._handleInputChange(index, "key", e)}"
-                  @blur="${(e) => this._handleInputBlur(index, "key", e)}"
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -131,7 +115,6 @@ export class KeyValueInputs extends LitWrapper {
                   placeholder="${this.valuePlaceholder}"
                   value="${item.value}"
                   @input="${(e) => this._handleInputChange(index, "value", e)}"
-                  @blur="${(e) => this._handleInputBlur(index, "value", e)}"
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"

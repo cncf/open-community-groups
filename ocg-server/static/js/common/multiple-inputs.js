@@ -24,6 +24,18 @@ export class MultipleInputs extends LitWrapper {
     this.maxItems = 0; // 0 means no limit
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadInitialData();
+  }
+
+  _loadInitialData() {
+    // Ensure items is always an array
+    if (!this.items) {
+      this.items = [""];
+    }
+  }
+
   _addItem() {
     if (this.maxItems > 0 && this.items.length >= this.maxItems) {
       return;
@@ -57,19 +69,6 @@ export class MultipleInputs extends LitWrapper {
     this._updateItem(index, value);
   }
 
-  _handleInputBlur(index, event) {
-    const value = event.target.value.trim();
-
-    // Auto-add new input if this is the last item and it has content
-    if (
-      index === this.items.length - 1 &&
-      value !== "" &&
-      (this.maxItems === 0 || this.items.length < this.maxItems)
-    ) {
-      this._addItem();
-    }
-  }
-
   _isAddButtonDisabled() {
     return this.maxItems > 0 && this.items.length >= this.maxItems;
   }
@@ -99,7 +98,6 @@ export class MultipleInputs extends LitWrapper {
                   placeholder="${this.placeholder}"
                   value="${item}"
                   @input="${(e) => this._handleInputChange(index, e)}"
-                  @blur="${(e) => this._handleInputBlur(index, e)}"
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"

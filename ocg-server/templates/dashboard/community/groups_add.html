@@ -48,9 +48,7 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
-              {% for category in categories %}
-                <option value="{{ category.id }}">{{ category.name }}</option>
-              {% endfor %}
+              {% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Type of group or event series.</p>
@@ -63,9 +61,7 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="region_id" name="region_id" class="select-primary">
               <option value="">Select a region (optional)</option>
-              {% for region in regions %}
-                <option value="{{ region.id }}">{{ region.name }}</option>
-              {% endfor %}
+              {% for region in regions %}<option value="{{ region.id }}">{{ region.name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Geographic region where the group is primarily based.</p>
@@ -320,16 +316,12 @@
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Tags -#}
-        <div class="col-span-full">
-          <label for="tags" class="form-label">Tags</label>
+        <div class="col-span-3">
+          <label class="form-label">Tags</label>
           <div class="mt-2">
-            <input type="text"
-                   name="tags"
-                   id="tags"
-                   class="input-primary"
-                   placeholder="kubernetes, cloud-native, devops">
+            <multiple-inputs field-name="tags" input-type="text" label="Tag">
+            </multiple-inputs>
           </div>
-          <p class="form-legend">Comma-separated tags relevant to the group.</p>
         </div>
         {# End Tags -#}
       </div>

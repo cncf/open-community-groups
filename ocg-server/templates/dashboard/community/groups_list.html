@@ -137,6 +137,7 @@
                   <button hx-get="/dashboard/community/groups/{{ group.id }}/update"
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
+                          hx-swap="innerHTML show:body:top"
                           hx-disabled-elt="this"
                           class="btn-tertiary p-2">
                     <div class="svg-icon size-4 icon-pencil"></div>

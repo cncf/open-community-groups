@@ -338,19 +338,12 @@
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Tags -#}
-        <div class="col-span-full">
-          <label for="tags" class="form-label">Tags</label>
+        <div class="col-span-3">
+          <label class="form-label">Tags</label>
           <div class="mt-2">
-            <input type="text"
-                   name="tags"
-                   id="tags"
-                   class="input-primary"
-                   placeholder="kubernetes, cloud-native, devops"
-                   {% if let Some(tags) = group.tags %}
-                     value="{%- for tag in tags -%}{{ tag }}{%- if !loop.last -%}, {%- endif -%}{%- endfor -%}"
-                   {% endif %}>
+            <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = group.tags -%}{{ tags|json }}{%- endif -%}" label="Tag">
+            </multiple-inputs>
           </div>
-          <p class="form-legend">Comma-separated tags relevant to the group.</p>
         </div>
         {# End Tags -#}
       </div>
