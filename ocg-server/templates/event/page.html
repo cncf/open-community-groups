@@ -278,7 +278,7 @@
                 <div class="flex flex-wrap gap-2">
                   {% for speaker in session.speakers -%}
                     {# Only display speakers that have a first name or last name defined -#}
-                    {% if speaker.first_name.is_some() || speaker.last_name.is_some() -%}
+                    {% if speaker.name.is_some() -%}
                       <div class="flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-3 py-1">
                         <avatar-image
                         {% if let Some(photo_url) = speaker.photo_url -%}
@@ -286,7 +286,7 @@
                         {% endif -%}
                         size="size-[24px]" hide-border="true" placeholder="{{ speaker|user_initials(1) }}">
                         </avatar-image>
-                        <span class="text-sm text-stone-700">{{ speaker|full_name }}</span>
+                        <span class="text-sm text-stone-700">{{ speaker.name.as_deref().unwrap_or("") }}</span>
                       </div>
                     {% endif -%}
                   {% endfor -%}
@@ -307,7 +307,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for host in event.hosts -%}
           {# Only display hosts that have a first name or last name defined -#}
-          {% if host.first_name.is_some() || host.last_name.is_some() -%}
+          {% if host.name.is_some() -%}
             <div class="border border-stone-200 rounded-lg p-4">
               <div class="flex items-start gap-3">
                 {# Host photo -#}
@@ -324,7 +324,7 @@
                 {# Host details -#}
                 <div class="flex-1">
                   {# Host name -#}
-                  <div class="font-semibold text-stone-900">{{ host|full_name }}</div>
+                  <div class="font-semibold text-stone-900">{{ host.name.as_deref().unwrap_or("") }}</div>
                   {# End host name -#}
 
                   {# Host role/title and company if available -#}

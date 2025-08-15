@@ -89,6 +89,7 @@ select is(
     '[
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "group_category_name": "Technology",
             "kind": "virtual",
             "name": "Future Event 1",
@@ -108,6 +109,7 @@ select is(
         },
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000043",
             "group_category_name": "Technology",
             "kind": "hybrid",
             "name": "Future Event 2",

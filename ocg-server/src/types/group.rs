@@ -28,8 +28,7 @@ pub struct GroupSummary {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Unique identifier for the group.
-    #[serde(rename = "group_id", alias = "id")]
-    pub id: Uuid,
+    pub group_id: Uuid,
     /// Display name of the group.
     pub name: String,
     /// URL-friendly identifier for this group.
@@ -87,8 +86,7 @@ pub struct GroupDetailed {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Unique identifier for the group.
-    #[serde(rename = "group_id", alias = "id")]
-    pub id: Uuid,
+    pub group_id: Uuid,
     /// Group name.
     pub name: String,
     /// URL slug of the group.
@@ -147,7 +145,7 @@ impl From<GroupDetailed> for GroupSummary {
             category: detailed.category,
             color: detailed.color,
             created_at: detailed.created_at,
-            id: detailed.id,
+            group_id: detailed.group_id,
             name: detailed.name,
             slug: detailed.slug,
             city: detailed.city,
@@ -173,8 +171,7 @@ pub struct GroupFull {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
     /// Unique identifier for the group.
-    #[serde(rename = "group_id", alias = "id")]
-    pub id: Uuid,
+    pub group_id: Uuid,
     /// Total number of group members.
     pub members_count: i64,
     /// Group name.
@@ -258,8 +255,7 @@ impl GroupFull {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupCategory {
     /// Unique identifier for the category.
-    #[serde(rename = "group_category_id", alias = "id")]
-    pub id: Uuid,
+    pub group_category_id: Uuid,
     /// Display name of the category.
     pub name: String,
     /// URL-friendly normalized name.
@@ -274,8 +270,7 @@ pub struct GroupCategory {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupRegion {
     /// Unique identifier for the region.
-    #[serde(rename = "region_id", alias = "id")]
-    pub id: Uuid,
+    pub region_id: Uuid,
     /// Display name of the region.
     pub name: String,
     /// URL-friendly normalized name.

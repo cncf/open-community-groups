@@ -179,6 +179,7 @@ select is(
     get_event_detailed('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
         "canceled": false,
+        "event_id": "00000000-0000-0000-0000-000000000031",
         "group_category_name": "Technology",
         "group_name": "Test Group",
         "group_slug": "test-group",

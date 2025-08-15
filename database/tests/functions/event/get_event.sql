@@ -47,12 +47,12 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, first_name, last_name, photo_url, company, title, created_at)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, created_at)
 values
-    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John', 'Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash'::bytea, :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
-    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Alice', 'Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
-    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Bob', 'Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
+    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash'::bytea, :'community1ID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
+    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
+    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
 -- Seed event with all fields
 insert into event (
@@ -152,17 +152,15 @@ select is(
                 "title": "Lead Dev",
                 "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000052",
-                "last_name": "Smith",
-                "photo_url": "https://example.com/jane.png",
-                "first_name": "Jane"
+                "name": "Jane Smith",
+                "photo_url": "https://example.com/jane.png"
             },
             {
                 "title": "CTO",
                 "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000051",
-                "last_name": "Doe",
-                "photo_url": "https://example.com/john.png",
-                "first_name": "John"
+                "name": "John Doe",
+                "photo_url": "https://example.com/john.png"
             }
         ],
         "ends_at": 1718470800,
@@ -181,17 +179,15 @@ select is(
                 "title": "Manager",
                 "company": "Cloud Co",
                 "user_id": "00000000-0000-0000-0000-000000000053",
-                "last_name": "Johnson",
-                "photo_url": "https://example.com/alice.png",
-                "first_name": "Alice"
+                "name": "Alice Johnson",
+                "photo_url": "https://example.com/alice.png"
             },
             {
                 "title": "Engineer",
                 "company": "StartUp",
                 "user_id": "00000000-0000-0000-0000-000000000054",
-                "last_name": "Wilson",
-                "photo_url": "https://example.com/bob.png",
-                "first_name": "Bob"
+                "name": "Bob Wilson",
+                "photo_url": "https://example.com/bob.png"
             }
         ],
         "venue_city": "New York",

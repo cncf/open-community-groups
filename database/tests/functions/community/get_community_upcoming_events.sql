@@ -76,6 +76,7 @@ select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[
         {
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "group_name": "Test Group",
             "group_slug": "test-group",
             "kind": "virtual",

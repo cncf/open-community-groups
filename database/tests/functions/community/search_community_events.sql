@@ -85,6 +85,7 @@ select is(
     '[
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000041",
             "kind": "in-person",
             "name": "Kubernetes Workshop",
             "slug": "kubernetes-workshop",
@@ -108,6 +109,7 @@ select is(
         },
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "kind": "virtual",
             "name": "Docker Training",
             "slug": "docker-training",
@@ -130,6 +132,7 @@ select is(
         },
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000043",
             "kind": "hybrid",
             "name": "Cloud Summit",
             "slug": "cloud-summit",

@@ -20,6 +20,8 @@ use crate::{
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventSummary {
+    /// Unique identifier for the event.
+    pub event_id: Uuid,
     /// Color associated with the group hosting this event, used for visual styling.
     #[serde(default)]
     pub group_color: String,
@@ -56,6 +58,7 @@ pub struct EventSummary {
 impl From<EventDetailed> for EventSummary {
     fn from(event: EventDetailed) -> Self {
         Self {
+            event_id: event.event_id,
             group_color: event.group_color,
             group_name: event.group_name,
             group_slug: event.group_slug,
@@ -107,6 +110,8 @@ impl EventSummary {
 pub struct EventDetailed {
     /// Whether the event has been canceled.
     pub canceled: bool,
+    /// Unique identifier for the event.
+    pub event_id: Uuid,
     /// Category of the hosting group.
     pub group_category_name: String,
     /// Generated color for visual distinction.
@@ -206,8 +211,7 @@ pub struct EventFull {
     /// Event hosts.
     pub hosts: Vec<User>,
     /// Unique identifier for the event.
-    #[serde(rename = "event_id")]
-    pub id: Uuid,
+    pub event_id: Uuid,
     /// Type of event (in-person, online, hybrid).
     pub kind: EventKind,
     /// Event title.
@@ -280,8 +284,7 @@ impl EventFull {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventCategory {
     /// Category identifier.
-    #[serde(rename = "event_category_id")]
-    pub id: Uuid,
+    pub event_category_id: Uuid,
     /// Category name.
     pub name: String,
     /// URL-friendly identifier.
@@ -315,8 +318,7 @@ impl std::fmt::Display for EventKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventKindSummary {
     /// Kind identifier.
-    #[serde(rename = "event_kind_id")]
-    pub id: String,
+    pub event_kind_id: String,
     /// Display name.
     pub display_name: String,
 }
@@ -331,8 +333,7 @@ pub struct Session {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub ends_at: DateTime<Utc>,
     /// Unique identifier for the session.
-    #[serde(rename = "session_id")]
-    pub id: Uuid,
+    pub session_id: Uuid,
     /// Type of session (in-person, virtual).
     pub kind: SessionKind,
     /// Session title.

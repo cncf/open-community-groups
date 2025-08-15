@@ -87,6 +87,7 @@ select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
         {
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "kind": "virtual",
             "name": "Past Event 2",
             "slug": "past-event-2",
@@ -102,6 +103,7 @@ select is(
             "group_country_name": "United States"
         },
         {
+            "event_id": "00000000-0000-0000-0000-000000000041",
             "kind": "in-person",
             "name": "Past Event 1",
             "slug": "past-event-1",

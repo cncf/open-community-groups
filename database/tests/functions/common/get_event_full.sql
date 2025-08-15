@@ -85,11 +85,11 @@ insert into "group" (
 );
 
 -- Seed users
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, first_name, last_name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John', 'Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', 'https://facebook.com/john', 'https://linkedin.com/in/john', 'https://twitter.com/john', 'https://johndoe.com'),
-    (:'user2ID', 'organizer@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Jane', 'Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', 'https://facebook.com/jane', 'https://linkedin.com/in/jane', 'https://twitter.com/jane', 'https://janesmith.com'),
-    (:'user3ID', 'speaker@example.com', 'speaker1', false, 'test_hash'::bytea, :'community1ID', 'Alice', 'Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', null, 'https://linkedin.com/in/alice', null, null);
+    (:'user1ID', 'host@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', 'https://facebook.com/john', 'https://linkedin.com/in/john', 'https://twitter.com/john', 'https://johndoe.com'),
+    (:'user2ID', 'organizer@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', 'https://facebook.com/jane', 'https://linkedin.com/in/jane', 'https://twitter.com/jane', 'https://janesmith.com'),
+    (:'user3ID', 'speaker@example.com', 'speaker1', false, 'test_hash'::bytea, :'community1ID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', null, 'https://linkedin.com/in/alice', null, null);
 
 -- Seed published event with all fields
 insert into event (
@@ -298,8 +298,7 @@ select is(
         "hosts": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000041",
-                "first_name": "John",
-                "last_name": "Doe",
+                "name": "John Doe",
                 "company": "Tech Corp",
                 "facebook_url": "https://facebook.com/john",
                 "linkedin_url": "https://linkedin.com/in/john",
@@ -312,8 +311,7 @@ select is(
         "organizers": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000042",
-                "first_name": "Jane",
-                "last_name": "Smith",
+                "name": "Jane Smith",
                 "company": "Dev Inc",
                 "facebook_url": "https://facebook.com/jane",
                 "linkedin_url": "https://linkedin.com/in/jane",
@@ -337,8 +335,7 @@ select is(
                 "speakers": [
                     {
                         "user_id": "00000000-0000-0000-0000-000000000043",
-                        "first_name": "Alice",
-                        "last_name": "Johnson",
+                        "name": "Alice Johnson",
                         "company": "Cloud Co",
                         "linkedin_url": "https://linkedin.com/in/alice",
                         "photo_url": "https://example.com/alice.png",

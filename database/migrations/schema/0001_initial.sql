@@ -51,6 +51,7 @@ create table "user" (
     created_at timestamptz default current_timestamp not null,
     email text not null unique check (email <> ''),
     email_verified boolean not null default false,
+    name text not null check (name <> ''),
     username text not null check (username <> '') unique,
 
     bio text check (bio <> ''),
@@ -58,9 +59,7 @@ create table "user" (
     company text check (company <> ''),
     country text check (country <> ''),
     facebook_url text check (facebook_url <> ''),
-    first_name text check (first_name <> ''),
     interests text[],
-    last_name text check (last_name <> ''),
     linkedin_url text check (linkedin_url <> ''),
     password text check (password <> ''),
     photo_url text check (photo_url <> ''),

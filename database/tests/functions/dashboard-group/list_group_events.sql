@@ -165,6 +165,7 @@ select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
     '[
         {
+            "event_id": "00000000-0000-0000-0000-000000000021",
             "group_name": "Test Group",
             "group_slug": "test-group",
             "kind": "in-person",
@@ -180,6 +181,7 @@ select is(
             "venue_city": "San Francisco"
         },
         {
+            "event_id": "00000000-0000-0000-0000-000000000022",
             "group_name": "Test Group",
             "group_slug": "test-group",
             "kind": "virtual",
@@ -193,6 +195,7 @@ select is(
             "starts_at": 1705327200
         },
         {
+            "event_id": "00000000-0000-0000-0000-000000000023",
             "group_name": "Test Group",
             "group_slug": "test-group",
             "kind": "hybrid",
@@ -215,6 +218,7 @@ select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     '[
         {
+            "event_id": "00000000-0000-0000-0000-000000000024",
             "group_name": "Another Group",
             "group_slug": "another-group",
             "kind": "in-person",

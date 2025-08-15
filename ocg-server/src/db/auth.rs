@@ -256,8 +256,7 @@ impl DBAuth for PgDB {
             set
                 email = $2::text,
                 username = $3::text,
-                first_name = $4::text,
-                last_name = null
+                name = $4::text
             where user_id = $1::uuid;
             ",
             &[

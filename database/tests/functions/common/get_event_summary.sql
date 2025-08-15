@@ -99,6 +99,7 @@ insert into event (
 select is(
     get_event_summary('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
+        "event_id": "00000000-0000-0000-0000-000000000031",
         "group_name": "Test Group",
         "group_slug": "test-group",
         "kind": "in-person",

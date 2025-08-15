@@ -78,9 +78,21 @@ select is(
 );
 
 -- Test get_community_filters_options with non-existing community
-select is_empty(
-    'select * from get_community_filters_options(''00000000-0000-0000-0000-999999999999''::uuid)',
-    'get_community_filters_options with non-existing community should return no rows'
+select is(
+    get_community_filters_options('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    '{
+        "region": [],
+        "distance": [
+            {"name": "10 km", "value": "10000"},
+            {"name": "50 km", "value": "50000"},
+            {"name": "100 km", "value": "100000"},
+            {"name": "500 km", "value": "500000"},
+            {"name": "1000 km", "value": "1000000"}
+        ],
+        "event_category": [],
+        "group_category": []
+    }'::jsonb,
+    'get_community_filters_options with non-existing community should return default options'
 );
 
 -- Finish tests and rollback transaction

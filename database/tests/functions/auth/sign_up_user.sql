@@ -30,7 +30,7 @@ with new_user_result as (
         jsonb_build_object(
             'email', 'newuser@example.com',
             'username', 'newuser',
-            'first_name', 'New User',
+            'name', 'New User',
             'email_verified', true
         )
     )::jsonb as result
@@ -40,7 +40,7 @@ select is(
     '{
         "email": "newuser@example.com",
         "email_verified": true,
-        "first_name": "New User",
+        "name": "New User",
         "username": "newuser"
     }'::jsonb,
     'Should create new user and return correct structure'

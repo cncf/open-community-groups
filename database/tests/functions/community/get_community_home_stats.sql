@@ -43,10 +43,10 @@ values
     (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID');
 
 -- Seed users
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, created_at)
+insert into "user" (user_id, email, username, name, email_verified, auth_hash, community_id, created_at)
 values
-    (:'user1ID', 'user1@example.com', 'user1', false, 'test_hash'::bytea, :'community1ID', '2024-01-01 00:00:00'),
-    (:'user2ID', 'user2@example.com', 'user2', false, 'test_hash'::bytea, :'community1ID', '2024-01-01 00:00:00');
+    (:'user1ID', 'user1@example.com', 'user1', 'User One', false, 'test_hash'::bytea, :'community1ID', '2024-01-01 00:00:00'),
+    (:'user2ID', 'user2@example.com', 'user2', 'User Two', false, 'test_hash'::bytea, :'community1ID', '2024-01-01 00:00:00');
 
 -- Seed event category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -101,9 +101,15 @@ select is(
 );
 
 -- Test get_community_home_stats with non-existing community
-select is_empty(
-    'select * from get_community_home_stats(''00000000-0000-0000-0000-999999999999''::uuid)',
-    'get_community_home_stats with non-existing community should return no rows'
+select is(
+    get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    '{
+        "events": 0,
+        "groups": 0,
+        "groups_members": 0,
+        "events_attendees": 0
+    }'::jsonb,
+    'get_community_home_stats with non-existing community should return zeros'
 );
 
 -- Finish tests and rollback transaction

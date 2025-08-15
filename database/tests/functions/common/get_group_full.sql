@@ -43,12 +43,12 @@ insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, first_name, last_name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Alice', 'Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
-    (:'user2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Bob', 'Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
-    (:'user3ID', 'member1@example.com', 'member1', false, 'test_hash'::bytea, :'community1ID', 'Charlie', 'Brown', null, null, null, null, null, null, null),
-    (:'user4ID', 'member2@example.com', 'member2', false, 'test_hash'::bytea, :'community1ID', 'Diana', 'Prince', null, null, null, null, null, null, null);
+    (:'user1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
+    (:'user2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
+    (:'user3ID', 'member1@example.com', 'member1', false, 'test_hash'::bytea, :'community1ID', 'Charlie Brown', null, null, null, null, null, null, null),
+    (:'user4ID', 'member2@example.com', 'member2', false, 'test_hash'::bytea, :'community1ID', 'Diana Prince', null, null, null, null, null, null, null);
 
 -- Seed active group with all fields including location
 insert into "group" (
@@ -190,8 +190,7 @@ select is(
         "organizers": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000031",
-                "first_name": "Alice",
-                "last_name": "Johnson",
+                "name": "Alice Johnson",
                 "company": "Cloud Co",
                 "facebook_url": "https://facebook.com/alice",
                 "linkedin_url": "https://linkedin.com/in/alice",
@@ -202,8 +201,7 @@ select is(
             },
             {
                 "user_id": "00000000-0000-0000-0000-000000000032",
-                "first_name": "Bob",
-                "last_name": "Wilson",
+                "name": "Bob Wilson",
                 "company": "StartUp",
                 "linkedin_url": "https://linkedin.com/in/bob",
                 "photo_url": "https://example.com/bob.png",

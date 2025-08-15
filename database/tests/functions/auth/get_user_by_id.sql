@@ -28,8 +28,7 @@ insert into "user" (
     email,
     username,
     email_verified,
-    first_name,
-    last_name,
+    name,
     auth_hash,
     community_id
 ) values (
@@ -37,8 +36,7 @@ insert into "user" (
     'test@example.com',
     'testuser',
     true,
-    'Test',
-    'User',
+    'Test User',
     'test_hash'::bytea,
     '00000000-0000-0000-0000-000000000001'::uuid
 );
@@ -49,8 +47,7 @@ select is(
     '{
         "email": "test@example.com",
         "email_verified": true,
-        "first_name": "Test",
-        "last_name": "User",
+        "name": "Test User",
         "user_id": "00000000-0000-0000-0001-000000000001",
         "username": "testuser"
     }'::jsonb,

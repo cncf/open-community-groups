@@ -9,20 +9,20 @@ returns json as $$
         community_id,
         email,
         email_verified,
-        first_name,
+        name,
         username
     ) values (
         gen_random_bytes(32),
         p_community_id,
         p_user->>'email',
         coalesce((p_user->>'email_verified')::boolean, false),
-        p_user->>'first_name',
+        p_user->>'name',
         p_user->>'username'
     )
     returning json_strip_nulls(json_build_object(
         'email', email,
         'email_verified', email_verified,
-        'first_name', first_name,
+        'name', name,
         'user_id', user_id,
         'username', username
     ));
