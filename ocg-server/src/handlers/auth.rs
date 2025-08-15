@@ -24,7 +24,7 @@ use crate::{
         error::HandlerError,
         extractors::{CommunityId, OAuth2, Oidc},
     },
-    templates::{self, auth::User},
+    templates::{self, PageId, auth::User},
 };
 
 /// Key used to store the authentication provider in the session.
@@ -65,11 +65,13 @@ pub(crate) async fn log_in_page(
 
     // Prepare template
     let template = templates::auth::LogInPage {
-        auth_provider: None,
         login: cfg.login.clone(),
         messages: messages.into_iter().collect(),
-        next_url: query.get("next_url").cloned(),
+        page_id: PageId::LogIn,
         user: User::default(),
+
+        auth_provider: None,
+        next_url: query.get("next_url").cloned(),
     };
 
     Ok(Html(template.render()?).into_response())
@@ -90,11 +92,13 @@ pub(crate) async fn sign_up_page(
 
     // Prepare template
     let template = templates::auth::SignUpPage {
-        auth_provider: None,
         login: cfg.login.clone(),
         messages: messages.into_iter().collect(),
-        next_url: query.get("next_url").cloned(),
+        page_id: PageId::SignUp,
         user: User::default(),
+
+        auth_provider: None,
+        next_url: query.get("next_url").cloned(),
     };
 
     Ok(Html(template.render()?).into_response())

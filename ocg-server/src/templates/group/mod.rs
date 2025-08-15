@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::filters,
+    templates::{PageId, filters},
     types::{
         community::Community,
         event::{EventDetailed, EventKind, EventSummary},
@@ -23,10 +23,12 @@ pub(crate) struct Page {
     pub community: Community,
     /// Detailed information about the group.
     pub group: GroupFull,
-    /// Current URL path.
-    pub path: String,
+    /// Identifier for the current page.
+    pub page_id: PageId,
     /// List of past events for this group.
     pub past_events: Vec<PastEventCard>,
+    /// Current URL path.
+    pub path: String,
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
 }

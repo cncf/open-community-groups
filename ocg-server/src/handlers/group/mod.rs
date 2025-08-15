@@ -10,7 +10,10 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    templates::group::{self, Page},
+    templates::{
+        PageId,
+        group::{self, Page},
+    },
     types::event::EventKind,
 };
 
@@ -37,6 +40,7 @@ pub(crate) async fn page(
     let template = Page {
         community,
         group,
+        page_id: PageId::Group,
         past_events: past_events
             .into_iter()
             .map(|event| group::PastEventCard { event })

@@ -4,7 +4,7 @@ use askama::Template;
 use axum_messages::Message;
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::AuthSession, config::LoginOptions};
+use crate::{auth::AuthSession, config::LoginOptions, templates::PageId};
 
 // Pages templates.
 
@@ -16,6 +16,8 @@ pub(crate) struct LogInPage {
     pub login: LoginOptions,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
+    /// Identifier for the current page.
+    pub page_id: PageId,
     /// Authenticated user information.
     pub user: User,
 
@@ -33,6 +35,8 @@ pub(crate) struct SignUpPage {
     pub login: LoginOptions,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
+    /// Identifier for the current page.
+    pub page_id: PageId,
     /// Authenticated user information.
     pub user: User,
 

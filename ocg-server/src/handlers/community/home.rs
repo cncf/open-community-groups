@@ -15,7 +15,7 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::home,
+    templates::{PageId, community::home},
     types::event::EventKind,
 };
 
@@ -38,11 +38,13 @@ pub(crate) async fn page(
     )?;
     let template = home::Page {
         community,
+        page_id: PageId::Community,
         path: uri.path().to_string(),
         recently_added_groups: recently_added_groups
             .into_iter()
             .map(|group| home::GroupCard { group })
             .collect(),
+        stats,
         upcoming_in_person_events: upcoming_in_person_events
             .into_iter()
             .map(|event| home::EventCard { event })
@@ -51,7 +53,6 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| home::EventCard { event })
             .collect(),
-        stats,
     };
 
     Ok(Html(template.render()?))
