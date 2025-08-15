@@ -49,12 +49,5 @@ pub(crate) async fn update(
     // Update community in database
     db.update_community(community_id, &community_update).await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/community?tab=settings", "target":"body"}"#,
-        )],
-    )
-        .into_response())
+    Ok(StatusCode::NO_CONTENT.into_response())
 }

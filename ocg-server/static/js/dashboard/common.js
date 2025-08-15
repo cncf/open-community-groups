@@ -19,3 +19,15 @@ export function generateSlug(name) {
     .replace(/[^\w]+/g, '-')            // Replace sequences of non-word chars with single hyphen (matches database regex)
     .replace(/^-+|-+$/g, '');           // Remove leading/trailing hyphens
 }
+
+/**
+ * Triggers a change event on the specified form using htmx.
+ * @param {string} formId - The ID of the form to trigger change on
+ */
+export function triggerChangeOnForm(formId) {
+  const form = document.getElementById(formId);
+  if (form) {
+    // Trigger change event using htmx
+    htmx.trigger(form, "change");
+  }
+}

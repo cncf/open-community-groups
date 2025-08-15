@@ -44,7 +44,7 @@
             {# Social networks -#}
             {% if has_social_links -%}
               <div class="hidden md:flex flex-col items-end gap-2">
-                <div class="flex flex-wrap gap-2">{% include "dashboard/group/social_networks.html" -%}</div>
+                <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
               </div>
             {% endif -%}
             {# End social networks -#}
@@ -106,7 +106,7 @@
           {# Social networks (mobile only) -#}
           {% if has_social_links -%}
             <div class="md:hidden mb-8 md:mb-0">
-              <div class="flex flex-wrap gap-2">{% include "dashboard/group/social_networks.html" -%}</div>
+              <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
             </div>
           {% endif -%}
           {# End social networks (mobile) -#}
