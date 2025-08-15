@@ -420,7 +420,7 @@
         {# End new group details -#}
 
         {# Photo URLs -#}
-        <div class="col-span-full">
+        <div class="col-span-4">
           <label class="form-label">Photo URLs</label>
           <div class="mt-2">
             <multiple-inputs field-name="photos_urls" input-type="url" items="{{ community.photos_urls|json }}" placeholder="https://example.com/photo.jpg" label="Photo URL">
@@ -431,35 +431,25 @@
         {# End photo URLs -#}
 
         {# Extra links -#}
-        {# <div class="col-span-full">
-          <label for="extra_links" class="form-label">Extra Links</label>
+        <div class="col-span-full">
+          <label class="form-label">Extra Links</label>
           <div class="mt-2">
-            <textarea id="extra_links" name="extra_links" rows="3" class="input-primary" placeholder="Documentation: https://docs.example.com, Support: https://support.example.com">{% if let Some(extra_links) = community.extra_links %}{%- for (name, url) in extra_links -%}{{ name }}: {{ url }}{%- if !loop.last -%}, {%- endif -%}{%- endfor -%}{% endif %}</textarea>
-                </div>
-                <p class="form-legend">
-                  Additional custom links displayed in the community navigation (format: "Name: URL, Name: URL").
-              </p>
-            </div> #}
-    {# End extra links -#}
+            <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{{ community.extra_links|json }}" label="Link">
+            </key-value-inputs>
+          </div>
+          <p class="form-legend">Additional custom links displayed in the community navigation.</p>
+        </div>
+        {# End extra links -#}
+      </div>
+    </div>
+    {# End additional content section -#}
+
+    <div class="mt-6 flex items-center justify-end gap-x-6">
+      {# Save button -#}
+      <button type="submit" class="btn-primary">Update Settings</button>
+      {# End save button -#}
+    </div>
   </div>
-</div>
-{# End additional content section -#}
-
-<div class="mt-6 flex items-center justify-end gap-x-6">
-  {# Cancel button -#}
-  <button id="cancel-button"
-          type="button"
-          hx-get="/dashboard/community?tab=settings"
-          hx-target="body"
-          hx-indicator="#dashboard-spinner"
-          class="btn-primary-outline">Cancel</button>
-  {# End cancel button -#}
-
-  {# Save button -#}
-  <button type="submit" class="btn-primary">Update Settings</button>
-  {# End save button -#}
-</div>
-</div>
 </form>
 
 <script type="module">

@@ -15,36 +15,13 @@ export class MultipleInputs extends LitWrapper {
 
   constructor() {
     super();
-    this.items = [];
+    this.items = [""];
     this.fieldName = "";
     this.inputType = "text";
     this.placeholder = "";
     this.label = "";
     this.required = false;
     this.maxItems = 0; // 0 means no limit
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    // Initialize with existing data if not already set
-    this._loadInitialData();
-  }
-
-  _loadInitialData() {
-    // If items attribute was provided in HTML, parse it if it's a string
-    if (typeof this.items === "string") {
-      console.log(this.items);
-      try {
-        this.items = JSON.parse(this.items);
-      } catch (e) {
-        this.items = [];
-      }
-    }
-
-    // Ensure we always have at least one empty input
-    if (!Array.isArray(this.items) || this.items.length === 0) {
-      this.items = [""];
-    }
   }
 
   _addItem() {
@@ -104,7 +81,6 @@ export class MultipleInputs extends LitWrapper {
 
   reset() {
     this.items = [""];
-    this._isDirty = false;
     this.requestUpdate();
   }
 
@@ -145,7 +121,7 @@ export class MultipleInputs extends LitWrapper {
 
         <button
           type="button"
-          class="btn-primary-outline"
+          class="btn-mini"
           @click="${this._addItem}"
           ?disabled="${this._isAddButtonDisabled()}"
         >
