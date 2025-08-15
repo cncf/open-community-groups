@@ -1,0 +1,515 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Events update form -#}
+<form id="events-form"
+      hx-put="/dashboard/group/events/{{ event.id }}/update"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      hx-exclude="[name=toggle_registration_required]">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Event Details", description = "Please update as many details about this event as possible.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Event name -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="name" class="form-label">
+            Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="100"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   value="{{ event.name }}"
+                   required>
+          </div>
+          <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup).</p>
+        </div>
+        {# End Event name -#}
+
+        {# Hidden slug field -#}
+        <input type="hidden" name="slug" value="{{ event.slug }}">
+        {# End hidden slug field -#}
+
+        <div class="col-span-3"></div>
+
+        {# Event category -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="category_id" class="form-label">
+            Category <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="category_id" name="category_id" class="select-primary" required>
+              <option value="">Select a category</option>
+              {% for category in categories %}
+                <option value="{{ category.id }}"
+                        {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="form-legend">Type of event or meetup.</p>
+        </div>
+        {# End Event category -#}
+
+        {# Event kind -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="kind_id" class="form-label">
+            Event Type <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="kind_id" name="kind_id" class="select-primary" required>
+              <option value="">Select an event type</option>
+              {# TODO - selected #}
+              {% for kind in kinds %}<option value="{{ kind.id }}">{{ kind.display_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
+        </div>
+        {# End Event kind -#}
+
+        {# Logo URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="logo_url" class="form-label">Logo URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="logo_url"
+                   id="logo_url"
+                   class="input-primary"
+                   placeholder="https://example.com/logo.png"
+                   {% if let Some(logo_url) = event.logo_url %}value="{{ logo_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the event's logo image.</p>
+        </div>
+        {# End Logo URL -#}
+
+        {# Banner URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="banner_url" class="form-label">Banner URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="banner_url"
+                   id="banner_url"
+                   class="input-primary"
+                   placeholder="https://example.com/banner.jpg"
+                   {% if let Some(banner_url) = event.banner_url %}value="{{ banner_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the event's banner image.</p>
+        </div>
+        {# End Banner URL -#}
+
+        {# Event Description -#}
+        <div class="col-span-full">
+          <label for="description" class="form-label">
+            Description <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <textarea id="description"
+                      name="description"
+                      rows="4"
+                      class="input-primary"
+                      placeholder="Describe what this event is about, the agenda, and what attendees can expect..."
+                      required>{{ event.description }}</textarea>
+          </div>
+          <p class="form-legend">Full description of the event and its purpose.</p>
+        </div>
+        {# End Event Description -#}
+
+        {# Short Description -#}
+        <div class="col-span-full">
+          <label for="description_short" class="form-label">Short Description</label>
+          <div class="mt-2">
+            <textarea id="description_short"
+                      name="description_short"
+                      rows="2"
+                      class="input-primary"
+                      maxlength="200"
+                      placeholder="Brief summary for listings and previews...">{% if let Some(description_short) = event.description_short %}{{ description_short }}{% endif %}</textarea>
+          </div>
+          <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
+        </div>
+        {# End Short Description -#}
+      </div>
+    </div>
+
+    {# Date and Time section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Date & Time", description = "When will this event take place?") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Timezone -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="timezone" class="form-label">
+            Timezone <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="timezone"
+                   id="timezone"
+                   class="input-primary"
+                   placeholder="America/New_York"
+                   value="{{ event.timezone }}"
+                   required>
+          </div>
+          <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
+        </div>
+        {# End Timezone -#}
+
+        <div class="col-span-4"></div>
+
+        {# Start date/time -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="starts_at" class="form-label">Start Date & Time</label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   name="starts_at"
+                   id="starts_at"
+                   class="input-primary"
+                   {% if let Some(starts_at) = event.starts_at %}value="{{ starts_at }}"{% endif %}>
+          </div>
+          <p class="form-legend">When the event starts.</p>
+        </div>
+        {# End Start date/time -#}
+
+        {# End date/time -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="ends_at" class="form-label">End Date & Time</label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   name="ends_at"
+                   id="ends_at"
+                   class="input-primary"
+                   {% if let Some(ends_at) = event.ends_at %}value="{{ ends_at }}"{% endif %}>
+          </div>
+          <p class="form-legend">When the event ends.</p>
+        </div>
+        {# End End date/time -#}
+      </div>
+    </div>
+    {# End date and time section -#}
+
+    {# Venue Information section -#}
+    <div id="venue-section" class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Venue name -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="venue_name" class="form-label">Venue Name</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="venue_name"
+                   id="venue_name"
+                   class="input-primary"
+                   placeholder="Conference Center Amsterdam"
+                   {% if let Some(venue_name) = event.venue_name %}value="{{ venue_name }}"{% endif %}>
+          </div>
+          <p class="form-legend">Name of the venue where the event takes place.</p>
+        </div>
+        {# End Venue name -#}
+
+        <div class="col-span-3"></div>
+
+        {# Venue address -#}
+        <div class="col-span-full lg:col-span-4">
+          <label for="venue_address" class="form-label">Address</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="venue_address"
+                   id="venue_address"
+                   class="input-primary"
+                   placeholder="123 Main Street"
+                   {% if let Some(venue_address) = event.venue_address %}value="{{ venue_address }}"{% endif %}>
+          </div>
+          <p class="form-legend">Street address of the venue.</p>
+        </div>
+        {# End Venue address -#}
+
+        <div class="col-span-2"></div>
+
+        {# Venue city -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="venue_city" class="form-label">City</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="venue_city"
+                   id="venue_city"
+                   class="input-primary"
+                   placeholder="Amsterdam"
+                   {% if let Some(venue_city) = event.venue_city %}value="{{ venue_city }}"{% endif %}>
+          </div>
+          <p class="form-legend">City where the venue is located.</p>
+        </div>
+        {# End Venue city -#}
+
+        {# Venue zip code -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="venue_zip_code" class="form-label">Zip Code</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="venue_zip_code"
+                   id="venue_zip_code"
+                   class="input-primary"
+                   placeholder="1012 AB"
+                   {% if let Some(venue_zip_code) = event.venue_zip_code %}value="{{ venue_zip_code }}"{% endif %}>
+          </div>
+          <p class="form-legend">Postal/zip code of the venue.</p>
+        </div>
+        {# End Venue zip code -#}
+
+        <div class="col-span-2"></div>
+      </div>
+    </div>
+    {# End venue information section -#}
+
+    {# Online Event Details section -#}
+    <div id="online-section" class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Streaming URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="streaming_url" class="form-label">Streaming URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="streaming_url"
+                   id="streaming_url"
+                   class="input-primary"
+                   placeholder="https://zoom.us/j/123456789"
+                   {% if let Some(streaming_url) = event.streaming_url %}value="{{ streaming_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL for live streaming or video conference.</p>
+        </div>
+        {# End Streaming URL -#}
+
+        {# Recording URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="recording_url" class="form-label">Recording URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="recording_url"
+                   id="recording_url"
+                   class="input-primary"
+                   placeholder="https://youtube.com/watch?v=..."
+                   {% if let Some(recording_url) = event.recording_url %}value="{{ recording_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the event recording (can be added after the event).</p>
+        </div>
+        {# End Recording URL -#}
+      </div>
+    </div>
+    {# End online event details section -#}
+
+    {# Additional Information section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Additional Information", description = "Optional event settings and external links.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Capacity -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="capacity" class="form-label">Capacity</label>
+          <div class="mt-2">
+            <input type="number"
+                   name="capacity"
+                   id="capacity"
+                   min="1"
+                   class="input-primary"
+                   placeholder="100"
+                   {% if let Some(capacity) = event.capacity %}value="{{ capacity }}"{% endif %}>
+          </div>
+          <p class="form-legend">Maximum number of attendees.</p>
+        </div>
+        {# End Capacity -#}
+
+        <div class="col-span-4"></div>
+
+        {# Registration required -#}
+        <div class="col-span-full lg:col-span-3">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_registration_required"
+                   name="toggle_registration_required"
+                   value="required"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if let Some(registration_required) = event.registration_required %}
+                     {% if registration_required %}checked{% endif %}
+                   {% endif %}>
+            <input type="hidden"
+                   id="registration_required"
+                   name="registration_required"
+                   value="{% if let Some(registration_required) = event.registration_required %}
+                            {{ registration_required }}
+                          {% else %}
+                            false
+                          {% endif %}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Registration Required</span>
+          </label>
+          <p class="form-legend">Whether attendees must register in advance.</p>
+        </div>
+        {# End Registration required -#}
+
+        <div class="col-span-3"></div>
+
+        {# Meetup URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="meetup_url" class="form-label">Meetup.com URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="meetup_url"
+                   id="meetup_url"
+                   class="input-primary"
+                   placeholder="https://meetup.com/group/events/123456"
+                   {% if let Some(meetup_url) = event.meetup_url %}value="{{ meetup_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">Link to the Meetup.com event page.</p>
+        </div>
+        {# End Meetup URL -#}
+
+        <div class="col-span-3"></div>
+      </div>
+    </div>
+    {# End additional information section -#}
+
+    {# Photos Gallery section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Photos Gallery", description = "Optional photo URLs for the event gallery.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Photos URLs -#}
+        <div class="col-span-3">
+          <multiple-inputs field-name="photos_urls" input-type="url" items=" {%- if let Some(photos_urls) = event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}" label="Photo URL">
+          </multiple-inputs>
+        </div>
+        {# End Photos URLs -#}
+      </div>
+    </div>
+    {# End photos gallery section -#}
+
+    {# Tags section -#}
+    <div class="pb-12">
+      {% call macros::form_title(title = "Tags", description = "Optional tags to help categorize and find the event.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Tags -#}
+        <div class="col-span-3">
+          <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = event.tags -%}{{ tags|json }}{%- endif -%}" label="Tag">
+          </multiple-inputs>
+        </div>
+        {# End Tags -#}
+      </div>
+    </div>
+    {# End tags section -#}
+
+    <div class="mt-6 flex items-center justify-end gap-x-6">
+      {# Cancel button -#}
+      <button id="cancel-button"
+              type="button"
+              hx-get="/dashboard/group/events"
+              hx-target="body"
+              hx-indicator="#dashboard-spinner"
+              class="btn-primary-outline">Cancel</button>
+      {# End cancel button -#}
+
+      {# Save button -#}
+      <button type="submit" class="btn-primary">Update Event</button>
+      {# End save button -#}
+    </div>
+  </div>
+</form>
+
+<script type="module">
+  import {
+    isSuccessfulXHRStatus
+  } from '/static/js/common/common.js';
+  import {
+    showErrorAlert,
+    showSuccessAlert
+  } from '/static/js/common/alerts.js';
+  import {
+    generateSlug
+  } from '/static/js/dashboard/common.js';
+
+  const eventsForm = document.getElementById('events-form');
+  const cancelButton = document.getElementById('cancel-button');
+  const kindSelect = document.getElementById('kind_id');
+  const venueSection = document.getElementById('venue-section');
+  const onlineSection = document.getElementById('online-section');
+
+  // Handle dynamic visibility of venue and online sections based on event kind
+  function updateSectionVisibility() {
+    if (!kindSelect || !venueSection || !onlineSection) return;
+
+    const selectedKind = kindSelect.value;
+
+    // Show/hide venue section based on event kind
+    if (selectedKind === 'in-person' || selectedKind === 'hybrid') {
+      venueSection.style.display = 'block';
+    } else {
+      venueSection.style.display = 'none';
+    }
+
+    // Show/hide online section based on event kind
+    if (selectedKind === 'virtual' || selectedKind === 'hybrid') {
+      onlineSection.style.display = 'block';
+    } else {
+      onlineSection.style.display = 'none';
+    }
+  }
+
+  // Initialize section visibility
+  updateSectionVisibility();
+
+  // Update visibility when kind changes
+  if (kindSelect) {
+    kindSelect.addEventListener('change', updateSectionVisibility);
+  }
+
+  // Handle registration required toggle
+  const toggleRegistrationRequired = document.getElementById('toggle_registration_required');
+  if (toggleRegistrationRequired) {
+    toggleRegistrationRequired.addEventListener('change', () => {
+      document.getElementById('registration_required').value = toggleRegistrationRequired.checked;
+    });
+  }
+
+  if (cancelButton) {
+    cancelButton.addEventListener('htmx:afterRequest', () => {
+      history.pushState({}, "Events list", '/dashboard/group/events');
+    });
+  }
+
+  if (eventsForm) {
+    // Generate slug before form submission
+    eventsForm.addEventListener('htmx:beforeRequest', (e) => {
+      if (e.detail.elt.id === 'events-form') {
+        const nameInput = document.getElementById('name');
+        const slugInput = document.querySelector('input[name="slug"]');
+
+        if (nameInput && slugInput && nameInput.value.trim()) {
+          slugInput.value = generateSlug(nameInput.value);
+        }
+      }
+    });
+
+    eventsForm.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'events-form') {
+        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+          showSuccessAlert('Event updated successfully.');
+        } else {
+          showErrorAlert('Something went wrong updating the event, please try again later.');
+        }
+      }
+    });
+  }
+</script>
+{# End Events update form -#}

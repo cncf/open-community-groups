@@ -355,6 +355,21 @@
     </div>
     {# End additional information section -#}
 
+    {# Photos Gallery section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Photos Gallery", description = "Optional photo URLs for the event gallery.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Photos URLs -#}
+        <div class="col-span-3">
+          <multiple-inputs field-name="photos_urls" input-type="url" label="Photo URL">
+          </multiple-inputs>
+        </div>
+        {# End Photos URLs -#}
+      </div>
+    </div>
+    {# End photos gallery section -#}
+
     {# Tags section -#}
     <div class="pb-12">
       {% call macros::form_title(title = "Tags", description = "Optional tags to help categorize and find the event.") -%}
@@ -408,16 +423,16 @@
   // Handle dynamic visibility of venue and online sections based on event kind
   function updateSectionVisibility() {
     if (!kindSelect || !venueSection || !onlineSection) return;
-    
+
     const selectedKind = kindSelect.value;
-    
+
     // Show/hide venue section based on event kind
     if (selectedKind === 'in-person' || selectedKind === 'hybrid') {
       venueSection.style.display = 'block';
     } else {
       venueSection.style.display = 'none';
     }
-    
+
     // Show/hide online section based on event kind
     if (selectedKind === 'virtual' || selectedKind === 'hybrid') {
       onlineSection.style.display = 'block';
