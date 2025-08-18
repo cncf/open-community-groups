@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(2);
+select plan(3);
 
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -80,6 +80,7 @@ insert into event (
 
 -- Test: update_event function updates individual fields
 select update_event(
+    '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
     '{
         "name": "Updated Event Name",
@@ -108,6 +109,7 @@ select is(
 
 -- Test: update_event function updates all optional fields
 select update_event(
+    '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
     '{
         "name": "Fully Updated Event",
@@ -164,6 +166,18 @@ select is(
         "venue_zip_code": "SW1A 1AA"
     }'::jsonb,
     'update_event should update all fields correctly'
+);
+
+-- Test: update_event throws error for wrong group_id
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '00000000-0000-0000-0000-000000000003'::uuid,
+        '{"name": "Won''t Work", "slug": "wont-work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+    )$$,
+    'P0001',
+    'event not found',
+    'update_event should throw error when group_id does not match'
 );
 
 -- Finish tests and rollback transaction

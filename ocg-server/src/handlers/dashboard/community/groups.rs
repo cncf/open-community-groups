@@ -98,6 +98,7 @@ pub(crate) async fn add(
 /// Updates an existing group's information in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     State(serde_qs_de): State<serde_qs::Config>,
     Path(group_id): Path<Uuid>,
@@ -110,7 +111,7 @@ pub(crate) async fn update(
     };
 
     // Update group in database
-    db.update_group(group_id, &group).await?;
+    db.update_group(community_id, group_id, &group).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -125,11 +126,12 @@ pub(crate) async fn update(
 /// Deletes a group from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Delete group from database (soft delete)
-    db.delete_group(group_id).await?;
+    db.delete_group(community_id, group_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,

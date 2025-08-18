@@ -12,20 +12,20 @@ use crate::{db::PgDB, templates::dashboard::community::groups::Group};
 #[async_trait]
 pub(crate) trait DBDashboardCommon {
     /// Updates an existing group.
-    async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()>;
+    async fn update_group(&self, community_id: Uuid, group_id: Uuid, group: &Group) -> Result<()>;
 }
 
 #[async_trait]
 impl DBDashboardCommon for PgDB {
     /// [`DBDashboardCommon::update_group`]
     #[instrument(skip(self, group), err)]
-    async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()> {
+    async fn update_group(&self, community_id: Uuid, group_id: Uuid, group: &Group) -> Result<()> {
         trace!("db: update group");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select update_group($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(group)],
+            "select update_group($1::uuid, $2::uuid, $3::jsonb)",
+            &[&community_id, &group_id, &Json(group)],
         )
         .await?;
 

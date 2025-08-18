@@ -22,7 +22,7 @@ pub(crate) trait DBDashboardGroup {
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
 
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
-    async fn delete_event(&self, event_id: Uuid) -> Result<()>;
+    async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
@@ -37,7 +37,7 @@ pub(crate) trait DBDashboardGroup {
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
 
     /// Updates an existing event.
-    async fn update_event(&self, event_id: Uuid, event: &Event) -> Result<()>;
+    async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
 }
 
 #[async_trait]
@@ -61,11 +61,12 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::delete_event`]
     #[instrument(skip(self), err)]
-    async fn delete_event(&self, event_id: Uuid) -> Result<()> {
+    async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
         trace!("db: delete event");
 
         let db = self.pool.get().await?;
-        db.execute("select delete_event($1::uuid)", &[&event_id]).await?;
+        db.execute("select delete_event($1::uuid, $2::uuid)", &[&group_id, &event_id])
+            .await?;
 
         Ok(())
     }
@@ -126,13 +127,13 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::update_event`]
     #[instrument(skip(self, event), err)]
-    async fn update_event(&self, event_id: Uuid, event: &Event) -> Result<()> {
+    async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()> {
         trace!("db: update event");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select update_event($1::uuid, $2::jsonb)",
-            &[&event_id, &Json(event)],
+            "select update_event($1::uuid, $2::uuid, $3::jsonb)",
+            &[&group_id, &event_id, &Json(event)],
         )
         .await?;
 

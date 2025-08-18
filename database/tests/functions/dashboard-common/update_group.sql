@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(3);
+select plan(4);
 
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -82,6 +82,7 @@ insert into "group" (
 
 -- Test: update_group function updates group fields correctly
 select update_group(
+    '00000000-0000-0000-0000-000000000001'::uuid,
     '00000000-0000-0000-0000-000000000021'::uuid,
     '{
         "name": "Updated Group",
@@ -129,6 +130,7 @@ select is(
 -- Test: update_group throws error for deleted group
 select throws_ok(
     $$select update_group(
+        '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000022'::uuid,
         '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
@@ -169,6 +171,7 @@ insert into "group" (
 );
 
 select update_group(
+    '00000000-0000-0000-0000-000000000001'::uuid,
     '00000000-0000-0000-0000-000000000023'::uuid,
     '{
         "name": "Updated Group Empty Strings",
@@ -226,6 +229,18 @@ select is(
         "tags": null
     }'::jsonb,
     'update_group should convert empty strings to null for nullable fields'
+);
+
+-- Test: update_group throws error for wrong community_id
+select throws_ok(
+    $$select update_group(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '00000000-0000-0000-0000-000000000021'::uuid,
+        '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
+    )$$,
+    'P0001',
+    'group not found',
+    'update_group should throw error when community_id does not match'
 );
 
 -- Finish tests and rollback transaction

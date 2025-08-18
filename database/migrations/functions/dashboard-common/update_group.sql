@@ -1,5 +1,6 @@
 -- update_group updates an existing group's information.
 create or replace function update_group(
+    p_community_id uuid,
     p_group_id uuid,
     p_group jsonb
 )
@@ -32,6 +33,7 @@ begin
         wechat_url = nullif(p_group->>'wechat_url', ''),
         youtube_url = nullif(p_group->>'youtube_url', '')
     where group_id = p_group_id
+    and community_id = p_community_id
     and deleted = false;
 
     if not found then

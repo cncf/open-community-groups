@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(4);
+select plan(5);
 
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -78,7 +78,7 @@ insert into event (
 );
 
 -- Test: delete_event function sets deleted=true
-select delete_event('00000000-0000-0000-0000-000000000003'::uuid);
+select delete_event('00000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000003'::uuid);
 
 select is(
     (select deleted from event where event_id = :'event1ID'),
@@ -105,6 +105,14 @@ select is(
     (select count(*)::int from event where event_id = :'event1ID'),
     1,
     'delete_event should keep event in database (soft delete)'
+);
+
+-- Test: delete_event throws error for wrong group_id
+select throws_ok(
+    $$select delete_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
+    'P0001',
+    'event not found',
+    'delete_event should throw error when group_id does not match'
 );
 
 -- Finish tests and rollback transaction

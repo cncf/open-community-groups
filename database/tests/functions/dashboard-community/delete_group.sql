@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(5);
+select plan(6);
 
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -78,7 +78,7 @@ insert into "group" (
 );
 
 -- Test: delete_group function performs soft delete
-select delete_group('00000000-0000-0000-0000-000000000021'::uuid);
+select delete_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid);
 
 select is(
     (select deleted from "group" where group_id = '00000000-0000-0000-0000-000000000021'::uuid),
@@ -106,10 +106,18 @@ select is(
 
 -- Test: delete_group throws error for already deleted group
 select throws_ok(
-    $$select delete_group('00000000-0000-0000-0000-000000000022'::uuid)$$,
+    $$select delete_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
     'P0001',
     'group not found',
     'delete_group should throw error when trying to delete already deleted group'
+);
+
+-- Test: delete_group throws error for wrong community_id
+select throws_ok(
+    $$select delete_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
+    'P0001',
+    'group not found',
+    'delete_group should throw error when community_id does not match'
 );
 
 -- Finish tests and rollback transaction
