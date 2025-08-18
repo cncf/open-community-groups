@@ -1,6 +1,8 @@
 {{ template "auth/get_user_by_id.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
+{{ template "auth/user_owns_community.sql" }}
+{{ template "auth/user_owns_group.sql" }}
 {{ template "auth/verify_email.sql" }}
 
 {{ template "common/format_group_description.sql" }}
@@ -33,6 +35,7 @@
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
+{{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 
 {{ template "event/get_event.sql" }}

@@ -19,7 +19,7 @@ pub(crate) trait DBDashboardCommunity {
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid>;
 
     /// Deletes a group (soft delete by setting active=false).
-    async fn delete_group(&self, group_id: Uuid) -> Result<()>;
+    async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
 
     /// Lists all groups in a community for management.
     async fn list_community_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
@@ -55,11 +55,15 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::delete_group`]
     #[instrument(skip(self), err)]
-    async fn delete_group(&self, group_id: Uuid) -> Result<()> {
+    async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
         trace!("db: delete group");
 
         let db = self.pool.get().await?;
-        db.execute("select delete_group($1::uuid)", &[&group_id]).await?;
+        db.execute(
+            "select delete_group($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await?;
 
         Ok(())
     }

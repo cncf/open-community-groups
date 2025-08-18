@@ -6,6 +6,7 @@ select plan(2);
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set category1ID '00000000-0000-0000-0000-000000000011'
+\set groupCategory1ID '00000000-0000-0000-0000-000000000010'
 
 -- Seed community
 insert into community (
@@ -34,7 +35,7 @@ values (:'category1ID', 'Conference', 'conference', :'community1ID');
 
 -- Seed group category
 insert into group_category (group_category_id, name, community_id)
-values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
+values (:'groupCategory1ID', 'Technology', :'community1ID');
 
 -- Seed group
 insert into "group" (
@@ -50,14 +51,14 @@ insert into "group" (
     'Test Group',
     'test-group',
     'A test group',
-    '00000000-0000-0000-0000-000000000010'
+    :'groupCategory1ID'
 );
 
 -- Test: add_event function creates event with required fields only
 select is(
     (select (get_event_full(
         add_event(
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            :'group1ID'::uuid,
             '{"name": "Simple Test Event", "slug": "simple-test-event", "description": "A simple test event", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
         )
     )::jsonb - 'created_at' - 'event_id' - 'hosts' - 'organizers' - 'sessions' - 'group')),
@@ -78,7 +79,7 @@ select is(
 select is(
     (select (get_event_full(
         add_event(
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            :'group1ID'::uuid,
             '{
                 "name": "Full Test Event",
                 "slug": "full-test-event",

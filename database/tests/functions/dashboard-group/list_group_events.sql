@@ -11,6 +11,7 @@ select plan(3);
 \set event2ID '00000000-0000-0000-0000-000000000022'
 \set event3ID '00000000-0000-0000-0000-000000000023'
 \set event4ID '00000000-0000-0000-0000-000000000024'
+\set groupCategory1ID '00000000-0000-0000-0000-000000000010'
 
 -- Seed community
 insert into community (
@@ -41,7 +42,7 @@ values (:'category1ID', 'Conference', 'conference', :'community1ID');
 
 -- Seed group category
 insert into group_category (group_category_id, name, community_id)
-values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
+values (:'groupCategory1ID', 'Technology', :'community1ID');
 
 -- Seed groups with location data
 insert into "group" (
@@ -62,7 +63,7 @@ insert into "group" (
         'Test Group',
         'test-group',
         'A test group',
-        '00000000-0000-0000-0000-000000000010',
+        :'groupCategory1ID',
         'San Francisco',
         'CA',
         'US',
@@ -74,7 +75,7 @@ insert into "group" (
         'Another Group',
         'another-group',
         'Another test group',
-        '00000000-0000-0000-0000-000000000010',
+        :'groupCategory1ID',
         'New York',
         'NY',
         'US',

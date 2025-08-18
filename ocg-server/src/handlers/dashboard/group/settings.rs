@@ -11,7 +11,10 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedGroupId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, SelectedGroupId},
+    },
     templates::dashboard::group::settings::{self, GroupUpdate},
 };
 
@@ -34,6 +37,7 @@ pub(crate) async fn update_page(
 /// Updates group settings in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(serde_qs_de): State<serde_qs::Config>,
@@ -46,7 +50,7 @@ pub(crate) async fn update(
     };
 
     // Update group in database
-    db.update_group(group_id, &group_update).await?;
+    db.update_group(community_id, group_id, &group_update).await?;
 
     Ok((
         StatusCode::NO_CONTENT,

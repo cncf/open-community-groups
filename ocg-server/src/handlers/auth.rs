@@ -4,8 +4,9 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, Request, State},
     http::StatusCode,
+    middleware::Next,
     response::{Html, IntoResponse, Redirect},
 };
 use axum_extra::extract::Form;
@@ -14,7 +15,7 @@ use openidconnect as oidc;
 use password_auth::verify_password;
 use serde::Deserialize;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -45,6 +46,9 @@ pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
 
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
+
+/// Key used to store the selected group ID in the session.
+pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
@@ -112,6 +116,8 @@ pub(crate) async fn sign_up_page(
 pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
+    session: Session,
+    State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     Form(creds): Form<PasswordCredentials>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -131,6 +137,12 @@ pub(crate) async fn log_in(
         .login(&user)
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
+
+    // Use the first group as the selected group in the session
+    let groups = db.list_user_groups(&user.user_id).await?;
+    if !groups.is_empty() {
+        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    }
 
     // Prepare next url
     let next_url = if let Some(next_url) = query.get("next_url") {
@@ -159,6 +171,7 @@ pub(crate) async fn oauth2_callback(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path(provider): Path<OAuth2Provider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
@@ -203,6 +216,12 @@ pub(crate) async fn oauth2_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
+    // Use the first group as the selected group in the session
+    let groups = db.list_user_groups(&user.user_id).await?;
+    if !groups.is_empty() {
+        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    }
+
     // Prepare next url
     let next_url = next_url.unwrap_or("/".to_string());
 
@@ -237,6 +256,7 @@ pub(crate) async fn oidc_callback(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path(provider): Path<OidcProvider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
@@ -288,6 +308,12 @@ pub(crate) async fn oidc_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
+    // Use the first group as the selected group in the session
+    let groups = db.list_user_groups(&user.user_id).await?;
+    if !groups.is_empty() {
+        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    }
+
     // Track auth provider in the session
     session.insert(AUTH_PROVIDER_KEY, provider).await?;
 
@@ -329,6 +355,7 @@ pub(crate) async fn oidc_redirect(
 pub(crate) async fn sign_up(
     messages: Messages,
     CommunityId(community_id): CommunityId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
@@ -350,8 +377,13 @@ pub(crate) async fn sign_up(
     };
 
     // Enqueue email verification notification
-    if let Some(_code) = email_verification_code {
+    if let Some(code) = email_verification_code {
         // TODO: send email verification notification
+
+        // Temporarily print the verification URL to the console
+        let verification_url = format!("{}/verify-email/{}", cfg.base_url, code);
+        info!(%verification_url, "Email verification URL (temporary)");
+
         messages.success("Please verify your email to complete the sign up process.");
     }
 
@@ -453,4 +485,56 @@ pub struct OAuth2AuthorizationResponse {
 pub(crate) struct NextUrl {
     /// The next URL to redirect to, if provided.
     pub next_url: Option<String>,
+}
+
+// Authorization middleware.
+
+/// Check if the user owns the community.
+#[instrument(skip_all)]
+pub(crate) async fn user_owns_community(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if the user owns the community
+    let Ok(user_owns_community) = db.user_owns_community(&user.user_id, &community_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !user_owns_community {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
+}
+
+/// Check if the user owns the group.
+#[instrument(skip_all)]
+pub(crate) async fn user_owns_group(
+    State(db): State<DynDB>,
+    Path(group_id): Path<Uuid>,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if the user owns the group
+    let Ok(user_owns_group) = db.user_owns_group(&user.user_id, &group_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !user_owns_group {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
 }

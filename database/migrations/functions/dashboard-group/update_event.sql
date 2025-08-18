@@ -1,9 +1,11 @@
 -- update_event updates an existing event in the database.
 create or replace function update_event(
+    p_group_id uuid,
     p_event_id uuid,
     p_event jsonb
 )
 returns void as $$
+begin
     update event set
         name = p_event->>'name',
         slug = p_event->>'slug',
@@ -29,5 +31,11 @@ returns void as $$
         venue_name = p_event->>'venue_name',
         venue_zip_code = p_event->>'venue_zip_code'
     where event_id = p_event_id
+    and group_id = p_group_id
     and deleted = false;
-$$ language sql;
+
+    if not found then
+        raise exception 'event not found';
+    end if;
+end;
+$$ language plpgsql;

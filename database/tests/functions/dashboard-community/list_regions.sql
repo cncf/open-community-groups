@@ -5,6 +5,7 @@ select plan(2);
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set community3ID '00000000-0000-0000-0000-000000000003'
 \set region1ID '00000000-0000-0000-0000-000000000011'
 \set region2ID '00000000-0000-0000-0000-000000000012'
 \set region3ID '00000000-0000-0000-0000-000000000013'
@@ -36,7 +37,7 @@ values
 
 -- Test: list_regions returns complete JSON array with proper ordering
 select is(
-    list_regions('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
+    list_regions(:'community1ID'::uuid)::jsonb,
     '[
         {
             "region_id": "00000000-0000-0000-0000-000000000012",
@@ -65,7 +66,7 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    '00000000-0000-0000-0000-000000000003'::uuid,
+    :'community3ID'::uuid,
     'empty-community',
     'Empty Community',
     'empty.localhost',
@@ -76,7 +77,7 @@ insert into community (
 );
 
 select is(
-    list_regions('00000000-0000-0000-0000-000000000003'::uuid)::jsonb,
+    list_regions(:'community3ID'::uuid)::jsonb,
     '[]'::jsonb,
     'list_regions should return empty array for community with no regions'
 );

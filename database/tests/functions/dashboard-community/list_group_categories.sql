@@ -5,6 +5,7 @@ select plan(2);
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set community3ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set category3ID '00000000-0000-0000-0000-000000000013'
@@ -36,7 +37,7 @@ values
 
 -- Test: list_group_categories returns complete JSON array with proper ordering
 select is(
-    list_group_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
+    list_group_categories(:'community1ID'::uuid)::jsonb,
     '[
         {
             "group_category_id": "00000000-0000-0000-0000-000000000012",
@@ -65,7 +66,7 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    '00000000-0000-0000-0000-000000000003'::uuid,
+    :'community3ID'::uuid,
     'empty-community',
     'Empty Community',
     'empty.localhost',
@@ -76,7 +77,7 @@ insert into community (
 );
 
 select is(
-    list_group_categories('00000000-0000-0000-0000-000000000003'::uuid)::jsonb,
+    list_group_categories(:'community3ID'::uuid)::jsonb,
     '[]'::jsonb,
     'list_group_categories should return empty array for community with no categories'
 );

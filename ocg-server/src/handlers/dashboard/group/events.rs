@@ -106,11 +106,12 @@ pub(crate) async fn add(
 /// Deletes an event from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Delete event from database (soft delete)
-    db.delete_event(event_id).await?;
+    db.delete_event(group_id, event_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -125,6 +126,7 @@ pub(crate) async fn delete(
 /// Updates an existing event's information in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(serde_qs_de): State<serde_qs::Config>,
     Path(event_id): Path<Uuid>,
@@ -137,7 +139,7 @@ pub(crate) async fn update(
     };
 
     // Update event in database
-    db.update_event(event_id, &event).await?;
+    db.update_event(group_id, event_id, &event).await?;
 
     Ok((
         StatusCode::NO_CONTENT,

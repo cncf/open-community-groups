@@ -6,11 +6,13 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Query, State},
+    http::StatusCode,
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
 
 use crate::{
+    auth::AuthSession,
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -32,6 +34,7 @@ use crate::{
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
+    auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -40,8 +43,14 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community information
-    let community = db.get_community(community_id).await?;
+    // Get user from session
+    let Some(user) = auth_session.user else {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    };
+
+    // Get community and user groups information
+    let (community, groups) =
+        tokio::try_join!(db.get_community(community_id), db.list_user_groups(&user.user_id))?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -59,10 +68,12 @@ pub(crate) async fn page(
     let page = Page {
         community,
         content,
+        groups,
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),
+        selected_group_id: group_id,
     };
 
     let html = Html(page.render()?);
-    Ok(html)
+    Ok(html.into_response())
 }
