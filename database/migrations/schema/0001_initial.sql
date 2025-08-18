@@ -358,3 +358,12 @@ create table auth_session (
     data jsonb not null,
     expires_at timestamptz not null
 );
+
+create table email_verification_code (
+    email_verification_code_id uuid primary key default gen_random_uuid(),
+    user_id uuid not null unique references "user" on delete cascade,
+
+    created_at timestamptz default current_timestamp not null
+);
+
+create index email_verification_code_user_id_idx on email_verification_code (user_id);

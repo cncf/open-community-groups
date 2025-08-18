@@ -51,6 +51,9 @@ pub(crate) trait DBAuth {
 
     /// Updates a user's password in the database.
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
+
+    /// Verifies a user's email address using a verification code.
+    async fn verify_email(&self, code: &Uuid) -> Result<()>;
 }
 
 /// Implementation of `DBAuth` for `PgDB`, providing all authentication and authorization
@@ -220,10 +223,10 @@ impl DBAuth for PgDB {
             )
             .await?;
 
-        let result: serde_json::Value = row.get(0);
-        let user = serde_json::from_value(result.clone())?;
+        let user = serde_json::from_value(row.get(0))?;
+        let verification_code: Option<Uuid> = row.get(1);
 
-        Ok((user, None))
+        Ok((user, verification_code))
     }
 
     #[instrument(skip(self, record), err)]
@@ -274,6 +277,16 @@ impl DBAuth for PgDB {
             &[&user_id, &new_password],
         )
         .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err)]
+    async fn verify_email(&self, code: &Uuid) -> Result<()> {
+        trace!("db: verify email");
+
+        let db = self.pool.get().await?;
+        db.execute("select verify_email($1::uuid);", &[&code]).await?;
 
         Ok(())
     }

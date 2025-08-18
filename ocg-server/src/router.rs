@@ -105,7 +105,8 @@ pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
     if cfg.login.email {
         router = router
             .route("/log-in", post(auth::log_in))
-            .route("/sign-up", post(auth::sign_up));
+            .route("/sign-up", post(auth::sign_up))
+            .route("/verify-email/{code}", get(auth::verify_email));
     }
     if cfg.login.github {
         router = router

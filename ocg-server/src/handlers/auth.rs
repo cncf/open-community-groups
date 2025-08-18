@@ -15,6 +15,7 @@ use password_auth::verify_password;
 use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     auth::{self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials},
@@ -409,6 +410,22 @@ pub(crate) async fn update_user_password(
     db.update_user_password(&user.user_id, &input.new_password).await?;
 
     Ok(Redirect::to(LOG_OUT_URL).into_response())
+}
+
+/// Handler that verifies the user's email.
+#[instrument(skip_all, err)]
+pub(crate) async fn verify_email(
+    messages: Messages,
+    State(db): State<DynDB>,
+    Path(code): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Verify the email
+    if db.verify_email(&code).await.is_ok() {
+        messages.success("Email verified successfully. You can now log in using your credentials.");
+    } else {
+        messages.error("Error verifying email (please note that links are only valid for 24 hours).");
+    }
+    Ok(Redirect::to(LOG_IN_URL).into_response())
 }
 
 /// Get the log in url including the next url if provided.

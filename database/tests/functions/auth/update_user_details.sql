@@ -65,26 +65,13 @@ select update_user_details(
 );
 
 select is(
+    get_user_by_id('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     jsonb_build_object(
-        'email', email,
-        'name', name,
-        'username', username,
-        'bio', bio,
-        'city', city,
-        'company', company,
-        'country', country,
-        'facebook_url', facebook_url,
-        'interests', interests,
-        'linkedin_url', linkedin_url,
-        'photo_url', photo_url,
-        'timezone', timezone,
-        'title', title,
-        'twitter_url', twitter_url,
-        'website_url', website_url
-    ),
-    jsonb_build_object(
+        'auth_hash', (select auth_hash from "user" where user_id = '00000000-0000-0000-0000-000000000002'::uuid),
         'email', 'updated@example.com',
+        'email_verified', true,
         'name', 'Updated User',
+        'user_id', '00000000-0000-0000-0000-000000000002',
         'username', 'updateduser',
         'bio', 'This is my bio',
         'city', 'San Francisco',
@@ -100,7 +87,7 @@ select is(
         'website_url', 'https://example.com/updateduser'
     ),
     'Should update all user fields correctly'
-) from "user" where user_id = '00000000-0000-0000-0000-000000000002'::uuid;
+);
 
 -- Test: Update user with null optional fields
 select update_user_details(
@@ -125,42 +112,17 @@ select update_user_details(
 );
 
 select is(
+    get_user_by_id('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     jsonb_build_object(
-        'email', email,
-        'name', name,
-        'username', username,
-        'bio', bio,
-        'city', city,
-        'company', company,
-        'country', country,
-        'facebook_url', facebook_url,
-        'interests', interests,
-        'linkedin_url', linkedin_url,
-        'photo_url', photo_url,
-        'timezone', timezone,
-        'title', title,
-        'twitter_url', twitter_url,
-        'website_url', website_url
-    ),
-    jsonb_build_object(
+        'auth_hash', (select auth_hash from "user" where user_id = '00000000-0000-0000-0000-000000000002'::uuid),
         'email', 'final@example.com',
+        'email_verified', true,
         'name', 'Final User',
-        'username', 'finaluser',
-        'bio', null,
-        'city', null,
-        'company', null,
-        'country', null,
-        'facebook_url', null,
-        'interests', null,
-        'linkedin_url', null,
-        'photo_url', null,
-        'timezone', null,
-        'title', null,
-        'twitter_url', null,
-        'website_url', null
+        'user_id', '00000000-0000-0000-0000-000000000002',
+        'username', 'finaluser'
     ),
     'Should handle null values for optional fields correctly'
-) from "user" where user_id = '00000000-0000-0000-0000-000000000002'::uuid;
+);
 
 select * from finish();
 rollback;
