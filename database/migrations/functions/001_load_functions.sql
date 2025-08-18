@@ -1,6 +1,8 @@
 {{ template "auth/get_user_by_id.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
+{{ template "auth/user_owns_community.sql" }}
+{{ template "auth/user_owns_group.sql" }}
 {{ template "auth/verify_email.sql" }}
 
 {{ template "common/format_group_description.sql" }}

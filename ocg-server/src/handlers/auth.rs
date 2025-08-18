@@ -4,8 +4,9 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, Request, State},
     http::StatusCode,
+    middleware::Next,
     response::{Html, IntoResponse, Redirect},
 };
 use axum_extra::extract::Form;
@@ -14,7 +15,7 @@ use openidconnect as oidc;
 use password_auth::verify_password;
 use serde::Deserialize;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -329,6 +330,7 @@ pub(crate) async fn oidc_redirect(
 pub(crate) async fn sign_up(
     messages: Messages,
     CommunityId(community_id): CommunityId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
@@ -350,8 +352,13 @@ pub(crate) async fn sign_up(
     };
 
     // Enqueue email verification notification
-    if let Some(_code) = email_verification_code {
+    if let Some(code) = email_verification_code {
         // TODO: send email verification notification
+
+        // Temporarily print the verification URL to the console
+        let verification_url = format!("{}/verify-email/{}", cfg.base_url, code);
+        info!(%verification_url, "Email verification URL (temporary)");
+
         messages.success("Please verify your email to complete the sign up process.");
     }
 
@@ -453,4 +460,56 @@ pub struct OAuth2AuthorizationResponse {
 pub(crate) struct NextUrl {
     /// The next URL to redirect to, if provided.
     pub next_url: Option<String>,
+}
+
+// Authorization middleware.
+
+/// Check if the user owns the community.
+#[instrument(skip_all)]
+pub(crate) async fn user_owns_community(
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if the user owns the community
+    let Ok(user_owns_community) = db.user_owns_community(&user.user_id, &community_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !user_owns_community {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
+}
+
+/// Check if the user owns the group.
+#[instrument(skip_all)]
+pub(crate) async fn user_owns_group(
+    State(db): State<DynDB>,
+    Path(group_id): Path<Uuid>,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if the user owns the group
+    let Ok(user_owns_group) = db.user_owns_group(&user.user_id, &group_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !user_owns_group {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
 }

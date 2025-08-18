@@ -11,6 +11,7 @@ use axum::{
         HeaderValue, StatusCode, Uri,
         header::{CACHE_CONTROL, CONTENT_TYPE},
     },
+    middleware,
     response::IntoResponse,
     routing::{delete, get, post, put},
 };
@@ -67,8 +68,8 @@ pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
     let auth_layer = crate::auth::setup_layer(cfg, db).await?;
 
     // Setup sub-routers
-    let community_dashboard_router = setup_community_dashboard_router();
-    let group_dashboard_router = setup_group_dashboard_router();
+    let community_dashboard_router = setup_community_dashboard_router(state.clone());
+    let group_dashboard_router = setup_group_dashboard_router(state.clone());
 
     // Setup router
     let mut router = Router::new()
@@ -180,7 +181,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 }
 
 /// Sets up the community dashboard router and its routes.
-fn setup_community_dashboard_router() -> Router<State> {
+fn setup_community_dashboard_router(state: State) -> Router<State> {
+    // Setup authorization middleware
+    let check_user_owns_community = middleware::from_fn_with_state(state, auth::user_owns_community);
+
+    // Setup router
     Router::new()
         .route("/", get(dashboard::community::home::page))
         .route("/groups", get(dashboard::community::groups::list_page))
@@ -200,10 +205,15 @@ fn setup_community_dashboard_router() -> Router<State> {
             "/settings/update",
             get(dashboard::community::settings::update_page).put(dashboard::community::settings::update),
         )
+        .route_layer(check_user_owns_community)
 }
 
 /// Sets up the group dashboard router and its routes.
-fn setup_group_dashboard_router() -> Router<State> {
+fn setup_group_dashboard_router(state: State) -> Router<State> {
+    // Setup authorization middleware
+    let check_user_owns_group = middleware::from_fn_with_state(state, auth::user_owns_group);
+
+    // Setup router
     Router::new()
         .route("/", get(dashboard::group::home::page))
         .route("/events", get(dashboard::group::events::list_page))
@@ -223,4 +233,5 @@ fn setup_group_dashboard_router() -> Router<State> {
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )
+        .route_layer(check_user_owns_group)
 }

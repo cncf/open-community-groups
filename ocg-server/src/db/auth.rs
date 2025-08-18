@@ -52,6 +52,12 @@ pub(crate) trait DBAuth {
     /// Updates a user's password in the database.
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
 
+    /// Checks if a user owns a specific community.
+    async fn user_owns_community(&self, user_id: &Uuid, community_id: &Uuid) -> Result<bool>;
+
+    /// Checks if a user owns a specific group.
+    async fn user_owns_group(&self, user_id: &Uuid, group_id: &Uuid) -> Result<bool>;
+
     /// Verifies a user's email address using a verification code.
     async fn verify_email(&self, code: &Uuid) -> Result<()>;
 }
@@ -279,6 +285,36 @@ impl DBAuth for PgDB {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument(skip(self), err)]
+    async fn user_owns_community(&self, user_id: &Uuid, community_id: &Uuid) -> Result<bool> {
+        trace!("db: check if user owns community");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select user_owns_community($1::uuid, $2::uuid) as owns_community;",
+                &[&user_id, &community_id],
+            )
+            .await?;
+
+        Ok(row.get("owns_community"))
+    }
+
+    #[instrument(skip(self), err)]
+    async fn user_owns_group(&self, user_id: &Uuid, group_id: &Uuid) -> Result<bool> {
+        trace!("db: check if user owns group");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select user_owns_group($1::uuid, $2::uuid) as owns_group;",
+                &[&user_id, &group_id],
+            )
+            .await?;
+
+        Ok(row.get("owns_group"))
     }
 
     #[instrument(skip(self), err)]
