@@ -2,7 +2,7 @@
 begin;
 select plan(5);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set group1ID '00000000-0000-0000-0000-000000000021'
@@ -77,7 +77,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Test delete_group function performs soft delete
+-- Test: delete_group function performs soft delete
 select delete_group('00000000-0000-0000-0000-000000000021'::uuid);
 
 select is(
@@ -104,7 +104,7 @@ select is(
     'delete_group should set active to false when deleting'
 );
 
--- Test delete_group throws error for already deleted group
+-- Test: delete_group throws error for already deleted group
 select throws_ok(
     $$select delete_group('00000000-0000-0000-0000-000000000022'::uuid)$$,
     'P0001',

@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 
@@ -24,7 +24,7 @@ insert into event_category (event_category_id, name, slug, community_id)
 values 
     ('00000000-0000-0000-0000-000000000014', 'Seminar', 'seminar', :'community2ID');
 
--- Test list_event_categories returns categories for specific community ordered correctly
+-- Test: list_event_categories returns categories for specific community ordered correctly
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -47,7 +47,7 @@ select is(
     'list_event_categories should return categories for community 1 ordered by order field then name'
 );
 
--- Test list_event_categories returns only categories for the specified community
+-- Test: list_event_categories returns only categories for the specified community
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     '[

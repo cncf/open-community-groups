@@ -1,8 +1,11 @@
+-- Start transaction and plan tests
 begin;
-
 select plan(5);
 
--- Create test data
+-- Declare some variables
+\set community1ID '00000000-0000-0000-0000-000000000001'
+
+-- Seed community
 insert into community (
     community_id,
     name,
@@ -13,7 +16,7 @@ insert into community (
     theme,
     title
 ) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
+    :'community1ID',
     'Test Community',
     'Test Community',
     'test.example.com',
@@ -23,11 +26,11 @@ insert into community (
     'Test Community Title'
 );
 
--- Test 1: Valid verification code should verify email
+-- Test: Valid verification code should verify email
 -- First create a user with unverified email
 with test_user as (
     select * from sign_up_user(
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        :'community1ID',
         jsonb_build_object(
             'email', 'test1@example.com',
             'username', 'testuser1',
@@ -47,10 +50,10 @@ select is(
 ) from "user" 
 where email = 'test1@example.com';
 
--- Test 2: Verification code should be deleted after use
+-- Test: Verification code should be deleted after use
 with test_user as (
     select * from sign_up_user(
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        :'community1ID',
         jsonb_build_object(
             'email', 'test1b@example.com',
             'username', 'testuser1b',
@@ -72,7 +75,7 @@ select is(
 ) from email_verification_code 
 where email_verification_code_id = (select verification_code from verification_result);
 
--- Test 3: Invalid verification code (non-existent UUID) should raise exception
+-- Test: Invalid verification code (non-existent UUID) should raise exception
 select throws_ok(
     'select verify_email(''00000000-0000-0000-0000-000000000099''::uuid)',
     'P0001',
@@ -80,11 +83,11 @@ select throws_ok(
     'Non-existent verification code should raise exception'
 );
 
--- Test 4: Expired verification code (older than 24 hours) should raise exception  
+-- Test: Expired verification code (older than 24 hours) should raise exception  
 -- Create a user and immediately expire their code
 with test_user as (
     select * from sign_up_user(
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        :'community1ID',
         jsonb_build_object(
             'email', 'test2@example.com',
             'username', 'testuser2',
@@ -106,10 +109,10 @@ select throws_ok(
     'Expired verification code should raise exception'
 );
 
--- Test 5: Already used verification code should raise exception
+-- Test: Already used verification code should raise exception
 with test_user as (
     select * from sign_up_user(
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        :'community1ID',
         jsonb_build_object(
             'email', 'test3@example.com',
             'username', 'testuser3',
@@ -131,5 +134,6 @@ select throws_ok(
     'Already used verification code should raise exception'
 );
 
+-- Finish tests and rollback transaction
 select * from finish();
 rollback;

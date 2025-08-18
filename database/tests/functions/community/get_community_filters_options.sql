@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
@@ -49,7 +49,7 @@ values
     ('00000000-0000-0000-0000-000000000062', 'Workshops', 'workshops', :'community1ID', 2),
     ('00000000-0000-0000-0000-000000000063', 'Conferences', 'conferences', :'community1ID', 3);
 
--- Test get_community_filters_options function returns correct data
+-- Test: get_community_filters_options function returns correct data
 select is(
     get_community_filters_options('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -77,7 +77,7 @@ select is(
     'get_community_filters_options should return correct filter options as JSON'
 );
 
--- Test get_community_filters_options with non-existing community
+-- Test: get_community_filters_options with non-existing community
 select is(
     get_community_filters_options('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{

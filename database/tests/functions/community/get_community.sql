@@ -6,7 +6,7 @@ select plan(3);
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 
--- Test 1: Community with all fields populated
+-- Test: Community with all fields populated
 insert into community (
     community_id,
     active,
@@ -98,7 +98,7 @@ select is(
     'get_community should return correct data for community with all fields populated'
 );
 
--- Test 2: Community with only required fields (optional fields NULL)
+-- Test: Community with only required fields (optional fields NULL)
 insert into community (
     community_id,
     name,
@@ -135,7 +135,7 @@ select is(
     'get_community should return correct data for community with only required fields (NULL optional fields excluded)'
 );
 
--- Test 3: Non-existent community
+-- Test: Non-existent community
 select is(
     get_community('00000000-0000-0000-0000-000000000099'::uuid)::jsonb,
     NULL,

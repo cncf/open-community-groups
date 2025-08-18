@@ -95,7 +95,7 @@ insert into event (
 );
 
 
--- Test get_event_summary function returns correct data
+-- Test: get_event_summary function returns correct data
 select is(
     get_event_summary('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
@@ -117,7 +117,7 @@ select is(
     'get_event_summary should return correct event summary data as JSON'
 );
 
--- Test get_event_summary with non-existent event ID
+-- Test: get_event_summary with non-existent event ID
 select ok(
     get_event_summary('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_summary with non-existent event ID should return null'

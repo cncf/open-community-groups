@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
@@ -127,7 +127,7 @@ values
     (:'group1ID', :'user3ID', 'organizer', 1, '2024-01-01 00:00:00'),
     (:'group1ID', :'user4ID', 'organizer', 2, '2024-01-01 00:00:00');
 
--- Test get_event function returns correct data
+-- Test: get_event function returns correct data
 select is(
     get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
     '{
@@ -204,7 +204,7 @@ select is(
     'get_event should return correct event data as JSON'
 );
 
--- Test get_event with non-existing event slug
+-- Test: get_event with non-existing event slug
 select ok(
     get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'non-existing-event') is null,
     'get_event with non-existing event slug should return null'

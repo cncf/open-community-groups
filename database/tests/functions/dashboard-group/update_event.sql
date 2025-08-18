@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set event1ID '00000000-0000-0000-0000-000000000003'
@@ -78,7 +78,7 @@ insert into event (
     'in-person'
 );
 
--- Test update_event function updates individual fields
+-- Test: update_event function updates individual fields
 select update_event(
     '00000000-0000-0000-0000-000000000003'::uuid,
     '{
@@ -106,7 +106,7 @@ select is(
     'update_event should update basic fields correctly'
 );
 
--- Test update_event function updates all optional fields
+-- Test: update_event function updates all optional fields
 select update_event(
     '00000000-0000-0000-0000-000000000003'::uuid,
     '{

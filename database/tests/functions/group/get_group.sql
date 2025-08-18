@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set region1ID '00000000-0000-0000-0000-000000000021'
@@ -105,7 +105,7 @@ values
     (:'group1ID', :'user1ID', 'organizer', 1, '2024-01-01 00:00:00'),
     (:'group1ID', :'user2ID', 'organizer', 2, '2024-01-01 00:00:00');
 
--- Test get_group function returns correct data
+-- Test: get_group function returns correct data
 select is(
     get_group('00000000-0000-0000-0000-000000000001'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
     '{
@@ -158,7 +158,7 @@ select is(
     'get_group should return correct group data as JSON'
 );
 
--- Test get_group with non-existing group slug
+-- Test: get_group with non-existing group slug
 select ok(
     get_group('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group') is null,
     'get_group with non-existing group slug should return null'

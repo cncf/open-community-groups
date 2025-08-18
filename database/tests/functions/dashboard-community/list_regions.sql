@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set region1ID '00000000-0000-0000-0000-000000000011'
@@ -34,7 +34,7 @@ insert into region (region_id, name, community_id)
 values 
     (:'region3ID', 'Asia Pacific', :'community2ID');
 
--- Test list_regions returns complete JSON array with proper ordering
+-- Test: list_regions returns complete JSON array with proper ordering
 select is(
     list_regions('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -54,7 +54,7 @@ select is(
     'list_regions should return complete region data ordered by order field, then by name'
 );
 
--- Test list_regions returns empty array for community with no regions
+-- Test: list_regions returns empty array for community with no regions
 insert into community (
     community_id,
     name,

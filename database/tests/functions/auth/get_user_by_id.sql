@@ -1,8 +1,12 @@
+-- Start transaction and plan tests
 begin;
-
 select plan(4);
 
--- Create test data
+-- Declare some variables
+\set community1ID '00000000-0000-0000-0000-000000000001'
+\set user1ID '00000000-0000-0000-0001-000000000001'
+
+-- Seed community
 insert into community (
     community_id,
     name,
@@ -13,7 +17,7 @@ insert into community (
     theme,
     title
 ) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
+    :'community1ID',
     'Test Community',
     'Test Community',
     'test.example.com',
@@ -23,6 +27,7 @@ insert into community (
     'Test Community Title'
 );
 
+-- Seed user
 insert into "user" (
     user_id,
     email,
@@ -33,13 +38,13 @@ insert into "user" (
     community_id,
     password
 ) values (
-    '00000000-0000-0000-0001-000000000001'::uuid,
+    :'user1ID',
     'test@example.com',
     'testuser',
     true,
     'Test User',
     'test_hash'::bytea,
-    '00000000-0000-0000-0000-000000000001'::uuid,
+    :'community1ID',
     'hashed_password_here'
 );
 
@@ -96,5 +101,6 @@ select is(
     'Should return null when ID does not exist'
 );
 
+-- Finish tests and rollback transaction
 select * from finish();
 rollback;

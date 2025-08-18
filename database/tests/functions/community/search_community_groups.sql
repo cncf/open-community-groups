@@ -2,7 +2,7 @@
 begin;
 select plan(3);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
@@ -78,7 +78,7 @@ insert into "group" (
      ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group. PLEASE ADD A DESCRIPTION HERE for this meetup',
      'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00');
 
--- Test search without filters returns all groups with full JSON verification
+-- Test: search without filters returns all groups with full JSON verification
 select is(
     (select groups from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb))::jsonb,
     '[
@@ -175,14 +175,14 @@ select is(
     'search_community_groups without filters should return all active groups with correct JSON structure'
 );
 
--- Test total count
+-- Test: total count
 select is(
     (select total from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb)),
     4::bigint,
     'search_community_groups should return correct total count'
 );
 
--- Test search with non-existing community
+-- Test: search with non-existing community
 select is(
     (select total from search_community_groups('00000000-0000-0000-0000-999999999999'::uuid, '{}'::jsonb)),
     0::bigint,

@@ -2,7 +2,7 @@
 begin;
 select plan(4);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set event1ID '00000000-0000-0000-0000-000000000003'
@@ -77,7 +77,7 @@ insert into event (
     true
 );
 
--- Test delete_event function sets deleted=true
+-- Test: delete_event function sets deleted=true
 select delete_event('00000000-0000-0000-0000-000000000003'::uuid);
 
 select is(
@@ -86,21 +86,21 @@ select is(
     'delete_event should set deleted=true'
 );
 
--- Test delete_event function sets deleted_at timestamp
+-- Test: delete_event function sets deleted_at timestamp
 select isnt(
     (select deleted_at from event where event_id = :'event1ID'),
     null,
     'delete_event should set deleted_at timestamp'
 );
 
--- Test delete_event function sets published=false
+-- Test: delete_event function sets published=false
 select is(
     (select published from event where event_id = :'event1ID'),
     false,
     'delete_event should set published=false'
 );
 
--- Test event still exists in database (soft delete)
+-- Test: event still exists in database (soft delete)
 select is(
     (select count(*)::int from event where event_id = :'event1ID'),
     1,

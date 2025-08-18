@@ -2,7 +2,7 @@
 begin;
 select plan(3);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set region1ID '00000000-0000-0000-0000-000000000012'
@@ -36,7 +36,7 @@ values (:'region1ID', 'North America', :'community1ID');
 insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'community1ID');
 
--- Test add_group function creates group with required fields only
+-- Test: add_group function creates group with required fields only
 select is(
     (select (get_group_full(
         add_group(
@@ -58,7 +58,7 @@ select is(
     'add_group should create group with minimal required fields and return expected structure'
 );
 
--- Test add_group function creates group with all fields
+-- Test: add_group function creates group with all fields
 select is(
     (select (get_group_full(
         add_group(
@@ -129,7 +129,7 @@ select is(
     'add_group should create group with all fields and return expected structure'
 );
 
--- Test add_group function converts empty strings to null for nullable fields
+-- Test: add_group function converts empty strings to null for nullable fields
 do $$
 declare
     v_group_id uuid;

@@ -146,7 +146,7 @@ insert into "group" (
     '2024-02-15 10:00:00+00'
 );
 
--- Test get_group_full function returns correct data
+-- Test: get_group_full function returns correct data
 select is(
     get_group_full('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -213,7 +213,7 @@ select is(
     'get_group_full should return complete group data with organizers and member count as JSON'
 );
 
--- Test get_group_full with non-existent group ID
+-- Test: get_group_full with non-existent group ID
 select ok(
     get_group_full('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_full with non-existent group ID should return null'

@@ -1,3 +1,4 @@
+-- Start transaction and plan tests
 begin;
 select plan(9);
 
@@ -63,5 +64,6 @@ select ok(
     'Should truncate long descriptions to 500 characters'
 );
 
+-- Finish tests and rollback transaction
 select * from finish();
 rollback;

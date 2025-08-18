@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
@@ -83,7 +83,7 @@ insert into event (
      '2026-02-20 09:00:00+00', '2026-02-20 11:00:00+00',
      null, 'New York');
 
--- Test get_group_upcoming_events function returns correct data
+-- Test: get_group_upcoming_events function returns correct data
 select is(
     get_group_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
@@ -131,7 +131,7 @@ select is(
     'get_group_upcoming_events should return published future events ordered by date ASC as JSON'
 );
 
--- Test get_group_upcoming_events with non-existing group slug
+-- Test: get_group_upcoming_events with non-existing group slug
 select is(
     get_group_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[]'::jsonb,

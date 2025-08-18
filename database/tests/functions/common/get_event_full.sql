@@ -251,7 +251,7 @@ insert into event (
     'America/New_York'
 );
 
--- Test get_event_full function returns correct data
+-- Test: get_event_full function returns correct data
 select is(
     get_event_full('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
@@ -358,7 +358,7 @@ select is(
     'get_event_full should return complete event data with hosts, organizers, and sessions as JSON'
 );
 
--- Test get_event_full with non-existent event ID
+-- Test: get_event_full with non-existent event ID
 select ok(
     get_event_full('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_full with non-existent event ID should return null'

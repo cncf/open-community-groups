@@ -2,7 +2,7 @@
 begin;
 select plan(3);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
@@ -80,7 +80,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Test update_group function updates group fields correctly
+-- Test: update_group function updates group fields correctly
 select update_group(
     '00000000-0000-0000-0000-000000000021'::uuid,
     '{
@@ -126,7 +126,7 @@ select is(
     'update_group should update all provided fields and return expected structure'
 );
 
--- Test update_group throws error for deleted group
+-- Test: update_group throws error for deleted group
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000022'::uuid,
@@ -137,7 +137,7 @@ select throws_ok(
     'update_group should throw error when trying to update deleted group'
 );
 
--- Test update_group converts empty strings to null for nullable fields
+-- Test: update_group converts empty strings to null for nullable fields
 insert into "group" (
     group_id,
     name,

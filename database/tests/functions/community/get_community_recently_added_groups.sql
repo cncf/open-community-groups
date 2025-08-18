@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set region1ID '00000000-0000-0000-0000-000000000021'
@@ -56,7 +56,7 @@ values
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
      'London', null, 'GB', 'United Kingdom', :'region2ID');
 
--- Test get_community_recently_added_groups function returns correct data
+-- Test: get_community_recently_added_groups function returns correct data
 select is(
     get_community_recently_added_groups('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -126,7 +126,7 @@ select is(
     'get_community_recently_added_groups should return groups ordered by creation date DESC as JSON'
 );
 
--- Test get_community_recently_added_groups with non-existing community
+-- Test: get_community_recently_added_groups with non-existing community
 select is(
     get_community_recently_added_groups('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '[]'::jsonb,

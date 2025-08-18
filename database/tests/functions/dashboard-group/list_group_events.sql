@@ -2,7 +2,7 @@
 begin;
 select plan(3);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set group2ID '00000000-0000-0000-0000-000000000003'
@@ -153,14 +153,14 @@ insert into event (
         'Chicago'
     );
 
--- Test list_group_events returns empty array for group with no events
+-- Test: list_group_events returns empty array for group with no events
 select is(
     list_group_events('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'list_group_events should return empty array for group with no events'
 );
 
--- Test list_group_events returns full JSON structure for group1 events ordered correctly
+-- Test: list_group_events returns full JSON structure for group1 events ordered correctly
 select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
     '[
@@ -213,7 +213,7 @@ select is(
     'list_group_events should return events with full JSON structure ordered by starts_at desc with nulls last'
 );
 
--- Test list_group_events returns full JSON structure for group2's single event
+-- Test: list_group_events returns full JSON structure for group2's single event
 select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     '[

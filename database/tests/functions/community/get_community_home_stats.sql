@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set group1ID '00000000-0000-0000-0000-000000000031'
@@ -88,7 +88,7 @@ values
     (:'event1ID', :'user1ID', '2024-01-01 00:00:00'),
     (:'event1ID', :'user2ID', '2024-01-01 00:00:00');
 
--- Test get_community_home_stats function returns correct data
+-- Test: get_community_home_stats function returns correct data
 select is(
     get_community_home_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -100,7 +100,7 @@ select is(
     'get_community_home_stats should return correct stats as JSON'
 );
 
--- Test get_community_home_stats with non-existing community
+-- Test: get_community_home_stats with non-existing community
 select is(
     get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{
