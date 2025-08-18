@@ -71,6 +71,20 @@ create table "user" (
 
 create index user_community_id_idx on "user" (community_id);
 
+create table community_team (
+    community_id uuid not null references community,
+    user_id uuid not null references "user",
+    role text not null check (role <> ''),
+    created_at timestamptz default current_timestamp not null,
+
+    "order" integer,
+
+    primary key (community_id, user_id)
+);
+
+create index community_team_community_id_idx on community_team (community_id);
+create index community_team_user_id_idx on community_team (user_id);
+
 create table region (
     region_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
