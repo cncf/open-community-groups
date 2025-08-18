@@ -8,6 +8,7 @@ select plan(4);
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set group1ID '00000000-0000-0000-0000-000000000021'
 \set groupDeletedID '00000000-0000-0000-0000-000000000022'
+\set group2ID '00000000-0000-0000-0000-000000000023'
 
 -- Seed community
 insert into community (
@@ -82,8 +83,8 @@ insert into "group" (
 
 -- Test: update_group function updates group fields correctly
 select update_group(
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '00000000-0000-0000-0000-000000000021'::uuid,
+    :'community1ID'::uuid,
+    :'group1ID'::uuid,
     '{
         "name": "Updated Group",
         "slug": "updated-group",
@@ -102,7 +103,7 @@ select update_group(
 );
 
 select is(
-    (select get_group_full('00000000-0000-0000-0000-000000000021'::uuid)::jsonb - 'created_at' - 'members_count'),
+    (select get_group_full(:'group1ID'::uuid)::jsonb - 'created_at' - 'members_count'),
     '{
         "name": "Updated Group",
         "slug": "updated-group",
@@ -155,7 +156,7 @@ insert into "group" (
     website_url,
     created_at
 ) values (
-    '00000000-0000-0000-0000-000000000023'::uuid,
+    :'group2ID'::uuid,
     'Test Group for Empty Strings',
     'test-group-empty-strings',
     :'community1ID',
@@ -171,8 +172,8 @@ insert into "group" (
 );
 
 select update_group(
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '00000000-0000-0000-0000-000000000023'::uuid,
+    :'community1ID'::uuid,
+    :'group2ID'::uuid,
     '{
         "name": "Updated Group Empty Strings",
         "slug": "updated-group-empty-strings",
@@ -201,7 +202,7 @@ select update_group(
 select is(
     (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location'
      from (
-        select * from "group" where group_id = '00000000-0000-0000-0000-000000000023'::uuid
+        select * from "group" where group_id = :'group2ID'::uuid
      ) t),
     '{
         "name": "Updated Group Empty Strings",

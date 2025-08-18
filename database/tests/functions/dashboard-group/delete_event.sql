@@ -7,6 +7,7 @@ select plan(5);
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set event1ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
+\set groupCategory1ID '00000000-0000-0000-0000-000000000010'
 
 -- Seed community
 insert into community (
@@ -35,7 +36,7 @@ values (:'category1ID', 'Conference', 'conference', :'community1ID');
 
 -- Seed group category
 insert into group_category (group_category_id, name, community_id)
-values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
+values (:'groupCategory1ID', 'Technology', :'community1ID');
 
 -- Seed group
 insert into "group" (
@@ -51,7 +52,7 @@ insert into "group" (
     'Test Group',
     'test-group',
     'A test group',
-    '00000000-0000-0000-0000-000000000010'
+    :'groupCategory1ID'
 );
 
 -- Seed event (with published=true to test it gets set to false)
@@ -78,7 +79,7 @@ insert into event (
 );
 
 -- Test: delete_event function sets deleted=true
-select delete_event('00000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000003'::uuid);
+select delete_event(:'group1ID'::uuid, :'event1ID'::uuid);
 
 select is(
     (select deleted from event where event_id = :'event1ID'),

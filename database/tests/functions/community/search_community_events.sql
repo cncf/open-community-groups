@@ -81,7 +81,7 @@ insert into event (
 
 -- Test: search without filters returns all events with full JSON verification
 select is(
-    (select events from search_community_events('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb))::jsonb,
+    (select events from search_community_events(:'community1ID'::uuid, '{}'::jsonb))::jsonb,
     '[
         {
             "canceled": false,
@@ -160,7 +160,7 @@ select is(
 
 -- Test: total count
 select is(
-    (select total from search_community_events('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb)),
+    (select total from search_community_events(:'community1ID'::uuid, '{}'::jsonb)),
     3::bigint,
     'search_community_events should return correct total count'
 );

@@ -78,28 +78,28 @@ insert into "group" (
 );
 
 -- Test: delete_group function performs soft delete
-select delete_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid);
+select delete_group(:'community1ID'::uuid, :'group1ID'::uuid);
 
 select is(
-    (select deleted from "group" where group_id = '00000000-0000-0000-0000-000000000021'::uuid),
+    (select deleted from "group" where group_id = :'group1ID'::uuid),
     true,
     'delete_group should set deleted to true'
 );
 
 select ok(
-    (select deleted_at from "group" where group_id = '00000000-0000-0000-0000-000000000021'::uuid) is not null,
+    (select deleted_at from "group" where group_id = :'group1ID'::uuid) is not null,
     'delete_group should set deleted_at timestamp'
 );
 
 -- Verify the group still exists in database
 select ok(
-    exists(select 1 from "group" where group_id = '00000000-0000-0000-0000-000000000021'::uuid),
+    exists(select 1 from "group" where group_id = :'group1ID'::uuid),
     'delete_group should perform soft delete (record still exists)'
 );
 
 -- Verify active field is set to false when deleting
 select is(
-    (select active from "group" where group_id = '00000000-0000-0000-0000-000000000021'::uuid),
+    (select active from "group" where group_id = :'group1ID'::uuid),
     false,
     'delete_group should set active to false when deleting'
 );

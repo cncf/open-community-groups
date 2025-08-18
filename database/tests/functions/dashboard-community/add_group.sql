@@ -40,7 +40,7 @@ values (:'category1ID', 'Technology', :'community1ID');
 select is(
     (select (get_group_full(
         add_group(
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            :'community1ID'::uuid,
             '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group"}'::jsonb
         )
     )::jsonb - 'created_at' - 'members_count' - 'group_id')),
@@ -62,7 +62,7 @@ select is(
 select is(
     (select (get_group_full(
         add_group(
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            :'community1ID'::uuid,
             '{
                 "name": "Full Test Group",
                 "slug": "full-test-group",

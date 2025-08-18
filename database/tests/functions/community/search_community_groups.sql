@@ -80,7 +80,7 @@ insert into "group" (
 
 -- Test: search without filters returns all groups with full JSON verification
 select is(
-    (select groups from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb))::jsonb,
+    (select groups from search_community_groups(:'community1ID'::uuid, '{}'::jsonb))::jsonb,
     '[
         {
             "category": {
@@ -177,7 +177,7 @@ select is(
 
 -- Test: total count
 select is(
-    (select total from search_community_groups('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb)),
+    (select total from search_community_groups(:'community1ID'::uuid, '{}'::jsonb)),
     4::bigint,
     'search_community_groups should return correct total count'
 );
