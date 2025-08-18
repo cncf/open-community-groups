@@ -4,6 +4,7 @@
 //! for managing community groups and events.
 
 #![warn(clippy::all, clippy::pedantic)]
+#![allow(clippy::struct_field_names)]
 
 use std::{path::PathBuf, sync::Arc};
 
@@ -21,6 +22,7 @@ use crate::{
     db::PgDB,
 };
 
+mod auth;
 mod config;
 mod db;
 mod handlers;
@@ -65,7 +67,7 @@ async fn main() -> Result<()> {
     let db = Arc::new(PgDB::new(pool));
 
     // Setup and launch the HTTP server.
-    let router = router::setup(&cfg.server, db);
+    let router = router::setup(&cfg.server, db).await?;
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");

@@ -9,6 +9,10 @@ use axum::{
 /// Represents all possible errors that can occur in a handler.
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum HandlerError {
+    /// Error related to authentication, contains a message.
+    #[error("authentication error")]
+    Auth(String),
+
     /// Error during JSON serialization or deserialization.
     #[error("serde json error: {0}")]
     Serde(#[from] serde_json::Error),
@@ -16,6 +20,10 @@ pub(crate) enum HandlerError {
     /// Error during template rendering.
     #[error("template error: {0}")]
     Template(#[from] askama::Error),
+
+    /// Error related to session management.
+    #[error("session error: {0}")]
+    Session(#[from] tower_sessions::session::Error),
 
     /// Any other error, wrapped in `anyhow::Error` for flexibility.
     #[error(transparent)]

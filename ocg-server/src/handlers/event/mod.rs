@@ -8,7 +8,10 @@ use axum::{
 };
 use tracing::instrument;
 
-use crate::{db::DynDB, templates::event::Page};
+use crate::{
+    db::DynDB,
+    templates::{PageId, event::Page},
+};
 
 use super::{error::HandlerError, extractors::CommunityId};
 
@@ -30,6 +33,7 @@ pub(crate) async fn page(
     let template = Page {
         community,
         event,
+        page_id: PageId::Event,
         path: uri.path().to_string(),
     };
 

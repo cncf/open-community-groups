@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
-use tracing::instrument;
+use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{
@@ -58,6 +58,8 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_filters_options`]
     #[instrument(skip(self), err)]
     async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions> {
+        trace!("db: get community filters options");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -73,6 +75,8 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_home_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats> {
+        trace!("db: get community home stats");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -88,6 +92,8 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_id`]
     #[instrument(skip(self), err)]
     async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>> {
+        trace!("db: get community id");
+
         let db = self.pool.get().await?;
         let community_id = db
             .query_opt(
@@ -103,6 +109,8 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_recently_added_groups`]
     #[instrument(skip(self), err)]
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
+        trace!("db: get community recently added groups");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -122,6 +130,8 @@ impl DBCommunity for PgDB {
         community_id: Uuid,
         event_kinds: Vec<EventKind>,
     ) -> Result<Vec<EventSummary>> {
+        trace!("db: get community upcoming events");
+
         let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
         let db = self.pool.get().await?;
         let row = db
@@ -142,6 +152,8 @@ impl DBCommunity for PgDB {
         community_id: Uuid,
         filters: &explore::EventsFilters,
     ) -> Result<SearchCommunityEventsOutput> {
+        trace!("db: search community events");
+
         // Query database
         let db = self.pool.get().await?;
         let row = db
@@ -176,6 +188,8 @@ impl DBCommunity for PgDB {
         community_id: Uuid,
         filters: &explore::GroupsFilters,
     ) -> Result<SearchCommunityGroupsOutput> {
+        trace!("db: search community groups");
+
         // Query database
         let db = self.pool.get().await?;
         let row = db

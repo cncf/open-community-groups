@@ -13,10 +13,13 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::dashboard::community::{
-        groups,
-        home::{Content, Page, Tab},
-        settings,
+    templates::{
+        PageId,
+        dashboard::community::{
+            groups,
+            home::{Content, Page, Tab},
+            settings,
+        },
     },
 };
 
@@ -50,8 +53,9 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         community,
-        path: "/dashboard/community".to_string(),
         content,
+        page_id: PageId::CommunityDashboard,
+        path: "/dashboard/community".to_string(),
     };
 
     let html = Html(page.render()?);

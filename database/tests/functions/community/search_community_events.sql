@@ -2,7 +2,7 @@
 begin;
 select plan(3);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
@@ -79,12 +79,13 @@ insert into event (
      '2026-02-03 10:00:00+00', '2026-02-03 17:00:00+00', array['cloud', 'aws'],
      'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png');
 
--- Test search without filters returns all events with full JSON verification
+-- Test: search without filters returns all events with full JSON verification
 select is(
     (select events from search_community_events('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb))::jsonb,
     '[
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000041",
             "kind": "in-person",
             "name": "Kubernetes Workshop",
             "slug": "kubernetes-workshop",
@@ -108,6 +109,7 @@ select is(
         },
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "kind": "virtual",
             "name": "Docker Training",
             "slug": "docker-training",
@@ -130,6 +132,7 @@ select is(
         },
         {
             "canceled": false,
+            "event_id": "00000000-0000-0000-0000-000000000043",
             "kind": "hybrid",
             "name": "Cloud Summit",
             "slug": "cloud-summit",
@@ -155,14 +158,14 @@ select is(
     'search_community_events without filters should return all published events with correct JSON structure'
 );
 
--- Test total count
+-- Test: total count
 select is(
     (select total from search_community_events('00000000-0000-0000-0000-000000000001'::uuid, '{}'::jsonb)),
     3::bigint,
     'search_community_events should return correct total count'
 );
 
--- Test search with non-existing community
+-- Test: search with non-existing community
 select is(
     (select total from search_community_events('00000000-0000-0000-0000-999999999999'::uuid, '{}'::jsonb)),
     0::bigint,

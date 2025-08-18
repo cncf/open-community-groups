@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tracing::instrument;
+use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{db::PgDB, types::event::EventFull};
@@ -19,6 +19,8 @@ impl DBEvent for PgDB {
     /// [`DB::get_event`]
     #[instrument(skip(self), err)]
     async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull> {
+        trace!("db: get event");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -26,7 +28,8 @@ impl DBEvent for PgDB {
                 &[&community_id, &group_slug, &event_slug],
             )
             .await?;
-        let value: String = row.get(0);
-        EventFull::try_from_json(&value)
+        let event = EventFull::try_from_json(row.get(0))?;
+
+        Ok(event)
     }
 }

@@ -2,7 +2,7 @@
 begin;
 select plan(3);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 
 -- Seed community with all fields
@@ -64,7 +64,7 @@ insert into community (
     'https://youtube.com/original'
 );
 
--- Test updating required fields
+-- Test: updating required fields
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -113,7 +113,7 @@ select is(
     'update_community should update required fields correctly while preserving optional fields'
 );
 
--- Test updating all fields including optional ones
+-- Test: updating all fields including optional ones
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -179,7 +179,7 @@ select is(
     'update_community should update all fields correctly including optional ones'
 );
 
--- Test update_community converts empty strings to null for nullable fields
+-- Test: update_community converts empty strings to null for nullable fields
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{

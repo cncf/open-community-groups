@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set category1ID '00000000-0000-0000-0000-000000000011'
@@ -113,14 +113,14 @@ insert into "group" (
         null
     );
 
--- Test list_community_groups returns empty array for community with no groups
+-- Test: list_community_groups returns empty array for community with no groups
 select is(
     list_community_groups('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'list_community_groups should return empty array for community with no groups'
 );
 
--- Test list_community_groups returns full JSON structure for groups ordered alphabetically
+-- Test: list_community_groups returns full JSON structure for groups ordered alphabetically
 select is(
     list_community_groups(:'community1ID'::uuid)::jsonb,
     '[

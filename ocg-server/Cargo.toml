@@ -11,6 +11,9 @@ anyhow = { workspace = true }
 askama = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
+axum-extra = { workspace = true }
+axum-login = { workspace = true }
+axum-messages = { workspace = true }
 cached = { workspace = true }
 clap = { workspace = true }
 chrono = { workspace = true }
@@ -21,9 +24,13 @@ figment = { workspace = true }
 mime_guess = { workspace = true }
 minify-html = { workspace = true }
 num-format = { workspace = true }
+oauth2 = { workspace = true }
+openidconnect = { workspace = true }
 openssl = { workspace = true }
 palette = { workspace = true }
+password-auth = { workspace = true }
 postgres-openssl = { workspace = true }
+reqwest = { workspace = true }
 rust-embed = { workspace = true }
 serde = { workspace = true }
 serde_html_form = { workspace = true }
@@ -32,10 +39,12 @@ serde_qs = { workspace = true }
 serde_with = { workspace = true }
 strum = { workspace = true }
 thiserror = { workspace = true }
+time = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
+tower-sessions = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 unicode-segmentation = { workspace = true }

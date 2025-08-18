@@ -3,6 +3,7 @@
 //! This module sets up the Axum router with all application routes, middleware layers,
 //! and static file handling.
 
+use anyhow::Result;
 use axum::{
     Router,
     extract::FromRef,
@@ -11,19 +12,18 @@ use axum::{
         header::{CACHE_CONTROL, CONTENT_TYPE},
     },
     response::IntoResponse,
-    routing::{delete, get},
+    routing::{delete, get, post, put},
 };
+use axum_messages::MessagesManagerLayer;
 use rust_embed::Embed;
 use tower::ServiceBuilder;
-use tower_http::{
-    set_header::SetResponseHeaderLayer, trace::TraceLayer, validate_request::ValidateRequestHeaderLayer,
-};
+use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 use tracing::instrument;
 
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{community, dashboard, event, group},
+    handlers::{auth, community, dashboard, event, group},
 };
 
 /// Default cache duration for HTTP responses in seconds.
@@ -39,12 +39,11 @@ pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 5; // 5 minutes
 #[folder = "dist/static"]
 struct StaticFile;
 
-/// Application state shared across all request handlers.
-///
-/// Contains the database connection pool and any other shared resources needed by
-/// handlers.
+/// Shared state for the router.
 #[derive(Clone, FromRef)]
 pub(crate) struct State {
+    /// HTTP server configuration.
+    pub cfg: HttpServerConfig,
     /// Database handle.
     pub db: DynDB,
     /// `serde_qs` config for query string parsing.
@@ -56,7 +55,17 @@ pub(crate) struct State {
 /// Sets up all routes, middleware layers, and shared state. Optionally adds basic
 /// authentication if configured.
 #[instrument(skip_all)]
-pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
+pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
+    // Setup router state
+    let state = State {
+        cfg: cfg.clone(),
+        db: db.clone(),
+        serde_qs_de: serde_qs::Config::new(3, false),
+    };
+
+    // Setup authentication layer
+    let auth_layer = crate::auth::setup_layer(cfg, db).await?;
+
     // Setup sub-routers
     let community_dashboard_router = setup_community_dashboard_router();
     let group_dashboard_router = setup_group_dashboard_router();
@@ -64,6 +73,14 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
     // Setup router
     let mut router = Router::new()
         .route("/", get(community::home::page))
+        .route(
+            "/dashboard/account/update/details",
+            put(auth::update_user_details),
+        )
+        .route(
+            "/dashboard/account/update/password",
+            put(auth::update_user_password),
+        )
         .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
         .route("/explore", get(community::explore::page))
@@ -82,28 +99,39 @@ pub(crate) fn setup(cfg: &HttpServerConfig, db: DynDB) -> Router {
         .route("/health-check", get(health_check))
         .route("/group/{group_slug}", get(group::page))
         .route("/group/{group_slug}/event/{event_slug}", get(event::page))
+        .route("/log-in", get(auth::log_in_page));
+
+    // Setup some routes based on the login options enabled
+    if cfg.login.email {
+        router = router
+            .route("/log-in", post(auth::log_in))
+            .route("/sign-up", post(auth::sign_up))
+            .route("/verify-email/{code}", get(auth::verify_email));
+    }
+    if cfg.login.github {
+        router = router
+            .route("/log-in/oauth2/{provider}", get(auth::oauth2_redirect))
+            .route("/log-in/oauth2/{provider}/callback", get(auth::oauth2_callback));
+    }
+    if cfg.login.linuxfoundation {
+        router = router
+            .route("/log-in/oidc/{provider}", get(auth::oidc_redirect))
+            .route("/log-in/oidc/{provider}/callback", get(auth::oidc_callback));
+    }
+
+    router = router
+        .route("/log-out", get(auth::log_out))
+        .route("/sign-up", get(auth::sign_up_page))
+        .layer(MessagesManagerLayer)
+        .layer(auth_layer)
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
             HeaderValue::try_from(format!("max-age={DEFAULT_CACHE_DURATION}")).expect("valid header value"),
-        ))
-        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .with_state(State {
-            db,
-            serde_qs_de: serde_qs::Config::new(3, false),
-        });
-
-    // Setup basic auth
-    if let Some(basic_auth) = &cfg.basic_auth
-        && basic_auth.enabled
-    {
-        router = router.layer(ValidateRequestHeaderLayer::basic(
-            &basic_auth.username,
-            &basic_auth.password,
         ));
-    }
 
-    router
+    Ok(router.with_state(state))
 }
 
 /// Health check endpoint handler.

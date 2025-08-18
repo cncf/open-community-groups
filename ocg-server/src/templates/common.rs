@@ -12,13 +12,10 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct User {
     /// Unique identifier for the user.
-    #[serde(rename = "user_id")]
-    pub id: Uuid,
+    pub user_id: Uuid,
 
-    /// User's first name.
-    pub first_name: Option<String>,
-    /// User's last name.
-    pub last_name: Option<String>,
+    /// User's name.
+    pub name: Option<String>,
     /// Company the user works for.
     pub company: Option<String>,
     /// User's job title.

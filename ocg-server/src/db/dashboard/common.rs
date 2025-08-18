@@ -3,7 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
-use tracing::instrument;
+use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{db::PgDB, templates::dashboard::community::groups::Group};
@@ -20,12 +20,15 @@ impl DBDashboardCommon for PgDB {
     /// [`DBDashboardCommon::update_group`]
     #[instrument(skip(self, group), err)]
     async fn update_group(&self, group_id: Uuid, group: &Group) -> Result<()> {
+        trace!("db: update group");
+
         let db = self.pool.get().await?;
         db.execute(
             "select update_group($1::uuid, $2::jsonb)",
             &[&group_id, &Json(group)],
         )
         .await?;
+
         Ok(())
     }
 }

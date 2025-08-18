@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set region1ID '00000000-0000-0000-0000-000000000021'
@@ -41,11 +41,11 @@ insert into region (region_id, name, community_id)
 values (:'region1ID', 'North America', :'community1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, first_name, last_name, company, title, photo_url, created_at)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, company, title, photo_url, created_at)
 values
-    (:'user1ID', 'organizer1@example.com', :'community1ID', 'John', 'Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'user2ID', 'organizer2@example.com', :'community1ID', 'Jane', 'Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
-    (:'user3ID', 'member@example.com', :'community1ID', 'Bob', 'Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
+    (:'user1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'user2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
+    (:'user3ID', 'member@example.com', 'member1', false, 'test_hash'::bytea, :'community1ID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
 -- Seed group with all fields
 insert into "group" (
@@ -105,7 +105,7 @@ values
     (:'group1ID', :'user1ID', 'organizer', 1, '2024-01-01 00:00:00'),
     (:'group1ID', :'user2ID', 'organizer', 2, '2024-01-01 00:00:00');
 
--- Test get_group function returns correct data
+-- Test: get_group function returns correct data
 select is(
     get_group('00000000-0000-0000-0000-000000000001'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
     '{
@@ -125,17 +125,15 @@ select is(
                 "title": "CTO",
                 "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000041",
-                "last_name": "Doe",
-                "photo_url": "https://example.com/john.png",
-                "first_name": "John"
+                "name": "John Doe",
+                "photo_url": "https://example.com/john.png"
             },
             {
                 "title": "Lead Dev",
                 "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000042",
-                "last_name": "Smith",
-                "photo_url": "https://example.com/jane.png",
-                "first_name": "Jane"
+                "name": "Jane Smith",
+                "photo_url": "https://example.com/jane.png"
             }
         ],
         "description": "New York Kubernetes meetup group for cloud native enthusiasts",
@@ -160,7 +158,7 @@ select is(
     'get_group should return correct group data as JSON'
 );
 
--- Test get_group with non-existing group slug
+-- Test: get_group with non-existing group slug
 select ok(
     get_group('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group') is null,
     'get_group with non-existing group slug should return null'

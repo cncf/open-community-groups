@@ -6,7 +6,7 @@
 //! - YAML configuration file
 //! - Environment variables (with OCG_ prefix)
 
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::Result;
 use deadpool_postgres::Config as DbConfig;
@@ -53,26 +53,6 @@ impl Config {
     }
 }
 
-/// HTTP server configuration settings.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) struct HttpServerConfig {
-    /// The address the HTTP server will listen on.
-    pub addr: String,
-    /// Optional basic authentication configuration.
-    pub basic_auth: Option<BasicAuth>,
-}
-
-/// Basic authentication configuration for the HTTP server.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) struct BasicAuth {
-    /// Whether basic authentication is enabled.
-    pub enabled: bool,
-    /// Username for basic authentication.
-    pub username: String,
-    /// Password for basic authentication.
-    pub password: String,
-}
-
 /// Logging configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct LogConfig {
@@ -88,4 +68,95 @@ pub(crate) enum LogFormat {
     Json,
     /// Human-readable log format.
     Pretty,
+}
+
+/// HTTP server configuration settings.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct HttpServerConfig {
+    /// The address the HTTP server will listen on.
+    pub addr: String,
+    /// Base URL for the server.
+    pub base_url: String,
+    /// Login options configuration.
+    pub login: LoginOptions,
+    /// `OAuth2` providers configuration.
+    pub oauth2: OAuth2Config,
+    /// OIDC providers configuration.
+    pub oidc: OidcConfig,
+
+    /// Optional cookie configuration.
+    pub cookie: Option<CookieConfig>,
+}
+
+/// Cookie settings configuration.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub(crate) struct CookieConfig {
+    /// Whether cookies should be secure (HTTPS only).
+    pub secure: Option<bool>,
+}
+
+/// Login options enabled for the server.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) struct LoginOptions {
+    /// Enable email login.
+    pub email: bool,
+    /// Enable GitHub login.
+    pub github: bool,
+    /// Enable Linux Foundation login.
+    pub linuxfoundation: bool,
+}
+
+/// Type alias for the `OAuth2` configuration section.
+pub(crate) type OAuth2Config = HashMap<OAuth2Provider, OAuth2ProviderConfig>;
+
+/// Supported `OAuth2` providers.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum OAuth2Provider {
+    /// GitHub as an `OAuth2` provider.
+    GitHub,
+}
+
+/// `OAuth2` provider configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct OAuth2ProviderConfig {
+    /// Authorization endpoint URL.
+    pub auth_url: String,
+    /// `OAuth2` client ID.
+    pub client_id: String,
+    /// `OAuth2` client secret.
+    pub client_secret: String,
+    /// Redirect URI after authentication.
+    pub redirect_uri: String,
+    /// Scopes requested from the provider.
+    pub scopes: Vec<String>,
+    /// Token endpoint URL.
+    pub token_url: String,
+}
+
+/// Type alias for the OIDC configuration section.
+pub(crate) type OidcConfig = HashMap<OidcProvider, OidcProviderConfig>;
+
+/// Supported OIDC providers.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum OidcProvider {
+    /// Linux Foundation as an OIDC provider.
+    LinuxFoundation,
+}
+
+/// OIDC provider configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct OidcProviderConfig {
+    /// OIDC client ID.
+    pub client_id: String,
+    /// OIDC client secret.
+    pub client_secret: String,
+    /// OIDC issuer URL.
+    pub issuer_url: String,
+    /// Redirect URI after authentication.
+    pub redirect_uri: String,
+    /// Scopes requested from the provider.
+    pub scopes: Vec<String>,
 }

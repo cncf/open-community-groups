@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set category1ID '00000000-0000-0000-0000-000000000011'
@@ -53,7 +53,7 @@ insert into "group" (
     '00000000-0000-0000-0000-000000000010'
 );
 
--- Test add_event function creates event with required fields only
+-- Test: add_event function creates event with required fields only
 select is(
     (select (get_event_full(
         add_event(
@@ -74,7 +74,7 @@ select is(
     'add_event should create event with minimal required fields and return expected structure'
 );
 
--- Test add_event function creates event with all fields
+-- Test: add_event function creates event with all fields
 select is(
     (select (get_event_full(
         add_event(

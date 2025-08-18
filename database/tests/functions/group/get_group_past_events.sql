@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
@@ -82,11 +82,12 @@ insert into event (
      '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00',
      null, 'Los Angeles');
 
--- Test get_group_past_events function returns correct data
+-- Test: get_group_past_events function returns correct data
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
         {
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "kind": "virtual",
             "name": "Past Event 2",
             "slug": "past-event-2",
@@ -102,6 +103,7 @@ select is(
             "group_country_name": "United States"
         },
         {
+            "event_id": "00000000-0000-0000-0000-000000000041",
             "kind": "in-person",
             "name": "Past Event 1",
             "slug": "past-event-1",
@@ -120,7 +122,7 @@ select is(
     'get_group_past_events should return published past events ordered by date DESC as JSON'
 );
 
--- Test get_group_past_events with non-existing group slug
+-- Test: get_group_past_events with non-existing group slug
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[]'::jsonb,

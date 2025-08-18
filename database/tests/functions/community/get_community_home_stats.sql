@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set group1ID '00000000-0000-0000-0000-000000000031'
@@ -43,10 +43,10 @@ values
     (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID');
 
 -- Seed users
-insert into "user" (user_id, email, community_id, created_at)
+insert into "user" (user_id, email, username, name, email_verified, auth_hash, community_id, created_at)
 values
-    (:'user1ID', 'user1@example.com', :'community1ID', '2024-01-01 00:00:00'),
-    (:'user2ID', 'user2@example.com', :'community1ID', '2024-01-01 00:00:00');
+    (:'user1ID', 'user1@example.com', 'user1', 'User One', false, 'test_hash'::bytea, :'community1ID', '2024-01-01 00:00:00'),
+    (:'user2ID', 'user2@example.com', 'user2', 'User Two', false, 'test_hash'::bytea, :'community1ID', '2024-01-01 00:00:00');
 
 -- Seed event category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -88,7 +88,7 @@ values
     (:'event1ID', :'user1ID', '2024-01-01 00:00:00'),
     (:'event1ID', :'user2ID', '2024-01-01 00:00:00');
 
--- Test get_community_home_stats function returns correct data
+-- Test: get_community_home_stats function returns correct data
 select is(
     get_community_home_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -100,10 +100,16 @@ select is(
     'get_community_home_stats should return correct stats as JSON'
 );
 
--- Test get_community_home_stats with non-existing community
-select is_empty(
-    'select * from get_community_home_stats(''00000000-0000-0000-0000-999999999999''::uuid)',
-    'get_community_home_stats with non-existing community should return no rows'
+-- Test: get_community_home_stats with non-existing community
+select is(
+    get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    '{
+        "events": 0,
+        "groups": 0,
+        "groups_members": 0,
+        "events_attendees": 0
+    }'::jsonb,
+    'get_community_home_stats with non-existing community should return zeros'
 );
 
 -- Finish tests and rollback transaction

@@ -3,7 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
-use tracing::instrument;
+use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{
@@ -39,47 +39,62 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::add_event`]
     #[instrument(skip(self, event), err)]
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid> {
+        trace!("db: add event");
+
         let db = self.pool.get().await?;
-        let row = db
+        let event_id = db
             .query_one(
                 "select add_event($1::uuid, $2::jsonb)::uuid",
                 &[&group_id, &Json(event)],
             )
-            .await?;
-        Ok(row.get(0))
+            .await?
+            .get(0);
+
+        Ok(event_id)
     }
 
     /// [`DBDashboardGroup::delete_event`]
     #[instrument(skip(self), err)]
     async fn delete_event(&self, event_id: Uuid) -> Result<()> {
+        trace!("db: delete event");
+
         let db = self.pool.get().await?;
         db.execute("select delete_event($1::uuid)", &[&event_id]).await?;
+
         Ok(())
     }
 
     /// [`DBDashboardGroup::list_event_categories`]
     #[instrument(skip(self), err)]
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>> {
+        trace!("db: list event categories");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_event_categories($1::uuid)::text", &[&community_id])
             .await?;
         let categories: Vec<EventCategory> = serde_json::from_str(&row.get::<_, String>(0))?;
+
         Ok(categories)
     }
 
     /// [`DBDashboardGroup::list_event_kinds`]
     #[instrument(skip(self), err)]
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
+        trace!("db: list event kinds");
+
         let db = self.pool.get().await?;
         let row = db.query_one("select list_event_kinds()::text", &[]).await?;
         let kinds: Vec<EventKind> = serde_json::from_str(&row.get::<_, String>(0))?;
+
         Ok(kinds)
     }
 
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>> {
+        trace!("db: list group events");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_group_events($1::uuid)::text", &[&group_id])
@@ -92,12 +107,15 @@ impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::update_event`]
     #[instrument(skip(self, event), err)]
     async fn update_event(&self, event_id: Uuid, event: &Event) -> Result<()> {
+        trace!("db: update event");
+
         let db = self.pool.get().await?;
         db.execute(
             "select update_event($1::uuid, $2::jsonb)",
             &[&event_id, &Json(event)],
         )
         .await?;
+
         Ok(())
     }
 }

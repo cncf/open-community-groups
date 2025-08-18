@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set category1ID '00000000-0000-0000-0000-000000000011'
@@ -34,7 +34,7 @@ insert into group_category (group_category_id, name, community_id)
 values 
     (:'category3ID', 'Education', :'community2ID');
 
--- Test list_group_categories returns complete JSON array with proper ordering
+-- Test: list_group_categories returns complete JSON array with proper ordering
 select is(
     list_group_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -54,7 +54,7 @@ select is(
     'list_group_categories should return complete category data ordered by order field, then by name'
 );
 
--- Test list_group_categories returns empty array for community with no categories
+-- Test: list_group_categories returns empty array for community with no categories
 insert into community (
     community_id,
     name,

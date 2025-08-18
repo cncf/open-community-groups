@@ -111,7 +111,7 @@ insert into "group" (
     '2024-02-15 10:00:00+00'
 );
 
--- Test get_group_summary function returns correct data
+-- Test: get_group_summary function returns correct data
 select is(
     get_group_summary('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -138,13 +138,13 @@ select is(
     'get_group_summary should return correct group summary data as JSON'
 );
 
--- Test get_group_summary with non-existent group ID
+-- Test: get_group_summary with non-existent group ID
 select ok(
     get_group_summary('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_summary with non-existent group ID should return null'
 );
 
--- Test get_group_summary with deleted group ID returns data
+-- Test: get_group_summary with deleted group ID returns data
 select ok(
     get_group_summary('00000000-0000-0000-0000-000000000023'::uuid) is not null,
     'get_group_summary with deleted group ID should return data'

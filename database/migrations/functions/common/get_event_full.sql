@@ -37,8 +37,7 @@ returns json as $$
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
-                'first_name', u.first_name,
-                'last_name', u.last_name,
+                'name', u.name,
                 
                 'company', u.company,
                 'facebook_url', u.facebook_url,
@@ -47,7 +46,7 @@ returns json as $$
                 'title', u.title,
                 'twitter_url', u.twitter_url,
                 'website_url', u.website_url
-            )) order by u.first_name, u.last_name), '[]')
+            )) order by u.name), '[]')
             from event_host eh
             join "user" u using (user_id)
             where eh.event_id = e.event_id
@@ -55,8 +54,7 @@ returns json as $$
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
-                'first_name', u.first_name,
-                'last_name', u.last_name,
+                'name', u.name,
                 
                 'company', u.company,
                 'facebook_url', u.facebook_url,
@@ -65,7 +63,7 @@ returns json as $$
                 'title', u.title,
                 'twitter_url', u.twitter_url,
                 'website_url', u.website_url
-            )) order by gt."order" nulls last, u.first_name, u.last_name), '[]')
+            )) order by gt."order" nulls last, u.name), '[]')
             from group_team gt
             join "user" u using (user_id)
             where gt.group_id = g.group_id
@@ -87,8 +85,7 @@ returns json as $$
                 'speakers', (
                     select coalesce(json_agg(json_strip_nulls(json_build_object(
                         'user_id', u.user_id,
-                        'first_name', u.first_name,
-                        'last_name', u.last_name,
+                        'name', u.name,
                         
                         'company', u.company,
                         'facebook_url', u.facebook_url,
@@ -97,7 +94,7 @@ returns json as $$
                         'title', u.title,
                         'twitter_url', u.twitter_url,
                         'website_url', u.website_url
-                    )) order by ss.featured desc, u.first_name, u.last_name), '[]')
+                    )) order by ss.featured desc, u.name), '[]')
                     from session_speaker ss
                     join "user" u using (user_id)
                     where ss.session_id = s.session_id

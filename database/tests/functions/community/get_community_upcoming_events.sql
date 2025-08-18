@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
@@ -71,11 +71,12 @@ insert into event (
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
      '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00');
 
--- Test get_community_upcoming_events function returns correct data
+-- Test: get_community_upcoming_events function returns correct data
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[
         {
+            "event_id": "00000000-0000-0000-0000-000000000042",
             "group_name": "Test Group",
             "group_slug": "test-group",
             "kind": "virtual",
@@ -92,7 +93,7 @@ select is(
     'get_community_upcoming_events should return only published future events as JSON'
 );
 
--- Test get_community_upcoming_events with non-existing community
+-- Test: get_community_upcoming_events with non-existing community
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-999999999999'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[]'::jsonb,

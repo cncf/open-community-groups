@@ -4,7 +4,10 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::dashboard::group::{events, settings},
+    templates::{
+        PageId,
+        dashboard::group::{events, settings},
+    },
     types::community::Community,
 };
 
@@ -15,10 +18,12 @@ use crate::{
 pub(crate) struct Page {
     /// Community information.
     pub community: Community,
-    /// Current request path.
-    pub path: String,
     /// Main content section for the page.
     pub content: Content,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
 }
 
 /// Content section for the group dashboard home page.

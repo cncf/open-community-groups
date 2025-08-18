@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::{
-    templates::filters,
+    templates::{PageId, filters},
     types::{
         community::Community,
         event::{EventKind, EventSummary},
@@ -25,16 +25,18 @@ use crate::{
 pub(crate) struct Page {
     /// Community information including name, logo, and other metadata.
     pub community: Community,
+    /// Identifier for the current page.
+    pub page_id: PageId,
     /// Current request path.
     pub path: String,
     /// List of groups recently added to the community.
     pub recently_added_groups: Vec<GroupCard>,
+    /// Aggregated statistics about groups, members, events, and attendees.
+    pub stats: Stats,
     /// List of upcoming in-person events across all community groups.
     pub upcoming_in_person_events: Vec<EventCard>,
     /// List of upcoming virtual events across all community groups.
     pub upcoming_virtual_events: Vec<EventCard>,
-    /// Aggregated statistics about groups, members, events, and attendees.
-    pub stats: Stats,
 }
 
 /// Event card template for home page display.

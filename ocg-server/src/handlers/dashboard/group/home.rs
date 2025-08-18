@@ -16,10 +16,13 @@ use crate::{
         error::HandlerError,
         extractors::{CommunityId, SelectedGroupId},
     },
-    templates::dashboard::group::{
-        events,
-        home::{Content, Page, Tab},
-        settings,
+    templates::{
+        PageId,
+        dashboard::group::{
+            events,
+            home::{Content, Page, Tab},
+            settings,
+        },
     },
 };
 
@@ -55,8 +58,9 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         community,
-        path: "/dashboard/group".to_string(),
         content,
+        page_id: PageId::GroupDashboard,
+        path: "/dashboard/group".to_string(),
     };
 
     let html = Html(page.render()?);

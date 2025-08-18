@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tracing::instrument;
+use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{
@@ -43,6 +43,8 @@ impl DBGroup for PgDB {
     /// [`DB::get_group`]
     #[instrument(skip(self), err)]
     async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
+        trace!("db: get group");
+
         let db = self.pool.get().await?;
         let row = db
             .query_one(
@@ -64,6 +66,8 @@ impl DBGroup for PgDB {
         event_kinds: Vec<EventKind>,
         limit: i32,
     ) -> Result<Vec<EventSummary>> {
+        trace!("db: get group past events");
+
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
         let db = self.pool.get().await?;
         let row = db
@@ -86,6 +90,8 @@ impl DBGroup for PgDB {
         event_kinds: Vec<EventKind>,
         limit: i32,
     ) -> Result<Vec<EventDetailed>> {
+        trace!("db: get group upcoming events");
+
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
         let db = self.pool.get().await?;
         let row = db

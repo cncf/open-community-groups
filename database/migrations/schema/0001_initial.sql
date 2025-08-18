@@ -46,20 +46,22 @@ create index community_community_site_layout_id_idx on community (community_site
 
 create table "user" (
     user_id uuid primary key default gen_random_uuid(),
-    email text not null unique check (email <> ''),
-    created_at timestamptz default current_timestamp not null,
+    auth_hash bytea not null check (auth_hash <> ''),
     community_id uuid not null references community,
+    created_at timestamptz default current_timestamp not null,
+    email text not null unique check (email <> ''),
+    email_verified boolean not null default false,
+    name text not null check (name <> ''),
+    username text not null check (username <> '') unique,
 
-    auth_providers jsonb,
     bio text check (bio <> ''),
     city text check (city <> ''),
     company text check (company <> ''),
     country text check (country <> ''),
     facebook_url text check (facebook_url <> ''),
-    first_name text check (first_name <> ''),
     interests text[],
-    last_name text check (last_name <> ''),
     linkedin_url text check (linkedin_url <> ''),
+    password text check (password <> ''),
     photo_url text check (photo_url <> ''),
     timezone text check (timezone <> ''),
     title text check (title <> ''),
@@ -68,6 +70,20 @@ create table "user" (
 );
 
 create index user_community_id_idx on "user" (community_id);
+
+create table community_team (
+    community_id uuid not null references community,
+    user_id uuid not null references "user",
+    role text not null check (role <> ''),
+    created_at timestamptz default current_timestamp not null,
+
+    "order" integer,
+
+    primary key (community_id, user_id)
+);
+
+create index community_team_community_id_idx on community_team (community_id);
+create index community_team_user_id_idx on community_team (user_id);
 
 create table region (
     region_id uuid primary key default gen_random_uuid(),
@@ -349,3 +365,19 @@ create table session_speaker (
 
 create index session_speaker_session_id_idx on session_speaker (session_id);
 create index session_speaker_user_id_idx on session_speaker (user_id);
+
+create table auth_session (
+    session_id text primary key,
+
+    data jsonb not null,
+    expires_at timestamptz not null
+);
+
+create table email_verification_code (
+    email_verification_code_id uuid primary key default gen_random_uuid(),
+    user_id uuid not null unique references "user" on delete cascade,
+
+    created_at timestamptz default current_timestamp not null
+);
+
+create index email_verification_code_user_id_idx on email_verification_code (user_id);

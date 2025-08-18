@@ -2,7 +2,7 @@
 begin;
 select plan(2);
 
--- Declare some variables
+-- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
@@ -49,7 +49,7 @@ values
     ('00000000-0000-0000-0000-000000000062', 'Workshops', 'workshops', :'community1ID', 2),
     ('00000000-0000-0000-0000-000000000063', 'Conferences', 'conferences', :'community1ID', 3);
 
--- Test get_community_filters_options function returns correct data
+-- Test: get_community_filters_options function returns correct data
 select is(
     get_community_filters_options('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -77,10 +77,22 @@ select is(
     'get_community_filters_options should return correct filter options as JSON'
 );
 
--- Test get_community_filters_options with non-existing community
-select is_empty(
-    'select * from get_community_filters_options(''00000000-0000-0000-0000-999999999999''::uuid)',
-    'get_community_filters_options with non-existing community should return no rows'
+-- Test: get_community_filters_options with non-existing community
+select is(
+    get_community_filters_options('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    '{
+        "region": [],
+        "distance": [
+            {"name": "10 km", "value": "10000"},
+            {"name": "50 km", "value": "50000"},
+            {"name": "100 km", "value": "100000"},
+            {"name": "500 km", "value": "500000"},
+            {"name": "1000 km", "value": "1000000"}
+        ],
+        "event_category": [],
+        "group_category": []
+    }'::jsonb,
+    'get_community_filters_options with non-existing community should return default options'
 );
 
 -- Finish tests and rollback transaction

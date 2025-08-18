@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(69);
+select plan(72);
 
 -- Check expected extensions exist
 select has_extension('pgcrypto');
@@ -9,6 +9,7 @@ select has_extension('postgis');
 -- Check expected tables exist
 select has_table('community');
 select has_table('community_site_layout');
+select has_table('community_team');
 select has_table('event');
 select has_table('event_attendee');
 select has_table('event_category');
@@ -58,6 +59,14 @@ select columns_are('community', array[
 
 select columns_are('community_site_layout', array[
     'community_site_layout_id'
+]);
+
+select columns_are('community_team', array[
+    'community_id',
+    'user_id',
+    'role',
+    'created_at',
+    'order'
 ]);
 
 select columns_are('event', array[
@@ -217,19 +226,21 @@ select columns_are('region', array[
 
 select columns_are('user', array[
     'user_id',
-    'email',
-    'created_at',
+    'auth_hash',
     'community_id',
-    'auth_providers',
+    'created_at',
+    'email',
+    'email_verified',
+    'name',
+    'username',
     'bio',
     'city',
     'company',
     'country',
     'facebook_url',
-    'first_name',
     'interests',
-    'last_name',
     'linkedin_url',
+    'password',
     'photo_url',
     'timezone',
     'title',
@@ -240,6 +251,7 @@ select columns_are('user', array[
 -- Check tables have expected primary keys
 select has_pk('community');
 select has_pk('community_site_layout');
+select has_pk('community_team');
 select has_pk('event');
 select has_pk('event_attendee');
 select has_pk('event_category');
@@ -288,6 +300,7 @@ select indexes_are('group', array[
 select indexes_are('user', array[
     'user_pkey',
     'user_email_key',
+    'user_username_key',
     'user_community_id_idx'
 ]);
 

@@ -92,7 +92,7 @@ insert into "group" (
     '2024-02-15 10:00:00+00'
 );
 
--- Test get_group_detailed function returns correct data
+-- Test: get_group_detailed function returns correct data
 select is(
     get_group_detailed('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -122,7 +122,7 @@ select is(
     'get_group_detailed should return correct detailed group data with location as JSON'
 );
 
--- Test get_group_detailed with non-existent group ID
+-- Test: get_group_detailed with non-existent group ID
 select ok(
     get_group_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_detailed with non-existent group ID should return null'
