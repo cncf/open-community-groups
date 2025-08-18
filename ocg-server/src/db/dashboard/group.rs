@@ -9,7 +9,10 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::group::events::Event,
-    types::event::{EventCategory, EventKindSummary as EventKind, EventSummary},
+    types::{
+        event::{EventCategory, EventKindSummary as EventKind, EventSummary},
+        group::GroupSummary,
+    },
 };
 
 /// Database trait for group dashboard operations.
@@ -29,6 +32,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>>;
+
+    /// Lists all groups where the user is a team member.
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
 
     /// Updates an existing event.
     async fn update_event(&self, event_id: Uuid, event: &Event) -> Result<()>;
@@ -102,6 +108,20 @@ impl DBDashboardGroup for PgDB {
         let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
+    }
+
+    /// [`DBDashboardGroup::list_user_groups`]
+    #[instrument(skip(self), err)]
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>> {
+        trace!("db: list user groups");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_user_groups($1::uuid)::text", &[&user_id])
+            .await?;
+        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(groups)
     }
 
     /// [`DBDashboardGroup::update_event`]

@@ -2,13 +2,14 @@
 
 use askama::Template;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     templates::{
         PageId,
         dashboard::group::{events, settings},
     },
-    types::community::Community,
+    types::{community::Community, group::GroupSummary},
 };
 
 /// Home page template for the group dashboard.
@@ -20,10 +21,14 @@ pub(crate) struct Page {
     pub community: Community,
     /// Main content section for the page.
     pub content: Content,
+    /// List of groups the user belongs to.
+    pub groups: Vec<GroupSummary>,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Currently selected group ID.
+    pub selected_group_id: Uuid,
 }
 
 /// Content section for the group dashboard home page.

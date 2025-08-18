@@ -47,6 +47,9 @@ pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
 
+/// Key used to store the selected group ID in the session.
+pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
+
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
@@ -113,6 +116,8 @@ pub(crate) async fn sign_up_page(
 pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
+    session: Session,
+    State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     Form(creds): Form<PasswordCredentials>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -132,6 +137,12 @@ pub(crate) async fn log_in(
         .login(&user)
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
+
+    // Use the first group as the selected group in the session
+    let groups = db.list_user_groups(&user.user_id).await?;
+    if !groups.is_empty() {
+        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    }
 
     // Prepare next url
     let next_url = if let Some(next_url) = query.get("next_url") {
@@ -160,6 +171,7 @@ pub(crate) async fn oauth2_callback(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path(provider): Path<OAuth2Provider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
@@ -204,6 +216,12 @@ pub(crate) async fn oauth2_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
+    // Use the first group as the selected group in the session
+    let groups = db.list_user_groups(&user.user_id).await?;
+    if !groups.is_empty() {
+        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    }
+
     // Prepare next url
     let next_url = next_url.unwrap_or("/".to_string());
 
@@ -238,6 +256,7 @@ pub(crate) async fn oidc_callback(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path(provider): Path<OidcProvider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
@@ -288,6 +307,12 @@ pub(crate) async fn oidc_callback(
         .login(&user)
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
+
+    // Use the first group as the selected group in the session
+    let groups = db.list_user_groups(&user.user_id).await?;
+    if !groups.is_empty() {
+        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    }
 
     // Track auth provider in the session
     session.insert(AUTH_PROVIDER_KEY, provider).await?;

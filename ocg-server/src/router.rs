@@ -233,5 +233,6 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )
+        .route("/{group_id}/select", put(dashboard::group::select_group))
         .route_layer(check_user_owns_group)
 }

@@ -8,6 +8,7 @@ use axum::{
     http::{StatusCode, header::HOST, request::Parts},
 };
 use cached::proc_macro::cached;
+use tower_sessions::Session;
 use tracing::{error, instrument};
 use uuid::Uuid;
 
@@ -15,6 +16,7 @@ use crate::{
     auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails},
     config::{OAuth2Provider, OidcProvider},
     db::DynDB,
+    handlers::auth::SELECTED_GROUP_ID_KEY,
     router,
 };
 
@@ -116,14 +118,26 @@ impl FromRequestParts<router::State> for Oidc {
 }
 
 /// Extractor for the selected group ID from the session.
+/// Returns the Uuid if present, or an error if not found in the session.
 pub(crate) struct SelectedGroupId(pub Uuid);
 
 impl FromRequestParts<router::State> for SelectedGroupId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
-    async fn from_request_parts(_parts: &mut Parts, _state: &router::State) -> Result<Self, Self::Rejection> {
-        // TODO
-        Ok(SelectedGroupId(Uuid::nil()))
+    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+        let Ok(session) = Session::from_request_parts(parts, state).await else {
+            return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
+        };
+        let group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "error getting selected group from session",
+            )
+        })?;
+        match group_id {
+            Some(id) => Ok(SelectedGroupId(id)),
+            None => Err((StatusCode::BAD_REQUEST, "missing group id")),
+        }
     }
 }
