@@ -48,7 +48,7 @@ select is(
         "name": "Simple Test Group",
         "slug": "simple-test-group",
         "category": {
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },
@@ -95,7 +95,7 @@ select is(
         "name": "Full Test Group",
         "slug": "full-test-group",
         "category": {
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },

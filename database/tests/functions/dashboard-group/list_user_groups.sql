@@ -92,7 +92,7 @@ select is(
     '[
         {
             "category": {
-                "category_id": "00000000-0000-0000-0000-000000000021",
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
                 "normalized_name": "test-category",
                 "order": 1
@@ -107,7 +107,7 @@ select is(
         },
         {
             "category": {
-                "category_id": "00000000-0000-0000-0000-000000000021",
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
                 "normalized_name": "test-category",
                 "order": 1

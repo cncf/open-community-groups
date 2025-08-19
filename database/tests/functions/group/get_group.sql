@@ -149,7 +149,7 @@ select is(
         "facebook_url": "https://facebook.com/k8snyc",
         "linkedin_url": "https://linkedin.com/company/k8snyc",
         "category": {
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },

@@ -79,7 +79,7 @@ pub(crate) async fn log_in_page(
         login: cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::LogIn,
-        path: "/log-in".to_string(),
+        path: LOG_IN_URL.to_string(),
         user: User::default(),
 
         auth_provider: None,
@@ -113,7 +113,7 @@ pub(crate) async fn sign_up_page(
         login: cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::SignUp,
-        path: "/sign-up".to_string(),
+        path: SIGN_UP_URL.to_string(),
         user: User::default(),
 
         auth_provider: None,
