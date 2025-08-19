@@ -33,7 +33,8 @@ with verified_user_result as (
         jsonb_build_object(
             'email', 'verified@example.com',
             'username', 'verifieduser',
-            'name', 'Verified User'
+            'name', 'Verified User',
+            'password', 'hashedpassword123'
         ),
         true
     )
@@ -43,6 +44,7 @@ select ok(
         "email": "verified@example.com",
         "email_verified": true,
         "name": "Verified User",
+        "password": "hashedpassword123",
         "username": "verifieduser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')
@@ -58,7 +60,8 @@ with unverified_user_result as (
         jsonb_build_object(
             'email', 'unverified@example.com',
             'username', 'unverifieduser',
-            'name', 'Unverified User'
+            'name', 'Unverified User',
+            'password', 'hashedpassword456'
         ),
         false
     )
@@ -68,6 +71,7 @@ select ok(
         "email": "unverified@example.com",
         "email_verified": false,
         "name": "Unverified User",
+        "password": "hashedpassword456",
         "username": "unverifieduser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')
@@ -83,7 +87,8 @@ with default_user_result as (
         jsonb_build_object(
             'email', 'default@example.com',
             'username', 'defaultuser',
-            'name', 'Default User'
+            'name', 'Default User',
+            'password', 'hashedpassword789'
         )
     )
 )
@@ -92,6 +97,7 @@ select ok(
         "email": "default@example.com",
         "email_verified": false,
         "name": "Default User",
+        "password": "hashedpassword789",
         "username": "defaultuser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')
