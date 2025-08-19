@@ -130,7 +130,8 @@
 
             {# Location -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
-              {% if event.kind != EventKind::Virtual -%}
+              {# TODO - fix comparison #}
+              {% if event.kind.to_string() != "virtual" -%}
                 {% if let Some(venue_city) = event.venue_city -%}
                   <div class="max-w-full truncate">{{ venue_city }}</div>
                 {% else -%}
@@ -147,7 +148,7 @@
               <div class="flex items-center gap-x-1 xl:gap-x-3">
                 {# Update event button -#}
                 <div>
-                  <button hx-get="/dashboard/group/events/{{ event.id }}/update"
+                  <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-swap="innerHTML show:body:top"
@@ -160,8 +161,8 @@
 
                 {# Delete event button -#}
                 <div>
-                  <button id="delete-event-{{ event.id }}"
-                          hx-delete="/dashboard/group/events/{{ event.id }}/delete"
+                  <button id="delete-event-{{ event.event_id }}"
+                          hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"
@@ -178,10 +179,10 @@
                       isSuccessfulXHRStatus
                     } from '/static/js/common/common.js';
 
-                    const deleteEventButton = document.getElementById('delete-event-{{ event.id }}');
+                    const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
                     if (deleteEventButton) {
                       deleteEventButton.addEventListener('click', (event) => {
-                        showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.id }}", "Yes");
+                        showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.event_id }}", "Yes");
                       });
 
                       deleteEventButton.addEventListener("htmx:afterRequest", (e) => {

@@ -46,13 +46,13 @@
           <label for="category_id" class="form-label">
             Category <span class="asterisk">*</span>
           </label>
-          <div class="mt-2 grid grid-cols-1">
-            <select id="category_id" name="category_id" class="select-primary" required>
-              <option value="">Select a category</option>
-              {% for category in categories %}
-                <option value="{{ category.id }}" {% if category.id == group.category.id %}selected{% endif %}>{{ category.name }}</option>
-              {% endfor %}
-            </select>
+          <div class="mt-2">
+            <input type="text" 
+                   id="category_name" 
+                   class="input-primary" 
+                   value="{{ group.category.name }}" 
+                   readonly>
+            <input type="hidden" name="category_id" value="{{ group.category.group_category_id }}">
           </div>
           <p class="form-legend">Type of group or event series.</p>
         </div>
@@ -62,12 +62,21 @@
         <div class="col-span-full lg:col-span-3">
           <label for="region_id" class="form-label">Region</label>
           <div class="mt-2 grid grid-cols-1">
-            <select id="region_id" name="region_id" class="select-primary">
-              <option value="">Select a region (optional)</option>
-              {% for region in regions %}
-                <option value="{{ region.id }}" {% if let Some(group_region) = group.region %} {% if region.id == group_region.id %}selected{% endif %} {% endif %}>{{ region.name }}</option>
-              {% endfor %}
-            </select>
+            {% if let Some(region) = group.region %}
+              <input type="text" 
+                     id="region_name" 
+                     class="input-primary" 
+                     value="{{ region.name }}" 
+                     readonly>
+              <input type="hidden" name="region_id" value="{{ region.region_id }}">
+            {% else %}
+              <input type="text" 
+                     id="region_name" 
+                     class="input-primary" 
+                     value="No region selected" 
+                     readonly>
+              <input type="hidden" name="region_id" value="">
+            {% endif %}
           </div>
           <p class="form-legend">Geographic region where the group is primarily based.</p>
         </div>

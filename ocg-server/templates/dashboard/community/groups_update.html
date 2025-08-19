@@ -3,7 +3,7 @@
 
 {# Groups update form -#}
 <form id="groups-form"
-      hx-put="/dashboard/community/groups/{{ group.id }}/update"
+      hx-put="/dashboard/community/groups/{{ group.group_id }}/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner"
@@ -50,8 +50,8 @@
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
               {% for category in categories %}
-                <option value="{{ category.id }}"
-                        {% if category.id == group.category.id %}selected{% endif %}>{{ category.name }}</option>
+                <option value="{{ category.group_category_id }}"
+                        {% if category.group_category_id == group.category.group_category_id %}selected{% endif %}>{{ category.name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -66,9 +66,9 @@
             <select id="region_id" name="region_id" class="select-primary">
               <option value="">Select a region (optional)</option>
               {% for region in regions %}
-                <option value="{{ region.id }}"
+                <option value="{{ region.region_id }}"
                         {% if let Some(group_region) = group.region %}
-                          {% if region.id == group_region.id %}selected{% endif %}
+                          {% if region.region_id == group_region.region_id %}selected{% endif %}
                         {% endif %}>{{ region.name }}</option>
               {% endfor %}
             </select>

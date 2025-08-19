@@ -49,7 +49,7 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
-              {% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}
+              {% for category in categories %}<option value="{{ category.event_category_id }}">{{ category.name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Type of event or meetup.</p>
@@ -64,7 +64,7 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="kind_id" name="kind_id" class="select-primary" required>
               <option value="">Select an event type</option>
-              {% for kind in kinds %}<option value="{{ kind.id }}">{{ kind.display_name }}</option>{% endfor %}
+              {% for kind in kinds %}<option value="{{ kind.event_kind_id }}">{{ kind.display_name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>

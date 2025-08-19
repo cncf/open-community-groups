@@ -48,7 +48,7 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
-              {% for category in categories %}<option value="{{ category.id }}">{{ category.name }}</option>{% endfor %}
+              {% for category in categories %}<option value="{{ category.group_category_id }}">{{ category.name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Type of group or event series.</p>
@@ -61,7 +61,7 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="region_id" name="region_id" class="select-primary">
               <option value="">Select a region (optional)</option>
-              {% for region in regions %}<option value="{{ region.id }}">{{ region.name }}</option>{% endfor %}
+              {% for region in regions %}<option value="{{ region.region_id }}">{{ region.name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Geographic region where the group is primarily based.</p>

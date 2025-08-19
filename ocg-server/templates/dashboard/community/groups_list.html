@@ -134,7 +134,7 @@
               <div class="flex items-center gap-x-1 xl:gap-x-3">
                 {# Update group button -#}
                 <div>
-                  <button hx-get="/dashboard/community/groups/{{ group.id }}/update"
+                  <button hx-get="/dashboard/community/groups/{{ group.group_id }}/update"
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-swap="innerHTML show:body:top"
@@ -148,7 +148,7 @@
                 {# Delete group button -#}
                 <div>
                   <button id="delete-group-{{ group.slug }}"
-                          hx-delete="/dashboard/community/groups/{{ group.id }}/delete"
+                          hx-delete="/dashboard/community/groups/{{ group.group_id }}/delete"
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"

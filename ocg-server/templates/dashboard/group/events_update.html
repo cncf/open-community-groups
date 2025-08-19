@@ -3,7 +3,7 @@
 
 {# Events update form -#}
 <form id="events-form"
-      hx-put="/dashboard/group/events/{{ event.id }}/update"
+      hx-put="/dashboard/group/events/{{ event.event_id }}/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner"
@@ -51,7 +51,7 @@
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
               {% for category in categories %}
-                <option value="{{ category.id }}"
+                <option value="{{ category.event_category_id }}"
                         {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
               {% endfor %}
             </select>
@@ -69,7 +69,7 @@
             <select id="kind_id" name="kind_id" class="select-primary" required>
               <option value="">Select an event type</option>
               {# TODO - selected #}
-              {% for kind in kinds %}<option value="{{ kind.id }}">{{ kind.display_name }}</option>{% endfor %}
+              {% for kind in kinds %}<option value="{{ kind.event_kind_id }}">{{ kind.display_name }}</option>{% endfor %}
             </select>
           </div>
           <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
