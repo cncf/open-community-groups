@@ -29,14 +29,14 @@ export const onClickDropdown = () => {
         const clickedOnDesktopButton = dropdownButtonDesktop && dropdownButtonDesktop.contains(event.target);
         const clickedOnMobileButton = dropdownButtonMobile && dropdownButtonMobile.contains(event.target);
         const clickedOnDropdown = dropdownMenu.contains(event.target);
-        
+
         if (!clickedOnDropdown && !clickedOnDesktopButton && !clickedOnMobileButton) {
           dropdownMenu.classList.add("hidden");
           // Remove the event listener to prevent memory leaks
           document.removeEventListener("click", closeOnClickOutside);
         }
       };
-      
+
       // Add the event listener with a small delay to prevent immediate closure
       setTimeout(() => {
         document.addEventListener("click", closeOnClickOutside);
