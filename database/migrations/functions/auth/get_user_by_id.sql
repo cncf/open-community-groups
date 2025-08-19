@@ -2,7 +2,7 @@
 -- If p_include_password is true, the password field is included in the response.
 create or replace function get_user_by_id(
     p_user_id uuid,
-    p_include_password boolean default false
+    p_include_password boolean
 )
 returns json as $$
     select json_strip_nulls(json_build_object(

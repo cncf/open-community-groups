@@ -298,7 +298,7 @@ impl axum_login::AuthnBackend for AuthnBackend {
 
     /// Retrieve a user by user ID from the database.
     async fn get_user(&self, user_id: &axum_login::UserId<Self>) -> Result<Option<Self::User>, Self::Error> {
-        self.db.get_user_by_id(user_id, false).await.map_err(AuthError)
+        self.db.get_user_by_id(user_id).await.map_err(AuthError)
     }
 }
 
