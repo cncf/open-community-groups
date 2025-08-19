@@ -43,7 +43,7 @@ insert into "user" (
     'testuser',
     true,
     'Test User',
-    'test_hash'::bytea,
+    'test_hash',
     :'community1ID',
     'hashed_password_here'
 );
@@ -52,7 +52,7 @@ insert into "user" (
 select is(
     get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid, false)::jsonb,
     '{
-        "auth_hash": "\\x746573745f68617368",
+        "auth_hash": "test_hash",
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,
@@ -67,7 +67,7 @@ select is(
 select is(
     get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid, true)::jsonb,
     '{
-        "auth_hash": "\\x746573745f68617368",
+        "auth_hash": "test_hash",
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,
@@ -83,7 +83,7 @@ select is(
 select is(
     get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid)::jsonb,
     '{
-        "auth_hash": "\\x746573745f68617368",
+        "auth_hash": "test_hash",
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,

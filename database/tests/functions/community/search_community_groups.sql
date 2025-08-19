@@ -84,7 +84,7 @@ select is(
     '[
         {
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             },
@@ -99,7 +99,7 @@ select is(
             "logo_url": "https://example.com/tech-logo.png",
             "longitude": -97.7431,
             "region": {
-                "id": "00000000-0000-0000-0000-000000000021",
+                "region_id": "00000000-0000-0000-0000-000000000021",
                 "name": "North America",
                 "normalized_name": "north-america"
             },
@@ -107,7 +107,7 @@ select is(
         },
         {
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             },
@@ -123,7 +123,7 @@ select is(
             "logo_url": "https://example.com/k8s-logo.png",
             "longitude": -122.4194,
             "region": {
-                "id": "00000000-0000-0000-0000-000000000021",
+                "region_id": "00000000-0000-0000-0000-000000000021",
                 "name": "North America",
                 "normalized_name": "north-america"
             },
@@ -131,7 +131,7 @@ select is(
         },
         {
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             },
@@ -147,7 +147,7 @@ select is(
             "logo_url": "https://example.com/docker-logo.png",
             "longitude": -74.006,
             "region": {
-                "id": "00000000-0000-0000-0000-000000000021",
+                "region_id": "00000000-0000-0000-0000-000000000021",
                 "name": "North America",
                 "normalized_name": "north-america"
             },
@@ -155,7 +155,7 @@ select is(
         },
         {
             "category": {
-                "id": "00000000-0000-0000-0000-000000000012",
+                "category_id": "00000000-0000-0000-0000-000000000012",
                 "name": "Business",
                 "normalized_name": "business"
             },

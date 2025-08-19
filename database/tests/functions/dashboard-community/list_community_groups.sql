@@ -126,7 +126,7 @@ select is(
     '[
         {
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology",
                 "order": 1
@@ -140,7 +140,7 @@ select is(
             "country_name": "United States",
             "logo_url": "https://example.com/alpha-logo.png",
             "region": {
-                "id": "00000000-0000-0000-0000-000000000012",
+                "region_id": "00000000-0000-0000-0000-000000000012",
                 "name": "North America",
                 "normalized_name": "north-america",
                 "order": 1
@@ -149,7 +149,7 @@ select is(
         },
         {
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology",
                 "order": 1

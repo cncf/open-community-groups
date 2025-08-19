@@ -3,6 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use axum_login::tower_sessions::session;
+use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -83,11 +84,7 @@ impl DBAuth for PgDB {
                 $3::timestamptz
             );
             ",
-            &[
-                &record.id.to_string(),
-                &serde_json::to_value(&record.data)?,
-                &record.expiry_date,
-            ],
+            &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
         )
         .await?;
 
@@ -218,14 +215,11 @@ impl DBAuth for PgDB {
     ) -> Result<(User, Option<Uuid>)> {
         trace!("db: sign up user");
 
-        let mut user_data = serde_json::to_value(user_summary)?;
-        user_data["email_verified"] = serde_json::Value::Bool(email_verified);
-
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select * from sign_up_user($1::uuid, $2::jsonb);",
-                &[community_id, &user_data],
+                "select * from sign_up_user($1::uuid, $2::jsonb, $3::boolean);",
+                &[community_id, &Json(user_summary), &email_verified],
             )
             .await?;
 
@@ -248,11 +242,7 @@ impl DBAuth for PgDB {
                 expires_at = $3::timestamptz
             where session_id = $1::text;
             ",
-            &[
-                &record.id.to_string(),
-                &serde_json::to_value(&record.data)?,
-                &record.expiry_date,
-            ],
+            &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
         )
         .await?;
 
@@ -263,12 +253,12 @@ impl DBAuth for PgDB {
     async fn update_user_details(&self, user_id: &Uuid, user: &User) -> Result<()> {
         trace!("db: update user details");
 
-        let mut user_data = serde_json::to_value(user)?;
-        user_data["user_id"] = serde_json::Value::String(user_id.to_string());
-
         let db = self.pool.get().await?;
-        db.execute("select update_user_details($1::jsonb);", &[&user_data])
-            .await?;
+        db.execute(
+            "select update_user_details($1::uuid, $2::jsonb);",
+            &[user_id, &Json(user)],
+        )
+        .await?;
 
         Ok(())
     }

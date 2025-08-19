@@ -48,7 +48,7 @@ select is(
         "name": "Simple Test Group",
         "slug": "simple-test-group",
         "category": {
-            "id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },
@@ -95,7 +95,7 @@ select is(
         "name": "Full Test Group",
         "slug": "full-test-group",
         "category": {
-            "id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },
@@ -106,7 +106,7 @@ select is(
         "country_name": "United States",
         "state": "CA",
         "region": {
-            "id": "00000000-0000-0000-0000-000000000012",
+            "region_id": "00000000-0000-0000-0000-000000000012",
             "name": "North America",
             "normalized_name": "north-america"
         },

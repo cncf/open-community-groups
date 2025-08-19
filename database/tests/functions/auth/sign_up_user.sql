@@ -33,18 +33,20 @@ with verified_user_result as (
         jsonb_build_object(
             'email', 'verified@example.com',
             'username', 'verifieduser',
-            'name', 'Verified User',
-            'email_verified', true
-        )
+            'name', 'Verified User'
+        ),
+        true
     )
 )
 select ok(
-    "user"::jsonb - 'user_id'::text = '{
+    ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
         "email": "verified@example.com",
         "email_verified": true,
         "name": "Verified User",
         "username": "verifieduser"
-    }'::jsonb
+    }'::jsonb)
+    and ("user"::jsonb ? 'auth_hash')
+    and length(("user"::jsonb->>'auth_hash')) = 64
     and verification_code is null,
     'User with email_verified=true should not generate verification code'
 ) from verified_user_result;
@@ -56,23 +58,25 @@ with unverified_user_result as (
         jsonb_build_object(
             'email', 'unverified@example.com',
             'username', 'unverifieduser',
-            'name', 'Unverified User',
-            'email_verified', false
-        )
+            'name', 'Unverified User'
+        ),
+        false
     )
 )
 select ok(
-    "user"::jsonb - 'user_id'::text = '{
+    ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
         "email": "unverified@example.com",
         "email_verified": false,
         "name": "Unverified User",
         "username": "unverifieduser"
-    }'::jsonb
+    }'::jsonb)
+    and ("user"::jsonb ? 'auth_hash')
+    and length(("user"::jsonb->>'auth_hash')) = 64
     and verification_code is not null,
     'User with email_verified=false should generate verification code'
 ) from unverified_user_result;
 
--- Test: Create user without email_verified field (should default to false and generate code)
+-- Test: Create user without email_verified parameter (should default to false and generate code)
 with default_user_result as (
     select * from sign_up_user(
         :'community1ID',
@@ -84,14 +88,16 @@ with default_user_result as (
     )
 )
 select ok(
-    "user"::jsonb - 'user_id'::text = '{
+    ("user"::jsonb - 'user_id'::text - 'auth_hash'::text = '{
         "email": "default@example.com",
         "email_verified": false,
         "name": "Default User",
         "username": "defaultuser"
-    }'::jsonb
+    }'::jsonb)
+    and ("user"::jsonb ? 'auth_hash')
+    and length(("user"::jsonb->>'auth_hash')) = 64
     and verification_code is not null,
-    'User without email_verified should default to false and generate verification code'
+    'User without email_verified parameter should default to false and generate verification code'
 ) from default_user_result;
 
 -- Finish tests and rollback transaction

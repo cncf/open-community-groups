@@ -68,14 +68,14 @@ select is(
             "logo_url": "https://example.com/logo3.png",
             "created_at": 1704272400,
             "region": {
-                "id": "00000000-0000-0000-0000-000000000022",
+                "region_id": "00000000-0000-0000-0000-000000000022",
                 "name": "Europe",
                 "normalized_name": "europe"
             },
             "country_code": "GB",
             "country_name": "United Kingdom",
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             }
@@ -89,14 +89,14 @@ select is(
             "logo_url": "https://example.com/logo2.png",
             "created_at": 1704186000,
             "region": {
-                "id": "00000000-0000-0000-0000-000000000021",
+                "region_id": "00000000-0000-0000-0000-000000000021",
                 "name": "North America",
                 "normalized_name": "north-america"
             },
             "country_code": "US",
             "country_name": "United States",
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             }
@@ -110,14 +110,14 @@ select is(
             "logo_url": "https://example.com/logo1.png",
             "created_at": 1704099600,
             "region": {
-                "id": "00000000-0000-0000-0000-000000000021",
+                "region_id": "00000000-0000-0000-0000-000000000021",
                 "name": "North America",
                 "normalized_name": "north-america"
             },
             "country_code": "US",
             "country_name": "United States",
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             }

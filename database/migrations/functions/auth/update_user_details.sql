@@ -1,5 +1,6 @@
 -- update_user_details updates a user's profile information.
 create or replace function update_user_details(
+    p_user_id uuid,
     p_user jsonb
 ) returns void as $$
     update "user"
@@ -23,5 +24,5 @@ create or replace function update_user_details(
         title = p_user->>'title',
         twitter_url = p_user->>'twitter_url',
         website_url = p_user->>'website_url'
-    where user_id = (p_user->>'user_id')::uuid;
+    where user_id = p_user_id;
 $$ language sql;
