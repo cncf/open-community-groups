@@ -49,8 +49,8 @@
     </script>
   </head>
   {# djlint:off #}
-  <body class='h-full {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
-    <div class="min-h-full flex flex-col">
+  <body class="h-full">
+    <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
       <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {% if !path.starts_with("/dashboard") -%}
           {# Header -#}

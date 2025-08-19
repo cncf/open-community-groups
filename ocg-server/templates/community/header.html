@@ -1,5 +1,8 @@
 {% import "common.html" as common -%}
 
+{% let user_name = "Test" -%}
+{% let logged_in = false -%}
+
 {# Header -#}
 <header id="header" class="w-full">
   {# Navigation bar -#}
@@ -43,102 +46,148 @@
       {# End desktop links -#}
     </div>
 
-    {# Mobile menu button -#}
-    <div class="flex lg:hidden">
-      <button id="open-navbar-mobile"
-              type="button"
-              class="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5">
-        <span class="sr-only">Open main menu</span>
-        <div class="svg-icon h-6 w-6 bg-stone-700 icon-lines"></div>
-      </button>
-    </div>
-    {# End mobile menu button -#}
+    {# Desktop user menu -#}
+    <div class="flex flex-1 justify-end">
+      {% if logged_in -%}
+        {# User dropdown button -#}
+        <div class="relative">
+          <button id="user-dropdown-button"
+                  class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-600 hover:text-primary-800 hover:border-primary-800 size-[38px] p-0.5 overflow-hidden">
+            <div class="svg-icon size-4 mx-auto bg-primary-500 group-hover:bg-primary-800 icon-user"></div>
+          </button>
 
-    {# Desktop buttons -#}
-    <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
-      {# Sign up button -#}
-      <a href="/sign-up"
-         hx-boost="true"
-         class="btn-secondary-anchor w-[120px]">Sign up</a>
+          {# User dropdown menu -#}
+          <div id="user-dropdown"
+               class="dropdown absolute hidden z-10 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+            <ul class="text-stone-700 my-2">
+              <li>
+                <div class="flex flex-col px-4 py-2">
+                  <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user_name }}</div>
+                </div>
+              </li>
 
-      {# Log in button -#}
-      <a href="/log-in" hx-boost="true" class="btn-primary-anchor w-[120px]">Log in</a>
+              {# Dashboard links -#}
+              <li class="border-t border-stone-200 mt-2 pt-2">
+                <a href="/dashboard/community"
+                   hx-boost="true"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-community bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Community Dashboard</div>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="/dashboard/group"
+                   hx-boost="true"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Group Dashboard</div>
+                  </div>
+                </a>
+              </li>
+
+              {# Logout -#}
+              <li class="border-t border-stone-200 mt-2 pt-2">
+                <a href="/log-out"
+                   hx-boost="false"
+                   target="_self"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-logout bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Log out</div>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      {% else -%}
+        {# User dropdown button for non-logged users -#}
+        <div class="relative">
+          <button id="user-dropdown-button"
+                  class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-600 hover:text-primary-800 hover:border-primary-800 size-[38px] p-0.5 overflow-hidden">
+            <div class="svg-icon size-4 mx-auto bg-primary-500 group-hover:bg-primary-800 icon-user"></div>
+          </button>
+
+          {# User dropdown menu for non-logged users -#}
+          <div id="user-dropdown"
+               class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+            <ul class="text-stone-700 my-2">
+              {# Mobile navigation links -#}
+              <li class="block lg:hidden">
+                <a href="/"
+                   hx-boost="true"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-home bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Home</div>
+                  </div>
+                </a>
+              </li>
+              <li class="block lg:hidden border-b border-stone-200 mb-2 pb-2">
+                <a href="/explore"
+                   hx-boost="true"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-list-magnifying-glass bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Explore</div>
+                  </div>
+                </a>
+              </li>
+
+              {# Sign up -#}
+              <li>
+                <a href="/sign-up"
+                   hx-boost="true"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-user-plus bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Sign up</div>
+                  </div>
+                </a>
+              </li>
+
+              {# Log in -#}
+              <li>
+                <a href="/log-in"
+                   hx-boost="true"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-login bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Log in</div>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      {% endif -%}
     </div>
-    {# End desktop buttons -#}
+    {# End desktop user menu -#}
   </nav>
   {# End navigation bar -#}
-
-  {# Mobile menu -#}
-  <div class="hidden lg:hidden"
-       role="dialog"
-       aria-modal="true"
-       id="navbar-mobile">
-    <div class="hidden fixed inset-0 z-20" id="backdrop-backdrop"></div>
-    <div class="fixed inset-y-0 right-0 z-20 w-full overflow-y-auto bg-white px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-stone-900/10">
-      <div class="flex items-center justify-between">
-        {# Close menu button -#}
-        <button id="close-navbar-mobile"
-                type="button"
-                class="-m-2.5 rounded-md p-2.5">
-          <span class="sr-only">Close menu</span>
-          <div class="svg-icon h-6 w-6 bg-stone-700 icon-close"></div>
-        </button>
-        {# End close menu button -#}
-      </div>
-      <div class="mt-6 flow-root">
-        <div class="-my-6 divide-y divide-stone-500/10">
-          {# Mobile links -#}
-          <div class="space-y-2 py-6">
-            {% call mobile_link(content = "Home", href = "/") -%}
-            {% call mobile_link(content = "Explore", href = "/explore") -%}
-            <button id="open-new-group-mobile-btn"
-                    class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors">
-              New group
-            </button>
-            <script type="module">
-              import {
-                toggleMobileNavbarVisibility,
-                toggleModalVisibility
-              } from '/static/js/common/common.js';
-
-              const openNewGroupMobileBtn = document.getElementById('open-new-group-mobile-btn');
-              if (openNewGroupMobileBtn) {
-                openNewGroupMobileBtn.addEventListener('click', () => {
-                  toggleModalVisibility('new-group-modal')
-                  toggleMobileNavbarVisibility();
-                });
-              }
-            </script>
-          </div>
-          {# End mobile links -#}
-
-          {# Mobile buttons - Sign up / Log in -#}
-          <div class="py-6">
-            {% call mobile_link(content = "Sign up", href = "/sign-up") -%}
-            {% call mobile_link(content = "Log in", href = "/log-in") -%}
-          </div>
-          {# End mobile buttons - Sign up / Log in -#}
-        </div>
-      </div>
-    </div>
-  </div>
-  {# End mobile menu -#}
 </header>
 {# End header -#}
 
 <script type="module">
-  import {
-    toggleMobileNavbarVisibility
-  } from '/static/js/common/common.js';
+  // User dropdown functionality
+  const userDropdownButton = document.getElementById('user-dropdown-button');
+  const userDropdown = document.getElementById('user-dropdown');
 
-  const openNavbarMobile = document.getElementById('open-navbar-mobile');
-  if (openNavbarMobile) {
-    openNavbarMobile.addEventListener('click', toggleMobileNavbarVisibility);
-  }
+  if (userDropdownButton && userDropdown) {
+    userDropdownButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      userDropdown.classList.toggle('hidden');
+    });
 
-  const closeNavbarMobileBtn = document.getElementById('close-navbar-mobile');
-  if (closeNavbarMobileBtn) {
-    closeNavbarMobileBtn.addEventListener('click', toggleMobileNavbarVisibility);
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!userDropdownButton.contains(e.target) && !userDropdown.contains(e.target)) {
+        userDropdown.classList.add('hidden');
+      }
+    });
   }
 </script>
 
@@ -204,16 +253,13 @@
 {% endmacro link -%}
 {# End link -#}
 
-
-{# Mobile link -#}
-{% macro mobile_link(content, href, extra_styles = None) -%}
+{# Button -#}
+{% macro button(id, content, extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  <a href="{{ href }}"
-     hx-boost="true"
-     class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors {{ extra_styles_ }}">
+  <button id="{{ id }}"
+          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors {{ extra_styles_ }}">
     {{ content }}
-  </a>
-{% endmacro mobile_link -%}
-{# End mobile link -#}
-
+  </button>
+{% endmacro button -%}
+{# End button -#}

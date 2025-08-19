@@ -339,6 +339,8 @@ input:placeholder-shown {
 .icon-gears { --icon-url: url('/static/images/icons/gears.svg'); }
 .icon-github { --icon-url: url('/static/images/icons/github.svg'); }
 .icon-groups { --icon-url: url('/static/images/icons/groups.svg'); }
+.icon-groups-add { --icon-url: url('/static/images/icons/groups_add.svg'); }
+.icon-home { --icon-url: url('/static/images/icons/home.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
@@ -346,6 +348,7 @@ input:placeholder-shown {
 .icon-link { --icon-url: url('/static/images/icons/link.svg'); }
 .icon-linkedin { --icon-url: url('/static/images/icons/linkedin.svg'); }
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
+.icon-list-magnifying-glass { --icon-url: url('/static/images/icons/list_magnifying_glass.svg'); }
 .icon-location { --icon-url: url('/static/images/icons/location.svg'); }
 .icon-login { --icon-url: url('/static/images/icons/login.svg'); }
 .icon-logout { --icon-url: url('/static/images/icons/logout.svg'); }
@@ -365,6 +368,7 @@ input:placeholder-shown {
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }
+.icon-user-plus { --icon-url: url('/static/images/icons/user_plus.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
