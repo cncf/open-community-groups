@@ -54,10 +54,12 @@
     {# Desktop buttons -#}
     <div class="hidden lg:flex lg:flex-1 lg:justify-end space-x-4">
       {# Sign up button -#}
-      <button id="signup-btn" class="btn-secondary w-[120px]" disabled>Sign up</button>
+      <a href="/sign-up"
+         hx-boost="true"
+         class="btn-secondary-anchor w-[120px]">Sign up</a>
 
       {# Log in button -#}
-      <button id="login-btn" class="btn-primary w-[120px]" disabled>Log in</button>
+      <a href="/log-in" hx-boost="true" class="btn-primary-anchor w-[120px]">Log in</a>
     </div>
     {# End desktop buttons -#}
   </nav>
@@ -106,8 +108,8 @@
 
           {# Mobile buttons - Sign up / Log in -#}
           <div class="py-6">
-            {% call mobile_link(content = "Sign up", href = "#") -%}
-            {% call mobile_link(content = "Login in", href = "#") -%}
+            {% call mobile_link(content = "Sign up", href = "/sign-up") -%}
+            {% call mobile_link(content = "Log in", href = "/log-in") -%}
           </div>
           {# End mobile buttons - Sign up / Log in -#}
         </div>
@@ -212,6 +214,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
+     hx-boost="true"
      class="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-stone-900 hover:bg-stone-50 transition-colors {{ extra_styles_ }}">
     {{ content }}
   </a>

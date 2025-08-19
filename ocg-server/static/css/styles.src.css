@@ -40,6 +40,32 @@
     @apply bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white
   }
 
+  .btn-tertiary {
+    @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden;
+  }
+
+  .btn-tertiary-anchor {
+    @apply cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:bg-stone-50 hover:border-stone-50 relative overflow-hidden;
+  }
+
+  .btn-tertiary .svg-icon,
+  .btn-tertiary-anchor .svg-icon {
+    @apply bg-stone-900;
+  }
+
+  .btn-primary-outline {
+    @apply enabled:cursor-pointer text-center text-primary-700 border border-primary-700 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-900 hover:enabled:border-primary-900 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+  }
+
+  .btn-primary-outline-anchor {
+    @apply cursor-pointer text-center text-primary-700 border border-primary-700 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-900 hover:border-primary-900 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+  }
+
+  .btn-primary-outline .svg-icon,
+  .btn-primary-outline-anchor .svg-icon {
+    @apply bg-primary-700;
+  }
+
   .icon-text {
     @apply flex flex-row items-center leading-4;
   }
@@ -94,6 +120,34 @@
 
   .card-meta + .card-meta {
     @apply pt-1.5;
+  }
+
+  .input-primary {
+    @apply block w-full rounded-md bg-white px-3 py-1.5 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
+  }
+
+  .select-primary {
+    @apply col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
+  }
+
+  .radio-primary {
+    @apply size-4 text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
+  }
+
+  .checkbox-primary {
+    @apply size-4 rounded-sm text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
+  }
+
+  .asterisk {
+    @apply font-bold text-stone-900 text-lg/4;
+  }
+
+  .form-label {
+    @apply block text-sm/6 font-medium text-stone-900;
+  }
+
+  .form-legend {
+    @apply mt-1 text-xs/6 text-stone-600;
   }
 }
 
@@ -282,26 +336,35 @@ input:placeholder-shown {
 .icon-facebook { --icon-url: url('/static/images/icons/facebook.svg'); }
 .icon-filter { --icon-url: url('/static/images/icons/filter.svg'); }
 .icon-flickr { --icon-url: url('/static/images/icons/flickr.svg'); }
+.icon-gears { --icon-url: url('/static/images/icons/gears.svg'); }
 .icon-github { --icon-url: url('/static/images/icons/github.svg'); }
 .icon-groups { --icon-url: url('/static/images/icons/groups.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
+.icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
 .icon-lines { --icon-url: url('/static/images/icons/lines.svg'); }
 .icon-link { --icon-url: url('/static/images/icons/link.svg'); }
 .icon-linkedin { --icon-url: url('/static/images/icons/linkedin.svg'); }
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
 .icon-location { --icon-url: url('/static/images/icons/location.svg'); }
+.icon-login { --icon-url: url('/static/images/icons/login.svg'); }
+.icon-logout { --icon-url: url('/static/images/icons/logout.svg'); }
 .icon-magnifying-glass { --icon-url: url('/static/images/icons/magnifying_glass.svg'); }
 .icon-map { --icon-url: url('/static/images/icons/map.svg'); }
 .icon-marker { --icon-url: url('/static/images/icons/marker.svg'); }
 .icon-meetup { --icon-url: url('/static/images/icons/meetup.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
+.icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
 .icon-people { --icon-url: url('/static/images/icons/people.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
+.icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
+.icon-team { --icon-url: url('/static/images/icons/team.svg'); }
+.icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
+.icon-user { --icon-url: url('/static/images/icons/user.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
