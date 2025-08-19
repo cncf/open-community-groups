@@ -17,7 +17,7 @@
     {# Settings -#}
     <div class="leading-10 grid gap-y-0.5">
       {% call dashboard_macros::menu_title(text = "Community", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = true, href = "/dashboard/community?tab=settings") -%}
+      {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/community?tab=settings") -%}
       {% call dashboard_macros::menu_item(name = "Team", icon = "team", is_active = false, href = "/dashboard/community?tab=team", disabled = true) -%}
     </div>
     {# End team -#}
@@ -25,7 +25,7 @@
     {# Groups -#}
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
       {% call dashboard_macros::menu_title(text = "Groups", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(name = "Groups", icon = "groups", is_active = false, href = "/dashboard/community?tab=groups") -%}
+      {% call dashboard_macros::menu_item(name = "Groups", icon = "groups", is_active = content.is_groups(), href = "/dashboard/community?tab=groups") -%}
     </div>
     {# End groups -#}
   </div>
