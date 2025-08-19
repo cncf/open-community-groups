@@ -69,7 +69,7 @@ select update_user_details(
 );
 
 select is(
-    get_user_by_id(:'user1ID'::uuid)::jsonb,
+    get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
         'email', 'updated@example.com',
@@ -116,7 +116,7 @@ select update_user_details(
 );
 
 select is(
-    get_user_by_id(:'user1ID'::uuid)::jsonb,
+    get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
         'email', 'final@example.com',

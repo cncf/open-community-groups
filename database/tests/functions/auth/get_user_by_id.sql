@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(4);
+select plan(3);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -79,24 +79,9 @@ select is(
     'Should return user with password when include_password is true'
 );
 
--- Test: User found by ID (default parameter - no password)
-select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid)::jsonb,
-    '{
-        "auth_hash": "test_hash",
-        "email": "test@example.com",
-        "email_verified": true,
-        "has_password": true,
-        "name": "Test User",
-        "user_id": "00000000-0000-0000-0001-000000000001",
-        "username": "testuser"
-    }'::jsonb,
-    'Should return user without password when using default parameter'
-);
-
 -- Test: User not found
 select is(
-    get_user_by_id('00000000-0000-0000-0001-999999999999'::uuid)::jsonb,
+    get_user_by_id('00000000-0000-0000-0001-999999999999'::uuid, false)::jsonb,
     null::jsonb,
     'Should return null when ID does not exist'
 );

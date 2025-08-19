@@ -28,7 +28,7 @@ pub(crate) trait DBAuth {
     async fn get_user_by_email(&self, email: &str) -> Result<Option<User>>;
 
     /// Retrieves a user by their unique ID.
-    async fn get_user_by_id(&self, user_id: &Uuid, include_password: bool) -> Result<Option<User>>;
+    async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
 
     /// Retrieves a user by their username.
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
@@ -135,34 +135,50 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         let user = db
-            .query_opt(
-                "
-                select * from get_user_by_id(
-                    (select user_id from \"user\" where email = $1::text),
+            .query_one(
+                r#"
+                select get_user_by_id(
+                    (
+                        select user_id
+                        from "user"
+                        where email = $1::text
+                        and email_verified = true
+                    ),
                     false
                 );
-                ",
+                "#,
                 &[&email],
             )
             .await?
-            .map(|row| serde_json::from_value(row.get(0)))
+            .get::<_, Option<serde_json::Value>>(0)
+            .map(serde_json::from_value)
             .transpose()?;
 
         Ok(user)
     }
 
     #[instrument(skip(self, user_id), err)]
-    async fn get_user_by_id(&self, user_id: &Uuid, include_password: bool) -> Result<Option<User>> {
+    async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>> {
         trace!("db: get user (by id)");
 
         let db = self.pool.get().await?;
         let user = db
-            .query_opt(
-                "select * from get_user_by_id($1::uuid, $2::boolean);",
-                &[&user_id, &include_password],
+            .query_one(
+                r#"
+                select get_user_by_id(
+                    (
+                        select user_id from "user"
+                        where user_id = $1::uuid
+                        and email_verified = true
+                    ),
+                    false
+                );
+                "#,
+                &[&user_id],
             )
             .await?
-            .map(|row| serde_json::from_value(row.get(0)))
+            .get::<_, Option<serde_json::Value>>(0)
+            .map(serde_json::from_value)
             .transpose()?;
 
         Ok(user)
@@ -174,17 +190,23 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         let user = db
-            .query_opt(
-                "
-                select * from get_user_by_id(
-                    (select user_id from \"user\" where username = $1::text),
+            .query_one(
+                r#"
+                select get_user_by_id(
+                    (
+                        select user_id from "user"
+                        where username = $1::text
+                        and email_verified = true
+                        and password is not null
+                    ),
                     true
                 );
-                ",
+                "#,
                 &[&username],
             )
             .await?
-            .map(|row| serde_json::from_value(row.get(0)))
+            .get::<_, Option<serde_json::Value>>(0)
+            .map(serde_json::from_value)
             .transpose()?;
 
         Ok(user)
@@ -197,7 +219,7 @@ impl DBAuth for PgDB {
         let db = self.pool.get().await?;
         let password = db
             .query_opt(
-                "select password from \"user\" where user_id = $1::uuid;",
+                r#"select password from "user" where user_id = $1::uuid;"#,
                 &[&user_id],
             )
             .await?
@@ -269,7 +291,7 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         db.execute(
-            "update \"user\" set password = $2::text where user_id = $1::uuid;",
+            r#"update "user" set password = $2::text where user_id = $1::uuid;"#,
             &[&user_id, &new_password],
         )
         .await?;
