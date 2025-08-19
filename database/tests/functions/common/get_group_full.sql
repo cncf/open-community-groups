@@ -151,7 +151,7 @@ select is(
     get_group_full('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
         "category": {
-            "id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },
@@ -176,7 +176,7 @@ select is(
         "longitude": -74.006,
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "region": {
-            "id": "00000000-0000-0000-0000-000000000012",
+            "region_id": "00000000-0000-0000-0000-000000000012",
             "name": "North America",
             "normalized_name": "north-america"
         },

@@ -48,8 +48,8 @@ insert into "user" (
 
 -- Test: Update user with all fields
 select update_user_details(
+    :'user1ID'::uuid,
     jsonb_build_object(
-        'user_id', :'user1ID'::text,
         'email', 'updated@example.com',
         'name', 'Updated User',
         'username', 'updateduser',
@@ -95,8 +95,8 @@ select is(
 
 -- Test: Update user with null optional fields
 select update_user_details(
+    :'user1ID'::uuid,
     jsonb_build_object(
-        'user_id', :'user1ID'::text,
         'email', 'final@example.com',
         'name', 'Final User',
         'username', 'finaluser',

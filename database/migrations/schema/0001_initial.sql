@@ -46,7 +46,7 @@ create index community_community_site_layout_id_idx on community (community_site
 
 create table "user" (
     user_id uuid primary key default gen_random_uuid(),
-    auth_hash bytea not null check (auth_hash <> ''),
+    auth_hash text not null check (auth_hash <> ''),
     community_id uuid not null references community,
     created_at timestamptz default current_timestamp not null,
     email text not null unique check (email <> ''),

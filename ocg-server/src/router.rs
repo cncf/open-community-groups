@@ -15,6 +15,7 @@ use axum::{
     response::IntoResponse,
     routing::{delete, get, post, put},
 };
+use axum_login::login_required;
 use axum_messages::MessagesManagerLayer;
 use rust_embed::Embed;
 use tower::ServiceBuilder;
@@ -22,9 +23,13 @@ use tower_http::{set_header::SetResponseHeaderLayer, trace::TraceLayer};
 use tracing::instrument;
 
 use crate::{
+    auth::AuthnBackend,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{auth, community, dashboard, event, group},
+    handlers::{
+        auth::{self, LOG_IN_URL},
+        community, dashboard, event, group,
+    },
 };
 
 /// Default cache duration for HTTP responses in seconds.
@@ -73,7 +78,6 @@ pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
 
     // Setup router
     let mut router = Router::new()
-        .route("/", get(community::home::page))
         .route(
             "/dashboard/account/update/details",
             put(auth::update_user_details),
@@ -84,6 +88,12 @@ pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
         )
         .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
+        .route_layer(login_required!(
+            AuthnBackend,
+            login_url = LOG_IN_URL,
+            redirect_field = "next_url"
+        ))
+        .route("/", get(community::home::page))
         .route("/explore", get(community::explore::page))
         .route("/explore/events-section", get(community::explore::events_section))
         .route(

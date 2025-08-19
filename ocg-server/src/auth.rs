@@ -399,7 +399,7 @@ pub(crate) struct User {
     /// Unique user ID.
     pub user_id: Uuid,
     /// Authentication hash for session validation.
-    pub auth_hash: Vec<u8>,
+    pub auth_hash: String,
     /// User's email address.
     pub email: String,
     /// Whether the user's email is verified.
@@ -449,7 +449,7 @@ impl axum_login::AuthUser for User {
 
     /// Get the session authentication hash.
     fn session_auth_hash(&self) -> &[u8] {
-        &self.auth_hash
+        self.auth_hash.as_bytes()
     }
 }
 

@@ -139,7 +139,7 @@ select is(
             "name": "Test Group",
             "slug": "test-group",
             "category": {
-                "id": "00000000-0000-0000-0000-000000000011",
+                "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             },

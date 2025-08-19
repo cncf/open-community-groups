@@ -34,9 +34,9 @@ with test_user as (
         jsonb_build_object(
             'email', 'test1@example.com',
             'username', 'testuser1',
-            'name', 'Test User 1',
-            'email_verified', false
-        )
+            'name', 'Test User 1'
+        ),
+        false
     )
 )
 -- Use the verification code
@@ -57,9 +57,9 @@ with test_user as (
         jsonb_build_object(
             'email', 'test1b@example.com',
             'username', 'testuser1b',
-            'name', 'Test User 1b',
-            'email_verified', false
-        )
+            'name', 'Test User 1b'
+        ),
+        false
     )
 ),
 verification_result as (
@@ -91,9 +91,9 @@ with test_user as (
         jsonb_build_object(
             'email', 'test2@example.com',
             'username', 'testuser2',
-            'name', 'Test User 2',
-            'email_verified', false
-        )
+            'name', 'Test User 2'
+        ),
+        false
     )
 ),
 expired_code_update as (
@@ -116,9 +116,9 @@ with test_user as (
         jsonb_build_object(
             'email', 'test3@example.com',
             'username', 'testuser3',
-            'name', 'Test User 3',
-            'email_verified', false
-        )
+            'name', 'Test User 3'
+        ),
+        false
     )
 ),
 first_use as (

@@ -108,7 +108,7 @@ select is(
         "name": "Updated Group",
         "slug": "updated-group",
         "category": {
-            "id": "00000000-0000-0000-0000-000000000012",
+            "group_category_id": "00000000-0000-0000-0000-000000000012",
             "name": "Business",
             "normalized_name": "business"
         },

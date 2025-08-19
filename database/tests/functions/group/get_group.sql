@@ -138,7 +138,7 @@ select is(
         ],
         "description": "New York Kubernetes meetup group for cloud native enthusiasts",
         "region": {
-            "id": "00000000-0000-0000-0000-000000000021",
+            "region_id": "00000000-0000-0000-0000-000000000021",
             "name": "North America",
             "normalized_name": "north-america"
         },
@@ -149,7 +149,7 @@ select is(
         "facebook_url": "https://facebook.com/k8snyc",
         "linkedin_url": "https://linkedin.com/company/k8snyc",
         "category": {
-            "id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },

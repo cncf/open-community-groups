@@ -4,7 +4,7 @@ use askama::Template;
 use axum_messages::Message;
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::AuthSession, config::LoginOptions, templates::PageId};
+use crate::{auth::AuthSession, config::LoginOptions, templates::PageId, types::community::Community};
 
 // Pages templates.
 
@@ -12,12 +12,16 @@ use crate::{auth::AuthSession, config::LoginOptions, templates::PageId};
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "auth/log_in.html")]
 pub(crate) struct LogInPage {
+    /// Community information.
+    pub community: Community,
     /// Login options.
     pub login: LoginOptions,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
     pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
     /// Authenticated user information.
     pub user: User,
 
@@ -31,12 +35,16 @@ pub(crate) struct LogInPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "auth/sign_up.html")]
 pub(crate) struct SignUpPage {
+    /// Community information.
+    pub community: Community,
     /// Login options.
     pub login: LoginOptions,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
     pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
     /// Authenticated user information.
     pub user: User,
 

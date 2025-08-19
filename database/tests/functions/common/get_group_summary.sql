@@ -116,7 +116,7 @@ select is(
     get_group_summary('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
         "category": {
-            "id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
             "normalized_name": "technology"
         },
@@ -129,7 +129,7 @@ select is(
         "country_name": "United States",
         "logo_url": "https://example.com/group-logo.png",
         "region": {
-            "id": "00000000-0000-0000-0000-000000000012",
+            "region_id": "00000000-0000-0000-0000-000000000012",
             "name": "North America",
             "normalized_name": "north-america"
         },

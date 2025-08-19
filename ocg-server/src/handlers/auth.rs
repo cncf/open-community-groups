@@ -60,7 +60,9 @@ pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 pub(crate) async fn log_in_page(
     auth_session: AuthSession,
     messages: Messages,
+    CommunityId(community_id): CommunityId,
     State(cfg): State<HttpServerConfig>,
+    State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the user is already logged in
@@ -68,11 +70,16 @@ pub(crate) async fn log_in_page(
         return Ok(Redirect::to("/").into_response());
     }
 
+    // Get community information
+    let community = db.get_community(community_id).await?;
+
     // Prepare template
     let template = templates::auth::LogInPage {
+        community,
         login: cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::LogIn,
+        path: LOG_IN_URL.to_string(),
         user: User::default(),
 
         auth_provider: None,
@@ -87,7 +94,9 @@ pub(crate) async fn log_in_page(
 pub(crate) async fn sign_up_page(
     auth_session: AuthSession,
     messages: Messages,
+    CommunityId(community_id): CommunityId,
     State(cfg): State<HttpServerConfig>,
+    State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the user is already logged in
@@ -95,11 +104,16 @@ pub(crate) async fn sign_up_page(
         return Ok(Redirect::to("/").into_response());
     }
 
+    // Get community information
+    let community = db.get_community(community_id).await?;
+
     // Prepare template
     let template = templates::auth::SignUpPage {
+        community,
         login: cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::SignUp,
+        path: SIGN_UP_URL.to_string(),
         user: User::default(),
 
         auth_provider: None,
