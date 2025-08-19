@@ -134,19 +134,29 @@ impl DBAuth for PgDB {
         trace!("db: get user (by email)");
 
         let db = self.pool.get().await?;
-        let user = db
-            .query_opt(
+        let row = db
+            .query_one(
                 "
-                select * from get_user_by_id(
-                    (select user_id from \"user\" where email = $1::text),
+                select get_user_by_id(
+                    (
+                        select user_id
+                        from \"user\"
+                        where email = $1::text
+                        and email_verified = true
+                    ),
                     false
                 );
                 ",
                 &[&email],
             )
-            .await?
-            .map(|row| serde_json::from_value(row.get(0)))
-            .transpose()?;
+            .await?;
+
+        let value: serde_json::Value = row.get(0);
+        let user = if value.is_null() {
+            None
+        } else {
+            Some(serde_json::from_value(value)?)
+        };
 
         Ok(user)
     }
@@ -156,14 +166,29 @@ impl DBAuth for PgDB {
         trace!("db: get user (by id)");
 
         let db = self.pool.get().await?;
-        let user = db
-            .query_opt(
-                "select * from get_user_by_id($1::uuid, $2::boolean);",
+        let row = db
+            .query_one(
+                "
+                select get_user_by_id(
+                    (
+                        select user_id
+                        from \"user\"
+                        where user_id = $1::uuid
+                        and email_verified = true
+                    ),
+                    $2::boolean
+                );
+                ",
                 &[&user_id, &include_password],
             )
-            .await?
-            .map(|row| serde_json::from_value(row.get(0)))
-            .transpose()?;
+            .await?;
+
+        let value: serde_json::Value = row.get(0);
+        let user = if value.is_null() {
+            None
+        } else {
+            Some(serde_json::from_value(value)?)
+        };
 
         Ok(user)
     }
@@ -173,19 +198,29 @@ impl DBAuth for PgDB {
         trace!("db: get user (by username)");
 
         let db = self.pool.get().await?;
-        let user = db
-            .query_opt(
+        let row = db
+            .query_one(
                 "
-                select * from get_user_by_id(
-                    (select user_id from \"user\" where username = $1::text),
+                select get_user_by_id(
+                    (
+                        select user_id from \"user\"
+                        where username = $1::text
+                        and email_verified = true
+                        and password is not null
+                    ),
                     true
                 );
                 ",
                 &[&username],
             )
-            .await?
-            .map(|row| serde_json::from_value(row.get(0)))
-            .transpose()?;
+            .await?;
+
+        let value: serde_json::Value = row.get(0);
+        let user = if value.is_null() {
+            None
+        } else {
+            Some(serde_json::from_value(value)?)
+        };
 
         Ok(user)
     }
