@@ -132,9 +132,12 @@ impl DB for PgDB {
     #[instrument(skip(self), err)]
     async fn tx_commit(&self, client_id: Uuid) -> Result<()> {
         // Get client used for the transaction
-        let mut txs_clients = self.txs_clients.write().await;
-        let Some((tx, _)) = txs_clients.remove(&client_id) else {
-            bail!(TX_CLIENT_NOT_FOUND);
+        let tx = {
+            let mut txs_clients = self.txs_clients.write().await;
+            let Some((tx, _)) = txs_clients.remove(&client_id) else {
+                bail!(TX_CLIENT_NOT_FOUND);
+            };
+            tx
         };
 
         // Commit transaction
@@ -146,9 +149,12 @@ impl DB for PgDB {
     #[instrument(skip(self), err)]
     async fn tx_rollback(&self, client_id: Uuid) -> Result<()> {
         // Get client used for the transaction
-        let mut txs_clients = self.txs_clients.write().await;
-        let Some((tx, _)) = txs_clients.remove(&client_id) else {
-            bail!(TX_CLIENT_NOT_FOUND);
+        let tx = {
+            let mut txs_clients = self.txs_clients.write().await;
+            let Some((tx, _)) = txs_clients.remove(&client_id) else {
+                bail!(TX_CLIENT_NOT_FOUND);
+            };
+            tx
         };
 
         // Rollback transaction
