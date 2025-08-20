@@ -15,7 +15,7 @@ use openidconnect as oidc;
 use password_auth::verify_password;
 use serde::Deserialize;
 use tower_sessions::Session;
-use tracing::{info, instrument};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -26,7 +26,8 @@ use crate::{
         error::HandlerError,
         extractors::{CommunityId, OAuth2, Oidc},
     },
-    templates::{self, PageId, auth::User},
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    templates::{self, PageId, auth::User, notifications::EmailVerification},
 };
 
 /// Key used to store the authentication provider in the session.
@@ -371,6 +372,7 @@ pub(crate) async fn sign_up(
     CommunityId(community_id): CommunityId,
     State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -383,7 +385,7 @@ pub(crate) async fn sign_up(
     user_summary.password = Some(password_auth::generate_hash(&password));
 
     // Sign up the user
-    let Ok((_user, email_verification_code)) = db.sign_up_user(&community_id, &user_summary, false).await
+    let Ok((user, email_verification_code)) = db.sign_up_user(&community_id, &user_summary, false).await
     else {
         // Redirect to the sign up page on error
         messages.error("Something went wrong while signing up. Please try again later.");
@@ -392,12 +394,18 @@ pub(crate) async fn sign_up(
 
     // Enqueue email verification notification
     if let Some(code) = email_verification_code {
-        // TODO: send email verification notification
-
-        // Temporarily print the verification URL to the console
-        let verification_url = format!("{}/verify-email/{}", cfg.base_url, code);
-        info!(%verification_url, "Email verification URL (temporary)");
-
+        let template_data = EmailVerification {
+            link: format!(
+                "{}/verify-email/{code}",
+                cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
+            ),
+        };
+        let notification = NewNotification {
+            kind: NotificationKind::EmailVerification,
+            user_id: user.user_id,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
         messages.success("Please verify your email to complete the sign up process.");
     }
 

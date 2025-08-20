@@ -6,14 +6,24 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Authentication pages templates.
 pub(crate) mod auth;
+/// Common template components and utilities.
 pub(crate) mod common;
+/// Community site templates.
 pub(crate) mod community;
+/// Dashboard templates.
 pub(crate) mod dashboard;
+/// Event page templates.
 pub(crate) mod event;
+/// Custom Askama template filters.
 mod filters;
+/// Group site templates.
 pub(crate) mod group;
+/// Template helper functions and utilities.
 pub(crate) mod helpers;
+/// Notification templates.
+pub(crate) mod notifications;
 
 /// Enum representing unique identifiers for each page in the application.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
