@@ -116,19 +116,8 @@
 {% endblock dashboard_main -%}
 
 {% macro group_content_list(name, logo_url, color) -%}
-  {% if let Some(logo_url) = logo_url -%}
-    <div class="flex items-center justify-center size-6 me-3">
-      <img class="size-6 object-contain"
-           height="auto"
-           width="auto"
-           src="{{ logo_url }}"
-           alt="{{ name }} logo">
-    </div>
-  {% else -%}
-    <div class="rounded-full size-6 me-3 p-1"
-         style="background-color: {{ color }}">
-      <div class="svg-icon size-4 icon-users bg-white"></div>
-    </div>
-  {% endif -%}
+  <div class="me-3">
+    {% call common::logo(logo_url = logo_url, classes = "size-6", size = 24, color = color, border = false) -%}
+  </div>
   <div class="truncate">{{ name }}</div>
 {% endmacro group_content_list -%}

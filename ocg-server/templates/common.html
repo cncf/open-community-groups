@@ -119,15 +119,26 @@
 {# End current page -#}
 
 {# Logo -#}
-{% macro logo(logo_url, classes, size, color, name = None) -%}
+{% macro logo(logo_url, classes, size, color, border = true, name = None) -%}
   {% if let Some(logo_url) = logo_url -%}
     {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", *size * 2) ) -%}
 
-    <div class="md:my-auto bg-white rounded-lg outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}"
+    <div class="md:my-auto bg-white overflow-hidden bg-no-repeat bg-center bg-contain
+                {% if border -%}
+                  rounded-lg outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white
+                {% endif -%}
+                {{ classes }}"
          style="background-image: url('{{ bg_image }}')"></div>
   {% else -%}
-    <div class="relative md:my-auto bg-white rounded-lg outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white overflow-hidden bg-no-repeat bg-center bg-contain {{ classes }}">
-      <div class="relative h-full w-full flex place-items-center p-2 text-[0.78rem] text-stone-600 font-bold leading-5 capitalize z-10">
+    <div class="relative md:my-auto bg-white overflow-hidden bg-no-repeat bg-center bg-contain
+                {% if border -%}
+                  rounded-lg outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white
+                {% endif -%}
+                {{ classes }}">
+      <div class="relative h-full w-full flex place-items-center text-[0.78rem] text-stone-600 font-bold leading-5 capitalize z-10
+                  {% if border -%}
+                    p-2
+                  {% endif -%}">
         <p class="w-full text-ellipsis overflow-hidden text-center">{{ name.unwrap_or(&"".to_string() ) }}</p>
       </div>
       <div class="absolute w-full h-full top-0 placeholder-logo"
