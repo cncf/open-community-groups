@@ -22,6 +22,8 @@ use tracing::instrument;
 pub(crate) struct Config {
     /// Database configuration.
     pub db: DbConfig,
+    /// Email configuration.
+    pub email: EmailConfig,
     /// Logging configuration.
     pub log: LogConfig,
     /// HTTP server configuration.
@@ -51,6 +53,30 @@ impl Config {
             .extract()
             .map_err(Into::into)
     }
+}
+
+/// Email configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct EmailConfig {
+    /// Sender email address.
+    pub from_address: String,
+    /// Sender display name.
+    pub from_name: String,
+    /// SMTP server configuration.
+    pub smtp: SmtpConfig,
+}
+
+/// SMTP server configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct SmtpConfig {
+    /// SMTP server hostname.
+    pub host: String,
+    /// SMTP server port.
+    pub port: u16,
+    /// SMTP username.
+    pub username: String,
+    /// SMTP password.
+    pub password: String,
 }
 
 /// Logging configuration.

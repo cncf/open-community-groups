@@ -14,20 +14,31 @@ use deadpool_postgres::Runtime;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres_openssl::MakeTlsConnector;
 use tokio::{net::TcpListener, signal};
+use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
     config::{Config, LogFormat},
     db::PgDB,
+    services::notifications::PgNotificationsManager,
 };
 
+/// Authentication and authorization functionality.
 mod auth;
+/// Application configuration management.
 mod config;
+/// Database abstraction layer and operations.
 mod db;
+/// HTTP request handlers.
 mod handlers;
+/// HTTP router configuration and setup.
 mod router;
+/// Background services and workers.
+mod services;
+/// Templates for rendering pages, notifications, etc.
 mod templates;
+/// Domain types and data structures.
 mod types;
 
 /// Command-line arguments for the application.
@@ -59,15 +70,34 @@ async fn main() -> Result<()> {
         LogFormat::Pretty => ts.init(),
     }
 
+    // Setup task tracker and cancellation token for background workers.
+    let task_tracker = TaskTracker::new();
+    let cancellation_token = CancellationToken::new();
+
     // Setup database connection pool.
     let mut builder = SslConnector::builder(SslMethod::tls())?;
     builder.set_verify(SslVerifyMode::NONE);
     let connector = MakeTlsConnector::new(builder.build());
     let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
+    {
+        let db = db.clone();
+        let cancellation_token = cancellation_token.clone();
+        task_tracker.spawn(async move {
+            db.tx_cleaner(cancellation_token).await;
+        });
+    }
+
+    // Setup notifications manager.
+    let notifications_manager = Arc::new(PgNotificationsManager::new(
+        db.clone(),
+        &cfg.email,
+        &task_tracker,
+        &cancellation_token,
+    )?);
 
     // Setup and launch the HTTP server.
-    let router = router::setup(&cfg.server, db).await?;
+    let router = router::setup(&cfg.server, db, notifications_manager).await?;
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");
@@ -79,6 +109,11 @@ async fn main() -> Result<()> {
         return Err(err.into());
     }
     info!("server stopped");
+
+    // Request all background workers to stop and wait for completion.
+    task_tracker.close();
+    cancellation_token.cancel();
+    task_tracker.wait().await;
 
     Ok(())
 }

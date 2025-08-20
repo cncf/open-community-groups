@@ -30,6 +30,7 @@ use crate::{
         auth::{self, LOG_IN_URL},
         community, dashboard, event, group,
     },
+    services::notifications::DynNotificationsManager,
 };
 
 /// Default cache duration for HTTP responses in seconds.
@@ -52,6 +53,8 @@ pub(crate) struct State {
     pub cfg: HttpServerConfig,
     /// Database handle.
     pub db: DynDB,
+    /// Notifications manager handle.
+    pub notifications_manager: DynNotificationsManager,
     /// `serde_qs` config for query string parsing.
     pub serde_qs_de: serde_qs::Config,
 }
@@ -61,11 +64,16 @@ pub(crate) struct State {
 /// Sets up all routes, middleware layers, and shared state. Optionally adds basic
 /// authentication if configured.
 #[instrument(skip_all)]
-pub(crate) async fn setup(cfg: &HttpServerConfig, db: DynDB) -> Result<Router> {
+pub(crate) async fn setup(
+    cfg: &HttpServerConfig,
+    db: DynDB,
+    notifications_manager: DynNotificationsManager,
+) -> Result<Router> {
     // Setup router state
     let state = State {
         cfg: cfg.clone(),
         db: db.clone(),
+        notifications_manager,
         serde_qs_de: serde_qs::Config::new(3, false),
     };
 

@@ -10,8 +10,11 @@ use common::DBDashboardCommon;
 use community::DBDashboardCommunity;
 use group::DBDashboardGroup;
 
+/// Common dashboard database operations.
 pub(crate) mod common;
+/// Community dashboard database operations.
 pub(crate) mod community;
+/// Group dashboard database operations.
 pub(crate) mod group;
 
 /// Unified database trait for all dashboards operations.
