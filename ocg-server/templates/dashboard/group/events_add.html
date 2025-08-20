@@ -49,7 +49,9 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
-              {% for category in categories %}<option value="{{ category.event_category_id }}">{{ category.name }}</option>{% endfor %}
+              {% for category in categories %}
+                <option value="{{ category.event_category_id }}">{{ category.name }}</option>
+              {% endfor %}
             </select>
           </div>
           <p class="form-legend">Type of event or meetup.</p>
@@ -389,7 +391,7 @@
       {# Cancel button -#}
       <button id="cancel-button"
               type="button"
-              hx-get="/dashboard/group/events"
+              hx-get="/dashboard/group?tab=events"
               hx-target="body"
               hx-indicator="#dashboard-spinner"
               class="btn-primary-outline">Cancel</button>
@@ -459,7 +461,7 @@
 
   if (cancelButton) {
     cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, "Events list", '/dashboard/group/events');
+      history.pushState({}, "Events list", '/dashboard/group?tab=events');
     });
   }
 
@@ -469,6 +471,8 @@
       if (e.detail.elt.id === 'events-form') {
         const nameInput = document.getElementById('name');
         const slugInput = document.querySelector('input[name="slug"]');
+
+        console.log('htmx:beforeRequest triggered for events-form', nameInput.value);
 
         if (nameInput && slugInput && nameInput.value.trim()) {
           slugInput.value = generateSlug(nameInput.value);
