@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::types::event::{
-    EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind,
+use crate::{
+    templates::{filters, helpers::DATE_FORMAT},
+    types::event::{EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind},
 };
 
 // Pages templates.

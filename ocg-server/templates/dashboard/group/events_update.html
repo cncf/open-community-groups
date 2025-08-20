@@ -173,7 +173,7 @@
                    name="starts_at"
                    id="starts_at"
                    class="input-primary"
-                   {% if let Some(starts_at) = event.starts_at %}value="{{ starts_at }}"{% endif %}>
+                   value="{{ event.starts_at|display_some_datetime(DATE_FORMAT) }}">
           </div>
           <p class="form-legend">When the event starts.</p>
         </div>
@@ -187,7 +187,7 @@
                    name="ends_at"
                    id="ends_at"
                    class="input-primary"
-                   {% if let Some(ends_at) = event.ends_at %}value="{{ ends_at }}"{% endif %}>
+                   value="{{ event.ends_at|display_some_datetime(DATE_FORMAT) }}">
           </div>
           <p class="form-legend">When the event ends.</p>
         </div>
