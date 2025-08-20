@@ -35,10 +35,6 @@
         </div>
         {# End Event name -#}
 
-        {# Hidden slug field -#}
-        <input type="hidden" name="slug" value="">
-        {# End hidden slug field -#}
-
         <div class="col-span-3"></div>
 
         {# Event category -#}
@@ -466,16 +462,14 @@
   }
 
   if (eventsForm) {
-    // Generate slug before form submission
-    eventsForm.addEventListener('htmx:beforeRequest', (e) => {
+    // Generate slug and add to request parameters
+    eventsForm.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'events-form') {
         const nameInput = document.getElementById('name');
-        const slugInput = document.querySelector('input[name="slug"]');
 
-        console.log('htmx:beforeRequest triggered for events-form', nameInput.value);
-
-        if (nameInput && slugInput && nameInput.value.trim()) {
-          slugInput.value = generateSlug(nameInput.value);
+        if (nameInput && nameInput.value.trim()) {
+          const slug = generateSlug(nameInput.value);
+          e.detail.parameters.slug = slug;
         }
       }
     });

@@ -34,10 +34,6 @@
         </div>
         {# End Group name -#}
 
-        {# Hidden slug field -#}
-        <input type="hidden" name="slug" value="">
-        {# End hidden slug field -#}
-
         <div class="col-span-3"></div>
 
         {# Group category -#}
@@ -48,7 +44,9 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="category_id" name="category_id" class="select-primary" required>
               <option value="">Select a category</option>
-              {% for category in categories %}<option value="{{ category.group_category_id }}">{{ category.name }}</option>{% endfor %}
+              {% for category in categories %}
+                <option value="{{ category.group_category_id }}">{{ category.name }}</option>
+              {% endfor %}
             </select>
           </div>
           <p class="form-legend">Type of group or event series.</p>
@@ -364,14 +362,14 @@
   }
 
   if (groupsForm) {
-    // Generate slug before form submission
-    groupsForm.addEventListener('htmx:beforeRequest', (e) => {
+    // Generate slug and add to request parameters
+    groupsForm.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'groups-form') {
         const nameInput = document.getElementById('name');
-        const slugInput = document.querySelector('input[name="slug"]');
 
-        if (nameInput && slugInput && nameInput.value.trim()) {
-          slugInput.value = generateSlug(nameInput.value);
+        if (nameInput && nameInput.value.trim()) {
+          const slug = generateSlug(nameInput.value);
+          e.detail.parameters.slug = slug;
         }
       }
     });
