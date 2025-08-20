@@ -365,6 +365,12 @@
   {% endif -%}
   {# End hosts section -#}
 
+  {# Gallery -#}
+  {% if let Some(photos_urls) = event.photos_urls -%}
+    <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
+  {% endif -%}
+  {# End gallery -#}
+
 </div>
 {% endblock content -%}
 
