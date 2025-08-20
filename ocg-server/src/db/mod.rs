@@ -45,7 +45,7 @@ const TX_CLIENT_NOT_FOUND: &str = "transaction client not found, it probably tim
 const TXS_CLEANER_FREQUENCY: Duration = Duration::from_secs(10);
 
 /// Duration for which a transaction client is kept alive before timing out.
-const TXS_CLIENT_TIMEOUT: TimeDelta = TimeDelta::seconds(10);
+const TXS_CLIENT_TIMEOUT: TimeDelta = TimeDelta::seconds(30);
 
 /// Database trait defining all data access operations. This is the parent trait
 /// that includes all the functionality defined in other traits.

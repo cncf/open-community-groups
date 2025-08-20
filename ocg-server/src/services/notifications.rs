@@ -22,7 +22,7 @@ use crate::{config::EmailConfig, db::DynDB, templates::notifications::EmailVerif
 const NUM_WORKERS: usize = 1;
 
 /// Time to wait after a delivery error before retrying.
-const PAUSE_ON_ERROR: Duration = Duration::from_secs(30);
+const PAUSE_ON_ERROR: Duration = Duration::from_secs(10);
 
 /// Time to wait when there are no notifications to deliver.
 const PAUSE_ON_NONE: Duration = Duration::from_secs(15);
@@ -115,7 +115,7 @@ impl Worker {
                 Err(err) => {
                     // Something went wrong delivering the notification, pause
                     // unless we've been asked to stop
-                    error!("error delivering notification: {err}");
+                    error!(?err, "error delivering notification");
                     tokio::select! {
                         () = sleep(PAUSE_ON_ERROR) => {},
                         () = self.cancellation_token.cancelled() => break,
@@ -158,7 +158,7 @@ impl Worker {
 
             // Update notification with result
             if let Err(err) = self.db.update_notification(client_id, notification, err).await {
-                error!("error updating notification: {err}");
+                error!(?err, "error updating notification");
             }
 
             // Commit transaction
