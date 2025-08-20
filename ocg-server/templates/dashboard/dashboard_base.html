@@ -2,8 +2,16 @@
 {% import "common.html" as common -%}
 
 {% block content -%}
+  {# Skip navigation link -#}
+  <a href="#dashboard-main-content" 
+     class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
+    Skip to main content
+  </a>
+  {# End skip navigation link -#}
+  
   {# Header -#}
-  <nav class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5">
+  <nav class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5"
+       role="banner">
     {% include "community/header.html" -%}
   </nav>
   {# End Header -#}
@@ -20,7 +28,9 @@
   {# Main Content -#}
   <div class="hidden md:flex">
     {# Sticky menu -#}
-    <aside class="h-dvh sticky top-0 w-[225px] lg:w-[300px]">
+    <aside class="h-dvh sticky top-0 w-[225px] lg:w-[300px]" 
+           role="navigation" 
+           aria-label="Dashboard navigation">
       <div class="flex flex-col justify-between py-5 pt-24 h-full">
         <div class="flex flex-col grow min-h-0 w-full">
           {% block menu -%}
@@ -42,7 +52,9 @@
     </aside>
     {# End sticky menu -#}
 
-    <main class="w-[calc(100%-225px)] lg:w-[calc(100%-300px)] bg-white border border-stone-200 rounded-lg m-5 ms-0 mt-[6.25rem] relative">
+    <main id="dashboard-main-content" 
+          class="w-[calc(100%-225px)] lg:w-[calc(100%-300px)] bg-white border border-stone-200 rounded-lg m-5 ms-0 mt-[6.25rem] relative" 
+          role="main">
       {% block dashboard_main -%}
       {% endblock dashboard_main -%}
     </main>

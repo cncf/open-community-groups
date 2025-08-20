@@ -12,7 +12,8 @@
          hx-target="body"
          hx-indicator="#dashboard-spinner"
          hx-push-url="true"
-         class="flex items-center justify-between cursor-pointer py-0.5">
+         class="flex items-center justify-between cursor-pointer py-0.5"
+         aria-current="page">
         <div class="flex items-center">
           <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-primary-500"></div>
           <div class="text-sm/8 ms-3">{{ name }}</div>
@@ -29,7 +30,9 @@
     {% if disabled -%}
       <button class="rounded-md px-3 border border-transparent cursor-not-allowed {{ extra_styles }} py-2"
               disabled
-              title="Coming soon!">
+              aria-disabled="true"
+              title="Coming soon!"
+              aria-label="{{ name }} - Coming soon">
         <div class="flex items-center opacity-50">
           <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-stone-500"></div>
           <div class="text-sm/8 ms-3 text-stone-500">{{ name }}</div>

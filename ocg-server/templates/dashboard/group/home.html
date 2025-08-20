@@ -22,7 +22,9 @@
           {% if group.group_id == selected_group_id -%}
             {% let selected_group = group -%}
             {# Group button to open dropdown -#}
-            <button id="group-btn" class="cursor-pointer select select-primary">
+            <button id="group-btn"
+                    class="cursor-pointer select select-primary"
+                    aria-label="Select group">
               <div class="flex items-center relative">
                 {% call group_content_list(name = selected_group.name, logo_url = selected_group.logo_url, color = selected_group.color) -%}
               </div>

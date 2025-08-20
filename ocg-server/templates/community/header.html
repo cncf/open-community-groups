@@ -4,19 +4,21 @@
 {% let logged_in = false -%}
 
 {# Header -#}
-<header id="header" class="w-full">
+<header id="header" class="w-full" role="banner">
   {# Navigation bar -#}
-  <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20">
+  <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20"
+       role="navigation"
+       aria-label="Main navigation">
     <div class="flex items-center gap-x-6">
       {# Logo -#}
       <div class="me-3">
-        {% if path != "/" %}<a href="/">{% endif %}
+        {% if path != "/" %}<a href="/" aria-label="Go to homepage">{% endif %}
           <div class="-m-1.5 p-1.5">
             <img class="h-10 w-50"
                  width="208"
                  height="40"
                  src="{{ self.community.header_logo_url }}"
-                 alt="Logo" />
+                 alt="{{ community.display_name }} logo" />
           </div>
           {% if path != "/" %}</a>{% endif %}
       </div>
@@ -52,14 +54,16 @@
         {# User dropdown button -#}
         <div class="relative">
           <button id="user-dropdown-button"
-                  class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-600 hover:text-primary-800 hover:border-primary-800 size-[38px] p-0.5 overflow-hidden">
+                  class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-600 hover:text-primary-800 hover:border-primary-800 size-[38px] p-0.5 overflow-hidden"
+                  aria-label="User menu">
             <div class="svg-icon size-4 mx-auto bg-primary-500 group-hover:bg-primary-800 icon-user"></div>
           </button>
 
           {# User dropdown menu -#}
           <div id="user-dropdown"
-               class="dropdown absolute hidden z-10 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-            <ul class="text-stone-700 my-2">
+               class="dropdown absolute hidden z-10 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+               role="menu">
+            <ul class="text-stone-700 my-2" role="none">
               <li>
                 <div class="flex flex-col px-4 py-2">
                   <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user_name }}</div>
@@ -67,20 +71,22 @@
               </li>
 
               {# Dashboard links -#}
-              <li class="border-t border-stone-200 mt-2 pt-2">
+              <li class="border-t border-stone-200 mt-2 pt-2" role="none">
                 <a href="/dashboard/community"
                    hx-boost="true"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-community bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Community Dashboard</div>
                   </div>
                 </a>
               </li>
-              <li>
+              <li role="none">
                 <a href="/dashboard/group"
                    hx-boost="true"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Group Dashboard</div>
@@ -89,11 +95,12 @@
               </li>
 
               {# Logout -#}
-              <li class="border-t border-stone-200 mt-2 pt-2">
+              <li class="border-t border-stone-200 mt-2 pt-2" role="none">
                 <a href="/log-out"
                    hx-boost="false"
                    target="_self"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-logout bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Log out</div>
@@ -107,29 +114,34 @@
         {# User dropdown button for non-logged users -#}
         <div class="relative">
           <button id="user-dropdown-button"
-                  class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-600 hover:text-primary-800 hover:border-primary-800 size-[38px] p-0.5 overflow-hidden">
+                  class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-600 hover:text-primary-800 hover:border-primary-800 size-[38px] p-0.5 overflow-hidden"
+                  aria-label="User menu">
             <div class="svg-icon size-4 mx-auto bg-primary-500 group-hover:bg-primary-800 icon-user"></div>
           </button>
 
           {# User dropdown menu for non-logged users -#}
           <div id="user-dropdown"
-               class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-            <ul class="text-stone-700 my-2">
+               class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+               role="menu">
+            <ul class="text-stone-700 my-2" role="none">
               {# Mobile navigation links -#}
-              <li class="block lg:hidden">
+              <li class="block lg:hidden" role="none">
                 <a href="/"
                    hx-boost="true"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-home bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Home</div>
                   </div>
                 </a>
               </li>
-              <li class="block lg:hidden border-b border-stone-200 mb-2 pb-2">
+              <li class="block lg:hidden border-b border-stone-200 mb-2 pb-2"
+                  role="none">
                 <a href="/explore"
                    hx-boost="true"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-list-magnifying-glass bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Explore</div>
@@ -138,10 +150,11 @@
               </li>
 
               {# Sign up -#}
-              <li>
+              <li role="none">
                 <a href="/sign-up"
                    hx-boost="true"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-user-plus bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Sign up</div>
@@ -150,10 +163,11 @@
               </li>
 
               {# Log in -#}
-              <li>
+              <li role="none">
                 <a href="/log-in"
                    hx-boost="true"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100">
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
                   <div class="flex items-center">
                     <div class="svg-icon size-4 icon-login bg-stone-600"></div>
                     <div class="ms-2 text-xs/6">Log in</div>
@@ -188,6 +202,14 @@
         userDropdown.classList.add('hidden');
       }
     });
+
+    // Close dropdown on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !userDropdown.classList.contains('hidden')) {
+        userDropdown.classList.add('hidden');
+        userDropdownButton.focus();
+      }
+    });
   }
 </script>
 
@@ -196,6 +218,8 @@
   <div id="new-group-modal"
        tabindex="-1"
        aria-hidden="true"
+       aria-modal="true"
+       role="dialog"
        class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex">
     <div id="backdrop-new-group-modal"
          class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
@@ -204,7 +228,8 @@
         {# Modal header -#}
         <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
           {# Title -#}
-          <h3 class="text-xl font-semibold text-stone-900">New group</h3>
+          <h3 id="new-group-modal-title"
+              class="text-xl font-semibold text-stone-900">New group</h3>
           {# End title -#}
 
           {# Close button -#}

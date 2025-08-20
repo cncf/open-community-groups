@@ -5,7 +5,7 @@
     <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm">
       {# Header -#}
       <div class="mb-8 text-center">
-        <h1 class="text-2xl font-bold text-stone-900 mb-2">Log In</h1>
+        <h1 id="login-form-title" class="text-2xl font-bold text-stone-900 mb-2">Log In</h1>
         <p class="text-sm text-stone-600">Sign in to your account</p>
       </div>
       {# End header -#}
@@ -46,11 +46,15 @@
         {% endif -%}
 
         <form action="/log-in{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-              method="post">
+              method="post"
+              role="form"
+              aria-labelledby="login-form-title">
           <div class="space-y-5">
             {# Username field -#}
             <div>
-              <label for="username" class="block mb-2 text-sm font-medium text-stone-900">Username</label>
+              <label for="username" class="block mb-2 text-sm font-medium text-stone-900">
+                Username <span class="text-red-500" aria-label="required">*</span>
+              </label>
               <input type="text"
                      id="username"
                      name="username"
@@ -59,19 +63,27 @@
                      autocorrect="off"
                      autocapitalize="off"
                      spellcheck="false"
-                     required />
+                     required
+                     aria-required="true"
+                     aria-describedby="username-help" />
+              <div id="username-help" class="sr-only">Enter your username to log in</div>
             </div>
             {# End username field -#}
 
             {# Password field -#}
             <div>
-              <label for="password" class="block mb-2 text-sm font-medium text-stone-900">Password</label>
+              <label for="password" class="block mb-2 text-sm font-medium text-stone-900">
+                Password <span class="text-red-500" aria-label="required">*</span>
+              </label>
               <input type="password"
                      id="password"
                      name="password"
                      class="input-primary"
                      autocomplete="current-password"
-                     required />
+                     required
+                     aria-required="true"
+                     aria-describedby="password-help" />
+              <div id="password-help" class="sr-only">Enter your password to log in</div>
             </div>
             {# End password field -#}
 

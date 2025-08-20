@@ -48,7 +48,11 @@
     const addEventButton = document.getElementById('add-event-button');
     if (addEventButton) {
       addEventButton.addEventListener('htmx:afterRequest', () => {
-        history.pushState({}, "Events list", '/dashboard/group?tab=events');
+        try {
+          history.pushState({}, "Events list", '/dashboard/group?tab=events');
+        } catch (error) {
+          console.warn('Failed to update browser history:', error);
+        }
       });
     }
   </script>
@@ -56,8 +60,11 @@
 
 {# Events Table -#}
 <div class="relative overflow-visible">
-  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500">
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+         role="table"
+         aria-label="Events list">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+           role="rowgroup">
       {# Header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
@@ -67,7 +74,7 @@
         <th scope="col" class="px-3 xl:px-5 py-3">Actions</th>
       </tr>
     </thead>
-    <tbody id="events-list">
+    <tbody id="events-list" role="rowgroup">
       {% if events.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
           <td class="px-8 py-20 text-center" colspan="5">
@@ -153,7 +160,8 @@
                           hx-indicator="#dashboard-spinner"
                           hx-swap="innerHTML show:body:top"
                           hx-disabled-elt="this"
-                          class="btn-tertiary p-2">
+                          class="btn-tertiary p-2"
+                          aria-label="Edit event: {{ event.name }}">
                     <div class="svg-icon size-4 icon-pencil"></div>
                   </button>
                 </div>
@@ -166,7 +174,8 @@
                           hx-target="#dashboard-content"
                           hx-indicator="#dashboard-spinner"
                           hx-trigger="confirmed"
-                          class="btn-tertiary p-2 text-red-600 hover:bg-red-50">
+                          class="btn-tertiary p-2 text-red-600 hover:bg-red-50"
+                          aria-label="Delete event: {{ event.name }}">
                     <div class="svg-icon size-4 icon-trash bg-red-600"></div>
                   </button>
                   <script type="module">
