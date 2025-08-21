@@ -20,6 +20,7 @@ use crate::{
     },
     templates::{
         PageId,
+        auth::User,
         dashboard::group::{
             events,
             home::{Content, Page, Tab},
@@ -72,7 +73,7 @@ pub(crate) async fn page(
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),
         selected_group_id: group_id,
-        user: auth_session.into(),
+        user: User::from_session(auth_session).await?,
     };
 
     let html = Html(page.render()?);

@@ -83,7 +83,6 @@ pub(crate) async fn log_in_page(
         path: LOG_IN_URL.to_string(),
         user: User::default(),
 
-        auth_provider: None,
         next_url: query.get("next_url").cloned(),
     };
 
@@ -117,7 +116,6 @@ pub(crate) async fn sign_up_page(
         path: SIGN_UP_URL.to_string(),
         user: User::default(),
 
-        auth_provider: None,
         next_url: query.get("next_url").cloned(),
     };
 

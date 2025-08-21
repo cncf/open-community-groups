@@ -16,6 +16,7 @@ use crate::{
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::{
         PageId,
+        auth::User,
         dashboard::community::{
             groups,
             home::{Content, Page, Tab},
@@ -58,7 +59,7 @@ pub(crate) async fn page(
         content,
         page_id: PageId::CommunityDashboard,
         path: "/dashboard/community".to_string(),
-        user: auth_session.into(),
+        user: User::from_session(auth_session).await?,
     };
 
     let html = Html(page.render()?);
