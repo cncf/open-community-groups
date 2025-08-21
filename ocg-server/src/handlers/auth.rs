@@ -517,20 +517,16 @@ pub(crate) struct NextUrl {
 #[instrument(skip_all)]
 pub(crate) async fn user_belongs_to_group_team(
     auth_session: AuthSession,
-    session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
     // Check if user is logged in
-    let Some(_user) = auth_session.user else {
+    let Some(user) = auth_session.user else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Check if a group is selected (presence indicates user belongs to a team)
-    let Ok(group_id) = session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    if group_id.is_none() {
+    // Check if user belongs to any group team
+    if !user.belongs_to_any_group_team.unwrap_or(false) {
         return StatusCode::FORBIDDEN.into_response();
     }
 

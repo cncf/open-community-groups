@@ -72,6 +72,10 @@ pub(crate) struct User {
 
     /// Name of the authentication provider, if any.
     pub auth_provider: Option<String>,
+    /// Whether the user belongs to any group team.
+    pub belongs_to_any_group_team: Option<bool>,
+    /// Whether the user belongs to their community team.
+    pub belongs_to_community_team: Option<bool>,
     /// Display name of the user, if any.
     pub name: Option<String>,
     /// Username, if any.
@@ -85,6 +89,8 @@ impl User {
         let user = Self {
             logged_in: auth_session_user.is_some(),
             auth_provider: auth_session.session.get(AUTH_PROVIDER_KEY).await?,
+            belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
+            belongs_to_community_team: auth_session_user.and_then(|u| u.belongs_to_community_team),
             name: auth_session_user.map(|u| u.name.clone()),
             username: auth_session_user.map(|u| u.username.clone()),
         };

@@ -70,6 +70,8 @@ select is(
     get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
+        'belongs_to_any_group_team', false,
+        'belongs_to_community_team', false,
         'email', 'test@example.com',
         'email_verified', true,
         'name', 'Updated User',
@@ -115,6 +117,8 @@ select is(
     get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
+        'belongs_to_any_group_team', false,
+        'belongs_to_community_team', false,
         'email', 'test@example.com',
         'email_verified', true,
         'name', 'Final User',

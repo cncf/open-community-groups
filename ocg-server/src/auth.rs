@@ -409,6 +409,10 @@ pub(crate) struct User {
     /// User's username.
     pub username: String,
 
+    /// Whether the user belongs to any group team.
+    pub belongs_to_any_group_team: Option<bool>,
+    /// Whether the user belongs to their community team.
+    pub belongs_to_community_team: Option<bool>,
     /// User's biography.
     pub bio: Option<String>,
     /// User's city.
