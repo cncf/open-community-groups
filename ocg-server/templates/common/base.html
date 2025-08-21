@@ -61,7 +61,7 @@
       <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {% if !path.starts_with("/dashboard") -%}
           {# Header -#}
-          <div class="px-4 lg:px-5">{% include "community/header.html" -%}</div>
+          <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
           {# End header -#}
         {% endif -%}
 
@@ -80,7 +80,7 @@
 
       {% if !path.starts_with("/dashboard") -%}
         {# Footer -#}
-        {% include "community/footer.html" -%}
+        {% include "common/footer.html" -%}
         {# End footer -#}
       {% endif -%}
     </div>
