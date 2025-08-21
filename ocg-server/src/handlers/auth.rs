@@ -13,7 +13,7 @@ use axum_extra::extract::Form;
 use axum_messages::Messages;
 use openidconnect as oidc;
 use password_auth::verify_password;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
@@ -418,7 +418,7 @@ pub(crate) async fn update_user_details(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    Form(user_data): Form<auth::User>,
+    Form(user_data): Form<UserDetailsUpdated>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session
     let Some(user) = auth_session.user else {
@@ -487,6 +487,40 @@ fn get_log_in_url(next_url: Option<&String>) -> String {
         log_in_url = format!("{log_in_url}?next_url={next_url}");
     }
     log_in_url
+}
+
+// Types.
+
+/// User details that can be updated.
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct UserDetailsUpdated {
+    /// User's display name.
+    pub name: String,
+
+    /// User's biography.
+    pub bio: Option<String>,
+    /// User's city.
+    pub city: Option<String>,
+    /// User's company.
+    pub company: Option<String>,
+    /// User's country.
+    pub country: Option<String>,
+    /// User's Facebook URL.
+    pub facebook_url: Option<String>,
+    /// User's interests.
+    pub interests: Option<Vec<String>>,
+    /// User's `LinkedIn` URL.
+    pub linkedin_url: Option<String>,
+    /// User's photo URL.
+    pub photo_url: Option<String>,
+    /// User's timezone.
+    pub timezone: Option<String>,
+    /// User's title.
+    pub title: Option<String>,
+    /// User's Twitter URL.
+    pub twitter_url: Option<String>,
+    /// User's website URL.
+    pub website_url: Option<String>,
 }
 
 // Deserialization helpers.

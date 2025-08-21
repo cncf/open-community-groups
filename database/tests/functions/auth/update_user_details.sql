@@ -46,13 +46,11 @@ insert into "user" (
     'testuser'
 );
 
--- Test: Update user with all fields (email and username should not change)
+-- Test: Update user with all updateable fields
 select update_user_details(
     :'user1ID'::uuid,
     jsonb_build_object(
-        'email', 'updated@example.com',
         'name', 'Updated User',
-        'username', 'updateduser',
         'bio', 'This is my bio',
         'city', 'San Francisco',
         'company', 'Example Corp',
@@ -90,16 +88,14 @@ select is(
         'twitter_url', 'https://twitter.com/updateduser',
         'website_url', 'https://example.com/updateduser'
     ),
-    'Should update user fields except email and username'
+    'Should update all provided user fields'
 );
 
--- Test: Update user with null optional fields (email and username should not change)
+-- Test: Update user with null optional fields
 select update_user_details(
     :'user1ID'::uuid,
     jsonb_build_object(
-        'email', 'final@example.com',
         'name', 'Final User',
-        'username', 'finaluser',
         'bio', null,
         'city', null,
         'company', null,
