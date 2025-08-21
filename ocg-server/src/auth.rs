@@ -599,12 +599,3 @@ struct GitHubUserEmail {
     /// Whether this email is verified.
     verified: bool,
 }
-
-/// Input for updating a user's password.
-#[derive(Clone, Serialize, Deserialize)]
-pub(crate) struct PasswordUpdateInput {
-    /// The user's current password.
-    pub old_password: String,
-    /// The new password to set.
-    pub new_password: String,
-}

@@ -143,3 +143,12 @@ impl From<crate::auth::User> for UserDetails {
         }
     }
 }
+
+/// Input for updating a user's password.
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct UserPassword {
+    /// The new password to set.
+    pub new_password: String,
+    /// The user's current password.
+    pub old_password: String,
+}

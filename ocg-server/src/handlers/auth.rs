@@ -442,7 +442,7 @@ pub(crate) async fn update_user_details(
 pub(crate) async fn update_user_password(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    Form(mut input): Form<auth::PasswordUpdateInput>,
+    Form(mut input): Form<templates::auth::UserPassword>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session
     let Some(user) = auth_session.user else {
