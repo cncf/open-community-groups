@@ -49,7 +49,7 @@ pub struct EventSummary {
     /// URL to the event or group's logo image.
     pub logo_url: Option<String>,
     /// UTC timestamp when the event starts.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
     /// City where the event venue is located (for in-person events).
     pub venue_city: Option<String>,
@@ -133,7 +133,7 @@ pub struct EventDetailed {
     /// Brief event description for listings.
     pub description_short: Option<String>,
     /// Event end time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
     /// City where the group is based.
     pub group_city: Option<String>,
@@ -152,7 +152,7 @@ pub struct EventDetailed {
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Event start time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
@@ -234,7 +234,7 @@ pub struct EventFull {
     /// Brief event description.
     pub description_short: Option<String>,
     /// Event end time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
     /// Latitude for map display.
     pub latitude: Option<f64>,
@@ -247,14 +247,14 @@ pub struct EventFull {
     /// URLs to event photos.
     pub photos_urls: Option<Vec<String>>,
     /// When the event was published.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub published_at: Option<DateTime<Utc>>,
     /// URL for event recording.
     pub recording_url: Option<String>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
     /// Event start time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
     /// URL for live streaming.
     pub streaming_url: Option<String>,
