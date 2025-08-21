@@ -22,7 +22,7 @@
             <input type="text"
                    name="name"
                    id="name"
-                   value=""
+                   value="{{ user.name }}"
                    class="input-primary"
                    autocomplete="off"
                    autocorrect="off"
@@ -32,23 +32,6 @@
           </div>
         </div>
         {# End name -#}
-
-        <div class="col-span-3"></div>
-
-        {# Username (hidden) -#}
-        <div class="col-span-3 hidden">
-          <input type="hidden"
-                 name="username"
-                 id="username"
-                 value="">
-        </div>
-        {# End username -#}
-
-        {# Email (hidden) -#}
-        <div class="col-span-3 hidden">
-          <input type="hidden" name="email" id="email" value="">
-        </div>
-        {# End email -#}
       </div>
     </div>
 
