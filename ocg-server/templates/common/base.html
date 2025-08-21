@@ -78,7 +78,7 @@
       </main>
       {# End content -#}
 
-      {% if !path.starts_with("/dashboard") -%}
+      {% if !path.starts_with("/dashboard") && path != "/log-in" && path != "/sign-up" -%}
         {# Footer -#}
         {% include "common/footer.html" -%}
         {# End footer -#}
