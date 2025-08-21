@@ -3,119 +3,120 @@
 {% block content -%}
   <div class="flex items-center justify-center w-full">
     <div class="container max-w-md m-auto px-4 py-8 md:px-6 md:py-12">
-    <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm">
-      {# Header -#}
-      <div class="mb-8 text-center">
-        <h1 id="login-form-title" class="text-2xl font-bold text-stone-900 mb-2">Log In</h1>
-        <p class="text-sm text-stone-600">Sign in to your account</p>
-      </div>
-      {# End header -#}
-
-      <div class="flex flex-col items-center space-y-4 mb-6">
-        {# GitHub login -#}
-        {% if login.github -%}
-          <div class="w-full">
-            <a href="/log-in/oauth2/github{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-               class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-              <div class="svg-icon size-4 icon-github group-hover:bg-white transition-colors"></div>
-              <span>GitHub</span>
-            </a>
-          </div>
-        {% endif -%}
-        {# End GitHub login -#}
-
-        {# Linux Foundation SSO login -#}
-        {% if login.linuxfoundation -%}
-          <div class="w-full">
-            <a href="/log-in/oidc/linuxfoundation{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-               class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-              <div class="svg-icon size-4 icon-lfx group-hover:bg-white transition-colors"></div>
-              <span>Linux Foundation SSO</span>
-            </a>
-          </div>
-        {% endif -%}
-        {# End Linux Foundation SSO login -#}
-      </div>
-
-      {# Email login -#}
-      {% if login.email -%}
-        {% if login.linuxfoundation || login.github -%}
-          <div class="inline-flex items-center justify-center w-full relative mb-6">
-            <hr class="w-full h-px bg-stone-200 border-0">
-            <div class="absolute px-3 bg-white text-xs text-stone-500 uppercase tracking-wide">OR</div>
-          </div>
-        {% endif -%}
-
-        <form action="/log-in{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-              method="post"
-              role="form"
-              aria-labelledby="login-form-title">
-          <div class="space-y-5">
-            {# Username field -#}
-            <div>
-              <label for="username" class="block mb-2 text-sm font-medium text-stone-900">
-                Username <span aria-label="required">*</span>
-              </label>
-              <input type="text"
-                     id="username"
-                     name="username"
-                     class="input-primary"
-                     autocomplete="username"
-                     autocorrect="off"
-                     autocapitalize="off"
-                     spellcheck="false"
-                     required
-                     aria-required="true"
-                     aria-describedby="username-help" />
-              <div id="username-help" class="sr-only">Enter your username to log in</div>
-            </div>
-            {# End username field -#}
-
-            {# Password field -#}
-            <div>
-              <label for="password" class="block mb-2 text-sm font-medium text-stone-900">
-                Password <span aria-label="required">*</span>
-              </label>
-              <input type="password"
-                     id="password"
-                     name="password"
-                     class="input-primary"
-                     autocomplete="current-password"
-                     required
-                     aria-required="true"
-                     aria-describedby="password-help" />
-              <div id="password-help" class="sr-only">Enter your password to log in</div>
-            </div>
-            {# End password field -#}
-
-            {# Submit button -#}
-            <button type="submit" class="btn-primary w-full">Sign In</button>
-            {# End submit button -#}
-          </div>
-        </form>
-      {% endif -%}
-      {# End email login -#}
-
-      {# Sign up link -#}
-      <div class="mt-6 text-center text-sm text-stone-600">
-        Don't have an account?
-        <a href="/sign-up{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-           class="text-primary-500 hover:text-primary-700 font-medium transition-colors">Sign up</a>
-      </div>
-      {# End sign up link -#}
-
-      {# Messages -#}
-      {% if !messages.is_empty() -%}
-        <div class="mt-6">
-          {% for message in messages -%}
-            <div class="flex items-center p-4 mb-3 text-yellow-800 border border-yellow-600 rounded-lg bg-yellow-50">
-              <div class="text-sm">{{ message }}</div>
-            </div>
-          {% endfor -%}
+      <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm">
+        {# Header -#}
+        <div class="mb-8">
+          <h1 id="login-form-title" class="text-2xl font-bold text-stone-900 mb-2">Log In</h1>
         </div>
-      {% endif -%}
-      {# End messages -#}
-    </div>
+        {# End header -#}
+
+        <div class="flex flex-col items-center space-y-4 mb-6">
+          {# GitHub login -#}
+          {% if login.github -%}
+            <div class="w-full">
+              <a href="/log-in/oauth2/github{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                 class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
+                <div class="svg-icon size-4 icon-github group-hover:bg-white transition-colors"></div>
+                <span>GitHub</span>
+              </a>
+            </div>
+          {% endif -%}
+          {# End GitHub login -#}
+
+          {# Linux Foundation SSO login -#}
+          {% if login.linuxfoundation -%}
+            <div class="w-full">
+              <a href="/log-in/oidc/linuxfoundation{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                 class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
+                <div class="svg-icon size-4 icon-lfx group-hover:bg-white transition-colors"></div>
+                <span>Linux Foundation SSO</span>
+              </a>
+            </div>
+          {% endif -%}
+          {# End Linux Foundation SSO login -#}
+        </div>
+
+        {# Email login -#}
+        {% if login.email -%}
+          {% if login.linuxfoundation || login.github -%}
+            <div class="inline-flex items-center justify-center w-full relative mb-6">
+              <hr class="w-full h-px bg-stone-200 border-0">
+              <div class="absolute px-3 bg-white text-xs text-stone-500 uppercase tracking-wide">OR</div>
+            </div>
+          {% endif -%}
+
+          <form action="/log-in{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                method="post"
+                role="form"
+                aria-labelledby="login-form-title">
+            <div class="space-y-5">
+              {# Username field -#}
+              <div>
+                <label for="username" class="form-label">
+                  Username <span class="asterisk" aria-label="required">*</span>
+                </label>
+                <div class="mt-2">
+                  <input type="text"
+                         id="username"
+                         name="username"
+                         class="input-primary"
+                         autocomplete="username"
+                         autocorrect="off"
+                         autocapitalize="off"
+                         spellcheck="false"
+                         required
+                         aria-required="true"
+                         aria-describedby="username-help" />
+                </div>
+              </div>
+              {# End username field -#}
+
+              {# Password field -#}
+              <div>
+                <label for="password" class="form-label">
+                  Password <span class="asterisk" aria-label="required">*</span>
+                </label>
+                <div class="mt-2">
+                  <input type="password"
+                         id="password"
+                         name="password"
+                         class="input-primary"
+                         autocomplete="current-password"
+                         required
+                         aria-required="true"
+                         aria-describedby="password-help" />
+                </div>
+              </div>
+              {# End password field -#}
+
+              {# Submit button -#}
+              <button type="submit" class="btn-primary w-full">Sign In</button>
+              {# End submit button -#}
+            </div>
+          </form>
+        {% endif -%}
+        {# End email login -#}
+
+        {# Sign up link -#}
+        <div class="mt-6 text-center text-sm text-stone-600">
+          Don't have an account?
+          <a href="/sign-up{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+             class="text-primary-500 hover:text-primary-700 font-medium transition-colors">Sign up</a>
+        </div>
+        {# End sign up link -#}
+
+        {# Messages -#}
+        {% if !messages.is_empty() -%}
+          <div class="mt-6">
+            {% for message in messages -%}
+              <div class="flex items-center p-4 mb-3 text-yellow-800 border border-yellow-600 rounded-lg bg-yellow-50">
+                <div class="text-sm">{{ message }}</div>
+              </div>
+            {% endfor -%}
+          </div>
+        {% endif -%}
+        {# End messages -#}
+      </div>
     </div>
   </div>
 {% endblock content -%}

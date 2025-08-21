@@ -203,7 +203,7 @@ export class MultipleInputs extends LitWrapper {
 
         <button
           type="button"
-          class="btn-mini"
+          class="btn-primary-outline btn-mini"
           @click="${this._addItem}"
           ?disabled="${this._isAddButtonDisabled()}"
         >

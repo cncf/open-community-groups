@@ -36,10 +36,6 @@
     @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
   }
 
-  .btn-mini {
-    @apply bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white
-  }
-
   .btn-tertiary {
     @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden;
   }
@@ -54,16 +50,20 @@
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center text-primary-700 border border-primary-700 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-900 hover:enabled:border-primary-900 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline-anchor {
-    @apply cursor-pointer text-center text-primary-700 border border-primary-700 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-900 hover:border-primary-900 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline .svg-icon,
   .btn-primary-outline-anchor .svg-icon {
-    @apply bg-primary-700;
+    @apply bg-primary-500;
+  }
+
+  .btn-mini {
+    @apply py-1 px-3 text-xs;
   }
 
   .icon-text {
