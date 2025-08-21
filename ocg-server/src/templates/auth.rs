@@ -10,7 +10,7 @@ use crate::{
     types::community::Community,
 };
 
-// Pages templates.
+// Pages and sections templates.
 
 /// Template for the log in page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -60,6 +60,14 @@ pub(crate) struct SignUpPage {
 pub(crate) struct UpdateUserPage {
     /// User details to be updated.
     pub user: UserDetails,
+}
+
+/// Template for the user menu section.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "auth/user_menu_section.html")]
+pub(crate) struct UserMenuSection {
+    /// Authenticated user information.
+    pub user: User,
 }
 
 // Types.

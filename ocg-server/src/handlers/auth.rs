@@ -58,7 +58,7 @@ pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
-// Pages handlers.
+// Pages and sections handlers.
 
 /// Handler that returns the log in page.
 #[instrument(skip_all, err)]
@@ -124,6 +124,17 @@ pub(crate) async fn sign_up_page(
     };
 
     Ok(Html(template.render()?).into_response())
+}
+
+/// Handler for rendering the user menu section.
+#[instrument(skip_all, err)]
+pub(crate) async fn user_menu_section(auth_session: AuthSession) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare template
+    let template = templates::auth::UserMenuSection {
+        user: User::from_session(auth_session).await?,
+    };
+
+    Ok(Html(template.render()?))
 }
 
 // Actions handlers.
