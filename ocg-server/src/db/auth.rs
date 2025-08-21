@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     auth::{User, UserSummary},
     db::PgDB,
+    templates::auth::UserDetails,
 };
 
 /// Trait for database operations related to authentication and authorization.
@@ -48,7 +49,7 @@ pub(crate) trait DBAuth {
     async fn update_session(&self, record: &session::Record) -> Result<()>;
 
     /// Updates user details in the database.
-    async fn update_user_details(&self, user_id: &Uuid, user: &User) -> Result<()>;
+    async fn update_user_details(&self, user_id: &Uuid, user: &UserDetails) -> Result<()>;
 
     /// Updates a user's password in the database.
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
@@ -272,7 +273,7 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, user), err)]
-    async fn update_user_details(&self, user_id: &Uuid, user: &User) -> Result<()> {
+    async fn update_user_details(&self, user_id: &Uuid, user: &UserDetails) -> Result<()> {
         trace!("db: update user details");
 
         let db = self.pool.get().await?;

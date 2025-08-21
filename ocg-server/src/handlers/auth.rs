@@ -27,7 +27,11 @@ use crate::{
         extractors::{CommunityId, OAuth2, Oidc},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{self, PageId, auth::User, notifications::EmailVerification},
+    templates::{
+        self, PageId,
+        auth::{User, UserDetails},
+        notifications::EmailVerification,
+    },
 };
 
 /// Key used to store the authentication provider in the session.
@@ -54,7 +58,7 @@ pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 /// URL for the sign up page.
 pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 
-// Pages handlers.
+// Pages and sections handlers.
 
 /// Handler that returns the log in page.
 #[instrument(skip_all, err)]
@@ -83,7 +87,6 @@ pub(crate) async fn log_in_page(
         path: LOG_IN_URL.to_string(),
         user: User::default(),
 
-        auth_provider: None,
         next_url: query.get("next_url").cloned(),
     };
 
@@ -117,11 +120,21 @@ pub(crate) async fn sign_up_page(
         path: SIGN_UP_URL.to_string(),
         user: User::default(),
 
-        auth_provider: None,
         next_url: query.get("next_url").cloned(),
     };
 
     Ok(Html(template.render()?).into_response())
+}
+
+/// Handler for rendering the user menu section.
+#[instrument(skip_all, err)]
+pub(crate) async fn user_menu_section(auth_session: AuthSession) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare template
+    let template = templates::auth::UserMenuSection {
+        user: User::from_session(auth_session).await?,
+    };
+
+    Ok(Html(template.render()?))
 }
 
 // Actions handlers.
@@ -420,7 +433,7 @@ pub(crate) async fn update_user_details(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    Form(user_data): Form<auth::User>,
+    Form(user_data): Form<UserDetails>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session
     let Some(user) = auth_session.user else {
@@ -440,7 +453,7 @@ pub(crate) async fn update_user_details(
 pub(crate) async fn update_user_password(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    Form(mut input): Form<auth::PasswordUpdateInput>,
+    Form(mut input): Form<templates::auth::UserPassword>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session
     let Some(user) = auth_session.user else {
@@ -515,20 +528,16 @@ pub(crate) struct NextUrl {
 #[instrument(skip_all)]
 pub(crate) async fn user_belongs_to_group_team(
     auth_session: AuthSession,
-    session: Session,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
     // Check if user is logged in
-    let Some(_user) = auth_session.user else {
+    let Some(user) = auth_session.user else {
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Check if a group is selected (presence indicates user belongs to a team)
-    let Ok(group_id) = session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-    if group_id.is_none() {
+    // Check if user belongs to any group team
+    if !user.belongs_to_any_group_team.unwrap_or(false) {
         return StatusCode::FORBIDDEN.into_response();
     }
 

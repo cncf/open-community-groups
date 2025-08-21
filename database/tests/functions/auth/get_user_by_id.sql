@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(3);
+select plan(5);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -48,11 +48,67 @@ insert into "user" (
     'hashed_password_here'
 );
 
+-- Seed a group category
+insert into group_category (
+    group_category_id,
+    community_id,
+    name
+) values (
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    :'community1ID',
+    'Test Category'
+);
+
+-- Seed a group for testing team membership
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    description,
+    website_url,
+    logo_url
+) values (
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    :'community1ID',
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    'Test Group',
+    'test-group',
+    'Test Group Description',
+    'https://example.com',
+    'https://example.com/logo.png'
+);
+
+-- Add user to group team
+insert into group_team (
+    group_id,
+    user_id,
+    role
+) values (
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    :'user1ID',
+    'Admin'
+);
+
+-- Add user to community team
+insert into community_team (
+    community_id,
+    user_id,
+    role
+) values (
+    :'community1ID',
+    :'user1ID',
+    'Admin'
+);
+
 -- Test: User found by ID (without password)
 select is(
     get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash",
+        "belongs_to_any_group_team": true,
+        "belongs_to_community_team": true,
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,
@@ -68,6 +124,8 @@ select is(
     get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid, true)::jsonb,
     '{
         "auth_hash": "test_hash",
+        "belongs_to_any_group_team": true,
+        "belongs_to_community_team": true,
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,
@@ -84,6 +142,84 @@ select is(
     get_user_by_id('00000000-0000-0000-0001-999999999999'::uuid, false)::jsonb,
     null::jsonb,
     'Should return null when ID does not exist'
+);
+
+-- Test: User without team memberships
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    '00000000-0000-0000-0001-000000000002'::uuid,
+    'nogroups@example.com',
+    'nogroupsuser',
+    true,
+    'No Groups User',
+    'test_hash_2',
+    :'community1ID'
+);
+
+select is(
+    get_user_by_id('00000000-0000-0000-0001-000000000002'::uuid, false)::jsonb,
+    '{
+        "auth_hash": "test_hash_2",
+        "belongs_to_any_group_team": false,
+        "belongs_to_community_team": false,
+        "email": "nogroups@example.com",
+        "email_verified": true,
+        "name": "No Groups User",
+        "user_id": "00000000-0000-0000-0001-000000000002",
+        "username": "nogroupsuser"
+    }'::jsonb,
+    'Should return user with false team membership fields when user has no team memberships'
+);
+
+-- Test: User in group team but not community team
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    '00000000-0000-0000-0001-000000000003'::uuid,
+    'grouponly@example.com',
+    'grouponlyuser',
+    true,
+    'Group Only User',
+    'test_hash_3',
+    :'community1ID'
+);
+
+insert into group_team (
+    group_id,
+    user_id,
+    role
+) values (
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    '00000000-0000-0000-0001-000000000003'::uuid,
+    'Admin'
+);
+
+select is(
+    get_user_by_id('00000000-0000-0000-0001-000000000003'::uuid, false)::jsonb,
+    '{
+        "auth_hash": "test_hash_3",
+        "belongs_to_any_group_team": true,
+        "belongs_to_community_team": false,
+        "email": "grouponly@example.com",
+        "email_verified": true,
+        "name": "Group Only User",
+        "user_id": "00000000-0000-0000-0001-000000000003",
+        "username": "grouponlyuser"
+    }'::jsonb,
+    'Should return user with belongs_to_any_group_team=true and belongs_to_community_team=false when user is only in group team'
 );
 
 -- Finish tests and rollback transaction

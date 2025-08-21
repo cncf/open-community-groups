@@ -26,8 +26,20 @@ returns json as $$
         'timezone', timezone,
         'title', title,
         'twitter_url', twitter_url,
-        'website_url', website_url
+        'website_url', website_url,
+
+        'belongs_to_any_group_team', exists (
+            select 1
+            from group_team gt
+            where gt.user_id = u.user_id
+        ),
+        'belongs_to_community_team', exists (
+            select 1
+            from community_team ct
+            where ct.user_id = u.user_id
+            and ct.community_id = u.community_id
+        )
     ))
-    from "user"
-    where user_id = p_user_id;
+    from "user" u
+    where u.user_id = p_user_id;
 $$ language sql;

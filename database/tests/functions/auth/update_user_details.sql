@@ -46,13 +46,11 @@ insert into "user" (
     'testuser'
 );
 
--- Test: Update user with all fields
+-- Test: Update user with all updateable fields
 select update_user_details(
     :'user1ID'::uuid,
     jsonb_build_object(
-        'email', 'updated@example.com',
         'name', 'Updated User',
-        'username', 'updateduser',
         'bio', 'This is my bio',
         'city', 'San Francisco',
         'company', 'Example Corp',
@@ -72,11 +70,13 @@ select is(
     get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
-        'email', 'updated@example.com',
+        'belongs_to_any_group_team', false,
+        'belongs_to_community_team', false,
+        'email', 'test@example.com',
         'email_verified', true,
         'name', 'Updated User',
         'user_id', :'user1ID'::text,
-        'username', 'updateduser',
+        'username', 'testuser',
         'bio', 'This is my bio',
         'city', 'San Francisco',
         'company', 'Example Corp',
@@ -90,16 +90,14 @@ select is(
         'twitter_url', 'https://twitter.com/updateduser',
         'website_url', 'https://example.com/updateduser'
     ),
-    'Should update all user fields correctly'
+    'Should update all provided user fields'
 );
 
 -- Test: Update user with null optional fields
 select update_user_details(
     :'user1ID'::uuid,
     jsonb_build_object(
-        'email', 'final@example.com',
         'name', 'Final User',
-        'username', 'finaluser',
         'bio', null,
         'city', null,
         'company', null,
@@ -119,11 +117,13 @@ select is(
     get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
-        'email', 'final@example.com',
+        'belongs_to_any_group_team', false,
+        'belongs_to_community_team', false,
+        'email', 'test@example.com',
         'email_verified', true,
         'name', 'Final User',
         'user_id', :'user1ID'::text,
-        'username', 'finaluser'
+        'username', 'testuser'
     ),
     'Should handle null values for optional fields correctly'
 );

@@ -140,6 +140,7 @@ pub(crate) async fn setup(
 
     router = router
         .route("/log-out", get(auth::log_out))
+        .route("/section/user-menu", get(auth::user_menu_section))
         .route("/sign-up", get(auth::sign_up_page))
         .layer(MessagesManagerLayer)
         .layer(auth_layer)
