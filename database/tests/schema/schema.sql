@@ -299,8 +299,8 @@ select indexes_are('group', array[
 
 select indexes_are('user', array[
     'user_pkey',
-    'user_email_key',
-    'user_username_key',
+    'user_email_community_id_key',
+    'user_username_community_id_key',
     'user_community_id_idx'
 ]);
 

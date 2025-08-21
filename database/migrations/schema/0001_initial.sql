@@ -49,9 +49,9 @@ create table "user" (
     auth_hash text not null check (auth_hash <> ''),
     community_id uuid not null references community,
     created_at timestamptz default current_timestamp not null,
-    email text not null unique check (email <> ''),
+    email text not null check (email <> ''),
     email_verified boolean not null default false,
-    username text not null check (username <> '') unique,
+    username text not null check (username <> ''),
 
     bio text check (bio <> ''),
     city text check (city <> ''),
@@ -66,7 +66,10 @@ create table "user" (
     timezone text check (timezone <> ''),
     title text check (title <> ''),
     twitter_url text check (twitter_url <> ''),
-    website_url text check (website_url <> '')
+    website_url text check (website_url <> ''),
+
+    unique (email, community_id),
+    unique (username, community_id)
 );
 
 create index user_community_id_idx on "user" (community_id);
