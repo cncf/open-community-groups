@@ -8,7 +8,7 @@
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button"
-      hx-exclude="[name=toggle_registration_required]">
+      hx-exclude="[name=toggle_registration_required], [name=starts_at_input], [name=ends_at_input]">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
       {% call macros::form_title(title = "Event Details", description = "Please add as many details about this event as possible.") -%}
@@ -160,8 +160,8 @@
           <label for="starts_at" class="form-label">Start Date & Time</label>
           <div class="mt-2">
             <input type="datetime-local"
-                   name="starts_at"
-                   id="starts_at"
+                   name="starts_at_input"
+                   id="starts_at_input"
                    class="input-primary">
           </div>
           <p class="form-legend">When the event starts.</p>
@@ -173,8 +173,8 @@
           <label for="ends_at" class="form-label">End Date & Time</label>
           <div class="mt-2">
             <input type="datetime-local"
-                   name="ends_at"
-                   id="ends_at"
+                   name="ends_at_input"
+                   id="ends_at_input"
                    class="input-primary">
           </div>
           <p class="form-legend">When the event ends.</p>
@@ -402,7 +402,8 @@
 
 <script type="module">
   import {
-    isSuccessfulXHRStatus
+    isSuccessfulXHRStatus,
+    convertDateTimeLocalToISO
   } from '/static/js/common/common.js';
   import {
     showErrorAlert,
@@ -470,6 +471,18 @@
         if (nameInput && nameInput.value.trim()) {
           const slug = generateSlug(nameInput.value);
           e.detail.parameters.slug = slug;
+        }
+
+        // Convert datetime-local values to proper ISO format for PostgreSQL
+        const startsAtInput = document.getElementById('starts_at_input');
+        const endsAtInput = document.getElementById('ends_at_input');
+
+        if (startsAtInput && startsAtInput.value) {
+          e.detail.parameters.starts_at = convertDateTimeLocalToISO(startsAtInput.value);
+        }
+
+        if (endsAtInput && endsAtInput.value) {
+          e.detail.parameters.ends_at = convertDateTimeLocalToISO(endsAtInput.value);
         }
       }
     });

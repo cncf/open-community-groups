@@ -160,3 +160,20 @@ export const isSuccessfulXHRStatus = (status) => {
     return false;
   }
 };
+
+/**
+ * Converts HTML datetime-local input value to PostgreSQL-compatible ISO 8601 format.
+ * HTML datetime-local format: YYYY-MM-DDTHH:MM
+ * PostgreSQL timestamptz format: YYYY-MM-DDTHH:MM:SSZ
+ *
+ * @param {string} dateTimeLocal - The datetime-local input value (e.g., "2025-08-23T15:00")
+ * @returns {string|null} ISO 8601 formatted string with UTC timezone (e.g., "2025-08-23T15:00:00Z") or null if input is empty
+ *
+ * @example
+ * convertDateTimeLocalToISO("2025-08-23T15:00") // returns "2025-08-23T15:00:00Z"
+ * convertDateTimeLocalToISO("") // returns null
+ */
+export const convertDateTimeLocalToISO = (dateTimeLocal) => {
+  if (!dateTimeLocal) return null;
+  return `${dateTimeLocal}:00Z`;
+};
