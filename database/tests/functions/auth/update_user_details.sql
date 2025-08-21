@@ -46,7 +46,7 @@ insert into "user" (
     'testuser'
 );
 
--- Test: Update user with all fields
+-- Test: Update user with all fields (email and username should not change)
 select update_user_details(
     :'user1ID'::uuid,
     jsonb_build_object(
@@ -72,11 +72,11 @@ select is(
     get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
-        'email', 'updated@example.com',
+        'email', 'test@example.com',
         'email_verified', true,
         'name', 'Updated User',
         'user_id', :'user1ID'::text,
-        'username', 'updateduser',
+        'username', 'testuser',
         'bio', 'This is my bio',
         'city', 'San Francisco',
         'company', 'Example Corp',
@@ -90,10 +90,10 @@ select is(
         'twitter_url', 'https://twitter.com/updateduser',
         'website_url', 'https://example.com/updateduser'
     ),
-    'Should update all user fields correctly'
+    'Should update user fields except email and username'
 );
 
--- Test: Update user with null optional fields
+-- Test: Update user with null optional fields (email and username should not change)
 select update_user_details(
     :'user1ID'::uuid,
     jsonb_build_object(
@@ -119,11 +119,11 @@ select is(
     get_user_by_id(:'user1ID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
-        'email', 'final@example.com',
+        'email', 'test@example.com',
         'email_verified', true,
         'name', 'Final User',
         'user_id', :'user1ID'::text,
-        'username', 'finaluser'
+        'username', 'testuser'
     ),
     'Should handle null values for optional fields correctly'
 );

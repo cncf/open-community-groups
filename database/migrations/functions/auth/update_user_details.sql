@@ -5,9 +5,7 @@ create or replace function update_user_details(
 ) returns void as $$
     update "user"
     set
-        email = p_user->>'email',
         name = p_user->>'name',
-        username = p_user->>'username',
         bio = p_user->>'bio',
         city = p_user->>'city',
         company = p_user->>'company',
