@@ -58,8 +58,8 @@ pub(crate) struct SignUpPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "auth/update_user.html")]
 pub(crate) struct UpdateUserPage {
-    /// Authenticated user information.
-    pub user: User,
+    /// User details to be updated.
+    pub user: UserDetails,
 }
 
 // Types.
@@ -89,5 +89,57 @@ impl User {
             username: auth_session_user.map(|u| u.username.clone()),
         };
         Ok(user)
+    }
+}
+
+/// User details that can be updated.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UserDetails {
+    /// User's display name.
+    pub name: String,
+
+    /// User's biography.
+    pub bio: Option<String>,
+    /// User's city.
+    pub city: Option<String>,
+    /// User's company.
+    pub company: Option<String>,
+    /// User's country.
+    pub country: Option<String>,
+    /// User's Facebook URL.
+    pub facebook_url: Option<String>,
+    /// User's interests.
+    pub interests: Option<Vec<String>>,
+    /// User's `LinkedIn` URL.
+    pub linkedin_url: Option<String>,
+    /// User's photo URL.
+    pub photo_url: Option<String>,
+    /// User's timezone.
+    pub timezone: Option<String>,
+    /// User's title.
+    pub title: Option<String>,
+    /// User's Twitter URL.
+    pub twitter_url: Option<String>,
+    /// User's website URL.
+    pub website_url: Option<String>,
+}
+
+impl From<crate::auth::User> for UserDetails {
+    fn from(user: crate::auth::User) -> Self {
+        Self {
+            name: user.name,
+            bio: user.bio,
+            city: user.city,
+            company: user.company,
+            country: user.country,
+            facebook_url: user.facebook_url,
+            interests: user.interests,
+            linkedin_url: user.linkedin_url,
+            photo_url: user.photo_url,
+            timezone: user.timezone,
+            title: user.title,
+            twitter_url: user.twitter_url,
+            website_url: user.website_url,
+        }
     }
 }

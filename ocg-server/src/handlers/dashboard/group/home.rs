@@ -20,7 +20,7 @@ use crate::{
     },
     templates::{
         PageId,
-        auth::User,
+        auth::{self, User, UserDetails},
         dashboard::group::{
             events,
             home::{Content, Page, Tab},
@@ -55,6 +55,9 @@ pub(crate) async fn page(
 
     // Prepare content for the selected tab
     let content = match tab {
+        Tab::Account => Content::Account(Box::new(auth::UpdateUserPage {
+            user: UserDetails::from(user),
+        })),
         Tab::Events => {
             let events = db.list_group_events(group_id).await?;
             Content::Events(events::ListPage { events })
