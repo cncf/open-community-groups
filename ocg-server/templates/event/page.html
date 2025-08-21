@@ -2,6 +2,7 @@
 {% import "common.html" as common -%}
 
 {% block scripts -%}
+  <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
 {% endblock scripts -%}
 
@@ -367,7 +368,10 @@
 
   {# Gallery -#}
   {% if let Some(photos_urls) = event.photos_urls -%}
-    <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
+    <div class="px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl font-semibold text-stone-900 mb-6">Gallery</h2>
+      <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
+    </div>
   {% endif -%}
   {# End gallery -#}
 

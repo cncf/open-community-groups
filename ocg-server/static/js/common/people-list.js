@@ -68,11 +68,11 @@ export class PeopleList extends LitWrapper {
    */
   _getInitials(name) {
     if (!name) return "-";
-    
+
     const nameParts = name.trim().split(/\s+/);
     const firstName = nameParts[0] || "";
     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
-    
+
     const cleanFirst = this._cleanString(firstName);
     const cleanLast = this._cleanString(lastName);
 
@@ -141,8 +141,6 @@ export class PeopleList extends LitWrapper {
     if (!this.people || this.people.length === 0) {
       return html``;
     }
-
-    console.log(this.people);
 
     const hasMore = this.people.length > this.initialCount;
     const peopleToShow = this._showAll ? this.people : this.people.slice(0, this.initialCount);

@@ -87,45 +87,34 @@ export class ImagesGallery extends LitWrapper {
     }
 
     return html`
-      <!-- Gallery -->
-      <div class="bg-stone-100 pt-4 md:pt-10 pb-6 md:pb-12">
-        <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div class="mb-12">
-            <!-- Title -->
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">${this.title}</div>
-            <!-- End title -->
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
-            <!-- Photos list -->
-            ${this.images.map(
-              (image, index) => html`
-                <div class="hidden md:block">
-                  <button class="photo-gallery" @click="${() => this._openModal(index)}">
-                    <img
-                      height="160"
-                      width="auto"
-                      class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-stone-300"
-                      src="${image}"
-                      alt="${this.altImage} image ${index + 1}"
-                    />
-                  </button>
-                </div>
-                <div class="block md:hidden">
-                  <img
-                    height="160"
-                    width="auto"
-                    class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-stone-300"
-                    src="${image}"
-                    alt="${this.altImage} image ${index + 1}"
-                  />
-                </div>
-              `,
-            )}
-            <!-- End photos list -->
-          </div>
-        </div>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
+        <!-- Photos list -->
+        ${this.images.map(
+          (image, index) => html`
+            <div class="hidden md:block">
+              <button class="photo-gallery" @click="${() => this._openModal(index)}">
+                <img
+                  height="160"
+                  width="auto"
+                  class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-stone-300"
+                  src="${image}"
+                  alt="${this.altImage} image ${index + 1}"
+                />
+              </button>
+            </div>
+            <div class="block md:hidden">
+              <img
+                height="160"
+                width="auto"
+                class="bg-white w-full h-40 object-cover rounded-lg border border-8 border-white outline outline-offset-1 outline-1 outline-stone-300"
+                src="${image}"
+                alt="${this.altImage} image ${index + 1}"
+              />
+            </div>
+          `,
+        )}
+        <!-- End photos list -->
       </div>
-      <!-- End gallery -->
 
       <!-- Modal full page -->
       <div
