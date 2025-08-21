@@ -511,6 +511,30 @@ pub(crate) struct NextUrl {
 
 // Authorization middleware.
 
+/// Check if the user belongs to any group's team.
+#[instrument(skip_all)]
+pub(crate) async fn user_belongs_to_group_team(
+    auth_session: AuthSession,
+    session: Session,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(_user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if a group is selected (presence indicates user belongs to a team)
+    let Ok(group_id) = session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if group_id.is_none() {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
+}
+
 /// Check if the user owns the community.
 #[instrument(skip_all)]
 pub(crate) async fn user_owns_community(

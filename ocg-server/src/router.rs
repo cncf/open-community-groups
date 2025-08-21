@@ -229,6 +229,7 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
 /// Sets up the group dashboard router and its routes.
 fn setup_group_dashboard_router(state: State) -> Router<State> {
     // Setup authorization middleware
+    let check_user_belongs_to_group_team = middleware::from_fn(auth::user_belongs_to_group_team);
     let check_user_owns_group = middleware::from_fn_with_state(state, auth::user_owns_group);
 
     // Setup router
@@ -251,6 +252,9 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )
-        .route("/{group_id}/select", put(dashboard::group::select_group))
-        .route_layer(check_user_owns_group)
+        .route(
+            "/{group_id}/select",
+            put(dashboard::group::select_group).route_layer(check_user_owns_group),
+        )
+        .route_layer(check_user_belongs_to_group_team)
 }
