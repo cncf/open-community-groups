@@ -2,6 +2,7 @@
 {% extends "common/base.html" -%}
 
 {% block scripts -%}
+  <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
 {% endblock scripts -%}
 
@@ -219,5 +220,16 @@
       </div>
     {% endif -%}
     {# End past events section -#}
+
+    {# Photo gallery -#}
+    {% if let Some(photos_urls) = group.photos_urls -%}
+      {% if !photos_urls.is_empty() -%}
+        <div class="px-4 sm:px-6 lg:px-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Gallery</h2>
+          <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
+        </div>
+      {% endif -%}
+    {% endif -%}
+    {# End photo gallery -#}
   </div>
 {% endblock content -%}

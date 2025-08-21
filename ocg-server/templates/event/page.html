@@ -367,10 +367,12 @@
 
     {# Gallery -#}
     {% if let Some(photos_urls) = event.photos_urls -%}
-      <div class="px-4 sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Gallery</h2>
-        <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
-      </div>
+      {% if !photos_urls.is_empty() -%}
+        <div class="px-4 sm:px-6 lg:px-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Gallery</h2>
+          <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
+        </div>
+      {% endif -%}
     {% endif -%}
     {# End gallery -#}
 

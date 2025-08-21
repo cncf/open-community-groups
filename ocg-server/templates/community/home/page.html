@@ -132,18 +132,18 @@
 
   {# Gallery -#}
   {% if let Some(photos_urls) = community.photos_urls -%}
-    <!-- Gallery -->
-    <div class="bg-stone-100 pt-4 md:pt-10 pb-6 md:pb-12">
-      <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <div class="mb-12">
-          <!-- Title -->
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">${this.title}</div>
-          <!-- End title -->
+    {% if !photos_urls.is_empty() -%}
+      <div class="bg-stone-100 pt-4 md:pt-10 pb-6 md:pb-12">
+        <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div class="mb-12">
+            <!-- Title -->
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Gallery</div>
+            <!-- End title -->
+          </div>
+          <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
         </div>
-        <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
       </div>
-    </div>
-    <!-- End gallery -->
+    {% endif -%}
   {% endif -%}
   {# End gallery -#}
 {% endblock content -%}
