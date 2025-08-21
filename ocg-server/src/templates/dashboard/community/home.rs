@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{
         PageId,
+        auth::User,
         dashboard::community::{groups, settings},
     },
     types::community::Community,
@@ -24,6 +25,8 @@ pub(crate) struct Page {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Authenticated user information.
+    pub user: User,
 }
 
 /// Content section for the community dashboard home page.

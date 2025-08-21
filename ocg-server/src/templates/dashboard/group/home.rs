@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::{
     templates::{
         PageId,
+        auth::User,
         dashboard::group::{events, settings},
     },
     types::{community::Community, group::GroupSummary},
@@ -29,6 +30,8 @@ pub(crate) struct Page {
     pub path: String,
     /// Currently selected group ID.
     pub selected_group_id: Uuid,
+    /// Authenticated user information.
+    pub user: User,
 }
 
 /// Content section for the group dashboard home page.

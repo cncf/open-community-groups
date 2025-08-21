@@ -11,6 +11,7 @@ use axum::{
 use tracing::instrument;
 
 use crate::{
+    auth::AuthSession,
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::{
@@ -29,6 +30,7 @@ use crate::{
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
+    auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
@@ -56,6 +58,7 @@ pub(crate) async fn page(
         content,
         page_id: PageId::CommunityDashboard,
         path: "/dashboard/community".to_string(),
+        user: auth_session.into(),
     };
 
     let html = Html(page.render()?);
