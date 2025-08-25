@@ -21,9 +21,12 @@ use crate::{
         community::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     },
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::community::{
-        explore::{self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover},
-        pagination::{self, NavigationLinks},
+    templates::{
+        PageId,
+        community::{
+            explore::{self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover},
+            pagination::{self, NavigationLinks},
+        },
     },
 };
 
@@ -45,6 +48,7 @@ pub(crate) async fn page(
     let mut template = explore::Page {
         community,
         entity: entity.clone(),
+        page_id: PageId::CommunityExplore,
         path: uri.path().to_string(),
         events_section: None,
         groups_section: None,

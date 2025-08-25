@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(3);
+select plan(4);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -27,6 +27,29 @@ insert into community (
     'https://example.com/logo.png',
     '{}'::jsonb,
     'Test Community Title'
+);
+
+-- Seed second community for cross-community test
+\set community2ID '00000000-0000-0000-0000-000000000002'
+
+insert into community (
+    community_id,
+    name,
+    display_name,
+    host,
+    description,
+    header_logo_url,
+    theme,
+    title
+) values (
+    :'community2ID',
+    'Second Test Community',
+    'Second Test Community',
+    'test2.example.com',
+    'Second Test Community Description',
+    'https://example.com/logo2.png',
+    '{}'::jsonb,
+    'Second Test Community Title'
 );
 
 -- Seed users
@@ -97,20 +120,26 @@ insert into group_team (
 
 -- Test: User who is in group_team should own the group
 select ok(
-    user_owns_group(:'user1ID', :'group1ID'),
+    user_owns_group(:'community1ID', :'group1ID', :'user1ID'),
     'User in group_team should own the group'
 );
 
 -- Test: User who is not in group_team should not own the group
 select ok(
-    not user_owns_group(:'user2ID', :'group1ID'),
+    not user_owns_group(:'community1ID', :'group1ID', :'user2ID'),
     'User not in group_team should not own the group'
 );
 
 -- Test: Non-existent user should not own the group
 select ok(
-    not user_owns_group('00000000-0000-0000-0000-000000000099'::uuid, :'group1ID'),
+    not user_owns_group(:'community1ID', :'group1ID', '00000000-0000-0000-0000-000000000099'::uuid),
     'Non-existent user should not own the group'
+);
+
+-- Test: User in group_team should not own the group when checked with different community_id
+select ok(
+    not user_owns_group(:'community2ID', :'group1ID', :'user1ID'),
+    'User in group_team should not own the group when checked with different community_id'
 );
 
 -- Finish tests and rollback transaction

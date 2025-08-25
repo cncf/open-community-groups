@@ -145,13 +145,19 @@ pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
+    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
-    Form(creds): Form<PasswordCredentials>,
+    Form(login_form): Form<LoginForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Authenticate user
+    let creds = PasswordCredentials {
+        community_id,
+        username: login_form.username,
+        password: login_form.password,
+    };
     let Some(user) = auth_session
-        .authenticate(Credentials::Password(creds.clone()))
+        .authenticate(Credentials::Password(creds))
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?
     else {
@@ -504,6 +510,17 @@ fn get_log_in_url(next_url: Option<&String>) -> String {
     log_in_url
 }
 
+// Types.
+
+/// Login form data from the user.
+#[derive(Debug, Deserialize)]
+pub(crate) struct LoginForm {
+    /// Username for authentication.
+    pub username: String,
+    /// Password for authentication.
+    pub password: String,
+}
+
 // Deserialization helpers.
 
 /// `OAuth2` authorization response containing code and CSRF state.
@@ -559,7 +576,7 @@ pub(crate) async fn user_owns_community(
     };
 
     // Check if the user owns the community
-    let Ok(user_owns_community) = db.user_owns_community(&user.user_id, &community_id).await else {
+    let Ok(user_owns_community) = db.user_owns_community(&community_id, &user.user_id).await else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !user_owns_community {
@@ -573,6 +590,7 @@ pub(crate) async fn user_owns_community(
 #[instrument(skip_all)]
 pub(crate) async fn user_owns_group(
     State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
     Path(group_id): Path<Uuid>,
     auth_session: AuthSession,
     request: Request,
@@ -584,7 +602,7 @@ pub(crate) async fn user_owns_group(
     };
 
     // Check if the user owns the group
-    let Ok(user_owns_group) = db.user_owns_group(&user.user_id, &group_id).await else {
+    let Ok(user_owns_group) = db.user_owns_group(&community_id, &group_id, &user.user_id).await else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !user_owns_group {
