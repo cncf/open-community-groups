@@ -15,7 +15,7 @@ use tracing::instrument;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::{PageId, community::home},
+    templates::{PageId, auth::User, community::home},
     types::event::EventKind,
 };
 
@@ -53,6 +53,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| home::EventCard { event })
             .collect(),
+        user: User::default(),
     };
 
     Ok(Html(template.render()?))

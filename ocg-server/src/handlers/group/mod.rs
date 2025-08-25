@@ -12,6 +12,7 @@ use crate::{
     db::DynDB,
     templates::{
         PageId,
+        auth::User,
         group::{self, Page},
     },
     types::event::EventKind,
@@ -50,6 +51,7 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| group::UpcomingEventCard { event })
             .collect(),
+        user: User::default(),
     };
 
     Ok(Html(template.render()?))

@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    templates::{PageId, filters},
+    templates::{PageId, auth::User, filters},
     types::{
         community::Community,
         event::{EventFull, EventKind},
@@ -25,4 +25,6 @@ pub(crate) struct Page {
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
+    /// Authenticated user information.
+    pub user: User,
 }
