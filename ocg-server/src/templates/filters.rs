@@ -16,6 +16,18 @@ pub(crate) fn demoji(s: &str, _: &dyn askama::Values) -> askama::Result<String> 
     Ok(s.graphemes(true).filter(|gc| emojis::get(gc).is_none()).collect())
 }
 
+/// Display the value if present, otherwise return an empty string.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+pub(crate) fn display_some<T>(value: &Option<T>, _: &dyn askama::Values) -> askama::Result<String>
+where
+    T: std::fmt::Display,
+{
+    match value {
+        Some(value) => Ok(value.to_string()),
+        None => Ok(String::new()),
+    }
+}
+
 /// Display the formatted datetime if present, otherwise return an empty string.
 #[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
 pub(crate) fn display_some_datetime(

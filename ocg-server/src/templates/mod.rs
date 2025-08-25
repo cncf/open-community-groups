@@ -33,6 +33,7 @@ pub(crate) enum PageId {
     CommunityExplore,
     CommunityHome,
     Event,
+    Explore,
     Group,
     GroupDashboard,
     LogIn,
