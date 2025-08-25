@@ -1,12 +1,15 @@
 -- user_owns_group returns whether a user is part of the group team.
 create or replace function user_owns_group(
-    p_user_id uuid,
-    p_group_id uuid
+    p_community_id uuid,
+    p_group_id uuid,
+    p_user_id uuid
 ) returns boolean as $$
     select exists (
         select 1
-        from group_team
-        where user_id = p_user_id
-        and group_id = p_group_id
+        from group_team gt
+        join "group" g on g.group_id = gt.group_id
+        where g.community_id = p_community_id
+        and gt.group_id = p_group_id
+        and gt.user_id = p_user_id
     );
 $$ language sql;

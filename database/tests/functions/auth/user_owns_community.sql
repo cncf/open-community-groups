@@ -68,19 +68,19 @@ insert into community_team (
 
 -- Test: User who is in community_team should own the community
 select ok(
-    user_owns_community(:'user1ID', :'community1ID'),
+    user_owns_community(:'community1ID', :'user1ID'),
     'User in community_team should own the community'
 );
 
 -- Test: User who is not in community_team should not own the community
 select ok(
-    not user_owns_community(:'user2ID', :'community1ID'),
+    not user_owns_community(:'community1ID', :'user2ID'),
     'User not in community_team should not own the community'
 );
 
 -- Test: Non-existent user should not own the community
 select ok(
-    not user_owns_community('00000000-0000-0000-0000-000000000099'::uuid, :'community1ID'),
+    not user_owns_community(:'community1ID', '00000000-0000-0000-0000-000000000099'::uuid),
     'Non-existent user should not own the community'
 );
 

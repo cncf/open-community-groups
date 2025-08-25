@@ -13,7 +13,7 @@ use tracing::{instrument, trace};
 
 use crate::{
     db::BBox,
-    templates::{filters, helpers::extract_location},
+    templates::{PageId, filters, helpers::extract_location},
     types::{
         community::Community,
         event::{EventDetailed, EventKind, EventSummary},
@@ -39,6 +39,8 @@ pub(crate) struct Page {
     pub community: Community,
     /// The type of content being explored (events or groups).
     pub entity: Entity,
+    /// Identifier for the current page.
+    pub page_id: PageId,
     /// Current URL path.
     pub path: String,
 

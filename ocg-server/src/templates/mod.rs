@@ -29,8 +29,9 @@ pub(crate) mod notifications;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum PageId {
-    Community,
     CommunityDashboard,
+    CommunityExplore,
+    CommunityHome,
     Event,
     Group,
     GroupDashboard,

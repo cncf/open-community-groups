@@ -25,14 +25,14 @@ pub(crate) trait DBAuth {
     /// Retrieves a session by its ID.
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>>;
 
-    /// Retrieves a user by their email address.
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>>;
+    /// Retrieves a user by their email address and community ID.
+    async fn get_user_by_email(&self, community_id: &Uuid, email: &str) -> Result<Option<User>>;
 
     /// Retrieves a user by their unique ID.
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
 
-    /// Retrieves a user by their username.
-    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
+    /// Retrieves a user by their username and community ID.
+    async fn get_user_by_username(&self, community_id: &Uuid, username: &str) -> Result<Option<User>>;
 
     /// Retrieves the password hash for a user.
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
@@ -55,10 +55,10 @@ pub(crate) trait DBAuth {
     async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<()>;
 
     /// Checks if a user owns a specific community.
-    async fn user_owns_community(&self, user_id: &Uuid, community_id: &Uuid) -> Result<bool>;
+    async fn user_owns_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool>;
 
     /// Checks if a user owns a specific group.
-    async fn user_owns_group(&self, user_id: &Uuid, group_id: &Uuid) -> Result<bool>;
+    async fn user_owns_group(&self, community_id: &Uuid, group_id: &Uuid, user_id: &Uuid) -> Result<bool>;
 
     /// Verifies a user's email address using a verification code.
     async fn verify_email(&self, code: &Uuid) -> Result<()>;
@@ -131,7 +131,7 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, email), err)]
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>> {
+    async fn get_user_by_email(&self, community_id: &Uuid, email: &str) -> Result<Option<User>> {
         trace!("db: get user (by email)");
 
         let db = self.pool.get().await?;
@@ -142,13 +142,14 @@ impl DBAuth for PgDB {
                     (
                         select user_id
                         from "user"
-                        where email = $1::text
+                        where community_id = $1::uuid
+                        and email = $2::text
                         and email_verified = true
                     ),
                     false
                 );
                 "#,
-                &[&email],
+                &[&community_id, &email],
             )
             .await?
             .get::<_, Option<serde_json::Value>>(0)
@@ -186,7 +187,7 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, username), err)]
-    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
+    async fn get_user_by_username(&self, community_id: &Uuid, username: &str) -> Result<Option<User>> {
         trace!("db: get user (by username)");
 
         let db = self.pool.get().await?;
@@ -196,14 +197,15 @@ impl DBAuth for PgDB {
                 select get_user_by_id(
                     (
                         select user_id from "user"
-                        where username = $1::text
+                        where community_id = $1::uuid
+                        and username = $2::text
                         and email_verified = true
                         and password is not null
                     ),
                     true
                 );
                 "#,
-                &[&username],
+                &[&community_id, &username],
             )
             .await?
             .get::<_, Option<serde_json::Value>>(0)
@@ -301,14 +303,14 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn user_owns_community(&self, user_id: &Uuid, community_id: &Uuid) -> Result<bool> {
+    async fn user_owns_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool> {
         trace!("db: check if user owns community");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one(
                 "select user_owns_community($1::uuid, $2::uuid) as owns_community;",
-                &[&user_id, &community_id],
+                &[&community_id, &user_id],
             )
             .await?;
 
@@ -316,14 +318,14 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn user_owns_group(&self, user_id: &Uuid, group_id: &Uuid) -> Result<bool> {
+    async fn user_owns_group(&self, community_id: &Uuid, group_id: &Uuid, user_id: &Uuid) -> Result<bool> {
         trace!("db: check if user owns group");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select user_owns_group($1::uuid, $2::uuid) as owns_group;",
-                &[&user_id, &group_id],
+                "select user_owns_group($1::uuid, $2::uuid, $3::uuid) as owns_group;",
+                &[&community_id, &group_id, &user_id],
             )
             .await?;
 
