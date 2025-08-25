@@ -67,11 +67,12 @@ pub(crate) trait DB:
 pub(crate) type DynDB = Arc<dyn DB + Send + Sync>;
 
 /// DB implementation backed by `PostgreSQL`.
+#[allow(clippy::type_complexity)]
 pub(crate) struct PgDB {
     /// Connection pool for `PostgreSQL` clients.
     pool: Pool,
     /// Map of transaction client IDs to their client and the timestamp it was created.
-    txs_clients: RwLock<HashMap<Uuid, (Client, DateTime<Utc>)>>,
+    txs_clients: RwLock<HashMap<Uuid, (Arc<Client>, DateTime<Utc>)>>,
 }
 
 impl PgDB {
@@ -124,7 +125,7 @@ impl DB for PgDB {
         // Track client used for the transaction
         let client_id = Uuid::new_v4();
         let mut txs_clients = self.txs_clients.write().await;
-        txs_clients.insert(client_id, (db, Utc::now()));
+        txs_clients.insert(client_id, (Arc::new(db), Utc::now()));
 
         Ok(client_id)
     }
@@ -140,8 +141,13 @@ impl DB for PgDB {
             tx
         };
 
+        // Make sure we get exclusive access to the client
+        let Some(db) = Arc::into_inner(tx) else {
+            bail!("cannot commit transaction - client still in use");
+        };
+
         // Commit transaction
-        tx.batch_execute("commit;").await?;
+        db.batch_execute("commit;").await?;
 
         Ok(())
     }
@@ -157,8 +163,13 @@ impl DB for PgDB {
             tx
         };
 
+        // Make sure we get exclusive access to the client
+        let Some(db) = Arc::into_inner(tx) else {
+            bail!("cannot rollback transaction - client still in use");
+        };
+
         // Rollback transaction
-        tx.batch_execute("rollback;").await?;
+        db.batch_execute("rollback;").await?;
 
         Ok(())
     }
