@@ -68,8 +68,10 @@
           <div class="mt-2 grid grid-cols-1">
             <select id="kind_id" name="kind_id" class="select-primary" required>
               <option value="">Select an event type</option>
-              {# TODO - selected #}
-              {% for kind in kinds %}<option value="{{ kind.event_kind_id }}">{{ kind.display_name }}</option>{% endfor %}
+              {% for kind in kinds %}
+                <option value="{{ kind.event_kind_id }}"
+                        {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
+              {% endfor %}
             </select>
           </div>
           <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
@@ -496,11 +498,11 @@
         // Convert datetime-local values to proper ISO format for PostgreSQL
         const startsAtInput = document.getElementById('starts_at_input');
         const endsAtInput = document.getElementById('ends_at_input');
-        
+
         if (startsAtInput && startsAtInput.value) {
           e.detail.parameters.starts_at = convertDateTimeLocalToISO(startsAtInput.value);
         }
-        
+
         if (endsAtInput && endsAtInput.value) {
           e.detail.parameters.ends_at = convertDateTimeLocalToISO(endsAtInput.value);
         }
