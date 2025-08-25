@@ -13,7 +13,7 @@ rust-version = "1.89"
 [workspace.dependencies]
 anyhow = "1.0.99"
 askama = { version = "0.14.0", features = ["serde_json"] }
-async-trait = "0.1.88"
+async-trait = "0.1.89"
 axum = { version = "0.8.4", features = ["macros"] }
 axum-extra = { version = "0.10.1", features = ["form"] }
 axum-login = "0.18.0"
@@ -39,12 +39,12 @@ reqwest = { version = "0.12.20", features = ["json"] }
 rust-embed = "8.7.2"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_html_form = "0.2.7"
-serde_json = "1.0.142"
+serde_json = "1.0.143"
 serde_qs = "0.15.0"
 serde_with = "3.14.0"
 sha2 = "0.10.9"
 strum = { version = "0.27", features = ["derive"] }
-thiserror = "2.0.14"
+thiserror = "2.0.16"
 time = "0.3.41"
 tokio = { version = "1.47.1", features = [
     "macros",
