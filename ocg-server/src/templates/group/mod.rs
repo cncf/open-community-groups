@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::{PageId, filters},
+    templates::{PageId, auth::User, filters},
     types::{
         community::Community,
         event::{EventDetailed, EventKind, EventSummary},
@@ -31,6 +31,8 @@ pub(crate) struct Page {
     pub path: String,
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
+    /// Authenticated user information.
+    pub user: User,
 }
 
 // Types

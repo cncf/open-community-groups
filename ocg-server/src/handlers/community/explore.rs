@@ -23,6 +23,7 @@ use crate::{
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::{
         PageId,
+        auth::User,
         community::{
             explore::{
                 self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover,
@@ -52,6 +53,7 @@ pub(crate) async fn page(
         entity: entity.clone(),
         page_id: PageId::CommunityExplore,
         path: uri.path().to_string(),
+        user: User::default(),
         events_section: None,
         groups_section: None,
     };

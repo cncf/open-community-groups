@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::{
-    templates::{PageId, filters},
+    templates::{PageId, auth::User, filters},
     types::{
         community::Community,
         event::{EventKind, EventSummary},
@@ -37,6 +37,8 @@ pub(crate) struct Page {
     pub upcoming_in_person_events: Vec<EventCard>,
     /// List of upcoming virtual events across all community groups.
     pub upcoming_virtual_events: Vec<EventCard>,
+    /// Authenticated user information.
+    pub user: User,
 }
 
 /// Event card template for home page display.
