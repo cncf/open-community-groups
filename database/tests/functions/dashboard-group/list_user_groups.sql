@@ -1,15 +1,18 @@
 -- Start transaction and plan tests
 begin;
-select plan(2);
+select plan(4);
 
 -- Variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
+\set groupMemberUserID '00000000-0000-0000-0000-000000000011'
+\set regularUserID '00000000-0000-0000-0000-000000000012'
+\set communityAdminUserID '00000000-0000-0000-0000-000000000013'
+\set dualRoleUserID '00000000-0000-0000-0000-000000000014'
 \set category1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set group4ID '00000000-0000-0000-0000-000000000034'
 
 -- Seed community
 insert into community (
@@ -42,8 +45,10 @@ insert into "user" (
     username,
     email_verified
 ) values
-    (:'user1ID', gen_random_bytes(32), :'community1ID', 'user@example.com', 'Test User', 'testuser', true),
-    (:'user2ID', gen_random_bytes(32), :'community1ID', 'user2@example.com', 'Test User 2', 'testuser2', true);
+    (:'groupMemberUserID', gen_random_bytes(32), :'community1ID', 'groupmember@example.com', 'Group Member User', 'groupmember', true),
+    (:'regularUserID', gen_random_bytes(32), :'community1ID', 'regular@example.com', 'Regular User', 'regularuser', true),
+    (:'communityAdminUserID', gen_random_bytes(32), :'community1ID', 'communityadmin@example.com', 'Community Admin User', 'communityadmin', true),
+    (:'dualRoleUserID', gen_random_bytes(32), :'community1ID', 'dualrole@example.com', 'Dual Role User', 'dualrole', true);
 
 -- Seed group category
 insert into group_category (
@@ -58,7 +63,7 @@ insert into group_category (
     1
 );
 
--- Seed groups
+-- Seed groups (including one that will be deleted)
 insert into "group" (
     group_id,
     community_id,
@@ -72,23 +77,37 @@ insert into "group" (
 ) values
     (:'group1ID', :'community1ID', :'category1ID', 'Group A', 'group-a', '2024-01-01 10:00:00+00', 'Test City', 'US', 'United States'),
     (:'group2ID', :'community1ID', :'category1ID', 'Group B', 'group-b', '2024-01-02 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'group-c', '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States');
+    (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'group-c', '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'group-d', '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States');
 
--- User 1 is only a member of groups A and B
+-- Mark group4 as deleted (must also set active = false per check constraint)
+update "group" set deleted = true, active = false where group_id = :'group4ID';
+
+-- Group Member User: member of groups A and B only (not community team)
 insert into group_team (group_id, user_id, role) values
-    (:'group1ID', :'user1ID', 'organizer'),
-    (:'group2ID', :'user1ID', 'member');
+    (:'group1ID', :'groupMemberUserID', 'organizer'),
+    (:'group2ID', :'groupMemberUserID', 'member');
 
--- Test: Function returns empty array for user with no groups
+-- Community Admin User: community team member but not in any group teams
+insert into community_team (community_id, user_id, role) values
+    (:'community1ID', :'communityAdminUserID', 'Admin');
+
+-- Dual Role User: both community team member AND group team member (of group B)
+insert into community_team (community_id, user_id, role) values
+    (:'community1ID', :'dualRoleUserID', 'Admin');
+insert into group_team (group_id, user_id, role) values
+    (:'group2ID', :'dualRoleUserID', 'member');
+
+-- Test: Regular user (not in any teams) should see no groups
 select is(
-    list_user_groups(:'user2ID'::uuid)::text,
+    list_user_groups(:'regularUserID'::uuid)::text,
     '[]',
-    'list_user_groups should return empty array for user with no groups'
+    'Regular user without any team memberships should see empty array'
 );
 
--- Test: Function returns groups with full JSON structure ordered alphabetically
+-- Test: Group team member (not community team) should see only their assigned groups
 select is(
-    list_user_groups(:'user1ID'::uuid)::jsonb,
+    list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
         {
             "category": {
@@ -121,7 +140,113 @@ select is(
             "country_name": "United States"
         }
     ]'::jsonb,
-    'list_user_groups should return groups with full JSON structure ordered alphabetically by name'
+    'Group team member (not in community team) should see only groups A and B where they are members'
+);
+
+-- Test: Community team member (not in any group teams) should see all non-deleted groups
+select is(
+    list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
+    '[
+        {
+            "category": {
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
+                "name": "Test Category",
+                "normalized_name": "test-category",
+                "order": 1
+            },
+            "created_at": 1704103200,
+            "group_id": "00000000-0000-0000-0000-000000000031",
+            "name": "Group A",
+            "slug": "group-a",
+            "city": "Test City",
+            "country_code": "US",
+            "country_name": "United States"
+        },
+        {
+            "category": {
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
+                "name": "Test Category",
+                "normalized_name": "test-category",
+                "order": 1
+            },
+            "created_at": 1704189600,
+            "group_id": "00000000-0000-0000-0000-000000000032",
+            "name": "Group B",
+            "slug": "group-b",
+            "city": "Test City",
+            "country_code": "US",
+            "country_name": "United States"
+        },
+        {
+            "category": {
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
+                "name": "Test Category",
+                "normalized_name": "test-category",
+                "order": 1
+            },
+            "created_at": 1704276000,
+            "group_id": "00000000-0000-0000-0000-000000000033",
+            "name": "Group C",
+            "slug": "group-c",
+            "city": "Test City",
+            "country_code": "US",
+            "country_name": "United States"
+        }
+    ]'::jsonb,
+    'Community team member (not in any group teams) should see all three non-deleted groups (A, B, C)'
+);
+
+-- Test: User with both community team and group team membership should see all groups without duplicates
+select is(
+    list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
+    '[
+        {
+            "category": {
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
+                "name": "Test Category",
+                "normalized_name": "test-category",
+                "order": 1
+            },
+            "created_at": 1704103200,
+            "group_id": "00000000-0000-0000-0000-000000000031",
+            "name": "Group A",
+            "slug": "group-a",
+            "city": "Test City",
+            "country_code": "US",
+            "country_name": "United States"
+        },
+        {
+            "category": {
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
+                "name": "Test Category",
+                "normalized_name": "test-category",
+                "order": 1
+            },
+            "created_at": 1704189600,
+            "group_id": "00000000-0000-0000-0000-000000000032",
+            "name": "Group B",
+            "slug": "group-b",
+            "city": "Test City",
+            "country_code": "US",
+            "country_name": "United States"
+        },
+        {
+            "category": {
+                "group_category_id": "00000000-0000-0000-0000-000000000021",
+                "name": "Test Category",
+                "normalized_name": "test-category",
+                "order": 1
+            },
+            "created_at": 1704276000,
+            "group_id": "00000000-0000-0000-0000-000000000033",
+            "name": "Group C",
+            "slug": "group-c",
+            "city": "Test City",
+            "country_code": "US",
+            "country_name": "United States"
+        }
+    ]'::jsonb,
+    'User with both community and group team roles should see all groups without duplicates (Group B not duplicated)'
 );
 
 -- Finish tests and rollback transaction

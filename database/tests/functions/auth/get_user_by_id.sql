@@ -1,6 +1,6 @@
 -- Start transaction and plan tests
 begin;
-select plan(5);
+select plan(7);
 
 -- Declare some variables
 \set community1ID '00000000-0000-0000-0000-000000000001'
@@ -220,6 +220,104 @@ select is(
         "username": "grouponlyuser"
     }'::jsonb,
     'Should return user with belongs_to_any_group_team=true and belongs_to_community_team=false when user is only in group team'
+);
+
+-- Test: User who is only in community team (not in any group team)
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    '00000000-0000-0000-0001-000000000004'::uuid,
+    'communityonly@example.com',
+    'communityonlyuser',
+    true,
+    'Community Only User',
+    'test_hash_4',
+    :'community1ID'
+);
+
+insert into community_team (
+    community_id,
+    user_id,
+    role
+) values (
+    :'community1ID',
+    '00000000-0000-0000-0001-000000000004'::uuid,
+    'Admin'
+);
+
+select is(
+    get_user_by_id('00000000-0000-0000-0001-000000000004'::uuid, false)::jsonb,
+    '{
+        "auth_hash": "test_hash_4",
+        "belongs_to_any_group_team": true,
+        "belongs_to_community_team": true,
+        "email": "communityonly@example.com",
+        "email_verified": true,
+        "name": "Community Only User",
+        "user_id": "00000000-0000-0000-0001-000000000004",
+        "username": "communityonlyuser"
+    }'::jsonb,
+    'Should return user with belongs_to_any_group_team=true when user is only in community team'
+);
+
+-- Test: User who is in both community team and group team
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    '00000000-0000-0000-0001-000000000005'::uuid,
+    'both@example.com',
+    'bothuser',
+    true,
+    'Both Teams User',
+    'test_hash_5',
+    :'community1ID'
+);
+
+insert into group_team (
+    group_id,
+    user_id,
+    role
+) values (
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    '00000000-0000-0000-0001-000000000005'::uuid,
+    'Member'
+);
+
+insert into community_team (
+    community_id,
+    user_id,
+    role
+) values (
+    :'community1ID',
+    '00000000-0000-0000-0001-000000000005'::uuid,
+    'Member'
+);
+
+select is(
+    get_user_by_id('00000000-0000-0000-0001-000000000005'::uuid, false)::jsonb,
+    '{
+        "auth_hash": "test_hash_5",
+        "belongs_to_any_group_team": true,
+        "belongs_to_community_team": true,
+        "email": "both@example.com",
+        "email_verified": true,
+        "name": "Both Teams User",
+        "user_id": "00000000-0000-0000-0001-000000000005",
+        "username": "bothuser"
+    }'::jsonb,
+    'Should return user with both belongs_to_any_group_team=true and belongs_to_community_team=true when user is in both teams'
 );
 
 -- Finish tests and rollback transaction
