@@ -24,7 +24,9 @@ use crate::{
     templates::{
         PageId,
         community::{
-            explore::{self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover},
+            explore::{
+                self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover,
+            },
             pagination::{self, NavigationLinks},
         },
     },
