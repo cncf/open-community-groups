@@ -1,12 +1,22 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set user1ID '00000000-0000-0000-0000-000000000002'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set userID '00000000-0000-0000-0000-000000000002'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (required for user operations)
 insert into community (
     community_id,
     name,
@@ -17,17 +27,17 @@ insert into community (
     theme,
     title
 ) values (
-    :'community1ID',
-    'Test Community',
-    'Test Community',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
     'test.example.com',
-    'Test Community Description',
+    'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
     '{}'::jsonb,
-    'Test Community Title'
+    'Cloud Native Seattle Community'
 );
 
--- Seed user
+-- Test user for profile updates
 insert into "user" (
     user_id,
     auth_hash,
@@ -37,18 +47,22 @@ insert into "user" (
     name,
     username
 ) values (
-    :'user1ID',
+    :'userID',
     gen_random_bytes(32),
-    :'community1ID',
+    :'communityID',
     'test@example.com',
     true,
-    'Test User',
+    'Original User',
     'testuser'
 );
 
--- Test: Update user with all updateable fields
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Update user with all updateable fields
 select update_user_details(
-    :'user1ID'::uuid,
+    :'userID'::uuid,
     jsonb_build_object(
         'name', 'Updated User',
         'bio', 'This is my bio',
@@ -67,15 +81,15 @@ select update_user_details(
 );
 
 select is(
-    get_user_by_id(:'user1ID'::uuid, false)::jsonb,
+    get_user_by_id(:'userID'::uuid, false)::jsonb,
     jsonb_build_object(
-        'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
+        'auth_hash', (select auth_hash from "user" where user_id = :'userID'::uuid),
         'belongs_to_any_group_team', false,
         'belongs_to_community_team', false,
         'email', 'test@example.com',
         'email_verified', true,
         'name', 'Updated User',
-        'user_id', :'user1ID'::text,
+        'user_id', :'userID'::text,
         'username', 'testuser',
         'bio', 'This is my bio',
         'city', 'San Francisco',
@@ -93,9 +107,9 @@ select is(
     'Should update all provided user fields'
 );
 
--- Test: Update user with null optional fields
+-- Update user with null optional fields
 select update_user_details(
-    :'user1ID'::uuid,
+    :'userID'::uuid,
     jsonb_build_object(
         'name', 'Final User',
         'bio', null,
@@ -114,20 +128,23 @@ select update_user_details(
 );
 
 select is(
-    get_user_by_id(:'user1ID'::uuid, false)::jsonb,
+    get_user_by_id(:'userID'::uuid, false)::jsonb,
     jsonb_build_object(
-        'auth_hash', (select auth_hash from "user" where user_id = :'user1ID'::uuid),
+        'auth_hash', (select auth_hash from "user" where user_id = :'userID'::uuid),
         'belongs_to_any_group_team', false,
         'belongs_to_community_team', false,
         'email', 'test@example.com',
         'email_verified', true,
         'name', 'Final User',
-        'user_id', :'user1ID'::text,
+        'user_id', :'userID'::text,
         'username', 'testuser'
     ),
     'Should handle null values for optional fields correctly'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

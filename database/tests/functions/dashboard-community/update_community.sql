@@ -1,11 +1,21 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community with all fields
+\set communityID '00000000-0000-0000-0000-000000000001'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (fully populated for testing updates)
 insert into community (
     community_id,
     active,
@@ -35,16 +45,16 @@ insert into community (
     wechat_url,
     youtube_url
 ) values (
-    :'community1ID',
+    :'communityID',
     true,
     'default',
-    'Original description',
-    'Original Display Name',
+    'A vibrant community for cloud native technologies and practices in Seattle',
+    'Cloud Native Seattle',
     'https://original.com/header-logo.png',
-    'original.example.com',
-    'original-name',
+    'seattle.cloudnative.org',
+    'cloud-native-seattle',
     '{"primary_color": "#000000"}'::jsonb,
-    'Original Title',
+    'Cloud Native Seattle Community',
     'https://original.com/banner.png',
     'https://original.com/banner-link',
     'Copyright © 2024 Original',
@@ -55,7 +65,7 @@ insert into community (
     'https://github.com/original',
     'https://instagram.com/original',
     'https://linkedin.com/original',
-    'Contact admin to create groups',
+    'Contact team members to create groups',
     array['https://original.com/photo1.jpg', 'https://original.com/photo2.jpg'],
     'https://original.slack.com',
     'https://twitter.com/original',
@@ -64,19 +74,23 @@ insert into community (
     'https://youtube.com/original'
 );
 
--- Test: updating required fields
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- updating required fields
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
         "active": false,
         "community_site_layout_id": "default",
-        "description": "Updated description",
-        "display_name": "Updated Display Name",
+        "description": "Updated description for Seattle cloud native community",
+        "display_name": "Cloud Native Seattle Updated",
         "header_logo_url": "https://updated.com/header-logo.png",
-        "host": "updated.example.com",
-        "name": "updated-name",
+        "host": "updated.seattle.cloudnative.org",
+        "name": "cloud-native-seattle-updated",
         "primary_color": "#FF0000",
-        "title": "Updated Title"
+        "title": "Cloud Native Seattle Updated"
     }'::jsonb
 );
 
@@ -88,23 +102,23 @@ select is(
         "ad_banner_url": "https://original.com/banner.png",
         "community_site_layout_id": "default",
         "copyright_notice": "Copyright © 2024 Original",
-        "description": "Updated description",
-        "display_name": "Updated Display Name",
+        "description": "Updated description for Seattle cloud native community",
+        "display_name": "Cloud Native Seattle Updated",
         "extra_links": {"docs": "https://docs.original.com"},
         "facebook_url": "https://facebook.com/original",
         "flickr_url": "https://flickr.com/original",
         "footer_logo_url": "https://original.com/footer-logo.png",
         "github_url": "https://github.com/original",
         "header_logo_url": "https://updated.com/header-logo.png",
-        "host": "updated.example.com",
+        "host": "updated.seattle.cloudnative.org",
         "instagram_url": "https://instagram.com/original",
         "linkedin_url": "https://linkedin.com/original",
-        "name": "updated-name",
-        "new_group_details": "Contact admin to create groups",
+        "name": "cloud-native-seattle-updated",
+        "new_group_details": "Contact team members to create groups",
         "photos_urls": ["https://original.com/photo1.jpg", "https://original.com/photo2.jpg"],
         "slack_url": "https://original.slack.com",
         "theme": {"primary_color": "#FF0000"},
-        "title": "Updated Title",
+        "title": "Cloud Native Seattle Updated",
         "twitter_url": "https://twitter.com/original",
         "website_url": "https://original.com",
         "wechat_url": "https://wechat.com/original",
@@ -113,19 +127,19 @@ select is(
     'update_community should update required fields correctly while preserving optional fields'
 );
 
--- Test: updating all fields including optional ones
+-- updating all fields including optional ones
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
         "active": true,
         "community_site_layout_id": "default",
-        "description": "Fully updated description",
-        "display_name": "Fully Updated Display",
+        "description": "Comprehensive cloud native community in Seattle",
+        "display_name": "Cloud Native Seattle Complete",
         "header_logo_url": "https://new.com/header.png",
-        "host": "new.example.com",
-        "name": "new-name",
+        "host": "complete.seattle.cloudnative.org",
+        "name": "cloud-native-seattle-complete",
         "primary_color": "#00FF00",
-        "title": "Fully Updated Title",
+        "title": "Cloud Native Seattle Complete",
         "ad_banner_url": "https://new.com/banner.png",
         "ad_banner_link_url": "https://new.com/link",
         "copyright_notice": "Copyright © 2025 New",
@@ -154,23 +168,23 @@ select is(
         "ad_banner_url": "https://new.com/banner.png",
         "community_site_layout_id": "default",
         "copyright_notice": "Copyright © 2025 New",
-        "description": "Fully updated description",
-        "display_name": "Fully Updated Display",
+        "description": "Comprehensive cloud native community in Seattle",
+        "display_name": "Cloud Native Seattle Complete",
         "extra_links": {"blog": "https://blog.new.com", "forum": "https://forum.new.com"},
         "facebook_url": "https://facebook.com/new",
         "flickr_url": "https://flickr.com/new",
         "footer_logo_url": "https://new.com/footer.png",
         "github_url": "https://github.com/new",
         "header_logo_url": "https://new.com/header.png",
-        "host": "new.example.com",
+        "host": "complete.seattle.cloudnative.org",
         "instagram_url": "https://instagram.com/new",
         "linkedin_url": "https://linkedin.com/new",
-        "name": "new-name",
+        "name": "cloud-native-seattle-complete",
         "new_group_details": "New groups welcome!",
         "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
         "slack_url": "https://new.slack.com",
         "theme": {"primary_color": "#00FF00"},
-        "title": "Fully Updated Title",
+        "title": "Cloud Native Seattle Complete",
         "twitter_url": "https://twitter.com/new",
         "website_url": "https://new.com",
         "wechat_url": "https://wechat.com/new",
@@ -179,7 +193,7 @@ select is(
     'update_community should update all fields correctly including optional ones'
 );
 
--- Test: update_community converts empty strings to null for nullable fields
+-- update_community converts empty strings to null for nullable fields
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -226,6 +240,9 @@ select is(
     'update_community should convert empty strings to null for nullable fields'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

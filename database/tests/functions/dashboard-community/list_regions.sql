@@ -1,8 +1,14 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set community3ID '00000000-0000-0000-0000-000000000003'
@@ -10,7 +16,11 @@ select plan(2);
 \set region2ID '00000000-0000-0000-0000-000000000012'
 \set region3ID '00000000-0000-0000-0000-000000000013'
 
--- Seed communities
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Communities (main and others for isolation testing)
 insert into community (
     community_id,
     name,
@@ -21,21 +31,25 @@ insert into community (
     header_logo_url,
     theme
 ) values 
-    (:'community1ID', 'test-community-1', 'Test Community 1', 'test1.localhost', 'Test Community 1 Title', 'First test community', 'https://example.com/logo1.png', '{}'::jsonb),
-    (:'community2ID', 'test-community-2', 'Test Community 2', 'test2.localhost', 'Test Community 2 Title', 'Second test community', 'https://example.com/logo2.png', '{}'::jsonb);
+    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'seattle.cloudnative.org', 'Cloud Native Seattle Community', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png', '{}'::jsonb),
+    (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'vancouver.devops.org', 'DevOps Vancouver Community', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', '{}'::jsonb);
 
--- Seed regions for community 1
+-- Regions (for main community with ordering)
 insert into region (region_id, name, community_id, "order")
 values 
     (:'region1ID', 'North America', :'community1ID', 2),
     (:'region2ID', 'Europe', :'community1ID', 1);
 
--- Seed region for community 2 (different community)
+-- Region (for other community isolation testing)
 insert into region (region_id, name, community_id)
 values 
     (:'region3ID', 'Asia Pacific', :'community2ID');
 
--- Test: list_regions returns complete JSON array with proper ordering
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- list_regions returns complete JSON array with proper ordering
 select is(
     list_regions(:'community1ID'::uuid)::jsonb,
     '[
@@ -55,7 +69,7 @@ select is(
     'list_regions should return complete region data ordered by order field, then by name'
 );
 
--- Test: list_regions returns empty array for community with no regions
+-- list_regions returns empty array for community with no regions
 insert into community (
     community_id,
     name,
@@ -67,11 +81,11 @@ insert into community (
     theme
 ) values (
     :'community3ID'::uuid,
-    'empty-community',
-    'Empty Community',
-    'empty.localhost',
-    'Empty Community Title',
-    'Community with no regions',
+    'rust-denver',
+    'Rust Denver',
+    'denver.rust-lang.org',
+    'Rust Denver Community',
+    'Building the Rust programming community in Denver',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
@@ -82,6 +96,9 @@ select is(
     'list_regions should return empty array for community with no regions'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

@@ -1,14 +1,24 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(6);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set group1ID '00000000-0000-0000-0000-000000000021'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set groupID '00000000-0000-0000-0000-000000000021'
 \set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000022'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group deletion)
 insert into community (
     community_id,
     name,
@@ -19,21 +29,21 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category (for organizing groups)
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'categoryID', 'Technology', :'communityID');
 
--- Seed active group
+-- Active group (target for deletion)
 insert into "group" (
     group_id,
     name,
@@ -43,16 +53,16 @@ insert into "group" (
     description,
     created_at
 ) values (
-    :'group1ID',
-    'Test Group',
-    'test-group',
-    :'community1ID',
-    :'category1ID',
-    'Test description',
+    :'groupID',
+    'Kubernetes Study Group',
+    'kubernetes-study-group',
+    :'communityID',
+    :'categoryID',
+    'A study group focused on Kubernetes best practices and implementation',
     '2024-01-15 10:00:00+00'
 );
 
--- Seed already deleted group
+-- Already deleted group (for error testing)
 insert into "group" (
     group_id,
     name,
@@ -66,45 +76,49 @@ insert into "group" (
     created_at
 ) values (
     :'groupAlreadyDeletedID',
-    'Already Deleted Group',
-    'already-deleted-group',
-    :'community1ID',
-    :'category1ID',
-    'Already deleted group description',
+    'Docker Meetup',
+    'docker-meetup-deleted',
+    :'communityID',
+    :'categoryID',
+    'A Docker-focused meetup group that was previously deleted',
     false,
     true,
     '2024-02-15 10:00:00+00',
     '2024-01-15 10:00:00+00'
 );
 
--- Test: delete_group function performs soft delete
-select delete_group(:'community1ID'::uuid, :'group1ID'::uuid);
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- delete_group function performs soft delete
+select delete_group(:'communityID'::uuid, :'groupID'::uuid);
 
 select is(
-    (select deleted from "group" where group_id = :'group1ID'::uuid),
+    (select deleted from "group" where group_id = :'groupID'::uuid),
     true,
     'delete_group should set deleted to true'
 );
 
 select ok(
-    (select deleted_at from "group" where group_id = :'group1ID'::uuid) is not null,
+    (select deleted_at from "group" where group_id = :'groupID'::uuid) is not null,
     'delete_group should set deleted_at timestamp'
 );
 
 -- Verify the group still exists in database
 select ok(
-    exists(select 1 from "group" where group_id = :'group1ID'::uuid),
+    exists(select 1 from "group" where group_id = :'groupID'::uuid),
     'delete_group should perform soft delete (record still exists)'
 );
 
 -- Verify active field is set to false when deleting
 select is(
-    (select active from "group" where group_id = :'group1ID'::uuid),
+    (select active from "group" where group_id = :'groupID'::uuid),
     false,
     'delete_group should set active to false when deleting'
 );
 
--- Test: delete_group throws error for already deleted group
+-- delete_group throws error for already deleted group
 select throws_ok(
     $$select delete_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
     'P0001',
@@ -112,7 +126,7 @@ select throws_ok(
     'delete_group should throw error when trying to delete already deleted group'
 );
 
--- Test: delete_group throws error for wrong community_id
+-- delete_group throws error for wrong community_id
 select throws_ok(
     $$select delete_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
     'P0001',
@@ -120,6 +134,9 @@ select throws_ok(
     'delete_group should throw error when community_id does not match'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

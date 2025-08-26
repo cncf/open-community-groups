@@ -1,9 +1,15 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 \set community1ID '00000000-0000-0000-0000-000000000001'
+\set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set region1ID '00000000-0000-0000-0000-000000000021'
@@ -12,7 +18,11 @@ select plan(3);
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group search)
 insert into community (
     community_id,
     name,
@@ -33,17 +43,17 @@ insert into community (
     '{}'::jsonb
 );
 
--- Seed group categories
+-- Group categories
 insert into group_category (group_category_id, name, community_id)
 values
     (:'category1ID', 'Technology', :'community1ID'),
     (:'category2ID', 'Business', :'community1ID');
 
--- Seed region
+-- Region
 insert into region (region_id, name, community_id)
 values (:'region1ID', 'North America', :'community1ID');
 
--- Seed groups
+-- Groups
 insert into "group" (
     group_id,
     name,
@@ -78,7 +88,7 @@ insert into "group" (
      ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group. PLEASE ADD A DESCRIPTION HERE for this meetup',
      'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00');
 
--- Test: search without filters returns all groups with full JSON verification
+-- Search without filters returns all groups with full JSON verification
 select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{}'::jsonb))::jsonb,
     '[
@@ -175,20 +185,23 @@ select is(
     'search_community_groups without filters should return all active groups with correct JSON structure'
 );
 
--- Test: total count
+-- Total count
 select is(
     (select total from search_community_groups(:'community1ID'::uuid, '{}'::jsonb)),
     4::bigint,
     'search_community_groups should return correct total count'
 );
 
--- Test: search with non-existing community
+-- Search with non-existing community
 select is(
-    (select total from search_community_groups('00000000-0000-0000-0000-999999999999'::uuid, '{}'::jsonb)),
+    (select total from search_community_groups(:'nonExistentCommunityID'::uuid, '{}'::jsonb)),
     0::bigint,
     'search_community_groups with non-existing community should return zero total'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

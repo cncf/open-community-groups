@@ -1,12 +1,23 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Declare some variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
 
--- Test: Community with all fields populated
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (with all fields populated)
 insert into community (
     community_id,
     active,
@@ -39,16 +50,16 @@ insert into community (
     :'community1ID',
     true,
     'default',
-    'A test community for testing purposes',
-    'Test Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
+    'Cloud Native Seattle',
     'https://example.com/logo.png',
-    'test.localhost',
-    'test-community',
+    'seattle.cloudnative.org',
+    'cloud-native-seattle',
     '{"primary_color": "#FF0000"}'::jsonb,
-    'Test Community Title',
+    'Cloud Native Seattle Community',
     'https://example.com/banner.png',
     'https://example.com/banner-link',
-    'Copyright © 2024 Test Community',
+    'Copyright © 2024 Cloud Native Seattle',
     '{"docs": "https://docs.example.com", "blog": "https://blog.example.com"}'::jsonb,
     'https://facebook.com/testcommunity',
     'https://flickr.com/testcommunity',
@@ -56,7 +67,7 @@ insert into community (
     'https://github.com/testcommunity',
     'https://instagram.com/testcommunity',
     'https://linkedin.com/company/testcommunity',
-    'To create a new group, please contact admin',
+    'To create a new group, please contact team members',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     'https://testcommunity.slack.com',
     'https://twitter.com/testcommunity',
@@ -65,40 +76,7 @@ insert into community (
     'https://youtube.com/testcommunity'
 );
 
-select is(
-    get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at',
-    '{
-        "active": true,
-        "ad_banner_link_url": "https://example.com/banner-link",
-        "ad_banner_url": "https://example.com/banner.png",
-        "community_site_layout_id": "default",
-        "copyright_notice": "Copyright © 2024 Test Community",
-        "description": "A test community for testing purposes",
-        "display_name": "Test Community",
-        "extra_links": {"docs": "https://docs.example.com", "blog": "https://blog.example.com"},
-        "facebook_url": "https://facebook.com/testcommunity",
-        "flickr_url": "https://flickr.com/testcommunity",
-        "footer_logo_url": "https://example.com/footer-logo.png",
-        "github_url": "https://github.com/testcommunity",
-        "header_logo_url": "https://example.com/logo.png",
-        "host": "test.localhost",
-        "instagram_url": "https://instagram.com/testcommunity",
-        "linkedin_url": "https://linkedin.com/company/testcommunity",
-        "name": "test-community",
-        "new_group_details": "To create a new group, please contact admin",
-        "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "slack_url": "https://testcommunity.slack.com",
-        "theme": {"primary_color": "#FF0000"},
-        "title": "Test Community Title",
-        "twitter_url": "https://twitter.com/testcommunity",
-        "website_url": "https://example.com",
-        "wechat_url": "https://wechat.com/testcommunity",
-        "youtube_url": "https://youtube.com/testcommunity"
-    }'::jsonb,
-    'get_community should return correct data for community with all fields populated'
-);
-
--- Test: Community with only required fields (optional fields NULL)
+-- Community (with only required fields)
 insert into community (
     community_id,
     name,
@@ -110,38 +88,80 @@ insert into community (
     theme
 ) values (
     :'community2ID',
-    'minimal-community',
-    'Minimal Community',
-    'minimal.localhost',
-    'Minimal Community Title',
-    'A minimal test community',
-    'https://minimal.com/logo.png',
+    'cloud-native-portland',
+    'Cloud Native Portland',
+    'portland.cloudnative.org',
+    'Cloud Native Portland Community',
+    'A growing community for cloud native technologies in Portland',
+    'https://portland.cloudnative.org/logo.png',
     '{"primary_color": "#0000FF"}'::jsonb
 );
 
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Function returns correct data for community with all fields
 select is(
-    get_community('00000000-0000-0000-0000-000000000002'::uuid)::jsonb - 'community_id' - 'created_at',
+    get_community(:'community1ID'::uuid)::jsonb - 'community_id' - 'created_at',
+    '{
+        "active": true,
+        "ad_banner_link_url": "https://example.com/banner-link",
+        "ad_banner_url": "https://example.com/banner.png",
+        "community_site_layout_id": "default",
+        "copyright_notice": "Copyright © 2024 Cloud Native Seattle",
+        "description": "A vibrant community for cloud native technologies and practices in Seattle",
+        "display_name": "Cloud Native Seattle",
+        "extra_links": {"docs": "https://docs.example.com", "blog": "https://blog.example.com"},
+        "facebook_url": "https://facebook.com/testcommunity",
+        "flickr_url": "https://flickr.com/testcommunity",
+        "footer_logo_url": "https://example.com/footer-logo.png",
+        "github_url": "https://github.com/testcommunity",
+        "header_logo_url": "https://example.com/logo.png",
+        "host": "seattle.cloudnative.org",
+        "instagram_url": "https://instagram.com/testcommunity",
+        "linkedin_url": "https://linkedin.com/company/testcommunity",
+        "name": "cloud-native-seattle",
+        "new_group_details": "To create a new group, please contact team members",
+        "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+        "slack_url": "https://testcommunity.slack.com",
+        "theme": {"primary_color": "#FF0000"},
+        "title": "Cloud Native Seattle Community",
+        "twitter_url": "https://twitter.com/testcommunity",
+        "website_url": "https://example.com",
+        "wechat_url": "https://wechat.com/testcommunity",
+        "youtube_url": "https://youtube.com/testcommunity"
+    }'::jsonb,
+    'get_community should return correct data for community with all fields populated'
+);
+
+-- Function returns correct data for community with minimal fields
+select is(
+    get_community(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
         "active": true,
         "community_site_layout_id": "default",
-        "description": "A minimal test community",
-        "display_name": "Minimal Community",
-        "header_logo_url": "https://minimal.com/logo.png",
-        "host": "minimal.localhost",
-        "name": "minimal-community",
+        "description": "A growing community for cloud native technologies in Portland",
+        "display_name": "Cloud Native Portland",
+        "header_logo_url": "https://portland.cloudnative.org/logo.png",
+        "host": "portland.cloudnative.org",
+        "name": "cloud-native-portland",
         "theme": {"primary_color": "#0000FF"},
-        "title": "Minimal Community Title"
+        "title": "Cloud Native Portland Community"
     }'::jsonb,
     'get_community should return correct data for community with only required fields (NULL optional fields excluded)'
 );
 
--- Test: Non-existent community
+-- Function returns null for non-existent community
 select is(
-    get_community('00000000-0000-0000-0000-000000000099'::uuid)::jsonb,
+    get_community(:'nonExistentCommunityID'::uuid)::jsonb,
     NULL,
     'get_community should return NULL for non-existent community'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

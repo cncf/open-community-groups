@@ -1,15 +1,24 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set event1ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event updates)
 insert into community (
     community_id,
     name,
@@ -30,17 +39,17 @@ insert into community (
     '{}'::jsonb
 );
 
--- Seed event categories
+-- Event categories (for testing category updates)
 insert into event_category (event_category_id, name, slug, community_id)
 values 
     (:'category1ID', 'Conference', 'conference', :'community1ID'),
     (:'category2ID', 'Workshop', 'workshop', :'community1ID');
 
--- Seed group category
+-- Group category (for group organization)
 insert into group_category (group_category_id, name, community_id)
 values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
 
--- Seed group
+-- Group (for hosting events)
 insert into "group" (
     group_id,
     community_id,
@@ -57,7 +66,7 @@ insert into "group" (
     '00000000-0000-0000-0000-000000000010'
 );
 
--- Seed event
+-- Event (target for update testing)
 insert into event (
     event_id,
     group_id,
@@ -78,7 +87,11 @@ insert into event (
     'in-person'
 );
 
--- Test: update_event function updates individual fields
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- update_event function updates individual fields
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -107,7 +120,7 @@ select is(
     'update_event should update basic fields correctly'
 );
 
--- Test: update_event function updates all optional fields
+-- update_event function updates all optional fields
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -168,7 +181,7 @@ select is(
     'update_event should update all fields correctly'
 );
 
--- Test: update_event throws error for wrong group_id
+-- update_event throws error for wrong group_id
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000099'::uuid,
@@ -180,6 +193,9 @@ select throws_ok(
     'update_event should throw error when group_id does not match'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

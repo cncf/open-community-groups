@@ -1,8 +1,14 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
@@ -12,7 +18,11 @@ select plan(2);
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group upcoming events)
 insert into community (
     community_id,
     name,
@@ -24,28 +34,28 @@ insert into community (
     theme
 ) values (
     :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
     'A test community',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- group category
 insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'community1ID');
 
--- Seed group with location data
+-- group with location data
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
 values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'Los Angeles', 'CA', 'US', 'United States');
 
--- Seed event category
+-- event category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
 
--- Seed events (mix of past, future, published, and unpublished)
+-- events (mix of past, future, published, and unpublished)
 insert into event (
     event_id,
     name,
@@ -83,9 +93,9 @@ insert into event (
      '2026-02-20 09:00:00+00', '2026-02-20 11:00:00+00',
      null, 'New York');
 
--- Test: get_group_upcoming_events function returns correct data
+-- get_group_upcoming_events function returns correct data
 select is(
-    get_group_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
+    get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
         {
             "canceled": false,
@@ -131,9 +141,9 @@ select is(
     'get_group_upcoming_events should return published future events ordered by date ASC as JSON'
 );
 
--- Test: get_group_upcoming_events with non-existing group slug
+-- get_group_upcoming_events with non-existing group slug
 select is(
-    get_group_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
+    get_group_upcoming_events(:'community1ID'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[]'::jsonb,
     'get_group_upcoming_events with non-existing group slug should return empty array'
 );

@@ -1,8 +1,15 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(1);
 
--- Test: list_event_kinds returns all three event kinds
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- list_event_kinds returns all three event kinds
 select is(
     list_event_kinds()::jsonb,
     '[
@@ -22,6 +29,9 @@ select is(
     'list_event_kinds should return all three event kinds ordered by event_kind_id'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

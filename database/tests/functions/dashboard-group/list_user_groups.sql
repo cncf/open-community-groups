@@ -1,8 +1,14 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(4);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set groupMemberUserID '00000000-0000-0000-0000-000000000011'
 \set regularUserID '00000000-0000-0000-0000-000000000012'
@@ -14,7 +20,11 @@ select plan(4);
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing user group relationships)
 insert into community (
     community_id,
     display_name,
@@ -26,16 +36,16 @@ insert into community (
     theme
 ) values (
     :'community1ID',
-    'Test Community',
-    'test.example.com',
-    'test-community',
-    'Test Community Title',
-    'Test Community Description',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'cloud-native-seattle',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed users
+-- users
 insert into "user" (
     user_id,
     auth_hash,
@@ -50,7 +60,7 @@ insert into "user" (
     (:'communityAdminUserID', gen_random_bytes(32), :'community1ID', 'communityadmin@example.com', 'Community Admin User', 'communityadmin', true),
     (:'dualRoleUserID', gen_random_bytes(32), :'community1ID', 'dualrole@example.com', 'Dual Role User', 'dualrole', true);
 
--- Seed group category
+-- group category
 insert into group_category (
     group_category_id,
     community_id,
@@ -63,7 +73,7 @@ insert into group_category (
     1
 );
 
--- Seed groups (including one that will be deleted)
+-- groups (including one that will be deleted)
 insert into "group" (
     group_id,
     community_id,
@@ -98,14 +108,14 @@ insert into community_team (community_id, user_id, role) values
 insert into group_team (group_id, user_id, role) values
     (:'group2ID', :'dualRoleUserID', 'member');
 
--- Test: Regular user (not in any teams) should see no groups
+-- Regular user (not in any teams) should see no groups
 select is(
     list_user_groups(:'regularUserID'::uuid)::text,
     '[]',
     'Regular user without any team memberships should see empty array'
 );
 
--- Test: Group team member (not community team) should see only their assigned groups
+-- Group team member (not community team) should see only their assigned groups
 select is(
     list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
@@ -143,7 +153,7 @@ select is(
     'Group team member (not in community team) should see only groups A and B where they are members'
 );
 
--- Test: Community team member (not in any group teams) should see all non-deleted groups
+-- Community team member (not in any group teams) should see all non-deleted groups
 select is(
     list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
     '[
@@ -196,7 +206,7 @@ select is(
     'Community team member (not in any group teams) should see all three non-deleted groups (A, B, C)'
 );
 
--- Test: User with both community team and group team membership should see all groups without duplicates
+-- User with both community team and group team membership should see all groups without duplicates
 select is(
     list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
     '[
@@ -249,6 +259,9 @@ select is(
     'User with both community and group team roles should see all groups without duplicates (Group B not duplicated)'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

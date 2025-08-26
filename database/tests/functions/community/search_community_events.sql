@@ -1,9 +1,15 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
@@ -11,7 +17,11 @@ select plan(3);
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event search)
 insert into community (
     community_id,
     name,
@@ -22,7 +32,7 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
+    :'communityID',
     'test-community',
     'Test Community',
     'test.localhost',
@@ -32,21 +42,21 @@ insert into community (
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'category1ID', 'Technology', :'communityID');
 
--- Seed group
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url, location)
-values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID',
+values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID',
         'San Francisco', 'CA', 'US', 'United States', 'https://example.com/group-logo.png',
         ST_GeogFromText('POINT(-122.4194 37.7749)'));
 
--- Seed event category
+-- Event category
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
+values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Seed events
+-- Events
 insert into event (
     event_id,
     name,
@@ -79,9 +89,9 @@ insert into event (
      '2026-02-03 10:00:00+00', '2026-02-03 17:00:00+00', array['cloud', 'aws'],
      'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png');
 
--- Test: search without filters returns all events with full JSON verification
+-- Search without filters returns all events with full JSON verification
 select is(
-    (select events from search_community_events(:'community1ID'::uuid, '{}'::jsonb))::jsonb,
+    (select events from search_community_events(:'communityID'::uuid, '{}'::jsonb))::jsonb,
     '[
         {
             "canceled": false,
@@ -158,20 +168,23 @@ select is(
     'search_community_events without filters should return all published events with correct JSON structure'
 );
 
--- Test: total count
+-- Total count
 select is(
-    (select total from search_community_events(:'community1ID'::uuid, '{}'::jsonb)),
+    (select total from search_community_events(:'communityID'::uuid, '{}'::jsonb)),
     3::bigint,
     'search_community_events should return correct total count'
 );
 
--- Test: search with non-existing community
+-- Search with non-existing community
 select is(
     (select total from search_community_events('00000000-0000-0000-0000-999999999999'::uuid, '{}'::jsonb)),
     0::bigint,
     'search_community_events with non-existing community should return zero total'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

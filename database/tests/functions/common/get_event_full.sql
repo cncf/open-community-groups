@@ -1,23 +1,33 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set groupCategory1ID '00000000-0000-0000-0000-000000000011'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000012'
-\set group1ID '00000000-0000-0000-0000-000000000021'
-\set groupInactiveID '00000000-0000-0000-0000-000000000022'
-\set event1ID '00000000-0000-0000-0000-000000000031'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set groupCategoryID '00000000-0000-0000-0000-000000000011'
+\set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventID '00000000-0000-0000-0000-000000000031'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
+\set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
+\set groupID '00000000-0000-0000-0000-000000000021'
+\set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set session1ID '00000000-0000-0000-0000-000000000051'
+\set session2ID '00000000-0000-0000-0000-000000000052'
 \set user1ID '00000000-0000-0000-0000-000000000041'
 \set user2ID '00000000-0000-0000-0000-000000000042'
 \set user3ID '00000000-0000-0000-0000-000000000043'
-\set session1ID '00000000-0000-0000-0000-000000000051'
-\set session2ID '00000000-0000-0000-0000-000000000052'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event full function)
 insert into community (
     community_id,
     name,
@@ -28,25 +38,25 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category (for organizing groups)
 insert into group_category (group_category_id, name, community_id)
-values (:'groupCategory1ID', 'Technology', :'community1ID');
+values (:'groupCategoryID', 'Technology', :'communityID');
 
--- Seed event category
+-- Event category (for organizing events)
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
+values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Seed active group
+-- Active group (with location data)
 insert into "group" (
     group_id,
     name,
@@ -57,17 +67,17 @@ insert into "group" (
     created_at,
     location
 ) values (
-    :'group1ID',
-    'Test Group',
-    'test-group',
-    :'community1ID',
-    :'groupCategory1ID',
+    :'groupID',
+    'Seattle Kubernetes Meetup',
+    'seattle-kubernetes-meetup',
+    :'communityID',
+    :'groupCategoryID',
     true,
     '2024-03-01 10:00:00+00',
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326)  -- New York coordinates
 );
 
--- Seed inactive group
+-- Inactive group (for testing filtering)
 insert into "group" (
     group_id,
     name,
@@ -77,21 +87,21 @@ insert into "group" (
     active
 ) values (
     :'groupInactiveID',
-    'Inactive Group',
-    'inactive-group',
-    :'community1ID',
-    :'groupCategory1ID',
+    'Inactive DevOps Group',
+    'inactive-devops-group',
+    :'communityID',
+    :'groupCategoryID',
     false
 );
 
--- Seed users
+-- Users (event hosts, organizers, and speakers)
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', 'https://facebook.com/john', 'https://linkedin.com/in/john', 'https://twitter.com/john', 'https://johndoe.com'),
-    (:'user2ID', 'organizer@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', 'https://facebook.com/jane', 'https://linkedin.com/in/jane', 'https://twitter.com/jane', 'https://janesmith.com'),
-    (:'user3ID', 'speaker@example.com', 'speaker1', false, 'test_hash'::bytea, :'community1ID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', null, 'https://linkedin.com/in/alice', null, null);
+    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash'::bytea, :'communityID', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
+    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash'::bytea, :'communityID', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
+    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash'::bytea, :'communityID', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
 
--- Seed published event with all fields
+-- Published event (with complete information)
 insert into event (
     event_id,
     name,
@@ -122,15 +132,15 @@ insert into event (
     photos_urls,
     created_at
 ) values (
-    :'event1ID',
-    'Tech Conference 2024',
-    'tech-conference-2024',
-    'Annual technology conference with workshops and talks',
-    'Annual tech conference',
+    :'eventID',
+    'KubeCon Seattle 2024',
+    'kubecon-seattle-2024',
+    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem',
+    'Annual Kubernetes conference',
     'America/New_York',
-    :'eventCategory1ID',
+    :'eventCategoryID',
     'hybrid',
-    :'group1ID',
+    :'groupID',
     true,
     '2024-05-01 12:00:00+00',
     false,
@@ -152,15 +162,15 @@ insert into event (
     '2024-04-01 10:00:00+00'
 );
 
--- Add event host
+-- Event host relationship
 insert into event_host (event_id, user_id)
-values (:'event1ID', :'user1ID');
+values (:'eventID', :'user1ID');
 
--- Add group organizer
+-- Group organizer relationship
 insert into group_team (group_id, user_id, role, "order")
-values (:'group1ID', :'user2ID', 'organizer', 1);
+values (:'groupID', :'user2ID', 'organizer', 1);
 
--- Add sessions
+-- Event sessions (with different types)
 insert into session (
     session_id,
     event_id,
@@ -174,9 +184,9 @@ insert into session (
     recording_url
 ) values (
     :'session1ID',
-    :'event1ID',
-    'Opening Keynote',
-    'Welcome and opening remarks',
+    :'eventID',
+    'Opening Keynote: The Future of Cloud Native',
+    'Welcome keynote exploring the evolving landscape of cloud native technologies',
     'in-person',
     '2024-06-15 09:00:00+00',
     '2024-06-15 10:00:00+00',
@@ -186,9 +196,9 @@ insert into session (
 ),
 (
     :'session2ID',
-    :'event1ID',
-    'Tech Talk: AI in 2024',
-    'Latest trends in artificial intelligence',
+    :'eventID',
+    'Workshop: Kubernetes Security Best Practices',
+    'Hands-on workshop covering security fundamentals for Kubernetes deployments',
     'virtual',
     '2024-06-15 10:30:00+00',
     '2024-06-15 11:30:00+00',
@@ -197,11 +207,11 @@ insert into session (
     null
 );
 
--- Add session speaker
+-- Session speaker relationship
 insert into session_speaker (session_id, user_id, featured)
 values (:'session1ID', :'user3ID', true);
 
--- Seed unpublished event
+-- Unpublished event (for testing visibility)
 insert into event (
     event_id,
     name,
@@ -215,18 +225,18 @@ insert into event (
     timezone
 ) values (
     :'eventUnpublishedID',
-    'Unpublished Event',
-    'unpublished-event',
-    'This is an unpublished event',
+    'Draft Workshop',
+    'draft-workshop',
+    'A draft workshop that is not yet published',
     'virtual',
-    :'eventCategory1ID',
-    :'group1ID',
+    :'eventCategoryID',
+    :'groupID',
     false,
     '2024-07-15 09:00:00+00',
     'America/New_York'
 );
 
--- Seed event with inactive group
+-- Event with inactive group (for testing group status)
 insert into event (
     event_id,
     name,
@@ -240,34 +250,38 @@ insert into event (
     timezone
 ) values (
     :'eventInactiveGroupID',
-    'Event with Inactive Group',
-    'event-inactive-group',
-    'Event with an inactive group',
+    'Legacy Event',
+    'legacy-event',
+    'An event from an inactive group that should not appear in normal listings',
     'virtual',
-    :'eventCategory1ID',
+    :'eventCategoryID',
     :'groupInactiveID',
     true,
     '2024-08-15 09:00:00+00',
     'America/New_York'
 );
 
--- Test: get_event_full function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Function returns complete data for published event
 select is(
     get_event_full('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
         "canceled": false,
         "category_name": "Tech Talks",
         "created_at": 1711965600,
-        "description": "Annual technology conference with workshops and talks",
+        "description": "Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem",
         "event_id": "00000000-0000-0000-0000-000000000031",
         "kind": "hybrid",
-        "name": "Tech Conference 2024",
+        "name": "KubeCon Seattle 2024",
         "published": true,
-        "slug": "tech-conference-2024",
+        "slug": "kubecon-seattle-2024",
         "timezone": "America/New_York",
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
-        "description_short": "Annual tech conference",
+        "description_short": "Annual Kubernetes conference",
         "ends_at": 1718470800,
         "latitude": 40.73061,
         "logo_url": "https://example.com/event-logo.png",
@@ -292,42 +306,42 @@ select is(
             },
             "created_at": 1709287200,
             "group_id": "00000000-0000-0000-0000-000000000021",
-            "name": "Test Group",
-            "slug": "test-group"
+            "name": "Seattle Kubernetes Meetup",
+            "slug": "seattle-kubernetes-meetup"
         },
         "hosts": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000041",
-                "name": "John Doe",
-                "company": "Tech Corp",
-                "facebook_url": "https://facebook.com/john",
-                "linkedin_url": "https://linkedin.com/in/john",
-                "photo_url": "https://example.com/john.png",
-                "title": "CTO",
-                "twitter_url": "https://twitter.com/john",
-                "website_url": "https://johndoe.com"
+                "name": "Sarah Chen",
+                "company": "Microsoft",
+                "facebook_url": "https://facebook.com/sarahchen",
+                "linkedin_url": "https://linkedin.com/in/sarahchen",
+                "photo_url": "https://example.com/sarah.png",
+                "title": "Principal Engineer",
+                "twitter_url": "https://twitter.com/sarahchen",
+                "website_url": "https://sarahchen.dev"
             }
         ],
         "organizers": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000042",
-                "name": "Jane Smith",
-                "company": "Dev Inc",
-                "facebook_url": "https://facebook.com/jane",
-                "linkedin_url": "https://linkedin.com/in/jane",
-                "photo_url": "https://example.com/jane.png",
-                "title": "Lead Dev",
-                "twitter_url": "https://twitter.com/jane",
-                "website_url": "https://janesmith.com"
+                "name": "Mike Rodriguez",
+                "company": "AWS",
+                "facebook_url": "https://facebook.com/mikerod",
+                "linkedin_url": "https://linkedin.com/in/mikerod",
+                "photo_url": "https://example.com/mike.png",
+                "title": "Solutions Architect",
+                "twitter_url": "https://twitter.com/mikerod",
+                "website_url": "https://mikerodriguez.io"
             }
         ],
         "sessions": [
             {
-                "description": "Welcome and opening remarks",
+                "description": "Welcome keynote exploring the evolving landscape of cloud native technologies",
                 "ends_at": 1718445600,
                 "session_id": "00000000-0000-0000-0000-000000000051",
                 "kind": "in-person",
-                "name": "Opening Keynote",
+                "name": "Opening Keynote: The Future of Cloud Native",
                 "starts_at": 1718442000,
                 "location": "Main Hall",
                 "recording_url": "https://youtube.com/watch?v=session1",
@@ -335,20 +349,20 @@ select is(
                 "speakers": [
                     {
                         "user_id": "00000000-0000-0000-0000-000000000043",
-                        "name": "Alice Johnson",
-                        "company": "Cloud Co",
-                        "linkedin_url": "https://linkedin.com/in/alice",
-                        "photo_url": "https://example.com/alice.png",
-                        "title": "Manager"
+                        "name": "Alex Thompson",
+                        "company": "Google",
+                        "linkedin_url": "https://linkedin.com/in/alexthompson",
+                        "photo_url": "https://example.com/alex.png",
+                        "title": "Staff Engineer"
                     }
                 ]
             },
             {
-                "description": "Latest trends in artificial intelligence",
+                "description": "Hands-on workshop covering security fundamentals for Kubernetes deployments",
                 "ends_at": 1718451000,
                 "session_id": "00000000-0000-0000-0000-000000000052",
                 "kind": "virtual",
-                "name": "Tech Talk: AI in 2024",
+                "name": "Workshop: Kubernetes Security Best Practices",
                 "starts_at": 1718447400,
                 "location": "Room A",
                 "speakers": []
@@ -358,12 +372,16 @@ select is(
     'get_event_full should return complete event data with hosts, organizers, and sessions as JSON'
 );
 
--- Test: get_event_full with non-existent event ID
+-- Function returns null for non-existent event
+
 select ok(
     get_event_full('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_full with non-existent event ID should return null'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

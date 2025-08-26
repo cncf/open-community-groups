@@ -1,9 +1,15 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 \set region2ID '00000000-0000-0000-0000-000000000022'
@@ -11,7 +17,11 @@ select plan(2);
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing recently added groups)
 insert into community (
     community_id,
     name,
@@ -22,43 +32,43 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
     'A test community',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'category1ID', 'Technology', :'communityID');
 
--- Seed regions
+-- Regions
 insert into region (region_id, name, community_id)
 values
-    (:'region1ID', 'North America', :'community1ID'),
-    (:'region2ID', 'Europe', :'community1ID');
+    (:'region1ID', 'North America', :'communityID'),
+    (:'region2ID', 'Europe', :'communityID');
 
--- Seed groups with different creation times and location data
+-- Groups with different creation times and location data
 insert into "group" (group_id, name, slug, community_id, group_category_id, created_at, logo_url, description,
                      city, state, country_code, country_name, region_id)
 values
-    (:'group1ID', 'Test Group 1', 'test-group-1', :'community1ID', :'category1ID',
+    (:'group1ID', 'Test Group 1', 'test-group-1', :'communityID', :'category1ID',
      '2024-01-01 09:00:00+00', 'https://example.com/logo1.png', 'First group',
      'New York', 'NY', 'US', 'United States', :'region1ID'),
-    (:'group2ID', 'Test Group 2', 'test-group-2', :'community1ID', :'category1ID',
+    (:'group2ID', 'Test Group 2', 'test-group-2', :'communityID', :'category1ID',
      '2024-01-02 09:00:00+00', 'https://example.com/logo2.png', 'Second group',
      'San Francisco', 'CA', 'US', 'United States', :'region1ID'),
-    (:'group3ID', 'Test Group 3', 'test-group-3', :'community1ID', :'category1ID',
+    (:'group3ID', 'Test Group 3', 'test-group-3', :'communityID', :'category1ID',
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
      'London', null, 'GB', 'United Kingdom', :'region2ID');
 
--- Test: get_community_recently_added_groups function returns correct data
+-- get_community_recently_added_groups function returns correct data
 select is(
-    get_community_recently_added_groups('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
+    get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
     '[
         {
             "city": "London",
@@ -126,13 +136,16 @@ select is(
     'get_community_recently_added_groups should return groups ordered by creation date DESC as JSON'
 );
 
--- Test: get_community_recently_added_groups with non-existing community
+-- get_community_recently_added_groups with non-existing community
 select is(
     get_community_recently_added_groups('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '[]'::jsonb,
     'get_community_recently_added_groups with non-existing community should return empty array'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

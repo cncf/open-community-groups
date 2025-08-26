@@ -1,14 +1,26 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(4);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set group1ID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set community1ID '00000000-0000-0000-0000-000000000001'
+\set community2ID '00000000-0000-0000-0000-000000000002'
+\set groupID '00000000-0000-0000-0000-000000000021'
+\set userOrganizerID '00000000-0000-0000-0000-000000000011'
+\set userRegularID '00000000-0000-0000-0000-000000000012'
+\set categoryID '00000000-0000-0000-0000-000000000031'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- First community for testing group ownership
 insert into community (
     community_id,
     name,
@@ -20,17 +32,16 @@ insert into community (
     title
 ) values (
     :'community1ID',
-    'Test Community',
-    'Test Community',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
     'test.example.com',
-    'Test Community Description',
+    'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
     '{}'::jsonb,
-    'Test Community Title'
+    'Cloud Native Seattle Community'
 );
 
--- Seed second community for cross-community test
-\set community2ID '00000000-0000-0000-0000-000000000002'
+-- Second community for cross-community ownership testing
 
 insert into community (
     community_id,
@@ -43,16 +54,18 @@ insert into community (
     title
 ) values (
     :'community2ID',
-    'Second Test Community',
-    'Second Test Community',
+    'cloud-native-portland',
+    'Cloud Native Portland',
     'test2.example.com',
-    'Second Test Community Description',
+    'Portland community for cloud native technologies',
     'https://example.com/logo2.png',
     '{}'::jsonb,
-    'Second Test Community Title'
+    'Cloud Native Portland Community'
 );
 
--- Seed users
+-- Users with different permission levels
+-- userOrganizerID: User with group organizer role
+-- userRegularID: Regular user without special permissions
 insert into "user" (
     user_id,
     auth_hash,
@@ -62,35 +75,35 @@ insert into "user" (
     name,
     username
 ) values (
-    :'user1ID',
+    :'userOrganizerID',
     gen_random_bytes(32),
     :'community1ID',
-    'user1@example.com',
+    'organizer@example.com',
     true,
-    'User One',
-    'userone'
+    'Group Organizer',
+    'grouporganizer'
 ), (
-    :'user2ID',
+    :'userRegularID',
     gen_random_bytes(32),
     :'community1ID',
-    'user2@example.com',
+    'regular@example.com',
     true,
-    'User Two',
-    'usertwo'
+    'Regular User',
+    'regularuser'
 );
 
--- Seed group category
+-- Group category for test group
 insert into group_category (
     group_category_id,
     community_id,
     name
 ) values (
-    '00000000-0000-0000-0000-000000000031',
+    :'categoryID',
     :'community1ID',
-    'Test Category'
+    'Technology'
 );
 
--- Seed group
+-- Test group for ownership verification
 insert into "group" (
     group_id,
     community_id,
@@ -99,49 +112,56 @@ insert into "group" (
     slug,
     description
 ) values (
-    :'group1ID',
+    :'groupID',
     :'community1ID',
-    '00000000-0000-0000-0000-000000000031',
-    'Test Group',
-    'test-group',
-    'Test Group Description'
+    :'categoryID',
+    'Kubernetes Study Group',
+    'kubernetes-study',
+    'Weekly Kubernetes study and discussion group'
 );
 
--- Add user1 to group team
+-- Group team membership (grants ownership to organizer)
 insert into group_team (
     group_id,
     user_id,
     role
 ) values (
-    :'group1ID',
-    :'user1ID',
+    :'groupID',
+    :'userOrganizerID',
     'Organizer'
 );
 
--- Test: User who is in group_team should own the group
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- User in group_team should own the group
 select ok(
-    user_owns_group(:'community1ID', :'group1ID', :'user1ID'),
+    user_owns_group(:'community1ID', :'groupID', :'userOrganizerID'),
     'User in group_team should own the group'
 );
 
--- Test: User who is not in group_team should not own the group
+-- User not in group_team should not own the group
 select ok(
-    not user_owns_group(:'community1ID', :'group1ID', :'user2ID'),
+    not user_owns_group(:'community1ID', :'groupID', :'userRegularID'),
     'User not in group_team should not own the group'
 );
 
--- Test: Non-existent user should not own the group
+-- Non-existent user should not own the group
 select ok(
-    not user_owns_group(:'community1ID', :'group1ID', '00000000-0000-0000-0000-000000000099'::uuid),
+    not user_owns_group(:'community1ID', :'groupID', '00000000-0000-0000-0000-000000000099'::uuid),
     'Non-existent user should not own the group'
 );
 
--- Test: User in group_team should not own the group when checked with different community_id
+-- Cross-community check should fail even for group owner
 select ok(
-    not user_owns_group(:'community2ID', :'group1ID', :'user1ID'),
-    'User in group_team should not own the group when checked with different community_id'
+    not user_owns_group(:'community2ID', :'groupID', :'userOrganizerID'),
+    'Cross-community ownership check should fail even for actual group owner'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

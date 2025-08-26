@@ -1,15 +1,25 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(5);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set group1ID '00000000-0000-0000-0000-000000000002'
-\set event1ID '00000000-0000-0000-0000-000000000003'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set groupCategory1ID '00000000-0000-0000-0000-000000000010'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set groupID '00000000-0000-0000-0000-000000000002'
+\set eventID '00000000-0000-0000-0000-000000000003'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event deletion)
 insert into community (
     community_id,
     name,
@@ -20,25 +30,25 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed event category
+-- Event category (for event classification)
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'category1ID', 'Conference', 'conference', :'community1ID');
+values (:'categoryID', 'Conference', 'conference', :'communityID');
 
--- Seed group category
+-- Group category (for group organization)
 insert into group_category (group_category_id, name, community_id)
-values (:'groupCategory1ID', 'Technology', :'community1ID');
+values (:'groupCategoryID', 'Technology', :'communityID');
 
--- Seed group
+-- Group (for hosting events)
 insert into "group" (
     group_id,
     community_id,
@@ -47,15 +57,15 @@ insert into "group" (
     description,
     group_category_id
 ) values (
-    :'group1ID',
-    :'community1ID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategory1ID'
+    :'groupID',
+    :'communityID',
+    'Kubernetes Study Group',
+    'kubernetes-study-group',
+    'A study group focused on Kubernetes best practices and implementation',
+    :'groupCategoryID'
 );
 
--- Seed event (with published=true to test it gets set to false)
+-- Event (target for deletion testing)
 insert into event (
     event_id,
     group_id,
@@ -67,48 +77,52 @@ insert into event (
     event_kind_id,
     published
 ) values (
-    :'event1ID',
-    :'group1ID',
-    'Event to Delete',
-    'event-to-delete',
-    'This event will be deleted',
+    :'eventID',
+    :'groupID',
+    'Container Security Workshop',
+    'container-security-workshop',
+    'Deep dive into container security best practices and threat mitigation',
     'America/New_York',
-    :'category1ID',
+    :'categoryID',
     'in-person',
     true
 );
 
--- Test: delete_event function sets deleted=true
-select delete_event(:'group1ID'::uuid, :'event1ID'::uuid);
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- delete_event function sets deleted=true
+select delete_event(:'groupID'::uuid, :'eventID'::uuid);
 
 select is(
-    (select deleted from event where event_id = :'event1ID'),
+    (select deleted from event where event_id = :'eventID'),
     true,
     'delete_event should set deleted=true'
 );
 
--- Test: delete_event function sets deleted_at timestamp
+-- delete_event function sets deleted_at timestamp
 select isnt(
-    (select deleted_at from event where event_id = :'event1ID'),
+    (select deleted_at from event where event_id = :'eventID'),
     null,
     'delete_event should set deleted_at timestamp'
 );
 
--- Test: delete_event function sets published=false
+-- delete_event function sets published=false
 select is(
-    (select published from event where event_id = :'event1ID'),
+    (select published from event where event_id = :'eventID'),
     false,
     'delete_event should set published=false'
 );
 
--- Test: event still exists in database (soft delete)
+-- event still exists in database (soft delete)
 select is(
-    (select count(*)::int from event where event_id = :'event1ID'),
+    (select count(*)::int from event where event_id = :'eventID'),
     1,
     'delete_event should keep event in database (soft delete)'
 );
 
--- Test: delete_event throws error for wrong group_id
+-- delete_event throws error for wrong group_id
 select throws_ok(
     $$select delete_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
     'P0001',
@@ -116,6 +130,9 @@ select throws_ok(
     'delete_event should throw error when group_id does not match'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;
