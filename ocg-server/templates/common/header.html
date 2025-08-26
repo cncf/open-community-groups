@@ -47,10 +47,7 @@
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end">
-      {% if page_id == PageId::CommunityDashboard || page_id == PageId::GroupDashboard -%}
-        {# {% call user_menu(user) -%} #}
-        user
-      {% else -%}
+      {% if page_id == PageId::CommunityExplore || page_id == PageId::CommunityHome || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
@@ -61,6 +58,8 @@
             <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
           </button>
         </div>
+      {% else -%}
+        {% call user_menu(user) -%}
       {% endif -%}
     </div>
     {# End desktop user menu -#}
@@ -246,6 +245,7 @@
           <li role="none">
             <a href="/sign-up"
                hx-boost="true"
+               hx-target="body"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                role="menuitem">
               <div class="flex items-center">
@@ -259,6 +259,7 @@
           <li role="none">
             <a href="/log-in"
                hx-boost="true"
+               hx-target="body"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                role="menuitem">
               <div class="flex items-center">
