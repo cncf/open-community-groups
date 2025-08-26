@@ -1,11 +1,21 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (required for user registration)
 insert into community (
     community_id,
     name,
@@ -16,20 +26,24 @@ insert into community (
     theme,
     title
 ) values (
-    :'community1ID',
-    'Test Community',
-    'Test Community',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
     'test.example.com',
-    'Test Community Description',
+    'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
     '{}'::jsonb,
-    'Test Community Title'
+    'Cloud Native Seattle Community'
 );
 
--- Test: Create user with email_verified=true (should NOT generate verification code)
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- User with email_verified=true should not generate verification code
 with verified_user_result as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'verified@example.com',
             'username', 'verifieduser',
@@ -53,10 +67,10 @@ select ok(
     'User with email_verified=true should not generate verification code'
 ) from verified_user_result;
 
--- Test: Create user with email_verified=false (should generate verification code)
+-- User with email_verified=false should generate verification code
 with unverified_user_result as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'unverified@example.com',
             'username', 'unverifieduser',
@@ -80,10 +94,10 @@ select ok(
     'User with email_verified=false should generate verification code'
 ) from unverified_user_result;
 
--- Test: Create user without email_verified parameter (should default to false and generate code)
+-- User without email_verified parameter defaults to false and generates code
 with default_user_result as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'default@example.com',
             'username', 'defaultuser',
@@ -106,6 +120,9 @@ select ok(
     'User without email_verified parameter should default to false and generate verification code'
 ) from default_user_result;
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

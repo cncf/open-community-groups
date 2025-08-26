@@ -1,13 +1,23 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set region1ID '00000000-0000-0000-0000-000000000012'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set regionID '00000000-0000-0000-0000-000000000012'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group creation)
 insert into community (
     community_id,
     name,
@@ -18,29 +28,29 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed region
+-- region
 insert into region (region_id, name, community_id)
-values (:'region1ID', 'North America', :'community1ID');
+values (:'regionID', 'North America', :'communityID');
 
--- Seed group category
+-- group category
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'categoryID', 'Technology', :'communityID');
 
--- Test: add_group function creates group with required fields only
+-- add_group function creates group with required fields only
 select is(
     (select (get_group_full(
         add_group(
-            :'community1ID'::uuid,
+            :'communityID'::uuid,
             '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group"}'::jsonb
         )
     )::jsonb - 'created_at' - 'members_count' - 'group_id')),
@@ -58,11 +68,11 @@ select is(
     'add_group should create group with minimal required fields and return expected structure'
 );
 
--- Test: add_group function creates group with all fields
+-- add_group function creates group with all fields
 select is(
     (select (get_group_full(
         add_group(
-            :'community1ID'::uuid,
+            :'communityID'::uuid,
             '{
                 "name": "Full Test Group",
                 "slug": "full-test-group",
@@ -129,7 +139,7 @@ select is(
     'add_group should create group with all fields and return expected structure'
 );
 
--- Test: add_group function converts empty strings to null for nullable fields
+-- add_group function converts empty strings to null for nullable fields
 do $$
 declare
     v_group_id uuid;
@@ -196,6 +206,9 @@ select is(
     'add_group should convert empty strings to null for nullable fields'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

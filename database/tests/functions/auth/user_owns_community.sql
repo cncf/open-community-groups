@@ -1,13 +1,23 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set userTeamMemberID '00000000-0000-0000-0000-000000000011'
+\set userRegularID '00000000-0000-0000-0000-000000000012'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (test community for ownership checks)
 insert into community (
     community_id,
     name,
@@ -18,17 +28,19 @@ insert into community (
     theme,
     title
 ) values (
-    :'community1ID',
-    'Test Community',
-    'Test Community',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
     'test.example.com',
-    'Test Community Description',
+    'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
     '{}'::jsonb,
-    'Test Community Title'
+    'Cloud Native Seattle Community'
 );
 
--- Seed users
+-- Users with different permission levels
+-- userTeamMemberID: User with community team membership
+-- userRegularID: Regular user without team membership
 insert into "user" (
     user_id,
     auth_hash,
@@ -38,52 +50,59 @@ insert into "user" (
     name,
     username
 ) values (
-    :'user1ID',
+    :'userTeamMemberID',
     gen_random_bytes(32),
-    :'community1ID',
-    'user1@example.com',
+    :'communityID',
+    'teammember@example.com',
     true,
-    'User One',
-    'userone'
+    'Team Member',
+    'teammember'
 ), (
-    :'user2ID',
+    :'userRegularID',
     gen_random_bytes(32),
-    :'community1ID',
-    'user2@example.com',
+    :'communityID',
+    'regular@example.com',
     true,
-    'User Two',
-    'usertwo'
+    'Regular User',
+    'regularuser'
 );
 
--- Add user1 to community team
+-- Community team membership (grants ownership)
 insert into community_team (
     community_id,
     user_id,
     role
 ) values (
-    :'community1ID',
-    :'user1ID',
-    'Admin'
+    :'communityID',
+    :'userTeamMemberID',
+    'Member'
 );
 
--- Test: User who is in community_team should own the community
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- User in community_team should own the community
 select ok(
-    user_owns_community(:'community1ID', :'user1ID'),
+    user_owns_community(:'communityID', :'userTeamMemberID'),
     'User in community_team should own the community'
 );
 
--- Test: User who is not in community_team should not own the community
+-- User not in community_team should not own the community
 select ok(
-    not user_owns_community(:'community1ID', :'user2ID'),
+    not user_owns_community(:'communityID', :'userRegularID'),
     'User not in community_team should not own the community'
 );
 
--- Test: Non-existent user should not own the community
+-- Non-existent user should not own the community
 select ok(
-    not user_owns_community(:'community1ID', '00000000-0000-0000-0000-000000000099'::uuid),
+    not user_owns_community(:'communityID', '00000000-0000-0000-0000-000000000099'::uuid),
     'Non-existent user should not own the community'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

@@ -1,18 +1,28 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000012'
-\set group1ID '00000000-0000-0000-0000-000000000021'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
-\set event1ID '00000000-0000-0000-0000-000000000031'
+\set eventID '00000000-0000-0000-0000-000000000031'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event detailed function)
 insert into community (
     community_id,
     name,
@@ -23,25 +33,25 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category (for organizing groups)
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'categoryID', 'Technology', :'communityID');
 
--- Seed event category
+-- Event category (for organizing events)
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
+values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Seed active group with location
+-- Active group (with location data)
 insert into "group" (
     group_id,
     name,
@@ -55,11 +65,11 @@ insert into "group" (
     country_name,
     location
 ) values (
-    :'group1ID',
-    'Test Group',
-    'test-group',
-    :'community1ID',
-    :'category1ID',
+    :'groupID',
+    'Seattle Kubernetes Meetup',
+    'seattle-kubernetes-meetup',
+    :'communityID',
+    :'categoryID',
     true,
     'New York',
     'NY',
@@ -68,7 +78,7 @@ insert into "group" (
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326)
 );
 
--- Seed inactive group
+-- Inactive group (for testing filtering)
 insert into "group" (
     group_id,
     name,
@@ -78,14 +88,14 @@ insert into "group" (
     active
 ) values (
     :'groupInactiveID',
-    'Inactive Group',
-    'inactive-group',
-    :'community1ID',
-    :'category1ID',
+    'Inactive DevOps Group',
+    'inactive-devops-group',
+    :'communityID',
+    :'categoryID',
     false
 );
 
--- Seed published event with detailed information
+-- Published event (with detailed information)
 insert into event (
     event_id,
     name,
@@ -105,26 +115,26 @@ insert into event (
     venue_city,
     logo_url
 ) values (
-    :'event1ID',
-    'Tech Conference 2024',
-    'tech-conference-2024',
-    'Annual technology conference with workshops and talks',
+    :'eventID',
+    'KubeCon Seattle 2024',
+    'kubecon-seattle-2024',
+    'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
     'hybrid',
-    :'eventCategory1ID',
-    :'group1ID',
+    :'eventCategoryID',
+    :'groupID',
     true,
     false,
     '2024-06-15 09:00:00+00',
     '2024-06-15 17:00:00+00',
     'America/New_York',
-    'Annual tech conference',
+    'Annual Kubernetes conference',
     'Convention Center',
     '123 Main St',
     'New York',
     'https://example.com/event-logo.png'
 );
 
--- Seed unpublished event
+-- Unpublished event (for testing visibility)
 insert into event (
     event_id,
     name,
@@ -138,18 +148,18 @@ insert into event (
     timezone
 ) values (
     :'eventUnpublishedID',
-    'Unpublished Event',
-    'unpublished-event',
-    'This is an unpublished event',
+    'Draft Workshop',
+    'draft-workshop',
+    'A draft workshop that is not yet published',
     'virtual',
-    :'eventCategory1ID',
-    :'group1ID',
+    :'eventCategoryID',
+    :'groupID',
     false,
     '2024-07-15 09:00:00+00',
     'America/New_York'
 );
 
--- Seed event with inactive group
+-- Event with inactive group (for testing group status)
 insert into event (
     event_id,
     name,
@@ -163,31 +173,35 @@ insert into event (
     timezone
 ) values (
     :'eventInactiveGroupID',
-    'Event with Inactive Group',
-    'event-inactive-group',
-    'Event with an inactive group',
+    'Legacy Event',
+    'legacy-event',
+    'An event from an inactive group that should not appear in normal listings',
     'virtual',
-    :'eventCategory1ID',
+    :'eventCategoryID',
     :'groupInactiveID',
     true,
     '2024-08-15 09:00:00+00',
     'America/New_York'
 );
 
--- Test: get_event_detailed function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Function returns correct data for published event
 select is(
     get_event_detailed('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
         "canceled": false,
         "event_id": "00000000-0000-0000-0000-000000000031",
         "group_category_name": "Technology",
-        "group_name": "Test Group",
-        "group_slug": "test-group",
+        "group_name": "Seattle Kubernetes Meetup",
+        "group_slug": "seattle-kubernetes-meetup",
         "kind": "hybrid",
-        "name": "Tech Conference 2024",
-        "slug": "tech-conference-2024",
+        "name": "KubeCon Seattle 2024",
+        "slug": "kubecon-seattle-2024",
         "timezone": "America/New_York",
-        "description_short": "Annual tech conference",
+        "description_short": "Annual Kubernetes conference",
         "ends_at": 1718470800,
         "group_city": "New York",
         "group_country_code": "US",
@@ -204,12 +218,15 @@ select is(
     'get_event_detailed should return correct detailed event data as JSON'
 );
 
--- Test: get_event_detailed with non-existent event ID
+-- Function returns null for non-existent event
 select ok(
     get_event_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_detailed with non-existent event ID should return null'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

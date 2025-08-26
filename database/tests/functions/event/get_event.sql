@@ -1,19 +1,29 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set event1ID '00000000-0000-0000-0000-000000000041'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set eventCategoryID '00000000-0000-0000-0000-000000000021'
+\set groupID '00000000-0000-0000-0000-000000000031'
+\set eventID '00000000-0000-0000-0000-000000000041'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user3ID '00000000-0000-0000-0000-000000000053'
 \set user4ID '00000000-0000-0000-0000-000000000054'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event retrieval)
 insert into community (
     community_id,
     name,
@@ -24,37 +34,37 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
     'Test Community Title',
     'A test community',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'categoryID', 'Technology', :'communityID');
 
--- Seed group
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active, created_at)
-values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
+values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
 
--- Seed event category
+-- Event category
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
+values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Seed users
+-- Users
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, created_at)
 values
-    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash'::bytea, :'community1ID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash'::bytea, :'community1ID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
-    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
-    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
+    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash'::bytea, :'communityID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash'::bytea, :'communityID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
+    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
+    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
--- Seed event with all fields
+-- Event with all fields
 insert into event (
     event_id,
     name,
@@ -82,16 +92,16 @@ insert into event (
     streaming_url,
     recording_url
 ) values (
-    :'event1ID',
+    :'eventID',
     'Tech Conference 2024',
     'tech-conference-2024',
     'Annual technology conference with workshops and talks',
     'Annual tech conference',
     'America/New_York',
     'EST',
-    :'eventCategory1ID',
+    :'eventCategoryID',
     'hybrid',
-    :'group1ID',
+    :'groupID',
     true,
     '2024-06-15 09:00:00+00',
     '2024-06-15 17:00:00+00',
@@ -112,24 +122,24 @@ insert into event (
 -- Add event hosts
 insert into event_host (event_id, user_id, created_at)
 values
-    (:'event1ID', :'user1ID', '2024-01-01 00:00:00'),
-    (:'event1ID', :'user2ID', '2024-01-01 00:00:00');
+    (:'eventID', :'user1ID', '2024-01-01 00:00:00'),
+    (:'eventID', :'user2ID', '2024-01-01 00:00:00');
 
 -- Add event attendees
 insert into event_attendee (event_id, user_id, checked_in, created_at)
 values
-    (:'event1ID', :'user1ID', true, '2024-01-01 00:00:00'),
-    (:'event1ID', :'user2ID', false, '2024-01-01 00:00:00');
+    (:'eventID', :'user1ID', true, '2024-01-01 00:00:00'),
+    (:'eventID', :'user2ID', false, '2024-01-01 00:00:00');
 
 -- Add group team members (organizers)
 insert into group_team (group_id, user_id, role, "order", created_at)
 values
-    (:'group1ID', :'user3ID', 'organizer', 1, '2024-01-01 00:00:00'),
-    (:'group1ID', :'user4ID', 'organizer', 2, '2024-01-01 00:00:00');
+    (:'groupID', :'user3ID', 'organizer', 1, '2024-01-01 00:00:00'),
+    (:'groupID', :'user4ID', 'organizer', 2, '2024-01-01 00:00:00');
 
--- Test: get_event function returns correct data
+-- get_event function returns correct data
 select is(
-    get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
+    get_event(:'communityID'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
     '{
         "kind": "hybrid",
         "name": "Tech Conference 2024",
@@ -204,12 +214,15 @@ select is(
     'get_event should return correct event data as JSON'
 );
 
--- Test: get_event with non-existing event slug
+-- get_event with non-existing event slug
 select ok(
-    get_event('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', 'non-existing-event') is null,
+    get_event(:'communityID'::uuid, 'test-group', 'non-existing-event') is null,
     'get_event with non-existing event slug should return null'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

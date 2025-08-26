@@ -1,9 +1,15 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
@@ -11,7 +17,11 @@ select plan(2);
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing upcoming events)
 insert into community (
     community_id,
     name,
@@ -22,7 +32,7 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
+    :'communityID',
     'test-community',
     'Test Community',
     'test.localhost',
@@ -32,19 +42,19 @@ insert into community (
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'category1ID', 'Technology', :'communityID');
 
--- Seed group with location data
+-- Group with location data
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
-values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'New York', 'NY', 'US', 'United States');
+values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States');
 
--- Seed event category
+-- Event category
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
+values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Seed events (one past, two future, one unpublished)
+-- Events (one past, two future, one unpublished)
 insert into event (
     event_id,
     name,
@@ -71,7 +81,7 @@ insert into event (
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
      '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00');
 
--- Test: get_community_upcoming_events function returns correct data
+-- get_community_upcoming_events function returns correct data
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[
@@ -93,13 +103,16 @@ select is(
     'get_community_upcoming_events should return only published future events as JSON'
 );
 
--- Test: get_community_upcoming_events with non-existing community
+-- get_community_upcoming_events with non-existing community
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-999999999999'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[]'::jsonb,
     'get_community_upcoming_events with non-existing community should return empty array'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

@@ -1,12 +1,29 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(7);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set user1ID '00000000-0000-0000-0001-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set userWithTeamsID '00000000-0000-0000-0001-000000000001'
+\set userNoTeamsID '00000000-0000-0000-0001-000000000002'
+\set userGroupOnlyID '00000000-0000-0000-0001-000000000003'
+\set userCommunityOnlyID '00000000-0000-0000-0001-000000000004'
+\set userBothTeamsID '00000000-0000-0000-0001-000000000005'
+\set nonExistentUserID '00000000-0000-0000-0001-999999999999'
+\set groupID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000001'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (required for all user operations)
 insert into community (
     community_id,
     name,
@@ -17,17 +34,17 @@ insert into community (
     theme,
     title
 ) values (
-    :'community1ID',
-    'Test Community',
-    'Test Community',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
     'test.example.com',
-    'Test Community Description',
+    'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
     '{}'::jsonb,
-    'Test Community Title'
+    'Cloud Native Seattle Community'
 );
 
--- Seed user
+-- Primary test user with all team memberships
 insert into "user" (
     user_id,
     email,
@@ -38,28 +55,28 @@ insert into "user" (
     community_id,
     password
 ) values (
-    :'user1ID',
+    :'userWithTeamsID',
     'test@example.com',
     'testuser',
     true,
     'Test User',
     'test_hash',
-    :'community1ID',
+    :'communityID',
     'hashed_password_here'
 );
 
--- Seed a group category
+-- Group category for test group
 insert into group_category (
     group_category_id,
     community_id,
     name
 ) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    :'community1ID',
+    :'categoryID'::uuid,
+    :'communityID',
     'Test Category'
 );
 
--- Seed a group for testing team membership
+-- Test group for team membership verification
 insert into "group" (
     group_id,
     community_id,
@@ -70,41 +87,161 @@ insert into "group" (
     website_url,
     logo_url
 ) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    :'community1ID',
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    'Test Group',
-    'test-group',
-    'Test Group Description',
+    :'categoryID'::uuid,
+    :'communityID',
+    :'categoryID'::uuid,
+    'Kubernetes Study Group',
+    'kubernetes-study',
+    'Weekly Kubernetes study and discussion group',
     'https://example.com',
     'https://example.com/logo.png'
 );
 
--- Add user to group team
+-- Group team membership for primary user
 insert into group_team (
     group_id,
     user_id,
     role
 ) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    :'user1ID',
+    :'categoryID'::uuid,
+    :'userWithTeamsID',
     'Admin'
 );
 
--- Add user to community team
+-- Community team membership for primary user
 insert into community_team (
     community_id,
     user_id,
     role
 ) values (
-    :'community1ID',
-    :'user1ID',
+    :'communityID',
+    :'userWithTeamsID',
     'Admin'
 );
 
--- Test: User found by ID (without password)
+-- User without any team memberships
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    :'userNoTeamsID',
+    'nogroups@example.com',
+    'nogroupsuser',
+    true,
+    'No Groups User',
+    'test_hash_2',
+    :'communityID'
+);
+
+-- User with only group team membership
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    :'userGroupOnlyID',
+    'grouponly@example.com',
+    'grouponlyuser',
+    true,
+    'Group Only User',
+    'test_hash_3',
+    :'communityID'
+);
+
+insert into group_team (
+    group_id,
+    user_id,
+    role
+) values (
+    :'groupID'::uuid,
+    :'userGroupOnlyID',
+    'Admin'
+);
+
+-- User with only community team membership
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    :'userCommunityOnlyID',
+    'communityonly@example.com',
+    'communityonlyuser',
+    true,
+    'Community Only User',
+    'test_hash_4',
+    :'communityID'
+);
+
+insert into community_team (
+    community_id,
+    user_id,
+    role
+) values (
+    :'communityID',
+    :'userCommunityOnlyID',
+    'Admin'
+);
+
+-- User with both team memberships
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    name,
+    auth_hash,
+    community_id
+) values (
+    :'userBothTeamsID',
+    'both@example.com',
+    'bothuser',
+    true,
+    'Both Teams User',
+    'test_hash_5',
+    :'communityID'
+);
+
+insert into group_team (
+    group_id,
+    user_id,
+    role
+) values (
+    :'groupID'::uuid,
+    :'userBothTeamsID',
+    'Member'
+);
+
+insert into community_team (
+    community_id,
+    user_id,
+    role
+) values (
+    :'communityID',
+    :'userBothTeamsID',
+    'Member'
+);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Retrieve user without password field
 select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid, false)::jsonb,
+    get_user_by_id(:'userWithTeamsID'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash",
         "belongs_to_any_group_team": true,
@@ -119,9 +256,9 @@ select is(
     'Should return user without password when include_password is false'
 );
 
--- Test: User found by ID (with password)
+-- Retrieve user with password field included
 select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000001'::uuid, true)::jsonb,
+    get_user_by_id(:'userWithTeamsID'::uuid, true)::jsonb,
     '{
         "auth_hash": "test_hash",
         "belongs_to_any_group_team": true,
@@ -137,34 +274,16 @@ select is(
     'Should return user with password when include_password is true'
 );
 
--- Test: User not found
+-- Non-existent user returns null
 select is(
-    get_user_by_id('00000000-0000-0000-0001-999999999999'::uuid, false)::jsonb,
+    get_user_by_id(:'nonExistentUserID'::uuid, false)::jsonb,
     null::jsonb,
     'Should return null when ID does not exist'
 );
 
--- Test: User without team memberships
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash,
-    community_id
-) values (
-    '00000000-0000-0000-0001-000000000002'::uuid,
-    'nogroups@example.com',
-    'nogroupsuser',
-    true,
-    'No Groups User',
-    'test_hash_2',
-    :'community1ID'
-);
-
+-- User without any team memberships
 select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000002'::uuid, false)::jsonb,
+    get_user_by_id(:'userNoTeamsID'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash_2",
         "belongs_to_any_group_team": false,
@@ -178,37 +297,9 @@ select is(
     'Should return user with false team membership fields when user has no team memberships'
 );
 
--- Test: User in group team but not community team
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash,
-    community_id
-) values (
-    '00000000-0000-0000-0001-000000000003'::uuid,
-    'grouponly@example.com',
-    'grouponlyuser',
-    true,
-    'Group Only User',
-    'test_hash_3',
-    :'community1ID'
-);
-
-insert into group_team (
-    group_id,
-    user_id,
-    role
-) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '00000000-0000-0000-0001-000000000003'::uuid,
-    'Admin'
-);
-
+-- User belongs to group team only
 select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000003'::uuid, false)::jsonb,
+    get_user_by_id(:'userGroupOnlyID'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash_3",
         "belongs_to_any_group_team": true,
@@ -222,37 +313,9 @@ select is(
     'Should return user with belongs_to_any_group_team=true and belongs_to_community_team=false when user is only in group team'
 );
 
--- Test: User who is only in community team (not in any group team)
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash,
-    community_id
-) values (
-    '00000000-0000-0000-0001-000000000004'::uuid,
-    'communityonly@example.com',
-    'communityonlyuser',
-    true,
-    'Community Only User',
-    'test_hash_4',
-    :'community1ID'
-);
-
-insert into community_team (
-    community_id,
-    user_id,
-    role
-) values (
-    :'community1ID',
-    '00000000-0000-0000-0001-000000000004'::uuid,
-    'Admin'
-);
-
+-- User belongs to community team only
 select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000004'::uuid, false)::jsonb,
+    get_user_by_id(:'userCommunityOnlyID'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash_4",
         "belongs_to_any_group_team": true,
@@ -266,47 +329,9 @@ select is(
     'Should return user with belongs_to_any_group_team=true when user is only in community team'
 );
 
--- Test: User who is in both community team and group team
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash,
-    community_id
-) values (
-    '00000000-0000-0000-0001-000000000005'::uuid,
-    'both@example.com',
-    'bothuser',
-    true,
-    'Both Teams User',
-    'test_hash_5',
-    :'community1ID'
-);
-
-insert into group_team (
-    group_id,
-    user_id,
-    role
-) values (
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '00000000-0000-0000-0001-000000000005'::uuid,
-    'Member'
-);
-
-insert into community_team (
-    community_id,
-    user_id,
-    role
-) values (
-    :'community1ID',
-    '00000000-0000-0000-0001-000000000005'::uuid,
-    'Member'
-);
-
+-- User belongs to both community and group teams
 select is(
-    get_user_by_id('00000000-0000-0000-0001-000000000005'::uuid, false)::jsonb,
+    get_user_by_id(:'userBothTeamsID'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash_5",
         "belongs_to_any_group_team": true,
@@ -320,6 +345,9 @@ select is(
     'Should return user with both belongs_to_any_group_team=true and belongs_to_community_team=true when user is in both teams'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

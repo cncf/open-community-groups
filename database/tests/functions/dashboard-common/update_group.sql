@@ -1,16 +1,27 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(4);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set group1ID '00000000-0000-0000-0000-000000000021'
+\set groupID '00000000-0000-0000-0000-000000000021'
 \set groupDeletedID '00000000-0000-0000-0000-000000000022'
 \set group2ID '00000000-0000-0000-0000-000000000023'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group updates)
 insert into community (
     community_id,
     name,
@@ -21,23 +32,23 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group categories
+-- group categories
 insert into group_category (group_category_id, name, community_id)
 values 
-    (:'category1ID', 'Technology', :'community1ID'),
-    (:'category2ID', 'Business', :'community1ID');
+    (:'category1ID', 'Technology', :'communityID'),
+    (:'category2ID', 'Business', :'communityID');
 
--- Seed active group
+-- active group
 insert into "group" (
     group_id,
     name,
@@ -47,16 +58,16 @@ insert into "group" (
     description,
     created_at
 ) values (
-    :'group1ID',
+    :'groupID',
     'Original Group',
     'original-group',
-    :'community1ID',
+    :'communityID',
     :'category1ID',
     'Original description',
     '2024-01-15 10:00:00+00'
 );
 
--- Seed deleted group
+-- deleted group
 insert into "group" (
     group_id,
     name,
@@ -72,7 +83,7 @@ insert into "group" (
     :'groupDeletedID',
     'Deleted Group',
     'deleted-group',
-    :'community1ID',
+    :'communityID',
     :'category1ID',
     'Deleted group description',
     false,
@@ -81,10 +92,10 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Test: update_group function updates group fields correctly
+-- update_group function updates group fields correctly
 select update_group(
-    :'community1ID'::uuid,
-    :'group1ID'::uuid,
+    :'communityID'::uuid,
+    :'groupID'::uuid,
     '{
         "name": "Updated Group",
         "slug": "updated-group",
@@ -103,7 +114,7 @@ select update_group(
 );
 
 select is(
-    (select get_group_full(:'group1ID'::uuid)::jsonb - 'created_at' - 'members_count'),
+    (select get_group_full(:'groupID'::uuid)::jsonb - 'created_at' - 'members_count'),
     '{
         "name": "Updated Group",
         "slug": "updated-group",
@@ -128,7 +139,7 @@ select is(
     'update_group should update all provided fields and return expected structure'
 );
 
--- Test: update_group throws error for deleted group
+-- update_group throws error for deleted group
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000001'::uuid,
@@ -140,7 +151,7 @@ select throws_ok(
     'update_group should throw error when trying to update deleted group'
 );
 
--- Test: update_group converts empty strings to null for nullable fields
+-- update_group converts empty strings to null for nullable fields
 insert into "group" (
     group_id,
     name,
@@ -159,7 +170,7 @@ insert into "group" (
     :'group2ID'::uuid,
     'Test Group for Empty Strings',
     'test-group-empty-strings',
-    :'community1ID',
+    :'communityID',
     :'category1ID',
     'Has some values',
     'https://example.com/banner.jpg',
@@ -172,7 +183,7 @@ insert into "group" (
 );
 
 select update_group(
-    :'community1ID'::uuid,
+    :'communityID'::uuid,
     :'group2ID'::uuid,
     '{
         "name": "Updated Group Empty Strings",
@@ -232,7 +243,7 @@ select is(
     'update_group should convert empty strings to null for nullable fields'
 );
 
--- Test: update_group throws error for wrong community_id
+-- update_group throws error for wrong community_id
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000099'::uuid,
@@ -244,6 +255,9 @@ select throws_ok(
     'update_group should throw error when community_id does not match'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

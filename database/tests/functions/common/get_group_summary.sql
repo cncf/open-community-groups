@@ -1,15 +1,26 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set region1ID '00000000-0000-0000-0000-000000000012'
-\set group1ID '00000000-0000-0000-0000-000000000021'
-\set groupInactiveID '00000000-0000-0000-0000-000000000022'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set regionID '00000000-0000-0000-0000-000000000012'
+\set groupID '00000000-0000-0000-0000-000000000021'
+\set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set groupDeletedID '00000000-0000-0000-0000-000000000023'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group summary function)
 insert into community (
     community_id,
     name,
@@ -20,25 +31,25 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed region
+-- Region (for organizing groups by location)
 insert into region (region_id, name, community_id)
-values (:'region1ID', 'North America', :'community1ID');
+values (:'regionID', 'North America', :'communityID');
 
--- Seed group category
+-- Group category (for organizing groups)
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'categoryID', 'Technology', :'communityID');
 
--- Seed active group with all fields
+-- Active group (with location data)
 insert into "group" (
     group_id,
     name,
@@ -54,12 +65,12 @@ insert into "group" (
     logo_url,
     created_at
 ) values (
-    :'group1ID',
-    'Test Group',
-    'test-group',
-    :'community1ID',
-    :'category1ID',
-    :'region1ID',
+    :'groupID',
+    'Seattle Kubernetes Meetup',
+    'seattle-kubernetes-meetup',
+    :'communityID',
+    :'categoryID',
+    :'regionID',
     true,
     'New York',
     'NY',
@@ -69,7 +80,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Seed inactive group
+-- Inactive group (for testing filtering)
 insert into "group" (
     group_id,
     name,
@@ -80,15 +91,15 @@ insert into "group" (
     created_at
 ) values (
     :'groupInactiveID',
-    'Inactive Group',
-    'inactive-group',
-    :'community1ID',
-    :'category1ID',
+    'Inactive DevOps Group',
+    'inactive-devops-group',
+    :'communityID',
+    :'categoryID',
     false,
     '2024-02-15 10:00:00+00'
 );
 
--- Seed deleted group
+-- Deleted group (for testing deleted group handling)
 insert into "group" (
     group_id,
     name,
@@ -100,18 +111,22 @@ insert into "group" (
     deleted_at,
     created_at
 ) values (
-    '00000000-0000-0000-0000-000000000023'::uuid,
-    'Deleted Group',
-    'deleted-group',
-    :'community1ID',
-    :'category1ID',
+    :'groupDeletedID',
+    'Deleted DevOps Group',
+    'deleted-devops-group',
+    :'communityID',
+    :'categoryID',
     false,
     true,
     '2024-03-15 10:00:00+00',
     '2024-02-15 10:00:00+00'
 );
 
--- Test: get_group_summary function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Function returns correct summary data
 select is(
     get_group_summary('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -122,8 +137,8 @@ select is(
         },
         "created_at": 1705312800,
         "group_id": "00000000-0000-0000-0000-000000000021",
-        "name": "Test Group",
-        "slug": "test-group",
+        "name": "Seattle Kubernetes Meetup",
+        "slug": "seattle-kubernetes-meetup",
         "city": "New York",
         "country_code": "US",
         "country_name": "United States",
@@ -138,18 +153,21 @@ select is(
     'get_group_summary should return correct group summary data as JSON'
 );
 
--- Test: get_group_summary with non-existent group ID
+-- Function returns null for non-existent group
 select ok(
     get_group_summary('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_summary with non-existent group ID should return null'
 );
 
--- Test: get_group_summary with deleted group ID returns data
+-- Function returns data for deleted group
 select ok(
     get_group_summary('00000000-0000-0000-0000-000000000023'::uuid) is not null,
     'get_group_summary with deleted group ID should return data'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

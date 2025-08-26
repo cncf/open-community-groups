@@ -1,17 +1,27 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set region1ID '00000000-0000-0000-0000-000000000021'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set user1ID '00000000-0000-0000-0000-000000000041'
-\set user2ID '00000000-0000-0000-0000-000000000042'
-\set user3ID '00000000-0000-0000-0000-000000000043'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set regionID '00000000-0000-0000-0000-000000000021'
+\set groupID '00000000-0000-0000-0000-000000000031'
+\set organizer1ID '00000000-0000-0000-0000-000000000041'
+\set organizer2ID '00000000-0000-0000-0000-000000000042'
+\set memberID '00000000-0000-0000-0000-000000000043'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing group data retrieval)
 insert into community (
     community_id,
     name,
@@ -22,32 +32,32 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed group category
+-- Group category (for organizing groups)
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+values (:'categoryID', 'Technology', :'communityID');
 
--- Seed region
+-- Region (for geographic organization)
 insert into region (region_id, name, community_id)
-values (:'region1ID', 'North America', :'community1ID');
+values (:'regionID', 'North America', :'communityID');
 
--- Seed users
+-- Users (organizers and members for group relationships)
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, company, title, photo_url, created_at)
 values
-    (:'user1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'community1ID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'user2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'community1ID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
-    (:'user3ID', 'member@example.com', 'member1', false, 'test_hash'::bytea, :'community1ID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
+    (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'communityID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'communityID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
+    (:'memberID', 'member@example.com', 'member1', false, 'test_hash'::bytea, :'communityID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
--- Seed group with all fields
+-- Group (comprehensive example with all fields)
 insert into "group" (
     group_id,
     name,
@@ -70,12 +80,12 @@ insert into "group" (
     linkedin_url,
     github_url
 ) values (
-    :'group1ID',
+    :'groupID',
     'Kubernetes NYC',
     'kubernetes-nyc',
-    :'community1ID',
-    :'category1ID',
-    :'region1ID',
+    :'communityID',
+    :'categoryID',
+    :'regionID',
     'New York Kubernetes meetup group for cloud native enthusiasts',
     'https://example.com/k8s-logo.png',
     'https://example.com/k8s-banner.png',
@@ -92,22 +102,26 @@ insert into "group" (
     'https://github.com/k8snyc'
 );
 
--- Add group members
+-- Group members (for membership count)
 insert into group_member (group_id, user_id, created_at)
 values
-    (:'group1ID', :'user1ID', '2024-01-01 00:00:00'),
-    (:'group1ID', :'user2ID', '2024-01-01 00:00:00'),
-    (:'group1ID', :'user3ID', '2024-01-01 00:00:00');
+    (:'groupID', :'organizer1ID', '2024-01-01 00:00:00'),
+    (:'groupID', :'organizer2ID', '2024-01-01 00:00:00'),
+    (:'groupID', :'memberID', '2024-01-01 00:00:00');
 
--- Add group team (organizers)
+-- Group team members (organizers for leadership display)
 insert into group_team (group_id, user_id, role, "order", created_at)
 values
-    (:'group1ID', :'user1ID', 'organizer', 1, '2024-01-01 00:00:00'),
-    (:'group1ID', :'user2ID', 'organizer', 2, '2024-01-01 00:00:00');
+    (:'groupID', :'organizer1ID', 'organizer', 1, '2024-01-01 00:00:00'),
+    (:'groupID', :'organizer2ID', 'organizer', 2, '2024-01-01 00:00:00');
 
--- Test: get_group function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- get_group function returns correct data
 select is(
-    get_group('00000000-0000-0000-0000-000000000001'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
+    get_group(:'communityID'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
     '{
         "city": "New York",
         "name": "Kubernetes NYC",
@@ -158,12 +172,15 @@ select is(
     'get_group should return correct group data as JSON'
 );
 
--- Test: get_group with non-existing group slug
+-- get_group with non-existing group slug
 select ok(
-    get_group('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group') is null,
+    get_group(:'communityID'::uuid, 'non-existing-group') is null,
     'get_group with non-existing group slug should return null'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

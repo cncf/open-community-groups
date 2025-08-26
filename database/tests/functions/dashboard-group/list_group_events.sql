@@ -1,8 +1,13 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(3);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set group2ID '00000000-0000-0000-0000-000000000003'
@@ -13,7 +18,11 @@ select plan(3);
 \set event4ID '00000000-0000-0000-0000-000000000024'
 \set groupCategory1ID '00000000-0000-0000-0000-000000000010'
 
--- Seed community
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event listing)
 insert into community (
     community_id,
     name,
@@ -34,17 +43,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Event kinds are already seeded by the schema, so we don't need to insert them
-
--- Seed event category
+-- Event category (for event classification)
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'category1ID', 'Conference', 'conference', :'community1ID');
 
--- Seed group category
+-- Group category (for group organization)
 insert into group_category (group_category_id, name, community_id)
 values (:'groupCategory1ID', 'Technology', :'community1ID');
 
--- Seed groups with location data
+-- Groups with location data
 insert into "group" (
     group_id,
     community_id,
@@ -82,7 +89,7 @@ insert into "group" (
         'United States'
     );
 
--- Seed events for group1
+-- Events for group1
 insert into event (
     event_id,
     group_id,
@@ -154,14 +161,18 @@ insert into event (
         'Chicago'
     );
 
--- Test: list_group_events returns empty array for group with no events
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- list_group_events returns empty array for group with no events
 select is(
     list_group_events('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'list_group_events should return empty array for group with no events'
 );
 
--- Test: list_group_events returns full JSON structure for group1 events ordered correctly
+-- list_group_events returns full JSON structure for group1 events ordered correctly
 select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
     '[
@@ -214,7 +225,7 @@ select is(
     'list_group_events should return events with full JSON structure ordered by starts_at desc with nulls last'
 );
 
--- Test: list_group_events returns full JSON structure for group2's single event
+-- list_group_events returns full JSON structure for group2's single event
 select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     '[
@@ -237,6 +248,9 @@ select is(
     'list_group_events should return correct full JSON for specified group'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

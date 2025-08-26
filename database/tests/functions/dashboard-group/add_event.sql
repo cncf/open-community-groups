@@ -1,14 +1,24 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set group1ID '00000000-0000-0000-0000-000000000002'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set groupCategory1ID '00000000-0000-0000-0000-000000000010'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set groupID '00000000-0000-0000-0000-000000000002'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (for testing event creation)
 insert into community (
     community_id,
     name,
@@ -19,25 +29,25 @@ insert into community (
     header_logo_url,
     theme
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'seattle.cloudnative.org',
+    'Cloud Native Seattle Community',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     '{}'::jsonb
 );
 
--- Seed event category
+-- Event category (for event classification)
 insert into event_category (event_category_id, name, slug, community_id)
-values (:'category1ID', 'Conference', 'conference', :'community1ID');
+values (:'categoryID', 'Conference', 'conference', :'communityID');
 
--- Seed group category
+-- Group category (for group organization)
 insert into group_category (group_category_id, name, community_id)
-values (:'groupCategory1ID', 'Technology', :'community1ID');
+values (:'groupCategoryID', 'Technology', :'communityID');
 
--- Seed group
+-- Group (for hosting events)
 insert into "group" (
     group_id,
     community_id,
@@ -46,44 +56,48 @@ insert into "group" (
     description,
     group_category_id
 ) values (
-    :'group1ID',
-    :'community1ID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategory1ID'
+    :'groupID',
+    :'communityID',
+    'Kubernetes Study Group',
+    'kubernetes-study-group',
+    'A study group focused on Kubernetes best practices and implementation',
+    :'groupCategoryID'
 );
 
--- Test: add_event function creates event with required fields only
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- add_event function creates event with required fields only
 select is(
     (select (get_event_full(
         add_event(
-            :'group1ID'::uuid,
-            '{"name": "Simple Test Event", "slug": "simple-test-event", "description": "A simple test event", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+            :'groupID'::uuid,
+            '{"name": "Kubernetes Fundamentals Workshop", "slug": "k8s-fundamentals-workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
         )
     )::jsonb - 'created_at' - 'event_id' - 'hosts' - 'organizers' - 'sessions' - 'group')),
     '{
         "canceled": false,
         "category_name": "Conference",
-        "description": "A simple test event",
+        "description": "Learn the basics of Kubernetes deployment and management",
         "kind": "in-person",
-        "name": "Simple Test Event",
+        "name": "Kubernetes Fundamentals Workshop",
         "published": false,
-        "slug": "simple-test-event",
+        "slug": "k8s-fundamentals-workshop",
         "timezone": "America/New_York"
     }'::jsonb,
     'add_event should create event with minimal required fields and return expected structure'
 );
 
--- Test: add_event function creates event with all fields
+-- add_event function creates event with all fields
 select is(
     (select (get_event_full(
         add_event(
-            :'group1ID'::uuid,
+            :'groupID'::uuid,
             '{
-                "name": "Full Test Event",
-                "slug": "full-test-event",
-                "description": "A fully populated test event",
+                "name": "CloudNativeCon Seattle 2025",
+                "slug": "cloudnativecon-seattle-2025",
+                "description": "Premier conference for cloud native technologies and community collaboration",
                 "timezone": "America/Los_Angeles",
                 "category_id": "00000000-0000-0000-0000-000000000011",
                 "kind_id": "hybrid",
@@ -109,11 +123,11 @@ select is(
     '{
         "canceled": false,
         "category_name": "Conference",
-        "description": "A fully populated test event",
+        "description": "Premier conference for cloud native technologies and community collaboration",
         "kind": "hybrid",
-        "name": "Full Test Event",
+        "name": "CloudNativeCon Seattle 2025",
         "published": false,
-        "slug": "full-test-event",
+        "slug": "cloudnativecon-seattle-2025",
         "timezone": "America/Los_Angeles",
         "banner_url": "https://example.com/banner.jpg",
         "capacity": 100,
@@ -135,6 +149,9 @@ select is(
     'add_event should create event with all fields and return expected structure'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

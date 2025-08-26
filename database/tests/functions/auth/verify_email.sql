@@ -1,11 +1,21 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(5);
 
--- Declare some variables
-\set community1ID '00000000-0000-0000-0000-000000000001'
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
 
--- Seed community
+\set communityID '00000000-0000-0000-0000-000000000001'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Community (required for user registration)
 insert into community (
     community_id,
     name,
@@ -16,21 +26,26 @@ insert into community (
     theme,
     title
 ) values (
-    :'community1ID',
-    'Test Community',
-    'Test Community',
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
     'test.example.com',
-    'Test Community Description',
+    'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
     '{}'::jsonb,
-    'Test Community Title'
+    'Cloud Native Seattle Community'
 );
 
--- Test: Valid verification code should verify email
--- First create a user with unverified email
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Valid verification code should verify email
+
+-- Create user with unverified email
 with test_user as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'test1@example.com',
             'username', 'testuser1',
@@ -50,10 +65,10 @@ select is(
 ) from "user" 
 where email = 'test1@example.com';
 
--- Test: Verification code should be deleted after use
+-- Verification code should be deleted after use
 with test_user as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'test1b@example.com',
             'username', 'testuser1b',
@@ -75,7 +90,7 @@ select is(
 ) from email_verification_code 
 where email_verification_code_id = (select verification_code from verification_result);
 
--- Test: Invalid verification code (non-existent UUID) should raise exception
+-- Invalid verification code raises exception
 select throws_ok(
     'select verify_email(''00000000-0000-0000-0000-000000000099''::uuid)',
     'P0001',
@@ -83,11 +98,12 @@ select throws_ok(
     'Non-existent verification code should raise exception'
 );
 
--- Test: Expired verification code (older than 24 hours) should raise exception  
--- Create a user and immediately expire their code
+-- Expired verification code raises exception
+
+-- Create user and expire their code
 with test_user as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'test2@example.com',
             'username', 'testuser2',
@@ -109,10 +125,10 @@ select throws_ok(
     'Expired verification code should raise exception'
 );
 
--- Test: Already used verification code should raise exception
+-- Already used verification code raises exception
 with test_user as (
     select * from sign_up_user(
-        :'community1ID',
+        :'communityID',
         jsonb_build_object(
             'email', 'test3@example.com',
             'username', 'testuser3',
@@ -134,6 +150,9 @@ select throws_ok(
     'Already used verification code should raise exception'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;

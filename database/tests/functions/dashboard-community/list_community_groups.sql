@@ -1,17 +1,27 @@
--- Start transaction and plan tests
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
 begin;
 select plan(2);
 
--- Variables
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set region1ID '00000000-0000-0000-0000-000000000012'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set regionID '00000000-0000-0000-0000-000000000012'
 \set group1ID '00000000-0000-0000-0000-000000000021'
 \set group2ID '00000000-0000-0000-0000-000000000022'
 \set group3ID '00000000-0000-0000-0000-000000000023'
 
--- Seed communities
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Communities (main and other for isolation testing)
 insert into community (
     community_id,
     name,
@@ -24,34 +34,34 @@ insert into community (
 ) values 
     (
         :'community1ID',
-        'test-community',
-        'Test Community',
-        'test.localhost',
-        'Test Community Title',
-        'A test community for testing purposes',
+        'cloud-native-seattle',
+        'Cloud Native Seattle',
+        'seattle.cloudnative.org',
+        'Cloud Native Seattle Community',
+        'A vibrant community for cloud native technologies and practices in Seattle',
         'https://example.com/logo.png',
         '{}'::jsonb
     ),
     (
         :'community2ID',
-        'other-community',
-        'Other Community',
-        'other.localhost',
-        'Other Community Title',
-        'Another test community',
+        'devops-vancouver',
+        'DevOps Vancouver',
+        'vancouver.devops.org',
+        'DevOps Vancouver Community',
+        'Building DevOps expertise and community in Vancouver',
         'https://example.com/logo2.png',
         '{}'::jsonb
     );
 
--- Seed group category
+-- Group category (for organizing groups)
 insert into group_category (group_category_id, name, "order", community_id)
-values (:'category1ID', 'Technology', 1, :'community1ID');
+values (:'categoryID', 'Technology', 1, :'community1ID');
 
--- Seed region
+-- Region (for geographic organization)
 insert into region (region_id, name, "order", community_id)
-values (:'region1ID', 'North America', 1, :'community1ID');
+values (:'regionID', 'North America', 1, :'community1ID');
 
--- Seed groups for community1
+-- Groups (for testing community isolation and ordering)
 insert into "group" (
     group_id,
     community_id,
@@ -70,25 +80,25 @@ insert into "group" (
     (
         :'group1ID',
         :'community1ID',
-        'Alpha Group',
-        'alpha-group',
-        'First test group',
-        :'category1ID',
+        'Advanced Kubernetes',
+        'advanced-kubernetes',
+        'Deep dive into advanced Kubernetes concepts and patterns',
+        :'categoryID',
         '2024-01-01 10:00:00+00',
         'San Francisco',
         'CA',
         'US',
         'United States',
-        'https://example.com/alpha-logo.png',
-        :'region1ID'
+        'https://example.com/k8s-logo.png',
+        :'regionID'
     ),
     (
         :'group2ID',
         :'community1ID',
-        'Zeta Group',
-        'zeta-group',
-        'Second test group',
-        :'category1ID',
+        'Zero Trust Security',
+        'zero-trust-security',
+        'Exploring zero trust security principles and implementation',
+        :'categoryID',
         '2024-01-02 14:30:00+00',
         'New York',
         'NY',
@@ -100,10 +110,10 @@ insert into "group" (
     (
         :'group3ID',
         :'community2ID',
-        'Other Community Group',
-        'other-community-group',
-        'Group in different community',
-        :'category1ID',
+        'DevOps Best Practices',
+        'devops-best-practices',
+        'Sharing and learning DevOps best practices and tooling',
+        :'categoryID',
         '2024-01-03 09:15:00+00',
         null,
         null,
@@ -113,14 +123,18 @@ insert into "group" (
         null
     );
 
--- Test: list_community_groups returns empty array for community with no groups
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- list_community_groups returns empty array for community with no groups
 select is(
     list_community_groups('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'list_community_groups should return empty array for community with no groups'
 );
 
--- Test: list_community_groups returns full JSON structure for groups ordered alphabetically
+-- list_community_groups returns full JSON structure for groups ordered alphabetically
 select is(
     list_community_groups(:'community1ID'::uuid)::jsonb,
     '[
@@ -133,12 +147,12 @@ select is(
             },
             "created_at": 1704103200,
             "group_id": "00000000-0000-0000-0000-000000000021",
-            "name": "Alpha Group",
-            "slug": "alpha-group",
+            "name": "Advanced Kubernetes",
+            "slug": "advanced-kubernetes",
             "city": "San Francisco",
             "country_code": "US",
             "country_name": "United States",
-            "logo_url": "https://example.com/alpha-logo.png",
+            "logo_url": "https://example.com/k8s-logo.png",
             "region": {
                 "region_id": "00000000-0000-0000-0000-000000000012",
                 "name": "North America",
@@ -156,8 +170,8 @@ select is(
             },
             "created_at": 1704205800,
             "group_id": "00000000-0000-0000-0000-000000000022",
-            "name": "Zeta Group",
-            "slug": "zeta-group",
+            "name": "Zero Trust Security",
+            "slug": "zero-trust-security",
             "city": "New York",
             "country_code": "US",
             "country_name": "United States",
@@ -167,6 +181,9 @@ select is(
     'list_community_groups should return groups with full JSON structure ordered alphabetically by name'
 );
 
--- Finish tests and rollback transaction
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 select * from finish();
 rollback;
