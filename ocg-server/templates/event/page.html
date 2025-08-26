@@ -130,7 +130,7 @@
             <div class="pb-8">
               <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this event</h2>
               <div class="prose prose-stone max-w-none">
-                <div class="text-stone-700 text-base/6 markdown">{{ event.description|demoji|safe }}</div>
+                <div class="text-stone-700 text-base/6 markdown">{{ event.description|md_to_html|safe }}</div>
               </div>
             </div>
           </div>
@@ -271,7 +271,7 @@
                 {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ session.ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
                 {% call common::event_badge(kind = session.kind, extra_styles = Some("flex sm:hidden ms-3")) -%}
               </div>
-              <div class="text-stone-700 text-sm line-clamp-3 flex-grow">{{ session.description|demoji|safe }}</div>
+              <div class="text-stone-700 text-sm line-clamp-3 flex-grow">{{ session.description|md_to_html|safe }}</div>
               {% if !session.speakers.is_empty() -%}
                 <div class="mt-4">
                   <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>

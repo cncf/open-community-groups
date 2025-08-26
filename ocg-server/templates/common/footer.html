@@ -1,5 +1,5 @@
 {# Footer -#}
-<footer class="flex-none bg-stone-950 text-center text-white text-surface/75 lg:text-left" 
+<footer class="flex-none bg-stone-950 text-center text-white text-surface/75 lg:text-left"
         role="contentinfo"
         aria-label="Site footer">
   <div class="px-8 py-6 lg:px-16 lg:py-12">
@@ -56,7 +56,7 @@
     {# Copyright section -#}
     <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300">
       {% if let Some(copyright_notice) = self.community.copyright_notice -%}
-        <div class="mb-4 copyright">{{ copyright_notice|safe }}</div>
+        <div class="mb-4 copyright">{{ copyright_notice|md_to_html|safe }}</div>
       {% endif -%}
       <p>
         Powered by <a href="https://github.com/cncf/open-community-groups"

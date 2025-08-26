@@ -6,6 +6,7 @@
 
 use chrono::{DateTime, Utc};
 use num_format::{Locale, ToFormattedString};
+use tracing::error;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::templates::common::User;
@@ -38,6 +39,19 @@ pub(crate) fn display_some_datetime(
     match value {
         Some(value) => Ok(value.format(format).to_string()),
         None => Ok(String::new()),
+    }
+}
+
+/// Convert a markdown string to HTML using GitHub Flavored Markdown options.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+pub(crate) fn md_to_html(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
+    let options = markdown::Options::gfm();
+    match markdown::to_html_with_options(s, &options) {
+        Ok(html) => Ok(html),
+        Err(e) => {
+            error!("error converting markdown to html: {}", e);
+            Ok("error converting markdown to html".to_string())
+        }
     }
 }
 

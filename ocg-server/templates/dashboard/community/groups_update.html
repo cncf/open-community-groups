@@ -113,12 +113,7 @@
             Description <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
-            <textarea id="description"
-                      name="description"
-                      rows="4"
-                      class="input-primary"
-                      placeholder="Describe what this group is about, its activities, and its goals..."
-                      required>{% if let Some(description) = group.description %}{{ description }}{% endif %}</textarea>
+            <markdown-editor id="description" name="description" content="{%- if let Some(description) = group.description -%}{{ description }}{%- endif -%}" required></markdown-editor>
           </div>
           <p class="form-legend">Brief description of the group and its purpose.</p>
         </div>

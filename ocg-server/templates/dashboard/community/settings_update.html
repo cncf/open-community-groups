@@ -81,12 +81,7 @@
             Description <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
-            <textarea id="description"
-                      name="description"
-                      rows="4"
-                      class="input-primary"
-                      placeholder="Brief description of the community's purpose or focus..."
-                      required>{{ community.description }}</textarea>
+            <markdown-editor id="description" name="description" content="{{ community.description }}" required></markdown-editor>
           </div>
           <p class="form-legend">Brief description of the community's purpose or focus.</p>
         </div>
@@ -169,11 +164,11 @@
         <div class="col-span-full">
           <label for="copyright_notice" class="form-label">Copyright Notice</label>
           <div class="mt-2">
-            <textarea id="copyright_notice"
-                      name="copyright_notice"
-                      rows="3"
-                      class="input-primary"
-                      placeholder="© 2024 Community Name. All rights reserved.">{% if let Some(copyright_notice) = community.copyright_notice %}{{ copyright_notice }}{% endif %}</textarea>
+            <markdown-editor id="copyright_notice" name="copyright_notice" mini
+            {% if let Some(copyright_notice) = community.copyright_notice -%}
+              content="{{ copyright_notice }}"
+            {% endif -%}
+            ></markdown-editor>
           </div>
           <p class="form-legend">Copyright text displayed in the footer.</p>
         </div>
@@ -409,11 +404,11 @@
         <div class="col-span-full">
           <label for="new_group_details" class="form-label">New Group Details</label>
           <div class="mt-2">
-            <textarea id="new_group_details"
-                      name="new_group_details"
-                      rows="4"
-                      class="input-primary"
-                      placeholder="Instructions for creating new groups...">{% if let Some(new_group_details) = community.new_group_details %}{{ new_group_details }}{% endif %}</textarea>
+            <markdown-editor id="new_group_details" name="new_group_details" mini
+            {% if let Some(new_group_details) = community.new_group_details -%}
+              content="{{ new_group_details }}"
+            {% endif -%}
+            ></markdown-editor>
           </div>
           <p class="form-legend">Instructions for creating new groups.</p>
         </div>
