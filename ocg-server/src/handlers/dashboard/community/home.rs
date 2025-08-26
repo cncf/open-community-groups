@@ -51,6 +51,7 @@ pub(crate) async fn page(
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Account => Content::Account(Box::new(auth::UpdateUserPage {
+            has_password: user.has_password.unwrap_or(false),
             user: UserDetails::from(user),
         })),
         Tab::Groups => {

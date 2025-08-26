@@ -58,6 +58,8 @@ pub(crate) struct SignUpPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "auth/update_user.html")]
 pub(crate) struct UpdateUserPage {
+    /// Whether the user has a password set.
+    pub has_password: bool,
     /// User details to be updated.
     pub user: UserDetails,
 }
