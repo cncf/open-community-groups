@@ -99,7 +99,7 @@
         {# End modal header -#}
 
         {# Modal content -#}
-        <div class="new-group-content p-4 md:p-8">{{ new_group_details|safe }}</div>
+        <div class="new-group-content p-4 md:p-8">{{ new_group_details|md_to_html|safe }}</div>
         {# End modal content -#}
       </div>
     </div>
@@ -158,7 +158,7 @@
 
       {# User dropdown menu -#}
       <div id="user-dropdown"
-           class="dropdown absolute hidden z-10 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+           class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
           <li>
@@ -199,7 +199,8 @@
 
           {% if let Some(belongs_to_any_group_team) = user.belongs_to_any_group_team -%}
             {% if belongs_to_any_group_team -%}
-              <li role="none">
+              <li class="{%- if let Some(belongs_to_community_team) = user.belongs_to_community_team -%} {%- if !belongs_to_community_team -%} border-t border-stone-200 mt-2 pt-2 {%- endif -%}{%- endif -%}"
+                  role="none">
                 <a href="/dashboard/group"
                    hx-boost="true"
                    hx-target="body"
@@ -238,7 +239,7 @@
 
       {# User dropdown menu for non-logged users -#}
       <div id="user-dropdown"
-           class="dropdown absolute hidden z-10 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+           class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
           {# Sign up -#}
