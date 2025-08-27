@@ -135,13 +135,13 @@
           <label for="timezone" class="form-label">
             Timezone <span class="asterisk">*</span>
           </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="timezone"
-                   id="timezone"
-                   class="input-primary"
-                   placeholder="America/New_York"
-                   required>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="timezone" name="timezone" class="select-primary" required>
+              <option value="">Select a timezone</option>
+              {% for timezone in timezones %}
+                <option value="{{ timezone }}">{{ timezone }}</option>
+              {% endfor %}
+            </select>
           </div>
           <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
         </div>
