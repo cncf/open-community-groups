@@ -482,13 +482,6 @@
     // Handle datetime conversion and slug generation before request
     eventsForm.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'events-form') {
-        const nameInput = document.getElementById('name');
-
-        if (nameInput && nameInput.value.trim()) {
-          const slug = generateSlug(nameInput.value);
-          e.detail.parameters.slug = slug;
-        }
-
         // Convert datetime-local values to proper ISO format for PostgreSQL
         const startsAtInput = document.getElementById('starts_at_input');
         const endsAtInput = document.getElementById('ends_at_input');

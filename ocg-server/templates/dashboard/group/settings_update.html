@@ -388,9 +388,6 @@
     showErrorAlert,
     showSuccessAlert
   } from '/static/js/common/alerts.js';
-  import {
-    generateSlug
-  } from '/static/js/dashboard/common.js';
 
   const groupsForm = document.getElementById('groups-form');
   const cancelButton = document.getElementById('cancel-button');
@@ -402,18 +399,6 @@
   }
 
   if (groupsForm) {
-    // Generate slug before form submission (if name is changed)
-    groupsForm.addEventListener('htmx:beforeRequest', (e) => {
-      if (e.detail.elt.id === 'groups-form') {
-        const nameInput = document.getElementById('name');
-        const slugInput = document.querySelector('input[name="slug"]');
-
-        if (nameInput && slugInput && nameInput.value.trim()) {
-          slugInput.value = generateSlug(nameInput.value);
-        }
-      }
-    });
-
     groupsForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'groups-form') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
