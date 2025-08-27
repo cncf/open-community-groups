@@ -44,7 +44,6 @@ begin
             'email', u.email,
             'email_verified', u.email_verified,
             'name', u.name,
-            'password', u.password,
             'user_id', u.user_id,
             'username', u.username
         )),
