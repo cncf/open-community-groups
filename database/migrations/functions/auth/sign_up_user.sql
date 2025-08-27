@@ -9,7 +9,6 @@ declare
     v_user_id uuid;
     v_verification_code uuid;
 begin
-    
     -- Insert the user
     insert into "user" (
         auth_hash,
@@ -29,23 +28,22 @@ begin
         p_user->>'username'
     )
     returning user_id into v_user_id;
-    
+
     -- Generate verification code if email is not verified
     if not p_email_verified then
         insert into email_verification_code (user_id)
         values (v_user_id)
         returning email_verification_code_id into v_verification_code;
     end if;
-    
+
     -- Return the user and verification code
     return query
-    select 
+    select
         json_strip_nulls(json_build_object(
             'auth_hash', u.auth_hash,
             'email', u.email,
             'email_verified', u.email_verified,
             'name', u.name,
-            'password', u.password,
             'user_id', u.user_id,
             'username', u.username
         )),

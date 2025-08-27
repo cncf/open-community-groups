@@ -58,7 +58,6 @@ select ok(
         "email": "verified@example.com",
         "email_verified": true,
         "name": "Verified User",
-        "password": "hashedpassword123",
         "username": "verifieduser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')
@@ -85,7 +84,6 @@ select ok(
         "email": "unverified@example.com",
         "email_verified": false,
         "name": "Unverified User",
-        "password": "hashedpassword456",
         "username": "unverifieduser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')
@@ -111,7 +109,6 @@ select ok(
         "email": "default@example.com",
         "email_verified": false,
         "name": "Default User",
-        "password": "hashedpassword789",
         "username": "defaultuser"
     }'::jsonb)
     and ("user"::jsonb ? 'auth_hash')
