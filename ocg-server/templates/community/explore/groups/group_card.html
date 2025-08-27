@@ -30,10 +30,10 @@
           {# End group name -#}
         </div>
 
-        {% if let Some(description) = group.description -%}
+        {% if let Some(description_short) = group.description_short -%}
           {# Group description -#}
           <div class="hidden relative text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2 md:block">
-            {{ description|demoji }}
+            {{ description_short|demoji }}
           </div>
           {# End group description -#}
         {% endif -%}
@@ -86,10 +86,10 @@
   </div>
   {# End mobile content -#}
 
-  {% if let Some(description) = group.description -%}
+  {% if let Some(description_short) = group.description_short -%}
     {# Mobile group description -#}
     <div class="block md:hidden">
-      <p class="text-xs text-stone-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description|demoji }}</p>
+      <p class="text-xs text-stone-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>
     </div>
     {# End mobile group description -#}
   {% endif -%}

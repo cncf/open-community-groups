@@ -61,7 +61,7 @@ insert into "group" (
     state,
     country_code,
     country_name,
-    description,
+    description_short,
     logo_url,
     location,
     created_at
@@ -77,7 +77,7 @@ insert into "group" (
     'NY',
     'US',
     'United States',
-    'A technology group focused on Kubernetes and cloud native technologies',
+    'A brief overview of the Seattle Kubernetes group',
     'https://example.com/group-logo.png',
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     '2024-01-15 10:00:00+00'
@@ -122,7 +122,7 @@ select is(
         "city": "New York",
         "country_code": "US",
         "country_name": "United States",
-        "description": "A technology group focused on Kubernetes and cloud native technologies",
+        "description_short": "A brief overview of the Seattle Kubernetes group",
         "latitude": 40.7128,
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,

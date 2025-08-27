@@ -98,8 +98,8 @@ pub struct GroupDetailed {
     pub country_code: Option<String>,
     /// Full country name of the group.
     pub country_name: Option<String>,
-    /// Group description text.
-    pub description: Option<String>,
+    /// Short group description text.
+    pub description_short: Option<String>,
     /// Latitude for map display.
     pub latitude: Option<f64>,
     /// URL to the group logo.
@@ -191,6 +191,8 @@ pub struct GroupFull {
     pub country_name: Option<String>,
     /// Group description text.
     pub description: Option<String>,
+    /// Short group description text.
+    pub description_short: Option<String>,
     /// Additional links as key-value pairs.
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Facebook profile URL.

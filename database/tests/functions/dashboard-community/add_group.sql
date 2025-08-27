@@ -51,7 +51,7 @@ select is(
     (select (get_group_full(
         add_group(
             :'communityID'::uuid,
-            '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group"}'::jsonb
+            '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
         )
     )::jsonb - 'created_at' - 'members_count' - 'group_id')),
     '{
@@ -63,6 +63,7 @@ select is(
             "normalized_name": "technology"
         },
         "description": "A simple test group",
+        "description_short": "Brief overview of the test group",
         "organizers": []
     }'::jsonb,
     'add_group should create group with minimal required fields and return expected structure'
@@ -78,6 +79,7 @@ select is(
                 "slug": "full-test-group",
                 "category_id": "00000000-0000-0000-0000-000000000011",
                 "description": "A fully populated test group",
+                "description_short": "Cloud native community group in Seattle",
                 "banner_url": "https://example.com/banner.jpg",
                 "city": "San Francisco",
                 "country_code": "US",
@@ -110,6 +112,7 @@ select is(
             "normalized_name": "technology"
         },
         "description": "A fully populated test group",
+        "description_short": "Cloud native community group in Seattle",
         "banner_url": "https://example.com/banner.jpg",
         "city": "San Francisco",
         "country_code": "US",
@@ -151,6 +154,7 @@ begin
             "slug": "empty-string-test-group-unique",
             "category_id": "00000000-0000-0000-0000-000000000011",
             "description": "",
+            "description_short": "",
             "banner_url": "",
             "city": "",
             "country_code": "",
@@ -182,6 +186,7 @@ select is(
         "name": "Empty String Test Group",
         "slug": "empty-string-test-group-unique",
         "description": null,
+        "description_short": null,
         "banner_url": null,
         "city": null,
         "country_code": null,
