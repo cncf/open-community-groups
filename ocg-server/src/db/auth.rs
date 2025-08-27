@@ -294,7 +294,12 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         db.execute(
-            r#"update "user" set password = $2::text where user_id = $1::uuid;"#,
+            r#"
+            update "user" set
+                auth_hash = encode(gen_random_bytes(32), 'hex'),
+                password = $2::text
+            where user_id = $1::uuid;
+            "#,
             &[&user_id, &new_password],
         )
         .await?;
