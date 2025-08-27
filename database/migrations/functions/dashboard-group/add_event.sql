@@ -4,6 +4,18 @@ create or replace function add_event(
     p_event jsonb
 )
 returns uuid as $$
+declare
+    v_timezone_abbr text;
+    v_event_id uuid;
+begin
+    -- Look up timezone abbreviation
+    select abbrev into v_timezone_abbr
+    from pg_timezone_names
+    where name = p_event->>'timezone';
+    if v_timezone_abbr is null then
+        raise exception 'Invalid timezone: %', p_event->>'timezone';
+    end if;
+
     insert into event (
         group_id,
         name,
@@ -25,6 +37,7 @@ returns uuid as $$
         starts_at,
         streaming_url,
         tags,
+        timezone_abbr,
         venue_address,
         venue_city,
         venue_name,
@@ -41,19 +54,23 @@ returns uuid as $$
         p_event->>'banner_url',
         (p_event->>'capacity')::int,
         p_event->>'description_short',
-        (p_event->>'ends_at')::timestamptz,
+        (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
         p_event->>'logo_url',
         p_event->>'meetup_url',
         case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
         p_event->>'recording_url',
         (p_event->>'registration_required')::boolean,
-        (p_event->>'starts_at')::timestamptz,
+        (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
         p_event->>'streaming_url',
         case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
+        v_timezone_abbr,
         p_event->>'venue_address',
         p_event->>'venue_city',
         p_event->>'venue_name',
         p_event->>'venue_zip_code'
     )
-    returning event_id;
-$$ language sql;
+    returning event_id into v_event_id;
+
+    return v_event_id;
+end;
+$$ language plpgsql;

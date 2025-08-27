@@ -41,7 +41,7 @@ insert into community (
 
 -- Event categories (for testing category updates)
 insert into event_category (event_category_id, name, slug, community_id)
-values 
+values
     (:'category1ID', 'Conference', 'conference', :'community1ID'),
     (:'category2ID', 'Workshop', 'workshop', :'community1ID');
 
@@ -115,7 +115,8 @@ select is(
         "name": "Updated Event Name",
         "published": false,
         "slug": "updated-event-slug",
-        "timezone": "America/Los_Angeles"
+        "timezone": "America/Los_Angeles",
+        "timezone_abbr": "PDT"
     }'::jsonb,
     'update_event should update basic fields correctly'
 );
@@ -128,14 +129,14 @@ select update_event(
         "name": "Fully Updated Event",
         "slug": "fully-updated-event",
         "description": "Fully updated description",
-        "timezone": "Europe/London",
+        "timezone": "Asia/Tokyo",
         "category_id": "00000000-0000-0000-0000-000000000011",
         "kind_id": "hybrid",
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
         "description_short": "Updated short description",
-        "starts_at": "2025-02-01T14:00:00Z",
-        "ends_at": "2025-02-01T16:00:00Z",
+        "starts_at": "2025-02-01T14:00:00",
+        "ends_at": "2025-02-01T16:00:00",
         "logo_url": "https://example.com/new-logo.png",
         "meetup_url": "https://meetup.com/new-event",
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
@@ -144,9 +145,9 @@ select update_event(
         "streaming_url": "https://youtube.com/new-live",
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
-        "venue_city": "London",
+        "venue_city": "Tokyo",
         "venue_name": "New Venue",
-        "venue_zip_code": "SW1A 1AA"
+        "venue_zip_code": "100-0001"
     }'::jsonb
 );
 
@@ -160,12 +161,13 @@ select is(
         "name": "Fully Updated Event",
         "published": false,
         "slug": "fully-updated-event",
-        "timezone": "Europe/London",
+        "timezone": "Asia/Tokyo",
+        "timezone_abbr": "JST",
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
         "description_short": "Updated short description",
-        "starts_at": 1738418400,
-        "ends_at": 1738425600,
+        "starts_at": 1738386000,
+        "ends_at": 1738393200,
         "logo_url": "https://example.com/new-logo.png",
         "meetup_url": "https://meetup.com/new-event",
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
@@ -174,9 +176,9 @@ select is(
         "streaming_url": "https://youtube.com/new-live",
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
-        "venue_city": "London",
+        "venue_city": "Tokyo",
         "venue_name": "New Venue",
-        "venue_zip_code": "SW1A 1AA"
+        "venue_zip_code": "100-0001"
     }'::jsonb,
     'update_event should update all fields correctly'
 );

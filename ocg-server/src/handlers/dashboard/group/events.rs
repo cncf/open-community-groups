@@ -28,12 +28,16 @@ pub(crate) async fn add_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let (categories, kinds) =
-        tokio::try_join!(db.list_event_categories(community_id), db.list_event_kinds())?;
+    let (categories, kinds, timezones) = tokio::try_join!(
+        db.list_event_categories(community_id),
+        db.list_event_kinds(),
+        db.list_timezones()
+    )?;
     let template = events::AddPage {
         group_id,
         categories,
         kinds,
+        timezones,
     };
 
     Ok(Html(template.render()?))
@@ -59,16 +63,18 @@ pub(crate) async fn update_page(
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let (event, categories, kinds) = tokio::try_join!(
+    let (event, categories, kinds, timezones) = tokio::try_join!(
         db.get_event_full(event_id),
         db.list_event_categories(community_id),
-        db.list_event_kinds()
+        db.list_event_kinds(),
+        db.list_timezones()
     )?;
     let template = events::UpdatePage {
         group_id,
         event,
         categories,
         kinds,
+        timezones,
     };
 
     Ok(Html(template.render()?))

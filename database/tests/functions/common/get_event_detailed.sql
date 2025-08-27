@@ -109,6 +109,7 @@ insert into event (
     starts_at,
     ends_at,
     timezone,
+    timezone_abbr,
     description_short,
     venue_name,
     venue_address,
@@ -127,6 +128,7 @@ insert into event (
     '2024-06-15 09:00:00+00',
     '2024-06-15 17:00:00+00',
     'America/New_York',
+    'EST',
     'Annual Kubernetes conference',
     'Convention Center',
     '123 Main St',
@@ -211,6 +213,7 @@ select is(
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -74.006,
         "starts_at": 1718442000,
+        "timezone_abbr": "EST",
         "venue_address": "123 Main St",
         "venue_city": "New York",
         "venue_name": "Convention Center"
