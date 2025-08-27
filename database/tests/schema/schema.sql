@@ -36,6 +36,7 @@ select has_table('user');
 select columns_are('community', array[
     'community_id',
     'active',
+    'community_site_layout_id',
     'created_at',
     'description',
     'display_name',
@@ -44,7 +45,7 @@ select columns_are('community', array[
     'name',
     'theme',
     'title',
-    'community_site_layout_id',
+
     'ad_banner_link_url',
     'ad_banner_url',
     'copyright_notice',
@@ -70,9 +71,10 @@ select columns_are('community_site_layout', array[
 
 select columns_are('community_team', array[
     'community_id',
-    'user_id',
-    'role',
     'created_at',
+    'role',
+    'user_id',
+
     'order'
 ]);
 
@@ -82,14 +84,15 @@ select columns_are('event', array[
     'created_at',
     'deleted',
     'description',
-    'name',
-    'published',
-    'timezone',
-    'tsdoc',
-    'slug',
     'event_category_id',
     'event_kind_id',
     'group_id',
+    'name',
+    'published',
+    'slug',
+    'timezone',
+    'tsdoc',
+
     'banner_url',
     'capacity',
     'deleted_at',
@@ -99,6 +102,7 @@ select columns_are('event', array[
     'meetup_url',
     'photos_urls',
     'published_at',
+    'published_by',
     'recording_url',
     'registration_required',
     'starts_at',
@@ -108,8 +112,7 @@ select columns_are('event', array[
     'venue_address',
     'venue_city',
     'venue_name',
-    'venue_zip_code',
-    'published_by'
+    'venue_zip_code'
 ]);
 
 select columns_are('event_attendee', array[
@@ -121,10 +124,11 @@ select columns_are('event_attendee', array[
 
 select columns_are('event_category', array[
     'event_category_id',
+    'community_id',
     'created_at',
     'name',
     'slug',
-    'community_id',
+
     'order'
 ]);
 
@@ -142,31 +146,33 @@ select columns_are('event_kind', array[
 select columns_are('event_sponsor', array[
     'event_sponsor_id',
     'created_at',
+    'event_id',
     'level',
     'logo_url',
     'name',
-    'event_id',
+
     'website_url'
 ]);
 
 select columns_are('group', array[
     'group_id',
     'active',
+    'community_id',
     'created_at',
     'deleted',
+    'group_category_id',
+    'group_site_layout_id',
     'name',
     'slug',
     'tsdoc',
-    'community_id',
-    'group_site_layout_id',
-    'group_category_id',
-    'description',
-    'description_short',
+
     'banner_url',
     'city',
     'country_code',
     'country_name',
     'deleted_at',
+    'description',
+    'description_short',
     'extra_links',
     'facebook_url',
     'flickr_url',
@@ -176,23 +182,24 @@ select columns_are('group', array[
     'location',
     'logo_url',
     'photos_urls',
+    'region_id',
     'slack_url',
     'state',
     'tags',
     'twitter_url',
     'website_url',
     'wechat_url',
-    'youtube_url',
-    'region_id'
+    'youtube_url'
 ]);
 
 select columns_are('group_category', array[
     'group_category_id',
+    'community_id',
     'created_at',
     'name',
     'normalized_name',
-    'order',
-    'community_id'
+
+    'order'
 ]);
 
 select columns_are('group_member', array[
@@ -208,10 +215,11 @@ select columns_are('group_site_layout', array[
 select columns_are('group_sponsor', array[
     'group_sponsor_id',
     'created_at',
+    'group_id',
     'level',
     'logo_url',
     'name',
-    'group_id',
+
     'website_url'
 ]);
 
@@ -220,16 +228,18 @@ select columns_are('group_team', array[
     'user_id',
     'role',
     'created_at',
+
     'order'
 ]);
 
 select columns_are('region', array[
     'region_id',
+    'community_id',
     'created_at',
     'name',
     'normalized_name',
-    'order',
-    'community_id'
+
+    'order'
 ]);
 
 select columns_are('user', array[
@@ -239,8 +249,8 @@ select columns_are('user', array[
     'created_at',
     'email',
     'email_verified',
-    'name',
     'username',
+
     'bio',
     'city',
     'company',
@@ -248,6 +258,7 @@ select columns_are('user', array[
     'facebook_url',
     'interests',
     'linkedin_url',
+    'name',
     'password',
     'photo_url',
     'timezone',
