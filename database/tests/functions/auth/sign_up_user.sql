@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -116,6 +116,68 @@ select ok(
     and verification_code is not null,
     'User without email_verified parameter should default to false and generate verification code'
 ) from default_user_result;
+
+-- Duplicate username should get numeric suffix starting at 2
+with duplicate_user_1 as (
+    select * from sign_up_user(
+        :'communityID',
+        jsonb_build_object(
+            'email', 'duplicate1@example.com',
+            'username', 'duplicateuser',
+            'name', 'First Duplicate User',
+            'password', 'hashedpassword111'
+        ),
+        true
+    )
+),
+duplicate_user_2 as (
+    select * from sign_up_user(
+        :'communityID',
+        jsonb_build_object(
+            'email', 'duplicate2@example.com',
+            'username', 'duplicateuser',
+            'name', 'Second Duplicate User',
+            'password', 'hashedpassword222'
+        ),
+        true
+    )
+)
+select ok(
+    (select "user"::jsonb->>'username' from duplicate_user_1) = 'duplicateuser'
+    and (select "user"::jsonb->>'username' from duplicate_user_2) = 'duplicateuser2',
+    'Duplicate username should get numeric suffix starting at 2'
+);
+
+-- Multiple duplicate usernames should increment properly
+with duplicate_user_3 as (
+    select * from sign_up_user(
+        :'communityID',
+        jsonb_build_object(
+            'email', 'duplicate3@example.com',
+            'username', 'duplicateuser',
+            'name', 'Third Duplicate User',
+            'password', 'hashedpassword333'
+        ),
+        true
+    )
+),
+duplicate_user_4 as (
+    select * from sign_up_user(
+        :'communityID',
+        jsonb_build_object(
+            'email', 'duplicate4@example.com',
+            'username', 'duplicateuser',
+            'name', 'Fourth Duplicate User',
+            'password', 'hashedpassword444'
+        ),
+        true
+    )
+)
+select ok(
+    (select "user"::jsonb->>'username' from duplicate_user_3) = 'duplicateuser3'
+    and (select "user"::jsonb->>'username' from duplicate_user_4) = 'duplicateuser4',
+    'Multiple duplicate usernames should increment properly (3, 4, etc)'
+);
 
 -- ============================================================================
 -- CLEANUP
