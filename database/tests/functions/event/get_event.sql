@@ -206,6 +206,7 @@ select is(
         "category_name": "Tech Talks",
         "recording_url": "https://youtube.com/watch?v=123",
         "streaming_url": "https://stream.example.com/live",
+        "timezone_abbr": "EST",
         "venue_address": "123 Main St",
         "venue_zip_code": "10001",
         "description_short": "Annual tech conference",

@@ -1,7 +1,7 @@
 //! Templates and types for managing events in the group dashboard.
 
 use askama::Template;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
@@ -20,6 +20,8 @@ pub(crate) struct AddPage {
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub kinds: Vec<EventKind>,
+    /// List of available timezones.
+    pub timezones: Vec<String>,
 }
 
 /// List events page template.
@@ -42,6 +44,8 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub kinds: Vec<EventKind>,
+    /// List of available timezones.
+    pub timezones: Vec<String>,
 }
 
 // Types.
@@ -70,7 +74,7 @@ pub(crate) struct Event {
     /// Short description of the event.
     pub description_short: Option<String>,
     /// Event end time.
-    pub ends_at: Option<DateTime<Utc>>,
+    pub ends_at: Option<NaiveDateTime>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
     /// Meetup.com URL.
@@ -82,7 +86,7 @@ pub(crate) struct Event {
     /// Whether registration is required.
     pub registration_required: Option<bool>,
     /// Event start time.
-    pub starts_at: Option<DateTime<Utc>>,
+    pub starts_at: Option<NaiveDateTime>,
     /// Streaming URL.
     pub streaming_url: Option<String>,
     /// Tags associated with the event.

@@ -22,6 +22,7 @@ returns json as $$
         'logo_url', e.logo_url,
         'longitude', st_x(g.location::geometry),
         'starts_at', floor(extract(epoch from e.starts_at)),
+        'timezone_abbr', e.timezone_abbr,
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
         'venue_name', e.venue_name

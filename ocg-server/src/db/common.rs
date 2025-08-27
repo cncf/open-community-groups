@@ -21,6 +21,9 @@ pub(crate) trait DBCommon {
 
     /// Gets group full details.
     async fn get_group_full(&self, group_id: Uuid) -> Result<GroupFull>;
+
+    /// Lists all available timezones.
+    async fn list_timezones(&self) -> Result<Vec<String>>;
 }
 
 #[async_trait]
@@ -65,5 +68,30 @@ impl DBCommon for PgDB {
         let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(group)
+    }
+
+    /// [`DBCommon::list_timezones`]
+    #[instrument(skip(self), err)]
+    async fn list_timezones(&self) -> Result<Vec<String>> {
+        trace!("db: list timezones");
+
+        let db = self.pool.get().await?;
+        let timezones = db
+            .query(
+                "
+                select name
+                from pg_timezone_names
+                where name not like 'posix%'
+                and name not like 'SystemV%'
+                order by name asc;
+                ",
+                &[],
+            )
+            .await?
+            .into_iter()
+            .map(|row| row.get("name"))
+            .collect();
+
+        Ok(timezones)
     }
 }
