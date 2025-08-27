@@ -81,7 +81,7 @@ begin
     select
         (
             select coalesce(json_agg(
-                format_group_description(get_group_detailed(group_id))
+                get_group_detailed(group_id)
             ), '[]')
             from (
                 select group_id

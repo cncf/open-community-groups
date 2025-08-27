@@ -161,6 +161,7 @@ select columns_are('group', array[
     'group_site_layout_id',
     'group_category_id',
     'description',
+    'description_short',
     'banner_url',
     'city',
     'country_code',

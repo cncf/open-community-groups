@@ -5,7 +5,6 @@
 {{ template "auth/user_owns_group.sql" }}
 {{ template "auth/verify_email.sql" }}
 
-{{ template "common/format_group_description.sql" }}
 {{ template "common/get_group_summary.sql" }}
 {{ template "common/get_event_detailed.sql" }}
 {{ template "common/get_event_full.sql" }}

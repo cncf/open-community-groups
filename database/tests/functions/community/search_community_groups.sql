@@ -8,6 +8,7 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
+
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
 \set category1ID '00000000-0000-0000-0000-000000000011'
@@ -67,7 +68,7 @@ insert into "group" (
     country_name,
     region_id,
     location,
-    description,
+    description_short,
     logo_url,
     created_at
 ) values
@@ -85,7 +86,7 @@ insert into "group" (
      'https://example.com/business-logo.png', '2024-01-01 10:00:00+00'),
     (:'group4ID', 'Tech Innovators', 'tech-innovators', :'community1ID', :'category1ID',
      array['innovation', 'tech'], 'Austin', 'TX', 'US', 'United States', :'region1ID',
-     ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group. PLEASE ADD A DESCRIPTION HERE for this meetup',
+     ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group.',
      'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00');
 
 -- Search without filters returns all groups with full JSON verification
@@ -105,6 +106,7 @@ select is(
             "city": "Austin",
             "country_code": "US",
             "country_name": "United States",
+            "description_short": "This is a placeholder group.",
             "latitude": 30.2672,
             "logo_url": "https://example.com/tech-logo.png",
             "longitude": -97.7431,
@@ -128,7 +130,7 @@ select is(
             "city": "San Francisco",
             "country_code": "US",
             "country_name": "United States",
-            "description": "SF Bay Area Kubernetes enthusiasts",
+            "description_short": "SF Bay Area Kubernetes enthusiasts",
             "latitude": 37.7749,
             "logo_url": "https://example.com/k8s-logo.png",
             "longitude": -122.4194,
@@ -152,7 +154,7 @@ select is(
             "city": "New York",
             "country_code": "US",
             "country_name": "United States",
-            "description": "NYC Docker community meetup group",
+            "description_short": "NYC Docker community meetup group",
             "latitude": 40.7128,
             "logo_url": "https://example.com/docker-logo.png",
             "longitude": -74.006,
@@ -176,7 +178,7 @@ select is(
             "city": "London",
             "country_code": "GB",
             "country_name": "United Kingdom",
-            "description": "London business leadership forum",
+            "description_short": "London business leadership forum",
             "latitude": 51.5074,
             "logo_url": "https://example.com/business-logo.png",
             "longitude": -0.1278

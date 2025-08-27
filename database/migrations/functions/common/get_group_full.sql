@@ -23,6 +23,7 @@ returns json as $$
         'country_code', g.country_code,
         'country_name', g.country_name,
         'description', g.description,
+        'description_short', g.description_short,
         'extra_links', g.extra_links,
         'facebook_url', g.facebook_url,
         'flickr_url', g.flickr_url,
