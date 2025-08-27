@@ -76,7 +76,7 @@ impl DBAuth for PgDB {
         db.execute(
             "
             insert into auth_session (
-                session_id,
+                auth_session_id,
                 data,
                 expires_at
             ) values (
@@ -98,7 +98,7 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         db.execute(
-            "delete from auth_session where session_id = $1::text;",
+            "delete from auth_session where auth_session_id = $1::text;",
             &[&session_id.to_string()],
         )
         .await?;
@@ -113,7 +113,7 @@ impl DBAuth for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_opt(
-                "select data, expires_at from auth_session where session_id = $1::text;",
+                "select data, expires_at from auth_session where auth_session_id = $1::text;",
                 &[&session_id.to_string()],
             )
             .await?;
@@ -265,7 +265,7 @@ impl DBAuth for PgDB {
             set
                 data = $2::jsonb,
                 expires_at = $3::timestamptz
-            where session_id = $1::text;
+            where auth_session_id = $1::text;
             ",
             &[&record.id.to_string(), &Json(&record.data), &record.expiry_date],
         )

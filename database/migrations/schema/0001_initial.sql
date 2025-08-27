@@ -372,7 +372,7 @@ create index session_speaker_session_id_idx on session_speaker (session_id);
 create index session_speaker_user_id_idx on session_speaker (user_id);
 
 create table auth_session (
-    session_id text primary key,
+    auth_session_id text primary key,
     data jsonb not null,
     expires_at timestamptz not null
 );
