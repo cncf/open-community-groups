@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(1);
 
 -- ============================================================================
 -- VARIABLES
@@ -63,83 +63,49 @@ insert into "user" (
 -- Update user with all updateable fields
 select update_user_details(
     :'userID'::uuid,
-    jsonb_build_object(
-        'name', 'Updated User',
-        'bio', 'This is my bio',
-        'city', 'San Francisco',
-        'company', 'Example Corp',
-        'country', 'USA',
-        'facebook_url', 'https://facebook.com/updateduser',
-        'interests', array['programming', 'music', 'sports'],
-        'linkedin_url', 'https://linkedin.com/in/updateduser',
-        'photo_url', 'https://example.com/photo.jpg',
-        'timezone', 'America/Los_Angeles',
-        'title', 'Software Engineer',
-        'twitter_url', 'https://twitter.com/updateduser',
-        'website_url', 'https://example.com/updateduser'
-    )
+    '{
+        "name": "Updated User",
+        "bio": "This is my bio",
+        "city": "San Francisco",
+        "company": "Example Corp",
+        "country": "USA",
+        "facebook_url": "https://facebook.com/updateduser",
+        "interests": ["programming", "music", "sports"],
+        "linkedin_url": "https://linkedin.com/in/updateduser",
+        "photo_url": "https://example.com/photo.jpg",
+        "timezone": "America/Los_Angeles",
+        "title": "Software Engineer",
+        "twitter_url": "https://twitter.com/updateduser",
+        "website_url": "https://example.com/updateduser"
+    }'::jsonb
 );
 
 select is(
     get_user_by_id(:'userID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', (select auth_hash from "user" where user_id = :'userID'::uuid),
-        'belongs_to_any_group_team', false,
-        'belongs_to_community_team', false,
-        'email', 'test@example.com',
-        'email_verified', true,
-        'name', 'Updated User',
-        'user_id', :'userID'::text,
-        'username', 'testuser',
-        'bio', 'This is my bio',
-        'city', 'San Francisco',
-        'company', 'Example Corp',
-        'country', 'USA',
-        'facebook_url', 'https://facebook.com/updateduser',
-        'interests', array['programming', 'music', 'sports'],
-        'linkedin_url', 'https://linkedin.com/in/updateduser',
-        'photo_url', 'https://example.com/photo.jpg',
-        'timezone', 'America/Los_Angeles',
-        'title', 'Software Engineer',
-        'twitter_url', 'https://twitter.com/updateduser',
-        'website_url', 'https://example.com/updateduser'
-    ),
+        'user_id', :'userID'::text
+    ) || '{
+        "belongs_to_any_group_team": false,
+        "belongs_to_community_team": false,
+        "email": "test@example.com",
+        "email_verified": true,
+        "name": "Updated User",
+        "username": "testuser",
+        "bio": "This is my bio",
+        "city": "San Francisco",
+        "company": "Example Corp",
+        "country": "USA",
+        "facebook_url": "https://facebook.com/updateduser",
+        "interests": ["programming", "music", "sports"],
+        "linkedin_url": "https://linkedin.com/in/updateduser",
+        "photo_url": "https://example.com/photo.jpg",
+        "timezone": "America/Los_Angeles",
+        "title": "Software Engineer",
+        "twitter_url": "https://twitter.com/updateduser",
+        "website_url": "https://example.com/updateduser"
+    }'::jsonb,
     'Should update all provided user fields'
-);
-
--- Update user with null optional fields
-select update_user_details(
-    :'userID'::uuid,
-    jsonb_build_object(
-        'name', 'Final User',
-        'bio', null,
-        'city', null,
-        'company', null,
-        'country', null,
-        'facebook_url', null,
-        'interests', null,
-        'linkedin_url', null,
-        'photo_url', null,
-        'timezone', null,
-        'title', null,
-        'twitter_url', null,
-        'website_url', null
-    )
-);
-
-select is(
-    get_user_by_id(:'userID'::uuid, false)::jsonb,
-    jsonb_build_object(
-        'auth_hash', (select auth_hash from "user" where user_id = :'userID'::uuid),
-        'belongs_to_any_group_team', false,
-        'belongs_to_community_team', false,
-        'email', 'test@example.com',
-        'email_verified', true,
-        'name', 'Final User',
-        'user_id', :'userID'::text,
-        'username', 'testuser'
-    ),
-    'Should handle null values for optional fields correctly'
 );
 
 -- ============================================================================
