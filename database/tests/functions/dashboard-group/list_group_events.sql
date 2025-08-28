@@ -177,6 +177,7 @@ select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
     '[
         {
+            "canceled": false,
             "event_id": "00000000-0000-0000-0000-000000000021",
             "group_name": "Test Group",
             "group_slug": "test-group",
@@ -193,6 +194,7 @@ select is(
             "venue_city": "San Francisco"
         },
         {
+            "canceled": false,
             "event_id": "00000000-0000-0000-0000-000000000022",
             "group_name": "Test Group",
             "group_slug": "test-group",
@@ -207,6 +209,7 @@ select is(
             "starts_at": 1705327200
         },
         {
+            "canceled": false,
             "event_id": "00000000-0000-0000-0000-000000000023",
             "group_name": "Test Group",
             "group_slug": "test-group",
@@ -230,6 +233,7 @@ select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     '[
         {
+            "canceled": false,
             "event_id": "00000000-0000-0000-0000-000000000024",
             "group_name": "Another Group",
             "group_slug": "another-group",

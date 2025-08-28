@@ -112,6 +112,7 @@ insert into event (
 select is(
     get_event_summary('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
+        "canceled": false,
         "event_id": "00000000-0000-0000-0000-000000000031",
         "group_name": "Seattle Kubernetes Meetup",
         "group_slug": "seattle-kubernetes-meetup",

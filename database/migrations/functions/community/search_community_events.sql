@@ -76,6 +76,7 @@ begin
         where g.community_id = p_community_id
         and g.active = true
         and e.published = true
+        and e.canceled = false
         and
             case when v_bbox is not null then
             st_intersects(g.location, v_bbox) else true end

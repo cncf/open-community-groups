@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -191,6 +191,41 @@ select throws_ok(
     'P0001',
     'event not found',
     'update_event should throw error when group_id does not match'
+);
+
+-- update_event throws error for canceled event
+-- First, create a canceled event for testing
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    canceled
+) values (
+    '00000000-0000-0000-0000-000000000004',
+    :'group1ID',
+    'Canceled Event',
+    'canceled-event',
+    'This event was canceled',
+    'America/New_York',
+    :'category1ID',
+    'in-person',
+    true
+);
+
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000004'::uuid,
+        '{"name": "Try to Update Canceled", "slug": "try-update-canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+    )$$,
+    'P0001',
+    'event not found',
+    'update_event should throw error when event is canceled'
 );
 
 -- ============================================================================

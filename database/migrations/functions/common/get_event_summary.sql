@@ -2,6 +2,7 @@
 create or replace function get_event_summary(p_event_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
+        'canceled', e.canceled,
         'event_id', e.event_id,
         'group_name', g.name,
         'group_slug', g.slug,
