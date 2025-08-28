@@ -50,10 +50,14 @@ pub(crate) async fn page(
 
     // Prepare content for the selected tab
     let content = match tab {
-        Tab::Account => Content::Account(Box::new(auth::UpdateUserPage {
-            has_password: user.has_password.unwrap_or(false),
-            user: UserDetails::from(user),
-        })),
+        Tab::Account => {
+            let timezones = db.list_timezones().await?;
+            Content::Account(Box::new(auth::UpdateUserPage {
+                has_password: user.has_password.unwrap_or(false),
+                timezones,
+                user: UserDetails::from(user),
+            }))
+        }
         Tab::Groups => {
             let groups = db.list_community_groups(community_id).await?;
             Content::Groups(groups::ListPage { groups })
