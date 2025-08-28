@@ -3,7 +3,7 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::types::group::GroupFull;
+use crate::types::group::{GroupCategory, GroupFull, GroupRegion};
 
 // Pages templates.
 
@@ -11,8 +11,12 @@ use crate::types::group::GroupFull;
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/settings_update.html")]
 pub(crate) struct UpdatePage {
+    /// List of available group categories.
+    pub categories: Vec<GroupCategory>,
     /// Group information.
     pub group: GroupFull,
+    /// List of available regions.
+    pub regions: Vec<GroupRegion>,
 }
 
 // Types.
