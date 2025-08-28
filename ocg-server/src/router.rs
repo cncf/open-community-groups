@@ -213,12 +213,12 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
             get(dashboard::community::groups::add_page).post(dashboard::community::groups::add),
         )
         .route(
-            "/groups/{group_id}/update",
-            get(dashboard::community::groups::update_page).put(dashboard::community::groups::update),
-        )
-        .route(
             "/groups/{group_id}/delete",
             delete(dashboard::community::groups::delete),
+        )
+        .route(
+            "/groups/{group_id}/update",
+            get(dashboard::community::groups::update_page).put(dashboard::community::groups::update),
         )
         .route(
             "/settings/update",
@@ -241,13 +241,14 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/events/add",
             get(dashboard::group::events::add_page).post(dashboard::group::events::add),
         )
-        .route(
-            "/events/{event_id}/update",
-            get(dashboard::group::events::update_page).put(dashboard::group::events::update),
-        )
+        .route("/events/{event_id}/cancel", put(dashboard::group::events::cancel))
         .route(
             "/events/{event_id}/delete",
             delete(dashboard::group::events::delete),
+        )
+        .route(
+            "/events/{event_id}/update",
+            get(dashboard::group::events::update_page).put(dashboard::group::events::update),
         )
         .route(
             "/settings/update",

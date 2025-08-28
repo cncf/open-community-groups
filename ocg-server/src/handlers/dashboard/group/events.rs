@@ -109,6 +109,25 @@ pub(crate) async fn add(
         .into_response())
 }
 
+/// Cancels an event (sets canceled=true).
+#[instrument(skip_all, err)]
+pub(crate) async fn cancel(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Cancel event in database
+    db.cancel_event(group_id, event_id).await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [(
+            "HX-Location",
+            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
+        )],
+    ))
+}
+
 /// Deletes an event from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
@@ -125,8 +144,7 @@ pub(crate) async fn delete(
             "HX-Location",
             r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
         )],
-    )
-        .into_response())
+    ))
 }
 
 /// Updates an existing event's information in the database.
