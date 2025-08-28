@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(4);
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupDeletedID '00000000-0000-0000-0000-000000000022'
 \set group2ID '00000000-0000-0000-0000-000000000023'
+\set group3ID '00000000-0000-0000-0000-000000000024'
 
 -- ============================================================================
 -- SEED DATA
@@ -91,6 +92,33 @@ insert into "group" (
     '2024-02-15 10:00:00+00',
     '2024-01-15 10:00:00+00'
 );
+
+-- group with array fields for testing explicit null values
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    description,
+    tags,
+    photos_urls,
+    created_at
+) values (
+    :'group3ID'::uuid,
+    'Test Group for Null Arrays',
+    'test-group-null-arrays',
+    :'communityID',
+    :'category1ID',
+    'Has array fields',
+    array['original', 'tags'],
+    array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+    '2024-01-15 10:00:00+00'
+);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
 
 -- update_group function updates group fields correctly
 select update_group(
@@ -214,35 +242,10 @@ select update_group(
 );
 
 select is(
-    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location'
-     from (
-        select * from "group" where group_id = :'group2ID'::uuid
-     ) t),
+    (select get_group_full(:'group2ID'::uuid)::jsonb - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
     '{
         "name": "Updated Group Empty Strings",
-        "slug": "updated-group-empty-strings",
-        "description": null,
-        "description_short": null,
-        "banner_url": null,
-        "city": null,
-        "state": null,
-        "country_code": null,
-        "country_name": null,
-        "website_url": null,
-        "facebook_url": null,
-        "twitter_url": null,
-        "linkedin_url": null,
-        "github_url": null,
-        "slack_url": null,
-        "youtube_url": null,
-        "instagram_url": null,
-        "flickr_url": null,
-        "wechat_url": null,
-        "logo_url": null,
-        "region_id": null,
-        "extra_links": null,
-        "photos_urls": null,
-        "tags": null
+        "slug": "updated-group-empty-strings"
     }'::jsonb,
     'update_group should convert empty strings to null for nullable fields'
 );
@@ -257,6 +260,30 @@ select throws_ok(
     'P0001',
     'group not found',
     'update_group should throw error when community_id does not match'
+);
+
+-- update_group handles explicit null values for array fields
+select update_group(
+    :'communityID'::uuid,
+    :'group3ID'::uuid,
+    '{
+        "name": "Updated Group Null Arrays",
+        "slug": "updated-group-null-arrays",
+        "category_id": "00000000-0000-0000-0000-000000000011",
+        "description": "Updated description",
+        "tags": null,
+        "photos_urls": null
+    }'::jsonb
+);
+
+select is(
+    (select get_group_full(:'group3ID'::uuid)::jsonb - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
+    '{
+        "name": "Updated Group Null Arrays",
+        "slug": "updated-group-null-arrays",
+        "description": "Updated description"
+    }'::jsonb,
+    'update_group should handle explicit null values for array fields (tags, photos_urls)'
 );
 
 -- ============================================================================

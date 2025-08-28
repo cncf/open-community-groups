@@ -439,11 +439,18 @@ pub(crate) async fn update_user_details(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    Form(user_data): Form<UserDetails>,
+    State(serde_qs_de): State<serde_qs::Config>,
+    body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session
     let Some(user) = auth_session.user else {
         return Ok(StatusCode::FORBIDDEN.into_response());
+    };
+
+    // Get user details from body
+    let user_data: UserDetails = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
+        Ok(data) => data,
+        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
     };
 
     // Update user in database

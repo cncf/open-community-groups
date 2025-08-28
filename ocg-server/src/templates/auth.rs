@@ -4,6 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum_messages::Message;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
 use crate::{
     auth::AuthSession, config::LoginOptions, handlers::auth::AUTH_PROVIDER_KEY, templates::PageId,
@@ -111,6 +112,7 @@ impl User {
 }
 
 /// User details that can be updated.
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserDetails {
     /// User's display name.

@@ -12,7 +12,8 @@ create or replace function update_user_details(
         country = p_user->>'country',
         facebook_url = p_user->>'facebook_url',
         interests = case
-            when p_user->'interests' is not null then array(select jsonb_array_elements_text(p_user->'interests'))
+            when p_user ? 'interests' and jsonb_typeof(p_user->'interests') != 'null' then 
+                array(select jsonb_array_elements_text(p_user->'interests'))
             else null
         end,
         linkedin_url = p_user->>'linkedin_url',
