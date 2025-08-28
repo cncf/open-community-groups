@@ -92,6 +92,8 @@ export const showConfirmAlert = (message, buttonId, confirmText) => {
     confirmButtonText: confirmText,
     cancelButtonText: "No",
     ...getCommonAlertOptions(),
+    position: "center",
+    backdrop: true,
   }).then((result) => {
     if (result.isConfirmed) {
       htmx.trigger(`#${buttonId}`, "confirmed");

@@ -180,6 +180,12 @@ button:enabled {
   cursor: pointer;
 }
 
+/* Generic styles */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 0;
+}
+/* End generic styles */
+
 /* Footer */
 .copyright a {
   color: white;
@@ -326,6 +332,7 @@ input:placeholder-shown {
 .icon-attendees { --icon-url: url('/static/images/icons/attendees.svg'); }
 .icon-buildings { --icon-url: url('/static/images/icons/buildings.svg'); }
 .icon-calendar { --icon-url: url('/static/images/icons/calendar.svg'); }
+.icon-cancel { --icon-url: url('/static/images/icons/cancel.svg'); }
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
@@ -369,6 +376,7 @@ input:placeholder-shown {
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }
 .icon-user-plus { --icon-url: url('/static/images/icons/user_plus.svg'); }
+.icon-vertical-dots { --icon-url: url('/static/images/icons/vertical_dots.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
