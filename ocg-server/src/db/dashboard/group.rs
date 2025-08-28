@@ -1,6 +1,6 @@
 //! Database interface for group dashboard operations.
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
@@ -20,6 +20,9 @@ use crate::{
 pub(crate) trait DBDashboardGroup {
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
+
+    /// Cancels an event (sets canceled=true).
+    async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
     async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
@@ -57,6 +60,30 @@ impl DBDashboardGroup for PgDB {
             .get(0);
 
         Ok(event_id)
+    }
+
+    /// [`DBDashboardGroup::cancel_event`]
+    #[instrument(skip(self), err)]
+    async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
+        trace!("db: cancel event");
+
+        let db = self.pool.get().await?;
+        let rows_affected = db
+            .execute(
+                "
+                update event set canceled = true
+                where event_id = $1
+                and group_id = $2
+                and deleted = false;
+                ",
+                &[&event_id, &group_id],
+            )
+            .await?;
+        if rows_affected == 0 {
+            bail!("event not found or already deleted");
+        }
+
+        Ok(())
     }
 
     /// [`DBDashboardGroup::delete_event`]
