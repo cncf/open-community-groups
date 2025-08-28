@@ -68,8 +68,16 @@ pub(crate) async fn page(
             Content::Events(events::ListPage { events })
         }
         Tab::Settings => {
-            let group = db.get_group_full(group_id).await?;
-            Content::Settings(Box::new(settings::UpdatePage { group }))
+            let (group, categories, regions) = tokio::try_join!(
+                db.get_group_full(group_id),
+                db.list_group_categories(community_id),
+                db.list_regions(community_id)
+            )?;
+            Content::Settings(Box::new(settings::UpdatePage {
+                categories,
+                group,
+                regions,
+            }))
         }
     };
 

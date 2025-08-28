@@ -23,11 +23,20 @@ use crate::{
 /// Displays the page to update group settings.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let group = db.get_group_full(group_id).await?;
-    let template = settings::UpdatePage { group };
+    let (group, categories, regions) = tokio::try_join!(
+        db.get_group_full(group_id),
+        db.list_group_categories(community_id),
+        db.list_regions(community_id)
+    )?;
+    let template = settings::UpdatePage {
+        categories,
+        group,
+        regions,
+    };
 
     Ok(Html(template.render()?))
 }
