@@ -84,8 +84,7 @@ select is(
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
         "slug": "k8s-fundamentals-workshop",
-        "timezone": "America/New_York",
-        "timezone_abbr": "EDT"
+        "timezone": "America/New_York"
     }'::jsonb,
     'add_event should create event with minimal required fields and return expected structure'
 );
@@ -130,7 +129,6 @@ select is(
         "published": false,
         "slug": "cloudnativecon-seattle-2025",
         "timezone": "America/Los_Angeles",
-        "timezone_abbr": "PDT",
         "banner_url": "https://example.com/banner.jpg",
         "capacity": 100,
         "description_short": "Short description",

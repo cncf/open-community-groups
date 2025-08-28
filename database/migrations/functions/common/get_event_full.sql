@@ -28,7 +28,6 @@ returns json as $$
         'starts_at', floor(extract(epoch from e.starts_at)),
         'streaming_url', e.streaming_url,
         'tags', e.tags,
-        'timezone_abbr', e.timezone_abbr,
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
         'venue_name', e.venue_name,

@@ -87,7 +87,6 @@ insert into event (
     published,
     starts_at,
     timezone,
-    timezone_abbr,
     venue_city,
     logo_url
 ) values (
@@ -101,7 +100,6 @@ insert into event (
     true,
     '2024-06-15 09:00:00+00',
     'America/New_York',
-    'EST',
     'New York',
     'https://example.com/event-logo.png'
 );
@@ -127,7 +125,6 @@ select is(
         "group_state": "NY",
         "logo_url": "https://example.com/event-logo.png",
         "starts_at": 1718442000,
-        "timezone_abbr": "EST",
         "venue_city": "New York"
     }'::jsonb,
     'get_event_summary should return correct event summary data as JSON'

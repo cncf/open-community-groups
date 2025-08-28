@@ -51,8 +51,6 @@ pub struct EventSummary {
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// Timezone abbreviation.
-    pub timezone_abbr: Option<String>,
     /// City where the event venue is located (for in-person events).
     pub venue_city: Option<String>,
 }
@@ -75,7 +73,6 @@ impl From<EventDetailed> for EventSummary {
             group_state: event.group_state,
             logo_url: event.logo_url,
             starts_at: event.starts_at,
-            timezone_abbr: event.timezone_abbr,
             venue_city: event.venue_city,
         }
     }
@@ -157,8 +154,6 @@ pub struct EventDetailed {
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// Timezone abbreviation.
-    pub timezone_abbr: Option<String>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
     /// City where the event takes place.
@@ -265,8 +260,6 @@ pub struct EventFull {
     pub streaming_url: Option<String>,
     /// Event tags for categorization.
     pub tags: Option<Vec<String>>,
-    /// Timezone abbreviation.
-    pub timezone_abbr: Option<String>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
     /// City where the event takes place.
