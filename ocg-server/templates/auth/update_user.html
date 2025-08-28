@@ -9,8 +9,9 @@
       hx-indicator="#dashboard-spinner"
       hx-disabled-elt="button[type=submit]">
   <div class="space-y-12">
-    <div>
-      {% call dashboard_macros::form_title(title = "Account", description = "You can update your personal user account details here.") -%}
+    {# Personal Details section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call dashboard_macros::form_title(title = "Personal Details", description = "Your basic profile information.") -%}
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Name -#}
         <div class="col-span-3">
@@ -31,8 +32,213 @@
           </div>
         </div>
         {# End name -#}
+
+        {# Timezone -#}
+        <div class="col-span-3">
+          <label for="timezone" class="form-label">Timezone</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="timezone"
+                   id="timezone"
+                   value="{%- if let Some(timezone) = user.timezone -%}{{ timezone }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End timezone -#}
+
+        {# Title -#}
+        <div class="col-span-3">
+          <label for="title" class="form-label">Title</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="title"
+                   id="title"
+                   value="{%- if let Some(title) = user.title -%}{{ title }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End title -#}
+
+        {# Company -#}
+        <div class="col-span-3">
+          <label for="company" class="form-label">Company</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="company"
+                   id="company"
+                   value="{%- if let Some(company) = user.company -%}{{ company }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End company -#}
+
+        {# Photo URL -#}
+        <div class="col-span-full">
+          <label for="photo_url" class="form-label">Photo URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="photo_url"
+                   id="photo_url"
+                   value="{%- if let Some(photo_url) = user.photo_url -%}{{ photo_url }}{%- endif -%}"
+                   class="input-primary"
+                   placeholder="https://example.com/photo.jpg"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End photo URL -#}
+
+        {# Bio -#}
+        <div class="col-span-full">
+          <label for="bio" class="form-label">Bio</label>
+          <div class="mt-2">
+            <markdown-editor id="bio" name="bio" content="{%- if let Some(bio) = user.bio -%}{{ bio }}{%- endif -%}" mini></markdown-editor>
+          </div>
+        </div>
+        {# End bio -#}
+
+        {# Interests -#}
+        <div class="col-span-3">
+          <label for="interests" class="form-label">Interests</label>
+          <div class="mt-2">
+            <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = user.interests -%}{{ interests|json }}{%- endif -%}">
+            </multiple-inputs>
+          </div>
+        </div>
+        {# End interests -#}
       </div>
     </div>
+    {# End Personal Details section -#}
+
+    {# Location section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call dashboard_macros::form_title(title = "Location", description = "Optional location information.") -%}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# City -#}
+        <div class="col-span-3">
+          <label for="city" class="form-label">City</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="city"
+                   id="city"
+                   value="{%- if let Some(city) = user.city -%}{{ city }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End city -#}
+
+        {# Country -#}
+        <div class="col-span-3">
+          <label for="country" class="form-label">Country</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="country"
+                   id="country"
+                   value="{%- if let Some(country) = user.country -%}{{ country }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End country -#}
+      </div>
+    </div>
+    {# End Location section -#}
+
+    {# Social links section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call dashboard_macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Website URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="website_url" class="form-label">Website</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-link bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="website_url"
+                   id="website_url"
+                   value="{%- if let Some(website_url) = user.website_url -%}{{ website_url }}{%- endif -%}"
+                   class="input-primary ps-10"
+                   placeholder="https://example.com">
+          </div>
+        </div>
+        {# End Website URL -#}
+
+        {# LinkedIn URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="linkedin_url" class="form-label">LinkedIn</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="linkedin_url"
+                   id="linkedin_url"
+                   value="{%- if let Some(linkedin_url) = user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"
+                   class="input-primary ps-10"
+                   placeholder="https://linkedin.com/in/username">
+          </div>
+        </div>
+        {# End LinkedIn URL -#}
+
+        {# Twitter URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="twitter_url" class="form-label">Twitter</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="twitter_url"
+                   id="twitter_url"
+                   value="{%- if let Some(twitter_url) = user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
+                   class="input-primary ps-10"
+                   placeholder="https://twitter.com/username">
+          </div>
+        </div>
+        {# End Twitter URL -#}
+
+        {# Facebook URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="facebook_url" class="form-label">Facebook</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="facebook_url"
+                   id="facebook_url"
+                   value="{%- if let Some(facebook_url) = user.facebook_url -%}{{ facebook_url }}{%- endif -%}"
+                   class="input-primary ps-10"
+                   placeholder="https://facebook.com/username">
+          </div>
+        </div>
+        {# End Facebook URL -#}
+      </div>
+    </div>
+    {# End social links section -#}
 
     <div class="mt-6">
       <button type="submit" class="btn-primary">Save</button>
@@ -42,7 +248,7 @@
 {# End update user details -#}
 
 {% if has_password -%}
-  <hr class="w-full h-px mx-auto my-12 bg-stone-200 border-0">
+  <hr class="w-full h-1 mx-auto my-12 bg-stone-200 border-0">
 
   {# Update user password form -#}
   <form id="password-form"
@@ -110,7 +316,8 @@
 
 <script type="module">
   import {
-    showErrorAlert
+    showErrorAlert,
+    showSuccessAlert
   } from '/static/js/common/alerts.js';
   import {
     isSuccessfulXHRStatus
@@ -123,6 +330,8 @@
     userDetailsForm.addEventListener('htmx:afterRequest', (e) => {
       if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
         showErrorAlert('Something went wrong updating the user details, please try again later.');
+      } else {
+        showSuccessAlert('User details updated successfully.');
       }
     });
   }
@@ -146,6 +355,8 @@
     passwordForm.addEventListener('htmx:afterRequest', (e) => {
       if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
         showErrorAlert('Something went wrong updating the password, please try again later.');
+      } else {
+        showSuccessAlert('Password updated successfully.');
       }
     });
   }

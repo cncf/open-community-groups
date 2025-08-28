@@ -68,6 +68,8 @@ export class MultipleInputs extends LitWrapper {
       this._nextId = this.items.length;
     } else {
       this.items = [{ id: 0, value: "" }];
+      // Set _nextId to 1 to prevent ID collision with the initial item
+      this._nextId = 1;
     }
   }
 
@@ -154,8 +156,8 @@ export class MultipleInputs extends LitWrapper {
    * @public
    */
   reset() {
-    this._nextId = 0;
     this.items = [{ id: 0, value: "" }];
+    this._nextId = 1;
     this.requestUpdate();
   }
 
