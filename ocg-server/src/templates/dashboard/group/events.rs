@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::types::event::{EventCategory, EventFull, EventKindSummary as EventKind, EventSummary};
+use crate::types::event::{
+    EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind,
+};
 
 // Pages templates.
 
@@ -75,6 +77,8 @@ pub(crate) struct Event {
     pub description_short: Option<String>,
     /// Event end time.
     pub ends_at: Option<NaiveDateTime>,
+    /// User IDs of event hosts.
+    pub hosts: Option<Vec<Uuid>>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
     /// Meetup.com URL.
@@ -85,6 +89,10 @@ pub(crate) struct Event {
     pub recording_url: Option<String>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
+    /// Event sessions with speakers.
+    pub sessions: Option<Vec<Session>>,
+    /// Event sponsors.
+    pub sponsors: Option<Vec<Sponsor>>,
     /// Event start time.
     pub starts_at: Option<NaiveDateTime>,
     /// Streaming URL.
@@ -99,4 +107,44 @@ pub(crate) struct Event {
     pub venue_name: Option<String>,
     /// Venue zip code.
     pub venue_zip_code: Option<String>,
+}
+
+/// Session details within an event.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Session {
+    /// Session description.
+    pub description: String,
+    /// Session end time.
+    pub ends_at: NaiveDateTime,
+    /// Type of session (in-person, virtual).
+    pub kind: SessionKind,
+    /// Session name.
+    pub name: String,
+    /// Session start time.
+    pub starts_at: NaiveDateTime,
+
+    /// Location for the session.
+    pub location: Option<String>,
+    /// Recording URL for the session.
+    pub recording_url: Option<String>,
+    /// User IDs of session speakers.
+    pub speakers: Option<Vec<Uuid>>,
+    /// Streaming URL for the session.
+    pub streaming_url: Option<String>,
+}
+
+/// Sponsor details for an event.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Sponsor {
+    /// Sponsor level.
+    pub level: String,
+    /// URL to sponsor logo.
+    pub logo_url: String,
+    /// Sponsor name.
+    pub name: String,
+
+    /// Sponsor website URL.
+    pub website_url: Option<String>,
 }

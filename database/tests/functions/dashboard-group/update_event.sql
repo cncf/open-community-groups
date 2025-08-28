@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,10 @@ select plan(4);
 \set event1ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
+\set user1ID '00000000-0000-0000-0000-000000000020'
+\set user2ID '00000000-0000-0000-0000-000000000021'
+\set user3ID '00000000-0000-0000-0000-000000000022'
+\set invalidUserID '99999999-9999-9999-9999-999999999999'
 
 -- ============================================================================
 -- SEED DATA
@@ -38,6 +42,12 @@ insert into community (
     'https://example.com/logo.png',
     '{}'::jsonb
 );
+
+-- Users (for hosts and speakers)
+insert into "user" (user_id, community_id, email, username, auth_hash, name) values
+    (:'user1ID', :'community1ID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
+    (:'user2ID', :'community1ID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
+    (:'user3ID', :'community1ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
 
 -- Event categories (for testing category updates)
 insert into event_category (event_category_id, name, slug, community_id)
@@ -87,11 +97,16 @@ insert into event (
     'in-person'
 );
 
+-- Add initial host and sponsor to the event
+insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
+insert into event_sponsor (event_id, name, logo_url, level)
+values (:'event1ID', 'Original Sponsor', 'https://example.com/sponsor.png', 'Bronze');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- update_event function updates individual fields
+-- update_event function updates individual fields (now verifies empty hosts/sessions)
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -106,21 +121,23 @@ select update_event(
 );
 
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'hosts' - 'organizers' - 'sessions' - 'group')),
+    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group')),
     '{
         "canceled": false,
         "category_name": "Workshop",
         "description": "Updated description",
+        "hosts": [],
         "kind": "virtual",
         "name": "Updated Event Name",
         "published": false,
+        "sessions": [],
         "slug": "updated-event-slug",
         "timezone": "America/Los_Angeles"
     }'::jsonb,
-    'update_event should update basic fields correctly'
+    'update_event should update basic fields and clear hosts/sponsors/sessions when not provided'
 );
 
--- update_event function updates all optional fields
+-- update_event function updates all fields including hosts, sponsors, and sessions
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -146,16 +163,47 @@ select update_event(
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
         "venue_name": "New Venue",
-        "venue_zip_code": "100-0001"
+        "venue_zip_code": "100-0001",
+        "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
+        "sponsors": [
+            {
+                "name": "NewSponsor Inc",
+                "logo_url": "https://example.com/newsponsor.png",
+                "level": "Platinum",
+                "website_url": "https://newsponsor.com"
+            }
+        ],
+        "sessions": [
+            {
+                "name": "Updated Session",
+                "description": "This is an updated session",
+                "starts_at": "2025-02-01T14:30:00",
+                "ends_at": "2025-02-01T15:30:00",
+                "kind": "virtual",
+                "streaming_url": "https://youtube.com/live/updated",
+                "speakers": ["00000000-0000-0000-0000-000000000021"]
+            }
+        ]
     }'::jsonb
 );
 
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'hosts' - 'organizers' - 'sessions' - 'group')),
+    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'sessions'))
+        -- Add back sessions without session_ids (which are random)
+        || jsonb_build_object('sessions', 
+            (select jsonb_agg(session - 'session_id')
+             from jsonb_array_elements((
+                select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb->'sessions')
+             )) as session)
+        ),
     '{
         "canceled": false,
         "category_name": "Conference",
         "description": "Fully updated description",
+        "hosts": [
+            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021"},
+            {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022"}
+        ],
         "kind": "hybrid",
         "name": "Fully Updated Event",
         "published": false,
@@ -176,9 +224,22 @@ select is(
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
         "venue_name": "New Venue",
-        "venue_zip_code": "100-0001"
+        "venue_zip_code": "100-0001",
+        "sessions": [
+            {
+                "name": "Updated Session",
+                "description": "This is an updated session",
+                "starts_at": 1738387800,
+                "ends_at": 1738391400,
+                "kind": "virtual",
+                "streaming_url": "https://youtube.com/live/updated",
+                "speakers": [
+                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021"}
+                ]
+            }
+        ]
     }'::jsonb,
-    'update_event should update all fields correctly'
+    'update_event should update all fields including hosts, sponsors, and sessions'
 );
 
 -- update_event throws error for wrong group_id
@@ -226,6 +287,18 @@ select throws_ok(
     'P0001',
     'event not found',
     'update_event should throw error when event is canceled'
+);
+
+-- update_event throws error for invalid host user_id
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000003'::uuid,
+        '{"name": "Event with Invalid Host", "slug": "invalid-host-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
+    )$$,
+    'P0001',
+    'host user 99999999-9999-9999-9999-999999999999 not found in community',
+    'update_event should throw error when host user_id does not exist in community'
 );
 
 -- ============================================================================

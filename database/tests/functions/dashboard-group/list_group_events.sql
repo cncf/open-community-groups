@@ -16,6 +16,7 @@ select plan(3);
 \set event2ID '00000000-0000-0000-0000-000000000022'
 \set event3ID '00000000-0000-0000-0000-000000000023'
 \set event4ID '00000000-0000-0000-0000-000000000024'
+\set event5ID '00000000-0000-0000-0000-000000000025'
 \set groupCategory1ID '00000000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -160,6 +161,33 @@ insert into event (
         null,
         'Chicago'
     );
+
+-- Add a deleted event for group1 that should not appear in results
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    event_category_id,
+    event_kind_id,
+    timezone,
+    starts_at,
+    created_at,
+    deleted
+) values (
+    :'event5ID',
+    :'group1ID',
+    'Deleted Event',
+    'deleted-event',
+    'An event that has been deleted',
+    :'category1ID',
+    'virtual',
+    'America/New_York',
+    '2025-03-15 10:00:00+00',
+    '2024-01-05 00:00:00',
+    true
+);
 
 -- ============================================================================
 -- TESTS
