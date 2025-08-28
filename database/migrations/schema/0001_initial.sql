@@ -281,7 +281,6 @@ create table event (
     starts_at timestamptz,
     streaming_url text check (streaming_url <> ''),
     tags text[],
-    timezone_abbr text check (timezone_abbr <> ''),
     venue_address text check (venue_address <> ''),
     venue_city text check (venue_city <> ''),
     venue_name text check (venue_name <> ''),

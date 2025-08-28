@@ -108,7 +108,6 @@ select columns_are('event', array[
     'starts_at',
     'streaming_url',
     'tags',
-    'timezone_abbr',
     'venue_address',
     'venue_city',
     'venue_name',

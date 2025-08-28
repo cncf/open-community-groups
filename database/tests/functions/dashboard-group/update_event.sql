@@ -115,8 +115,7 @@ select is(
         "name": "Updated Event Name",
         "published": false,
         "slug": "updated-event-slug",
-        "timezone": "America/Los_Angeles",
-        "timezone_abbr": "PDT"
+        "timezone": "America/Los_Angeles"
     }'::jsonb,
     'update_event should update basic fields correctly'
 );
@@ -162,7 +161,6 @@ select is(
         "published": false,
         "slug": "fully-updated-event",
         "timezone": "Asia/Tokyo",
-        "timezone_abbr": "JST",
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
         "description_short": "Updated short description",

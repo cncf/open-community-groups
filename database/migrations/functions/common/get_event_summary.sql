@@ -16,7 +16,6 @@ returns json as $$
         'group_state', g.state,
         'logo_url', e.logo_url,
         'starts_at', floor(extract(epoch from e.starts_at)),
-        'timezone_abbr', e.timezone_abbr,
         'venue_city', e.venue_city
     )) as json_data
     from event e
