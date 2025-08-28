@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,8 +12,11 @@ select plan(4);
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set groupID '00000000-0000-0000-0000-000000000021'
+\set group2ID '00000000-0000-0000-0000-000000000022'
 \set userOrganizerID '00000000-0000-0000-0000-000000000011'
 \set userRegularID '00000000-0000-0000-0000-000000000012'
+\set userCommunityTeamID '00000000-0000-0000-0000-000000000013'
+\set userCommunityTeam2ID '00000000-0000-0000-0000-000000000014'
 \set categoryID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
@@ -66,6 +69,8 @@ insert into community (
 -- Users with different permission levels
 -- userOrganizerID: User with group organizer role
 -- userRegularID: Regular user without special permissions
+-- userCommunityTeamID: User with community team role
+-- userCommunityTeam2ID: User with community team role in community2
 insert into "user" (
     user_id,
     auth_hash,
@@ -90,6 +95,22 @@ insert into "user" (
     true,
     'Regular User',
     'regularuser'
+), (
+    :'userCommunityTeamID',
+    gen_random_bytes(32),
+    :'community1ID',
+    'communityteam@example.com',
+    true,
+    'Community Team Member',
+    'communityteam'
+), (
+    :'userCommunityTeam2ID',
+    gen_random_bytes(32),
+    :'community2ID',
+    'communityteam2@example.com',
+    true,
+    'Community Team Member 2',
+    'communityteam2'
 );
 
 -- Group category for test group
@@ -103,7 +124,7 @@ insert into group_category (
     'Technology'
 );
 
--- Test group for ownership verification
+-- Test groups for ownership verification
 insert into "group" (
     group_id,
     community_id,
@@ -118,6 +139,13 @@ insert into "group" (
     'Kubernetes Study Group',
     'kubernetes-study',
     'Weekly Kubernetes study and discussion group'
+), (
+    :'group2ID',
+    :'community1ID',
+    :'categoryID',
+    'Docker Study Group',
+    'docker-study',
+    'Weekly Docker study and discussion group'
 );
 
 -- Group team membership (grants ownership to organizer)
@@ -129,6 +157,21 @@ insert into group_team (
     :'groupID',
     :'userOrganizerID',
     'Organizer'
+);
+
+-- Community team membership (grants access to all groups in community)
+insert into community_team (
+    community_id,
+    user_id,
+    role
+) values (
+    :'community1ID',
+    :'userCommunityTeamID',
+    'Admin'
+), (
+    :'community2ID',
+    :'userCommunityTeam2ID',
+    'Admin'
 );
 
 -- ============================================================================
@@ -157,6 +200,31 @@ select ok(
 select ok(
     not user_owns_group(:'community2ID', :'groupID', :'userOrganizerID'),
     'Cross-community ownership check should fail even for actual group owner'
+);
+
+-- Community team member should own any group in their community
+select ok(
+    user_owns_group(:'community1ID', :'groupID', :'userCommunityTeamID'),
+    'Community team member should own any group in their community'
+);
+
+-- Community team member should own groups they are not explicitly part of
+select ok(
+    user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
+    'Community team member should own groups they are not explicitly part of'
+);
+
+-- Community team member from different community should not own the group
+select ok(
+    not user_owns_group(:'community1ID', :'groupID', :'userCommunityTeam2ID'),
+    'Community team member from different community should not own the group'
+);
+
+-- User who is both group team and community team member should own the group
+insert into group_team (group_id, user_id, role) values (:'group2ID', :'userCommunityTeamID', 'Organizer');
+select ok(
+    user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
+    'User who is both group team and community team member should own the group'
 );
 
 -- ============================================================================
