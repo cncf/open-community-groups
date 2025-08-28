@@ -8,6 +8,7 @@ returns json as $$
         select e.event_id
         from event e
         where e.group_id = p_group_id
+        and e.deleted = false
         order by e.starts_at desc nulls last, e.name asc
     ) e;
 $$ language sql;
