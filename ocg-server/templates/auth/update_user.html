@@ -30,23 +30,25 @@
                    spellcheck="false"
                    required>
           </div>
+          <p class="form-legend">Your display name visible to other users.</p>
         </div>
         {# End name -#}
 
         {# Timezone -#}
         <div class="col-span-3">
           <label for="timezone" class="form-label">Timezone</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="timezone"
-                   id="timezone"
-                   value="{%- if let Some(timezone) = user.timezone -%}{{ timezone }}{%- endif -%}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false">
+          <div class="mt-2 grid grid-cols-1">
+            <select id="timezone" name="timezone" class="select-primary">
+              <option value="">Select a timezone</option>
+              {% for timezone in timezones %}
+                <option value="{{ timezone }}"
+                        {% if let Some(user_timezone) = user.timezone %}
+                          {% if timezone.as_str() == user_timezone.as_str() %}selected{% endif %}
+                        {% endif %}>{{ timezone }}</option>
+              {% endfor %}
+            </select>
           </div>
+          <p class="form-legend">Your preferred timezone (e.g. America/New_York, Europe/Amsterdam).</p>
         </div>
         {# End timezone -#}
 
@@ -64,6 +66,7 @@
                    autocapitalize="off"
                    spellcheck="false">
           </div>
+          <p class="form-legend">Your professional title or role (e.g. Software Engineer, Product Manager).</p>
         </div>
         {# End title -#}
 
@@ -81,6 +84,7 @@
                    autocapitalize="off"
                    spellcheck="false">
           </div>
+          <p class="form-legend">The organization or company you work for.</p>
         </div>
         {# End company -#}
 
@@ -99,6 +103,7 @@
                    autocapitalize="off"
                    spellcheck="false">
           </div>
+          <p class="form-legend">URL to your profile picture (JPEG, PNG, or WebP format recommended).</p>
         </div>
         {# End photo URL -#}
 
@@ -108,12 +113,13 @@
           <div class="mt-2">
             <markdown-editor id="bio" name="bio" content="{%- if let Some(bio) = user.bio -%}{{ bio }}{%- endif -%}" mini></markdown-editor>
           </div>
+          <p class="form-legend">A brief description about yourself and your background.</p>
         </div>
         {# End bio -#}
 
         {# Interests -#}
         <div class="col-span-3">
-          <label for="interests" class="form-label">Interests</label>
+          <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
           <div class="mt-2">
             <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = user.interests -%}{{ interests|json }}{%- endif -%}">
             </multiple-inputs>
@@ -142,6 +148,7 @@
                    autocapitalize="off"
                    spellcheck="false">
           </div>
+          <p class="form-legend">The city where you're based.</p>
         </div>
         {# End city -#}
 
@@ -159,6 +166,7 @@
                    autocapitalize="off"
                    spellcheck="false">
           </div>
+          <p class="form-legend">Your country of residence.</p>
         </div>
         {# End country -#}
       </div>
