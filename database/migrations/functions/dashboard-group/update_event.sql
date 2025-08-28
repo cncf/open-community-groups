@@ -32,7 +32,8 @@ begin
         venue_zip_code = p_event->>'venue_zip_code'
     where event_id = p_event_id
     and group_id = p_group_id
-    and deleted = false;
+    and deleted = false
+    and canceled = false;
 
     if not found then
         raise exception 'event not found';

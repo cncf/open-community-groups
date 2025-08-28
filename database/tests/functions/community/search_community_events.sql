@@ -16,6 +16,7 @@ select plan(3);
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
+\set event4ID '00000000-0000-0000-0000-000000000044'
 
 -- ============================================================================
 -- SEED DATA
@@ -56,7 +57,7 @@ values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID',
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Events
+-- Events (including one canceled that should be filtered out)
 insert into event (
     event_id,
     name,
@@ -74,20 +75,26 @@ insert into event (
     venue_city,
     venue_name,
     venue_address,
-    logo_url
+    logo_url,
+    canceled
 ) values
     (:'event1ID', 'Kubernetes Workshop', 'kubernetes-workshop', 'Learn Kubernetes', 'K8s intro workshop', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
      '2026-02-01 10:00:00+00', '2026-02-01 12:00:00+00', array['kubernetes', 'cloud'],
-     'San Francisco', 'Tech Hub', '123 Market St', 'https://example.com/k8s-workshop.png'),
+     'San Francisco', 'Tech Hub', '123 Market St', 'https://example.com/k8s-workshop.png', false),
     (:'event2ID', 'Docker Training', 'docker-training', 'Docker fundamentals', 'Docker basics', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
      '2026-02-02 10:00:00+00', '2026-02-02 13:00:00+00', array['docker', 'containers'],
-     'New York', 'Online', null, 'https://example.com/docker-training.png'),
+     'New York', 'Online', null, 'https://example.com/docker-training.png', false),
     (:'event3ID', 'Cloud Summit', 'cloud-summit', 'Annual cloud conference', 'Cloud conf 2026', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
      '2026-02-03 10:00:00+00', '2026-02-03 17:00:00+00', array['cloud', 'aws'],
-     'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png');
+     'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png', false),
+    -- Canceled event (should be filtered out from search results)
+    (:'event4ID', 'Canceled Tech Conference', 'canceled-tech-conf', 'This event was canceled', 'Canceled conf', 'UTC',
+     :'eventCategory1ID', 'in-person', :'group1ID', true,
+     '2026-01-20 09:00:00+00', '2026-01-20 18:00:00+00', array['tech', 'conference'],
+     'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true);
 
 -- Search without filters returns all events with full JSON verification
 select is(

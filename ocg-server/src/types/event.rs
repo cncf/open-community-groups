@@ -20,6 +20,8 @@ use crate::{
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventSummary {
+    /// Whether the event has been canceled.
+    pub canceled: bool,
     /// Unique identifier for the event.
     pub event_id: Uuid,
     /// Color associated with the group hosting this event, used for visual styling.
@@ -58,6 +60,7 @@ pub struct EventSummary {
 impl From<EventDetailed> for EventSummary {
     fn from(event: EventDetailed) -> Self {
         Self {
+            canceled: event.canceled,
             event_id: event.event_id,
             group_color: event.group_color,
             group_name: event.group_name,
