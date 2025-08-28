@@ -60,6 +60,8 @@ pub(crate) struct SignUpPage {
 pub(crate) struct UpdateUserPage {
     /// Whether the user has a password set.
     pub has_password: bool,
+    /// List of available timezones.
+    pub timezones: Vec<String>,
     /// User details to be updated.
     pub user: UserDetails,
 }
