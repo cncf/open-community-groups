@@ -1,7 +1,11 @@
 //! Common database operations shared across different modules.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
+use deadpool_postgres::Client;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -73,25 +77,36 @@ impl DBCommon for PgDB {
     /// [`DBCommon::list_timezones`]
     #[instrument(skip(self), err)]
     async fn list_timezones(&self) -> Result<Vec<String>> {
-        trace!("db: list timezones");
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from("timezones") }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client) -> Result<Vec<String>> {
+            trace!("db: list timezones");
+
+            let timezones = db
+                .query(
+                    "
+                    select name
+                    from pg_timezone_names
+                    where name not like 'posix%'
+                    and name not like 'SystemV%'
+                    order by name asc;
+                    ",
+                    &[],
+                )
+                .await?
+                .into_iter()
+                .map(|row| row.get("name"))
+                .collect();
+
+            Ok(timezones)
+        }
 
         let db = self.pool.get().await?;
-        let timezones = db
-            .query(
-                "
-                select name
-                from pg_timezone_names
-                where name not like 'posix%'
-                and name not like 'SystemV%'
-                order by name asc;
-                ",
-                &[],
-            )
-            .await?
-            .into_iter()
-            .map(|row| row.get("name"))
-            .collect();
-
-        Ok(timezones)
+        inner(db).await
     }
 }
