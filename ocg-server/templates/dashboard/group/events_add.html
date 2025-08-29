@@ -445,17 +445,36 @@
 
         {# Sessions Tab -#}
         <div data-content="sessions" class="hidden">
-          <p class="mt-1 text-sm/6 text-stone-500">
-            Add sessions for your event. This section will be available soon.
-          </p>
+          <div class="pb-12">
+            <div class="mt-10">
+              <sessions-section></sessions-section>
+            </div>
+          </div>
         </div>
         {# End Sessions Tab -#}
 
         {# Hosts & Sponsors Tab -#}
         <div data-content="hosts-sponsors" class="hidden">
-          <p class="mt-1 text-sm/6 text-stone-500">
-            Add hosts and sponsors for your event. This section will be available soon.
-          </p>
+          <div class="space-y-12">
+            {# Hosts Section -#}
+            <div class="border-b border-stone-900/10 pb-12">
+              <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
+              <div class="mt-5">
+                Hosts
+                {# <hosts-section></hosts-section> #}
+              </div>
+            </div>
+            {# End Hosts Section -#}
+
+            {# Sponsors Section -#}
+            <div class="pb-12">
+              <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
+              <div class="mt-5">
+                <sponsors-section></sponsors-section>
+              </div>
+            </div>
+            {# End Sponsors Section -#}
+          </div>
         </div>
         {# End Hosts & Sponsors Tab -#}
 
