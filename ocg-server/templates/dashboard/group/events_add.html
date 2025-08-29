@@ -9,7 +9,7 @@
         <button type="button"
                 data-section="details"
                 data-active="true"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-600 data-[active=true]:border-primary-500 group text-nowrap">
+                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
           Details
@@ -19,7 +19,7 @@
         <button type="button"
                 data-section="date-venue"
                 data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-600 data-[active=true]:border-primary-500 group text-nowrap">
+                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
           Date & Venue
@@ -29,7 +29,7 @@
         <button type="button"
                 data-section="sessions"
                 data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-600 data-[active=true]:border-primary-500 group text-nowrap">
+                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
           Sessions
@@ -39,7 +39,7 @@
         <button type="button"
                 data-section="hosts-sponsors"
                 data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-600 data-[active=true]:border-primary-500 group text-nowrap">
+                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
           <span class="hidden lg:inline">Hosts & Sponsors</span>
@@ -286,8 +286,7 @@
           <div class="space-y-12">
             {# Date and Time section -#}
             <div class="border-b border-stone-900/10 pb-12">
-              {% call macros::form_title(title = "Date & Time", description = "When will this event take place?") -%}
-
+              <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
                 {# Timezone -#}
                 <div class="col-span-full lg:col-span-3">
@@ -336,7 +335,7 @@
             {# End date and time section -#}
 
             {# Venue Information section -#}
-            <div id="venue-section" class="border-b border-stone-900/10 pb-12">
+            <div class="border-b border-stone-900/10 pb-12">
               {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -406,7 +405,7 @@
             {# End venue information section -#}
 
             {# Online Event Details section -#}
-            <div id="online-section" class="pb-12">
+            <div class="pb-12">
               {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
