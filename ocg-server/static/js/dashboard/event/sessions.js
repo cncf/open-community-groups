@@ -1,6 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { isObjectEmpty } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import "/static/js/common/user-search-selector.js";
 
 /**
  * Component for managing session entries in events.
@@ -391,6 +392,19 @@ class SessionItem extends LitWrapper {
             autocapitalize="off"
             spellcheck="false"
           />
+        </div>
+      </div>
+
+      <div class="col-span-full">
+        <label class="form-label">Speakers</label>
+        <div class="mt-2">
+          <user-search-selector
+            field-name="sessions[${this.index}][speakers]"
+            dashboard-type="group"
+            label="speaker"
+            selected-users="${JSON.stringify(this.data.speakers || [])}"
+            legend="Add speakers or presenters for this session."
+          ></user-search-selector>
         </div>
       </div>
     </div>`;

@@ -469,8 +469,7 @@
             <div class="border-b border-stone-900/10 pb-12">
               <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
               <div class="mt-5">
-                Hosts
-                {# <hosts-section></hosts-section> #}
+                <user-search-selector field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
               </div>
             </div>
             {# End Hosts Section -#}
@@ -504,6 +503,7 @@
   import {
     generateSlug
   } from '/static/js/dashboard/common.js';
+  import '/static/js/common/user-search-selector.js';
 
   const addEventButton = document.getElementById('add-event-button');
   const cancelButton = document.getElementById('cancel-button');

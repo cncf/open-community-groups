@@ -402,6 +402,15 @@
     </div>
     {# End tags section -#}
 
+    {# Hosts section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Event Hosts", description = "Add people who are organizing or hosting this event.") -%}
+      <div class="mt-5">
+        <user-search-selector field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
+      </div>
+    </div>
+    {# End hosts section -#}
+
     <div class="mt-6 flex items-center justify-end gap-x-6">
       {# Cancel button -#}
       <button id="cancel-button"
@@ -428,6 +437,7 @@
     showErrorAlert,
     showSuccessAlert
   } from '/static/js/common/alerts.js';
+  import '/static/js/common/user-search-selector.js';
 
   const eventsForm = document.getElementById('events-form');
   const cancelButton = document.getElementById('cancel-button');
