@@ -150,7 +150,8 @@
             <select id="timezone" name="timezone" class="select-primary" required>
               <option value="">Select a timezone</option>
               {% for timezone in timezones %}
-                <option value="{{ timezone }}" {% if timezone.as_str() == event.timezone.to_string().as_str() %}selected{% endif %}>{{ timezone }}</option>
+                <option value="{{ timezone }}"
+                        {% if timezone.as_str() == event.timezone.to_string().as_str() %}selected{% endif %}>{{ timezone }}</option>
               {% endfor %}
             </select>
           </div>
