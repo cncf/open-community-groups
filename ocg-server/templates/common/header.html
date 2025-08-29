@@ -1,0 +1,305 @@
+{% import "common.html" as common -%}
+
+{# Header -#}
+<header id="header" class="w-full" role="banner">
+  {# Navigation bar -#}
+  <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20"
+       role="navigation"
+       aria-label="Main navigation">
+    <div class="flex items-center gap-x-6">
+      {# Logo -#}
+      <div class="me-3">
+        {% if path != "/" %}<a href="/" aria-label="Go to homepage">{% endif %}
+          <div class="-m-1.5 p-1.5">
+            <img class="h-10 w-50"
+                 width="208"
+                 height="40"
+                 src="{{ self.community.header_logo_url }}"
+                 alt="{{ community.display_name }} logo" />
+          </div>
+          {% if path != "/" %}</a>{% endif %}
+      </div>
+      {# End logo -#}
+
+      {# Desktop links -#}
+      <div class="hidden lg:flex lg:gap-x-8">
+        {% call link(content = "Home", href = "/", current_path = path) -%}
+        {% call link(content = "Explore", href = "/explore", current_path = path) -%}
+        {% if let Some(new_group_details) = self.community.new_group_details -%}
+          <button id="open-new-group-btn"
+                  class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors">
+            New group
+          </button>
+          <script type="module">
+            import {
+              toggleModalVisibility
+            } from '/static/js/common/common.js';
+
+            const openNewGroupBtn = document.getElementById('open-new-group-btn');
+            if (openNewGroupBtn) {
+              openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+            }
+          </script>
+        {% endif -%}
+      </div>
+      {# End desktop links -#}
+    </div>
+
+    {# Desktop user menu -#}
+    <div class="flex flex-1 justify-end">
+      {% if page_id == PageId::CommunityExplore || page_id == PageId::CommunityHome || page_id == PageId::Group || page_id == PageId::Event -%}
+        <div hx-get="/section/user-menu"
+             hx-trigger="load"
+             hx-target="this"
+             hx-boost="true"
+             class="relative">
+          <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-primary-500 text-primary-700 size-[38px] p-0.5 overflow-hidden"
+                  disabled>
+            <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
+          </button>
+        </div>
+      {% else -%}
+        {% call user_menu(user) -%}
+      {% endif -%}
+    </div>
+    {# End desktop user menu -#}
+  </nav>
+  {# End navigation bar -#}
+</header>
+{# End header -#}
+
+{# New group modal -#}
+{% if let Some(new_group_details) = self.community.new_group_details -%}
+  <div id="new-group-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       aria-modal="true"
+       role="dialog"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+    <div id="backdrop-new-group-modal"
+         class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
+    <div class="relative p-4 w-full max-w-2xl max-h-full">
+      <div class="relative bg-white rounded-lg shadow">
+        {# Modal header -#}
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          {# Title -#}
+          <h3 id="new-group-modal-title"
+              class="text-xl font-semibold text-stone-900">New group</h3>
+          {# End title -#}
+
+          {# Close button -#}
+          <button id="close-new-group-modal"
+                  type="button"
+                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+            <span class="sr-only">Close modal</span>
+          </button>
+          {# End close button -#}
+        </div>
+        {# End modal header -#}
+
+        {# Modal content -#}
+        <div class="new-group-content p-4 md:p-8">{{ new_group_details|md_to_html|safe }}</div>
+        {# End modal content -#}
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import {
+      toggleModalVisibility
+    } from '/static/js/common/common.js';
+
+    const backdropNewGroupModal = document.getElementById('backdrop-new-group-modal');
+    if (backdropNewGroupModal) {
+      backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    }
+
+    const closeNewGroupModal = document.getElementById('close-new-group-modal');
+    if (closeNewGroupModal) {
+      closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    }
+  </script>
+{% endif -%}
+{# End new group modal -#}
+
+{# Link -#}
+{% macro link(content, href, current_path, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <a href="{{ href }}"
+     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
+            {% if current_path == href -%}
+              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
+{% endmacro link -%}
+{# End link -#}
+
+{# Button -#}
+{% macro button(id, content, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <button id="{{ id }}"
+          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors {{ extra_styles_ }}">
+    {{ content }}
+  </button>
+{% endmacro button -%}
+{# End button -#}
+
+{# User menu macro -#}
+{% macro user_menu(user) -%}
+  <div class="relative">
+    {% if user.logged_in -%}
+      {% let name = user.name|display_some -%}
+      {% let initial = name.chars().nth(0).unwrap_or('-') -%}
+      <button id="user-dropdown-button"
+              data-logged-in="true"
+              class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
+        <div class="font-semibold uppercase mt-px">{{ initial }}</div>
+      </button>
+
+      {# User dropdown menu -#}
+      <div id="user-dropdown"
+           class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+           role="menu">
+        <ul class="text-stone-700 my-2" role="none">
+          <li>
+            <div class="flex flex-col px-4 py-2">
+              <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user.username|display_some }}</div>
+              <div class="text-xs/4 truncate">{{ name }}</div>
+              {% if let Some(auth_provider) = user.auth_provider -%}
+                {% if auth_provider == "linuxfoundation" -%}
+                  <a class="text-xs/6 text-stone-500 flex items-center mt-3"
+                     href="https://openprofile.dev"
+                     target="_blank"
+                     rel="noopener noreferrer">
+                    <div class="underline">openprofile.dev account</div>
+                    <div class="svg-icon size-2.5 icon-external_link bg-stone-500 ms-2"></div>
+                  </a>
+                {% endif -%}
+              {% endif -%}
+            </div>
+          </li>
+
+          {# Dashboard links -#}
+          {% if let Some(belongs_to_community_team) = user.belongs_to_community_team -%}
+            {% if belongs_to_community_team -%}
+              <li class="border-t border-stone-200 mt-2 pt-2" role="none">
+                <a href="/dashboard/community"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Community Dashboard</div>
+                  </div>
+                </a>
+              </li>
+            {% endif -%}
+          {% endif -%}
+
+          {% if let Some(belongs_to_any_group_team) = user.belongs_to_any_group_team -%}
+            {% if belongs_to_any_group_team -%}
+              <li class="{%- if let Some(belongs_to_community_team) = user.belongs_to_community_team -%} {%- if !belongs_to_community_team -%} border-t border-stone-200 mt-2 pt-2 {%- endif -%}{%- endif -%}"
+                  role="none">
+                <a href="/dashboard/group"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                   role="menuitem">
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
+                    <div class="ms-2 text-xs/6">Group Dashboard</div>
+                  </div>
+                </a>
+              </li>
+            {% endif -%}
+          {% endif -%}
+
+          {# Logout -#}
+          <li class="border-t border-stone-200 mt-2 pt-2" role="none">
+            <a href="/log-out"
+               hx-boost="false"
+               target="_self"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-logout bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Log out</div>
+              </div>
+            </a>
+          </li>
+        </ul>
+      </div>
+    {% else -%}
+      <button id="user-dropdown-button"
+              data-logged-in="false"
+              class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
+        <div class="svg-icon size-4 mx-auto bg-primary-500 group-hover:bg-primary-900 icon-user"></div>
+      </button>
+
+      {# User dropdown menu for non-logged users -#}
+      <div id="user-dropdown"
+           class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+           role="menu">
+        <ul class="text-stone-700 my-2" role="none">
+          {# Sign up -#}
+          <li role="none">
+            <a href="/sign-up"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-user-plus bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Sign up</div>
+              </div>
+            </a>
+          </li>
+
+          {# Log in -#}
+          <li role="none">
+            <a href="/log-in"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-login bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Log in</div>
+              </div>
+            </a>
+          </li>
+        </ul>
+      </div>
+    {% endif -%}
+
+    {# Dropdown script -#}
+    <script type="module">
+      const userDropdownButton = document.getElementById('user-dropdown-button');
+      const userDropdown = document.getElementById('user-dropdown');
+
+      if (userDropdownButton && userDropdown) {
+        userDropdownButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          userDropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!userDropdownButton.contains(e.target) && !userDropdown.contains(e.target)) {
+            userDropdown.classList.add('hidden');
+          }
+        });
+
+        // Close dropdown on Escape key
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !userDropdown.classList.contains('hidden')) {
+            userDropdown.classList.add('hidden');
+            userDropdownButton.focus();
+          }
+        });
+      }
+    </script>
+  </div>
+{% endmacro user_menu -%}
+{# End user menu macro -#}

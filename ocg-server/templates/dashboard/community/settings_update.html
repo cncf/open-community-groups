@@ -1,0 +1,488 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Community settings update form -#}
+<form id="settings-form"
+      hx-put="/dashboard/community/settings/update"
+      hx-ext="no-empty-vals"
+      hx-exclude="[name=toggle_active]"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "General Settings", description = "Configure core community information and basic settings.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Display name -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="display_name" class="form-label">
+            Display Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="display_name"
+                   id="display_name"
+                   maxlength="100"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   value="{{ community.display_name }}"
+                   required>
+          </div>
+          <p class="form-legend">Public name displayed throughout the community platform.</p>
+        </div>
+        {# End display name -#}
+
+        {# Hidden name field -#}
+        <input type="hidden" name="name" value="{{ community.name }}">
+        {# End hidden name field -#}
+
+        {# Host -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="host" class="form-label">
+            Host <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="host"
+                   id="host"
+                   class="input-primary"
+                   placeholder="community.example.com"
+                   value="{{ community.host }}"
+                   required>
+          </div>
+          <p class="form-legend">Host domain for the community.</p>
+        </div>
+        {# End host -#}
+
+        {# Title -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="title" class="form-label">
+            Title <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="title"
+                   id="title"
+                   class="input-primary"
+                   value="{{ community.title }}"
+                   required>
+          </div>
+          <p class="form-legend">Main name shown prominently on the community site header and pages.</p>
+        </div>
+        {# End title -#}
+
+        {# Description -#}
+        <div class="col-span-full">
+          <label for="description" class="form-label">
+            Description <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <markdown-editor id="description" name="description" content="{{ community.description }}" required></markdown-editor>
+          </div>
+          <p class="form-legend">Brief description of the community's purpose or focus.</p>
+        </div>
+        {# End description -#}
+
+        {# Hidden primary color field -#}
+        <input type="hidden"
+               name="primary_color"
+               value="{{ community.theme.primary_color }}">
+        {# End hidden primary color field -#}
+
+        {# Hidden layout field -#}
+        <input type="hidden"
+               name="community_site_layout_id"
+               value="{{ community.community_site_layout_id }}">
+        {# End hidden layout field -#}
+
+        {# Active status -#}
+        <div class="col-span-full">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_active"
+                   name="toggle_active"
+                   value="active"
+                   type="checkbox"
+                   class="sr-only peer"
+                   {% if community.active %}checked{% endif %}>
+            <input type="hidden"
+                   id="active"
+                   name="active"
+                   value="{{ community.active }}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Community is active</span>
+          </label>
+          <p class="form-legend">Whether the community is active and visible to users.</p>
+        </div>
+        {# End active status -#}
+      </div>
+    </div>
+
+    {# Branding section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Header logo URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="header_logo_url" class="form-label">
+            Header Logo URL <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="url"
+                   name="header_logo_url"
+                   id="header_logo_url"
+                   class="input-primary"
+                   placeholder="https://example.com/header-logo.png"
+                   value="{{ community.header_logo_url }}"
+                   required>
+          </div>
+          <p class="form-legend">URL to the logo image shown in the page header.</p>
+        </div>
+        {# End header logo URL -#}
+
+        {# Footer logo URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="footer_logo_url" class="form-label">Footer Logo URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="footer_logo_url"
+                   id="footer_logo_url"
+                   class="input-primary"
+                   placeholder="https://example.com/footer-logo.png"
+                   {% if let Some(footer_logo_url) = community.footer_logo_url %}value="{{ footer_logo_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the logo image shown in the page footer.</p>
+        </div>
+        {# End footer logo URL -#}
+
+        {# Copyright notice -#}
+        <div class="col-span-full">
+          <label for="copyright_notice" class="form-label">Copyright Notice</label>
+          <div class="mt-2">
+            <markdown-editor id="copyright_notice" name="copyright_notice" mini
+            {% if let Some(copyright_notice) = community.copyright_notice -%}
+              content="{{ copyright_notice }}"
+            {% endif -%}
+            ></markdown-editor>
+          </div>
+          <p class="form-legend">Copyright text displayed in the footer.</p>
+        </div>
+        {# End copyright notice -#}
+      </div>
+    </div>
+    {# End branding section -#}
+
+    {# Social links section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Website URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="website_url" class="form-label">Website</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-link bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="website_url"
+                   id="website_url"
+                   class="input-primary ps-10"
+                   placeholder="https://example.com"
+                   {% if let Some(website_url) = community.website_url %}value="{{ website_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End website URL -#}
+
+        {# GitHub URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="github_url" class="form-label">GitHub</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-github bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="github_url"
+                   id="github_url"
+                   class="input-primary ps-10"
+                   placeholder="https://github.com/organization"
+                   {% if let Some(github_url) = community.github_url %}value="{{ github_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End GitHub URL -#}
+
+        {# Twitter URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="twitter_url" class="form-label">Twitter</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="twitter_url"
+                   id="twitter_url"
+                   class="input-primary ps-10"
+                   placeholder="https://twitter.com/username"
+                   {% if let Some(twitter_url) = community.twitter_url %}value="{{ twitter_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Twitter URL -#}
+
+        {# Facebook URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="facebook_url" class="form-label">Facebook</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="facebook_url"
+                   id="facebook_url"
+                   class="input-primary ps-10"
+                   placeholder="https://facebook.com/page"
+                   {% if let Some(facebook_url) = community.facebook_url %}value="{{ facebook_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Facebook URL -#}
+
+        {# LinkedIn URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="linkedin_url" class="form-label">LinkedIn</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="linkedin_url"
+                   id="linkedin_url"
+                   class="input-primary ps-10"
+                   placeholder="https://linkedin.com/company/name"
+                   {% if let Some(linkedin_url) = community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End LinkedIn URL -#}
+
+        {# Instagram URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="instagram_url" class="form-label">Instagram</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-instagram bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="instagram_url"
+                   id="instagram_url"
+                   class="input-primary ps-10"
+                   placeholder="https://instagram.com/username"
+                   {% if let Some(instagram_url) = community.instagram_url %}value="{{ instagram_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Instagram URL -#}
+
+        {# Slack URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="slack_url" class="form-label">Slack</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-slack bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="slack_url"
+                   id="slack_url"
+                   class="input-primary ps-10"
+                   placeholder="https://workspace.slack.com"
+                   {% if let Some(slack_url) = community.slack_url %}value="{{ slack_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Slack URL -#}
+
+        {# YouTube URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="youtube_url" class="form-label">YouTube</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="youtube_url"
+                   id="youtube_url"
+                   class="input-primary ps-10"
+                   placeholder="https://youtube.com/channel/id"
+                   {% if let Some(youtube_url) = community.youtube_url %}value="{{ youtube_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End YouTube URL -#}
+
+        {# WeChat URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="wechat_url" class="form-label">WeChat</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-wechat bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="wechat_url"
+                   id="wechat_url"
+                   class="input-primary ps-10"
+                   placeholder="https://wechat.com/account"
+                   {% if let Some(wechat_url) = community.wechat_url %}value="{{ wechat_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End WeChat URL -#}
+
+        {# Flickr URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="flickr_url" class="form-label">Flickr</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="flickr_url"
+                   id="flickr_url"
+                   class="input-primary ps-10"
+                   placeholder="https://flickr.com/photos/account"
+                   {% if let Some(flickr_url) = community.flickr_url %}value="{{ flickr_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Flickr URL -#}
+      </div>
+    </div>
+    {# End social links section -#}
+
+    {# Advertisement section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Advertisement", description = "Optional advertisement banner configuration.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Ad banner URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="ad_banner_url" class="form-label">Banner URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="ad_banner_url"
+                   id="ad_banner_url"
+                   class="input-primary"
+                   placeholder="https://example.com/banner.jpg"
+                   {% if let Some(ad_banner_url) = community.ad_banner_url %}value="{{ ad_banner_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the advertisement banner image.</p>
+        </div>
+        {# End ad banner URL -#}
+
+        {# Ad banner link URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="ad_banner_link_url" class="form-label">Banner Link URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="ad_banner_link_url"
+                   id="ad_banner_link_url"
+                   class="input-primary"
+                   placeholder="https://example.com/landing-page"
+                   {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
+                     value="{{ ad_banner_link_url }}"
+                   {% endif %}>
+          </div>
+          <p class="form-legend">Target URL when users click on the advertisement banner.</p>
+        </div>
+        {# End ad banner link URL -#}
+      </div>
+    </div>
+    {# End advertisement section -#}
+
+    {# Additional content section -#}
+    <div class="pb-12">
+      {% call macros::form_title(title = "Additional Content", description = "Extra community features and custom content.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# New group details -#}
+        <div class="col-span-full">
+          <label for="new_group_details" class="form-label">New Group Details</label>
+          <div class="mt-2">
+            <markdown-editor id="new_group_details" name="new_group_details" mini
+            {% if let Some(new_group_details) = community.new_group_details -%}
+              content="{{ new_group_details }}"
+            {% endif -%}
+            ></markdown-editor>
+          </div>
+          <p class="form-legend">Instructions for creating new groups.</p>
+        </div>
+        {# End new group details -#}
+
+        {# Photo URLs -#}
+        <div class="col-span-4">
+          <label class="form-label">Photo URLs</label>
+          <div class="mt-2">
+            <multiple-inputs field-name="photos_urls" input-type="url" items="{{ community.photos_urls|json }}" placeholder="https://example.com/photo.jpg" label="Photo URL">
+            </multiple-inputs>
+          </div>
+          <p class="form-legend">Photo URLs for community galleries or slideshows.</p>
+        </div>
+        {# End photo URLs -#}
+
+        {# Extra links -#}
+        <div class="col-span-full">
+          <label class="form-label">Extra Links</label>
+          <div class="mt-2">
+            <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{{ community.extra_links|json }}" label="Link">
+            </key-value-inputs>
+          </div>
+          <p class="form-legend">Additional custom links displayed in the community navigation.</p>
+        </div>
+        {# End extra links -#}
+      </div>
+    </div>
+    {# End additional content section -#}
+
+    <div class="mt-6 flex items-center justify-end gap-x-6">
+      {# Save button -#}
+      <button type="submit" class="btn-primary">Update Settings</button>
+      {# End save button -#}
+    </div>
+  </div>
+</form>
+
+<script type="module">
+  import {
+    isSuccessfulXHRStatus
+  } from '/static/js/common/common.js';
+  import {
+    showErrorAlert,
+    showSuccessAlert
+  } from '/static/js/common/alerts.js';
+
+  const settingsForm = document.getElementById('settings-form');
+  const cancelButton = document.getElementById('cancel-button');
+
+  if (cancelButton) {
+    cancelButton.addEventListener('htmx:afterRequest', () => {
+      history.pushState({}, "Community Settings", '/dashboard/community?tab=settings');
+    });
+  }
+
+  if (settingsForm) {
+    settingsForm.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'settings-form') {
+        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+          showSuccessAlert('Community settings updated successfully.');
+        } else {
+          showErrorAlert('Something went wrong updating the settings, please try again later.');
+        }
+      }
+    });
+  }
+
+  // Handle active toggle
+  const toggleActive = document.getElementById('toggle_active');
+  if (toggleActive) {
+    toggleActive.addEventListener('change', () => {
+      document.getElementById('active').value = toggleActive.checked;
+    });
+  }
+</script>
+{# End Community settings update form -#}

@@ -8,6 +8,7 @@ use crate::{
         PageId,
         auth::{self, User},
         dashboard::community::{groups, settings},
+        filters,
     },
     types::community::Community,
 };

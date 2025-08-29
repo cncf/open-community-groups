@@ -9,6 +9,7 @@ use crate::{
         PageId,
         auth::{self, User},
         dashboard::group::{events, settings},
+        filters,
     },
     types::{community::Community, group::GroupSummary},
 };

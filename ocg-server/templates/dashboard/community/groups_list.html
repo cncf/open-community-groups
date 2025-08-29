@@ -1,0 +1,194 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Groups list header with title -#}
+{% call macros::form_title(title = "Groups") -%}
+
+<div class="flex justify-between my-10">
+  <div class="flex items-center gap-x-6">
+    {# Search groups input (display only) -#}
+    <div class="relative">
+      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <input id="search_groups"
+             name="search_groups"
+             type="text"
+             value=""
+             class="input-primary peer ps-9 w-96"
+             placeholder="Search groups"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false"
+             disabled>
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button id="clean-search-groups"
+                type="button"
+                class="cursor-pointer mt-[2px]"
+                disabled>
+          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+        </button>
+      </div>
+    </div>
+    {# End search groups input -#}
+  </div>
+
+  {# Add group button -#}
+  <div>
+    <button id="add-group-button"
+            hx-get="/dashboard/community/groups/add"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary">Add Group</button>
+  </div>
+  {# End add group button -#}
+
+  <script type="module">
+    const addGroupButton = document.getElementById('add-group-button');
+    if (addGroupButton) {
+      addGroupButton.addEventListener('htmx:afterRequest', () => {
+        history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
+      });
+    }
+  </script>
+</div>
+
+{# Groups Table -#}
+<div class="relative overflow-visible">
+  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      {# Header -#}
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Category</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Location</th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Created</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="groups-list">
+      {% if groups.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-20 text-center" colspan="5">
+            <div class="text-xl lg:text-2xl mb-10">It looks like you haven't created any groups yet.</div>
+
+            <p class="text-sm lg:text-md text-stone-700">
+              Groups created by this community will be listed here. You can create a new group by clicking on the <span class="italic">Add Group</span> button in the top right corner.
+            </p>
+          </td>
+        </tr>
+      {% else -%}
+        {% for group in groups -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <th scope="row"
+                class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+              <div class="flex items-center">
+                {# Group logo -#}
+                <div class="mr-3">
+                  {% call common::logo(logo_url = group.logo_url, classes = "h-10 w-10 min-w-10", size = 40, color = group.color) -%}
+                </div>
+                {# End group logo -#}
+
+                <div class="min-w-0">
+                  {# Group name -#}
+                  <div class="max-w-full truncate">{{ group.name }}</div>
+                  {# End group name -#}
+
+                  {# Mobile category and location -#}
+                  <div class="block xl:hidden text-xs text-stone-500">
+                    <div class="max-w-full truncate">{{ group.category.name }}</div>
+                    {% if let Some(location) = group.location(40) -%}
+                      <div class="max-w-full truncate">{{ location }}</div>
+                    {% endif -%}
+                  </div>
+                  {# End mobile category and location -#}
+                </div>
+              </div>
+            </th>
+
+            {# Category -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+              <div class="max-w-full truncate">{{ group.category.name }}</div>
+            </td>
+            {# End category -#}
+
+            {# Location -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
+              {% if let Some(location) = group.location(50) -%}
+                <div class="max-w-full truncate">{{ location }}</div>
+              {% else -%}
+                <span class="text-stone-400">-</span>
+              {% endif -%}
+            </td>
+            {# End location -#}
+
+            {# Created date -#}
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-32">
+              {{ group.created_at.format("%B %e, %Y") }}
+            </td>
+            {# End created date -#}
+
+            {# Actions -#}
+            <td class="px-3 xl:px-5 py-4 w-32 xl:w-40">
+              <div class="flex items-center gap-x-1 xl:gap-x-3">
+                {# Update group button -#}
+                <div>
+                  <button hx-get="/dashboard/community/groups/{{ group.group_id }}/update"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-swap="innerHTML show:body:top"
+                          hx-disabled-elt="this"
+                          class="btn-tertiary p-2">
+                    <div class="svg-icon size-4 icon-pencil"></div>
+                  </button>
+                </div>
+                {# End update group button -#}
+
+                {# Delete group button -#}
+                <div>
+                  <button id="delete-group-{{ group.slug }}"
+                          hx-delete="/dashboard/community/groups/{{ group.group_id }}/delete"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-trigger="confirmed"
+                          class="btn-tertiary p-2 text-red-600 hover:bg-red-50">
+                    <div class="svg-icon size-4 icon-trash bg-red-600"></div>
+                  </button>
+                  <script type="module">
+                    import {
+                      showConfirmAlert,
+                      showErrorAlert,
+                      showSuccessAlert,
+                    } from '/static/js/common/alerts.js';
+                    import {
+                      isSuccessfulXHRStatus
+                    } from '/static/js/common/common.js';
+
+                    const deleteGroupButton = document.getElementById('delete-group-{{ group.slug }}');
+                    if (deleteGroupButton) {
+                      deleteGroupButton.addEventListener('click', (event) => {
+                        showConfirmAlert("Are you sure you wish to delete this group?", "delete-group-{{ group.slug }}", "Yes");
+                      });
+
+                      deleteGroupButton.addEventListener("htmx:afterRequest", (e) => {
+                        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                          showSuccessAlert("You have successfully deleted the group.");
+                        } else {
+                          showErrorAlert("An error occurred deleting this group, please try again later.");
+                        }
+                      });
+                    }
+                  </script>
+                </div>
+                {# End delete group button -#}
+              </div>
+            </td>
+            {# End actions -#}
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End Groups Table -#}

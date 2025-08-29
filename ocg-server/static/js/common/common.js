@@ -147,3 +147,33 @@ export const navigateWithHtmx = (url) => {
     }
   }, 100);
 };
+
+/**
+ * Checks if an HTTP status code indicates success (2xx range).
+ * @param {number} status - The HTTP status code
+ * @returns {boolean} True if status is between 200-299
+ */
+export const isSuccessfulXHRStatus = (status) => {
+  if (status >= 200 && status < 300) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
+/**
+ * Converts HTML datetime-local input value to PostgreSQL-compatible timestamp format.
+ * HTML datetime-local format: YYYY-MM-DDTHH:MM
+ * PostgreSQL timestamp format: YYYY-MM-DDTHH:MM:SS
+ *
+ * @param {string} dateTimeLocal - The datetime-local input value (e.g., "2025-08-23T15:00")
+ * @returns {string|null} Timestamp formatted string (e.g., "2025-08-23T15:00:00") or null if input is empty
+ *
+ * @example
+ * convertDateTimeLocalToISO("2025-08-23T15:00") // returns "2025-08-23T15:00:00"
+ * convertDateTimeLocalToISO("") // returns null
+ */
+export const convertDateTimeLocalToISO = (dateTimeLocal) => {
+  if (!dateTimeLocal) return null;
+  return `${dateTimeLocal}:00`;
+};

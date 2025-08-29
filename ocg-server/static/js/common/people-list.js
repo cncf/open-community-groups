@@ -60,14 +60,19 @@ export class PeopleList extends LitWrapper {
   }
 
   /**
-   * Generates initials from first and last names.
-   * Removes special characters and returns up to two uppercase letters.
-   * @param {string} firstName - Person's first name
-   * @param {string} lastName - Person's last name
-   * @returns {string} Initials or "-" if no valid names provided
+   * Generates initials from a full name.
+   * Splits name by spaces, removes special characters, and returns up to two uppercase letters.
+   * @param {string} name - Person's full name
+   * @returns {string} Initials or "-" if no valid name provided
    * @private
    */
-  _getInitials(firstName, lastName) {
+  _getInitials(name) {
+    if (!name) return "-";
+
+    const nameParts = name.trim().split(/\s+/);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+
     const cleanFirst = this._cleanString(firstName);
     const cleanLast = this._cleanString(lastName);
 
@@ -85,28 +90,14 @@ export class PeopleList extends LitWrapper {
   }
 
   /**
-   * Constructs full name from person object.
-   * Handles cases where first or last name might be missing.
-   * @param {Object} person - Person object with first_name and last_name properties
-   * @returns {string} Full name or "Unknown" if no name parts available
-   * @private
-   */
-  _getFullName(person) {
-    const parts = [];
-    if (person.first_name) parts.push(person.first_name);
-    if (person.last_name) parts.push(person.last_name);
-    return parts.length > 0 ? parts.join(" ") : "-";
-  }
-
-  /**
    * Renders avatar component for a person.
    * Passes image URL and calculated initials to avatar-image component.
-   * @param {Object} person - Person object with photo_url, first_name, and last_name
+   * @param {Object} person - Person object with photo_url and name
    * @returns {TemplateResult} Avatar component template
    * @private
    */
   _renderAvatar(person) {
-    const initials = this._getInitials(person.first_name, person.last_name);
+    const initials = this._getInitials(person.name);
 
     return html`
       <avatar-image image-url="${person.photo_url || ""}" placeholder="${initials}"></avatar-image>
@@ -129,7 +120,7 @@ export class PeopleList extends LitWrapper {
 
         <!-- Name and details -->
         <div class="flex-1 min-w-0">
-          <h3 class="text-sm font-semibold text-stone-900 truncate">${this._getFullName(person)}</h3>
+          <h3 class="text-sm font-semibold text-stone-900 truncate">${person.name}</h3>
           ${person.title
             ? html`<p class="text-xs text-stone-600 mt-1 truncate">${person.title}</p>`
             : person.company

@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 use crate::{
-    auth::AuthSession, config::LoginOptions, handlers::auth::AUTH_PROVIDER_KEY, templates::PageId,
+    auth::AuthSession,
+    config::LoginOptions,
+    handlers::auth::AUTH_PROVIDER_KEY,
+    templates::{PageId, filters},
     types::community::Community,
 };
 

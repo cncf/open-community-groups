@@ -36,10 +36,6 @@
     @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white;
   }
 
-  .btn-mini {
-    @apply bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:text-white hover:bg-primary-500 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white
-  }
-
   .btn-tertiary {
     @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden;
   }
@@ -54,16 +50,20 @@
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center text-primary-700 border border-primary-700 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-900 hover:enabled:border-primary-900 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline-anchor {
-    @apply cursor-pointer text-center text-primary-700 border border-primary-700 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-900 hover:border-primary-900 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline .svg-icon,
   .btn-primary-outline-anchor .svg-icon {
-    @apply bg-primary-700;
+    @apply bg-primary-500;
+  }
+
+  .btn-mini {
+    @apply py-1 px-3 text-xs;
   }
 
   .icon-text {
@@ -179,6 +179,12 @@
 button:enabled {
   cursor: pointer;
 }
+
+/* Generic styles */
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 0;
+}
+/* End generic styles */
 
 /* Footer */
 .copyright a {
@@ -326,6 +332,7 @@ input:placeholder-shown {
 .icon-attendees { --icon-url: url('/static/images/icons/attendees.svg'); }
 .icon-buildings { --icon-url: url('/static/images/icons/buildings.svg'); }
 .icon-calendar { --icon-url: url('/static/images/icons/calendar.svg'); }
+.icon-cancel { --icon-url: url('/static/images/icons/cancel.svg'); }
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
@@ -339,6 +346,8 @@ input:placeholder-shown {
 .icon-gears { --icon-url: url('/static/images/icons/gears.svg'); }
 .icon-github { --icon-url: url('/static/images/icons/github.svg'); }
 .icon-groups { --icon-url: url('/static/images/icons/groups.svg'); }
+.icon-groups-add { --icon-url: url('/static/images/icons/groups_add.svg'); }
+.icon-home { --icon-url: url('/static/images/icons/home.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
@@ -346,6 +355,7 @@ input:placeholder-shown {
 .icon-link { --icon-url: url('/static/images/icons/link.svg'); }
 .icon-linkedin { --icon-url: url('/static/images/icons/linkedin.svg'); }
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
+.icon-list-magnifying-glass { --icon-url: url('/static/images/icons/list_magnifying_glass.svg'); }
 .icon-location { --icon-url: url('/static/images/icons/location.svg'); }
 .icon-login { --icon-url: url('/static/images/icons/login.svg'); }
 .icon-logout { --icon-url: url('/static/images/icons/logout.svg'); }
@@ -365,6 +375,8 @@ input:placeholder-shown {
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }
+.icon-user-plus { --icon-url: url('/static/images/icons/user_plus.svg'); }
+.icon-vertical-dots { --icon-url: url('/static/images/icons/vertical_dots.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
@@ -472,3 +484,67 @@ input:placeholder-shown {
 }
 
 /* End markdown */
+
+
+/* EasyMD Editor */
+
+.EasyMDEContainer .editor-toolbar {
+  border-top-left-radius: 0.375rem;
+  border-top-right-radius: 0.375rem;
+  border-color: var(--color-stone-200) !important;
+  background-color: var(--color-stone-50) !important;
+}
+
+.EasyMDEContainer .CodeMirror {
+  height: 220px;
+  border-bottom-left-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+  border-color: var(--color-stone-200) !important;
+}
+
+.EasyMDEContainer .CodeMirror-scroll {
+  max-height: 180px;
+  min-height: 180px !important;
+}
+
+.mini .EasyMDEContainer .CodeMirror {
+  height: 140px;
+}
+
+.mini .EasyMDEContainer .CodeMirror-scroll {
+  max-height: 100px;
+  min-height: 100px !important;
+}
+
+.EasyMDEContainer button {
+  color: rgb(17 24 39 / var(--tw-text-opacity, 1));
+}
+
+.EasyMDEContainer .editor-toolbar button.active,
+.EasyMDEContainer .editor-toolbar button:hover {
+  background-color: white;
+}
+
+.EasyMDEContainer .CodeMirror .cm-spell-error:not(.cm-url):not(.cm-comment):not(.cm-tag):not(.cm-word) {
+  background: transparent !important;
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-header-1 {
+  font-size: var(--text-lg) !important;
+}
+
+.EasyMDEContainer .cm-s-easymde .cm-header-2, .EasyMDEContainer .cm-s-easymde .cm-header-3, .EasyMDEContainer .cm-s-easymde .cm-header-4, .EasyMDEContainer .cm-s-easymde .cm-header-5, .EasyMDEContainer .cm-s-easymde .cm-header-6 {
+  font-size: var(--text-base) !important;
+}
+
+.EasyMDEContainer .editor-preview-active {
+  background-color: white;
+  padding: 1rem;
+}
+
+/* Hide separator when empty block of icons */
+.EasyMDEContainer .editor-toolbar .separator + .separator {
+  display: none;
+}
+
+/* End EasyMD Editor */

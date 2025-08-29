@@ -61,12 +61,5 @@ pub(crate) async fn update(
     // Update group in database
     db.update_group(community_id, group_id, &group_update).await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/group?tab=settings", "target":"body"}"#,
-        )],
-    )
-        .into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
 }

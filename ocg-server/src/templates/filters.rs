@@ -4,7 +4,9 @@
 //! transform data during rendering. These filters extend Askama's built-in
 //! functionality with application-specific formatting needs.
 
+use chrono::{DateTime, Utc};
 use num_format::{Locale, ToFormattedString};
+use tracing::error;
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::templates::common::User;
@@ -13,6 +15,44 @@ use crate::templates::common::User;
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn demoji(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
     Ok(s.graphemes(true).filter(|gc| emojis::get(gc).is_none()).collect())
+}
+
+/// Display the value if present, otherwise return an empty string.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+pub(crate) fn display_some<T>(value: &Option<T>, _: &dyn askama::Values) -> askama::Result<String>
+where
+    T: std::fmt::Display,
+{
+    match value {
+        Some(value) => Ok(value.to_string()),
+        None => Ok(String::new()),
+    }
+}
+
+/// Display the formatted datetime if present, otherwise return an empty string.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
+pub(crate) fn display_some_datetime(
+    value: &Option<DateTime<Utc>>,
+    _: &dyn askama::Values,
+    format: &str,
+) -> askama::Result<String> {
+    match value {
+        Some(value) => Ok(value.format(format).to_string()),
+        None => Ok(String::new()),
+    }
+}
+
+/// Convert a markdown string to HTML using GitHub Flavored Markdown options.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+pub(crate) fn md_to_html(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
+    let options = markdown::Options::gfm();
+    match markdown::to_html_with_options(s, &options) {
+        Ok(html) => Ok(html),
+        Err(e) => {
+            error!("error converting markdown to html: {}", e);
+            Ok("error converting markdown to html".to_string())
+        }
+    }
 }
 
 /// Formats numbers with thousands separators.

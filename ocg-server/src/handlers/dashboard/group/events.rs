@@ -99,14 +99,7 @@ pub(crate) async fn add(
     // Add event to database
     db.add_event(group_id, &event).await?;
 
-    Ok((
-        StatusCode::CREATED,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
-        )],
-    )
-        .into_response())
+    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-events-table")]).into_response())
 }
 
 /// Cancels an event (sets canceled=true).
@@ -138,13 +131,7 @@ pub(crate) async fn delete(
     // Delete event from database (soft delete)
     db.delete_event(group_id, event_id).await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
-        )],
-    ))
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
 }
 
 /// Updates an existing event's information in the database.
@@ -165,12 +152,5 @@ pub(crate) async fn update(
     // Update event in database
     db.update_event(group_id, event_id, &event).await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
-        )],
-    )
-        .into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
 }

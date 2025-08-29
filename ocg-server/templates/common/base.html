@@ -19,11 +19,15 @@
     <link rel="stylesheet" href="/static/vendor/css/leaflet.v1.9.4.min.css" />
     <link rel="stylesheet"
           href="/static/vendor/css/leaflet.markercluster.v1.5.3.min.css" />
+    <link rel="stylesheet" href="/static/vendor/css/easymde.v2.20.0.min.css" />
     <link rel="stylesheet" href="/static/css/styles.css" />
     {# End styles -#}
 
     {# Scripts -#}
     <script type="text/javascript" src="/static/vendor/js/htmx.v2.0.4.min.js"></script>
+    <script type="text/javascript"
+            src="/static/vendor/js/sweetalert2.v11.17.2.min.js"></script>
+    <script src="/static/vendor/js/easymde.v2.20.0.min.js"></script>
     {# End scripts -#}
 
     <script type="text/javascript">
@@ -47,12 +51,21 @@
     </script>
   </head>
   {# djlint:off #}
-  <body class='h-full {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
-    <div class="min-h-full flex flex-col">
+  <body class="h-full">
+    {# Skip navigation link -#}
+    <a href="#main-content"
+       class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
+      Skip to main content
+    </a>
+    {# End skip navigation link -#}
+
+    <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
       <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
-        {# Header -#}
-        {% include "community/header.html" -%}
-        {# End header -#}
+        {% if !path.starts_with("/dashboard") -%}
+          {# Header -#}
+          <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
+          {# End header -#}
+        {% endif -%}
 
         {# Jumbotron -#}
         {% block jumbotron -%}
@@ -61,15 +74,17 @@
       </div>
 
       {# Content -#}
-      <main class="grow z-[1]">
+      <main id="main-content" class='grow z-[1] {% if path == "/log-in" || path == "/sign-up" %}flex{% endif %}' role="main">
         {% block content -%}
         {% endblock content -%}
       </main>
       {# End content -#}
 
-      {# Footer -#}
-      {% include "community/footer.html" -%}
-      {# End footer -#}
+      {% if !path.starts_with("/dashboard") && path != "/log-in" && path != "/sign-up" -%}
+        {# Footer -#}
+        {% include "common/footer.html" -%}
+        {# End footer -#}
+      {% endif -%}
     </div>
 
     {% block scripts -%}

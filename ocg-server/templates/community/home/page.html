@@ -1,5 +1,5 @@
 {% import "common.html" as common -%}
-{% extends "community/base.html" -%}
+{% extends "common/base.html" -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
@@ -17,7 +17,9 @@
         {# End community title -#}
 
         {# Community description -#}
-        <div class="mb-8 font-normal text-stone-600 jumbotron-description">{{ community.description|safe }}</div>
+        <div class="mb-8 font-normal text-stone-600 jumbotron-description">
+          {{ community.description|md_to_html|safe }}
+        </div>
         {# End community description -#}
 
         {# Search bar -#}
@@ -103,7 +105,28 @@
       {# End banner -#}
 
       {# Recently added groups -#}
-      {% call groups_list(title = "Recently added groups", link = "/explore?entity=groups", groups = recently_added_groups) -%}
+      <div class="flex items-center justify-between mb-6">
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Recently added groups</div>
+        {# See all groups on desktop -#}
+        <div class="hidden justify-self-end md:flex">
+          <a href="/explore?entity=groups" class="btn-secondary-anchor ms-4">See all groups</a>
+        </div>
+        {# End see all groups on desktop -#}
+      </div>
+      <div class="my-6 md:my-10">
+        {# Groups cards -#}
+        <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
+          {% for group in recently_added_groups -%}
+            {{ group|safe }}
+          {% endfor -%}
+        </div>
+        {# End groups cards -#}
+        {# See all groups mobile button -#}
+        <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
+          <a href="/explore?entity=groups" class="btn-secondary-anchor">See all groups</a>
+        </div>
+        {# End see all groups mobile button -#}
+      </div>
       {# End recently added groups -#}
     </div>
   </div>
@@ -111,7 +134,18 @@
 
   {# Gallery -#}
   {% if let Some(photos_urls) = community.photos_urls -%}
-    <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+    {% if !photos_urls.is_empty() -%}
+      <div class="bg-stone-100 pt-4 md:pt-10 pb-6 md:pb-12">
+        <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div class="mb-12">
+            <!-- Title -->
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Gallery</div>
+            <!-- End title -->
+          </div>
+          <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+        </div>
+      </div>
+    {% endif -%}
   {% endif -%}
   {# End gallery -#}
 {% endblock content -%}
@@ -148,30 +182,3 @@
   </div>
 {% endmacro events_list -%}
 {# End events list -#}
-
-{# Groups list -#}
-{% macro groups_list(title, link, groups) -%}
-  <div class="flex items-center justify-between mb-6">
-    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
-    {# See all groups on desktop -#}
-    <div class="hidden justify-self-end md:flex">
-      <a href="{{ link }}" class="btn-secondary-anchor ms-4">See all groups</a>
-    </div>
-    {# End see all groups on desktop -#}
-  </div>
-  <div class="my-6 md:my-10">
-    {# Groups cards -#}
-    <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
-      {% for group in groups -%}
-        {{ group|safe }}
-      {% endfor -%}
-    </div>
-    {# End groups cards -#}
-    {# See all groups mobile button -#}
-    <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
-      <a href="{{ link }}" class="btn-secondary-anchor">See all groups</a>
-    </div>
-    {# End see all groups mobile button -#}
-  </div>
-{% endmacro groups_list -%}
-{# End groups list -#}

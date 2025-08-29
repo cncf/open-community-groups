@@ -1,0 +1,13 @@
+<div class="flex justify-between items-center border-solid border-0 border-b border-stone-100 p-5">
+  <div class="font-semibold text-sm text-black">Filters</div>
+
+  <div class="flex items-center">
+    {# Filters view mode -#}
+    {# Loading spinner -#}
+    <div id="loading-filters" class="me-3 w-6 group">{% call common::small_spinner() -%}</div>
+    {# End loading spinner -#}
+
+    <button id="reset-filters"
+            class="btn-primary-outline btn-mini hidden lg:flex reset-filters">Reset</button>
+  </div>
+</div>

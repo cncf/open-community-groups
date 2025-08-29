@@ -1,0 +1,406 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Groups update form -#}
+<form id="groups-form"
+      hx-put="/dashboard/community/groups/{{ group.group_id }}/update"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Group Details", description = "Please update as many details about this group as possible.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Group name -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="name" class="form-label">
+            Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="100"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   value="{{ group.name }}"
+                   required>
+          </div>
+          <p class="form-legend">Display name of the group (e.g. Kubernetes Amsterdam).</p>
+        </div>
+        {# End Group name -#}
+
+        {# Hidden slug field -#}
+        <input type="hidden" name="slug" value="{{ group.slug }}">
+        {# End hidden slug field -#}
+
+        <div class="col-span-3"></div>
+
+        {# Group category -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="category_id" class="form-label">
+            Category <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="category_id" name="category_id" class="select-primary" required>
+              <option value="">Select a category</option>
+              {% for category in categories %}
+                <option value="{{ category.group_category_id }}"
+                        {% if category.group_category_id == group.category.group_category_id %}selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="form-legend">Type of group or event series.</p>
+        </div>
+        {# End Group category -#}
+
+        {# Group region -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="region_id" class="form-label">Region</label>
+          <div class="mt-2 grid grid-cols-1">
+            <select id="region_id" name="region_id" class="select-primary">
+              <option value="">Select a region (optional)</option>
+              {% for region in regions %}
+                <option value="{{ region.region_id }}"
+                        {% if let Some(group_region) = group.region %}
+                          {% if region.region_id == group_region.region_id %}selected{% endif %}
+                        {% endif %}>{{ region.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <p class="form-legend">Geographic region where the group is primarily based.</p>
+        </div>
+        {# End Group region -#}
+
+        {# Logo URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="logo_url" class="form-label">Logo URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="logo_url"
+                   id="logo_url"
+                   class="input-primary"
+                   placeholder="https://example.com/logo.png"
+                   {% if let Some(logo_url) = group.logo_url %}value="{{ logo_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the group's logo image.</p>
+        </div>
+        {# End Logo URL -#}
+
+        {# Banner URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="banner_url" class="form-label">Banner URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="banner_url"
+                   id="banner_url"
+                   class="input-primary"
+                   placeholder="https://example.com/banner.jpg"
+                   {% if let Some(banner_url) = group.banner_url %}value="{{ banner_url }}"{% endif %}>
+          </div>
+          <p class="form-legend">URL to the group's banner image.</p>
+        </div>
+        {# End Banner URL -#}
+
+        {# Short Description -#}
+        <div class="col-span-full">
+          <label for="description_short" class="form-label">Short Description</label>
+          <div class="mt-2">
+            <textarea id="description_short"
+                      name="description_short"
+                      rows="2"
+                      class="input-primary"
+                      maxlength="200">{% if let Some(description_short) = group.description_short %}{{ description_short }}{% endif %}</textarea>
+          </div>
+          <p class="form-legend">Brief description for group listings and previews.</p>
+        </div>
+        {# End Short Description -#}
+
+        {# Group Description -#}
+        <div class="col-span-full">
+          <label for="description" class="form-label">
+            Description <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <markdown-editor id="description" name="description" content="{%- if let Some(description) = group.description -%}{{ description }}{%- endif -%}" required></markdown-editor>
+          </div>
+          <p class="form-legend">Brief description of the group and its purpose.</p>
+        </div>
+        {# End Group Description -#}
+      </div>
+    </div>
+
+    {# Location section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Location", description = "Optional location information for the group.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# City -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="city" class="form-label">City</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="city"
+                   id="city"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   {% if let Some(city) = group.city %}value="{{ city }}"{% endif %}>
+          </div>
+          <p class="form-legend">Primary city where the group is located.</p>
+        </div>
+        {# End City -#}
+
+        {# State -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="state" class="form-label">State/Province</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="state"
+                   id="state"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   {% if let Some(state) = group.state %}value="{{ state }}"{% endif %}>
+          </div>
+          <p class="form-legend">State, province, or region.</p>
+        </div>
+        {# End State -#}
+
+        {# Country -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="country_name" class="form-label">Country</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="country_name"
+                   id="country_name"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   {% if let Some(country_name) = group.country_name %}value="{{ country_name }}"{% endif %}>
+          </div>
+          <p class="form-legend">Country where the group is located.</p>
+        </div>
+        {# End Country -#}
+      </div>
+    </div>
+    {# End location section -#}
+
+    {# Social links section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Website URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="website_url" class="form-label">Website</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-link bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="website_url"
+                   id="website_url"
+                   class="input-primary ps-10"
+                   placeholder="https://example.com"
+                   {% if let Some(website_url) = group.website_url %}value="{{ website_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Website URL -#}
+
+        {# GitHub URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="github_url" class="form-label">GitHub</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-github bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="github_url"
+                   id="github_url"
+                   class="input-primary ps-10"
+                   placeholder="https://github.com/organization"
+                   {% if let Some(github_url) = group.github_url %}value="{{ github_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End GitHub URL -#}
+
+        {# Twitter URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="twitter_url" class="form-label">Twitter</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="twitter_url"
+                   id="twitter_url"
+                   class="input-primary ps-10"
+                   placeholder="https://twitter.com/username"
+                   {% if let Some(twitter_url) = group.twitter_url %}value="{{ twitter_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Twitter URL -#}
+
+        {# Facebook URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="facebook_url" class="form-label">Facebook</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="facebook_url"
+                   id="facebook_url"
+                   class="input-primary ps-10"
+                   placeholder="https://facebook.com/page"
+                   {% if let Some(facebook_url) = group.facebook_url %}value="{{ facebook_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Facebook URL -#}
+
+        {# LinkedIn URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="linkedin_url" class="form-label">LinkedIn</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="linkedin_url"
+                   id="linkedin_url"
+                   class="input-primary ps-10"
+                   placeholder="https://linkedin.com/company/name"
+                   {% if let Some(linkedin_url) = group.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End LinkedIn URL -#}
+
+        {# Instagram URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="instagram_url" class="form-label">Instagram</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-instagram bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="instagram_url"
+                   id="instagram_url"
+                   class="input-primary ps-10"
+                   placeholder="https://instagram.com/username"
+                   {% if let Some(instagram_url) = group.instagram_url %}value="{{ instagram_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Instagram URL -#}
+
+        {# Slack URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="slack_url" class="form-label">Slack</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-slack bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="slack_url"
+                   id="slack_url"
+                   class="input-primary ps-10"
+                   placeholder="https://workspace.slack.com"
+                   {% if let Some(slack_url) = group.slack_url %}value="{{ slack_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End Slack URL -#}
+
+        {# YouTube URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="youtube_url" class="form-label">YouTube</label>
+          <div class="mt-2 relative">
+            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
+            </div>
+            <input type="url"
+                   name="youtube_url"
+                   id="youtube_url"
+                   class="input-primary ps-10"
+                   placeholder="https://youtube.com/channel/id"
+                   {% if let Some(youtube_url) = group.youtube_url %}value="{{ youtube_url }}"{% endif %}>
+          </div>
+        </div>
+        {# End YouTube URL -#}
+      </div>
+    </div>
+    {# End social links section -#}
+
+    {# Tags section -#}
+    <div class="pb-12">
+      {% call macros::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Tags -#}
+        <div class="col-span-3">
+          <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = group.tags -%}{{ tags|json }}{%- endif -%}" label="Tag">
+          </multiple-inputs>
+        </div>
+        {# End Tags -#}
+      </div>
+    </div>
+    {# End tags section -#}
+
+    <div class="mt-6 flex items-center justify-end gap-x-6">
+      {# Cancel button -#}
+      <button id="cancel-button"
+              type="button"
+              hx-get="/dashboard/community?tab=groups"
+              hx-target="body"
+              hx-indicator="#dashboard-spinner"
+              class="btn-primary-outline">Cancel</button>
+      {# End cancel button -#}
+
+      {# Save button -#}
+      <button type="submit" class="btn-primary">Update Group</button>
+      {# End save button -#}
+    </div>
+  </div>
+</form>
+
+<script type="module">
+  import {
+    isSuccessfulXHRStatus
+  } from '/static/js/common/common.js';
+  import {
+    showErrorAlert,
+    showSuccessAlert
+  } from '/static/js/common/alerts.js';
+
+  const groupsForm = document.getElementById('groups-form');
+  const cancelButton = document.getElementById('cancel-button');
+
+  if (cancelButton) {
+    cancelButton.addEventListener('htmx:afterRequest', () => {
+      history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
+    });
+  }
+
+  if (groupsForm) {
+    groupsForm.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'groups-form') {
+        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+          showSuccessAlert('Group updated successfully.');
+        } else {
+          showErrorAlert('Something went wrong updating the group, please try again later.');
+        }
+      }
+    });
+  }
+</script>
+{# End Groups update form -#}

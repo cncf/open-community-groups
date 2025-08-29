@@ -1,1 +1,133 @@
+{% extends "dashboard/dashboard_base.html" -%}
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as dashboard_macros -%}
 
+{% block scripts -%}
+  <script type="module" src="/static/js/common/markdown-editor.js"></script>
+  <script type="module" src="/static/js/common/multiple-inputs.js"></script>
+  <script type="module" src="/static/js/common/key-value-inputs.js"></script>
+{% endblock scripts -%}
+
+{% block menu -%}
+  <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
+    <div class="font-semibold text-stone-900 text-lg lg:text-2xl">Dashboard</div>
+    <div id="dashboard-spinner" class="hx-spinner -mt-1.5 relative">{% call common::small_spinner() -%}</div>
+  </div>
+
+  <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
+    {# Groups -#}
+    <div>
+      {% call dashboard_macros::menu_title(text = "Group", extra_styles = "py-1.5") -%}
+      <div class="mt-2 relative">
+        {% for group in groups -%}
+          {% if group.group_id == selected_group_id -%}
+            {% let selected_group = group -%}
+            {# Group button to open dropdown -#}
+            <button id="group-btn"
+                    class="cursor-pointer select select-primary"
+                    aria-label="Select group">
+              <div class="flex items-center relative">
+                {% call group_content_list(name = selected_group.name, logo_url = selected_group.logo_url, color = selected_group.color) -%}
+              </div>
+              <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
+              </div>
+            </button>
+            {# End group button to open dropdown -#}
+
+            {# Dropdown groups -#}
+            <div id="dropdown-groups"
+                 class="hidden absolute top-10 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200">
+              <ul class="max-h-48 overflow-y-auto text-stone-700">
+                {% for dropdown_group in groups -%}
+                  {% let is_selected = selected_group_id == dropdown_group.group_id -%}
+                  <li>
+                    <button hx-put="/dashboard/group/{{ dropdown_group.group_id }}/select"
+                            hx-trigger="click"
+                            hx-target="#dashboard-content"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt=".group-button"
+                            class="group-button cursor-pointer w-full flex items-center px-4 py-2 text-sm/6 hover:bg-stone-100
+                                   {% if is_selected -%}bg-stone-100{%- endif %}"
+                            {% if is_selected %}disabled{% endif %}>
+                      {% call group_content_list(name = dropdown_group.name, logo_url = dropdown_group.logo_url, color = dropdown_group.color) -%}
+                    </button>
+                  </li>
+                {% endfor -%}
+              </ul>
+            </div>
+            {# End dropdown groups -#}
+          {% endif -%}
+        {% endfor -%}
+      </div>
+      {% if !groups.is_empty() -%}
+        <div class="mt-3">
+          {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/group?tab=settings") -%}
+        </div>
+      {% endif -%}
+    </div>
+    {# End groups -#}
+
+    {# Events -#}
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {% call dashboard_macros::menu_title(text = "Events", extra_styles = "py-1.5") -%}
+      {% call dashboard_macros::menu_item(name = "Events", icon = "calendar", is_active = content.is_events(), href = "/dashboard/group?tab=events") -%}
+    </div>
+    {# End events -#}
+
+    {# Account -#}
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {% call dashboard_macros::menu_title(text = "Account", extra_styles = "py-1.5") -%}
+      {% call dashboard_macros::menu_item(name = "Account", icon = "user", is_active = content.is_account(), href = "/dashboard/group?tab=account") -%}
+    </div>
+    {# End account -#}
+  </div>
+{% endblock menu -%}
+
+{% block dashboard_main -%}
+  <div id="dashboard-content"
+       hx-get="/dashboard/group/events"
+       hx-trigger="refresh-events-table"
+       class="p-4 sm:p-6 lg:p-12">
+    {# Content -#}
+    {{ content|safe }}
+    {# End Content -#}
+  </div>
+
+  <script type="module">
+    const groupBtn = document.getElementById('group-btn');
+    const dropdownGroups = document.getElementById('dropdown-groups');
+    if (groupBtn) {
+      groupBtn.addEventListener('click', () => {
+        const isOpen = dropdownGroups.classList.contains('hidden');
+        dropdownGroups.classList.toggle('hidden');
+
+        // Close dropdown groups when clicking outside
+        if (isOpen) {
+          document.addEventListener('click', (event) => {
+            if (!dropdownGroups.contains(event.target) && !groupBtn.contains(event.target)) {
+              dropdownGroups.classList.add('hidden');
+            }
+          });
+        } else {
+          // Remove event listener when dropdown is closed
+          document.removeEventListener('click', () => {});
+        }
+      });
+    }
+
+    const dropdownGroupBtns = document.querySelectorAll('button.group-button');
+    dropdownGroupBtns.forEach((btn) => {
+      btn.addEventListener("htmx:beforeRequest", () => {
+        dropdownGroups.classList.add('hidden');
+      });
+    })
+  </script>
+{% endblock dashboard_main -%}
+
+{% macro group_content_list(name, logo_url, color) -%}
+  <div class="me-3">
+    {% call common::logo(logo_url = logo_url, classes = "size-6", size = 24, color = color, border = false) -%}
+  </div>
+  <div class="truncate">{{ name }}</div>
+{% endmacro group_content_list -%}
