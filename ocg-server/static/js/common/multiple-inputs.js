@@ -15,6 +15,7 @@ export class MultipleInputs extends LitWrapper {
    * @property {string} inputType - Input type (text, url, email, tel, number)
    * @property {string} placeholder - Placeholder text for the input fields
    * @property {string} label - Label for the "Add" button (e.g., "Add Tag")
+   * @property {string} legend - Optional legend text displayed below the inputs
    * @property {boolean} required - If true, prevents removing the last input
    * @property {number} maxItems - Maximum number of items allowed (0 = unlimited)
    */
@@ -24,6 +25,7 @@ export class MultipleInputs extends LitWrapper {
     inputType: { type: String, attribute: "input-type" },
     placeholder: { type: String },
     label: { type: String },
+    legend: { type: String },
     required: { type: Boolean },
     maxItems: { type: Number, attribute: "max-items" },
   };
@@ -35,6 +37,7 @@ export class MultipleInputs extends LitWrapper {
     this.inputType = "text";
     this.placeholder = "";
     this.label = "";
+    this.legend = "";
     this.required = false;
     this.maxItems = 0; // 0 means no limit
     this._nextId = 0;
@@ -202,6 +205,9 @@ export class MultipleInputs extends LitWrapper {
             </div>
           `,
         )}
+
+        <!-- Legend text -->
+        ${this.legend && this.legend.trim() !== "" ? html`<p class="form-legend">${this.legend}</p>` : ""}
 
         <button
           type="button"
