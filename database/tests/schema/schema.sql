@@ -301,7 +301,8 @@ select indexes_are('event', array[
     'event_event_category_id_idx',
     'event_event_kind_id_idx',
     'event_published_by_idx',
-    'event_tsdoc_idx'
+    'event_tsdoc_idx',
+    'event_search_idx'
 ]);
 
 select indexes_are('group', array[
@@ -312,14 +313,18 @@ select indexes_are('group', array[
     'group_region_id_idx',
     'group_group_site_layout_id_idx',
     'group_tsdoc_idx',
-    'group_location_idx'
+    'group_location_idx',
+    'group_search_idx'
 ]);
 
 select indexes_are('user', array[
     'user_pkey',
     'user_email_community_id_key',
     'user_username_community_id_key',
-    'user_community_id_idx'
+    'user_community_id_idx',
+    'user_username_lower_idx',
+    'user_name_lower_idx',
+    'user_email_lower_idx'
 ]);
 
 -- Check expected functions exist

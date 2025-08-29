@@ -20,6 +20,7 @@
 {{ template "community/search_community_events.sql" }}
 {{ template "community/search_community_groups.sql" }}
 
+{{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 
 {{ template "dashboard-community/add_group.sql" }}

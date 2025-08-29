@@ -73,6 +73,9 @@ create table "user" (
 );
 
 create index user_community_id_idx on "user" (community_id);
+create index user_username_lower_idx on "user" (lower(username));
+create index user_name_lower_idx on "user" (lower(name));
+create index user_email_lower_idx on "user" (lower(email));
 
 create table community_team (
     community_id uuid not null references community,
@@ -177,10 +180,12 @@ create table "group" (
 
 create index group_community_id_idx on "group" (community_id);
 create index group_group_category_id_idx on "group" (group_category_id);
-create index group_region_id_idx on "group" (region_id);
 create index group_group_site_layout_id_idx on "group" (group_site_layout_id);
-create index group_tsdoc_idx on "group" using gin (tsdoc);
 create index group_location_idx on "group" using gist (location);
+create index group_region_id_idx on "group" (region_id);
+create index group_search_idx on "group" (community_id, active)
+    where active = true;
+create index group_tsdoc_idx on "group" using gin (tsdoc);
 
 create table group_member (
     group_id uuid not null references "group",
@@ -294,6 +299,8 @@ create index event_group_id_idx on event (group_id);
 create index event_event_category_id_idx on event (event_category_id);
 create index event_event_kind_id_idx on event (event_kind_id);
 create index event_published_by_idx on event (published_by);
+create index event_search_idx on event (group_id, published, canceled, starts_at)
+    where published = true and canceled = false;
 create index event_tsdoc_idx on event using gin (tsdoc);
 
 create table event_host (
