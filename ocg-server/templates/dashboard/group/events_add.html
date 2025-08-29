@@ -62,23 +62,26 @@
 
       {# Save button -#}
       <div>
-        <button type="submit" class="btn-primary w-24 text-nowrap" form="events-form">Add</button>
+        <button id="add-event-button" 
+                type="button"
+                class="btn-primary w-24 text-nowrap"
+                hx-post="/dashboard/group/events/add"
+                hx-ext="no-empty-vals"
+                hx-include="#details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="#add-event-button, #cancel-button"
+                hx-exclude="[name=toggle_registration_required], [name=starts_at_input], [name=ends_at_input]">Add</button>
       </div>
       {# End save button -#}
     </div>
   </div>
 
   <div>
-    <form id="events-form"
-          hx-post="/dashboard/group/events/add"
-          hx-ext="no-empty-vals"
-          hx-target="#dashboard-content"
-          hx-indicator="#dashboard-spinner"
-          hx-disabled-elt="button[type=submit], #cancel-button"
-          hx-exclude="[name=toggle_registration_required], [name=starts_at_input], [name=ends_at_input]">
       <div class="space-y-12">
         {# Event Details Tab -#}
         <div data-content="details">
+          <form id="details-form">
           <div class="pb-12">
             <p class="mt-1 text-sm/6 text-stone-500">Please add as many details about this event as possible.</p>
 
@@ -278,11 +281,13 @@
             </div>
           </div>
           {# End additional information section -#}
+          </form>
         </div>
         {# End Event Details Tab -#}
 
         {# Date & Venue Tab -#}
         <div data-content="date-venue" class="hidden">
+          <form id="date-venue-form">
           <div class="space-y-12">
             {# Date and Time section -#}
             <div class="border-b border-stone-900/10 pb-12">
@@ -440,21 +445,25 @@
             </div>
             {# End online event details section -#}
           </div>
+          </form>
         </div>
         {# End Date & Venue Tab -#}
 
         {# Sessions Tab -#}
         <div data-content="sessions" class="hidden">
+          <form id="sessions-form">
           <div class="pb-12">
             <div class="mt-10">
               <sessions-section></sessions-section>
             </div>
           </div>
+          </form>
         </div>
         {# End Sessions Tab -#}
 
         {# Hosts & Sponsors Tab -#}
         <div data-content="hosts-sponsors" class="hidden">
+          <form id="hosts-sponsors-form">
           <div class="space-y-12">
             {# Hosts Section -#}
             <div class="border-b border-stone-900/10 pb-12">
@@ -475,11 +484,11 @@
             </div>
             {# End Sponsors Section -#}
           </div>
+          </form>
         </div>
         {# End Hosts & Sponsors Tab -#}
 
       </div>
-    </form>
   </div>
 </div>
 
@@ -496,7 +505,7 @@
     generateSlug
   } from '/static/js/dashboard/common.js';
 
-  const eventsForm = document.getElementById('events-form');
+  const addEventButton = document.getElementById('add-event-button');
   const cancelButton = document.getElementById('cancel-button');
   const kindSelect = document.getElementById('kind_id');
   const venueSection = document.getElementById('venue-section');
@@ -527,6 +536,23 @@
     });
   }
 
+  // Validate multiple forms following GitJobs pattern
+  function validateEventForms() {
+    const formSections = ['details', 'date-venue', 'sessions', 'hosts-sponsors'];
+
+    for (const formName of formSections) {
+      const formElement = document.getElementById(`${formName}-form`);
+
+      if (formElement && !formElement.checkValidity()) {
+        displayActiveSection(formName);
+        formElement.reportValidity();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   // Add event listeners to tab buttons
   const sectionsBtn = document.querySelectorAll('[data-section]');
   sectionsBtn.forEach((btn) => {
@@ -535,35 +561,6 @@
       displayActiveSection(section);
     });
   });
-
-  // Handle dynamic visibility of venue and online sections based on event kind
-  function updateSectionVisibility() {
-    if (!kindSelect || !venueSection || !onlineSection) return;
-
-    const selectedKind = kindSelect.value;
-
-    // Show/hide venue section based on event kind
-    if (selectedKind === 'in-person' || selectedKind === 'hybrid') {
-      venueSection.style.display = 'block';
-    } else {
-      venueSection.style.display = 'none';
-    }
-
-    // Show/hide online section based on event kind
-    if (selectedKind === 'virtual' || selectedKind === 'hybrid') {
-      onlineSection.style.display = 'block';
-    } else {
-      onlineSection.style.display = 'none';
-    }
-  }
-
-  // Initialize section visibility
-  updateSectionVisibility();
-
-  // Update visibility when kind changes
-  if (kindSelect) {
-    kindSelect.addEventListener('change', updateSectionVisibility);
-  }
 
   // Handle registration required toggle
   const toggleRegistrationRequired = document.getElementById('toggle_registration_required');
@@ -579,10 +576,24 @@
     });
   }
 
-  if (eventsForm) {
+  if (addEventButton) {
+    // Validation before form submission
+    addEventButton.addEventListener('htmx:beforeRequest', (e) => {
+      if (e.detail.elt.id === 'add-event-button') {
+        // Use multiple form validation
+        const isValid = validateEventForms();
+        
+        if (!isValid) {
+          // Prevent form submission
+          e.preventDefault();
+          return false;
+        }
+      }
+    });
+
     // Generate slug and add to request parameters
-    eventsForm.addEventListener('htmx:configRequest', (e) => {
-      if (e.detail.elt.id === 'events-form') {
+    addEventButton.addEventListener('htmx:configRequest', (e) => {
+      if (e.detail.elt.id === 'add-event-button') {
         const nameInput = document.getElementById('name');
 
         if (nameInput && nameInput.value.trim()) {
@@ -604,8 +615,8 @@
       }
     });
 
-    eventsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'events-form') {
+    addEventButton.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'add-event-button') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
           showSuccessAlert('Event created successfully.');
         } else {

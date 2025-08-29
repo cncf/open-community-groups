@@ -62,7 +62,7 @@ export class SessionsSection extends LitWrapper {
       id: this.sessions ? this.sessions.length : 0,
       name: "",
       description: "",
-      kind: "in-person",
+      kind: "",
       starts_at: "",
       ends_at: "",
       location: "",
@@ -210,7 +210,7 @@ class SessionItem extends LitWrapper {
       id: 0,
       name: "",
       description: "",
-      kind: "in-person",
+      kind: "",
       starts_at: "",
       ends_at: "",
       location: "",
@@ -300,6 +300,7 @@ class SessionItem extends LitWrapper {
             class="input-primary"
             ?required=${!this.isObjectEmpty}
           >
+            <option value="" ?selected=${!this.data.kind}>Select type</option>
             <option value="in-person" ?selected=${this.data.kind === "in-person"}>In-Person</option>
             <option value="virtual" ?selected=${this.data.kind === "virtual"}>Virtual</option>
           </select>

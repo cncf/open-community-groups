@@ -182,13 +182,14 @@ export const convertDateTimeLocalToISO = (dateTimeLocal) => {
  * Checks if an object contains only empty values.
  * Excludes the id field from the check, useful for form validation.
  * @param {Object} obj - The object to check
- * @returns {boolean} True if all values (except id) are empty/null/undefined
+ * @returns {boolean} True if all values (except id) are empty/null/undefined/empty arrays
  */
 export const isObjectEmpty = (obj) => {
   // Remove the id key from the object
   const objectWithoutId = { ...obj };
   delete objectWithoutId.id;
   return Object.values(objectWithoutId).every(
-    (x) => x === null || x === "" || typeof x === "undefined",
+    (x) => x === null || x === "" || typeof x === "undefined" || 
+           (Array.isArray(x) && x.length === 0),
   );
 };

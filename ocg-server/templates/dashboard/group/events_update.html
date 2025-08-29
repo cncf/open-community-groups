@@ -193,7 +193,7 @@
     {# End date and time section -#}
 
     {# Venue Information section -#}
-    <div id="venue-section" class="border-b border-stone-900/10 pb-12">
+    <div class="border-b border-stone-900/10 pb-12">
       {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -431,38 +431,6 @@
 
   const eventsForm = document.getElementById('events-form');
   const cancelButton = document.getElementById('cancel-button');
-  const kindSelect = document.getElementById('kind_id');
-  const venueSection = document.getElementById('venue-section');
-  const onlineSection = document.getElementById('online-section');
-
-  // Handle dynamic visibility of venue and online sections based on event kind
-  function updateSectionVisibility() {
-    if (!kindSelect || !venueSection || !onlineSection) return;
-
-    const selectedKind = kindSelect.value;
-
-    // Show/hide venue section based on event kind
-    if (selectedKind === 'in-person' || selectedKind === 'hybrid') {
-      venueSection.style.display = 'block';
-    } else {
-      venueSection.style.display = 'none';
-    }
-
-    // Show/hide online section based on event kind
-    if (selectedKind === 'virtual' || selectedKind === 'hybrid') {
-      onlineSection.style.display = 'block';
-    } else {
-      onlineSection.style.display = 'none';
-    }
-  }
-
-  // Initialize section visibility
-  updateSectionVisibility();
-
-  // Update visibility when kind changes
-  if (kindSelect) {
-    kindSelect.addEventListener('change', updateSectionVisibility);
-  }
 
   // Handle registration required toggle
   const toggleRegistrationRequired = document.getElementById('toggle_registration_required');
