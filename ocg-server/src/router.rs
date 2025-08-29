@@ -83,6 +83,7 @@ pub(crate) async fn setup(
     // Setup sub-routers
     let community_dashboard_router = setup_community_dashboard_router(state.clone());
     let group_dashboard_router = setup_group_dashboard_router(state.clone());
+    let user_dashboard_router = setup_user_dashboard_router();
 
     // Setup router
     let mut router = Router::new()
@@ -96,6 +97,7 @@ pub(crate) async fn setup(
         )
         .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
+        .nest("/dashboard/user", user_dashboard_router)
         .route_layer(login_required!(
             AuthnBackend,
             login_url = LOG_IN_URL,
@@ -261,4 +263,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         )
         .route("/users/search", get(dashboard::common::search_user))
         .route_layer(check_user_belongs_to_group_team)
+}
+
+/// Sets up the user dashboard router and its routes.
+fn setup_user_dashboard_router() -> Router<State> {
+    // Setup router
+    Router::new().route("/", get(dashboard::user::home::page))
 }

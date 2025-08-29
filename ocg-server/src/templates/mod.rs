@@ -37,4 +37,5 @@ pub(crate) enum PageId {
     GroupDashboard,
     LogIn,
     SignUp,
+    UserDashboard,
 }
