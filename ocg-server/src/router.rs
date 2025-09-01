@@ -215,6 +215,10 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
             get(dashboard::community::groups::add_page).post(dashboard::community::groups::add),
         )
         .route(
+            "/groups/{group_id}/deactivate",
+            put(dashboard::community::groups::deactivate),
+        )
+        .route(
             "/groups/{group_id}/delete",
             delete(dashboard::community::groups::delete),
         )

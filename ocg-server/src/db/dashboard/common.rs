@@ -56,6 +56,7 @@ impl DBDashboardCommon for PgDB {
 /// User search result.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct User {
+    pub user_id: Uuid,
     pub username: String,
 
     pub name: Option<String>,

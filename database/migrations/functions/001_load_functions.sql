@@ -24,6 +24,7 @@
 {{ template "dashboard-common/update_group.sql" }}
 
 {{ template "dashboard-community/add_group.sql" }}
+{{ template "dashboard-community/deactivate_group.sql" }}
 {{ template "dashboard-community/delete_group.sql" }}
 {{ template "dashboard-community/list_community_groups.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}

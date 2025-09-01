@@ -7,7 +7,9 @@ returns jsonb as $$
     select coalesce(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb)
     from (
         select
+            u.user_id,
             u.username,
+
             u.name,
             u.photo_url
         from "user" u

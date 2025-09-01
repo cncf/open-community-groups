@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::error::HandlerError,
+    handlers::{error::HandlerError, extractors::CommunityId},
     templates::{
         PageId,
         auth::{self, User, UserDetails},
@@ -29,6 +29,7 @@ use crate::{
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     auth_session: AuthSession,
+    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -39,6 +40,9 @@ pub(crate) async fn page(
 
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
+
+    // Get community information
+    let community = db.get_community(community_id).await?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -54,6 +58,7 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
+        community,
         content,
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
