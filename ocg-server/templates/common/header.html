@@ -179,10 +179,23 @@
             </div>
           </li>
 
+          <li class="border-t border-stone-200 mt-2 pt-2" role="none">
+            <a href="/dashboard/user"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-user bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">User Dashboard</div>
+              </div>
+            </a>
+          </li>
+
           {# Dashboard links -#}
           {% if let Some(belongs_to_community_team) = user.belongs_to_community_team -%}
             {% if belongs_to_community_team -%}
-              <li class="border-t border-stone-200 mt-2 pt-2" role="none">
+              <li role="none">
                 <a href="/dashboard/community"
                    hx-boost="true"
                    hx-target="body"
@@ -199,8 +212,7 @@
 
           {% if let Some(belongs_to_any_group_team) = user.belongs_to_any_group_team -%}
             {% if belongs_to_any_group_team -%}
-              <li class="{%- if let Some(belongs_to_community_team) = user.belongs_to_community_team -%} {%- if !belongs_to_community_team -%} border-t border-stone-200 mt-2 pt-2 {%- endif -%}{%- endif -%}"
-                  role="none">
+              <li role="none">
                 <a href="/dashboard/group"
                    hx-boost="true"
                    hx-target="body"
