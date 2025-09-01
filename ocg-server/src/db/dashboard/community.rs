@@ -18,6 +18,9 @@ pub(crate) trait DBDashboardCommunity {
     /// Adds a new group to the database.
     async fn add_group(&self, community_id: Uuid, group: &Group) -> Result<Uuid>;
 
+    /// Deactivates a group (sets active=false without deleting).
+    async fn deactivate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+
     /// Deletes a group (soft delete by setting active=false).
     async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
 
@@ -51,6 +54,21 @@ impl DBDashboardCommunity for PgDB {
             .get(0);
 
         Ok(group_id)
+    }
+
+    /// [`DBDashboardCommunity::deactivate_group`]
+    #[instrument(skip(self), err)]
+    async fn deactivate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
+        trace!("db: deactivate group");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select deactivate_group($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardCommunity::delete_group`]

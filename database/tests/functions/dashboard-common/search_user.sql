@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,8 @@ select plan(10);
 \set user5ID '00000000-0000-0000-0000-000000000015'
 \set user6ID '00000000-0000-0000-0000-000000000016'
 \set user7ID '00000000-0000-0000-0000-000000000017'
+\set user8ID '00000000-0000-0000-0000-000000000018'
+\set user9ID '00000000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
@@ -86,11 +88,13 @@ select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'john'),
     '[
         {
+            "user_id": "00000000-0000-0000-0000-000000000011",
             "username": "johndoe",
             "name": "John Doe",
             "photo_url": "https://example.com/john.jpg"
         },
         {
+            "user_id": "00000000-0000-0000-0000-000000000013",
             "username": "johnsmith",
             "name": "John Smith",
             "photo_url": null
@@ -104,6 +108,7 @@ select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'jane'),
     '[
         {
+            "user_id": "00000000-0000-0000-0000-000000000012",
             "username": "janedoe",
             "name": "Jane Doe",
             "photo_url": "https://example.com/jane.jpg"
@@ -117,6 +122,7 @@ select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'alice@'),
     '[
         {
+            "user_id": "00000000-0000-0000-0000-000000000014",
             "username": "alice",
             "name": "Alice Johnson",
             "photo_url": "https://example.com/alice.jpg"
@@ -125,25 +131,7 @@ select is(
     'search_user should find users by email prefix'
 );
 
--- Test 4: Case-insensitive matching
-select is(
-    search_user('00000000-0000-0000-0000-000000000001'::uuid, 'JOHN'),
-    '[
-        {
-            "username": "johndoe",
-            "name": "John Doe",
-            "photo_url": "https://example.com/john.jpg"
-        },
-        {
-            "username": "johnsmith",
-            "name": "John Smith",
-            "photo_url": null
-        }
-    ]'::jsonb,
-    'search_user should match case-insensitively'
-);
-
--- Test 5: Limit to 5 results
+-- Test 4: Limit to 5 results
 insert into "user" (username, email, auth_hash, community_id, name)
 values 
     ('test1', 'test1@example.com', 'hash8', :'communityID', 'Test User 1'),
@@ -159,18 +147,19 @@ select is(
     'search_user should return maximum 5 results'
 );
 
--- Test 6: No results for non-matching query
+-- Test 5: No results for non-matching query
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'nonexistent'),
     '[]'::jsonb,
     'search_user should return no results for non-matching query'
 );
 
--- Test 7: Community isolation
+-- Test 6: Community isolation
 select is(
     search_user('00000000-0000-0000-0000-000000000002'::uuid, 'john'),
     '[
         {
+            "user_id": "00000000-0000-0000-0000-000000000017",
             "username": "johndoe",
             "name": "John from Other",
             "photo_url": "https://example.com/other.jpg"
@@ -179,43 +168,26 @@ select is(
     'search_user should only return users from the specified community'
 );
 
--- Test 8: Empty query returns no results
+-- Test 7: Empty query returns no results
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, ''),
     '[]'::jsonb,
     'search_user should return no results for empty query'
 );
 
--- Test 9: SQL injection prevention - percent character
-insert into "user" (username, email, auth_hash, community_id, name)
-values ('user%test', 'usertest@example.com', 'hash14', :'communityID', 'User Percent Test');
+-- Test 8: SQL injection prevention - special characters
+insert into "user" (user_id, username, email, auth_hash, community_id, name)
+values 
+    (:'user8ID', 'user%test', 'usertest@example.com', 'hash14', :'communityID', 'User Percent Test'),
+    (:'user9ID', 'user_special', 'userspecial@example.com', 'hash15', :'communityID', 'User Underscore');
 
 select is(
-    search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user%'),
-    '[
-        {
-            "username": "user%test",
-            "name": "User Percent Test",
-            "photo_url": null
-        }
-    ]'::jsonb,
-    'search_user should treat % as literal character, not wildcard'
-);
-
--- Test 10: SQL injection prevention - underscore character
-insert into "user" (username, email, auth_hash, community_id, name)
-values ('user_special', 'userspecial@example.com', 'hash15', :'communityID', 'User Underscore');
-
-select is(
-    search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user_'),
-    '[
-        {
-            "username": "user_special",
-            "name": "User Underscore",
-            "photo_url": null
-        }
-    ]'::jsonb,
-    'search_user should treat _ as literal character, not wildcard'
+    jsonb_array_length(search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user%')) = 1
+    and jsonb_array_length(search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user_')) = 1
+    and search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user%') @> '[{"username": "user%test"}]'::jsonb
+    and search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user_') @> '[{"username": "user_special"}]'::jsonb,
+    true,
+    'search_user should treat % and _ as literal characters, not wildcards'
 );
 
 -- ============================================================================

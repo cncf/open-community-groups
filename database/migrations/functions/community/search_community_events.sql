@@ -105,22 +105,27 @@ begin
             case when v_tsquery_with_prefix_matching is not null then
                 v_tsquery_with_prefix_matching @@ e.tsdoc
             else true end
+    ),
+    filtered_events_page as (
+        select event_id
+        from filtered_events
+        order by
+            (case when v_sort_by = 'date' then starts_at end) asc,
+            (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
+            starts_at asc
+        limit v_limit
+        offset v_offset
+    ),
+    filtered_events_bbox as (
+        select st_envelope(st_union(st_envelope(location::geometry))) as bb
+        from filtered_events
     )
     select
         (
             select coalesce(json_agg(
                 get_event_detailed(event_id)
             ), '[]')
-            from (
-                select event_id
-                from filtered_events
-                order by
-                    (case when v_sort_by = 'date' then starts_at end) asc,
-                    (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
-                    starts_at asc
-                limit v_limit
-                offset v_offset
-            ) filtered_events_page
+            from filtered_events_page
         ),
         (
             case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
@@ -134,10 +139,7 @@ begin
                                 'sw_lon', st_xmin(bb)
                             )
                         else null end
-                    from (
-                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
-                        from filtered_events
-                    ) as filtered_events_bbox
+                    from filtered_events_bbox
                 )
             else null end
         ),

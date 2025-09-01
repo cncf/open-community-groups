@@ -3,9 +3,12 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::templates::{
-    PageId,
-    auth::{self, User},
+use crate::{
+    templates::{
+        PageId,
+        auth::{self, User},
+    },
+    types::community::Community,
 };
 
 /// Home page template for the user dashboard.
@@ -13,6 +16,8 @@ use crate::templates::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/user/home.html")]
 pub(crate) struct Page {
+    /// Community information.
+    pub community: Community,
     /// Main content section for the page.
     pub content: Content,
     /// Identifier for the current page.
