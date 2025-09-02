@@ -2,6 +2,10 @@
 {% import "common.html" as common -%}
 {% import "dashboard/dashboard_macros.html" as dashboard_macros -%}
 
+{% block scripts -%}
+  <script type="module" src="/static/js/common/markdown-editor.js"></script>
+{% endblock scripts -%}
+
 {% block menu -%}
   <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
     <div class="font-semibold text-stone-900 text-lg lg:text-2xl">Dashboard</div>
