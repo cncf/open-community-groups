@@ -43,7 +43,7 @@ export class SponsorsSection extends LitWrapper {
       this.sponsors = [this._getData()];
     } else {
       this.sponsors = this.sponsors.map((item, index) => {
-        return { ...item, id: index };
+        return { ...this._getData(), ...item, id: index };
       });
     }
   }
@@ -227,7 +227,6 @@ class SponsorItem extends LitWrapper {
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
   };
-
 
   render() {
     return html` <div
