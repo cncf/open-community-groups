@@ -484,7 +484,7 @@
         <form id="sessions-form">
           <div class="pb-12">
             <div class="mt-10">
-              <sessions-section event-id="{{ event.event_id }}"></sessions-section>
+              <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}"></sessions-section>
             </div>
           </div>
         </form>
