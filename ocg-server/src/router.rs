@@ -98,6 +98,9 @@ pub(crate) async fn setup(
         .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
         .nest("/dashboard/user", user_dashboard_router)
+        .route("/group/{group_id}/join", post(group::join_group))
+        .route("/group/{group_id}/leave", delete(group::leave_group))
+        .route("/group/{group_id}/membership", get(group::membership_status))
         .route_layer(login_required!(
             AuthnBackend,
             login_url = LOG_IN_URL,

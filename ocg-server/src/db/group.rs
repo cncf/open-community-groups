@@ -36,6 +36,15 @@ pub(crate) trait DBGroup {
         event_kinds: Vec<EventKind>,
         limit: i32,
     ) -> Result<Vec<EventDetailed>>;
+
+    /// Checks if a user is a member of a group.
+    async fn is_group_member(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<bool>;
+
+    /// Adds a user as a member of a group.
+    async fn join_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()>;
+
+    /// Removes a user from a group.
+    async fn leave_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()>;
 }
 
 #[async_trait]
@@ -103,5 +112,52 @@ impl DBGroup for PgDB {
         let events = EventDetailed::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
+    }
+
+    /// [`DB::is_group_member`]
+    #[instrument(skip(self), err)]
+    async fn is_group_member(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<bool> {
+        trace!("db: check group membership");
+
+        let db = self.pool.get().await?;
+        let is_group_member = db
+            .query_one(
+                "select is_group_member($1::uuid, $2::uuid, $3::uuid)",
+                &[&community_id, &group_id, &user_id],
+            )
+            .await?
+            .get::<_, bool>(0);
+
+        Ok(is_group_member)
+    }
+
+    /// [`DB::join_group`]
+    #[instrument(skip(self), err)]
+    async fn join_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()> {
+        trace!("db: join group");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select join_group($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &user_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DB::leave_group`]
+    #[instrument(skip(self), err)]
+    async fn leave_group(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()> {
+        trace!("db: leave group");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select leave_group($1::uuid, $2::uuid, $3::uuid)",
+            &[&community_id, &group_id, &user_id],
+        )
+        .await?;
+
+        Ok(())
     }
 }

@@ -44,6 +44,9 @@
 {{ template "group/get_group.sql" }}
 {{ template "group/get_group_past_events.sql" }}
 {{ template "group/get_group_upcoming_events.sql" }}
+{{ template "group/is_group_member.sql" }}
+{{ template "group/join_group.sql" }}
+{{ template "group/leave_group.sql" }}
 
 ---- create above / drop below ----
 

@@ -2,13 +2,17 @@
 
 use askama::Template;
 use axum::{
+    Json,
     extract::{Path, State},
-    http::Uri,
+    http::{StatusCode, Uri},
     response::{Html, IntoResponse},
 };
+use serde_json::json;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
+    auth::AuthSession,
     db::DynDB,
     templates::{
         PageId,
@@ -55,4 +59,59 @@ pub(crate) async fn page(
     };
 
     Ok(Html(template.render()?))
+}
+
+// Actions handlers.
+
+/// Handler for joining a group.
+#[instrument(skip_all)]
+pub(crate) async fn join_group(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path(group_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Join the group
+    db.join_group(community_id, group_id, user.user_id).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Handler for leaving a group.
+#[instrument(skip_all)]
+pub(crate) async fn leave_group(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path(group_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Leave the group
+    db.leave_group(community_id, group_id, user.user_id).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Handler for checking group membership status.
+#[instrument(skip_all)]
+pub(crate) async fn membership_status(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path(group_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Check membership
+    let is_member = db.is_group_member(community_id, group_id, user.user_id).await?;
+
+    Ok(Json(json!({
+        "is_member": is_member
+    })))
 }

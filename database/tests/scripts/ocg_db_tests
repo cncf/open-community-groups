@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# Database configuration
+export PGHOST="${PGHOST:-localhost}"
+export PGPORT="${PGPORT:-5432}"
+export PGUSER="${PGUSER:-postgres}"
+export PGDATABASE="${PGDATABASE:-ocg_tests}"
+export PGSSLMODE="${PGSSLMODE:-disable}"
+
+# Prepare tern config file
+tern_config=$(mktemp /tmp/tern.conf.XXXXXX)
+cat > "$tern_config" <<EOF
+[database]
+host=$PGHOST
+port=$PGPORT
+user=$PGUSER
+database=$PGDATABASE
+sslmode=$PGSSLMODE
+EOF
+if [ -n "$PGPASSWORD" ]; then
+    echo "password=$PGPASSWORD" >> "$tern_config"
+fi
+
+# Remove tern config file on exit
+cleanup() {
+    rm -f "$tern_config"
+}
+trap cleanup EXIT
+
+# Recreate tests database
+psql -d postgres -c "DROP DATABASE IF EXISTS $PGDATABASE;" >/dev/null
+psql -d postgres -c "CREATE DATABASE $PGDATABASE;" >/dev/null
+
+# Run migrations
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+( cd "$repo_root/database/migrations" && TERN_CONF="$tern_config" ./migrate.sh )
+
+# Setup pgTAP extension
+psql -c "CREATE EXTENSION IF NOT EXISTS pgtap;" >/dev/null
+
+# Run tests
+pg_prove -v "$repo_root"/database/tests/{schema/*.sql,functions/**/*.sql}
