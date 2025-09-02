@@ -62,7 +62,7 @@
 
       {# Save button -#}
       <div>
-        <button id="update-event-button" 
+        <button id="update-event-button"
                 type="button"
                 class="btn-primary w-24 text-nowrap"
                 hx-put="/dashboard/group/events/{{ event.event_id }}/update"
@@ -71,141 +71,143 @@
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#update-event-button, #cancel-button"
-                hx-exclude="[name=toggle_registration_required], [name=starts_at_input], [name=ends_at_input]">Update</button>
+                hx-exclude="[name=toggle_registration_required], [name=starts_at_input], [name=ends_at_input]">
+          Update
+        </button>
       </div>
       {# End save button -#}
     </div>
   </div>
 
   <div>
-      <div class="space-y-12">
-        {# Event Details Tab -#}
-        <div data-content="details">
-          <form id="details-form">
+    <div class="space-y-12">
+      {# Event Details Tab -#}
+      <div data-content="details">
+        <form id="details-form">
           <div class="pb-12">
             <p class="mt-1 text-sm/6 text-stone-500">Please update as many details about this event as possible.</p>
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Event name -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="name" class="form-label">
-            Name <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="name"
-                   id="name"
-                   maxlength="100"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   value="{{ event.name }}"
-                   required>
-          </div>
-          <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup).</p>
-        </div>
-        {# End Event name -#}
+            <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+              {# Event name -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="name" class="form-label">
+                  Name <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <input type="text"
+                         name="name"
+                         id="name"
+                         maxlength="100"
+                         class="input-primary"
+                         autocomplete="off"
+                         autocorrect="off"
+                         autocapitalize="off"
+                         spellcheck="false"
+                         value="{{ event.name }}"
+                         required>
+                </div>
+                <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup).</p>
+              </div>
+              {# End Event name -#}
 
-        {# Hidden slug field -#}
-        <input type="hidden" name="slug" value="{{ event.slug }}">
-        {# End hidden slug field -#}
+              {# Hidden slug field -#}
+              <input type="hidden" name="slug" value="{{ event.slug }}">
+              {# End hidden slug field -#}
 
-        <div class="col-span-3"></div>
+              <div class="col-span-3"></div>
 
-        {# Event category -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="category_id" class="form-label">
-            Category <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2 grid grid-cols-1">
-            <select id="category_id" name="category_id" class="select-primary" required>
-              <option value="">Select a category</option>
-              {% for category in categories %}
-                <option value="{{ category.event_category_id }}"
-                        {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <p class="form-legend">Type of event or meetup.</p>
-        </div>
-        {# End Event category -#}
+              {# Event category -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="category_id" class="form-label">
+                  Category <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2 grid grid-cols-1">
+                  <select id="category_id" name="category_id" class="select-primary" required>
+                    <option value="">Select a category</option>
+                    {% for category in categories %}
+                      <option value="{{ category.event_category_id }}"
+                              {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <p class="form-legend">Type of event or meetup.</p>
+              </div>
+              {# End Event category -#}
 
-        {# Event kind -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="kind_id" class="form-label">
-            Event Type <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2 grid grid-cols-1">
-            <select id="kind_id" name="kind_id" class="select-primary" required>
-              <option value="">Select an event type</option>
-              {% for kind in kinds %}
-                <option value="{{ kind.event_kind_id }}"
-                        {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
-        </div>
-        {# End Event kind -#}
+              {# Event kind -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="kind_id" class="form-label">
+                  Event Type <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2 grid grid-cols-1">
+                  <select id="kind_id" name="kind_id" class="select-primary" required>
+                    <option value="">Select an event type</option>
+                    {% for kind in kinds %}
+                      <option value="{{ kind.event_kind_id }}"
+                              {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
+              </div>
+              {# End Event kind -#}
 
-        {# Logo URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="logo_url" class="form-label">Logo URL</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="logo_url"
-                   id="logo_url"
-                   class="input-primary"
-                   placeholder="https://example.com/logo.png"
-                   {% if let Some(logo_url) = event.logo_url %}value="{{ logo_url }}"{% endif %}>
-          </div>
-          <p class="form-legend">URL to the event's logo image.</p>
-        </div>
-        {# End Logo URL -#}
+              {# Logo URL -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="logo_url" class="form-label">Logo URL</label>
+                <div class="mt-2">
+                  <input type="url"
+                         name="logo_url"
+                         id="logo_url"
+                         class="input-primary"
+                         placeholder="https://example.com/logo.png"
+                         {% if let Some(logo_url) = event.logo_url %}value="{{ logo_url }}"{% endif %}>
+                </div>
+                <p class="form-legend">URL to the event's logo image.</p>
+              </div>
+              {# End Logo URL -#}
 
-        {# Banner URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="banner_url" class="form-label">Banner URL</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="banner_url"
-                   id="banner_url"
-                   class="input-primary"
-                   placeholder="https://example.com/banner.jpg"
-                   {% if let Some(banner_url) = event.banner_url %}value="{{ banner_url }}"{% endif %}>
-          </div>
-          <p class="form-legend">URL to the event's banner image.</p>
-        </div>
-        {# End Banner URL -#}
+              {# Banner URL -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="banner_url" class="form-label">Banner URL</label>
+                <div class="mt-2">
+                  <input type="url"
+                         name="banner_url"
+                         id="banner_url"
+                         class="input-primary"
+                         placeholder="https://example.com/banner.jpg"
+                         {% if let Some(banner_url) = event.banner_url %}value="{{ banner_url }}"{% endif %}>
+                </div>
+                <p class="form-legend">URL to the event's banner image.</p>
+              </div>
+              {# End Banner URL -#}
 
-        {# Short Description -#}
-        <div class="col-span-full">
-          <label for="description_short" class="form-label">Short Description</label>
-          <div class="mt-2">
-            <textarea id="description_short"
-                      name="description_short"
-                      rows="2"
-                      class="input-primary"
-                      maxlength="200">{% if let Some(description_short) = event.description_short %}{{ description_short }}{% endif %}</textarea>
-          </div>
-          <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
-        </div>
-        {# End Short Description -#}
+              {# Short Description -#}
+              <div class="col-span-full">
+                <label for="description_short" class="form-label">Short Description</label>
+                <div class="mt-2">
+                  <textarea id="description_short"
+                            name="description_short"
+                            rows="2"
+                            class="input-primary"
+                            maxlength="200">{% if let Some(description_short) = event.description_short %}{{ description_short }}{% endif %}</textarea>
+                </div>
+                <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
+              </div>
+              {# End Short Description -#}
 
-        {# Event Description -#}
-        <div class="col-span-full">
-          <label for="description" class="form-label">
-            Description <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <markdown-editor id="description" name="description" content="{{ event.description }}" required></markdown-editor>
-          </div>
-          <p class="form-legend">Full description of the event and its purpose.</p>
-        </div>
-        {# End Event Description -#}
-      </div>
+              {# Event Description -#}
+              <div class="col-span-full">
+                <label for="description" class="form-label">
+                  Description <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <markdown-editor id="description" name="description" content="{{ event.description }}" required></markdown-editor>
+                </div>
+                <p class="form-legend">Full description of the event and its purpose.</p>
+              </div>
+              {# End Event Description -#}
+            </div>
           </div>
 
           {# Additional Information section -#}
@@ -297,67 +299,67 @@
             </div>
           </div>
           {# End additional information section -#}
-          </form>
-        </div>
-        {# End Event Details Tab -#}
+        </form>
+      </div>
+      {# End Event Details Tab -#}
 
-        {# Date & Venue Tab -#}
-        <div data-content="date-venue" class="hidden">
-          <form id="date-venue-form">
+      {# Date & Venue Tab -#}
+      <div data-content="date-venue" class="hidden">
+        <form id="date-venue-form">
           <div class="space-y-12">
             {# Date and Time section -#}
             <div class="border-b border-stone-900/10 pb-12">
               <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Timezone -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="timezone" class="form-label">
-            Timezone <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2 grid grid-cols-1">
-            <select id="timezone" name="timezone" class="select-primary" required>
-              <option value="">Select a timezone</option>
-              {% for timezone in timezones %}
-                <option value="{{ timezone }}"
-                        {% if timezone.as_str() == event.timezone.to_string().as_str() %}selected{% endif %}>{{ timezone }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
-        </div>
-        {# End Timezone -#}
+              <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+                {# Timezone -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="timezone" class="form-label">
+                    Timezone <span class="asterisk">*</span>
+                  </label>
+                  <div class="mt-2 grid grid-cols-1">
+                    <select id="timezone" name="timezone" class="select-primary" required>
+                      <option value="">Select a timezone</option>
+                      {% for timezone in timezones %}
+                        <option value="{{ timezone }}"
+                                {% if timezone.as_str() == event.timezone.to_string().as_str() %}selected{% endif %}>{{ timezone }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
+                </div>
+                {# End Timezone -#}
 
-        <div class="col-span-4"></div>
+                <div class="col-span-4"></div>
 
-        {# Start date/time -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="starts_at" class="form-label">Start Date & Time</label>
-          <div class="mt-2">
-            <input type="datetime-local"
-                   name="starts_at_input"
-                   id="starts_at_input"
-                   class="input-primary"
-                   value="{{ event.starts_at|display_some_datetime(DATE_FORMAT) }}">
-          </div>
-          <p class="form-legend">When the event starts.</p>
-        </div>
-        {# End Start date/time -#}
+                {# Start date/time -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="starts_at" class="form-label">Start Date & Time</label>
+                  <div class="mt-2">
+                    <input type="datetime-local"
+                           name="starts_at_input"
+                           id="starts_at_input"
+                           class="input-primary"
+                           value="{{ event.starts_at|display_some_datetime(DATE_FORMAT) }}">
+                  </div>
+                  <p class="form-legend">When the event starts.</p>
+                </div>
+                {# End Start date/time -#}
 
-        {# End date/time -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="ends_at" class="form-label">End Date & Time</label>
-          <div class="mt-2">
-            <input type="datetime-local"
-                   name="ends_at_input"
-                   id="ends_at_input"
-                   class="input-primary"
-                   value="{{ event.ends_at|display_some_datetime(DATE_FORMAT) }}">
-          </div>
-          <p class="form-legend">When the event ends.</p>
-        </div>
-        {# End End date/time -#}
-      </div>
+                {# End date/time -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="ends_at" class="form-label">End Date & Time</label>
+                  <div class="mt-2">
+                    <input type="datetime-local"
+                           name="ends_at_input"
+                           id="ends_at_input"
+                           class="input-primary"
+                           value="{{ event.ends_at|display_some_datetime(DATE_FORMAT) }}">
+                  </div>
+                  <p class="form-legend">When the event ends.</p>
+                </div>
+                {# End End date/time -#}
+              </div>
             </div>
             {# End date and time section -#}
 
@@ -365,73 +367,73 @@
             <div class="border-b border-stone-900/10 pb-12">
               {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Venue name -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="venue_name" class="form-label">Venue Name</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="venue_name"
-                   id="venue_name"
-                   class="input-primary"
-                   placeholder="Conference Center Amsterdam"
-                   {% if let Some(venue_name) = event.venue_name %}value="{{ venue_name }}"{% endif %}>
-          </div>
-          <p class="form-legend">Name of the venue where the event takes place.</p>
-        </div>
-        {# End Venue name -#}
+              <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+                {# Venue name -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="venue_name" class="form-label">Venue Name</label>
+                  <div class="mt-2">
+                    <input type="text"
+                           name="venue_name"
+                           id="venue_name"
+                           class="input-primary"
+                           placeholder="Conference Center Amsterdam"
+                           {% if let Some(venue_name) = event.venue_name %}value="{{ venue_name }}"{% endif %}>
+                  </div>
+                  <p class="form-legend">Name of the venue where the event takes place.</p>
+                </div>
+                {# End Venue name -#}
 
-        <div class="col-span-3"></div>
+                <div class="col-span-3"></div>
 
-        {# Venue address -#}
-        <div class="col-span-full lg:col-span-4">
-          <label for="venue_address" class="form-label">Address</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="venue_address"
-                   id="venue_address"
-                   class="input-primary"
-                   placeholder="123 Main Street"
-                   {% if let Some(venue_address) = event.venue_address %}value="{{ venue_address }}"{% endif %}>
-          </div>
-          <p class="form-legend">Street address of the venue.</p>
-        </div>
-        {# End Venue address -#}
+                {# Venue address -#}
+                <div class="col-span-full lg:col-span-4">
+                  <label for="venue_address" class="form-label">Address</label>
+                  <div class="mt-2">
+                    <input type="text"
+                           name="venue_address"
+                           id="venue_address"
+                           class="input-primary"
+                           placeholder="123 Main Street"
+                           {% if let Some(venue_address) = event.venue_address %}value="{{ venue_address }}"{% endif %}>
+                  </div>
+                  <p class="form-legend">Street address of the venue.</p>
+                </div>
+                {# End Venue address -#}
 
-        <div class="col-span-2"></div>
+                <div class="col-span-2"></div>
 
-        {# Venue city -#}
-        <div class="col-span-full lg:col-span-2">
-          <label for="venue_city" class="form-label">City</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="venue_city"
-                   id="venue_city"
-                   class="input-primary"
-                   placeholder="Amsterdam"
-                   {% if let Some(venue_city) = event.venue_city %}value="{{ venue_city }}"{% endif %}>
-          </div>
-          <p class="form-legend">City where the venue is located.</p>
-        </div>
-        {# End Venue city -#}
+                {# Venue city -#}
+                <div class="col-span-full lg:col-span-2">
+                  <label for="venue_city" class="form-label">City</label>
+                  <div class="mt-2">
+                    <input type="text"
+                           name="venue_city"
+                           id="venue_city"
+                           class="input-primary"
+                           placeholder="Amsterdam"
+                           {% if let Some(venue_city) = event.venue_city %}value="{{ venue_city }}"{% endif %}>
+                  </div>
+                  <p class="form-legend">City where the venue is located.</p>
+                </div>
+                {# End Venue city -#}
 
-        {# Venue zip code -#}
-        <div class="col-span-full lg:col-span-2">
-          <label for="venue_zip_code" class="form-label">Zip Code</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="venue_zip_code"
-                   id="venue_zip_code"
-                   class="input-primary"
-                   placeholder="1012 AB"
-                   {% if let Some(venue_zip_code) = event.venue_zip_code %}value="{{ venue_zip_code }}"{% endif %}>
-          </div>
-          <p class="form-legend">Postal/zip code of the venue.</p>
-        </div>
-        {# End Venue zip code -#}
+                {# Venue zip code -#}
+                <div class="col-span-full lg:col-span-2">
+                  <label for="venue_zip_code" class="form-label">Zip Code</label>
+                  <div class="mt-2">
+                    <input type="text"
+                           name="venue_zip_code"
+                           id="venue_zip_code"
+                           class="input-primary"
+                           placeholder="1012 AB"
+                           {% if let Some(venue_zip_code) = event.venue_zip_code %}value="{{ venue_zip_code }}"{% endif %}>
+                  </div>
+                  <p class="form-legend">Postal/zip code of the venue.</p>
+                </div>
+                {# End Venue zip code -#}
 
-        <div class="col-span-2"></div>
-      </div>
+                <div class="col-span-2"></div>
+              </div>
             </div>
             {# End venue information section -#}
 
@@ -439,65 +441,65 @@
             <div class="pb-12">
               {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
 
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Streaming URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="streaming_url" class="form-label">Streaming URL</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="streaming_url"
-                   id="streaming_url"
-                   class="input-primary"
-                   placeholder="https://zoom.us/j/123456789"
-                   {% if let Some(streaming_url) = event.streaming_url %}value="{{ streaming_url }}"{% endif %}>
-          </div>
-          <p class="form-legend">URL for live streaming or video conference.</p>
-        </div>
-        {# End Streaming URL -#}
+              <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+                {# Streaming URL -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="streaming_url" class="form-label">Streaming URL</label>
+                  <div class="mt-2">
+                    <input type="url"
+                           name="streaming_url"
+                           id="streaming_url"
+                           class="input-primary"
+                           placeholder="https://zoom.us/j/123456789"
+                           {% if let Some(streaming_url) = event.streaming_url %}value="{{ streaming_url }}"{% endif %}>
+                  </div>
+                  <p class="form-legend">URL for live streaming or video conference.</p>
+                </div>
+                {# End Streaming URL -#}
 
-        {# Recording URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="recording_url" class="form-label">Recording URL</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="recording_url"
-                   id="recording_url"
-                   class="input-primary"
-                   placeholder="https://youtube.com/watch?v=..."
-                   {% if let Some(recording_url) = event.recording_url %}value="{{ recording_url }}"{% endif %}>
-          </div>
-          <p class="form-legend">URL to the event recording (can be added after the event).</p>
-        </div>
-        {# End Recording URL -#}
-      </div>
+                {# Recording URL -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="recording_url" class="form-label">Recording URL</label>
+                  <div class="mt-2">
+                    <input type="url"
+                           name="recording_url"
+                           id="recording_url"
+                           class="input-primary"
+                           placeholder="https://youtube.com/watch?v=..."
+                           {% if let Some(recording_url) = event.recording_url %}value="{{ recording_url }}"{% endif %}>
+                  </div>
+                  <p class="form-legend">URL to the event recording (can be added after the event).</p>
+                </div>
+                {# End Recording URL -#}
+              </div>
             </div>
             {# End online event details section -#}
           </div>
-          </form>
-        </div>
-        {# End Date & Venue Tab -#}
+        </form>
+      </div>
+      {# End Date & Venue Tab -#}
 
-        {# Sessions Tab -#}
-        <div data-content="sessions" class="hidden">
-          <form id="sessions-form">
+      {# Sessions Tab -#}
+      <div data-content="sessions" class="hidden">
+        <form id="sessions-form">
           <div class="pb-12">
             <div class="mt-10">
               <sessions-section event-id="{{ event.event_id }}"></sessions-section>
             </div>
           </div>
-          </form>
-        </div>
-        {# End Sessions Tab -#}
+        </form>
+      </div>
+      {# End Sessions Tab -#}
 
-        {# Hosts & Sponsors Tab -#}
-        <div data-content="hosts-sponsors" class="hidden">
-          <form id="hosts-sponsors-form">
+      {# Hosts & Sponsors Tab -#}
+      <div data-content="hosts-sponsors" class="hidden">
+        <form id="hosts-sponsors-form">
           <div class="space-y-12">
             {# Hosts Section -#}
             <div class="border-b border-stone-900/10 pb-12">
               <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
               <div class="mt-5">
-                <user-search-selector field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
+                <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
               </div>
             </div>
             {# End Hosts Section -#}
@@ -511,11 +513,11 @@
             </div>
             {# End Sponsors Section -#}
           </div>
-          </form>
-        </div>
-        {# End Hosts & Sponsors Tab -#}
-
+        </form>
       </div>
+      {# End Hosts & Sponsors Tab -#}
+
+    </div>
   </div>
 </div>
 
@@ -610,7 +612,7 @@
       if (e.detail.elt.id === 'update-event-button') {
         // Use multiple form validation
         const isValid = validateEventForms();
-        
+
         if (!isValid) {
           // Prevent form submission
           e.preventDefault();

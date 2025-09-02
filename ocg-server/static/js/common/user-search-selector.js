@@ -384,7 +384,7 @@ export class UserSearchSelector extends LitWrapper {
               <input
                 id="search-input"
                 type="text"
-                class="peer w-full rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 text-md p-2.5 ps-4 pe-14"
+                class="peer w-full rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-stone-400 focus:ring block flex-1 min-w-0 text-md p-2.5 ps-4 pe-14"
                 placeholder="Search ${this.label || ""} by username"
                 value="${this._searchQuery}"
                 @input="${this._handleSearchInput}"
