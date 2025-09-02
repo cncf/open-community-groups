@@ -7,6 +7,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
+        filters,
     },
     types::community::Community,
 };
