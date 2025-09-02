@@ -6,7 +6,6 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -41,10 +40,8 @@ pub(crate) async fn page(
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session
-    let Some(user) = auth_session.user.clone() else {
-        return Ok(StatusCode::FORBIDDEN.into_response());
-    };
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
 
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();

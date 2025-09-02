@@ -33,6 +33,9 @@ pub(crate) enum HandlerError {
 /// Enables conversion of `HandlerError` into an HTTP response for Axum handlers.
 impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        match self {
+            HandlerError::Auth(_) => StatusCode::UNAUTHORIZED.into_response(),
+            _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
     }
 }
