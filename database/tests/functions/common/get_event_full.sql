@@ -97,9 +97,9 @@ insert into "group" (
 -- Users (event hosts, organizers, and speakers)
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash'::bytea, :'communityID', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
-    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash'::bytea, :'communityID', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
-    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash'::bytea, :'communityID', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
+    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', :'communityID', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
+    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', :'communityID', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
+    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', :'communityID', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
 
 -- Published event (with complete information)
 insert into event (

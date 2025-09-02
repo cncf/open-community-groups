@@ -55,10 +55,10 @@ values (:'categoryID', 'Technology', :'communityID');
 -- Users (team members and members)
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash'::bytea, :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash'::bytea, :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash'::bytea, :'communityID', 'Charlie Brown', null, null, null, null, null, null, null),
-    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash'::bytea, :'communityID', 'Diana Prince', null, null, null, null, null, null, null);
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
+    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
+    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', :'communityID', 'Charlie Brown', null, null, null, null, null, null, null),
+    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', :'communityID', 'Diana Prince', null, null, null, null, null, null, null);
 
 -- Active group (with all fields including location)
 insert into "group" (

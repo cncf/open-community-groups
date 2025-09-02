@@ -292,7 +292,8 @@ create table event (
     venue_zip_code text check (venue_zip_code <> ''),
 
     unique (slug, group_id),
-    check ((deleted = false) or (deleted = true and published = false))
+    check ((deleted = false) or (deleted = true and published = false)),
+    check (not (published and canceled))
 );
 
 create index event_group_id_idx on event (group_id);

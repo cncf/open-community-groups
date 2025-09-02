@@ -39,7 +39,10 @@
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 
+{{ template "event/attend_event.sql" }}
 {{ template "event/get_event.sql" }}
+{{ template "event/is_event_attendee.sql" }}
+{{ template "event/leave_event.sql" }}
 
 {{ template "group/get_group.sql" }}
 {{ template "group/get_group_past_events.sql" }}

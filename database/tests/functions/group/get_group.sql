@@ -53,9 +53,9 @@ values (:'regionID', 'North America', :'communityID');
 -- Users (organizers and members for group relationships)
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, company, title, photo_url, created_at)
 values
-    (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'communityID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'communityID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
-    (:'memberID', 'member@example.com', 'member1', false, 'test_hash'::bytea, :'communityID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
+    (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
+    (:'memberID', 'member@example.com', 'member1', false, 'test_hash', :'communityID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
 -- Group (comprehensive example with all fields)
 insert into "group" (
