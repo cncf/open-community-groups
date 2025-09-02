@@ -55,8 +55,8 @@ values
 -- Users (community members)
 insert into "user" (user_id, email, username, name, email_verified, auth_hash, community_id, created_at)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-member', 'Alice Johnson', false, 'test_hash'::bytea, :'communityID', '2024-01-01 00:00:00'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-member', 'Bob Wilson', false, 'test_hash'::bytea, :'communityID', '2024-01-01 00:00:00');
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-member', 'Alice Johnson', false, 'test_hash', :'communityID', '2024-01-01 00:00:00'),
+    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-member', 'Bob Wilson', false, 'test_hash', :'communityID', '2024-01-01 00:00:00');
 
 -- Event category (for organizing events)
 insert into event_category (event_category_id, name, slug, community_id)

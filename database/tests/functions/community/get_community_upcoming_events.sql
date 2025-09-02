@@ -84,7 +84,7 @@ insert into event (
      '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00', false),
     -- Future event 3 (canceled - should be filtered out)
     (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', 'UTC',
-     :'eventCategory1ID', 'in-person', :'group1ID', true,
+     :'eventCategory1ID', 'in-person', :'group1ID', false,
      '2026-01-15 14:00:00+00', '2026-01-15 16:00:00+00', true);
 
 -- get_community_upcoming_events function returns correct data

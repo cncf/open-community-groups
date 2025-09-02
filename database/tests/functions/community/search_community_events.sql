@@ -92,7 +92,7 @@ insert into event (
      'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png', false),
     -- Canceled event (should be filtered out from search results)
     (:'event4ID', 'Canceled Tech Conference', 'canceled-tech-conf', 'This event was canceled', 'Canceled conf', 'UTC',
-     :'eventCategory1ID', 'in-person', :'group1ID', true,
+     :'eventCategory1ID', 'in-person', :'group1ID', false,
      '2026-01-20 09:00:00+00', '2026-01-20 18:00:00+00', array['tech', 'conference'],
      'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true);
 

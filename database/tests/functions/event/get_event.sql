@@ -59,10 +59,10 @@ values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 -- Users
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, created_at)
 values
-    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash'::bytea, :'communityID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash'::bytea, :'communityID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
-    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash'::bytea, :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
-    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash'::bytea, :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
+    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash', :'communityID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash', :'communityID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
+    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
+    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
 -- Event with all fields
 insert into event (
