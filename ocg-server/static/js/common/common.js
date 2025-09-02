@@ -179,6 +179,32 @@ export const convertDateTimeLocalToISO = (dateTimeLocal) => {
 };
 
 /**
+ * Converts a unix timestamp (seconds) to a datetime-local string.
+ * Returns a string formatted as YYYY-MM-DDTHH:MM in local time.
+ * Accepts number or numeric string (seconds). Returns empty string on error.
+ * @param {number|string} tsSeconds - Unix timestamp without milliseconds
+ * @returns {string} Datetime-local value (YYYY-MM-DDTHH:MM) or empty string
+ */
+export const convertTimestampToDateTimeLocal = (tsSeconds) => {
+  if (tsSeconds === null || typeof tsSeconds === "undefined" || tsSeconds === "") {
+    return "";
+  }
+
+  const n = typeof tsSeconds === "number" ? tsSeconds : Number(String(tsSeconds).trim());
+  if (!Number.isFinite(n)) return "";
+
+  const d = new Date(n * 1000);
+  if (isNaN(d.getTime())) return "";
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}-${m}-${day}T${hh}:${mm}`;
+};
+
+/**
  * Checks if an object contains only empty values.
  * Excludes the id field from the check, useful for form validation.
  * @param {Object} obj - The object to check

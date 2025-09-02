@@ -1,5 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
-import { isObjectEmpty } from "/static/js/common/common.js";
+import { isObjectEmpty, convertTimestampToDateTimeLocal } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-selector.js";
 
@@ -48,7 +48,13 @@ export class SessionsSection extends LitWrapper {
       this.sessions = [this._getData()];
     } else {
       this.sessions = this.sessions.map((item, index) => {
-        return { ...item, id: index };
+        return {
+          ...this._getData(),
+          ...item,
+          id: index,
+          starts_at: convertTimestampToDateTimeLocal(item.starts_at),
+          ends_at: convertTimestampToDateTimeLocal(item.ends_at),
+        };
       });
     }
   }
