@@ -179,29 +179,39 @@ export const convertDateTimeLocalToISO = (dateTimeLocal) => {
 };
 
 /**
- * Converts a unix timestamp (seconds) to a datetime-local string.
- * Returns a string formatted as YYYY-MM-DDTHH:MM in local time.
- * Accepts number or numeric string (seconds). Returns empty string on error.
- * @param {number|string} tsSeconds - Unix timestamp without milliseconds
- * @returns {string} Datetime-local value (YYYY-MM-DDTHH:MM) or empty string
+ * Converts a Unix timestamp (in seconds) to a datetime-local input value.
+ *
+ * This function transforms Unix timestamps into the format required by HTML5
+ * <input type="datetime-local"> elements. The output uses UTC timezone.
+ *
+ * @param {number} tsSeconds - Unix timestamp in seconds since epoch (1970-01-01 00:00:00 UTC).
+ *                             Must be a finite number.
+ * @returns {string} Datetime string in YYYY-MM-DDTHH:MM format (UTC timezone)
+ *                   Returns empty string if input is invalid (non-number, NaN, Infinity)
+ *
+ * @example
+ * // Valid timestamp
+ * convertTimestampToDateTimeLocal(1735689600) // returns "2025-01-01T00:00"
+ *
+ * // Epoch start
+ * convertTimestampToDateTimeLocal(0) // returns "1970-01-01T00:00"
+ *
+ * // Invalid inputs
+ * convertTimestampToDateTimeLocal(null) // returns ""
+ * convertTimestampToDateTimeLocal("1735689600") // returns "" (string not accepted)
+ * convertTimestampToDateTimeLocal(NaN) // returns ""
+ *
+ * @note This function uses UTC for conversion. If local timezone is needed,
+ *       consider using date.getFullYear(), date.getMonth(), etc. instead of
+ *       date.toISOString() to build the string in local time.
  */
 export const convertTimestampToDateTimeLocal = (tsSeconds) => {
-  if (tsSeconds === null || typeof tsSeconds === "undefined" || tsSeconds === "") {
+  if (typeof tsSeconds !== "number" || !Number.isFinite(tsSeconds)) {
     return "";
   }
 
-  const n = typeof tsSeconds === "number" ? tsSeconds : Number(String(tsSeconds).trim());
-  if (!Number.isFinite(n)) return "";
-
-  const d = new Date(n * 1000);
-  if (isNaN(d.getTime())) return "";
-
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${day}T${hh}:${mm}`;
+  const date = new Date(tsSeconds * 1000); // Convert seconds to milliseconds
+  return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 };
 
 /**
@@ -215,7 +225,6 @@ export const isObjectEmpty = (obj) => {
   const objectWithoutId = { ...obj };
   delete objectWithoutId.id;
   return Object.values(objectWithoutId).every(
-    (x) => x === null || x === "" || typeof x === "undefined" || 
-           (Array.isArray(x) && x.length === 0),
+    (x) => x === null || x === "" || typeof x === "undefined" || (Array.isArray(x) && x.length === 0),
   );
 };
