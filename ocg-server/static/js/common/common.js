@@ -177,3 +177,54 @@ export const convertDateTimeLocalToISO = (dateTimeLocal) => {
   if (!dateTimeLocal) return null;
   return `${dateTimeLocal}:00`;
 };
+
+/**
+ * Converts a Unix timestamp (in seconds) to a datetime-local input value.
+ *
+ * This function transforms Unix timestamps into the format required by HTML5
+ * <input type="datetime-local"> elements. The output uses UTC timezone.
+ *
+ * @param {number} tsSeconds - Unix timestamp in seconds since epoch (1970-01-01 00:00:00 UTC).
+ *                             Must be a finite number.
+ * @returns {string} Datetime string in YYYY-MM-DDTHH:MM format (UTC timezone)
+ *                   Returns empty string if input is invalid (non-number, NaN, Infinity)
+ *
+ * @example
+ * // Valid timestamp
+ * convertTimestampToDateTimeLocal(1735689600) // returns "2025-01-01T00:00"
+ *
+ * // Epoch start
+ * convertTimestampToDateTimeLocal(0) // returns "1970-01-01T00:00"
+ *
+ * // Invalid inputs
+ * convertTimestampToDateTimeLocal(null) // returns ""
+ * convertTimestampToDateTimeLocal("1735689600") // returns "" (string not accepted)
+ * convertTimestampToDateTimeLocal(NaN) // returns ""
+ *
+ * @note This function uses UTC for conversion. If local timezone is needed,
+ *       consider using date.getFullYear(), date.getMonth(), etc. instead of
+ *       date.toISOString() to build the string in local time.
+ */
+export const convertTimestampToDateTimeLocal = (tsSeconds) => {
+  if (typeof tsSeconds !== "number" || !Number.isFinite(tsSeconds)) {
+    return "";
+  }
+
+  const date = new Date(tsSeconds * 1000); // Convert seconds to milliseconds
+  return date.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+};
+
+/**
+ * Checks if an object contains only empty values.
+ * Excludes the id field from the check, useful for form validation.
+ * @param {Object} obj - The object to check
+ * @returns {boolean} True if all values (except id) are empty/null/undefined/empty arrays
+ */
+export const isObjectEmpty = (obj) => {
+  // Remove the id key from the object
+  const objectWithoutId = { ...obj };
+  delete objectWithoutId.id;
+  return Object.values(objectWithoutId).every(
+    (x) => x === null || x === "" || typeof x === "undefined" || (Array.isArray(x) && x.length === 0),
+  );
+};
