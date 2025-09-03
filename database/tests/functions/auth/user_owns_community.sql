@@ -17,7 +17,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (test community for ownership checks)
+-- Community
 insert into community (
     community_id,
     name,
@@ -38,9 +38,7 @@ insert into community (
     'Cloud Native Seattle Community'
 );
 
--- Users with different permission levels
--- userTeamMemberID: User with community team membership
--- userRegularID: Regular user without team membership
+-- Users
 insert into "user" (
     user_id,
     auth_hash,
@@ -67,7 +65,7 @@ insert into "user" (
     'regularuser'
 );
 
--- Community team membership (grants ownership)
+-- Community team membership
 insert into community_team (
     community_id,
     user_id,

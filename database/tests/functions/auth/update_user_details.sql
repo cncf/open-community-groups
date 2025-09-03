@@ -18,7 +18,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (required for user operations)
+-- Community
 insert into community (
     community_id,
     name,
@@ -39,7 +39,7 @@ insert into community (
     'Cloud Native Seattle Community'
 );
 
--- Test user for profile updates
+-- User for updates
 insert into "user" (
     user_id,
     auth_hash,
@@ -58,7 +58,7 @@ insert into "user" (
     'testuser'
 );
 
--- Second test user with optional fields populated
+-- User with optional fields
 insert into "user" (
     user_id,
     auth_hash,
@@ -101,7 +101,7 @@ insert into "user" (
     'https://example.com/original'
 );
 
--- Third test user with optional fields populated (for explicit null test)
+-- User for explicit null test
 insert into "user" (
     user_id,
     auth_hash,
@@ -168,6 +168,7 @@ select update_user_details(
     }'::jsonb
 );
 
+-- Test: update_user_details with all fields should return updated user data
 select is(
     get_user_by_id(:'userID'::uuid, false)::jsonb,
     jsonb_build_object(
@@ -204,6 +205,7 @@ select update_user_details(
     }'::jsonb
 );
 
+-- Test: update_user_details with name only should clear optional fields
 select is(
     get_user_by_id(:'user2ID'::uuid, false)::jsonb,
     jsonb_build_object(
@@ -240,6 +242,7 @@ select update_user_details(
     }'::jsonb
 );
 
+-- Test: update_user_details with explicit nulls should handle same as omitted fields
 select is(
     get_user_by_id(:'user3ID'::uuid, false)::jsonb,
     jsonb_build_object(

@@ -17,7 +17,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (with all fields populated)
+-- Community with all fields
 insert into community (
     community_id,
     active,
@@ -76,7 +76,7 @@ insert into community (
     'https://youtube.com/testcommunity'
 );
 
--- Community (with only required fields)
+-- Community with minimal fields
 insert into community (
     community_id,
     name,
@@ -101,7 +101,7 @@ insert into community (
 -- TESTS
 -- ============================================================================
 
--- Function returns correct data for community with all fields
+-- Test: get_community with all fields should return expected JSON
 select is(
     get_community(:'community1ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
@@ -135,7 +135,7 @@ select is(
     'get_community should return correct data for community with all fields populated'
 );
 
--- Function returns correct data for community with minimal fields
+-- Test: get_community with minimal fields should return expected JSON
 select is(
     get_community(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
@@ -152,11 +152,10 @@ select is(
     'get_community should return correct data for community with only required fields (NULL optional fields excluded)'
 );
 
--- Function returns null for non-existent community
-select is(
-    get_community(:'nonExistentCommunityID'::uuid)::jsonb,
-    NULL,
-    'get_community should return NULL for non-existent community'
+-- Test: get_community with non-existent ID should return null
+select ok(
+    get_community(:'nonExistentCommunityID'::uuid) is null,
+    'get_community non-existent ID returns null'
 );
 
 -- ============================================================================

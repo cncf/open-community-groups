@@ -20,7 +20,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Communities (main and others for isolation testing)
+-- Community
 insert into community (
     community_id,
     name,
@@ -34,13 +34,13 @@ insert into community (
     (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'seattle.cloudnative.org', 'Cloud Native Seattle Community', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png', '{}'::jsonb),
     (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'vancouver.devops.org', 'DevOps Vancouver Community', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', '{}'::jsonb);
 
--- Group categories (for main community with ordering)
+-- Group Category
 insert into group_category (group_category_id, name, community_id, "order")
 values 
     (:'category1ID', 'Technology', :'community1ID', 2),
     (:'category2ID', 'Business', :'community1ID', 1);
 
--- Group category (for other community isolation testing)
+-- Group Category (other community)
 insert into group_category (group_category_id, name, community_id)
 values 
     (:'category3ID', 'Education', :'community2ID');
@@ -49,7 +49,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- list_group_categories returns complete JSON array with proper ordering
+-- Test: list_group_categories should return complete JSON ordered properly
 select is(
     list_group_categories(:'community1ID'::uuid)::jsonb,
     '[
@@ -69,7 +69,7 @@ select is(
     'list_group_categories should return complete category data ordered by order field, then by name'
 );
 
--- list_group_categories returns empty array for community with no categories
+-- Test: list_group_categories should return empty array for community with no categories
 insert into community (
     community_id,
     name,

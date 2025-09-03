@@ -19,7 +19,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing community filters)
+-- Community
 insert into community (
     community_id,
     name,
@@ -40,19 +40,19 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group categories (for filtering)
+-- Group Category
 insert into group_category (group_category_id, name, community_id, "order")
 values
     (:'category1ID', 'Technology', :'communityID', 1),
     (:'category2ID', 'Business', :'communityID', 2);
 
--- Regions (for location filtering)
+-- Region
 insert into region (region_id, name, community_id, "order")
 values
     (:'region1ID', 'North America', :'communityID', 1),
     (:'region2ID', 'Europe', :'communityID', 2);
 
--- Event categories (for event filtering)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id, "order")
 values
     ('00000000-0000-0000-0000-000000000061', 'Tech Talks', 'tech-talks', :'communityID', 1),
@@ -63,7 +63,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Function returns correct filter options
+-- Test: get_community_filters_options should return correct filter options
 select is(
     get_community_filters_options('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -91,7 +91,7 @@ select is(
     'get_community_filters_options should return correct filter options as JSON'
 );
 
--- Function returns default options for non-existent community
+-- Test: get_community_filters_options with non-existent community should return default options
 select is(
     get_community_filters_options('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{

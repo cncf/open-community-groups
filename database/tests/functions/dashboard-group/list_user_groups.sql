@@ -24,7 +24,7 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing user group relationships)
+-- Community
 insert into community (
     community_id,
     display_name,
@@ -45,7 +45,7 @@ insert into community (
     '{}'::jsonb
 );
 
--- users
+-- User
 insert into "user" (
     user_id,
     auth_hash,
@@ -60,7 +60,7 @@ insert into "user" (
     (:'communityAdminUserID', gen_random_bytes(32), :'community1ID', 'communityadmin@example.com', 'Community Admin User', 'communityadmin', true),
     (:'dualRoleUserID', gen_random_bytes(32), :'community1ID', 'dualrole@example.com', 'Dual Role User', 'dualrole', true);
 
--- group category
+-- Group Category
 insert into group_category (
     group_category_id,
     community_id,
@@ -73,7 +73,7 @@ insert into group_category (
     1
 );
 
--- groups (including one that will be deleted)
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -93,20 +93,25 @@ insert into "group" (
 -- Mark group4 as deleted (must also set active = false per check constraint)
 update "group" set deleted = true, active = false where group_id = :'group4ID';
 
--- Group Member User: member of groups A and B only (not community team)
+-- Group Team
 insert into group_team (group_id, user_id, role) values
     (:'group1ID', :'groupMemberUserID', 'organizer'),
     (:'group2ID', :'groupMemberUserID', 'member');
 
--- Community Admin User: community team member but not in any group teams
+-- Community Team
 insert into community_team (community_id, user_id, role) values
     (:'community1ID', :'communityAdminUserID', 'Admin');
 
--- Dual Role User: both community team member AND group team member (of group B)
+-- Community Team (dual role)
 insert into community_team (community_id, user_id, role) values
     (:'community1ID', :'dualRoleUserID', 'Admin');
 insert into group_team (group_id, user_id, role) values
     (:'group2ID', :'dualRoleUserID', 'member');
+
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
 
 -- Regular user (not in any teams) should see no groups
 select is(

@@ -22,7 +22,7 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing event updates)
+-- Community
 insert into community (
     community_id,
     name,
@@ -43,23 +43,23 @@ insert into community (
     '{}'::jsonb
 );
 
--- Users (for hosts and speakers)
+-- Users
 insert into "user" (user_id, community_id, email, username, auth_hash, name) values
     (:'user1ID', :'community1ID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
     (:'user2ID', :'community1ID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
     (:'user3ID', :'community1ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
 
--- Event categories (for testing category updates)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values
     (:'category1ID', 'Conference', 'conference', :'community1ID'),
     (:'category2ID', 'Workshop', 'workshop', :'community1ID');
 
--- Group category (for group organization)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
 
--- Group (for hosting events)
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -76,7 +76,7 @@ insert into "group" (
     '00000000-0000-0000-0000-000000000010'
 );
 
--- Event (target for update testing)
+-- Event
 insert into event (
     event_id,
     group_id,

@@ -20,7 +20,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Communities (main and others for isolation testing)
+-- Community
 insert into community (
     community_id,
     name,
@@ -34,13 +34,13 @@ insert into community (
     (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'seattle.cloudnative.org', 'Cloud Native Seattle Community', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png', '{}'::jsonb),
     (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'vancouver.devops.org', 'DevOps Vancouver Community', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', '{}'::jsonb);
 
--- Regions (for main community with ordering)
+-- Region
 insert into region (region_id, name, community_id, "order")
 values 
     (:'region1ID', 'North America', :'community1ID', 2),
     (:'region2ID', 'Europe', :'community1ID', 1);
 
--- Region (for other community isolation testing)
+-- Region (other community)
 insert into region (region_id, name, community_id)
 values 
     (:'region3ID', 'Asia Pacific', :'community2ID');
@@ -49,7 +49,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- list_regions returns complete JSON array with proper ordering
+-- Test: list_regions should return complete JSON ordered properly
 select is(
     list_regions(:'community1ID'::uuid)::jsonb,
     '[
@@ -69,7 +69,7 @@ select is(
     'list_regions should return complete region data ordered by order field, then by name'
 );
 
--- list_regions returns empty array for community with no regions
+-- Test: list_regions should return empty array for community with no regions
 insert into community (
     community_id,
     name,

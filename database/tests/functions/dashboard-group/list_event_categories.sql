@@ -16,20 +16,20 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Communities (main and other for isolation testing)
+-- Community
 insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme)
 values 
     (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'seattle.cloudnative.org', 'Cloud Native Seattle Community', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', '{}'::jsonb),
     (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'vancouver.devops.org', 'DevOps Vancouver Community', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', '{}'::jsonb);
 
--- Event categories (for main community with ordering)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id, "order")
 values 
     ('00000000-0000-0000-0000-000000000011', 'Workshop', 'workshop', :'community1ID', 2),
     ('00000000-0000-0000-0000-000000000012', 'Conference', 'conference', :'community1ID', 1),
     ('00000000-0000-0000-0000-000000000013', 'Meetup', 'meetup', :'community1ID', null);
 
--- Event categories (for other community isolation testing)
+-- Event Category (other community)
 insert into event_category (event_category_id, name, slug, community_id)
 values 
     ('00000000-0000-0000-0000-000000000014', 'Seminar', 'seminar', :'community2ID');
@@ -38,7 +38,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- list_event_categories returns categories for specific community ordered correctly
+-- Test: list_event_categories should return categories ordered for community
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -61,7 +61,7 @@ select is(
     'list_event_categories should return categories for community 1 ordered by order field then name'
 );
 
--- list_event_categories returns only categories for the specified community
+-- Test: list_event_categories should return only categories for specified community
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     '[

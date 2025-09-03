@@ -20,7 +20,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group summary function)
+-- Community
 insert into community (
     community_id,
     name,
@@ -41,15 +41,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Region (for organizing groups by location)
+-- Region
 insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Active group (with location data)
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -80,7 +80,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Inactive group (for testing filtering)
+-- Group (inactive)
 insert into "group" (
     group_id,
     name,
@@ -99,7 +99,7 @@ insert into "group" (
     '2024-02-15 10:00:00+00'
 );
 
--- Deleted group (for testing deleted group handling)
+-- Group (deleted)
 insert into "group" (
     group_id,
     name,
@@ -126,7 +126,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Function returns correct summary data
+-- Test: get_group_summary should return correct group summary JSON
 select is(
     get_group_summary('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -153,13 +153,13 @@ select is(
     'get_group_summary should return correct group summary data as JSON'
 );
 
--- Function returns null for non-existent group
+-- Test: get_group_summary with non-existent group should return null
 select ok(
     get_group_summary('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_summary with non-existent group ID should return null'
 );
 
--- Function returns data for deleted group
+-- Test: get_group_summary with deleted group should return data
 select ok(
     get_group_summary('00000000-0000-0000-0000-000000000023'::uuid) is not null,
     'get_group_summary with deleted group ID should return data'

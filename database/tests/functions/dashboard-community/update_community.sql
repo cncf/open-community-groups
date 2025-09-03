@@ -15,7 +15,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (fully populated for testing updates)
+-- Community
 insert into community (
     community_id,
     active,

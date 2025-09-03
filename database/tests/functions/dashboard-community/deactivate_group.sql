@@ -19,7 +19,7 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group deactivation)
+-- Community
 insert into community (
     community_id,
     name,
@@ -40,11 +40,11 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Active group (target for deactivation)
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -63,7 +63,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Already deleted group (for error testing)
+-- Group (deleted)
 insert into "group" (
     group_id,
     name,
@@ -88,7 +88,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Already inactive but not deleted group (for testing idempotency)
+-- Group (inactive)
 insert into "group" (
     group_id,
     name,
@@ -115,29 +115,30 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- deactivate_group function sets active to false
+-- Test: deactivate_group should set active to false
 select deactivate_group(:'communityID'::uuid, :'groupID'::uuid);
 
+-- Test: deactivate_group should set active to false
 select is(
     (select active from "group" where group_id = :'groupID'::uuid),
     false,
     'deactivate_group should set active to false'
 );
 
--- Verify deleted flag remains false
+-- Test: deactivate_group should not set deleted flag
 select is(
     (select deleted from "group" where group_id = :'groupID'::uuid),
     false,
     'deactivate_group should not set deleted flag'
 );
 
--- Test deactivating already inactive group (should succeed - idempotent)
+-- Test: deactivate_group already inactive should succeed (idempotent)
 select lives_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000023'::uuid)$$,
     'deactivate_group should be idempotent for already inactive groups'
 );
 
--- deactivate_group throws error for already deleted group
+-- Test: deactivate_group should throw error for already deleted group
 select throws_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
     'P0001',
@@ -145,7 +146,7 @@ select throws_ok(
     'deactivate_group should throw error when trying to deactivate already deleted group'
 );
 
--- deactivate_group throws error for wrong community_id
+-- Test: deactivate_group should throw error for wrong community_id
 select throws_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
     'P0001',
@@ -153,7 +154,7 @@ select throws_ok(
     'deactivate_group should throw error when community_id does not match'
 );
 
--- deactivate_group throws error for non-existent group
+-- Test: deactivate_group should throw error for non-existent group
 select throws_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
     'P0001',

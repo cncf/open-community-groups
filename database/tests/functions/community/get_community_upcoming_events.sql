@@ -22,7 +22,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing upcoming events)
+-- Community
 insert into community (
     community_id,
     name,
@@ -43,19 +43,19 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'communityID');
 
--- Group with location data
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
 values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States');
 
--- Event category
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Events (one past, two future, one unpublished, one canceled)
+-- Event
 insert into event (
     event_id,
     name,
@@ -86,6 +86,10 @@ insert into event (
     (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      '2026-01-15 14:00:00+00', '2026-01-15 16:00:00+00', true);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
 
 -- get_community_upcoming_events function returns correct data
 select is(

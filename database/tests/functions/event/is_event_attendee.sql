@@ -22,16 +22,16 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
+-- Community
 insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme) values
     (:'communityID', 'cncf-sea', 'CNCF Seattle', 'sea.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb),
     (:'otherCommunityID', 'cncf-ny', 'CNCF NY', 'ny.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb);
 
--- Group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Event category
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech', 'tech', :'communityID');
 
@@ -39,7 +39,7 @@ values (:'eventCategoryID', 'Tech', 'tech', :'communityID');
 insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active)
 values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'https://example.com/group.png', true);
 
--- Users
+-- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name)
 values
     (:'user1ID', 'att1@example.com', 'att1', false, 'h1', :'communityID', 'Att One'),
@@ -68,7 +68,7 @@ insert into event (
     true
 );
 
--- Attendee
+-- Event Attendee
 insert into event_attendee (event_id, user_id) values (:'eventID', :'user1ID');
 
 -- ============================================================================

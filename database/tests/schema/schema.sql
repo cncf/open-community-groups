@@ -9,11 +9,11 @@ select plan(72);
 -- TESTS
 -- ============================================================================
 
--- Check expected extensions exist
+-- Test: check expected extensions exist
 select has_extension('pgcrypto');
 select has_extension('postgis');
 
--- Check expected tables exist
+-- Test: check expected tables exist
 select has_table('community');
 select has_table('community_site_layout');
 select has_table('community_team');
@@ -32,7 +32,7 @@ select has_table('group_team');
 select has_table('region');
 select has_table('user');
 
--- Check tables have expected columns
+-- Test: community columns should match expected
 select columns_are('community', array[
     'community_id',
     'active',
@@ -65,10 +65,12 @@ select columns_are('community', array[
     'youtube_url'
 ]);
 
+-- Test: community_site_layout columns should match expected
 select columns_are('community_site_layout', array[
     'community_site_layout_id'
 ]);
 
+-- Test: community_team columns should match expected
 select columns_are('community_team', array[
     'community_id',
     'created_at',
@@ -78,6 +80,7 @@ select columns_are('community_team', array[
     'order'
 ]);
 
+-- Test: event columns should match expected
 select columns_are('event', array[
     'event_id',
     'canceled',
@@ -114,6 +117,7 @@ select columns_are('event', array[
     'venue_zip_code'
 ]);
 
+-- Test: event_attendee columns should match expected
 select columns_are('event_attendee', array[
     'event_id',
     'user_id',
@@ -121,6 +125,7 @@ select columns_are('event_attendee', array[
     'created_at'
 ]);
 
+-- Test: event_category columns should match expected
 select columns_are('event_category', array[
     'event_category_id',
     'community_id',
@@ -131,17 +136,20 @@ select columns_are('event_category', array[
     'order'
 ]);
 
+-- Test: event_host columns should match expected
 select columns_are('event_host', array[
     'event_id',
     'user_id',
     'created_at'
 ]);
 
+-- Test: event_kind columns should match expected
 select columns_are('event_kind', array[
     'event_kind_id',
     'display_name'
 ]);
 
+-- Test: event_sponsor columns should match expected
 select columns_are('event_sponsor', array[
     'event_sponsor_id',
     'created_at',
@@ -153,6 +161,7 @@ select columns_are('event_sponsor', array[
     'website_url'
 ]);
 
+-- Test: group columns should match expected
 select columns_are('group', array[
     'group_id',
     'active',
@@ -191,6 +200,7 @@ select columns_are('group', array[
     'youtube_url'
 ]);
 
+-- Test: group_category columns should match expected
 select columns_are('group_category', array[
     'group_category_id',
     'community_id',
@@ -201,16 +211,19 @@ select columns_are('group_category', array[
     'order'
 ]);
 
+-- Test: group_member columns should match expected
 select columns_are('group_member', array[
     'group_id',
     'user_id',
     'created_at'
 ]);
 
+-- Test: group_site_layout columns should match expected
 select columns_are('group_site_layout', array[
     'group_site_layout_id'
 ]);
 
+-- Test: group_sponsor columns should match expected
 select columns_are('group_sponsor', array[
     'group_sponsor_id',
     'created_at',
@@ -222,6 +235,7 @@ select columns_are('group_sponsor', array[
     'website_url'
 ]);
 
+-- Test: group_team columns should match expected
 select columns_are('group_team', array[
     'group_id',
     'user_id',
@@ -231,6 +245,7 @@ select columns_are('group_team', array[
     'order'
 ]);
 
+-- Test: region columns should match expected
 select columns_are('region', array[
     'region_id',
     'community_id',
@@ -241,6 +256,7 @@ select columns_are('region', array[
     'order'
 ]);
 
+-- Test: user columns should match expected
 select columns_are('user', array[
     'user_id',
     'auth_hash',
@@ -266,7 +282,7 @@ select columns_are('user', array[
     'website_url'
 ]);
 
--- Check tables have expected primary keys
+-- Test: check tables have expected primary keys
 select has_pk('community');
 select has_pk('community_site_layout');
 select has_pk('community_team');
@@ -286,6 +302,7 @@ select has_pk('region');
 select has_pk('user');
 
 -- Check tables have expected indexes
+-- Test: community indexes should match expected
 select indexes_are('community', array[
     'community_pkey',
     'community_display_name_key',
@@ -294,6 +311,7 @@ select indexes_are('community', array[
     'community_community_site_layout_id_idx'
 ]);
 
+-- Test: event indexes should match expected
 select indexes_are('event', array[
     'event_pkey',
     'event_slug_group_id_key',
@@ -305,6 +323,7 @@ select indexes_are('event', array[
     'event_search_idx'
 ]);
 
+-- Test: group indexes should match expected
 select indexes_are('group', array[
     'group_pkey',
     'group_slug_community_id_key',
@@ -317,6 +336,7 @@ select indexes_are('group', array[
     'group_search_idx'
 ]);
 
+-- Test: user indexes should match expected
 select indexes_are('user', array[
     'user_pkey',
     'user_email_community_id_key',
@@ -327,7 +347,7 @@ select indexes_are('user', array[
     'user_email_lower_idx'
 ]);
 
--- Check expected functions exist
+-- Test: check expected functions exist
 select has_function('get_community');
 select has_function('get_community_filters_options');
 select has_function('get_community_home_stats');
@@ -341,7 +361,7 @@ select has_function('get_group_past_events');
 select has_function('get_group_upcoming_events');
 select has_function('i_array_to_string');
 
--- Check event kinds exist
+-- Test: event kinds should match expected values
 select results_eq(
     'select * from event_kind order by event_kind_id',
     $$ values
@@ -352,13 +372,14 @@ select results_eq(
     'Event kinds should exist'
 );
 
--- Check site layouts exist
+-- Test: community site layout should match expected
 select results_eq(
     'select * from community_site_layout',
     $$ values ('default') $$,
     'Community site layout should have default'
 );
 
+-- Test: group site layout should match expected
 select results_eq(
     'select * from group_site_layout',
     $$ values ('default') $$,

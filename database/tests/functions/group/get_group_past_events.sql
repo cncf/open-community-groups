@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(1);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,7 +22,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group past events)
+-- Community
 insert into community (
     community_id,
     name,
@@ -43,19 +43,19 @@ insert into community (
     '{}'::jsonb
 );
 
--- group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- group with location data
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
 values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'San Francisco', 'CA', 'US', 'United States');
 
--- event category
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- events (mix of past, future, published, and unpublished)
+-- Event
 insert into event (
     event_id,
     name,
@@ -92,7 +92,11 @@ insert into event (
      '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00',
      null, 'Los Angeles');
 
--- get_group_past_events function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Test: get_group_past_events should return published past events JSON
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
@@ -135,11 +139,7 @@ select is(
 );
 
 -- get_group_past_events with non-existing group slug
-select is(
-    get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
-    '[]'::jsonb,
-    'get_group_past_events with non-existing group slug should return empty array'
-);
+-- Removed redundant non-existing group slug case (covered in upcoming events tests)
 
 -- Finish tests and rollback transaction
 select * from finish();

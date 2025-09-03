@@ -23,7 +23,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing event retrieval)
+-- Community
 insert into community (
     community_id,
     name,
@@ -44,7 +44,7 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
@@ -52,11 +52,11 @@ values (:'categoryID', 'Technology', :'communityID');
 insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active, created_at)
 values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
 
--- Event category
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Users
+-- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, created_at)
 values
     (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash', :'communityID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
@@ -64,7 +64,7 @@ values
     (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
     (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
--- Event with all fields
+-- Event
 insert into event (
     event_id,
     name,
@@ -117,25 +117,29 @@ insert into event (
     'https://youtube.com/watch?v=123'
 );
 
--- Add event hosts
+-- Event Host
 insert into event_host (event_id, user_id, created_at)
 values
     (:'eventID', :'user1ID', '2024-01-01 00:00:00'),
     (:'eventID', :'user2ID', '2024-01-01 00:00:00');
 
--- Add event attendees
+-- Event Attendee
 insert into event_attendee (event_id, user_id, checked_in, created_at)
 values
     (:'eventID', :'user1ID', true, '2024-01-01 00:00:00'),
     (:'eventID', :'user2ID', false, '2024-01-01 00:00:00');
 
--- Add group team members (organizers)
+-- Group Team
 insert into group_team (group_id, user_id, role, "order", created_at)
 values
     (:'groupID', :'user3ID', 'organizer', 1, '2024-01-01 00:00:00'),
     (:'groupID', :'user4ID', 'organizer', 2, '2024-01-01 00:00:00');
 
--- get_event function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Test: get_event should return correct event JSON
 select is(
     get_event(:'communityID'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
     '{
@@ -212,7 +216,7 @@ select is(
     'get_event should return correct event data as JSON'
 );
 
--- get_event with non-existing event slug
+-- Test: get_event with non-existing event slug should return null
 select ok(
     get_event(:'communityID'::uuid, 'test-group', 'non-existing-event') is null,
     'get_event with non-existing event slug should return null'

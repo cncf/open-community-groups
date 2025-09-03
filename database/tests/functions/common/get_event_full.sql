@@ -27,7 +27,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing event full function)
+-- Community
 insert into community (
     community_id,
     name,
@@ -48,15 +48,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'groupCategoryID', 'Technology', :'communityID');
 
--- Event category (for organizing events)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Active group (with location data)
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -77,7 +77,7 @@ insert into "group" (
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326)  -- New York coordinates
 );
 
--- Inactive group (for testing filtering)
+-- Group (inactive)
 insert into "group" (
     group_id,
     name,
@@ -94,14 +94,14 @@ insert into "group" (
     false
 );
 
--- Users (event hosts, organizers, and speakers)
+-- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
     (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', :'communityID', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
     (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', :'communityID', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
     (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', :'communityID', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
 
--- Published event (with complete information)
+-- Event
 insert into event (
     event_id,
     name,
@@ -162,15 +162,15 @@ insert into event (
     '2024-04-01 10:00:00+00'
 );
 
--- Event host relationship
+-- Event Host
 insert into event_host (event_id, user_id)
 values (:'eventID', :'user1ID');
 
--- Group organizer relationship
+-- Group Team
 insert into group_team (group_id, user_id, role, "order")
 values (:'groupID', :'user2ID', 'organizer', 1);
 
--- Event sessions (with different types)
+-- Session
 insert into session (
     session_id,
     event_id,
@@ -207,11 +207,11 @@ insert into session (
     null
 );
 
--- Session speaker relationship
+-- Session Speaker
 insert into session_speaker (session_id, user_id, featured)
 values (:'session1ID', :'user3ID', true);
 
--- Unpublished event (for testing visibility)
+-- Event (unpublished)
 insert into event (
     event_id,
     name,
@@ -236,7 +236,7 @@ insert into event (
     'America/New_York'
 );
 
--- Event with inactive group (for testing group status)
+-- Event (inactive group)
 insert into event (
     event_id,
     name,
@@ -265,7 +265,7 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Function returns complete data for published event
+-- Test: get_event_full should return complete event JSON
 select is(
     get_event_full('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
@@ -372,7 +372,7 @@ select is(
     'get_event_full should return complete event data with hosts, organizers, and sessions as JSON'
 );
 
--- Function returns null for non-existent event
+-- Test: get_event_full with non-existent event should return null
 
 select ok(
     get_event_full('00000000-0000-0000-0000-000000999999'::uuid) is null,

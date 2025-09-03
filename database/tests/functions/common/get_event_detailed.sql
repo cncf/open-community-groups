@@ -22,7 +22,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing event detailed function)
+-- Community
 insert into community (
     community_id,
     name,
@@ -43,15 +43,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category (for organizing groups)
+-- Group category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Event category (for organizing events)
+-- Event category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Active group (with location data)
+-- Active group
 insert into "group" (
     group_id,
     name,
@@ -78,7 +78,7 @@ insert into "group" (
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326)
 );
 
--- Inactive group (for testing filtering)
+-- Inactive group
 insert into "group" (
     group_id,
     name,
@@ -95,7 +95,7 @@ insert into "group" (
     false
 );
 
--- Published event (with detailed information)
+-- Published event
 insert into event (
     event_id,
     name,
@@ -134,7 +134,7 @@ insert into event (
     'https://example.com/event-logo.png'
 );
 
--- Unpublished event (for testing visibility)
+-- Unpublished event
 insert into event (
     event_id,
     name,
@@ -159,7 +159,7 @@ insert into event (
     'America/New_York'
 );
 
--- Event with inactive group (for testing group status)
+-- Event with inactive group
 insert into event (
     event_id,
     name,
@@ -188,7 +188,7 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Function returns correct data for published event
+-- Test: get_event_detailed should return correct detailed event JSON
 select is(
     get_event_detailed('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
     '{
@@ -218,7 +218,7 @@ select is(
     'get_event_detailed should return correct detailed event data as JSON'
 );
 
--- Function returns null for non-existent event
+-- Test: get_event_detailed with non-existent event should return null
 select ok(
     get_event_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_event_detailed with non-existent event ID should return null'

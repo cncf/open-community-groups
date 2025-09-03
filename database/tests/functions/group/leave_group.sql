@@ -42,17 +42,17 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Users
+-- User
 insert into "user" (user_id, username, email, community_id, auth_hash)
 values 
     (:'user1ID', 'testuser1', 'user1@test.com', :'communityID', 'hash1'),
     (:'user2ID', 'testuser2', 'user2@test.com', :'communityID', 'hash2');
 
--- Groups (active, inactive, deleted)
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -66,7 +66,7 @@ insert into "group" (
     (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false),
     (:'deletedGroupID', :'communityID', :'categoryID', 'Deleted Group', 'deleted-group', false, true);
 
--- Add user1 as a member of the active group
+-- Group Member
 insert into group_member (group_id, user_id)
 values (:'groupID', :'user1ID');
 
@@ -74,19 +74,19 @@ values (:'groupID', :'user1ID');
 -- TESTS
 -- ============================================================================
 
--- Test successful leave
+-- Test: leave_group should succeed for member
 select lives_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'User should be able to leave a group they are a member of'
 );
 
--- Verify user was removed from group_member table
+-- Test: leave_group should remove user from group_member
 select ok(
     not exists(select 1 from group_member where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid),
     'User should be removed from group_member table after leaving'
 );
 
--- Test leaving when not a member
+-- Test: leave_group when not a member should error
 select throws_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
     'P0001',
@@ -94,7 +94,7 @@ select throws_ok(
     'Should not allow user to leave a group they are not a member of'
 );
 
--- Test leave inactive group
+-- Test: leave_group on inactive group should error
 select throws_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',
@@ -102,7 +102,7 @@ select throws_ok(
     'Should not allow user to leave an inactive group'
 );
 
--- Test leave deleted group
+-- Test: leave_group on deleted group should error
 select throws_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000023'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',

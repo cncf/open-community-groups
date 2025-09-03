@@ -19,7 +19,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group detailed function)
+-- Community
 insert into community (
     community_id,
     name,
@@ -40,15 +40,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Region (for organizing groups by location)
+-- Region
 insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Active group (with all fields including location)
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -83,7 +83,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Inactive group (for testing filtering)
+-- Group (inactive)
 insert into "group" (
     group_id,
     name,
@@ -106,7 +106,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Function returns correct detailed group data
+-- Test: get_group_detailed should return correct detailed group JSON
 select is(
     get_group_detailed('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -136,7 +136,7 @@ select is(
     'get_group_detailed should return correct detailed group data with location as JSON'
 );
 
--- Function returns null for non-existent group
+-- Test: get_group_detailed with non-existent group should return null
 select ok(
     get_group_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_detailed with non-existent group ID should return null'

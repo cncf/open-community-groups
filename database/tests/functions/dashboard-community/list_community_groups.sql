@@ -21,7 +21,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Communities (main and other for isolation testing)
+-- Community
 insert into community (
     community_id,
     name,
@@ -53,15 +53,15 @@ insert into community (
         '{}'::jsonb
     );
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, "order", community_id)
 values (:'categoryID', 'Technology', 1, :'community1ID');
 
--- Region (for geographic organization)
+-- Region
 insert into region (region_id, name, "order", community_id)
 values (:'regionID', 'North America', 1, :'community1ID');
 
--- Groups (for testing community isolation and ordering)
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -127,14 +127,14 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- list_community_groups returns empty array for community with no groups
+-- Test: list_community_groups should return empty array for community with no groups
 select is(
     list_community_groups('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'list_community_groups should return empty array for community with no groups'
 );
 
--- list_community_groups returns full JSON structure for groups ordered alphabetically
+-- Test: list_community_groups should return full JSON for groups ordered alphabetically
 select is(
     list_community_groups(:'community1ID'::uuid)::jsonb,
     '[
