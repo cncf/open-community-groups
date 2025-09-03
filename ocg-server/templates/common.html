@@ -149,10 +149,10 @@
 {# End logo -#}
 
 {# Small spinner -#}
-{% macro small_spinner() -%}
+{% macro small_spinner(size = "size-6") -%}
   <div role="status" class="hidden group-[.is-loading]:block">
     <svg aria-hidden="true"
-         class="w-6 h-6 text-stone-200 animate-spin fill-primary-500"
+         class="{{ size }} text-stone-200 animate-spin fill-primary-500"
          viewBox="0 0 100 101"
          fill="none"
          xmlns="http://www.w3.org/2000/svg">
