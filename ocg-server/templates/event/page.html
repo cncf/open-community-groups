@@ -140,6 +140,118 @@
 
         {# Right column (30%) -#}
         <div class="max-w-[450px] lg:col-span-3">
+          {# Attend button section -#}
+          <div class="mb-6" id="attendance-container">
+
+            <!-- Loading spinner (shown initially) -->
+            <button id="loading-btn"
+                    disabled
+                    class="btn-primary w-full opacity-50 cursor-not-allowed flex items-center justify-center">
+              <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
+                   xmlns="http://www.w3.org/2000/svg"
+                   fill="none"
+                   viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              Checking...
+            </button>
+
+            <!-- Sign in prompt (hidden initially) -->
+            <a id="signin-btn"
+               href="/log-in?next_url={{ path|urlencode }}"
+               hx-boost="true"
+               class="hidden btn-primary-anchor w-full text-center">Sign in to Attend</a>
+
+            <!-- Attend button (hidden initially) -->
+            <button id="attend-btn"
+                    hx-post="/event/{{ event.event_id }}/attend"
+                    hx-swap="none"
+                    class="hidden btn-primary w-full">Attend Event</button>
+
+            <!-- Leave button (hidden initially) -->
+            <button id="leave-btn"
+                    hx-delete="/event/{{ event.event_id }}/leave"
+                    hx-swap="none"
+                    class="hidden btn-secondary w-full">Cancel Attendance</button>
+
+            <!-- Hidden element that checks attendance status -->
+            <div id="attendance-checker"
+                 hx-get="/event/{{ event.event_id }}/attendance"
+                 hx-trigger="load, attendance-changed from:body"
+                 hx-swap="none"></div>
+          </div>
+
+          <script type="module">
+            const attendanceHandler = document.getElementById('attendance-checker');
+
+            // Handle attendance check response
+            attendanceHandler.addEventListener('htmx:afterRequest', (evt) => {
+              const loadingBtn = document.getElementById('loading-btn');
+              const signinBtn = document.getElementById('signin-btn');
+              const attendBtn = document.getElementById('attend-btn');
+              const leaveBtn = document.getElementById('leave-btn');
+
+
+              // Ensure all buttons exist
+              if (!loadingBtn || !signinBtn || !attendBtn || !leaveBtn) {
+                return;
+              }
+
+              // Hide all buttons first
+              loadingBtn.classList.add('hidden');
+              signinBtn.classList.add('hidden');
+              attendBtn.classList.add('hidden');
+              leaveBtn.classList.add('hidden');
+
+              if (evt.detail.successful && evt.detail.xhr.status === 200) {
+                // User is authenticated, parse response
+                try {
+                  const response = JSON.parse(evt.detail.xhr.responseText);
+
+                  if (response.is_attendee) {
+                    leaveBtn.classList.remove('hidden');
+                  } else {
+                    attendBtn.classList.remove('hidden');
+                  }
+                } catch (error) {
+                  signinBtn.classList.remove('hidden');
+                }
+              } else {
+                // User not authenticated or error
+                signinBtn.classList.remove('hidden');
+              }
+            });
+
+            // Handle attend button
+            document.getElementById('attend-btn').addEventListener('htmx:beforeRequest', () => {
+              this.classList.add('hidden');
+              document.getElementById('loading-btn').classList.remove('hidden');
+            });
+
+            document.getElementById('attend-btn').addEventListener('htmx:afterRequest', (evt) => {
+              if (evt.detail.successful) {
+                // Fire custom event to trigger attendance check
+                document.body.dispatchEvent(new Event('attendance-changed'));
+              }
+            });
+
+            // Handle leave button
+            document.getElementById('leave-btn').addEventListener('htmx:beforeRequest', () => {
+              this.classList.add('hidden');
+              document.getElementById('loading-btn').classList.remove('hidden');
+            });
+
+            document.getElementById('leave-btn').addEventListener('htmx:afterRequest', (evt) => {
+              if (evt.detail.successful) {
+                // Fire custom event to trigger attendance check
+                document.body.dispatchEvent(new Event('attendance-changed'));
+              }
+            });
+          </script>
+          {# End attend button section -#}
+
           {# Event details section -#}
           <div class="border border-stone-200 rounded-lg mb-6">
             {# Date and time -#}
