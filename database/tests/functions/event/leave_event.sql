@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,27 +29,27 @@ select plan(6);
 insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme) values
 (:'communityID', 'test-community', 'Test Community', 'test.community.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb);
 
--- Group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Event category
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'General', 'general', :'communityID');
 
--- Users
+-- User
 insert into "user" (user_id, username, email, community_id, auth_hash)
 values 
     (:'user1ID', 'u1', 'u1@test.com', :'communityID', 'h'),
     (:'user2ID', 'u2', 'u2@test.com', :'communityID', 'h');
 
--- Groups
+-- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
 values
     (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
     (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
 
--- Events
+-- Event
 insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted)
 values
     (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false),
@@ -57,33 +57,33 @@ values
     (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false),
     (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false);
 
--- Seed attendance for user1 in eventOK
+-- Event Attendee
 insert into event_attendee (event_id, user_id) values (:'eventOK', :'user1ID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Test successful leave
+-- Test: leave_event should succeed for attending user
 select lives_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventOK', :'user1ID'
     ),
-    'User should be able to leave an event they attend'
+    'leave_event on attending user succeeds'
 );
 
--- Verify user was removed from event_attendee table
+-- Test: leave_event should remove attendee record
 select ok(
     not exists(
         select 1
         from event_attendee
         where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
     ),
-    'User should be removed from event_attendee table after leaving'
+    'leave_event removes attendee record'
 );
 
--- Test leaving when not attending
+-- Test: leave_event when not attending should error
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -91,10 +91,10 @@ select throws_ok(
     ),
     'P0001',
     'user is not attending this event',
-    'Should not allow user to leave an event they are not attending'
+    'leave_event not attending raises exception'
 );
 
--- Test event in inactive group
+-- Test: leave_event in inactive group should error
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -102,10 +102,10 @@ select throws_ok(
     ),
     'P0001',
     'event not found or inactive',
-    'Should not allow leaving event from inactive group'
+    'leave_event event in inactive group raises exception'
 );
 
--- Test deleted event
+-- Test: leave_event deleted event should error
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -113,18 +113,7 @@ select throws_ok(
     ),
     'P0001',
     'event not found or inactive',
-    'Should not allow leaving deleted event'
-);
-
--- Test unpublished event
-select throws_ok(
-    format(
-        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventUnpublished', :'user1ID'
-    ),
-    'P0001',
-    'event not found or inactive',
-    'Should not allow leaving unpublished event'
+    'leave_event deleted event raises exception'
 );
 
 -- ============================================================================

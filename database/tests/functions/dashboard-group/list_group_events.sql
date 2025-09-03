@@ -23,7 +23,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing event listing)
+-- Community
 insert into community (
     community_id,
     name,
@@ -44,15 +44,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Event category (for event classification)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'category1ID', 'Conference', 'conference', :'community1ID');
 
--- Group category (for group organization)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'groupCategory1ID', 'Technology', :'community1ID');
 
--- Groups with location data
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -90,7 +90,7 @@ insert into "group" (
         'United States'
     );
 
--- Events for group1
+-- Event
 insert into event (
     event_id,
     group_id,
@@ -162,7 +162,7 @@ insert into event (
         'Chicago'
     );
 
--- Add a deleted event for group1 that should not appear in results
+-- Event (deleted)
 insert into event (
     event_id,
     group_id,
@@ -193,14 +193,14 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- list_group_events returns empty array for group with no events
+-- Test: list_group_events should return empty array for group with no events
 select is(
     list_group_events('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'list_group_events should return empty array for group with no events'
 );
 
--- list_group_events returns full JSON structure for group1 events ordered correctly
+-- Test: list_group_events should return full JSON for group1 ordered correctly
 select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
     '[
@@ -256,7 +256,7 @@ select is(
     'list_group_events should return events with full JSON structure ordered by starts_at desc with nulls last'
 );
 
--- list_group_events returns full JSON structure for group2's single event
+-- Test: list_group_events should return full JSON for group2 single event
 select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     '[

@@ -25,7 +25,7 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community for testing user search
+-- Community
 insert into community (
     community_id,
     name,
@@ -46,7 +46,7 @@ insert into community (
     '{}'::jsonb
 );
 
--- Second community for isolation testing
+-- Community (other)
 insert into community (
     community_id,
     name,
@@ -67,7 +67,7 @@ insert into community (
     '{}'::jsonb
 );
 
--- Users for testing
+-- User
 insert into "user" (user_id, username, email, auth_hash, community_id, name, photo_url)
 values 
     (:'user1ID', 'johndoe', 'john.doe@example.com', 'hash1', :'communityID', 'John Doe', 'https://example.com/john.jpg'),
@@ -83,7 +83,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test 1: Search by username prefix
+-- Test: search_user by username prefix should return expected matches
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'john'),
     '[
@@ -103,7 +103,7 @@ select is(
     'search_user should find users by username prefix'
 );
 
--- Test 2: Search by name prefix
+-- Test: search_user by name prefix should return expected matches
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'jane'),
     '[
@@ -117,7 +117,7 @@ select is(
     'search_user should find users by name prefix'
 );
 
--- Test 3: Search by email prefix
+-- Test: search_user by email prefix should return expected matches
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'alice@'),
     '[
@@ -131,7 +131,7 @@ select is(
     'search_user should find users by email prefix'
 );
 
--- Test 4: Limit to 5 results
+-- Test: search_user limit should cap results to 5
 insert into "user" (username, email, auth_hash, community_id, name)
 values 
     ('test1', 'test1@example.com', 'hash8', :'communityID', 'Test User 1'),
@@ -147,14 +147,14 @@ select is(
     'search_user should return maximum 5 results'
 );
 
--- Test 5: No results for non-matching query
+-- Test: search_user with non-matching query should return no results
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'nonexistent'),
     '[]'::jsonb,
     'search_user should return no results for non-matching query'
 );
 
--- Test 6: Community isolation
+-- Test: search_user should be isolated per community
 select is(
     search_user('00000000-0000-0000-0000-000000000002'::uuid, 'john'),
     '[
@@ -168,14 +168,14 @@ select is(
     'search_user should only return users from the specified community'
 );
 
--- Test 7: Empty query returns no results
+-- Test: search_user with empty query should return no results
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, ''),
     '[]'::jsonb,
     'search_user should return no results for empty query'
 );
 
--- Test 8: SQL injection prevention - special characters
+-- Test: search_user should treat % and _ as literals
 insert into "user" (user_id, username, email, auth_hash, community_id, name)
 values 
     (:'user8ID', 'user%test', 'usertest@example.com', 'hash14', :'communityID', 'User Percent Test'),

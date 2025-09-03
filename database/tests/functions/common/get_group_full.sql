@@ -23,7 +23,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group full function)
+-- Community
 insert into community (
     community_id,
     name,
@@ -44,15 +44,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Region (for organizing groups by location)
+-- Region
 insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Users (team members and members)
+-- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
     (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
@@ -60,7 +60,7 @@ values
     (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', :'communityID', 'Charlie Brown', null, null, null, null, null, null, null),
     (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', :'communityID', 'Diana Prince', null, null, null, null, null, null, null);
 
--- Active group (with all fields including location)
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -125,13 +125,13 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Group team members (organizers)
+-- Group Team
 insert into group_team (group_id, user_id, role, "order")
 values
     (:'groupID', :'user1ID', 'organizer', 1),
     (:'groupID', :'user2ID', 'organizer', 2);
 
--- Group members
+-- Group Member
 insert into group_member (group_id, user_id)
 values
     (:'groupID', :'user1ID'),
@@ -139,7 +139,7 @@ values
     (:'groupID', :'user3ID'),
     (:'groupID', :'user4ID');
 
--- Inactive group (for testing filtering)
+-- Group (inactive)
 insert into "group" (
     group_id,
     name,
@@ -162,7 +162,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Function returns complete group data
+-- Test: get_group_full should return complete group JSON
 select is(
     get_group_full('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
@@ -230,7 +230,7 @@ select is(
     'get_group_full should return complete group data with organizers and member count as JSON'
 );
 
--- Function returns null for non-existent group
+-- Test: get_group_full with non-existent group should return null
 select ok(
     get_group_full('00000000-0000-0000-0000-000000999999'::uuid) is null,
     'get_group_full with non-existent group ID should return null'

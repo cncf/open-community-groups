@@ -15,7 +15,7 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community (required for user registration)
+-- Community
 insert into community (
     community_id,
     name,

@@ -60,7 +60,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test successful attend
+-- Test: attend_event should succeed for valid event
 select lives_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -69,7 +69,7 @@ select lives_ok(
     'User should be able to attend a valid event'
 );
 
--- Verify user was added to event_attendee table
+-- Test: attending should add user to event_attendee
 select ok(
     exists(
         select 1
@@ -79,7 +79,7 @@ select ok(
     'User should be added to event_attendee table after attending'
 );
 
--- Test duplicate attend attempt
+-- Test: attend_event duplicate should error
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -90,7 +90,7 @@ select throws_ok(
     'Should not allow duplicate attendance'
 );
 
--- Test unpublished event
+-- Test: attend_event unpublished event should error
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -101,7 +101,7 @@ select throws_ok(
     'Should not allow attending unpublished event'
 );
 
--- Test canceled event
+-- Test: attend_event canceled event should error
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -112,7 +112,7 @@ select throws_ok(
     'Should not allow attending canceled event'
 );
 
--- Test event in inactive group
+-- Test: attend_event in inactive group should error
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',

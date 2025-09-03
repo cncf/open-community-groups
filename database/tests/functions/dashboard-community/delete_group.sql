@@ -18,7 +18,7 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group deletion)
+-- Community
 insert into community (
     community_id,
     name,
@@ -39,11 +39,11 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category (for organizing groups)
+-- Group category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Active group (target for deletion)
+-- Active group
 insert into "group" (
     group_id,
     name,
@@ -62,7 +62,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- Already deleted group (for error testing)
+-- Already deleted group
 insert into "group" (
     group_id,
     name,

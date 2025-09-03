@@ -21,7 +21,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing recently added groups)
+-- Community
 insert into community (
     community_id,
     name,
@@ -42,17 +42,17 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'communityID');
 
--- Regions
+-- Region
 insert into region (region_id, name, community_id)
 values
     (:'region1ID', 'North America', :'communityID'),
     (:'region2ID', 'Europe', :'communityID');
 
--- Groups with different creation times and location data
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, created_at, logo_url, description,
                      city, state, country_code, country_name, region_id)
 values
@@ -65,6 +65,10 @@ values
     (:'group3ID', 'Test Group 3', 'test-group-3', :'communityID', :'category1ID',
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
      'London', null, 'GB', 'United Kingdom', :'region2ID');
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
 
 -- get_community_recently_added_groups function returns correct data
 select is(

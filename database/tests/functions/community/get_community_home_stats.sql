@@ -21,7 +21,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing home stats)
+-- Community
 insert into community (
     community_id,
     name,
@@ -42,27 +42,27 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Groups (for statistics)
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id)
 values
     (:'group1ID', 'Seattle Kubernetes Meetup', 'seattle-kubernetes-meetup', :'communityID', :'categoryID'),
     (:'group2ID', 'Cloud Native DevOps Group', 'cloud-native-devops-group', :'communityID', :'categoryID');
 
--- Users (community members)
+-- User
 insert into "user" (user_id, email, username, name, email_verified, auth_hash, community_id, created_at)
 values
     (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-member', 'Alice Johnson', false, 'test_hash', :'communityID', '2024-01-01 00:00:00'),
     (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-member', 'Bob Wilson', false, 'test_hash', :'communityID', '2024-01-01 00:00:00');
 
--- Event category (for organizing events)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values ('00000000-0000-0000-0000-000000000061', 'Tech Talks', 'tech-talks', :'communityID');
 
--- Event (for statistics)
+-- Event
 insert into event (
     event_id,
     name,
@@ -85,14 +85,14 @@ insert into event (
     true
 );
 
--- Group members (for member statistics)
+-- Group Member
 insert into group_member (group_id, user_id, created_at)
 values
     (:'group1ID', :'user1ID', '2024-01-01 00:00:00'),
     (:'group1ID', :'user2ID', '2024-01-01 00:00:00'),
     (:'group2ID', :'user1ID', '2024-01-01 00:00:00');
 
--- Event attendees (for attendee statistics)
+-- Event Attendee
 insert into event_attendee (event_id, user_id, created_at)
 values
     (:'eventID', :'user1ID', '2024-01-01 00:00:00'),
@@ -102,7 +102,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Function returns correct community statistics
+-- Test: get_community_home_stats should return correct community statistics
 select is(
     get_community_home_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -114,7 +114,7 @@ select is(
     'get_community_home_stats should return correct stats as JSON'
 );
 
--- Function returns zeros for non-existent community
+-- Test: get_community_home_stats with non-existent community should return zeros
 select is(
     get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{

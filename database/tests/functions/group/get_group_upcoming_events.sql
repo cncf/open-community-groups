@@ -22,7 +22,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group upcoming events)
+-- Community
 insert into community (
     community_id,
     name,
@@ -43,19 +43,19 @@ insert into community (
     '{}'::jsonb
 );
 
--- group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'community1ID');
 
--- group with location data
+-- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
 values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'Los Angeles', 'CA', 'US', 'United States');
 
--- event category
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategory1ID', 'Tech Talks', 'tech-talks', :'community1ID');
 
--- events (mix of past, future, published, and unpublished)
+-- Event
 insert into event (
     event_id,
     name,
@@ -93,7 +93,11 @@ insert into event (
      '2026-02-20 09:00:00+00', '2026-02-20 11:00:00+00',
      null, 'New York');
 
--- get_group_upcoming_events function returns correct data
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Test: get_group_upcoming_events should return published future events JSON
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[
@@ -141,7 +145,7 @@ select is(
     'get_group_upcoming_events should return published future events ordered by date ASC as JSON'
 );
 
--- get_group_upcoming_events with non-existing group slug
+-- Test: get_group_upcoming_events with non-existent group should return empty array
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[]'::jsonb,

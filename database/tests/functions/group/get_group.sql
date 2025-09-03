@@ -21,7 +21,7 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group data retrieval)
+-- Community
 insert into community (
     community_id,
     name,
@@ -42,22 +42,22 @@ insert into community (
     '{}'::jsonb
 );
 
--- Group category (for organizing groups)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- Region (for geographic organization)
+-- Region
 insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
--- Users (organizers and members for group relationships)
+-- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, company, title, photo_url, created_at)
 values
     (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
     (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
     (:'memberID', 'member@example.com', 'member1', false, 'test_hash', :'communityID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
--- Group (comprehensive example with all fields)
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -102,14 +102,14 @@ insert into "group" (
     'https://github.com/k8snyc'
 );
 
--- Group members (for membership count)
+-- Group Member
 insert into group_member (group_id, user_id, created_at)
 values
     (:'groupID', :'organizer1ID', '2024-01-01 00:00:00'),
     (:'groupID', :'organizer2ID', '2024-01-01 00:00:00'),
     (:'groupID', :'memberID', '2024-01-01 00:00:00');
 
--- Group team members (organizers for leadership display)
+-- Group Team
 insert into group_team (group_id, user_id, role, "order", created_at)
 values
     (:'groupID', :'organizer1ID', 'organizer', 1, '2024-01-01 00:00:00'),

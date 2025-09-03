@@ -23,7 +23,7 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- First community for testing group ownership
+-- Community
 insert into community (
     community_id,
     name,
@@ -44,8 +44,7 @@ insert into community (
     'Cloud Native Seattle Community'
 );
 
--- Second community for cross-community ownership testing
-
+-- Second community
 insert into community (
     community_id,
     name,
@@ -66,11 +65,7 @@ insert into community (
     'Cloud Native Portland Community'
 );
 
--- Users with different permission levels
--- userOrganizerID: User with group organizer role
--- userRegularID: Regular user without special permissions
--- userCommunityTeamID: User with community team role
--- userCommunityTeam2ID: User with community team role in community2
+-- Users
 insert into "user" (
     user_id,
     auth_hash,
@@ -113,7 +108,7 @@ insert into "user" (
     'communityteam2'
 );
 
--- Group category for test group
+-- Group category
 insert into group_category (
     group_category_id,
     community_id,
@@ -124,7 +119,7 @@ insert into group_category (
     'Technology'
 );
 
--- Test groups for ownership verification
+-- Groups
 insert into "group" (
     group_id,
     community_id,
@@ -148,7 +143,7 @@ insert into "group" (
     'Weekly Docker study and discussion group'
 );
 
--- Group team membership (grants ownership to organizer)
+-- Group team membership
 insert into group_team (
     group_id,
     user_id,
@@ -159,7 +154,7 @@ insert into group_team (
     'Organizer'
 );
 
--- Community team membership (grants access to all groups in community)
+-- Community team membership
 insert into community_team (
     community_id,
     user_id,
@@ -178,49 +173,49 @@ insert into community_team (
 -- TESTS
 -- ============================================================================
 
--- User in group_team should own the group
+-- Test: user_owns_group with group team member should return true
 select ok(
     user_owns_group(:'community1ID', :'groupID', :'userOrganizerID'),
     'User in group_team should own the group'
 );
 
--- User not in group_team should not own the group
+-- Test: user_owns_group with non-member should return false
 select ok(
     not user_owns_group(:'community1ID', :'groupID', :'userRegularID'),
     'User not in group_team should not own the group'
 );
 
--- Non-existent user should not own the group
+-- Test: user_owns_group with non-existent user should return false
 select ok(
     not user_owns_group(:'community1ID', :'groupID', '00000000-0000-0000-0000-000000000099'::uuid),
     'Non-existent user should not own the group'
 );
 
--- Cross-community check should fail even for group owner
+-- Test: user_owns_group with wrong community should return false
 select ok(
     not user_owns_group(:'community2ID', :'groupID', :'userOrganizerID'),
     'Cross-community ownership check should fail even for actual group owner'
 );
 
--- Community team member should own any group in their community
+-- Test: user_owns_group with community team member should return true
 select ok(
     user_owns_group(:'community1ID', :'groupID', :'userCommunityTeamID'),
     'Community team member should own any group in their community'
 );
 
--- Community team member should own groups they are not explicitly part of
+-- Test: user_owns_group with community team for any group should return true
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
     'Community team member should own groups they are not explicitly part of'
 );
 
--- Community team member from different community should not own the group
+-- Test: user_owns_group with different community team should return false
 select ok(
     not user_owns_group(:'community1ID', :'groupID', :'userCommunityTeam2ID'),
     'Community team member from different community should not own the group'
 );
 
--- User who is both group team and community team member should own the group
+-- Test: user_owns_group with both team memberships should return true
 insert into group_team (group_id, user_id, role) values (:'group2ID', :'userCommunityTeamID', 'Organizer');
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),

@@ -17,7 +17,7 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group creation)
+-- Community
 insert into community (
     community_id,
     name,
@@ -38,15 +38,19 @@ insert into community (
     '{}'::jsonb
 );
 
--- region
+-- Region
 insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
--- group category
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
--- add_group function creates group with required fields only
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Test: add_group with required fields only should create group
 select is(
     (select (get_group_full(
         add_group(
@@ -69,7 +73,7 @@ select is(
     'add_group should create group with minimal required fields and return expected structure'
 );
 
--- add_group function creates group with all fields
+-- Test: add_group with all fields should create group
 select is(
     (select (get_group_full(
         add_group(
@@ -142,7 +146,7 @@ select is(
     'add_group should create group with all fields and return expected structure'
 );
 
--- add_group function converts empty strings to null for nullable fields
+-- Test: add_group should convert empty strings to null for nullable fields
 do $$
 declare
     v_group_id uuid;
@@ -177,9 +181,9 @@ begin
 end $$;
 
 select is(
-    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location' 
+    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location'
      from (
-        select * from "group" 
+        select * from "group"
         where slug = 'empty-string-test-group-unique'
      ) t),
     '{

@@ -52,7 +52,7 @@ values
     (:'user1ID', 'testuser1', 'user1@test.com', :'communityID', 'hash1'),
     (:'user2ID', 'testuser2', 'user2@test.com', :'communityID', 'hash2');
 
--- Groups (active, inactive, deleted)
+-- Groups
 insert into "group" (
     group_id,
     community_id,
@@ -70,19 +70,19 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Test successful join
+-- Test: join_group should succeed for active group
 select lives_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'User should be able to join an active group'
 );
 
--- Verify user was added to group_member table
+-- Test: joining should add user to group_member
 select ok(
     exists(select 1 from group_member where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid),
     'User should be added to group_member table after joining'
 );
 
--- Test duplicate join attempt
+-- Test: join_group duplicate should error
 select throws_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',
@@ -90,7 +90,7 @@ select throws_ok(
     'Should not allow user to join a group they are already a member of'
 );
 
--- Test join inactive group
+-- Test: join_group on inactive group should error
 select throws_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',
@@ -98,7 +98,7 @@ select throws_ok(
     'Should not allow user to join an inactive group'
 );
 
--- Test join deleted group
+-- Test: join_group on deleted group should error
 select throws_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000023'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',

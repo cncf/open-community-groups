@@ -22,7 +22,7 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing group updates)
+-- Community
 insert into community (
     community_id,
     name,
@@ -43,13 +43,13 @@ insert into community (
     '{}'::jsonb
 );
 
--- group categories
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values 
     (:'category1ID', 'Technology', :'communityID'),
     (:'category2ID', 'Business', :'communityID');
 
--- active group
+-- Group
 insert into "group" (
     group_id,
     name,
@@ -68,7 +68,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- deleted group
+-- Group (deleted)
 insert into "group" (
     group_id,
     name,
@@ -93,7 +93,7 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
--- group with array fields for testing explicit null values
+-- Group with array fields
 insert into "group" (
     group_id,
     name,
@@ -120,7 +120,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- update_group function updates group fields correctly
+-- Test: update_group should update fields correctly
 select update_group(
     :'communityID'::uuid,
     :'groupID'::uuid,
@@ -142,6 +142,7 @@ select update_group(
     }'::jsonb
 );
 
+-- Test: update_group should return expected structure after update
 select is(
     (select get_group_full(:'groupID'::uuid)::jsonb - 'created_at' - 'members_count'),
     '{
@@ -169,7 +170,7 @@ select is(
     'update_group should update all provided fields and return expected structure'
 );
 
--- update_group throws error for deleted group
+-- Test: update_group should throw error when updating deleted group
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000001'::uuid,
@@ -181,7 +182,7 @@ select throws_ok(
     'update_group should throw error when trying to update deleted group'
 );
 
--- update_group converts empty strings to null for nullable fields
+-- Test: update_group should convert empty strings to null for nullable fields
 insert into "group" (
     group_id,
     name,
@@ -241,6 +242,7 @@ select update_group(
     }'::jsonb
 );
 
+-- Test: update_group should keep minimal fields after empty-string conversion
 select is(
     (select get_group_full(:'group2ID'::uuid)::jsonb - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
     '{
@@ -250,7 +252,7 @@ select is(
     'update_group should convert empty strings to null for nullable fields'
 );
 
--- update_group throws error for wrong community_id
+-- Test: update_group should throw error when community_id mismatches
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000099'::uuid,
@@ -262,7 +264,7 @@ select throws_ok(
     'update_group should throw error when community_id does not match'
 );
 
--- update_group handles explicit null values for array fields
+-- Test: update_group should handle explicit null values for array fields
 select update_group(
     :'communityID'::uuid,
     :'group3ID'::uuid,
@@ -276,6 +278,7 @@ select update_group(
     }'::jsonb
 );
 
+-- Test: update_group should persist explicit null arrays in result
 select is(
     (select get_group_full(:'group3ID'::uuid)::jsonb - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
     '{

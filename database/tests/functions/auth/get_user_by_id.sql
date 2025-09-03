@@ -23,7 +23,7 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community (required for all user operations)
+-- Community
 insert into community (
     community_id,
     name,
@@ -44,7 +44,7 @@ insert into community (
     'Cloud Native Seattle Community'
 );
 
--- Primary test user with all team memberships
+-- User with all team memberships
 insert into "user" (
     user_id,
     email,
@@ -65,7 +65,7 @@ insert into "user" (
     'hashed_password_here'
 );
 
--- Group category for test group
+-- Group category
 insert into group_category (
     group_category_id,
     community_id,
@@ -76,7 +76,7 @@ insert into group_category (
     'Test Category'
 );
 
--- Test group for team membership verification
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -97,7 +97,7 @@ insert into "group" (
     'https://example.com/logo.png'
 );
 
--- Group team membership for primary user
+-- Group team membership
 insert into group_team (
     group_id,
     user_id,
@@ -108,7 +108,7 @@ insert into group_team (
     'Admin'
 );
 
--- Community team membership for primary user
+-- Community team membership
 insert into community_team (
     community_id,
     user_id,
@@ -119,7 +119,7 @@ insert into community_team (
     'Admin'
 );
 
--- User without any team memberships
+-- User without teams
 insert into "user" (
     user_id,
     email,
@@ -138,7 +138,7 @@ insert into "user" (
     :'communityID'
 );
 
--- User with only group team membership
+-- User with group team only
 insert into "user" (
     user_id,
     email,
@@ -167,7 +167,7 @@ insert into group_team (
     'Admin'
 );
 
--- User with only community team membership
+-- User with community team only
 insert into "user" (
     user_id,
     email,
@@ -196,7 +196,7 @@ insert into community_team (
     'Admin'
 );
 
--- User with both team memberships
+-- User with both teams
 insert into "user" (
     user_id,
     email,
@@ -239,7 +239,7 @@ insert into community_team (
 -- TESTS
 -- ============================================================================
 
--- Retrieve user without password field
+-- Test: get_user_by_id with include_password false should return user without password
 select is(
     get_user_by_id(:'userWithTeamsID'::uuid, false)::jsonb,
     '{
@@ -256,7 +256,7 @@ select is(
     'Should return user without password when include_password is false'
 );
 
--- Retrieve user with password field included
+-- Test: get_user_by_id with include_password true should return user with password
 select is(
     get_user_by_id(:'userWithTeamsID'::uuid, true)::jsonb,
     '{
@@ -274,14 +274,14 @@ select is(
     'Should return user with password when include_password is true'
 );
 
--- Non-existent user returns null
+-- Test: get_user_by_id with non-existent ID should return null
 select is(
     get_user_by_id(:'nonExistentUserID'::uuid, false)::jsonb,
     null::jsonb,
     'Should return null when ID does not exist'
 );
 
--- User without any team memberships
+-- Test: get_user_by_id with no team memberships should return false team flags
 select is(
     get_user_by_id(:'userNoTeamsID'::uuid, false)::jsonb,
     '{
@@ -297,7 +297,7 @@ select is(
     'Should return user with false team membership fields when user has no team memberships'
 );
 
--- User belongs to group team only
+-- Test: get_user_by_id with group team only should return correct team flags
 select is(
     get_user_by_id(:'userGroupOnlyID'::uuid, false)::jsonb,
     '{
@@ -313,7 +313,7 @@ select is(
     'Should return user with belongs_to_any_group_team=true and belongs_to_community_team=false when user is only in group team'
 );
 
--- User belongs to community team only
+-- Test: get_user_by_id with community team only should return correct team flags
 select is(
     get_user_by_id(:'userCommunityOnlyID'::uuid, false)::jsonb,
     '{
@@ -329,7 +329,7 @@ select is(
     'Should return user with belongs_to_any_group_team=true when user is only in community team'
 );
 
--- User belongs to both community and group teams
+-- Test: get_user_by_id with both team memberships should return both flags true
 select is(
     get_user_by_id(:'userBothTeamsID'::uuid, false)::jsonb,
     '{

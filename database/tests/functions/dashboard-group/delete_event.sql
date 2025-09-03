@@ -19,7 +19,7 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community (for testing event deletion)
+-- Community
 insert into community (
     community_id,
     name,
@@ -40,15 +40,15 @@ insert into community (
     '{}'::jsonb
 );
 
--- Event category (for event classification)
+-- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
 values (:'categoryID', 'Conference', 'conference', :'communityID');
 
--- Group category (for group organization)
+-- Group Category
 insert into group_category (group_category_id, name, community_id)
 values (:'groupCategoryID', 'Technology', :'communityID');
 
--- Group (for hosting events)
+-- Group
 insert into "group" (
     group_id,
     community_id,
@@ -65,7 +65,7 @@ insert into "group" (
     :'groupCategoryID'
 );
 
--- Event (target for deletion testing)
+-- Event
 insert into event (
     event_id,
     group_id,
@@ -92,7 +92,7 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- delete_event function sets deleted=true
+-- Test: delete_event should set deleted=true
 select delete_event(:'groupID'::uuid, :'eventID'::uuid);
 
 select is(
@@ -101,28 +101,28 @@ select is(
     'delete_event should set deleted=true'
 );
 
--- delete_event function sets deleted_at timestamp
+-- Test: delete_event should set deleted_at timestamp
 select isnt(
     (select deleted_at from event where event_id = :'eventID'),
     null,
     'delete_event should set deleted_at timestamp'
 );
 
--- delete_event function sets published=false
+-- Test: delete_event should set published=false
 select is(
     (select published from event where event_id = :'eventID'),
     false,
     'delete_event should set published=false'
 );
 
--- event still exists in database (soft delete)
+-- Test: event should still exist in database (soft delete)
 select is(
     (select count(*)::int from event where event_id = :'eventID'),
     1,
     'delete_event should keep event in database (soft delete)'
 );
 
--- delete_event throws error for wrong group_id
+-- Test: delete_event should throw error when group_id does not match
 select throws_ok(
     $$select delete_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
     'P0001',

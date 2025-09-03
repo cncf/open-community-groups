@@ -9,7 +9,7 @@ select plan(1);
 -- TESTS
 -- ============================================================================
 
--- list_event_kinds returns all three event kinds
+-- Test: list_event_kinds should return all event kinds
 select is(
     list_event_kinds()::jsonb,
     '[
