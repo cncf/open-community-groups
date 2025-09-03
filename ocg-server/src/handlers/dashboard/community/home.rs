@@ -20,7 +20,7 @@ use crate::{
         dashboard::community::{
             groups,
             home::{Content, Page, Tab},
-            settings,
+            settings, team,
         },
     },
 };
@@ -62,6 +62,10 @@ pub(crate) async fn page(
         Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
             community: community.clone(),
         })),
+        Tab::Team => {
+            let members = db.list_community_team_members(community_id).await?;
+            Content::Team(team::ListPage { members })
+        }
     };
 
     // Render the page

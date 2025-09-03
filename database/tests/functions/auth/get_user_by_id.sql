@@ -111,12 +111,10 @@ insert into group_team (
 -- Community team membership
 insert into community_team (
     community_id,
-    user_id,
-    role
+    user_id
 ) values (
     :'communityID',
-    :'userWithTeamsID',
-    'Admin'
+    :'userWithTeamsID'
 );
 
 -- User without teams
@@ -188,12 +186,10 @@ insert into "user" (
 
 insert into community_team (
     community_id,
-    user_id,
-    role
+    user_id
 ) values (
     :'communityID',
-    :'userCommunityOnlyID',
-    'Admin'
+    :'userCommunityOnlyID'
 );
 
 -- User with both teams
@@ -227,12 +223,10 @@ insert into group_team (
 
 insert into community_team (
     community_id,
-    user_id,
-    role
+    user_id
 ) values (
     :'communityID',
-    :'userBothTeamsID',
-    'Member'
+    :'userBothTeamsID'
 );
 
 -- ============================================================================

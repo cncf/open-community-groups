@@ -7,7 +7,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::community::{groups, settings},
+        dashboard::community::{groups, settings, team},
         filters,
     },
     types::community::Community,
@@ -39,6 +39,8 @@ pub(crate) enum Content {
     Groups(groups::ListPage),
     /// Settings page.
     Settings(Box<settings::UpdatePage>),
+    /// Team management page.
+    Team(team::ListPage),
 }
 
 impl Content {
@@ -67,6 +69,7 @@ impl std::fmt::Display for Content {
             Content::Account(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
+            Content::Team(template) => write!(f, "{}", template.render()?),
         }
     }
 }
@@ -82,4 +85,6 @@ pub(crate) enum Tab {
     Groups,
     /// Settings tab.
     Settings,
+    /// Team management tab.
+    Team,
 }

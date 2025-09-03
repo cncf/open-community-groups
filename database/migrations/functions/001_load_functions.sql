@@ -23,10 +23,13 @@
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 
+{{ template "dashboard-community/add_community_team_member.sql" }}
 {{ template "dashboard-community/add_group.sql" }}
 {{ template "dashboard-community/deactivate_group.sql" }}
+{{ template "dashboard-community/delete_community_team_member.sql" }}
 {{ template "dashboard-community/delete_group.sql" }}
 {{ template "dashboard-community/list_community_groups.sql" }}
+{{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}
 {{ template "dashboard-community/update_community.sql" }}
@@ -53,4 +56,5 @@
 
 ---- create above / drop below ----
 
--- Nothing to do
+drop function if exists remove_community_team_member(uuid, uuid);
+drop function if exists list_community_team(uuid);

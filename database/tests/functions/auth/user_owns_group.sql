@@ -157,16 +157,13 @@ insert into group_team (
 -- Community team membership
 insert into community_team (
     community_id,
-    user_id,
-    role
+    user_id
 ) values (
     :'community1ID',
-    :'userCommunityTeamID',
-    'Admin'
+    :'userCommunityTeamID'
 ), (
     :'community2ID',
-    :'userCommunityTeam2ID',
-    'Admin'
+    :'userCommunityTeam2ID'
 );
 
 -- ============================================================================

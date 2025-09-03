@@ -68,12 +68,10 @@ insert into "user" (
 -- Community team membership
 insert into community_team (
     community_id,
-    user_id,
-    role
+    user_id
 ) values (
     :'communityID',
-    :'userTeamMemberID',
-    'Member'
+    :'userTeamMemberID'
 );
 
 -- ============================================================================
