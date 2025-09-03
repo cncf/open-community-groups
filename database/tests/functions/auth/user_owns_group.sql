@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(8);
 \set userRegularID '00000000-0000-0000-0000-000000000012'
 \set userCommunityTeamID '00000000-0000-0000-0000-000000000013'
 \set userCommunityTeam2ID '00000000-0000-0000-0000-000000000014'
+\set userCommunityTeamPendingID '00000000-0000-0000-0000-000000000015'
 \set categoryID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
@@ -106,6 +107,14 @@ insert into "user" (
     true,
     'Community Team Member 2',
     'communityteam2'
+), (
+    :'userCommunityTeamPendingID',
+    gen_random_bytes(32),
+    :'community1ID',
+    'communityteam-pending@example.com',
+    true,
+    'Community Team Member Pending',
+    'communityteampending'
 );
 
 -- Group category
@@ -154,19 +163,22 @@ insert into group_team (
     'Organizer'
 );
 
--- Community team membership
 insert into community_team (
+    accepted,
     community_id,
-    user_id,
-    role
+    user_id
 ) values (
+    true,
     :'community1ID',
-    :'userCommunityTeamID',
-    'Admin'
+    :'userCommunityTeamID'
 ), (
+    true,
     :'community2ID',
-    :'userCommunityTeam2ID',
-    'Admin'
+    :'userCommunityTeam2ID'
+), (
+    false,
+    :'community1ID',
+    :'userCommunityTeamPendingID'
 );
 
 -- ============================================================================
@@ -220,6 +232,12 @@ insert into group_team (group_id, user_id, role) values (:'group2ID', :'userComm
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
     'User who is both group team and community team member should own the group'
+);
+
+-- Test: user_owns_group with pending community team member should return false
+select ok(
+    not user_owns_group(:'community1ID', :'groupID', :'userCommunityTeamPendingID'),
+    'Pending community team member should not own the group'
 );
 
 -- ============================================================================

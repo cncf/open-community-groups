@@ -16,7 +16,11 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use crate::{config::EmailConfig, db::DynDB, templates::notifications::EmailVerification};
+use crate::{
+    config::EmailConfig,
+    db::DynDB,
+    templates::notifications::{CommunityTeamInvitation, EmailVerification},
+};
 
 /// Number of concurrent workers that deliver notifications.
 const NUM_WORKERS: usize = 1;
@@ -183,6 +187,12 @@ impl Worker {
             .ok_or_else(|| anyhow!("missing template data"))?;
 
         let (subject, body) = match notification.kind {
+            NotificationKind::CommunityTeamInvitation => {
+                let subject = "You have been invited to join a community team";
+                let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::EmailVerification => {
                 let subject = "Verify your email address";
                 let template: EmailVerification = serde_json::from_value(template_data)?;
@@ -243,6 +253,8 @@ pub(crate) struct Notification {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum NotificationKind {
+    /// Notification for a community team invitation.
+    CommunityTeamInvitation,
     /// Notification for email verification.
     EmailVerification,
 }

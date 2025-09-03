@@ -23,10 +23,13 @@
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 
+{{ template "dashboard-community/add_community_team_member.sql" }}
 {{ template "dashboard-community/add_group.sql" }}
 {{ template "dashboard-community/deactivate_group.sql" }}
+{{ template "dashboard-community/delete_community_team_member.sql" }}
 {{ template "dashboard-community/delete_group.sql" }}
 {{ template "dashboard-community/list_community_groups.sql" }}
+{{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}
 {{ template "dashboard-community/update_community.sql" }}
@@ -38,6 +41,9 @@
 {{ template "dashboard-group/list_group_events.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
+
+{{ template "dashboard-user/accept_community_team_invitation.sql" }}
+{{ template "dashboard-user/list_user_community_team_invitations.sql" }}
 
 {{ template "event/attend_event.sql" }}
 {{ template "event/get_event.sql" }}

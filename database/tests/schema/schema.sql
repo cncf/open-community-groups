@@ -73,11 +73,9 @@ select columns_are('community_site_layout', array[
 -- Test: community_team columns should match expected
 select columns_are('community_team', array[
     'community_id',
+    'accepted',
     'created_at',
-    'role',
-    'user_id',
-
-    'order'
+    'user_id'
 ]);
 
 -- Test: event columns should match expected

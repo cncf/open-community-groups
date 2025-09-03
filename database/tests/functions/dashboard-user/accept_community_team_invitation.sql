@@ -3,16 +3,14 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set userTeamMemberID '00000000-0000-0000-0000-000000000011'
-\set userRegularID '00000000-0000-0000-0000-000000000012'
-\set userTeamMemberPendingID '00000000-0000-0000-0000-000000000013'
+\set userID '00000000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -39,7 +37,7 @@ insert into community (
     'Cloud Native Seattle Community'
 );
 
--- Users
+-- User
 insert into "user" (
     user_id,
     auth_hash,
@@ -49,72 +47,39 @@ insert into "user" (
     name,
     username
 ) values (
-    :'userTeamMemberID',
+    :'userID',
     gen_random_bytes(32),
     :'communityID',
-    'teammember@example.com',
+    'user@example.com',
     true,
-    'Team Member',
-    'teammember'
-), (
-    :'userRegularID',
-    gen_random_bytes(32),
-    :'communityID',
-    'regular@example.com',
-    true,
-    'Regular User',
-    'regularuser'
-), (
-    :'userTeamMemberPendingID',
-    gen_random_bytes(32),
-    :'communityID',
-    'pending@example.com',
-    true,
-    'Pending Member',
-    'pendingmember'
+    'User',
+    'user'
 );
 
--- Community team membership
+-- Pending invitation
 insert into community_team (
     accepted,
     community_id,
     user_id
 ) values (
-    true,
-    :'communityID',
-    :'userTeamMemberID'
-), (
     false,
     :'communityID',
-    :'userTeamMemberPendingID'
+    :'userID'
 );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- User in community_team should own the community
-select ok(
-    user_owns_community(:'communityID', :'userTeamMemberID'),
-    'User in community_team should own the community'
+-- Test: accepting a community team invitation should flip accepted to true
+select lives_ok(
+    $$ select accept_community_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
+    'accept_community_team_invitation should execute successfully'
 );
-
--- User not in community_team should not own the community
-select ok(
-    not user_owns_community(:'communityID', :'userRegularID'),
-    'User not in community_team should not own the community'
-);
-
--- Non-existent user should not own the community
-select ok(
-    not user_owns_community(:'communityID', '00000000-0000-0000-0000-000000000099'::uuid),
-    'Non-existent user should not own the community'
-);
-
--- Pending community_team member (accepted = false) should not own the community
-select ok(
-    not user_owns_community(:'communityID', :'userTeamMemberPendingID'),
-    'Pending team member should not own the community'
+select results_eq(
+    $$ select accepted from community_team where community_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000011'::uuid $$,
+    $$ values (true) $$,
+    'Invitation should be marked as accepted'
 );
 
 -- ============================================================================

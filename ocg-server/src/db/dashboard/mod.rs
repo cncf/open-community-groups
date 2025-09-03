@@ -9,6 +9,7 @@ use crate::db::PgDB;
 use common::DBDashboardCommon;
 use community::DBDashboardCommunity;
 use group::DBDashboardGroup;
+use user::DBDashboardUser;
 
 /// Common dashboard database operations.
 pub(crate) mod common;
@@ -16,9 +17,14 @@ pub(crate) mod common;
 pub(crate) mod community;
 /// Group dashboard database operations.
 pub(crate) mod group;
+/// User dashboard database operations.
+pub(crate) mod user;
 
 /// Unified database trait for all dashboards operations.
 #[async_trait]
-pub(crate) trait DBDashboard: DBDashboardCommon + DBDashboardCommunity + DBDashboardGroup {}
+pub(crate) trait DBDashboard:
+    DBDashboardCommon + DBDashboardCommunity + DBDashboardGroup + DBDashboardUser
+{
+}
 
 impl DBDashboard for PgDB {}

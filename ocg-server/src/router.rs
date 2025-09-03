@@ -236,6 +236,12 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
             "/settings/update",
             get(dashboard::community::settings::update_page).put(dashboard::community::settings::update),
         )
+        .route("/team", get(dashboard::community::team::list_page))
+        .route("/team/add", post(dashboard::community::team::add))
+        .route(
+            "/team/{user_id}/delete",
+            delete(dashboard::community::team::delete),
+        )
         .route("/users/search", get(dashboard::common::search_user))
         .route_layer(check_user_owns_community)
 }
@@ -278,5 +284,15 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
 /// Sets up the user dashboard router and its routes.
 fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
-    Router::new().route("/", get(dashboard::user::home::page))
+    Router::new()
+        .route("/", get(dashboard::user::home::page))
+        .route("/invitations", get(dashboard::user::invitations::list_page))
+        .route(
+            "/invitations/community/accept",
+            put(dashboard::user::invitations::accept_community_team_invitation),
+        )
+        .route(
+            "/invitations/community/reject",
+            put(dashboard::user::invitations::reject_community_team_invitation),
+        )
 }

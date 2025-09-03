@@ -20,5 +20,6 @@ create or replace function user_owns_group(
         where ct.community_id = p_community_id
         and g.group_id = p_group_id
         and ct.user_id = p_user_id
+        and ct.accepted = true
     );
-$$ language sql;
+$$ language sql; 

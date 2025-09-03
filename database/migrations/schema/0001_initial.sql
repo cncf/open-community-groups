@@ -1,15 +1,27 @@
+-- Required extensions for the Open Community Groups platform
+-- pgcrypto: Provides cryptographic functions, primarily for UUID generation
+-- PostGIS: Geographic extensions for location-based features
 create extension pgcrypto;
 create extension postgis;
 
+-- Helper function for full-text search: converts text array to space-separated
+-- string for use in tsvector generation. Marked immutable for performance.
 create or replace function i_array_to_string(text[], text)
 returns text language sql immutable as $$select array_to_string($1, $2)$$;
 
+-- =============================================================================
+-- COMMUNITY TABLES
+-- =============================================================================
+
+-- Site layout configurations for communities
 create table community_site_layout (
     community_site_layout_id text primary key
 );
 
 insert into community_site_layout values ('default');
 
+-- Central community table - each community is a separate tenant with its own
+-- users, groups, and events. Multi-tenancy is implemented via host-based routing.
 create table community (
     community_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
@@ -18,7 +30,7 @@ create table community (
     description text not null check (description <> ''),
     display_name text not null unique check (display_name <> ''),
     header_logo_url text not null check (header_logo_url <> ''),
-    host text not null unique check (host <> ''),
+    host text not null unique check (host <> ''), -- Used for multi-tenant routing
     name text not null unique check (name <> ''),
     theme jsonb not null,
     title text not null check (title <> ''),
@@ -44,6 +56,12 @@ create table community (
 
 create index community_community_site_layout_id_idx on community (community_site_layout_id);
 
+-- =============================================================================
+-- USER TABLES
+-- =============================================================================
+
+-- Users are scoped to communities (multi-tenant). Authentication can be via
+-- password or external providers.
 create table "user" (
     user_id uuid primary key default gen_random_uuid(),
     auth_hash text not null check (auth_hash <> ''),
@@ -77,13 +95,12 @@ create index user_username_lower_idx on "user" (lower(username));
 create index user_name_lower_idx on "user" (lower(name));
 create index user_email_lower_idx on "user" (lower(email));
 
+-- Community team members.
 create table community_team (
     community_id uuid not null references community,
+    accepted boolean default false not null,
     created_at timestamptz default current_timestamp not null,
-    role text not null check (role <> ''),
     user_id uuid not null references "user",
-
-    "order" integer,
 
     primary key (community_id, user_id)
 );
@@ -91,6 +108,11 @@ create table community_team (
 create index community_team_community_id_idx on community_team (community_id);
 create index community_team_user_id_idx on community_team (user_id);
 
+-- =============================================================================
+-- GROUP TABLES
+-- =============================================================================
+
+-- Regions provide geographic organization for groups within a community.
 create table region (
     region_id uuid primary key default gen_random_uuid(),
     community_id uuid not null references community,
@@ -107,6 +129,7 @@ create table region (
 
 create index region_community_id_idx on region (community_id);
 
+-- Categories for organizing groups.
 create table group_category (
     group_category_id uuid primary key default gen_random_uuid(),
     community_id uuid not null references community,
@@ -123,23 +146,25 @@ create table group_category (
 
 create index group_category_community_id_idx on group_category (community_id);
 
+-- Site layout configurations for groups.
 create table group_site_layout (
     group_site_layout_id text primary key
 );
 
 insert into group_site_layout values ('default');
 
+-- Core groups table.
 create table "group" (
     group_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
     community_id uuid not null references community,
     created_at timestamptz default current_timestamp not null,
-    deleted boolean default false not null,
+    deleted boolean default false not null, -- Soft deletion
     group_category_id uuid not null references group_category,
     group_site_layout_id text not null references group_site_layout default 'default',
     name text not null check (name <> ''),
     slug text not null check (slug <> ''),
-    tsdoc tsvector not null
+    tsdoc tsvector not null -- Full-text search index with weighted fields
         generated always as (
             setweight(to_tsvector('simple', name), 'A') ||
             setweight(to_tsvector('simple', slug), 'A') ||
@@ -162,7 +187,7 @@ create table "group" (
     github_url text check (github_url <> ''),
     instagram_url text check (instagram_url <> ''),
     linkedin_url text check (linkedin_url <> ''),
-    location geography(point, 4326),
+    location geography(point, 4326), -- PostGIS geographic point
     logo_url text check (logo_url <> ''),
     photos_urls text[],
     region_id uuid references region,
@@ -175,7 +200,7 @@ create table "group" (
     youtube_url text check (youtube_url <> ''),
 
     unique (slug, community_id),
-    check ((deleted = false) or (deleted = true and active = false))
+    check ((deleted = false) or (deleted = true and active = false)) -- Deleted groups must be inactive
 );
 
 create index group_community_id_idx on "group" (community_id);
@@ -187,6 +212,7 @@ create index group_search_idx on "group" (community_id, active)
     where active = true;
 create index group_tsdoc_idx on "group" using gin (tsdoc);
 
+-- Group membership tracking
 create table group_member (
     group_id uuid not null references "group",
     user_id uuid not null references "user",
@@ -198,6 +224,7 @@ create table group_member (
 create index group_member_group_id_idx on group_member (group_id);
 create index group_member_user_id_idx on group_member (user_id);
 
+-- Group managing team
 create table group_team (
     group_id uuid not null references "group",
     user_id uuid not null references "user",
@@ -212,6 +239,7 @@ create table group_team (
 create index group_team_group_id_idx on group_team (group_id);
 create index group_team_user_id_idx on group_team (user_id);
 
+-- Sponsors supporting groups with different sponsorship levels
 create table group_sponsor (
     group_sponsor_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -225,6 +253,11 @@ create table group_sponsor (
 
 create index group_sponsor_group_id_idx on group_sponsor (group_id);
 
+-- =============================================================================
+-- EVENT TABLES
+-- =============================================================================
+
+-- Categories for organizing events.
 create table event_category (
     event_category_id uuid primary key default gen_random_uuid(),
     community_id uuid not null references community,
@@ -240,6 +273,7 @@ create table event_category (
 
 create index event_category_community_id_idx on event_category (community_id);
 
+-- Event types.
 create table event_kind (
     event_kind_id text primary key,
     display_name text not null unique
@@ -249,11 +283,12 @@ insert into event_kind values ('in-person', 'In Person');
 insert into event_kind values ('virtual', 'Virtual');
 insert into event_kind values ('hybrid', 'Hybrid');
 
+-- Core events table.
 create table event (
     event_id uuid primary key default gen_random_uuid(),
     canceled boolean default false not null,
     created_at timestamptz default current_timestamp not null,
-    deleted boolean default false not null,
+    deleted boolean default false not null, -- Soft deletion
     description text not null check (description <> ''),
     event_category_id uuid not null references event_category,
     event_kind_id text not null references event_kind,
@@ -262,7 +297,7 @@ create table event (
     published boolean default false not null,
     slug text not null check (slug <> ''),
     timezone text not null check (timezone <> ''),
-    tsdoc tsvector not null
+    tsdoc tsvector not null -- Full-text search index with weighted fields
         generated always as (
             setweight(to_tsvector('simple', name), 'A') ||
             setweight(to_tsvector('simple', slug), 'A') ||
@@ -292,8 +327,8 @@ create table event (
     venue_zip_code text check (venue_zip_code <> ''),
 
     unique (slug, group_id),
-    check ((deleted = false) or (deleted = true and published = false)),
-    check (not (published and canceled))
+    check ((deleted = false) or (deleted = true and published = false)), -- Deleted events can't be published
+    check (not (published and canceled)) -- Published events can't be canceled
 );
 
 create index event_group_id_idx on event (group_id);
@@ -304,6 +339,7 @@ create index event_search_idx on event (group_id, published, canceled, starts_at
     where published = true and canceled = false;
 create index event_tsdoc_idx on event using gin (tsdoc);
 
+-- Event hosts (who is running/presenting the event)
 create table event_host (
     event_id uuid not null references event,
     user_id uuid not null references "user",
@@ -315,10 +351,11 @@ create table event_host (
 create index event_host_event_id_idx on event_host (event_id);
 create index event_host_user_id_idx on event_host (user_id);
 
+-- Event attendance tracking with check-in capability
 create table event_attendee (
     event_id uuid not null references event,
     user_id uuid not null references "user",
-    checked_in boolean default false not null,
+    checked_in boolean default false not null, -- For day-of-event tracking
     created_at timestamptz default current_timestamp not null,
 
     primary key (event_id, user_id)
@@ -327,6 +364,7 @@ create table event_attendee (
 create index event_attendee_event_id_idx on event_attendee (event_id);
 create index event_attendee_user_id_idx on event_attendee (user_id);
 
+-- Sponsors supporting specific events with different sponsorship levels
 create table event_sponsor (
     event_sponsor_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -340,6 +378,11 @@ create table event_sponsor (
 
 create index event_sponsor_event_id_idx on event_sponsor (event_id);
 
+-- =============================================================================
+-- SESSION TABLES
+-- =============================================================================
+
+-- Session types.
 create table session_kind (
     session_kind_id text primary key,
     display_name text not null unique
@@ -348,6 +391,7 @@ create table session_kind (
 insert into session_kind values ('in-person', 'In-Person');
 insert into session_kind values ('virtual', 'Virtual');
 
+-- Sessions within events (for multi-track conferences, workshops with parts).
 create table session (
     session_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -366,6 +410,7 @@ create table session (
 create index session_event_id_idx on session (event_id);
 create index session_session_kind_id_idx on session (session_kind_id);
 
+-- Session speakers.
 create table session_speaker (
     created_at timestamptz default current_timestamp not null,
     featured boolean default false not null,
@@ -378,12 +423,18 @@ create table session_speaker (
 create index session_speaker_session_id_idx on session_speaker (session_id);
 create index session_speaker_user_id_idx on session_speaker (user_id);
 
+-- =============================================================================
+-- AUTHENTICATION TABLES
+-- =============================================================================
+
+-- User session storage.
 create table auth_session (
     auth_session_id text primary key,
     data jsonb not null,
     expires_at timestamptz not null
 );
 
+-- Email verification tokens for new user registration.
 create table email_verification_code (
     email_verification_code_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -392,6 +443,11 @@ create table email_verification_code (
 
 create index email_verification_code_user_id_idx on email_verification_code (user_id);
 
+-- =============================================================================
+-- NOTIFICATION TABLES
+-- =============================================================================
+
+-- Types of notifications that can be sent.
 create table notification_kind (
     notification_kind_id uuid primary key default gen_random_uuid(),
 
@@ -399,12 +455,14 @@ create table notification_kind (
 );
 
 insert into notification_kind (name) values ('email-verification');
+insert into notification_kind (name) values ('community-team-invitation');
 
+-- Queue for notifications to be sent.
 create table notification (
     notification_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
     kind text not null references notification_kind (name) on delete restrict,
-    processed boolean not null default false,
+    processed boolean not null default false, -- Processing status
     user_id uuid not null unique references "user" on delete cascade,
 
     error text check (error <> ''),

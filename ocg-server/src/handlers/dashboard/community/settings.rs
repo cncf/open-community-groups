@@ -23,6 +23,7 @@ pub(crate) async fn update_page(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare template
     let community = db.get_community(community_id).await?;
     let template = settings::UpdatePage { community };
 
