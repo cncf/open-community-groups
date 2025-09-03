@@ -287,6 +287,12 @@ fn setup_user_dashboard_router() -> Router<State> {
     Router::new()
         .route("/", get(dashboard::user::home::page))
         .route("/invitations", get(dashboard::user::invitations::list_page))
-        .route("/invitations/accept", put(dashboard::user::invitations::accept))
-        .route("/invitations/reject", put(dashboard::user::invitations::reject))
+        .route(
+            "/invitations/community/accept",
+            put(dashboard::user::invitations::accept_community_team_invitation),
+        )
+        .route(
+            "/invitations/community/reject",
+            put(dashboard::user::invitations::reject_community_team_invitation),
+        )
 }

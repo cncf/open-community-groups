@@ -1,4 +1,4 @@
-//! HTTP handlers for the user dashboard invitations tab.
+//! HTTP handlers to manage invitations in the user dashboard.
 
 use askama::Template;
 use axum::{
@@ -40,9 +40,9 @@ pub(crate) async fn list_page(
 
 // Actions handlers.
 
-/// Accepts a pending invitation for the authenticated user.
+/// Accepts a pending community team invitation.
 #[instrument(skip_all, err)]
-pub(crate) async fn accept(
+pub(crate) async fn accept_community_team_invitation(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
@@ -57,9 +57,9 @@ pub(crate) async fn accept(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
-/// Rejects a pending invitation for the authenticated user.
+/// Rejects a pending community team invitation.
 #[instrument(skip_all, err)]
-pub(crate) async fn reject(
+pub(crate) async fn reject_community_team_invitation(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,

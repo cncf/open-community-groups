@@ -81,10 +81,8 @@ pub(crate) async fn delete(
 
 // Types.
 
-/// Form payload for adding a community team member.
+/// Data needed to add a new team member.
 #[derive(Debug, Deserialize)]
 pub(crate) struct NewTeamMember {
     user_id: Uuid,
 }
-
-// (Invitations handlers moved to user dashboard)

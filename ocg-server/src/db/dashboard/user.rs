@@ -1,4 +1,4 @@
-//! Database interface for user dashboard operations related to invitations.
+//! Database interface for user dashboard operations.
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{db::PgDB, templates::dashboard::user::invitations::CommunityTeamInvitation};
 
-/// Database trait for user dashboard invitations operations.
+/// Database trait for user dashboard operations.
 #[async_trait]
 pub(crate) trait DBDashboardUser {
     /// Accepts a pending community team invitation.
