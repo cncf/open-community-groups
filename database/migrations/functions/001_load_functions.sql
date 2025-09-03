@@ -59,5 +59,4 @@
 
 ---- create above / drop below ----
 
-drop function if exists remove_community_team_member(uuid, uuid);
-drop function if exists list_community_team(uuid);
+-- Nothing to do
