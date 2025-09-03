@@ -4,6 +4,7 @@ returns json as $$
     select coalesce(json_agg(row_to_json(member)), '[]'::json)
     from (
         select
+            ct.accepted,
             u.user_id,
             u.username,
 
@@ -15,4 +16,3 @@ returns json as $$
         order by coalesce(lower(u.name), lower(u.username)) asc
     ) member;
 $$ language sql;
-

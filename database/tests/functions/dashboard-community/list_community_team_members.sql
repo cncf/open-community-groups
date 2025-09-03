@@ -53,9 +53,9 @@ insert into "user" (
     (:'user2ID', gen_random_bytes(32), :'communityID', 'bob@example.com', 'Bob', 'bob', true, 'https://example.com/b.png');
 
 -- Team
-insert into community_team (community_id, user_id) values
-    (:'communityID', :'user2ID'),
-    (:'communityID', :'user1ID');
+insert into community_team (accepted, community_id, user_id) values
+    (true, :'communityID', :'user2ID'),
+    (true, :'communityID', :'user1ID');
 
 -- ============================================================================
 -- TESTS
@@ -65,10 +65,10 @@ insert into community_team (community_id, user_id) values
 select is(
     list_community_team_members(:'communityID'::uuid)::jsonb,
     '[
-        {"user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "name": "Alice", "photo_url": "https://example.com/a.png"},
-        {"user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "name": "Bob", "photo_url": "https://example.com/b.png"}
+        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "name": "Alice", "photo_url": "https://example.com/a.png"},
+        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "name": "Bob", "photo_url": "https://example.com/b.png"}
     ]'::jsonb,
-    'list_community_team_members should return expected members in alphabetical order'
+    'list_community_team_members should return expected members in alphabetical order including accepted flag'
 );
 
 -- Test: list_community_team_members should return empty array when no members
@@ -84,4 +84,3 @@ select is(
 
 select * from finish();
 rollback;
-

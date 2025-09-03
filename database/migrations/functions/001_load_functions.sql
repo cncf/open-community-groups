@@ -42,6 +42,9 @@
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 
+{{ template "dashboard-user/accept_community_team_invitation.sql" }}
+{{ template "dashboard-user/list_user_community_team_invitations.sql" }}
+
 {{ template "event/attend_event.sql" }}
 {{ template "event/get_event.sql" }}
 {{ template "event/is_event_attendee.sql" }}

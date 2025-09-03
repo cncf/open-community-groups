@@ -73,6 +73,7 @@ select columns_are('community_site_layout', array[
 -- Test: community_team columns should match expected
 select columns_are('community_team', array[
     'community_id',
+    'accepted',
     'created_at',
     'user_id'
 ]);

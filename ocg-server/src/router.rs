@@ -284,5 +284,9 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
 /// Sets up the user dashboard router and its routes.
 fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
-    Router::new().route("/", get(dashboard::user::home::page))
+    Router::new()
+        .route("/", get(dashboard::user::home::page))
+        .route("/invitations", get(dashboard::user::invitations::list_page))
+        .route("/invitations/accept", put(dashboard::user::invitations::accept))
+        .route("/invitations/reject", put(dashboard::user::invitations::reject))
 }

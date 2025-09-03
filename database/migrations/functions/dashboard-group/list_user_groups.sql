@@ -16,6 +16,7 @@ returns json as $$
             from community_team ct
             where ct.user_id = p_user_id
             and ct.community_id = u.community_id
+            and ct.accepted = true
         )
         and g.community_id = u.community_id
         and g.deleted = false
@@ -34,6 +35,7 @@ returns json as $$
             from community_team ct
             where ct.user_id = p_user_id
             and ct.community_id = u.community_id
+            and ct.accepted = true
         )
     ) g;
-$$ language sql;
+$$ language sql; 

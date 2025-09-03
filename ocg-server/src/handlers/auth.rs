@@ -442,10 +442,8 @@ pub(crate) async fn update_user_details(
     State(serde_qs_de): State<serde_qs::Config>,
     body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session
-    let Some(user) = auth_session.user else {
-        return Ok(StatusCode::FORBIDDEN.into_response());
-    };
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
 
     // Get user details from body
     let user_data: UserDetails = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
@@ -468,10 +466,8 @@ pub(crate) async fn update_user_password(
     State(db): State<DynDB>,
     Form(mut input): Form<templates::auth::UserPassword>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session
-    let Some(user) = auth_session.user else {
-        return Ok(StatusCode::FORBIDDEN.into_response());
-    };
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
 
     // Check if the old password provided is correct
     let Some(old_password_hash) = db.get_user_password(&user.user_id).await? else {

@@ -13,9 +13,12 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::community::team,
+    templates::notifications::CommunityTeamInvitation,
 };
 
 // Pages handlers.
@@ -38,11 +41,27 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     CommunityId(community_id): CommunityId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
-    Form(form): Form<NewTeamMember>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    Form(member): Form<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add team member to database
-    db.add_community_team_member(community_id, form.user_id).await?;
+    db.add_community_team_member(community_id, member.user_id).await?;
+
+    // Enqueue invitation email notification
+    let template_data = CommunityTeamInvitation {
+        link: format!(
+            "{}/dashboard/user?tab=invitations",
+            cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
+        ),
+    };
+    let notification = NewNotification {
+        kind: NotificationKind::CommunityTeamInvitation,
+        user_id: member.user_id,
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    notifications_manager.enqueue(&notification).await?;
 
     Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-team-table")]).into_response())
 }
@@ -67,3 +86,5 @@ pub(crate) async fn delete(
 pub(crate) struct NewTeamMember {
     user_id: Uuid,
 }
+
+// (Invitations handlers moved to user dashboard)

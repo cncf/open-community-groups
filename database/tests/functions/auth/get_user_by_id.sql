@@ -110,9 +110,11 @@ insert into group_team (
 
 -- Community team membership
 insert into community_team (
+    accepted,
     community_id,
     user_id
 ) values (
+    true,
     :'communityID',
     :'userWithTeamsID'
 );
@@ -185,9 +187,11 @@ insert into "user" (
 );
 
 insert into community_team (
+    accepted,
     community_id,
     user_id
 ) values (
+    true,
     :'communityID',
     :'userCommunityOnlyID'
 );
@@ -222,9 +226,11 @@ insert into group_team (
 );
 
 insert into community_team (
+    accepted,
     community_id,
     user_id
 ) values (
+    true,
     :'communityID',
     :'userBothTeamsID'
 );

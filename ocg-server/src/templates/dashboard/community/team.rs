@@ -21,6 +21,8 @@ pub(crate) struct ListPage {
 /// Community team member summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommunityTeamMember {
+    /// Whether the membership has been accepted.
+    pub accepted: bool,
     /// Unique identifier for the user.
     pub user_id: Uuid,
     /// Username.

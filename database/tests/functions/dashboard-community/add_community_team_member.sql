@@ -42,9 +42,16 @@ select lives_ok(
     'add_community_team_member should succeed for same community user'
 );
 select results_eq(
-    $$ select count(*) from community_team where community_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000011'::uuid $$,
-    $$ values (1::bigint) $$,
-    'Membership row should be created'
+    $$
+    select
+        count(*)::bigint,
+        bool_or(accepted)
+    from community_team
+    where community_id = '00000000-0000-0000-0000-000000000001'::uuid
+      and user_id = '00000000-0000-0000-0000-000000000011'::uuid
+    $$,
+    $$ values (1::bigint, false) $$,
+    'Membership should be created with accepted = false'
 );
 
 -- Test: adding an existing member should error

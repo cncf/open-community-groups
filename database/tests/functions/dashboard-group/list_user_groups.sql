@@ -99,12 +99,12 @@ insert into group_team (group_id, user_id, role) values
     (:'group2ID', :'groupMemberUserID', 'member');
 
 -- Community Team
-insert into community_team (community_id, user_id) values
-    (:'community1ID', :'communityAdminUserID');
+insert into community_team (accepted, community_id, user_id) values
+    (true, :'community1ID', :'communityAdminUserID');
 
 -- Community Team (dual membership)
-insert into community_team (community_id, user_id) values
-    (:'community1ID', :'dualRoleUserID');
+insert into community_team (accepted, community_id, user_id) values
+    (true, :'community1ID', :'dualRoleUserID');
 insert into group_team (group_id, user_id, role) values
     (:'group2ID', :'dualRoleUserID', 'member');
 

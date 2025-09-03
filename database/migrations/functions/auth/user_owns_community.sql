@@ -8,5 +8,6 @@ create or replace function user_owns_community(
         from community_team
         where community_id = p_community_id
         and user_id = p_user_id
+        and accepted = true
     );
-$$ language sql;
+$$ language sql; 

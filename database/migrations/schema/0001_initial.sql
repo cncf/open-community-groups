@@ -98,6 +98,7 @@ create index user_email_lower_idx on "user" (lower(email));
 -- Community team members.
 create table community_team (
     community_id uuid not null references community,
+    accepted boolean default false not null,
     created_at timestamptz default current_timestamp not null,
     user_id uuid not null references "user",
 
@@ -454,6 +455,7 @@ create table notification_kind (
 );
 
 insert into notification_kind (name) values ('email-verification');
+insert into notification_kind (name) values ('community-team-invitation');
 
 -- Queue for notifications to be sent.
 create table notification (

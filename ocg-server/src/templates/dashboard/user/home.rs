@@ -7,6 +7,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
+        dashboard::user::invitations,
         filters,
     },
     types::community::Community,
@@ -33,7 +34,9 @@ pub(crate) struct Page {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
     /// User account page.
-    Account(auth::UpdateUserPage),
+    Account(Box<auth::UpdateUserPage>),
+    /// Invitations page.
+    Invitations(invitations::ListPage),
 }
 
 impl Content {
@@ -42,12 +45,19 @@ impl Content {
     fn is_account(&self) -> bool {
         matches!(self, Content::Account(_))
     }
+
+    /// Check if the content is the invitations page.
+    #[allow(dead_code)]
+    fn is_invitations(&self) -> bool {
+        matches!(self, Content::Invitations(_))
+    }
 }
 
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
+            Content::Invitations(template) => write!(f, "{}", template.render()?),
         }
     }
 }
@@ -59,4 +69,6 @@ pub(crate) enum Tab {
     /// User account tab (default).
     #[default]
     Account,
+    /// Invitations tab.
+    Invitations,
 }

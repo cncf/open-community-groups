@@ -18,6 +18,7 @@ use crate::{
         PageId,
         auth::{self, User, UserDetails},
         dashboard::user::home::{Content, Page, Tab},
+        dashboard::user::invitations,
     },
 };
 
@@ -45,10 +46,18 @@ pub(crate) async fn page(
     let content = match tab {
         Tab::Account => {
             let timezones = db.list_timezones().await?;
-            Content::Account(auth::UpdateUserPage {
+            Content::Account(Box::new(auth::UpdateUserPage {
                 has_password: user.has_password.unwrap_or(false),
                 timezones,
                 user: UserDetails::from(user),
+            }))
+        }
+        Tab::Invitations => {
+            let community_invitations = db
+                .list_user_community_team_invitations(community_id, user.user_id)
+                .await?;
+            Content::Invitations(invitations::ListPage {
+                community_invitations,
             })
         }
     };
