@@ -1,8 +1,10 @@
 //! Templates for the user dashboard invitations tab.
 
 use askama::Template;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::templates::helpers::DATE_FORMAT_2;
 // Pages templates.
 
 /// List page showing pending invitations for the user.
@@ -21,6 +23,7 @@ pub(crate) struct CommunityTeamInvitation {
     /// Community name (slug).
     pub community_name: String,
 
-    /// Invitation creation time (epoch seconds).
-    pub created_at: i64,
+    /// Invitation creation time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
 }

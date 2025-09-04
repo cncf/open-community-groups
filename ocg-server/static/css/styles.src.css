@@ -337,6 +337,7 @@ input:placeholder-shown {
 .icon-eraser { --icon-url: url('/static/images/icons/eraser.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
+.icon-check { --icon-url: url('/static/images/icons/check.svg'); }
 .icon-clock { --icon-url: url('/static/images/icons/clock.svg'); }
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
@@ -368,6 +369,7 @@ input:placeholder-shown {
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
+.icon-pending-invitation { --icon-url: url('/static/images/icons/pending_invitation.svg'); }
 .icon-people { --icon-url: url('/static/images/icons/people.svg'); }
 .icon-plus-top { --icon-url: url('/static/images/icons/plus_top.svg'); }
 .icon-plus-bottom { --icon-url: url('/static/images/icons/plus_bottom.svg'); }

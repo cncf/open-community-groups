@@ -14,8 +14,11 @@ use axum::http::header::HeaderMap;
 /// entities like groups or events, particularly in placeholder images.
 const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
 
-/// The date format used in the templates for datetime-local inputs (YYYY-MM-DDTHH:MM).
+/// Format for date-time inputs used by templates (YYYY-MM-DDTHH:MM).
 pub(crate) const DATE_FORMAT: &str = "%Y-%m-%dT%H:%M";
+
+/// The date format used in templates (YYYY-MM-DD).
+pub(crate) const DATE_FORMAT_2: &str = "%Y-%m-%d";
 
 /// Builder for constructing location strings from various components.
 ///
