@@ -23,6 +23,7 @@
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 
+{{ template "dashboard-community/activate_group.sql" }}
 {{ template "dashboard-community/add_community_team_member.sql" }}
 {{ template "dashboard-community/add_group.sql" }}
 {{ template "dashboard-community/deactivate_group.sql" }}

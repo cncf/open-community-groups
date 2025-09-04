@@ -71,6 +71,19 @@ pub(crate) async fn update_page(
 
 // Actions handlers.
 
+/// Activates a group (sets active=true).
+#[instrument(skip_all, err)]
+pub(crate) async fn activate(
+    CommunityId(community_id): CommunityId,
+    State(db): State<DynDB>,
+    Path(group_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Mark group as active in database
+    db.activate_group(community_id, group_id).await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-groups-table")]).into_response())
+}
+
 /// Adds a new group to the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
@@ -98,7 +111,7 @@ pub(crate) async fn deactivate(
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Deactivate group in database
+    // Mark group as not active in database
     db.deactivate_group(community_id, group_id).await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-groups-table")]).into_response())
