@@ -227,6 +227,8 @@ pub struct EventFull {
     pub sessions: Vec<Session>,
     /// URL slug of the event.
     pub slug: String,
+    /// Event sponsors.
+    pub sponsors: Vec<Sponsor>,
     /// Timezone for event times.
     pub timezone: Tz,
 
@@ -371,4 +373,19 @@ impl std::fmt::Display for SessionKind {
             SessionKind::Virtual => write!(f, "virtual"),
         }
     }
+}
+
+/// Sponsor information for an event.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sponsor {
+    /// Sponsor level.
+    pub level: String,
+    /// URL to sponsor logo.
+    pub logo_url: String,
+    /// Sponsor name.
+    pub name: String,
+
+    /// Sponsor website URL.
+    pub website_url: Option<String>,
 }

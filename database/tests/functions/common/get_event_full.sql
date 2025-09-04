@@ -211,6 +211,12 @@ insert into session (
 insert into session_speaker (session_id, user_id, featured)
 values (:'session1ID', :'user3ID', true);
 
+-- Sponsors
+insert into event_sponsor (event_id, name, logo_url, level, website_url)
+values
+    (:'eventID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
+    (:'eventID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+
 -- Event (unpublished)
 insert into event (
     event_id,
@@ -366,6 +372,19 @@ select is(
                 "starts_at": 1718447400,
                 "location": "Room A",
                 "speakers": []
+            }
+        ],
+        "sponsors": [
+            {
+                "level": "Silver",
+                "logo_url": "https://example.com/cloudinc.png",
+                "name": "CloudInc"
+            },
+            {
+                "level": "Gold",
+                "logo_url": "https://example.com/techcorp.png",
+                "name": "TechCorp",
+                "website_url": "https://techcorp.com"
             }
         ]
     }'::jsonb,

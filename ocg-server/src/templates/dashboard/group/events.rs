@@ -8,7 +8,9 @@ use uuid::Uuid;
 
 use crate::{
     templates::{filters, helpers::DATE_FORMAT},
-    types::event::{EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind},
+    types::event::{
+        EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind, Sponsor,
+    },
 };
 
 // Pages templates.
@@ -133,19 +135,4 @@ pub(crate) struct Session {
     pub speakers: Option<Vec<Uuid>>,
     /// Streaming URL for the session.
     pub streaming_url: Option<String>,
-}
-
-/// Sponsor details for an event.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Sponsor {
-    /// Sponsor level.
-    pub level: String,
-    /// URL to sponsor logo.
-    pub logo_url: String,
-    /// Sponsor name.
-    pub name: String,
-
-    /// Sponsor website URL.
-    pub website_url: Option<String>,
 }

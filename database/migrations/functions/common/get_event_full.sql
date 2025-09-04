@@ -12,7 +12,7 @@ returns json as $$
         'published', e.published,
         'slug', e.slug,
         'timezone', e.timezone,
-        
+
         'banner_url', e.banner_url,
         'capacity', e.capacity,
         'description_short', e.description_short,
@@ -32,13 +32,13 @@ returns json as $$
         'venue_city', e.venue_city,
         'venue_name', e.venue_name,
         'venue_zip_code', e.venue_zip_code,
-        
+
         'group', get_group_summary(g.group_id),
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
                 'name', u.name,
-                
+
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,
@@ -55,7 +55,7 @@ returns json as $$
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
                 'name', u.name,
-                
+
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,
@@ -77,16 +77,16 @@ returns json as $$
                 'kind', s.session_kind_id,
                 'name', s.name,
                 'starts_at', floor(extract(epoch from s.starts_at)),
-                
+
                 'location', s.location,
                 'recording_url', s.recording_url,
                 'streaming_url', s.streaming_url,
-                
+
                 'speakers', (
                     select coalesce(json_agg(json_strip_nulls(json_build_object(
                         'user_id', u.user_id,
                         'name', u.name,
-                        
+
                         'company', u.company,
                         'facebook_url', u.facebook_url,
                         'linkedin_url', u.linkedin_url,
@@ -102,6 +102,17 @@ returns json as $$
             )) order by s.starts_at), '[]')
             from session s
             where s.event_id = e.event_id
+        ),
+        'sponsors', (
+            select coalesce(json_agg(json_strip_nulls(json_build_object(
+                'level', es.level,
+                'logo_url', es.logo_url,
+                'name', es.name,
+
+                'website_url', es.website_url
+            )) order by es.name), '[]')
+            from event_sponsor es
+            where es.event_id = e.event_id
         )
     )) as json_data
     from event e
