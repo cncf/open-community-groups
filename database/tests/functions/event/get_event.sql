@@ -154,6 +154,7 @@ select is(
         "slug": "tech-conference-2024",
         "tags": ["technology", "conference", "workshops"],
         "group": {
+            "active": true,
             "name": "Test Group",
             "slug": "test-group",
             "category": {

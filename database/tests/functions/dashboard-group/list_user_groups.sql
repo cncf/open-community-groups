@@ -125,6 +125,7 @@ select is(
     list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -140,6 +141,7 @@ select is(
             "country_name": "United States"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -163,6 +165,7 @@ select is(
     list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -178,6 +181,7 @@ select is(
             "country_name": "United States"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -193,6 +197,7 @@ select is(
             "country_name": "United States"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -216,6 +221,7 @@ select is(
     list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -231,6 +237,7 @@ select is(
             "country_name": "United States"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",
@@ -246,6 +253,7 @@ select is(
             "country_name": "United States"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000021",
                 "name": "Test Category",

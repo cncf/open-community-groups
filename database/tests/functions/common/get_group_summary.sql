@@ -130,6 +130,7 @@ insert into "group" (
 select is(
     get_group_summary('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
     '{
+        "active": true,
         "category": {
             "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",

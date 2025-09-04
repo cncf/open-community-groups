@@ -98,6 +98,7 @@ select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{}'::jsonb))::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -122,6 +123,7 @@ select is(
             "state": "TX"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -146,6 +148,7 @@ select is(
             "state": "CA"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -170,6 +173,7 @@ select is(
             "state": "NY"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000012",
                 "name": "Business",
@@ -210,6 +214,7 @@ select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"group_category":["business"]}'::jsonb))::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000012",
                 "name": "Business",
@@ -236,6 +241,7 @@ select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"region":["north-america"]}'::jsonb))::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -260,6 +266,7 @@ select is(
             "state": "TX"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -284,6 +291,7 @@ select is(
             "state": "CA"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -316,6 +324,7 @@ select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"ts_query":"Docker"}'::jsonb))::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -351,6 +360,7 @@ select is(
      ))::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -383,6 +393,7 @@ select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"limit":1, "offset":1}'::jsonb))::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",

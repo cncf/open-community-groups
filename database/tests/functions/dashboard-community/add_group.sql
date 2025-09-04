@@ -57,7 +57,7 @@ select is(
             :'communityID'::uuid,
             '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
         )
-    )::jsonb - 'created_at' - 'members_count' - 'group_id')),
+    )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id')),
     '{
         "name": "Simple Test Group",
         "slug": "simple-test-group",
@@ -106,7 +106,7 @@ select is(
                 "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}]
             }'::jsonb
         )
-    )::jsonb - 'created_at' - 'members_count' - 'group_id')),
+    )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id')),
     '{
         "name": "Full Test Group",
         "slug": "full-test-group",

@@ -144,7 +144,7 @@ select update_group(
 
 -- Test: update_group should return expected structure after update
 select is(
-    (select get_group_full(:'groupID'::uuid)::jsonb - 'created_at' - 'members_count'),
+    (select get_group_full(:'groupID'::uuid)::jsonb - 'active' - 'created_at' - 'members_count'),
     '{
         "name": "Updated Group",
         "slug": "updated-group",
@@ -244,7 +244,7 @@ select update_group(
 
 -- Test: update_group should keep minimal fields after empty-string conversion
 select is(
-    (select get_group_full(:'group2ID'::uuid)::jsonb - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
+    (select get_group_full(:'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "updated-group-empty-strings"
@@ -280,7 +280,7 @@ select update_group(
 
 -- Test: update_group should persist explicit null arrays in result
 select is(
-    (select get_group_full(:'group3ID'::uuid)::jsonb - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
+    (select get_group_full(:'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
     '{
         "name": "Updated Group Null Arrays",
         "slug": "updated-group-null-arrays",

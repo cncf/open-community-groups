@@ -123,6 +123,7 @@ values
 select is(
     get_group(:'communityID'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
     '{
+        "active": true,
         "city": "New York",
         "name": "Kubernetes NYC",
         "slug": "kubernetes-nyc",

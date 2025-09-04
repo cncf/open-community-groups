@@ -305,6 +305,7 @@ select is(
         "venue_name": "Convention Center",
         "venue_zip_code": "10001",
         "group": {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",

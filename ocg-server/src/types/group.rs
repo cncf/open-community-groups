@@ -19,6 +19,8 @@ use crate::templates::{
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupSummary {
+    /// Whether the group is active.
+    pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
     /// Color associated with this group, used for visual styling.
@@ -77,6 +79,8 @@ impl GroupSummary {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupDetailed {
+    /// Whether the group is active.
+    pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
     /// Generated color for visual distinction.
@@ -142,6 +146,7 @@ impl GroupDetailed {
 impl From<GroupDetailed> for GroupSummary {
     fn from(detailed: GroupDetailed) -> Self {
         Self {
+            active: detailed.active,
             category: detailed.category,
             color: detailed.color,
             created_at: detailed.created_at,
@@ -162,6 +167,8 @@ impl From<GroupDetailed> for GroupSummary {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupFull {
+    /// Whether the group is active.
+    pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
     /// Generated color for visual distinction.

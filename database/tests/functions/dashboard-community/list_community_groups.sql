@@ -139,6 +139,7 @@ select is(
     list_community_groups(:'community1ID'::uuid)::jsonb,
     '[
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -162,6 +163,7 @@ select is(
             "state": "CA"
         },
         {
+            "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
