@@ -125,11 +125,6 @@
       });
     })
   </script>
-  {# Messages -#}
-  {% if !messages.is_empty() -%}
-    {% call common::alerts(messages) -%}
-  {% endif -%}
-  {# End messages -#}
 {% endblock dashboard_main -%}
 
 {% macro group_content_list(name, logo_url, color) -%}

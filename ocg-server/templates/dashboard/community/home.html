@@ -48,9 +48,4 @@
     {{ content|safe }}
     {# End Content -#}
   </div>
-  {# Messages -#}
-  {% if !messages.is_empty() -%}
-    {% call common::alerts(messages) -%}
-  {% endif -%}
-  {# End messages -#}
 {% endblock dashboard_main -%}
