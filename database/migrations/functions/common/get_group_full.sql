@@ -68,6 +68,7 @@ returns json as $$
             join "user" u using (user_id)
             where gt.group_id = g.group_id
             and gt.role = 'organizer'
+            and gt.accepted = true
         )
     )) as json_data
     from "group" g

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,7 @@ select plan(9);
 \set userCommunityTeamID '00000000-0000-0000-0000-000000000013'
 \set userCommunityTeam2ID '00000000-0000-0000-0000-000000000014'
 \set userCommunityTeamPendingID '00000000-0000-0000-0000-000000000015'
+\set userGroupTeamPendingID '00000000-0000-0000-0000-000000000016'
 \set categoryID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
@@ -115,6 +116,14 @@ insert into "user" (
     true,
     'Community Team Member Pending',
     'communityteampending'
+), (
+    :'userGroupTeamPendingID',
+    gen_random_bytes(32),
+    :'community1ID',
+    'groupteam-pending@example.com',
+    true,
+    'Group Team Member Pending',
+    'groupteampending'
 );
 
 -- Group category
@@ -156,11 +165,26 @@ insert into "group" (
 insert into group_team (
     group_id,
     user_id,
-    role
+    role,
+    accepted
 ) values (
     :'groupID',
     :'userOrganizerID',
-    'Organizer'
+    'Organizer',
+    true
+);
+
+-- Group team pending membership
+insert into group_team (
+    group_id,
+    user_id,
+    role,
+    accepted
+) values (
+    :'groupID',
+    :'userGroupTeamPendingID',
+    'Member',
+    false
 );
 
 insert into community_team (
@@ -197,6 +221,12 @@ select ok(
     'User not in group_team should not own the group'
 );
 
+-- Test: user_owns_group with pending group team member should return false
+select ok(
+    not user_owns_group(:'community1ID', :'groupID', :'userGroupTeamPendingID'),
+    'Pending group team member should not own the group'
+);
+
 -- Test: user_owns_group with non-existent user should return false
 select ok(
     not user_owns_group(:'community1ID', :'groupID', '00000000-0000-0000-0000-000000000099'::uuid),
@@ -228,7 +258,7 @@ select ok(
 );
 
 -- Test: user_owns_group with both team memberships should return true
-insert into group_team (group_id, user_id, role) values (:'group2ID', :'userCommunityTeamID', 'Organizer');
+insert into group_team (group_id, user_id, role, accepted) values (:'group2ID', :'userCommunityTeamID', 'Organizer', true);
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
     'User who is both group team and community team member should own the group'

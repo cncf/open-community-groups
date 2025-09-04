@@ -10,6 +10,7 @@ use crate::handlers::{auth::SELECTED_GROUP_ID_KEY, error::HandlerError};
 pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod settings;
+pub(crate) mod team;
 
 /// Sets the selected group in the session for the current user.
 #[instrument(skip_all, err)]

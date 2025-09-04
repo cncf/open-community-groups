@@ -29,6 +29,7 @@ returns json as $$
         join group_team gt using (group_id)
         join "user" u on u.user_id = p_user_id
         where gt.user_id = p_user_id
+        and gt.accepted = true
         and g.deleted = false
         and not exists (
             select 1

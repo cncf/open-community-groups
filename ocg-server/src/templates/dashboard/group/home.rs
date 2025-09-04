@@ -8,7 +8,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::group::{events, settings},
+        dashboard::group::{events, settings, team},
         filters,
     },
     types::{community::Community, group::GroupSummary},
@@ -44,6 +44,8 @@ pub(crate) enum Content {
     Events(events::ListPage),
     /// Settings management page.
     Settings(Box<settings::UpdatePage>),
+    /// Team management page.
+    Team(team::ListPage),
 }
 
 impl Content {
@@ -64,6 +66,12 @@ impl Content {
     fn is_settings(&self) -> bool {
         matches!(self, Content::Settings(_))
     }
+
+    /// Check if the content is the team page.
+    #[allow(dead_code)]
+    fn is_team(&self) -> bool {
+        matches!(self, Content::Team(_))
+    }
 }
 
 impl std::fmt::Display for Content {
@@ -72,6 +80,7 @@ impl std::fmt::Display for Content {
             Content::Account(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
+            Content::Team(template) => write!(f, "{}", template.render()?),
         }
     }
 }
@@ -87,4 +96,6 @@ pub(crate) enum Tab {
     Events,
     /// Settings management tab.
     Settings,
+    /// Team management tab.
+    Team,
 }

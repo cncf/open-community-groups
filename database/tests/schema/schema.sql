@@ -237,8 +237,9 @@ select columns_are('group_sponsor', array[
 select columns_are('group_team', array[
     'group_id',
     'user_id',
-    'role',
+    'accepted',
     'created_at',
+    'role',
 
     'order'
 ]);

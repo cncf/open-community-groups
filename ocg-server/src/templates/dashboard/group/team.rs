@@ -1,0 +1,46 @@
+//! Templates and types for managing the group team in the dashboard.
+
+use anyhow::Result;
+use askama::Template;
+use serde::{Deserialize, Serialize};
+use tracing::instrument;
+use uuid::Uuid;
+
+// Pages templates.
+
+/// List team members page template for a group.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "dashboard/group/team_list.html")]
+pub(crate) struct ListPage {
+    /// List of team members in the group.
+    pub members: Vec<GroupTeamMember>,
+}
+
+// Types.
+
+/// Group team member summary information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupTeamMember {
+    /// Whether the membership has been accepted.
+    pub accepted: bool,
+    /// Unique identifier for the user.
+    pub user_id: Uuid,
+    /// Username.
+    pub username: String,
+
+    /// Full name.
+    pub name: Option<String>,
+    /// URL to user's avatar.
+    pub photo_url: Option<String>,
+    /// Team role.
+    pub role: Option<String>,
+}
+
+impl GroupTeamMember {
+    /// Try to create a vector of `GroupTeamMember` from a JSON array string.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
+        let members: Vec<Self> = serde_json::from_str(data)?;
+        Ok(members)
+    }
+}

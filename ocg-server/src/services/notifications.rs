@@ -19,7 +19,7 @@ use uuid::Uuid;
 use crate::{
     config::EmailConfig,
     db::DynDB,
-    templates::notifications::{CommunityTeamInvitation, EmailVerification},
+    templates::notifications::{CommunityTeamInvitation, EmailVerification, GroupTeamInvitation},
 };
 
 /// Number of concurrent workers that deliver notifications.
@@ -199,6 +199,12 @@ impl Worker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::GroupTeamInvitation => {
+                let subject = "You have been invited to join a group team";
+                let template: GroupTeamInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
         };
 
         Ok((subject.to_string(), body))
@@ -257,4 +263,6 @@ pub(crate) enum NotificationKind {
     CommunityTeamInvitation,
     /// Notification for email verification.
     EmailVerification,
+    /// Notification for a group team invitation.
+    GroupTeamInvitation,
 }

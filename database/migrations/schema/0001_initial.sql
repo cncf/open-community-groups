@@ -228,8 +228,9 @@ create index group_member_user_id_idx on group_member (user_id);
 create table group_team (
     group_id uuid not null references "group",
     user_id uuid not null references "user",
-    role text not null check (role <> ''),
+    accepted boolean default false not null,
     created_at timestamptz default current_timestamp not null,
+    role text not null check (role <> ''),
 
     "order" integer,
 

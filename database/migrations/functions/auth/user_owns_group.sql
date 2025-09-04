@@ -12,6 +12,7 @@ create or replace function user_owns_group(
         where g.community_id = p_community_id
         and gt.group_id = p_group_id
         and gt.user_id = p_user_id
+        and gt.accepted = true
     )
     or exists (
         select 1

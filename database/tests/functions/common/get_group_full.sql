@@ -126,10 +126,10 @@ insert into "group" (
 );
 
 -- Group Team
-insert into group_team (group_id, user_id, role, "order")
+insert into group_team (group_id, user_id, role, accepted, "order")
 values
-    (:'groupID', :'user1ID', 'organizer', 1),
-    (:'groupID', :'user2ID', 'organizer', 2);
+    (:'groupID', :'user1ID', 'organizer', true, 1),
+    (:'groupID', :'user2ID', 'organizer', true, 2);
 
 -- Group Member
 insert into group_member (group_id, user_id)
