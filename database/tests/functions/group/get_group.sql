@@ -110,10 +110,10 @@ values
     (:'groupID', :'memberID', '2024-01-01 00:00:00');
 
 -- Group Team
-insert into group_team (group_id, user_id, role, "order", created_at)
+insert into group_team (group_id, user_id, role, accepted, "order", created_at)
 values
-    (:'groupID', :'organizer1ID', 'organizer', 1, '2024-01-01 00:00:00'),
-    (:'groupID', :'organizer2ID', 'organizer', 2, '2024-01-01 00:00:00');
+    (:'groupID', :'organizer1ID', 'organizer', true, 1, '2024-01-01 00:00:00'),
+    (:'groupID', :'organizer2ID', 'organizer', true, 2, '2024-01-01 00:00:00');
 
 -- ============================================================================
 -- TESTS

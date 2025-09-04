@@ -2,7 +2,7 @@
 
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -27,12 +27,14 @@ pub(crate) async fn list_page(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Prepare template
-    let community_invitations = db
-        .list_user_community_team_invitations(community_id, user.user_id)
-        .await?;
+    // Prepare template fetching both lists concurrently
+    let (community_invitations, group_invitations) = tokio::try_join!(
+        db.list_user_community_team_invitations(community_id, user.user_id),
+        db.list_user_group_team_invitations(community_id, user.user_id)
+    )?;
     let template = invitations::ListPage {
         community_invitations,
+        group_invitations,
     };
 
     Ok(Html(template.render()?).into_response())
@@ -57,6 +59,24 @@ pub(crate) async fn accept_community_team_invitation(
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
+/// Accepts a pending group team invitation.
+#[instrument(skip_all, err)]
+pub(crate) async fn accept_group_team_invitation(
+    auth_session: AuthSession,
+    CommunityId(community_id): CommunityId,
+    State(db): State<DynDB>,
+    Path(group_id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Mark invitation as accepted
+    db.accept_group_team_invitation(community_id, group_id, user.user_id)
+        .await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+}
+
 /// Rejects a pending community team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_community_team_invitation(
@@ -69,6 +89,22 @@ pub(crate) async fn reject_community_team_invitation(
 
     // Delete community team member.
     db.delete_community_team_member(community_id, user.user_id).await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+}
+
+/// Rejects a pending group team invitation.
+#[instrument(skip_all, err)]
+pub(crate) async fn reject_group_team_invitation(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    Path(group_id): Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Delete group team member from database
+    db.delete_group_team_member(group_id, user.user_id).await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }

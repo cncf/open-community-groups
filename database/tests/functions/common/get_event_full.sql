@@ -167,8 +167,8 @@ insert into event_host (event_id, user_id)
 values (:'eventID', :'user1ID');
 
 -- Group Team
-insert into group_team (group_id, user_id, role, "order")
-values (:'groupID', :'user2ID', 'organizer', 1);
+insert into group_team (group_id, user_id, role, accepted, "order")
+values (:'groupID', :'user2ID', 'organizer', true, 1);
 
 -- Session
 insert into session (

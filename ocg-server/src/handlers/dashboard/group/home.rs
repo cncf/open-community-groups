@@ -23,7 +23,7 @@ use crate::{
         dashboard::group::{
             events,
             home::{Content, Page, Tab},
-            settings,
+            settings, team,
         },
     },
 };
@@ -75,6 +75,10 @@ pub(crate) async fn page(
                 group,
                 regions,
             }))
+        }
+        Tab::Team => {
+            let members = db.list_group_team_members(group_id).await?;
+            Content::Team(team::ListPage { members })
         }
     };
 

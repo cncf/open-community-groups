@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::group::events::Event,
+    templates::dashboard::group::{events::Event, team::GroupTeamMember},
     types::{
         event::{
             EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
@@ -20,6 +20,9 @@ use crate::{
 /// Database trait for group dashboard operations.
 #[async_trait]
 pub(crate) trait DBDashboardGroup {
+    /// Adds a user to the group team (pending by default).
+    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
+
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
 
@@ -28,6 +31,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
     async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+
+    /// Deletes a user from the group team.
+    async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
 
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
@@ -38,6 +44,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>>;
 
+    /// Lists all group team members.
+    async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
+
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
@@ -46,10 +55,27 @@ pub(crate) trait DBDashboardGroup {
 
     /// Updates an existing event.
     async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
+
+    /// Updates a group team member role.
+    async fn update_group_team_member_role(&self, group_id: Uuid, user_id: Uuid, role: &str) -> Result<()>;
 }
 
 #[async_trait]
 impl DBDashboardGroup for PgDB {
+    /// [`DBDashboardGroup::add_group_team_member`]
+    #[instrument(skip(self), err)]
+    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
+        trace!("db: add group team member");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select add_group_team_member($1::uuid, $2::uuid)",
+            &[&group_id, &user_id],
+        )
+        .await?;
+
+        Ok(())
+    }
     /// [`DBDashboardGroup::add_event`]
     #[instrument(skip(self, event), err)]
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid> {
@@ -103,6 +129,21 @@ impl DBDashboardGroup for PgDB {
         Ok(())
     }
 
+    /// [`DBDashboardGroup::delete_group_team_member`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
+        trace!("db: delete group team member");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select delete_group_team_member($1::uuid, $2::uuid)",
+            &[&group_id, &user_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     /// [`DBDashboardGroup::list_event_categories`]
     #[instrument(skip(self), err)]
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>> {
@@ -143,6 +184,20 @@ impl DBDashboardGroup for PgDB {
         Ok(events)
     }
 
+    /// [`DBDashboardGroup::list_group_team_members`]
+    #[instrument(skip(self), err)]
+    async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>> {
+        trace!("db: list group team members");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_group_team_members($1::uuid)::text", &[&group_id])
+            .await?;
+        let members = GroupTeamMember::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(members)
+    }
+
     /// [`DBDashboardGroup::list_session_kinds`]
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
@@ -178,6 +233,21 @@ impl DBDashboardGroup for PgDB {
         db.execute(
             "select update_event($1::uuid, $2::uuid, $3::jsonb)",
             &[&group_id, &event_id, &Json(event)],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardGroup::update_group_team_member_role`]
+    #[instrument(skip(self), err)]
+    async fn update_group_team_member_role(&self, group_id: Uuid, user_id: Uuid, role: &str) -> Result<()> {
+        trace!("db: update group team member role");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_group_team_member_role($1::uuid, $2::uuid, $3::text)",
+            &[&group_id, &user_id, &role],
         )
         .await?;
 

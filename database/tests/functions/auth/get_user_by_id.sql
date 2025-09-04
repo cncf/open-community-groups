@@ -101,11 +101,13 @@ insert into "group" (
 insert into group_team (
     group_id,
     user_id,
-    role
+    role,
+    accepted
 ) values (
     :'categoryID'::uuid,
     :'userWithTeamsID',
-    'Admin'
+    'Admin',
+    true
 );
 
 -- Community team membership
@@ -160,11 +162,13 @@ insert into "user" (
 insert into group_team (
     group_id,
     user_id,
-    role
+    role,
+    accepted
 ) values (
     :'groupID'::uuid,
     :'userGroupOnlyID',
-    'Admin'
+    'Admin',
+    true
 );
 
 -- User with community team only
@@ -218,11 +222,13 @@ insert into "user" (
 insert into group_team (
     group_id,
     user_id,
-    role
+    role,
+    accepted
 ) values (
     :'groupID'::uuid,
     :'userBothTeamsID',
-    'Member'
+    'Member',
+    true
 );
 
 insert into community_team (

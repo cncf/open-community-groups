@@ -36,16 +36,22 @@
 {{ template "dashboard-community/update_community.sql" }}
 
 {{ template "dashboard-group/add_event.sql" }}
+{{ template "dashboard-group/add_group_team_member.sql" }}
 {{ template "dashboard-group/delete_event.sql" }}
+{{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
+{{ template "dashboard-group/list_group_team_members.sql" }}
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
+{{ template "dashboard-group/update_group_team_member_role.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 
 {{ template "dashboard-user/accept_community_team_invitation.sql" }}
+{{ template "dashboard-user/accept_group_team_invitation.sql" }}
 {{ template "dashboard-user/list_user_community_team_invitations.sql" }}
+{{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 
 {{ template "event/attend_event.sql" }}
 {{ template "event/get_event.sql" }}

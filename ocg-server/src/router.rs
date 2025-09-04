@@ -277,6 +277,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )
+        .route("/team", get(dashboard::group::team::list_page))
+        .route("/team/add", post(dashboard::group::team::add))
+        .route("/team/{user_id}/delete", delete(dashboard::group::team::delete))
+        .route("/team/{user_id}/role", put(dashboard::group::team::update_role))
         .route(
             "/{group_id}/select",
             put(dashboard::group::select_group).route_layer(check_user_owns_group),
@@ -298,5 +302,13 @@ fn setup_user_dashboard_router() -> Router<State> {
         .route(
             "/invitations/community/reject",
             put(dashboard::user::invitations::reject_community_team_invitation),
+        )
+        .route(
+            "/invitations/group/{group_id}/accept",
+            put(dashboard::user::invitations::accept_group_team_invitation),
+        )
+        .route(
+            "/invitations/group/{group_id}/reject",
+            put(dashboard::user::invitations::reject_group_team_invitation),
         )
 }

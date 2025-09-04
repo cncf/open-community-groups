@@ -32,6 +32,7 @@ returns json as $$
             select 1
             from group_team gt
             where gt.user_id = u.user_id
+            and gt.accepted = true
         ) or exists (
             select 1
             from community_team ct

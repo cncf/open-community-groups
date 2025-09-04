@@ -20,3 +20,11 @@ pub(crate) struct EmailVerification {
     /// Verification link for the user to confirm their email address.
     pub link: String,
 }
+
+/// Template for group team invitation notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/group_team_invitation.html")]
+pub(crate) struct GroupTeamInvitation {
+    /// Link to manage invitations in the dashboard.
+    pub link: String,
+}

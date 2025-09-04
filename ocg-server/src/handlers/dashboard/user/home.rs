@@ -53,11 +53,13 @@ pub(crate) async fn page(
             }))
         }
         Tab::Invitations => {
-            let community_invitations = db
-                .list_user_community_team_invitations(community_id, user.user_id)
-                .await?;
+            let (community_invitations, group_invitations) = tokio::try_join!(
+                db.list_user_community_team_invitations(community_id, user.user_id),
+                db.list_user_group_team_invitations(community_id, user.user_id)
+            )?;
             Content::Invitations(invitations::ListPage {
                 community_invitations,
+                group_invitations,
             })
         }
     };

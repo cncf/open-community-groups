@@ -94,9 +94,9 @@ insert into "group" (
 update "group" set deleted = true, active = false where group_id = :'group4ID';
 
 -- Group Team
-insert into group_team (group_id, user_id, role) values
-    (:'group1ID', :'groupMemberUserID', 'organizer'),
-    (:'group2ID', :'groupMemberUserID', 'member');
+insert into group_team (group_id, user_id, role, accepted) values
+    (:'group1ID', :'groupMemberUserID', 'organizer', true),
+    (:'group2ID', :'groupMemberUserID', 'member', true);
 
 -- Community Team
 insert into community_team (accepted, community_id, user_id) values
@@ -105,8 +105,8 @@ insert into community_team (accepted, community_id, user_id) values
 -- Community Team (dual membership)
 insert into community_team (accepted, community_id, user_id) values
     (true, :'community1ID', :'dualRoleUserID');
-insert into group_team (group_id, user_id, role) values
-    (:'group2ID', :'dualRoleUserID', 'member');
+insert into group_team (group_id, user_id, role, accepted) values
+    (:'group2ID', :'dualRoleUserID', 'member', true);
 
 
 -- ============================================================================
