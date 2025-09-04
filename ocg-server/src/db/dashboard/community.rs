@@ -15,6 +15,9 @@ use crate::{
 /// Database trait for community dashboard operations.
 #[async_trait]
 pub(crate) trait DBDashboardCommunity {
+    /// Activates a group (sets active=true).
+    async fn activate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+
     /// Adds a user to the community team.
     async fn add_community_team_member(&self, community_id: Uuid, user_id: Uuid) -> Result<()>;
 
@@ -48,6 +51,21 @@ pub(crate) trait DBDashboardCommunity {
 
 #[async_trait]
 impl DBDashboardCommunity for PgDB {
+    /// [`DBDashboardCommunity::activate_group`]
+    #[instrument(skip(self), err)]
+    async fn activate_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()> {
+        trace!("db: activate group");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select activate_group($1::uuid, $2::uuid)",
+            &[&community_id, &group_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     /// [`DBDashboardCommunity::add_community_team_member`]
     #[instrument(skip(self), err)]
     async fn add_community_team_member(&self, community_id: Uuid, user_id: Uuid) -> Result<()> {
