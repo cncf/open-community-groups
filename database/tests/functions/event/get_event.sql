@@ -135,6 +135,12 @@ values
     (:'groupID', :'user3ID', 'organizer', 1, '2024-01-01 00:00:00'),
     (:'groupID', :'user4ID', 'organizer', 2, '2024-01-01 00:00:00');
 
+-- Sponsors
+insert into event_sponsor (event_id, name, logo_url, level, website_url)
+values
+    (:'eventID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
+    (:'eventID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -148,6 +154,7 @@ select is(
         "slug": "tech-conference-2024",
         "tags": ["technology", "conference", "workshops"],
         "group": {
+            "active": true,
             "name": "Test Group",
             "slug": "test-group",
             "category": {
@@ -183,6 +190,19 @@ select is(
         "sessions": [],
         "timezone": "America/New_York",
         "published": true,
+        "sponsors": [
+            {
+                "level": "Silver",
+                "logo_url": "https://example.com/cloudinc.png",
+                "name": "CloudInc"
+            },
+            {
+                "level": "Gold",
+                "logo_url": "https://example.com/techcorp.png",
+                "name": "TechCorp",
+                "website_url": "https://techcorp.com"
+            }
+        ],
         "starts_at": 1718442000,
         "banner_url": "https://example.com/event-banner.png",
         "meetup_url": "https://meetup.com/event123",

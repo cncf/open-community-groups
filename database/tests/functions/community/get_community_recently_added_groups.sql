@@ -75,6 +75,7 @@ select is(
     get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
     '[
         {
+            "active": true,
             "city": "London",
             "name": "Test Group 3",
             "slug": "test-group-3",
@@ -95,6 +96,7 @@ select is(
             }
         },
         {
+            "active": true,
             "city": "San Francisco",
             "name": "Test Group 2",
             "slug": "test-group-2",
@@ -116,6 +118,7 @@ select is(
             }
         },
         {
+            "active": true,
             "city": "New York",
             "name": "Test Group 1",
             "slug": "test-group-1",

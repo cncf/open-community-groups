@@ -94,6 +94,7 @@ select is(
         "kind": "in-person",
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
+        "sponsors": [],
         "sessions": [],
         "slug": "k8s-fundamentals-workshop",
         "timezone": "America/New_York"
@@ -129,19 +130,6 @@ with new_event as (
             "venue_name": "Tech Center",
             "venue_zip_code": "94105",
             "hosts": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"],
-            "sponsors": [
-                {
-                    "name": "TechCorp",
-                    "logo_url": "https://example.com/techcorp.png",
-                    "level": "Gold",
-                    "website_url": "https://techcorp.com"
-                },
-                {
-                    "name": "CloudInc",
-                    "logo_url": "https://example.com/cloudinc.png",
-                    "level": "Silver"
-                }
-            ],
             "sessions": [
                 {
                     "name": "Opening Keynote",
@@ -160,6 +148,19 @@ with new_event as (
                     "kind": "virtual",
                     "streaming_url": "https://youtube.com/live/session2",
                     "speakers": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"]
+                }
+            ],
+            "sponsors": [
+                {
+                    "name": "TechCorp",
+                    "logo_url": "https://example.com/techcorp.png",
+                    "level": "Gold",
+                    "website_url": "https://techcorp.com"
+                },
+                {
+                    "name": "CloudInc",
+                    "logo_url": "https://example.com/cloudinc.png",
+                    "level": "Silver"
                 }
             ]
         }'::jsonb
@@ -227,6 +228,10 @@ select is(
                     {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022"}
                 ]
             }
+        ],
+        "sponsors": [
+            {"level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
+            {"level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
         ]
     }'::jsonb,
     'add_event should create event with all fields including hosts, sponsors, and sessions'

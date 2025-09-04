@@ -39,6 +39,7 @@
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
+{{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 

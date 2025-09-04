@@ -130,6 +130,7 @@ select is(
         "kind": "virtual",
         "name": "Updated Event Name",
         "published": false,
+        "sponsors": [],
         "sessions": [],
         "slug": "updated-event-slug",
         "timezone": "America/Los_Angeles"
@@ -225,6 +226,9 @@ select is(
         "venue_city": "Tokyo",
         "venue_name": "New Venue",
         "venue_zip_code": "100-0001",
+        "sponsors": [
+            {"level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
+        ],
         "sessions": [
             {
                 "name": "Updated Session",

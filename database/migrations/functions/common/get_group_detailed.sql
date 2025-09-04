@@ -2,6 +2,7 @@
 create or replace function get_group_detailed(p_group_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
+        'active', g.active,
         'category', json_build_object(
             'group_category_id', gc.group_category_id,
             'name', gc.name,

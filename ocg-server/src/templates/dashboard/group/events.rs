@@ -8,7 +8,9 @@ use uuid::Uuid;
 
 use crate::{
     templates::{filters, helpers::DATE_FORMAT},
-    types::event::{EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind},
+    types::event::{
+        EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary, Sponsor,
+    },
 };
 
 // Pages templates.
@@ -22,7 +24,9 @@ pub(crate) struct AddPage {
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
-    pub kinds: Vec<EventKind>,
+    pub event_kinds: Vec<EventKindSummary>,
+    /// List of available session kinds.
+    pub session_kinds: Vec<SessionKindSummary>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }
@@ -46,7 +50,9 @@ pub(crate) struct UpdatePage {
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
-    pub kinds: Vec<EventKind>,
+    pub event_kinds: Vec<EventKindSummary>,
+    /// List of available session kinds.
+    pub session_kinds: Vec<SessionKindSummary>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }
@@ -133,19 +139,4 @@ pub(crate) struct Session {
     pub speakers: Option<Vec<Uuid>>,
     /// Streaming URL for the session.
     pub streaming_url: Option<String>,
-}
-
-/// Sponsor details for an event.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Sponsor {
-    /// Sponsor level.
-    pub level: String,
-    /// URL to sponsor logo.
-    pub logo_url: String,
-    /// Sponsor name.
-    pub name: String,
-
-    /// Sponsor website URL.
-    pub website_url: Option<String>,
 }
