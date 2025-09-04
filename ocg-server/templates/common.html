@@ -211,3 +211,24 @@
   </a>
 {% endmacro social_link -%}
 {# End social network link -#}
+
+{# Alerts #}
+{# djlint:off #}
+{% macro alerts(messages) -%}
+  <script type="module">
+    import { showErrorAlert, showSuccessAlert } from '/static/js/common/alerts.js';
+
+    {% for message in messages -%}
+      {% match message.level -%}
+        {% when Level::Success -%}
+          showSuccessAlert('{{ message }}');
+        {% when Level::Error -%}
+          showErrorAlert('{{ message }}');
+        {% when _ -%}
+          {# Do nothing #}
+      {% endmatch -%}
+    {% endfor -%}
+</script>
+{% endmacro alerts -%}
+{# djlint:on #}
+{# End alerts #}
