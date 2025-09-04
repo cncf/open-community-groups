@@ -375,6 +375,15 @@ impl std::fmt::Display for SessionKind {
     }
 }
 
+/// Session kind summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionKindSummary {
+    /// Kind identifier.
+    pub session_kind_id: String,
+    /// Display name.
+    pub display_name: String,
+}
+
 /// Sponsor information for an event.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]

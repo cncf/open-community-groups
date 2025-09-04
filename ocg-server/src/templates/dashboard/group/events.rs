@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     templates::{filters, helpers::DATE_FORMAT},
     types::event::{
-        EventCategory, EventFull, EventKindSummary as EventKind, EventSummary, SessionKind, Sponsor,
+        EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary, Sponsor,
     },
 };
 
@@ -24,7 +24,9 @@ pub(crate) struct AddPage {
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
-    pub kinds: Vec<EventKind>,
+    pub event_kinds: Vec<EventKindSummary>,
+    /// List of available session kinds.
+    pub session_kinds: Vec<SessionKindSummary>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }
@@ -48,7 +50,9 @@ pub(crate) struct UpdatePage {
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
-    pub kinds: Vec<EventKind>,
+    pub event_kinds: Vec<EventKindSummary>,
+    /// List of available session kinds.
+    pub session_kinds: Vec<SessionKindSummary>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }

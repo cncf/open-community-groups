@@ -140,7 +140,7 @@
                 <div class="mt-2 grid grid-cols-1">
                   <select id="kind_id" name="kind_id" class="select-primary" required>
                     <option value="">Select an event type</option>
-                    {% for kind in kinds %}
+                    {% for kind in event_kinds %}
                       <option value="{{ kind.event_kind_id }}"
                               {% if kind.event_kind_id == event.kind.to_string() %}selected{% endif %}>{{ kind.display_name }}</option>
                     {% endfor %}

@@ -10,7 +10,9 @@ use crate::{
     db::PgDB,
     templates::dashboard::group::events::Event,
     types::{
-        event::{EventCategory, EventKindSummary as EventKind, EventSummary},
+        event::{
+            EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
+        },
         group::GroupSummary,
     },
 };
@@ -35,6 +37,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>>;
+
+    /// Lists all available session kinds.
+    async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
     /// Lists all groups where the user is a team member.
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
@@ -136,6 +141,18 @@ impl DBDashboardGroup for PgDB {
         let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
+    }
+
+    /// [`DBDashboardGroup::list_session_kinds`]
+    #[instrument(skip(self), err)]
+    async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
+        trace!("db: list session kinds");
+
+        let db = self.pool.get().await?;
+        let row = db.query_one("select list_session_kinds()::text", &[]).await?;
+        let kinds: Vec<SessionKind> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(kinds)
     }
 
     /// [`DBDashboardGroup::list_user_groups`]
