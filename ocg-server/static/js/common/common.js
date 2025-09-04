@@ -228,3 +228,32 @@ export const isObjectEmpty = (obj) => {
     (x) => x === null || x === "" || typeof x === "undefined" || (Array.isArray(x) && x.length === 0),
   );
 };
+
+/**
+ * Computes initials from a user's name, with username fallback.
+ *
+ * - If `name` exists: returns first letter of first and last words (or just
+ *   the first letter if only one word) depending on `count` (1 or 2).
+ * - If `name` is empty: falls back to the first letter of `username`.
+ *
+ * @param {string|null|undefined} name - Full name (may be null/undefined)
+ * @param {string} username - Username (used as fallback)
+ * @param {number} count - Initials count (1 or 2). Defaults to 2.
+ * @returns {string} Initials string (uppercase)
+ */
+export const computeUserInitials = (name, username, count = 2) => {
+  const cleanName = (name || "").trim();
+  if (cleanName.length === 0) {
+    return (username || "").charAt(0).toUpperCase();
+  }
+
+  const parts = cleanName.split(/\s+/);
+  let initials = "";
+  if (parts.length > 0 && parts[0].length > 0) {
+    initials += parts[0][0].toUpperCase();
+  }
+  if (count >= 2 && parts.length > 1 && parts[parts.length - 1].length > 0) {
+    initials += parts[parts.length - 1][0].toUpperCase();
+  }
+  return initials;
+};

@@ -6,6 +6,7 @@
   <script type="module" src="/static/js/common/markdown-editor.js"></script>
   <script type="module" src="/static/js/common/multiple-inputs.js"></script>
   <script type="module" src="/static/js/common/key-value-inputs.js"></script>
+  <script type="module" src="/static/js/dashboard/community/team-add-member.js"></script>
 {% endblock scripts -%}
 
 {% block menu -%}
@@ -19,7 +20,7 @@
     <div class="leading-10 grid gap-y-0.5">
       {% call dashboard_macros::menu_title(text = "Community", extra_styles = "py-1.5") -%}
       {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/community?tab=settings") -%}
-      {% call dashboard_macros::menu_item(name = "Team", icon = "team", is_active = false, href = "/dashboard/community?tab=team", disabled = true) -%}
+      {% call dashboard_macros::menu_item(name = "Team", icon = "team", is_active = content.is_team(), href = "/dashboard/community?tab=team") -%}
     </div>
     {# End team -#}
 
@@ -41,8 +42,8 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get="/dashboard/community/groups"
-       hx-trigger="refresh-groups-table"
+       hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- else -%}groups{%- endif -%}"
+       hx-trigger="refresh-community-dashboard-table"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}
