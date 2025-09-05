@@ -482,7 +482,7 @@
         <form id="sessions-form">
           <div class="pb-12">
             <div class="mt-10">
-              <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}"></sessions-section>
+              <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}"></sessions-section>
             </div>
           </div>
         </form>
@@ -506,7 +506,7 @@
             <div class="pb-12">
               <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
               <div class="mt-5">
-                <sponsors-section event-id="{{ event.event_id }}"></sponsors-section>
+                <sponsors-section sponsors="{{ event.sponsors|json }}" event-id="{{ event.event_id }}"></sponsors-section>
               </div>
             </div>
             {# End Sponsors Section -#}
