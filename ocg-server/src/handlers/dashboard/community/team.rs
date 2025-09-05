@@ -30,7 +30,11 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     let members = db.list_community_team_members(community_id).await?;
-    let template = team::ListPage { members };
+    let approved_members_count = members.iter().filter(|m| m.accepted).count();
+    let template = team::ListPage {
+        approved_members_count,
+        members,
+    };
 
     Ok(Html(template.render()?))
 }

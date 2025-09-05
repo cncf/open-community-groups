@@ -1,6 +1,7 @@
 //! Templates for the user dashboard home page.
 
 use askama::Template;
+use axum_messages::Message;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -22,6 +23,8 @@ pub(crate) struct Page {
     pub community: Community,
     /// Main content section for the page.
     pub content: Content,
+    /// Flash or status messages to display.
+    pub messages: Vec<Message>,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.

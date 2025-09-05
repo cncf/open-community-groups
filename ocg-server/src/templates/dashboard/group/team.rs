@@ -12,6 +12,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/team_list.html")]
 pub(crate) struct ListPage {
+    /// Number of members with approved status.
+    pub approved_members_count: usize,
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
 }
