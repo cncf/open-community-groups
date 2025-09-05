@@ -5,9 +5,7 @@
 <div class="flex justify-between items-center">
   <div>{% call macros::form_title(title = "Team") -%}</div>
   <div>
-    <team-add-member
-      selected-users='{{ members|json }}'
-    ></team-add-member>
+    <team-add-member selected-users='{{ members|json }}'></team-add-member>
   </div>
   {# End add member button -#}
 </div>
@@ -47,7 +45,8 @@
                   placeholder="{{ name|user_initials(2) }}"
                 {% else -%}
                   placeholder="{{ member.username|user_initials(2) }}"
-                {% endif -%}>
+                {% endif -%}
+                >
                 </avatar-image>
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1">
@@ -69,12 +68,19 @@
             {# Actions -#}
             <td>
               <div>
+                {% let disabledButton = approved_members_count == 1 && member.accepted -%}
                 <button id="remove-member-{{ member.user_id }}"
                         hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
                         hx-target="#dashboard-content"
                         hx-indicator="#dashboard-spinner"
                         hx-trigger="confirmed"
-                        class="btn-tertiary p-2">
+                        class="btn-tertiary p-2
+                               {% if disabledButton -%}
+                                 disabled opacity-50
+                               {% endif -%}"
+                        {% if disabledButton -%}
+                          title="When a team has only one member, it cannot be deleted." disabled
+                        {% endif -%}>
                   <div class="svg-icon size-4 icon-trash"></div>
                 </button>
                 <script type="module">
