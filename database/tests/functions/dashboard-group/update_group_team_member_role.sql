@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -36,7 +36,7 @@ values (:'userID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'A
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'userID', 'member', true);
+values (:'groupID', :'userID', 'organizer', true);
 
 -- ============================================================================
 -- TESTS
@@ -59,6 +59,14 @@ select throws_ok(
     'P0001',
     'user is not a group team member',
     'Should error when updating role for non-existing member'
+);
+
+-- Test: updating to an invalid role should raise foreign key violation
+select throws_ok(
+    $$ select update_group_team_member_role('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'invalid') $$,
+    '23503',
+    'insert or update on table "group_team" violates foreign key constraint "group_team_role_fkey"',
+    'Should error when updating role to an invalid value'
 );
 
 -- ============================================================================

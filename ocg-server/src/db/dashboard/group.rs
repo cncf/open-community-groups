@@ -18,7 +18,7 @@ use crate::{
         event::{
             EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
         },
-        group::GroupSummary,
+        group::{GroupRole, GroupSummary},
     },
 };
 
@@ -26,7 +26,7 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBDashboardGroup {
     /// Adds a user to the group team (pending by default).
-    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()>;
 
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
@@ -75,20 +75,25 @@ pub(crate) trait DBDashboardGroup {
     async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
 
     /// Updates a group team member role.
-    async fn update_group_team_member_role(&self, group_id: Uuid, user_id: Uuid, role: &str) -> Result<()>;
+    async fn update_group_team_member_role(
+        &self,
+        group_id: Uuid,
+        user_id: Uuid,
+        role: &GroupRole,
+    ) -> Result<()>;
 }
 
 #[async_trait]
 impl DBDashboardGroup for PgDB {
     /// [`DBDashboardGroup::add_group_team_member`]
     #[instrument(skip(self), err)]
-    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
+    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()> {
         trace!("db: add group team member");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select add_group_team_member($1::uuid, $2::uuid)",
-            &[&group_id, &user_id],
+            "select add_group_team_member($1::uuid, $2::uuid, $3::text)",
+            &[&group_id, &user_id, &role.to_string()],
         )
         .await?;
 
@@ -311,13 +316,18 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::update_group_team_member_role`]
     #[instrument(skip(self), err)]
-    async fn update_group_team_member_role(&self, group_id: Uuid, user_id: Uuid, role: &str) -> Result<()> {
+    async fn update_group_team_member_role(
+        &self,
+        group_id: Uuid,
+        user_id: Uuid,
+        role: &GroupRole,
+    ) -> Result<()> {
         trace!("db: update group team member role");
 
         let db = self.pool.get().await?;
         db.execute(
             "select update_group_team_member_role($1::uuid, $2::uuid, $3::text)",
-            &[&group_id, &user_id, &role],
+            &[&group_id, &user_id, &role.to_string()],
         )
         .await?;
 

@@ -13,6 +13,7 @@ create or replace function user_owns_group(
         and gt.group_id = p_group_id
         and gt.user_id = p_user_id
         and gt.accepted = true
+        and gt.role = 'organizer'
     )
     or exists (
         select 1

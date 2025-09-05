@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::types::group::GroupRole;
+
 // Pages templates.
 
 /// List team members page template for a group.
@@ -35,7 +37,7 @@ pub struct GroupTeamMember {
     /// URL to user's avatar.
     pub photo_url: Option<String>,
     /// Team role.
-    pub role: Option<String>,
+    pub role: Option<GroupRole>,
 }
 
 impl GroupTeamMember {

@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::templates::helpers::DATE_FORMAT_2;
+use crate::{templates::helpers::DATE_FORMAT_2, types::group::GroupRole};
 
 // Pages templates.
 
@@ -42,5 +42,5 @@ pub(crate) struct GroupTeamInvitation {
     /// Group name.
     pub group_name: String,
     /// Role within the group.
-    pub role: String,
+    pub role: GroupRole,
 }

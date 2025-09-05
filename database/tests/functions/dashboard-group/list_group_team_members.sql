@@ -41,7 +41,7 @@ values
 insert into group_team (group_id, user_id, role, accepted)
 values
     (:'groupID', :'user1ID', 'organizer', true),
-    (:'groupID', :'user2ID', 'member', false);
+    (:'groupID', :'user2ID', 'organizer', false);
 
 -- ============================================================================
 -- TESTS
@@ -52,7 +52,7 @@ select is(
     list_group_team_members(:'groupID'::uuid)::jsonb,
     '[
         {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "name": "Alice", "photo_url": null, "role": "organizer"},
-        {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "name": null, "photo_url": null, "role": "member"}
+        {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "name": null, "photo_url": null, "role": "organizer"}
     ]'::jsonb,
     'Should return list of group team members with accepted flag'
 );

@@ -170,7 +170,7 @@ insert into group_team (
 ) values (
     :'groupID',
     :'userOrganizerID',
-    'Organizer',
+    'organizer',
     true
 );
 
@@ -183,7 +183,7 @@ insert into group_team (
 ) values (
     :'groupID',
     :'userGroupTeamPendingID',
-    'Member',
+    'organizer',
     false
 );
 
@@ -204,6 +204,10 @@ insert into community_team (
     :'community1ID',
     :'userCommunityTeamPendingID'
 );
+
+-- Group team membership for user who is also in community team (second group)
+insert into group_team (group_id, user_id, role, accepted)
+values (:'group2ID', :'userCommunityTeamID', 'organizer', true);
 
 -- ============================================================================
 -- TESTS
@@ -258,7 +262,6 @@ select ok(
 );
 
 -- Test: user_owns_group with both team memberships should return true
-insert into group_team (group_id, user_id, role, accepted) values (:'group2ID', :'userCommunityTeamID', 'Organizer', true);
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
     'User who is both group team and community team member should own the group'

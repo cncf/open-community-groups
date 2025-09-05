@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(5);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
+\set user2ID '00000000-0000-0000-0000-000000000033'
 \set userOtherID '00000000-0000-0000-0000-000000000032'
 
 -- ============================================================================
@@ -36,6 +37,7 @@ insert into "group" (group_id, community_id, group_category_id, name, slug) valu
 -- Users
 insert into "user" (user_id, auth_hash, community_id, email, name, username, email_verified) values
     (:'user1ID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true),
+    (:'user2ID', gen_random_bytes(32), :'communityID', 'carol@example.com', 'Carol', 'carol', true),
     (:'userOtherID', gen_random_bytes(32), :'otherCommunityID', 'bob@example.com', 'Bob', 'bob', true);
 
 -- ============================================================================
@@ -44,7 +46,7 @@ insert into "user" (user_id, auth_hash, community_id, email, name, username, ema
 
 -- Test: adding a user from the same community should create pending membership
 select lives_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'organizer') $$,
     'add_group_team_member should succeed for same community user'
 );
 select results_eq(
@@ -58,9 +60,17 @@ select results_eq(
     'Membership should be created with accepted = false'
 );
 
+-- Test: adding a user with invalid role should error (FK violation)
+select throws_ok(
+    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, 'invalid') $$,
+    '23503',
+    'insert or update on table "group_team" violates foreign key constraint "group_team_role_fkey"',
+    'Should not allow adding membership with invalid role'
+);
+
 -- Test: adding an existing member should error
 select throws_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'organizer') $$,
     'P0001',
     'user is already a group team member',
     'Should not allow duplicate group team membership'
@@ -68,7 +78,7 @@ select throws_ok(
 
 -- Test: adding a user from another community should be ignored (not inserted)
 select lives_ok(
-    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid) $$,
+    $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, 'organizer') $$,
     'add_group_team_member should not fail for other community user'
 );
 select results_eq(
@@ -83,4 +93,3 @@ select results_eq(
 
 select * from finish();
 rollback;
-

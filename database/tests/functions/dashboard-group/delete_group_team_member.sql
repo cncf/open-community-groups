@@ -36,7 +36,7 @@ values (:'userID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'A
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'userID', 'member', true);
+values (:'groupID', :'userID', 'organizer', true);
 
 -- ============================================================================
 -- TESTS
