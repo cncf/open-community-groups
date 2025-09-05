@@ -8,7 +8,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::group::{events, members, settings, team},
+        dashboard::group::{attendees, events, members, settings, team},
         filters,
     },
     types::{community::Community, group::GroupSummary},
@@ -40,6 +40,8 @@ pub(crate) struct Page {
 pub(crate) enum Content {
     /// User account page.
     Account(Box<auth::UpdateUserPage>),
+    /// Attendees list page.
+    Attendees(attendees::ListPage),
     /// Events management page.
     Events(events::ListPage),
     /// Members list page.
@@ -55,6 +57,12 @@ impl Content {
     #[allow(dead_code)]
     fn is_account(&self) -> bool {
         matches!(self, Content::Account(_))
+    }
+
+    /// Check if the content is the attendees page.
+    #[allow(dead_code)]
+    fn is_attendees(&self) -> bool {
+        matches!(self, Content::Attendees(_))
     }
 
     /// Check if the content is the events page.
@@ -86,6 +94,7 @@ impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
+            Content::Attendees(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
@@ -100,6 +109,8 @@ impl std::fmt::Display for Content {
 pub(crate) enum Tab {
     /// User account tab.
     Account,
+    /// Attendees list tab.
+    Attendees,
     /// Events management tab (default).
     #[default]
     Events,
