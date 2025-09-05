@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use crate::handlers::{auth::SELECTED_GROUP_ID_KEY, error::HandlerError};
 
+pub(crate) mod attendees;
 pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod members;

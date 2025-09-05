@@ -8,7 +8,12 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::group::{events::Event, members::GroupMember, team::GroupTeamMember},
+    templates::dashboard::group::{
+        attendees::{Attendee, AttendeesFilterOptions, AttendeesFilters},
+        events::Event,
+        members::GroupMember,
+        team::GroupTeamMember,
+    },
     types::{
         event::{
             EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
@@ -35,6 +40,9 @@ pub(crate) trait DBDashboardGroup {
     /// Deletes a user from the group team.
     async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
 
+    /// Returns attendees filters options for a group.
+    async fn get_attendees_filters_options(&self, group_id: Uuid) -> Result<AttendeesFilterOptions>;
+
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
 
@@ -55,6 +63,13 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all groups where the user is a team member.
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
+
+    /// Searches attendees for a group's event using filters.
+    async fn search_event_attendees(
+        &self,
+        group_id: Uuid,
+        filters: &AttendeesFilters,
+    ) -> Result<Vec<Attendee>>;
 
     /// Updates an existing event.
     async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
@@ -145,6 +160,23 @@ impl DBDashboardGroup for PgDB {
         .await?;
 
         Ok(())
+    }
+
+    /// [`DBDashboardGroup::get_attendees_filters_options`]
+    #[instrument(skip(self), err)]
+    async fn get_attendees_filters_options(&self, group_id: Uuid) -> Result<AttendeesFilterOptions> {
+        trace!("db: get attendees filters options");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_attendees_filters_options($1::uuid)::text",
+                &[&group_id],
+            )
+            .await?;
+        let filters_options: AttendeesFilterOptions = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(filters_options)
     }
 
     /// [`DBDashboardGroup::list_event_categories`]
@@ -239,6 +271,27 @@ impl DBDashboardGroup for PgDB {
         let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
+    }
+
+    /// [`DBDashboardGroup::search_event_attendees`]
+    #[instrument(skip(self, filters), err)]
+    async fn search_event_attendees(
+        &self,
+        group_id: Uuid,
+        filters: &AttendeesFilters,
+    ) -> Result<Vec<Attendee>> {
+        trace!("db: search event attendees");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select search_event_attendees($1::uuid, $2::jsonb)::text",
+                &[&group_id, &Json(filters)],
+            )
+            .await?;
+        let attendees = Attendee::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(attendees)
     }
 
     /// [`DBDashboardGroup::update_event`]

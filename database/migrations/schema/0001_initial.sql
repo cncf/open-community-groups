@@ -356,7 +356,7 @@ create index event_host_user_id_idx on event_host (user_id);
 create table event_attendee (
     event_id uuid not null references event,
     user_id uuid not null references "user",
-    checked_in boolean default false not null, -- For day-of-event tracking
+    checked_in boolean default false not null,
     created_at timestamptz default current_timestamp not null,
 
     primary key (event_id, user_id)

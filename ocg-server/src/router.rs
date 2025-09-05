@@ -259,6 +259,7 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
     // Setup router
     Router::new()
         .route("/", get(dashboard::group::home::page))
+        .route("/attendees", get(dashboard::group::attendees::list_page))
         .route("/events", get(dashboard::group::events::list_page))
         .route(
             "/events/add",
