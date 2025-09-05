@@ -8,6 +8,7 @@ use axum::{
     extract::{Query, State},
     response::{Html, IntoResponse},
 };
+use axum_messages::Messages;
 use tracing::instrument;
 
 use crate::{
@@ -32,6 +33,7 @@ use crate::{
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     auth_session: AuthSession,
+    messages: Messages,
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
@@ -64,7 +66,11 @@ pub(crate) async fn page(
         })),
         Tab::Team => {
             let members = db.list_community_team_members(community_id).await?;
-            Content::Team(team::ListPage { members })
+            let approved_members_count = members.iter().filter(|m| m.accepted).count();
+            Content::Team(team::ListPage {
+                approved_members_count,
+                members,
+            })
         }
     };
 
@@ -72,6 +78,7 @@ pub(crate) async fn page(
     let page = Page {
         community,
         content,
+        messages: messages.into_iter().collect(),
         page_id: PageId::CommunityDashboard,
         path: "/dashboard/community".to_string(),
         user: User::from_session(auth_session).await?,

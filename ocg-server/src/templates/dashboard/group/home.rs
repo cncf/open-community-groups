@@ -1,6 +1,7 @@
 //! Templates for the group dashboard home page.
 
 use askama::Template;
+use axum_messages::Message;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -25,6 +26,8 @@ pub(crate) struct Page {
     pub content: Content,
     /// List of groups the user belongs to.
     pub groups: Vec<GroupSummary>,
+    /// Flash or status messages to display.
+    pub messages: Vec<Message>,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.

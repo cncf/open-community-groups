@@ -8,6 +8,7 @@ use axum::{
     extract::{Query, State},
     response::{Html, IntoResponse},
 };
+use axum_messages::Messages;
 use tracing::instrument;
 
 use crate::{
@@ -29,6 +30,7 @@ use crate::{
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     auth_session: AuthSession,
+    messages: Messages,
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
@@ -68,6 +70,7 @@ pub(crate) async fn page(
     let page = Page {
         community,
         content,
+        messages: messages.into_iter().collect(),
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
         user: User::from_session(auth_session).await?,

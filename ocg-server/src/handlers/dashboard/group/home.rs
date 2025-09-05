@@ -8,6 +8,7 @@ use axum::{
     extract::{Query, RawQuery, State},
     response::{Html, IntoResponse},
 };
+use axum_messages::Messages;
 use tracing::instrument;
 
 use crate::{
@@ -32,9 +33,11 @@ use crate::{
 ///
 /// This handler manages the main group dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     auth_session: AuthSession,
+    messages: Messages,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
@@ -98,7 +101,11 @@ pub(crate) async fn page(
         }
         Tab::Team => {
             let members = db.list_group_team_members(group_id).await?;
-            Content::Team(team::ListPage { members })
+            let approved_members_count = members.iter().filter(|m| m.accepted).count();
+            Content::Team(team::ListPage {
+                approved_members_count,
+                members,
+            })
         }
     };
 
@@ -107,6 +114,7 @@ pub(crate) async fn page(
         community,
         content,
         groups,
+        messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),
         selected_group_id: group_id,
