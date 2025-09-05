@@ -23,7 +23,7 @@ use crate::{
         dashboard::group::{
             events,
             home::{Content, Page, Tab},
-            settings, team,
+            members, settings, team,
         },
     },
 };
@@ -63,6 +63,10 @@ pub(crate) async fn page(
         Tab::Events => {
             let events = db.list_group_events(group_id).await?;
             Content::Events(events::ListPage { events })
+        }
+        Tab::Members => {
+            let members = db.list_group_members(group_id).await?;
+            Content::Members(members::ListPage { members })
         }
         Tab::Settings => {
             let (group, categories, regions) = tokio::try_join!(

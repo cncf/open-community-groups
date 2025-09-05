@@ -273,6 +273,7 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/events/{event_id}/update",
             get(dashboard::group::events::update_page).put(dashboard::group::events::update),
         )
+        .route("/members", get(dashboard::group::members::list_page))
         .route(
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),

@@ -9,6 +9,7 @@ use crate::handlers::{auth::SELECTED_GROUP_ID_KEY, error::HandlerError};
 
 pub(crate) mod events;
 pub(crate) mod home;
+pub(crate) mod members;
 pub(crate) mod settings;
 pub(crate) mod team;
 
