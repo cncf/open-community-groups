@@ -34,9 +34,11 @@ export class UserSearchField extends LitWrapper {
     dashboardType: { type: String, attribute: "dashboard-type" },
     label: { type: String },
     legend: { type: String },
+    inputClass: { type: String, attribute: "input-class" },
     searchDelay: { type: Number, attribute: "search-delay" },
     disabledUserIds: { type: Array, attribute: false },
     excludeUsernames: { type: Array, attribute: false },
+    wrapperClass: { type: String, attribute: "wrapper-class" },
     _isSearching: { type: Boolean },
     _searchResults: { type: Array },
     _searchQuery: { type: String },
@@ -48,6 +50,7 @@ export class UserSearchField extends LitWrapper {
     this.dashboardType = "group";
     this.label = "";
     this.legend = "";
+    this.inputClass = "";
     this.searchDelay = 300;
     this.disabledUserIds = [];
     this.excludeUsernames = [];
@@ -222,11 +225,12 @@ export class UserSearchField extends LitWrapper {
    */
   render() {
     return html`
-      <div class="relative">
+      <div class="relative ${this.wrapperClass || ""}">
         <input
           id="search-input"
           type="text"
-          class="peer w-full rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-stone-400 focus:ring block flex-1 min-w-0 text-md p-2.5 ps-4 pe-14"
+          class="peer w-full rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-stone-400 focus:ring block flex-1 min-w-0 text-md p-2.5 ps-4 pe-14 ${this
+            .inputClass || ""}"
           placeholder="Search ${this.label || ""} by username"
           .value="${this._searchQuery}"
           @input="${this._handleSearchInput}"

@@ -6,7 +6,7 @@ import "/static/js/common/user-search-field.js";
 
 /**
  * UserSearchSelector component for searching and selecting users.
- * Displays a modal with search functionality and shows selected users with avatars.
+ * Displays an inline search panel and shows selected users with avatars.
  * Generates hidden form inputs with username values for form submission.
  * @extends LitWrapper
  */
@@ -19,7 +19,7 @@ export class UserSearchSelector extends LitWrapper {
    * @property {string} label - Label text for the placeholder in search input
    * @property {number} maxUsers - Maximum number of users allowed (0 = unlimited)
    * @property {number} searchDelay - Debounce delay for search in milliseconds
-   * @property {boolean} _isModalOpen - Internal state for modal visibility
+   * @property {boolean} _isModalOpen - Internal state for inline search visibility
    */
   static properties = {
     selectedUsers: { type: Array, attribute: "selected-users" },
@@ -41,30 +41,11 @@ export class UserSearchSelector extends LitWrapper {
     this.legend = "";
     this.maxUsers = 0; // 0 means no limit
     this.searchDelay = 300;
-    this._isModalOpen = false;
+    this._isModalOpen = true; // always visible inline
   }
 
   /**
-   * Lifecycle callback when component is added to DOM.
-   * Adds keyboard event listeners for modal.
-   */
-  connectedCallback() {
-    super.connectedCallback();
-    this._handleKeydown = this._handleKeydown.bind(this);
-    document.addEventListener("keydown", this._handleKeydown);
-  }
-
-  /**
-   * Lifecycle callback when component is removed from DOM.
-   * Removes keyboard event listeners.
-   */
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    document.removeEventListener("keydown", this._handleKeydown);
-  }
-
-  /**
-   * Opens the search modal.
+   * Opens the inline search panel.
    * @private
    */
   _openModal() {
@@ -78,36 +59,12 @@ export class UserSearchSelector extends LitWrapper {
   }
 
   /**
-   * Closes the search modal.
+   * Closes the inline search panel.
    * @private
    */
   _closeModal() {
     this._isModalOpen = false;
   }
-
-  /**
-   * Handles keyboard events, specifically ESC key to close modal.
-   * @param {KeyboardEvent} event - The keyboard event
-   * @private
-   */
-  _handleKeydown(event) {
-    if (event.key === "Escape" && this._isModalOpen) {
-      this._closeModal();
-    }
-  }
-
-  /**
-   * Handles click on modal overlay to close modal.
-   * @param {Event} event - The click event
-   * @private
-   */
-  _handleOverlayClick(event) {
-    if (event.target === event.currentTarget) {
-      this._closeModal();
-    }
-  }
-
-  // Search logic moved to <user-search-field>
 
   /**
    * Adds a user to the selected users list.
@@ -120,9 +77,6 @@ export class UserSearchSelector extends LitWrapper {
     }
 
     this.selectedUsers = [...this.selectedUsers, user];
-
-    // Close modal after adding user
-    this._closeModal();
   }
 
   /**
@@ -197,54 +151,23 @@ export class UserSearchSelector extends LitWrapper {
     this._addUser(user);
   }
 
-  // Rendering of search results handled in <user-search-field>
-
   /**
-   * Renders the search modal.
-   * @returns {TemplateResult} Modal template
+   * Renders the inline search panel (keeps method name for minimal changes).
+   * @returns {TemplateResult} Inline panel template
    * @private
    */
   _renderModal() {
-    if (!this._isModalOpen) return html``;
-
     return html`
-      <div
-        class="modal ${this._isModalOpen
-          ? ""
-          : "opacity-0 pointer-events-none"} fixed w-full h-full top-0 left-0 flex items-center justify-center z-1000"
-      >
-        <!-- Modal overlay -->
-        <div
-          class="modal-overlay absolute w-full h-full bg-black opacity-75"
-          @click="${this._handleOverlayClick}"
-        ></div>
-        <!-- End modal overlay -->
-
-        <div class="modal-container fixed z-50 max-w-md w-full mx-4">
-          <div class="modal-content bg-white rounded-lg shadow-xl max-h-[80vh] flex flex-col">
-            <!-- Modal Header -->
-            <div class="p-6 relative">
-              <button
-                type="button"
-                class="absolute top-4 right-4 p-2 rounded-full hover:bg-stone-300/30"
-                @click="${this._closeModal}"
-              >
-                <div class="svg-icon size-6 icon-close bg-stone-600"></div>
-              </button>
-              <h2 class="text-lg font-semibold text-stone-900 pr-10">Search ${this.label || "users"}</h2>
-              <!-- Search Field -->
-              <div class="mt-4">
-                <user-search-field
-                  .excludeUsernames="${this.selectedUsers.map((u) => u.username)}"
-                  dashboard-type="${this.dashboardType}"
-                  label="${this.label || "user"}"
-                  legend="${this.legend || ""}"
-                  @user-selected="${(e) => this._handleUserSelected(e)}"
-                ></user-search-field>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="mb-3">
+        <user-search-field
+          .excludeUsernames="${this.selectedUsers.map((u) => u.username)}"
+          dashboard-type="${this.dashboardType}"
+          label="${this.label || "user"}"
+          legend="${this.legend || ""}"
+          input-class="input-primary"
+          wrapper-class="w-full xl:w-1/2"
+          @user-selected="${(e) => this._handleUserSelected(e)}"
+        ></user-search-field>
       </div>
     `;
   }
@@ -256,6 +179,9 @@ export class UserSearchSelector extends LitWrapper {
   render() {
     return html`
       <div class="space-y-4">
+        <!-- Inline Search Panel (always visible) -->
+        ${this._renderModal()}
+
         <!-- Selected Users -->
         ${this.selectedUsers.length > 0
           ? html`
@@ -269,25 +195,12 @@ export class UserSearchSelector extends LitWrapper {
             `
           : ""}
 
-        <!-- Add Button -->
-        <button
-          type="button"
-          class="btn-primary-outline btn-mini"
-          @click="${this._openModal}"
-          ?disabled="${this._isAddButtonDisabled()}"
-        >
-          Add ${this.label || "user"}
-        </button>
-
         <!-- Hidden inputs for form submission -->
         ${this.fieldName
           ? this.selectedUsers.map(
               (user) => html` <input type="hidden" name="${this.fieldName}[]" value="${user.user_id}" /> `,
             )
           : ""}
-
-        <!-- Search Modal -->
-        ${this._renderModal()}
       </div>
     `;
   }

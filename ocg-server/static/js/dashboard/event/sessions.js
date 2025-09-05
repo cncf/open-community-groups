@@ -345,6 +345,19 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-full">
+        <label class="form-label">Speakers</label>
+        <div class="mt-2">
+          <user-search-selector
+            field-name="sessions[${this.index}][speakers]"
+            dashboard-type="group"
+            label="speaker"
+            .selectedUsers=${this.data.speakers || []}
+            legend="Add speakers or presenters for this session."
+          ></user-search-selector>
+        </div>
+      </div>
+
+      <div class="col-span-full">
         <label class="form-label"> Location </label>
         <div class="mt-2">
           <input
@@ -398,19 +411,6 @@ class SessionItem extends LitWrapper {
             autocapitalize="off"
             spellcheck="false"
           />
-        </div>
-      </div>
-
-      <div class="col-span-full">
-        <label class="form-label">Speakers</label>
-        <div class="mt-2">
-          <user-search-selector
-            field-name="sessions[${this.index}][speakers]"
-            dashboard-type="group"
-            label="speaker"
-            .selectedUsers=${this.data.speakers || []}
-            legend="Add speakers or presenters for this session."
-          ></user-search-selector>
         </div>
       </div>
     </div>`;
