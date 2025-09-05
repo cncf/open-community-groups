@@ -1,5 +1,6 @@
 import { html } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 import "/static/js/common/avatar-image.js";
 
 /**
@@ -60,36 +61,6 @@ export class PeopleList extends LitWrapper {
   }
 
   /**
-   * Generates initials from a full name.
-   * Splits name by spaces, removes special characters, and returns up to two uppercase letters.
-   * @param {string} name - Person's full name
-   * @returns {string} Initials or "-" if no valid name provided
-   * @private
-   */
-  _getInitials(name) {
-    if (!name) return "-";
-
-    const nameParts = name.trim().split(/\s+/);
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
-
-    const cleanFirst = this._cleanString(firstName);
-    const cleanLast = this._cleanString(lastName);
-
-    const firstInitial = cleanFirst.charAt(0).toUpperCase();
-    const lastInitial = cleanLast.charAt(0).toUpperCase();
-
-    if (firstInitial && lastInitial) {
-      return `${firstInitial}${lastInitial}`;
-    } else if (firstInitial) {
-      return firstInitial;
-    } else if (lastInitial) {
-      return lastInitial;
-    }
-    return "-";
-  }
-
-  /**
    * Renders avatar component for a person.
    * Passes image URL and calculated initials to avatar-image component.
    * @param {Object} person - Person object with photo_url and name
@@ -97,7 +68,7 @@ export class PeopleList extends LitWrapper {
    * @private
    */
   _renderAvatar(person) {
-    const initials = this._getInitials(person.name);
+    const initials = computeUserInitials(person.name, "", 2);
 
     return html`
       <avatar-image image-url="${person.photo_url || ""}" placeholder="${initials}"></avatar-image>

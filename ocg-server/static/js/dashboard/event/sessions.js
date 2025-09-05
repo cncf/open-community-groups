@@ -408,7 +408,7 @@ class SessionItem extends LitWrapper {
             field-name="sessions[${this.index}][speakers]"
             dashboard-type="group"
             label="speaker"
-            selected-users="${JSON.stringify(this.data.speakers || [])}"
+            .selectedUsers=${this.data.speakers || []}
             legend="Add speakers or presenters for this session."
           ></user-search-selector>
         </div>
