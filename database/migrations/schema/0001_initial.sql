@@ -224,13 +224,21 @@ create table group_member (
 create index group_member_group_id_idx on group_member (group_id);
 create index group_member_user_id_idx on group_member (user_id);
 
+-- Group roles
+create table group_role (
+    group_role_id text primary key,
+    display_name text not null unique
+);
+
+insert into group_role values ('organizer', 'Organizer');
+
 -- Group managing team
 create table group_team (
     group_id uuid not null references "group",
     user_id uuid not null references "user",
     accepted boolean default false not null,
     created_at timestamptz default current_timestamp not null,
-    role text not null check (role <> ''),
+    role text not null references group_role,
 
     "order" integer,
 
@@ -239,6 +247,7 @@ create table group_team (
 
 create index group_team_group_id_idx on group_team (group_id);
 create index group_team_user_id_idx on group_team (user_id);
+create index group_team_role_idx on group_team (role);
 
 -- Sponsors supporting groups with different sponsorship levels
 create table group_sponsor (

@@ -19,6 +19,7 @@ use crate::{
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::group::team,
     templates::notifications::GroupTeamInvitation,
+    types::group::GroupRole,
 };
 
 // Pages handlers.
@@ -51,8 +52,9 @@ pub(crate) async fn add(
     State(notifications_manager): State<DynNotificationsManager>,
     Form(member): Form<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Add team member to database
-    db.add_group_team_member(group_id, member.user_id).await?;
+    // Add team member to database using provided role
+    db.add_group_team_member(group_id, member.user_id, &member.role)
+        .await?;
 
     // Enqueue invitation email notification
     let template_data = GroupTeamInvitation {
@@ -104,11 +106,14 @@ pub(crate) async fn update_role(
 /// Data needed to add a new team member.
 #[derive(Debug, Deserialize)]
 pub(crate) struct NewTeamMember {
+    /// Team role.
+    role: GroupRole,
+    /// User identifier.
     user_id: Uuid,
 }
 
 /// Data needed to update a team member role.
 #[derive(Debug, Deserialize)]
 pub(crate) struct NewTeamRole {
-    role: String,
+    role: GroupRole,
 }

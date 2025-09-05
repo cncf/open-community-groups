@@ -106,7 +106,7 @@ insert into group_team (
 ) values (
     :'categoryID'::uuid,
     :'userWithTeamsID',
-    'Admin',
+    'organizer',
     true
 );
 
@@ -167,7 +167,7 @@ insert into group_team (
 ) values (
     :'groupID'::uuid,
     :'userGroupOnlyID',
-    'Admin',
+    'organizer',
     true
 );
 
@@ -227,7 +227,7 @@ insert into group_team (
 ) values (
     :'groupID'::uuid,
     :'userBothTeamsID',
-    'Member',
+    'organizer',
     true
 );
 

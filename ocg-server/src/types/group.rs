@@ -288,3 +288,19 @@ pub struct GroupRegion {
     /// Sort order for display.
     pub order: Option<i32>,
 }
+
+/// Group team role enumeration.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GroupRole {
+    #[default]
+    Organizer,
+}
+
+impl std::fmt::Display for GroupRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            GroupRole::Organizer => write!(f, "organizer"),
+        }
+    }
+}

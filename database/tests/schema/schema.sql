@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(72);
+select plan(76);
 
 -- ============================================================================
 -- TESTS
@@ -26,6 +26,7 @@ select has_table('event_sponsor');
 select has_table('group');
 select has_table('group_category');
 select has_table('group_member');
+select has_table('group_role');
 select has_table('group_site_layout');
 select has_table('group_sponsor');
 select has_table('group_team');
@@ -216,6 +217,12 @@ select columns_are('group_member', array[
     'created_at'
 ]);
 
+-- Test: group_role columns should match expected
+select columns_are('group_role', array[
+    'group_role_id',
+    'display_name'
+]);
+
 -- Test: group_site_layout columns should match expected
 select columns_are('group_site_layout', array[
     'group_site_layout_id'
@@ -294,6 +301,7 @@ select has_pk('event_sponsor');
 select has_pk('group');
 select has_pk('group_category');
 select has_pk('group_member');
+select has_pk('group_role');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
 select has_pk('group_team');
@@ -333,6 +341,14 @@ select indexes_are('group', array[
     'group_tsdoc_idx',
     'group_location_idx',
     'group_search_idx'
+]);
+
+-- Test: group_team indexes should match expected
+select indexes_are('group_team', array[
+    'group_team_pkey',
+    'group_team_group_id_idx',
+    'group_team_user_id_idx',
+    'group_team_role_idx'
 ]);
 
 -- Test: user indexes should match expected
