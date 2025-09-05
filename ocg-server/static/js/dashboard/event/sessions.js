@@ -26,11 +26,14 @@ export class SessionsSection extends LitWrapper {
    */
   static properties = {
     sessions: { type: Array },
+    // List of available session kinds to render options
+    sessionKinds: { type: Array, attribute: "session-kinds" },
   };
 
   constructor() {
     super();
     this.sessions = [];
+    this.sessionKinds = [];
   }
 
   connectedCallback() {
@@ -164,6 +167,7 @@ export class SessionsSection extends LitWrapper {
         <session-item
           .data=${session}
           .index=${index}
+          .sessionKinds=${this.sessionKinds || []}
           .onDataChange=${this._onDataChange}
           class="w-full"
         ></session-item>
@@ -209,6 +213,8 @@ class SessionItem extends LitWrapper {
     index: { type: Number },
     isObjectEmpty: { type: Boolean },
     onDataChange: { type: Function },
+    // Session kinds list provided by parent component
+    sessionKinds: { type: Array, attribute: "session-kinds" },
   };
 
   constructor() {
@@ -228,6 +234,7 @@ class SessionItem extends LitWrapper {
     this.index = 0;
     this.isObjectEmpty = true;
     this.onDataChange = () => {};
+    this.sessionKinds = [];
   }
 
   connectedCallback() {
@@ -308,8 +315,12 @@ class SessionItem extends LitWrapper {
             ?required=${!this.isObjectEmpty}
           >
             <option value="" ?selected=${!this.data.kind}>Select type</option>
-            <option value="in-person" ?selected=${this.data.kind === "in-person"}>In-Person</option>
-            <option value="virtual" ?selected=${this.data.kind === "virtual"}>Virtual</option>
+            ${this.sessionKinds.map(
+              (k) =>
+                html`<option value="${k.session_kind_id}" ?selected=${this.data.kind === k.session_kind_id}>
+                  ${k.display_name}
+                </option>`,
+            )}
           </select>
         </div>
       </div>
