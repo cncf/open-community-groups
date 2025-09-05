@@ -133,13 +133,7 @@ pub(crate) async fn cancel(
     // Cancel event in database
     db.cancel_event(group_id, event_id).await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [(
-            "HX-Location",
-            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
-        )],
-    ))
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
 }
 
 /// Publishes an event (sets published=true and records publication metadata).
