@@ -373,6 +373,7 @@ input:placeholder-shown {
 .icon-people { --icon-url: url('/static/images/icons/people.svg'); }
 .icon-plus-top { --icon-url: url('/static/images/icons/plus_top.svg'); }
 .icon-plus-bottom { --icon-url: url('/static/images/icons/plus_bottom.svg'); }
+.icon-power { --icon-url: url('/static/images/icons/power.svg'); }
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
