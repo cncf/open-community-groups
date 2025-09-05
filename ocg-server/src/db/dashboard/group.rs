@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::group::{events::Event, team::GroupTeamMember},
+    templates::dashboard::group::{events::Event, members::GroupMember, team::GroupTeamMember},
     types::{
         event::{
             EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
@@ -43,6 +43,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>>;
+
+    /// Lists all group members.
+    async fn list_group_members(&self, group_id: Uuid) -> Result<Vec<GroupMember>>;
 
     /// Lists all group team members.
     async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
@@ -182,6 +185,20 @@ impl DBDashboardGroup for PgDB {
         let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
+    }
+
+    /// [`DBDashboardGroup::list_group_members`]
+    #[instrument(skip(self), err)]
+    async fn list_group_members(&self, group_id: Uuid) -> Result<Vec<GroupMember>> {
+        trace!("db: list group members");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_group_members($1::uuid)::text", &[&group_id])
+            .await?;
+        let members = GroupMember::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(members)
     }
 
     /// [`DBDashboardGroup::list_group_team_members`]

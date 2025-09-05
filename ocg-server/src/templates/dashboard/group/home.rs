@@ -8,7 +8,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::group::{events, settings, team},
+        dashboard::group::{events, members, settings, team},
         filters,
     },
     types::{community::Community, group::GroupSummary},
@@ -42,6 +42,8 @@ pub(crate) enum Content {
     Account(Box<auth::UpdateUserPage>),
     /// Events management page.
     Events(events::ListPage),
+    /// Members list page.
+    Members(members::ListPage),
     /// Settings management page.
     Settings(Box<settings::UpdatePage>),
     /// Team management page.
@@ -59,6 +61,12 @@ impl Content {
     #[allow(dead_code)]
     fn is_events(&self) -> bool {
         matches!(self, Content::Events(_))
+    }
+
+    /// Check if the content is the members page.
+    #[allow(dead_code)]
+    fn is_members(&self) -> bool {
+        matches!(self, Content::Members(_))
     }
 
     /// Check if the content is the settings page.
@@ -79,6 +87,7 @@ impl std::fmt::Display for Content {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
+            Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
         }
@@ -94,6 +103,8 @@ pub(crate) enum Tab {
     /// Events management tab (default).
     #[default]
     Events,
+    /// Members list tab.
+    Members,
     /// Settings management tab.
     Settings,
     /// Team management tab.
