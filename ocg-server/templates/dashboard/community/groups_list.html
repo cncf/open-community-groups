@@ -91,8 +91,13 @@
                 {# End group logo -#}
 
                 <div class="min-w-0">
-                  {# Group name -#}
-                  <div class="max-w-full truncate">{{ group.name }}</div>
+                  {# Group name with inactive badge if needed -#}
+                  <div class="max-w-full truncate flex items-center gap-x-2">
+                    <span class="truncate">{{ group.name }}</span>
+                    {% if !group.active -%}
+                      <span class="inline-block px-2 py-0.5 bg-amber-600 text-white text-[10px] leading-4 rounded-full uppercase whitespace-nowrap">Inactive</span>
+                    {% endif -%}
+                  </div>
                   {# End group name -#}
 
                   {# Mobile category and location -#}
@@ -145,43 +150,154 @@
                 </div>
                 {# End update group button -#}
 
-                {# Delete group button -#}
-                <div>
-                  <button id="delete-group-{{ group.slug }}"
-                          hx-delete="/dashboard/community/groups/{{ group.group_id }}/delete"
-                          hx-target="#dashboard-content"
-                          hx-indicator="#dashboard-spinner"
-                          hx-trigger="confirmed"
-                          class="btn-tertiary p-2 text-red-600 hover:bg-red-50">
-                    <div class="svg-icon size-4 icon-trash bg-red-600"></div>
+                {# Actions dropdown (Deactivate/Delete) -#}
+                <div class="group relative">
+                  <button data-group-id="{{ group.group_id }}"
+                          class="btn-group-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
+                          aria-label="Open actions menu for group {{ group.name }}">
+                    <div class="svg-icon size-4 icon-vertical-dots"></div>
                   </button>
-                  <script type="module">
-                    import {
-                      showConfirmAlert,
-                      showErrorAlert,
-                      showSuccessAlert,
-                    } from '/static/js/common/alerts.js';
-                    import {
-                      isSuccessfulXHRStatus
-                    } from '/static/js/common/common.js';
 
-                    const deleteGroupButton = document.getElementById('delete-group-{{ group.slug }}');
-                    if (deleteGroupButton) {
-                      deleteGroupButton.addEventListener('click', (event) => {
-                        showConfirmAlert("Are you sure you wish to delete this group?", "delete-group-{{ group.slug }}", "Yes");
-                      });
+                  <div id="dropdown-group-actions-{{ group.group_id }}"
+                       class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                    <ul class="py-2 text-sm text-stone-700">
+                      {# Activate/Deactivate button depending on status -#}
+                      {% if group.active -%}
+                        <li>
+                          <button id="deactivate-group-{{ group.group_id }}"
+                                  hx-put="/dashboard/community/groups/{{ group.group_id }}/deactivate"
+                                  hx-target="#dashboard-content"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-trigger="confirmed"
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                            <div class="flex items-center">
+                              <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
+                              <div class="ms-2">Deactivate</div>
+                            </div>
+                          </button>
+                          <script type="module">
+                            import {
+                              showConfirmAlert,
+                              showErrorAlert,
+                              showSuccessAlert,
+                            } from '/static/js/common/alerts.js';
+                            import {
+                              isSuccessfulXHRStatus
+                            } from '/static/js/common/common.js';
 
-                      deleteGroupButton.addEventListener("htmx:afterRequest", (e) => {
-                        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                          showSuccessAlert("You have successfully deleted the group.");
-                        } else {
-                          showErrorAlert("An error occurred deleting this group, please try again later.");
-                        }
-                      });
-                    }
-                  </script>
+                            const deactivateGroupBtn = document.getElementById('deactivate-group-{{ group.group_id }}');
+                            if (deactivateGroupBtn) {
+                              deactivateGroupBtn.addEventListener('click', () => {
+                                showConfirmAlert(
+                                  "Are you sure you wish to deactivate this group?",
+                                  "deactivate-group-{{ group.group_id }}",
+                                  "Yes",
+                                );
+                              });
+
+                              deactivateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
+                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                                  showSuccessAlert("You have successfully deactivated the group.");
+                                } else {
+                                  showErrorAlert("An error occurred deactivating this group, please try again later.");
+                                }
+                              });
+                            }
+                          </script>
+                        </li>
+                      {% else -%}
+                        <li>
+                          <button id="activate-group-{{ group.group_id }}"
+                                  hx-put="/dashboard/community/groups/{{ group.group_id }}/activate"
+                                  hx-target="#dashboard-content"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-trigger="confirmed"
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                            <div class="flex items-center">
+                              <div class="svg-icon size-4 icon-power bg-stone-600"></div>
+                              <div class="ms-2">Activate</div>
+                            </div>
+                          </button>
+                          <script type="module">
+                            import {
+                              showConfirmAlert,
+                              showErrorAlert,
+                              showSuccessAlert,
+                            } from '/static/js/common/alerts.js';
+                            import {
+                              isSuccessfulXHRStatus
+                            } from '/static/js/common/common.js';
+
+                            const activateGroupBtn = document.getElementById('activate-group-{{ group.group_id }}');
+                            if (activateGroupBtn) {
+                              activateGroupBtn.addEventListener('click', () => {
+                                showConfirmAlert(
+                                  "Are you sure you wish to activate this group?",
+                                  "activate-group-{{ group.group_id }}",
+                                  "Yes",
+                                );
+                              });
+
+                              activateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
+                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                                  showSuccessAlert("You have successfully activated the group.");
+                                } else {
+                                  showErrorAlert("An error occurred activating this group, please try again later.");
+                                }
+                              });
+                            }
+                          </script>
+                        </li>
+                      {% endif -%}
+
+                      {# Delete button -#}
+                      <li>
+                        <button id="delete-group-{{ group.group_id }}"
+                                hx-delete="/dashboard/community/groups/{{ group.group_id }}/delete"
+                                hx-target="#dashboard-content"
+                                hx-indicator="#dashboard-spinner"
+                                hx-trigger="confirmed"
+                                class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                          <div class="flex items-center">
+                            <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                            <div class="ms-2">Delete</div>
+                          </div>
+                        </button>
+                        <script type="module">
+                          import {
+                            showConfirmAlert,
+                            showErrorAlert,
+                            showSuccessAlert,
+                          } from '/static/js/common/alerts.js';
+                          import {
+                            isSuccessfulXHRStatus
+                          } from '/static/js/common/common.js';
+
+                          const deleteGroupBtn = document.getElementById('delete-group-{{ group.group_id }}');
+                          if (deleteGroupBtn) {
+                            deleteGroupBtn.addEventListener('click', () => {
+                              showConfirmAlert(
+                                "Are you sure you wish to delete this group?",
+                                "delete-group-{{ group.group_id }}",
+                                "Yes",
+                              );
+                            });
+
+                            deleteGroupBtn.addEventListener('htmx:afterRequest', (e) => {
+                              if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                                showSuccessAlert("You have successfully deleted the group.");
+                              } else {
+                                showErrorAlert("An error occurred deleting this group, please try again later.");
+                              }
+                            });
+                          }
+                        </script>
+                      </li>
+                      {# End delete button -#}
+                    </ul>
+                  </div>
                 </div>
-                {# End delete group button -#}
+                {# End actions dropdown -#}
               </div>
             </td>
             {# End actions -#}
@@ -190,5 +306,28 @@
       {% endif -%}
     </tbody>
   </table>
+  <script type="module">
+    const btnGroupActions = document.querySelectorAll('.btn-group-actions');
+    btnGroupActions.forEach((btnAction) => {
+      btnAction.addEventListener('click', () => {
+        const groupId = btnAction.dataset.groupId;
+        const dropdown = document.getElementById(`dropdown-group-actions-${groupId}`);
+        if (!dropdown) return;
+
+        const isHidden = dropdown.classList.contains('hidden');
+        dropdown.classList.toggle('hidden');
+
+        if (isHidden) {
+          const outsideClick = (ev) => {
+            if (!dropdown.contains(ev.target) && !btnAction.contains(ev.target)) {
+              dropdown.classList.add('hidden');
+              document.removeEventListener('click', outsideClick);
+            }
+          };
+          setTimeout(() => document.addEventListener('click', outsideClick), 0);
+        }
+      });
+    });
+  </script>
 </div>
 {# End Groups Table -#}

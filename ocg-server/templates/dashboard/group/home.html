@@ -35,32 +35,37 @@
                 <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
               </div>
             </button>
+            {% if !selected_group.active -%}
+              <div class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">
+                This group has been deactivated. Please contact to a community admin.
+              </div>
+            {% endif -%}
             {# End group button to open dropdown -#}
-
-            {# Dropdown groups -#}
-            <div id="dropdown-groups"
-                 class="hidden absolute top-10 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200">
-              <ul class="max-h-48 overflow-y-auto text-stone-700">
-                {% for dropdown_group in groups -%}
-                  {% let is_selected = selected_group_id == dropdown_group.group_id -%}
-                  <li>
-                    <button hx-put="/dashboard/group/{{ dropdown_group.group_id }}/select"
-                            hx-trigger="click"
-                            hx-target="#dashboard-content"
-                            hx-indicator="#dashboard-spinner"
-                            hx-disabled-elt=".group-button"
-                            class="group-button cursor-pointer w-full flex items-center px-4 py-2 text-sm/6 hover:bg-stone-100
-                                   {% if is_selected -%}bg-stone-100{%- endif %}"
-                            {% if is_selected %}disabled{% endif %}>
-                      {% call group_content_list(name = dropdown_group.name, logo_url = dropdown_group.logo_url, color = dropdown_group.color) -%}
-                    </button>
-                  </li>
-                {% endfor -%}
-              </ul>
-            </div>
-            {# End dropdown groups -#}
           {% endif -%}
         {% endfor -%}
+
+        {# Dropdown groups -#}
+        <div id="dropdown-groups"
+             class="hidden absolute top-10 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200">
+          <ul class="max-h-48 overflow-y-auto text-stone-700">
+            {% for group in groups -%}
+              {% let is_selected = selected_group_id == group.group_id -%}
+              <li>
+                <button hx-put="/dashboard/group/{{ group.group_id }}/select"
+                        hx-trigger="click"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner"
+                        hx-disabled-elt=".group-button"
+                        class="group-button cursor-pointer w-full flex items-center px-4 py-2 text-sm/6 hover:bg-stone-100
+                               {% if is_selected -%}bg-stone-100{%- endif %}"
+                        {% if is_selected %}disabled{% endif %}>
+                  {% call group_content_list(name = group.name, logo_url = group.logo_url, color = group.color) -%}
+                </button>
+              </li>
+            {% endfor -%}
+          </ul>
+        </div>
+        {# End dropdown groups -#}
       </div>
       {% if !groups.is_empty() -%}
         <div class="mt-3">
