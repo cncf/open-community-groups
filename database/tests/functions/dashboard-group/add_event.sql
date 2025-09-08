@@ -180,8 +180,8 @@ select is(
         "category_name": "Conference",
         "description": "Premier conference for cloud native technologies and community collaboration",
         "hosts": [
-            {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020"},
-            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021"}
+            {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1"},
+            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
         ],
         "kind": "hybrid",
         "name": "CloudNativeCon Seattle 2025",
@@ -213,8 +213,8 @@ select is(
                 "kind": "virtual",
                 "streaming_url": "https://youtube.com/live/session2",
                 "speakers": [
-                    {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020"},
-                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021"}
+                    {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1"},
+                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
                 ]
             },
             {
@@ -225,7 +225,7 @@ select is(
                 "kind": "in-person",
                 "location": "Main Hall",
                 "speakers": [
-                    {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022"}
+                    {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1"}
                 ]
             }
         ],

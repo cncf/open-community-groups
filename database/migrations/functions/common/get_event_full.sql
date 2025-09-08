@@ -37,11 +37,12 @@ returns json as $$
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
-                'name', u.name,
+                'username', u.username,
 
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,
+                'name', u.name,
                 'photo_url', u.photo_url,
                 'title', u.title,
                 'twitter_url', u.twitter_url,
@@ -54,11 +55,12 @@ returns json as $$
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
-                'name', u.name,
+                'username', u.username,
 
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,
+                'name', u.name,
                 'photo_url', u.photo_url,
                 'title', u.title,
                 'twitter_url', u.twitter_url,
@@ -86,11 +88,12 @@ returns json as $$
                 'speakers', (
                     select coalesce(json_agg(json_strip_nulls(json_build_object(
                         'user_id', u.user_id,
-                        'name', u.name,
+                        'username', u.username,
 
                         'company', u.company,
                         'facebook_url', u.facebook_url,
                         'linkedin_url', u.linkedin_url,
+                        'name', u.name,
                         'photo_url', u.photo_url,
                         'title', u.title,
                         'twitter_url', u.twitter_url,

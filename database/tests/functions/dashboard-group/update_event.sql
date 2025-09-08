@@ -202,8 +202,8 @@ select is(
         "category_name": "Conference",
         "description": "Fully updated description",
         "hosts": [
-            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021"},
-            {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022"}
+            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"},
+            {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1"}
         ],
         "kind": "hybrid",
         "name": "Fully Updated Event",
@@ -238,7 +238,7 @@ select is(
                 "kind": "virtual",
                 "streaming_url": "https://youtube.com/live/updated",
                 "speakers": [
-                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021"}
+                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
                 ]
             }
         ]

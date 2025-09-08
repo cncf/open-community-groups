@@ -401,7 +401,7 @@
                           {% if let Some(photo_url) = speaker.photo_url -%}
                             image-url="{{ photo_url }}"
                           {% endif -%}
-                          size="size-[24px]" hide-border="true" placeholder="{{ speaker|user_initials(1) }}">
+                          size="size-[24px]" hide-border="true" placeholder="{{ self::user_initials(speaker.name.as_deref() , speaker.username.as_str(), InitialsCount::One) }}">
                           </avatar-image>
                           <span class="text-sm text-stone-700">{{ speaker.name.as_deref().unwrap_or("") }}</span>
                         </div>
@@ -433,7 +433,7 @@
                     {% if let Some(photo_url) = host.photo_url -%}
                       image-url="{{ photo_url }}"
                     {% endif -%}
-                    size="size-12" placeholder="{{ host|user_initials(2) }}">
+                    size="size-12" placeholder="{{ self::user_initials(host.name.as_deref() , host.username.as_str(), InitialsCount::Two) }}">
                     </avatar-image>
                   </div>
                   {# End host photo -#}
