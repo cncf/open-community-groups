@@ -9,8 +9,6 @@ use num_format::{Locale, ToFormattedString};
 use tracing::error;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::templates::common::User;
-
 /// Removes all emoji characters from a string.
 #[allow(clippy::unnecessary_wraps)]
 pub(crate) fn demoji(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
@@ -61,63 +59,9 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> as
     Ok(n.to_formatted_string(&Locale::en))
 }
 
-/// Gets initials from a User with specified count.
-///
-/// Extracts initials from the user's name:
-/// - If count is 1: Returns first letter of name
-/// - If count is 2: Returns first letter of first word + first letter of last word
-///
-/// Usage in templates:
-/// - For 2 initials: {{ `user|user_initials(2)` }}
-/// - For 1 initial: {{ `user|user_initials(1)` }}
-#[allow(clippy::unnecessary_wraps)]
-pub(crate) fn user_initials(user: &User, _: &dyn askama::Values, count: usize) -> askama::Result<String> {
-    let mut initials = String::new();
-
-    if let Some(name) = &user.name {
-        let words: Vec<&str> = name.split_whitespace().collect();
-
-        // Get first initial
-        if let Some(first_word) = words.first()
-            && let Some(first_char) = first_word.chars().next()
-            && first_char.is_alphabetic()
-        {
-            initials.push(first_char.to_ascii_uppercase());
-        }
-
-        // Get second initial if count >= 2 and there are multiple words
-        if count >= 2
-            && words.len() > 1
-            && let Some(last_word) = words.last()
-            && let Some(first_char) = last_word.chars().next()
-            && first_char.is_alphabetic()
-        {
-            initials.push(first_char.to_ascii_uppercase());
-        }
-    }
-
-    Ok(initials)
-}
-
 #[cfg(test)]
 mod tests {
-    use uuid::Uuid;
-
     use super::*;
-
-    fn create_user(name: Option<&str>) -> User {
-        User {
-            user_id: Uuid::new_v4(),
-            name: name.map(str::to_string),
-            company: None,
-            title: None,
-            photo_url: None,
-            facebook_url: None,
-            linkedin_url: None,
-            twitter_url: None,
-            website_url: None,
-        }
-    }
 
     #[test]
     fn test_demoji() {
@@ -161,40 +105,5 @@ mod tests {
         // Different integer types
         assert_eq!(num_fmt(&1_234u32, &()).unwrap(), "1,234");
         assert_eq!(num_fmt(&1_234i64, &()).unwrap(), "1,234");
-    }
-
-    #[test]
-    fn test_user_initials() {
-        // Test with full name (count 2)
-        let user = create_user(Some("John Doe"));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "JD");
-
-        // Test with single name (count 2)
-        let user = create_user(Some("Alice"));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "A");
-
-        // Test with no name (count 2)
-        let user = create_user(None);
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "");
-
-        // Test with names that have leading/trailing spaces (count 2)
-        let user = create_user(Some("  Bob Johnson  "));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "BJ");
-
-        // Test with three-word name (count 2) - should get first and last
-        let user = create_user(Some("John Jacob Smith"));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "JS");
-
-        // Test with count of 1 - should get only first initial
-        let user = create_user(Some("Jane Doe"));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "J");
-
-        // Test with count of 1 and single name
-        let user = create_user(Some("Alice"));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 1).unwrap(), "A");
-
-        // Test with multiple middle names
-        let user = create_user(Some("Alexander Graham Bell Hamilton"));
-        assert_eq!(user_initials(&user, &() as &dyn askama::Values, 2).unwrap(), "AH");
     }
 }

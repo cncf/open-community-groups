@@ -140,6 +140,7 @@ select is(
                 "title": "CTO",
                 "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000041",
+                "username": "organizer1",
                 "name": "John Doe",
                 "photo_url": "https://example.com/john.png"
             },
@@ -147,6 +148,7 @@ select is(
                 "title": "Lead Dev",
                 "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000042",
+                "username": "organizer2",
                 "name": "Jane Smith",
                 "photo_url": "https://example.com/jane.png"
             }

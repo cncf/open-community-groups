@@ -208,6 +208,7 @@ select is(
         "organizers": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000031",
+                "username": "alice-organizer",
                 "name": "Alice Johnson",
                 "company": "Cloud Co",
                 "facebook_url": "https://facebook.com/alice",
@@ -219,6 +220,7 @@ select is(
             },
             {
                 "user_id": "00000000-0000-0000-0000-000000000032",
+                "username": "bob-organizer",
                 "name": "Bob Wilson",
                 "company": "StartUp",
                 "linkedin_url": "https://linkedin.com/in/bob",

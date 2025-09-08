@@ -319,6 +319,7 @@ select is(
         "hosts": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000041",
+                "username": "sarah-host",
                 "name": "Sarah Chen",
                 "company": "Microsoft",
                 "facebook_url": "https://facebook.com/sarahchen",
@@ -332,6 +333,7 @@ select is(
         "organizers": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000042",
+                "username": "mike-organizer",
                 "name": "Mike Rodriguez",
                 "company": "AWS",
                 "facebook_url": "https://facebook.com/mikerod",
@@ -356,6 +358,7 @@ select is(
                 "speakers": [
                     {
                         "user_id": "00000000-0000-0000-0000-000000000043",
+                        "username": "alex-speaker",
                         "name": "Alex Thompson",
                         "company": "Google",
                         "linkedin_url": "https://linkedin.com/in/alexthompson",

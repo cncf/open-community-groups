@@ -13,19 +13,21 @@ use uuid::Uuid;
 pub(crate) struct User {
     /// Unique identifier for the user.
     pub user_id: Uuid,
+    /// User's username.
+    pub username: String,
 
-    /// User's name.
-    pub name: Option<String>,
     /// Company the user works for.
     pub company: Option<String>,
-    /// User's job title.
-    pub title: Option<String>,
-    /// URL to the user's profile photo.
-    pub photo_url: Option<String>,
     /// Facebook profile URL.
     pub facebook_url: Option<String>,
     /// `LinkedIn` profile URL.
     pub linkedin_url: Option<String>,
+    /// User's name.
+    pub name: Option<String>,
+    /// URL to the user's profile photo.
+    pub photo_url: Option<String>,
+    /// User's job title.
+    pub title: Option<String>,
     /// Twitter profile URL.
     pub twitter_url: Option<String>,
     /// Personal website URL.

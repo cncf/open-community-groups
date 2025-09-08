@@ -171,6 +171,7 @@ select is(
                 "title": "Lead Dev",
                 "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000052",
+                "username": "host2",
                 "name": "Jane Smith",
                 "photo_url": "https://example.com/jane.png"
             },
@@ -178,6 +179,7 @@ select is(
                 "title": "CTO",
                 "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000051",
+                "username": "host1",
                 "name": "John Doe",
                 "photo_url": "https://example.com/john.png"
             }
@@ -211,6 +213,7 @@ select is(
                 "title": "Manager",
                 "company": "Cloud Co",
                 "user_id": "00000000-0000-0000-0000-000000000053",
+                "username": "organizer1",
                 "name": "Alice Johnson",
                 "photo_url": "https://example.com/alice.png"
             },
@@ -218,6 +221,7 @@ select is(
                 "title": "Engineer",
                 "company": "StartUp",
                 "user_id": "00000000-0000-0000-0000-000000000054",
+                "username": "organizer2",
                 "name": "Bob Wilson",
                 "photo_url": "https://example.com/bob.png"
             }
