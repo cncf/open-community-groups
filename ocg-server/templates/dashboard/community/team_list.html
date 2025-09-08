@@ -82,7 +82,8 @@
                 <script type="module">
                   import {
                     showConfirmAlert,
-                    showErrorAlert
+                    showErrorAlert,
+                    showSuccessAlert,
                   } from '/static/js/common/alerts.js';
                   import {
                     isSuccessfulXHRStatus
@@ -97,7 +98,9 @@
                       );
                     });
                     removeMemberButton.addEventListener('htmx:afterRequest', (e) => {
-                      if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                      if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                        showSuccessAlert('You have successfully deleted the team member.');
+                      } else {
                         showErrorAlert(
                           'Something went wrong deleting this team member. Please try again later.',
                         );
