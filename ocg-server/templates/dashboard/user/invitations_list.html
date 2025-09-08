@@ -1,4 +1,5 @@
 {% import "dashboard/dashboard_macros.html" as dashboard_macros -%}
+{% import "common.html" as common -%}
 
 {% call dashboard_macros::form_title(
 title = "Community Invitations",
@@ -135,7 +136,7 @@ description = "Manage invitations to join groups."
               {# End group -#}
 
               {# Role -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.role }}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{% call common::badge(content = invitation.role) -%}</td>
               {# End role -#}
 
               {# Created at date -#}

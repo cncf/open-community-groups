@@ -194,10 +194,18 @@
   {% if canceled -%}
     <span class="event-badge canceled {{ extra_styles_ }}">Canceled</span>
   {% else -%}
-    <span class="event-badge {{ extra_styles_ }}">{{ kind }}</span>
+    {% call badge(content = kind, extra_styles = extra_styles) -%}
   {% endif -%}
 {% endmacro event_badge -%}
 {# End event badge -#}
+
+{# Common badge -#}
+{% macro badge(content, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <span class="event-badge {{ extra_styles_ }}">{{ content }}</span>
+{% endmacro badge -%}
+{# End common badge -#}
 
 {# Social network link -#}
 {% macro social_link(url, icon_name, platform_name) -%}
