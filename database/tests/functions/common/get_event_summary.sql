@@ -118,6 +118,7 @@ select is(
         "group_slug": "seattle-kubernetes-meetup",
         "kind": "in-person",
         "name": "KubeCon Seattle 2024",
+        "published": true,
         "slug": "kubecon-seattle-2024",
         "timezone": "America/New_York",
         "group_city": "New York",

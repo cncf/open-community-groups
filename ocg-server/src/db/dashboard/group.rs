@@ -31,6 +31,9 @@ pub(crate) trait DBDashboardGroup {
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
 
+    /// Archives an event (sets published=false and clears publication metadata).
+    async fn archive_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
+
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
@@ -63,6 +66,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all groups where the user is a team member.
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
+
+    /// Publishes an event (sets published=true and records publication metadata).
+    async fn publish_event(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
 
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
@@ -114,6 +120,21 @@ impl DBDashboardGroup for PgDB {
             .get(0);
 
         Ok(event_id)
+    }
+
+    /// [`DBDashboardGroup::archive_event`]
+    #[instrument(skip(self), err)]
+    async fn archive_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
+        trace!("db: archive event");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select archive_event($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardGroup::cancel_event`]
@@ -276,6 +297,21 @@ impl DBDashboardGroup for PgDB {
         let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
+    }
+
+    /// [`DBDashboardGroup::publish_event`]
+    #[instrument(skip(self), err)]
+    async fn publish_event(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
+        trace!("db: publish event");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select publish_event($1::uuid, $2::uuid, $3::uuid)",
+            &[&group_id, &event_id, &user_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardGroup::search_event_attendees`]
