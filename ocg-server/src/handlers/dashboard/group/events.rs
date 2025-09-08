@@ -11,6 +11,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    auth::AuthSession,
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -109,6 +110,19 @@ pub(crate) async fn add(
     Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-events-table")]).into_response())
 }
 
+/// Archives an event (sets published=false and clears publication metadata).
+#[instrument(skip_all, err)]
+pub(crate) async fn archive(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Mark event as archived in database
+    db.archive_event(group_id, event_id).await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
+}
+
 /// Cancels an event (sets canceled=true).
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
@@ -126,6 +140,23 @@ pub(crate) async fn cancel(
             r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
         )],
     ))
+}
+
+/// Publishes an event (sets published=true and records publication metadata).
+#[instrument(skip_all, err)]
+pub(crate) async fn publish(
+    auth_session: AuthSession,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Mark event as published in database
+    db.publish_event(group_id, event_id, user.user_id).await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
 }
 
 /// Deletes an event from the database (soft delete).

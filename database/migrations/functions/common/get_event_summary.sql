@@ -8,6 +8,7 @@ returns json as $$
         'group_slug', g.slug,
         'kind', e.event_kind_id,
         'name', e.name,
+        'published', e.published,
         'slug', e.slug,
         'timezone', e.timezone,
         

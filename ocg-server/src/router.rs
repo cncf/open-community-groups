@@ -265,10 +265,18 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/events/add",
             get(dashboard::group::events::add_page).post(dashboard::group::events::add),
         )
+        .route(
+            "/events/{event_id}/archive",
+            put(dashboard::group::events::archive),
+        )
         .route("/events/{event_id}/cancel", put(dashboard::group::events::cancel))
         .route(
             "/events/{event_id}/delete",
             delete(dashboard::group::events::delete),
+        )
+        .route(
+            "/events/{event_id}/publish",
+            put(dashboard::group::events::publish),
         )
         .route(
             "/events/{event_id}/update",

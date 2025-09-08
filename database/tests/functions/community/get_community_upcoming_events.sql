@@ -102,6 +102,7 @@ select is(
             "group_slug": "test-group",
             "kind": "virtual",
             "name": "Future Event 1",
+            "published": true,
             "slug": "future-event-1",
             "timezone": "UTC",
             "group_city": "New York",

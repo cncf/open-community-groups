@@ -304,7 +304,7 @@ create table event (
     event_kind_id text not null references event_kind,
     group_id uuid not null references "group",
     name text not null check (name <> ''),
-    published boolean default false not null,
+    published boolean not null default false,
     slug text not null check (slug <> ''),
     timezone text not null check (timezone <> ''),
     tsdoc tsvector not null -- Full-text search index with weighted fields
