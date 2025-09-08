@@ -83,7 +83,7 @@
   }
 
   .event-badge.canceled {
-    @apply border-red-300 text-red-500 px-2.5 py-0.5;
+    @apply border-red-300 text-red-500;
   }
 
   .card {
