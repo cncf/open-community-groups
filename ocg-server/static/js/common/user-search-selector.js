@@ -1,6 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { computeUserInitials } from "/static/js/dashboard/common.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 import "/static/js/common/avatar-image.js";
 import "/static/js/common/user-search-field.js";
 

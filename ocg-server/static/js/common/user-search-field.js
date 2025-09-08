@@ -1,6 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/avatar-image.js";
+import { computeUserInitials } from "/static/js/common/common.js";
 
 /**
  * UserSearchField component for searching and selecting users.
@@ -158,24 +159,6 @@ export class UserSearchField extends LitWrapper {
   }
 
   /**
-   * Returns user initials for avatar placeholder purposes.
-   * @param {Object} user - User object containing name/username
-   * @returns {string} Initials string (1-2 characters)
-   * @private
-   */
-  _getUserInitials(user) {
-    if (user.name) {
-      const parts = user.name.trim().split(/\s+/);
-      const first = parts[0] || "";
-      const last = parts.length > 1 ? parts[parts.length - 1] : "";
-      const a = first.charAt(0).toUpperCase();
-      const b = last.charAt(0).toUpperCase();
-      return a || b ? `${a}${b}`.trim() : user.username.charAt(0).toUpperCase();
-    }
-    return user.username.charAt(0).toUpperCase();
-  }
-
-  /**
    * Checks whether a user should be disabled (non-selectable).
    * @param {Object} user - User object to check
    * @returns {boolean} True if disabled
@@ -197,7 +180,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   _renderResult(user) {
-    const initials = this._getUserInitials(user);
+    const initials = computeUserInitials(user.name, user.username, 2);
     const disabled = this._isDisabled(user);
     const rowClass = `flex items-center gap-3 px-4 py-2 ${
       disabled ? "opacity-50 cursor-not-allowed bg-stone-50" : "hover:bg-stone-50 cursor-pointer"

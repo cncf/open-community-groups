@@ -73,7 +73,11 @@ pub(crate) async fn add(
     };
     notifications_manager.enqueue(&notification).await?;
 
-    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-team-table")]).into_response())
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Deletes a user from the group team.
@@ -86,7 +90,11 @@ pub(crate) async fn delete(
     // Remove team member from database
     db.delete_group_team_member(group_id, user_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-team-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Updates a user role in the group team.
@@ -101,7 +109,11 @@ pub(crate) async fn update_role(
     db.update_group_team_member_role(group_id, user_id, &input.role)
         .await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-team-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    )
+        .into_response())
 }
 
 // Types.

@@ -116,7 +116,11 @@ pub(crate) async fn add(
     // Add event to database
     db.add_event(group_id, &event).await?;
 
-    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-events-table")]).into_response())
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Archives an event (sets published=false and clears publication metadata).
