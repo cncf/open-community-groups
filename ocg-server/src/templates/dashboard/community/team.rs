@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::templates::helpers::{InitialsCount, user_initials};
+
 // Pages templates.
 
 /// List team members page template.

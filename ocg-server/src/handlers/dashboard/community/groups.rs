@@ -81,7 +81,11 @@ pub(crate) async fn activate(
     // Mark group as active in database
     db.activate_group(community_id, group_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-groups-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Adds a new group to the database.
@@ -101,7 +105,11 @@ pub(crate) async fn add(
     // Add group to database
     db.add_group(community_id, &group).await?;
 
-    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-groups-table")]).into_response())
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Deactivates a group (sets active=false without deleting).
@@ -114,7 +122,11 @@ pub(crate) async fn deactivate(
     // Mark group as not active in database
     db.deactivate_group(community_id, group_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-groups-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Deletes a group from the database (soft delete).
@@ -127,7 +139,11 @@ pub(crate) async fn delete(
     // Delete group from database (soft delete)
     db.delete_group(community_id, group_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-groups-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Updates an existing group's information in the database.
@@ -148,5 +164,9 @@ pub(crate) async fn update(
     // Update group in database
     db.update_group(community_id, group_id, &group).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-groups-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }

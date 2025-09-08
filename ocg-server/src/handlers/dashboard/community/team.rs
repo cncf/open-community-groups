@@ -67,7 +67,11 @@ pub(crate) async fn add(
     };
     notifications_manager.enqueue(&notification).await?;
 
-    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-team-table")]).into_response())
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }
 
 /// Deletes a user from the community team.
@@ -80,7 +84,11 @@ pub(crate) async fn delete(
     // Remove team member from database
     db.delete_community_team_member(community_id, user_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-team-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-community-dashboard-table")],
+    )
+        .into_response())
 }
 
 // Types.

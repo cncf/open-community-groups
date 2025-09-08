@@ -1,1 +1,118 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
 
+{# Header with title and add button -#}
+<div class="flex justify-between items-center">
+  <div>{% call macros::form_title(title = "Team") -%}</div>
+  <div>
+    <team-add-member selected-users='{{ members|json }}'></team-add-member>
+  </div>
+  {# End add member button -#}
+</div>
+
+{# Team Table -#}
+<div class="relative overflow-visible mt-10">
+  <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
+        <th scope="col" class="p-4 w-12"></th>
+      </tr>
+    </thead>
+    <tbody id="team-list">
+      {% if members.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-12 text-center" colspan="2">
+            <div class="text-xl lg:text-2xl mb-6">It looks like there are no team members yet.</div>
+            <p class="text-sm lg:text-md text-stone-700">
+              Use the <span class="italic">Add Member</span> button above to
+              invite someone to the community team.
+            </p>
+          </td>
+        </tr>
+      {% else -%}
+        {% for member in members -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Member -#}
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex items-center space-x-5">
+                <avatar-image
+                {% if let Some(photo_url) = member.photo_url -%}
+                  image-url="{{ photo_url }}"
+                {% endif -%}
+                size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str(), InitialsCount::Two) }}">
+                </avatar-image>
+                <div class="min-w-0">
+                  <div class="flex items-center space-x-3 mb-1">
+                    <div class="font-medium text-stone-900 truncate">
+                      {{ member.name.as_deref().unwrap_or(member.username) }}
+                    </div>
+                    {% if !member.accepted -%}
+                      <div class="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
+                        Invitation sent
+                      </div>
+                    {% endif -%}
+                  </div>
+                  <div class="text-xs text-stone-600 truncate">@{{ member.username }}</div>
+                </div>
+              </div>
+            </td>
+            {# End member -#}
+
+            {# Actions -#}
+            <td>
+              <div>
+                {% let disabledButton = approved_members_count == 1 && member.accepted -%}
+                <button id="remove-member-{{ member.user_id }}"
+                        hx-delete="/dashboard/community/team/{{ member.user_id }}/delete"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner"
+                        hx-trigger="confirmed"
+                        class="btn-tertiary p-2
+                               {% if disabledButton -%}
+                                 disabled opacity-50
+                               {% endif -%}"
+                        {% if disabledButton -%}
+                          title="When a team has only one member, it cannot be deleted." disabled
+                        {% endif -%}>
+                  <div class="svg-icon size-4 icon-trash"></div>
+                </button>
+                <script type="module">
+                  import {
+                    showConfirmAlert,
+                    showErrorAlert,
+                    showSuccessAlert,
+                  } from '/static/js/common/alerts.js';
+                  import {
+                    isSuccessfulXHRStatus
+                  } from '/static/js/common/common.js';
+                  const removeMemberButton = document.getElementById('remove-member-{{ member.user_id }}');
+                  if (removeMemberButton) {
+                    removeMemberButton.addEventListener('click', () => {
+                      showConfirmAlert(
+                        "Are you sure you would like to delete this team member?",
+                        "remove-member-{{ member.user_id }}",
+                        "Yes",
+                      );
+                    });
+                    removeMemberButton.addEventListener('htmx:afterRequest', (e) => {
+                      if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                        showSuccessAlert('You have successfully deleted the team member.');
+                      } else {
+                        showErrorAlert(
+                          'Something went wrong deleting this team member. Please try again later.',
+                        );
+                      }
+                    });
+                  }
+                </script>
+              </div>
+            </td>
+            {# End actions -#}
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End Team Table -#}
