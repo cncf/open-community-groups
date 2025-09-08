@@ -41,11 +41,7 @@
                   image-url="{{ photo_url }}"
                 {% endif -%}
                 size="size-10"
-                {% if let Some(name) = member.name -%}
-                  placeholder="{{ name|user_initials(2) }}"
-                {% else -%}
-                  placeholder="{{ member.username|user_initials(2) }}"
-                {% endif -%}
+                placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str(), InitialsCount::Two) }}"
                 >
                 </avatar-image>
                 <div class="min-w-0">

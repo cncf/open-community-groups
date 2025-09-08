@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::filters;
+use crate::templates::helpers::{InitialsCount, user_initials};
 
 // Pages templates.
 
