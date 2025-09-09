@@ -13,11 +13,14 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
+    config::HttpServerConfig,
     db::DynDB,
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
         auth::User,
         group::{self, Page},
+        notifications::GroupWelcome,
     },
     types::event::EventKind,
 };
@@ -67,7 +70,9 @@ pub(crate) async fn page(
 #[instrument(skip_all)]
 pub(crate) async fn join_group(
     auth_session: AuthSession,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     CommunityId(community_id): CommunityId,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -76,6 +81,20 @@ pub(crate) async fn join_group(
 
     // Join the group
     db.join_group(community_id, group_id, user.user_id).await?;
+
+    // Enqueue welcome to group notification
+    let group = db.get_group_summary(group_id).await?;
+    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let template_data = GroupWelcome {
+        link: format!("{}/group/{}", base_url, group.slug),
+        group,
+    };
+    let notification = NewNotification {
+        kind: NotificationKind::GroupWelcome,
+        recipients: vec![user.user_id],
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+    notifications_manager.enqueue(&notification).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

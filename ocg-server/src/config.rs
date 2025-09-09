@@ -64,6 +64,11 @@ pub(crate) struct EmailConfig {
     pub from_name: String,
     /// SMTP server configuration.
     pub smtp: SmtpConfig,
+
+    /// Optional whitelist of allowed recipient email addresses for
+    /// development environments. If not present, all recipients are
+    /// allowed. If present and empty, none are allowed.
+    pub rcpts_whitelist: Option<Vec<String>>,
 }
 
 /// SMTP server configuration.

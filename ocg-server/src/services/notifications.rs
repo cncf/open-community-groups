@@ -13,13 +13,16 @@ use lettre::{
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use tracing::{error, instrument};
+use tracing::{error, instrument, warn};
 use uuid::Uuid;
 
 use crate::{
     config::EmailConfig,
     db::DynDB,
-    templates::notifications::{CommunityTeamInvitation, EmailVerification, GroupTeamInvitation},
+    templates::notifications::{
+        CommunityTeamInvitation, EmailVerification, EventCanceled, EventPublished, EventRescheduled,
+        GroupTeamInvitation, GroupWelcome,
+    },
 };
 
 /// Number of concurrent workers that deliver notifications.
@@ -199,9 +202,33 @@ impl Worker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventCanceled => {
+                let subject = "Event canceled";
+                let template: EventCanceled = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventPublished => {
+                let subject = "New event published";
+                let template: EventPublished = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventRescheduled => {
+                let subject = "Event rescheduled";
+                let template: EventRescheduled = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::GroupTeamInvitation => {
                 let subject = "You have been invited to join a group team";
                 let template: GroupTeamInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::GroupWelcome => {
+                let subject = "Welcome to the group";
+                let template: GroupWelcome = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
@@ -224,19 +251,27 @@ impl Worker {
             .body(body)?;
 
         // Send email
+        if let Some(whitelist) = &self.cfg.rcpts_whitelist {
+            // If whitelist is present but empty, none are allowed.
+            let allowed = !whitelist.is_empty() && whitelist.iter().any(|wa| wa == to_address);
+            if !allowed {
+                warn!(%to_address, "email recipient not allowed; skipping send");
+                return Ok(());
+            }
+        }
         self.smtp_client.send(message).await?;
 
         Ok(())
     }
 }
 
-/// Data required to create a new notification for a user.
+/// Data required to create a new notification.
 #[derive(Debug, Clone)]
 pub(crate) struct NewNotification {
     /// The type of notification to send.
     pub kind: NotificationKind,
-    /// The user ID to notify.
-    pub user_id: Uuid,
+    /// The user IDs to notify.
+    pub recipients: Vec<Uuid>,
     /// Optional template data for the notification content.
     pub template_data: Option<serde_json::Value>,
 }
@@ -263,6 +298,14 @@ pub(crate) enum NotificationKind {
     CommunityTeamInvitation,
     /// Notification for email verification.
     EmailVerification,
+    /// Notification for an event canceled.
+    EventCanceled,
+    /// Notification for an event published.
+    EventPublished,
+    /// Notification for an event rescheduled.
+    EventRescheduled,
     /// Notification for a group team invitation.
     GroupTeamInvitation,
+    /// Notification welcoming a new group member.
+    GroupWelcome,
 }

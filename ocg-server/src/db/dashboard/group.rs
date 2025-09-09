@@ -52,11 +52,17 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available event kinds.
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
+    /// Lists all verified attendees user ids for an event.
+    async fn list_event_attendees_ids(&self, event_id: Uuid) -> Result<Vec<Uuid>>;
+
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>>;
 
     /// Lists all group members.
     async fn list_group_members(&self, group_id: Uuid) -> Result<Vec<GroupMember>>;
+
+    /// Lists all group member user ids.
+    async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
     /// Lists all group team members.
     async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
@@ -231,6 +237,20 @@ impl DBDashboardGroup for PgDB {
         Ok(kinds)
     }
 
+    /// [`DBDashboardGroup::list_event_attendees_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_event_attendees_ids(&self, event_id: Uuid) -> Result<Vec<Uuid>> {
+        trace!("db: list event attendees ids");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_event_attendees_ids($1::uuid)::text", &[&event_id])
+            .await?;
+        let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(ids)
+    }
+
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
     async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>> {
@@ -257,6 +277,20 @@ impl DBDashboardGroup for PgDB {
         let members = GroupMember::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(members)
+    }
+
+    /// [`DBDashboardGroup::list_group_members_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
+        trace!("db: list group members ids");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_group_members_ids($1::uuid)::text", &[&group_id])
+            .await?;
+        let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(ids)
     }
 
     /// [`DBDashboardGroup::list_group_team_members`]
