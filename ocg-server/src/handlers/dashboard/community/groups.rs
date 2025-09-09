@@ -84,8 +84,7 @@ pub(crate) async fn activate(
     Ok((
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-community-dashboard-table")],
-    )
-        .into_response())
+    ))
 }
 
 /// Adds a new group to the database.
@@ -125,8 +124,7 @@ pub(crate) async fn deactivate(
     Ok((
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-community-dashboard-table")],
-    )
-        .into_response())
+    ))
 }
 
 /// Deletes a group from the database (soft delete).
@@ -142,8 +140,7 @@ pub(crate) async fn delete(
     Ok((
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-community-dashboard-table")],
-    )
-        .into_response())
+    ))
 }
 
 /// Updates an existing group's information in the database.

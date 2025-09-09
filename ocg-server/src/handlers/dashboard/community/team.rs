@@ -72,8 +72,7 @@ pub(crate) async fn add(
     Ok((
         StatusCode::CREATED,
         [("HX-Trigger", "refresh-community-dashboard-table")],
-    )
-        .into_response())
+    ))
 }
 
 /// Deletes a user from the community team.
@@ -89,8 +88,7 @@ pub(crate) async fn delete(
     Ok((
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-community-dashboard-table")],
-    )
-        .into_response())
+    ))
 }
 
 // Types.

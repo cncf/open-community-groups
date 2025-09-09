@@ -38,7 +38,7 @@ pub(crate) async fn list_page(
         group_invitations,
     };
 
-    Ok(Html(template.render()?).into_response())
+    Ok(Html(template.render()?))
 }
 
 // Actions handlers.
@@ -59,7 +59,7 @@ pub(crate) async fn accept_community_team_invitation(
         .await?;
     messages.success("Team invitation accepted.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
 /// Accepts a pending group team invitation.
@@ -79,7 +79,7 @@ pub(crate) async fn accept_group_team_invitation(
         .await?;
     messages.success("Team invitation accepted.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
 /// Rejects a pending community team invitation.
@@ -97,7 +97,7 @@ pub(crate) async fn reject_community_team_invitation(
     db.delete_community_team_member(community_id, user.user_id).await?;
     messages.success("Team invitation rejected.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
 /// Rejects a pending group team invitation.
@@ -115,5 +115,5 @@ pub(crate) async fn reject_group_team_invitation(
     db.delete_group_team_member(group_id, user.user_id).await?;
     messages.success("Team invitation rejected.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }

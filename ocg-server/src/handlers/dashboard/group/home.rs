@@ -124,5 +124,5 @@ pub(crate) async fn page(
     };
 
     let html = Html(page.render()?);
-    Ok(html.into_response())
+    Ok(html)
 }
