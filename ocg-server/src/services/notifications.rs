@@ -13,7 +13,7 @@ use lettre::{
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use tracing::{error, instrument};
+use tracing::{error, instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -251,6 +251,14 @@ impl Worker {
             .body(body)?;
 
         // Send email
+        if let Some(whitelist) = &self.cfg.rcpts_whitelist {
+            // If whitelist is present but empty, none are allowed.
+            let allowed = !whitelist.is_empty() && whitelist.iter().any(|wa| wa == to_address);
+            if !allowed {
+                warn!(%to_address, "email recipient not allowed; skipping send");
+                return Ok(());
+            }
+        }
         self.smtp_client.send(message).await?;
 
         Ok(())
