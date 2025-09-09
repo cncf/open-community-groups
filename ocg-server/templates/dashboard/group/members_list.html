@@ -1,1 +1,60 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
 
+{# Members header -#}
+{% call macros::form_title(title = "Members") -%}
+
+{# Members table -#}
+<div class="relative overflow-visible mt-10">
+  <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+         role="table"
+         aria-label="Members list">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+           role="rowgroup">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Joined</th>
+      </tr>
+    </thead>
+    <tbody id="members-list" role="rowgroup">
+      {% if members.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-12 text-center" colspan="2">
+            <div class="text-xl lg:text-2xl mb-6">No members yet.</div>
+            <p class="text-sm lg:text-md text-stone-700">Members of this group will appear here once users join.</p>
+          </td>
+        </tr>
+      {% else -%}
+        {% for member in members -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Member -#}
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex items-center space-x-5">
+                <avatar-image
+                {% if let Some(photo_url) = member.photo_url -%}
+                  image-url="{{ photo_url }}"
+                {% endif -%}
+                size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str(), InitialsCount::Two) }}">
+                </avatar-image>
+                <div class="min-w-0">
+                  <div class="font-medium text-stone-900 truncate">
+                    {{ member.name.as_deref().unwrap_or(member.username) }}
+                  </div>
+                  <div class="text-xs text-stone-600 truncate">@{{ member.username }}</div>
+                </div>
+              </div>
+            </td>
+            {# End member -#}
+
+            {# Joined -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
+              {{ member.created_at.format("%b %d, %Y") }}
+            </td>
+            {# End joined -#}
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+  {# End table -#}
+</div>

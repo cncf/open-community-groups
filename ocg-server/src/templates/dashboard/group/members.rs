@@ -6,6 +6,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+use crate::templates::helpers::{InitialsCount, user_initials};
+
 // Pages templates.
 
 /// List members page template for a group.

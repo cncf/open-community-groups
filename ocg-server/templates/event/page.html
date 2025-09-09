@@ -403,7 +403,7 @@
                           {% endif -%}
                           size="size-[24px]" hide-border="true" placeholder="{{ self::user_initials(speaker.name.as_deref() , speaker.username.as_str(), InitialsCount::One) }}">
                           </avatar-image>
-                          <span class="text-sm text-stone-700">{{ speaker.name.as_deref().unwrap_or("") }}</span>
+                          <span class="text-sm text-stone-700">{{ speaker.name|display_some }}</span>
                         </div>
                       {% endif -%}
                     {% endfor -%}
@@ -441,7 +441,7 @@
                   {# Host details -#}
                   <div class="flex-1">
                     {# Host name -#}
-                    <div class="font-semibold text-stone-900">{{ host.name.as_deref().unwrap_or("") }}</div>
+                    <div class="font-semibold text-stone-900">{{ host.name|display_some }}</div>
                     {# End host name -#}
 
                     {# Host role/title and company if available -#}
