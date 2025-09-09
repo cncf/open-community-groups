@@ -18,7 +18,7 @@ use crate::{
         event::{
             EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
         },
-        group::{GroupRole, GroupSummary},
+        group::{GroupRole, GroupRoleSummary, GroupSummary},
     },
 };
 
@@ -63,6 +63,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all group member user ids.
     async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
+
+    /// Lists all available group roles.
+    async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
 
     /// Lists all group team members.
     async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
@@ -291,6 +294,18 @@ impl DBDashboardGroup for PgDB {
         let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(ids)
+    }
+
+    /// [`DBDashboardGroup::list_group_roles`]
+    #[instrument(skip(self), err)]
+    async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>> {
+        trace!("db: list group roles");
+
+        let db = self.pool.get().await?;
+        let row = db.query_one("select list_group_roles()::text", &[]).await?;
+        let roles: Vec<GroupRoleSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(roles)
     }
 
     /// [`DBDashboardGroup::list_group_team_members`]

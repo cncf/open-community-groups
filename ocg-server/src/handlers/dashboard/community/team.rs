@@ -54,7 +54,9 @@ pub(crate) async fn add(
     db.add_community_team_member(community_id, member.user_id).await?;
 
     // Enqueue invitation email notification
+    let community = db.get_community(community_id).await?;
     let template_data = CommunityTeamInvitation {
+        community_name: community.display_name,
         link: format!(
             "{}/dashboard/user?tab=invitations",
             cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)

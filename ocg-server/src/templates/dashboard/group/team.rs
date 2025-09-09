@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::types::group::GroupRole;
+use crate::types::group::{GroupRole, GroupRoleSummary};
 
 // Pages templates.
 
@@ -18,6 +18,8 @@ pub(crate) struct ListPage {
     pub approved_members_count: usize,
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
+    /// List of available team roles.
+    pub roles: Vec<GroupRoleSummary>,
 }
 
 // Types.

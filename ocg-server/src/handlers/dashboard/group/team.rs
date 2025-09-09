@@ -31,11 +31,12 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let members = db.list_group_team_members(group_id).await?;
+    let (members, roles) = tokio::try_join!(db.list_group_team_members(group_id), db.list_group_roles())?;
     let approved_members_count = members.iter().filter(|m| m.accepted).count();
     let template = team::ListPage {
         approved_members_count,
         members,
+        roles,
     };
 
     Ok(Html(template.render()?))
@@ -57,7 +58,9 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification
+    let group = db.get_group_summary(group_id).await?;
     let template_data = GroupTeamInvitation {
+        group,
         link: format!(
             "{}/dashboard/user?tab=invitations",
             cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
