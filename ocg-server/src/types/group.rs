@@ -73,6 +73,14 @@ impl GroupSummary {
 
         Ok(groups)
     }
+
+    /// Try to create a `GroupSummary` instance from a JSON string.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json(data: &str) -> Result<Self> {
+        let mut group: Self = serde_json::from_str(data)?;
+        group.color = color(&group.name).to_string();
+        Ok(group)
+    }
 }
 
 /// Detailed group information.

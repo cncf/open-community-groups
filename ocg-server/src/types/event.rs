@@ -35,6 +35,8 @@ pub struct EventSummary {
     pub kind: EventKind,
     /// Display name of the event.
     pub name: String,
+    /// Whether the event is published.
+    pub published: bool,
     /// URL-friendly identifier for this event.
     pub slug: String,
     /// Timezone in which the event times should be displayed.
@@ -67,6 +69,7 @@ impl From<EventDetailed> for EventSummary {
             group_slug: event.group_slug,
             kind: event.kind,
             name: event.name,
+            published: event.published,
             slug: event.slug,
             timezone: event.timezone,
 
@@ -105,6 +108,14 @@ impl EventSummary {
 
         Ok(events)
     }
+
+    /// Try to create an `EventSummary` instance from a JSON string.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json(data: &str) -> Result<Self> {
+        let mut event: Self = serde_json::from_str(data)?;
+        event.group_color = color(&event.group_name).to_string();
+        Ok(event)
+    }
 }
 
 /// Detailed event information.
@@ -128,6 +139,8 @@ pub struct EventDetailed {
     pub kind: EventKind,
     /// Event title.
     pub name: String,
+    /// Whether the event is published.
+    pub published: bool,
     /// URL slug of the event.
     pub slug: String,
     /// Timezone for event times.

@@ -12,12 +12,17 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{CommunityId, SelectedGroupId},
     },
-    templates::dashboard::group::events::{self, Event},
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    templates::{
+        dashboard::group::events::{self, Event},
+        notifications::{EventCanceled, EventPublished, EventRescheduled},
+    },
 };
 
 // Pages handlers.
@@ -120,20 +125,47 @@ pub(crate) async fn archive(
     // Mark event as archived in database
     db.archive_event(group_id, event_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
 }
 
 /// Cancels an event (sets canceled=true).
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
     SelectedGroupId(group_id): SelectedGroupId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Cancel event in database
+    // Load event summary before canceling
+    let event = db.get_event_summary(event_id).await?;
+
+    // Mark event as canceled in database
     db.cancel_event(group_id, event_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
+    // If event was published, notify all group members
+    if event.published {
+        let user_ids = db.list_group_members_ids(group_id).await?;
+        if !user_ids.is_empty() {
+            let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
+            let template_data = EventCanceled { link, event };
+            let notification = NewNotification {
+                kind: NotificationKind::EventCanceled,
+                recipients: user_ids,
+                template_data: Some(serde_json::to_value(&template_data)?),
+            };
+            notifications_manager.enqueue(&notification).await?;
+        }
+    }
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [(
+            "HX-Location",
+            r#"{"path":"/dashboard/group?tab=events", "target":"body"}"#,
+        )],
+    ))
 }
 
 /// Publishes an event (sets published=true and records publication metadata).
@@ -141,7 +173,9 @@ pub(crate) async fn cancel(
 pub(crate) async fn publish(
     auth_session: AuthSession,
     SelectedGroupId(group_id): SelectedGroupId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -150,7 +184,22 @@ pub(crate) async fn publish(
     // Mark event as published in database
     db.publish_event(group_id, event_id, user.user_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
+    // Notify group members about published event
+    let user_ids = db.list_group_members_ids(group_id).await?;
+    if !user_ids.is_empty() {
+        let event = db.get_event_summary(event_id).await?;
+        let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+        let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
+        let template_data = EventPublished { link, event };
+        let notification = NewNotification {
+            kind: NotificationKind::EventPublished,
+            recipients: user_ids,
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await?;
+    }
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
 }
 
 /// Deletes an event from the database (soft delete).
@@ -163,14 +212,16 @@ pub(crate) async fn delete(
     // Delete event from database (soft delete)
     db.delete_event(group_id, event_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
 }
 
 /// Updates an existing event's information in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     State(serde_qs_de): State<serde_qs::Config>,
     Path(event_id): Path<Uuid>,
     body: String,
@@ -181,8 +232,28 @@ pub(crate) async fn update(
         Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
     };
 
+    // Load event summary before update to detect reschedule
+    let before = db.get_event_summary(event_id).await?;
+
     // Update event in database
     db.update_event(group_id, event_id, &event).await?;
+
+    // Load event after update and notify if rescheduled (only if it was published)
+    let after = db.get_event_summary(event_id).await?;
+    if before.published && before.starts_at != after.starts_at {
+        let user_ids = db.list_group_members_ids(group_id).await?;
+        if !user_ids.is_empty() {
+            let base = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let link = format!("{}/group/{}/event/{}", base, after.group_slug, after.slug);
+            let template_data = EventRescheduled { event: after, link };
+            let notification = NewNotification {
+                kind: NotificationKind::EventRescheduled,
+                recipients: user_ids,
+                template_data: Some(serde_json::to_value(&template_data)?),
+            };
+            notifications_manager.enqueue(&notification).await?;
+        }
+    }
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
 }

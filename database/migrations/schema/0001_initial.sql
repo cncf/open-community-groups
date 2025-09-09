@@ -457,15 +457,19 @@ create index email_verification_code_user_id_idx on email_verification_code (use
 -- NOTIFICATION TABLES
 -- =============================================================================
 
--- Types of notifications that can be sent.
 create table notification_kind (
     notification_kind_id uuid primary key default gen_random_uuid(),
 
     name text not null unique check (name <> '')
 );
 
-insert into notification_kind (name) values ('email-verification');
 insert into notification_kind (name) values ('community-team-invitation');
+insert into notification_kind (name) values ('email-verification');
+insert into notification_kind (name) values ('event-canceled');
+insert into notification_kind (name) values ('event-published');
+insert into notification_kind (name) values ('event-rescheduled');
+insert into notification_kind (name) values ('group-team-invitation');
+insert into notification_kind (name) values ('group-welcome');
 
 -- Queue for notifications to be sent.
 create table notification (
@@ -473,7 +477,7 @@ create table notification (
     created_at timestamptz default current_timestamp not null,
     kind text not null references notification_kind (name) on delete restrict,
     processed boolean not null default false, -- Processing status
-    user_id uuid not null unique references "user" on delete cascade,
+    user_id uuid not null references "user" on delete cascade,
 
     error text check (error <> ''),
     processed_at timestamptz,
