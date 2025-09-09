@@ -100,11 +100,13 @@ pub(crate) async fn page(
             }))
         }
         Tab::Team => {
-            let members = db.list_group_team_members(group_id).await?;
+            let (members, roles) =
+                tokio::try_join!(db.list_group_team_members(group_id), db.list_group_roles())?;
             let approved_members_count = members.iter().filter(|m| m.accepted).count();
             Content::Team(team::ListPage {
                 approved_members_count,
                 members,
+                roles,
             })
         }
     };

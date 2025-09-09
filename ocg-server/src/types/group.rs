@@ -312,3 +312,12 @@ impl std::fmt::Display for GroupRole {
         }
     }
 }
+
+/// Group role summary information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupRoleSummary {
+    /// Display name.
+    pub display_name: String,
+    /// Role identifier.
+    pub group_role_id: String,
+}

@@ -11,6 +11,8 @@ use crate::types::{event::EventSummary, group::GroupSummary};
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/community_team_invitation.html")]
 pub(crate) struct CommunityTeamInvitation {
+    /// Community display name.
+    pub community_name: String,
     /// Link to manage invitations in the dashboard.
     pub link: String,
 }
@@ -57,6 +59,8 @@ pub(crate) struct EventRescheduled {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/group_team_invitation.html")]
 pub(crate) struct GroupTeamInvitation {
+    /// Group summary data.
+    pub group: GroupSummary,
     /// Link to manage invitations in the dashboard.
     pub link: String,
 }
