@@ -1,1 +1,30 @@
+{% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
 
+{% block subject -%}
+  You have been invited to join the {{ community_name }} team
+{% endblock subject -%}
+
+{% block preheader -%}
+  You received an invitation to the {{ community_name }} team. Review and
+  respond.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    You have been invited to join the <strong>{{ community_name }}</strong>
+    team on
+    <strong>Open Community Groups</strong>.
+    <br />
+    <br />
+    Use the link below to review the details and accept or reject the
+    invitation from your dashboard.
+  </p>
+
+  {% call macros::email_button(link = link, text = "Review invitation") %}
+{% endblock content -%}
+
+{% block footer -%}
+  Didn't expect this invitation? It's likely someone entered your email by
+  mistake. You can ignore this message.
+{% endblock footer -%}
