@@ -11,6 +11,7 @@ declare
     v_session jsonb;
     v_session_id uuid;
     v_speaker_id uuid;
+    v_sponsor_id uuid;
 begin
     -- Get community_id for validation
     select community_id into v_community_id
@@ -89,22 +90,22 @@ begin
         end loop;
     end if;
 
-    -- Insert event sponsors
+    -- Insert event sponsors (link to group sponsors)
     if p_event->'sponsors' is not null then
-        insert into event_sponsor (
-            event_id,
-            name,
-            logo_url,
-            level,
-            website_url
-        )
-        select
-            v_event_id,
-            sponsor->>'name',
-            sponsor->>'logo_url',
-            sponsor->>'level',
-            sponsor->>'website_url'
-        from jsonb_array_elements(p_event->'sponsors') as sponsor;
+        for v_sponsor_id in select (jsonb_array_elements_text(p_event->'sponsors'))::uuid
+        loop
+            -- Validate sponsor belongs to the group
+            if not exists (
+                select 1 from group_sponsor
+                where group_sponsor_id = v_sponsor_id
+                and group_id = p_group_id
+            ) then
+                raise exception 'sponsor % not found in group', v_sponsor_id;
+            end if;
+
+            insert into event_sponsor (event_id, group_sponsor_id)
+            values (v_event_id, v_sponsor_id);
+        end loop;
     end if;
 
     -- Insert sessions and speakers

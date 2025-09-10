@@ -18,6 +18,8 @@ select plan(2);
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user3ID '00000000-0000-0000-0000-000000000053'
 \set user4ID '00000000-0000-0000-0000-000000000054'
+\set sponsor1ID '00000000-0000-0000-0000-000000000061'
+\set sponsor2ID '00000000-0000-0000-0000-000000000062'
 
 -- ============================================================================
 -- SEED DATA
@@ -135,11 +137,17 @@ values
     (:'groupID', :'user3ID', 'organizer', true, 1, '2024-01-01 00:00:00'),
     (:'groupID', :'user4ID', 'organizer', true, 2, '2024-01-01 00:00:00');
 
--- Sponsors
-insert into event_sponsor (event_id, name, logo_url, level, website_url)
+-- Group Sponsors
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
 values
-    (:'eventID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
-    (:'eventID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+    (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
+    (:'sponsor2ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+
+-- Event Sponsors (linking group sponsors to event)
+insert into event_sponsor (event_id, group_sponsor_id)
+values
+    (:'eventID', :'sponsor1ID'),
+    (:'eventID', :'sponsor2ID');
 
 -- ============================================================================
 -- TESTS
@@ -194,11 +202,13 @@ select is(
         "published": true,
         "sponsors": [
             {
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000061",
                 "level": "Silver",
                 "logo_url": "https://example.com/cloudinc.png",
                 "name": "CloudInc"
             },
             {
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000062",
                 "level": "Gold",
                 "logo_url": "https://example.com/techcorp.png",
                 "name": "TechCorp",

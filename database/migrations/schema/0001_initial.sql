@@ -374,19 +374,17 @@ create table event_attendee (
 create index event_attendee_event_id_idx on event_attendee (event_id);
 create index event_attendee_user_id_idx on event_attendee (user_id);
 
--- Sponsors supporting specific events with different sponsorship levels
+-- Group sponsors supporting events
 create table event_sponsor (
-    event_sponsor_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
     event_id uuid not null references event,
-    level text not null check (level <> ''),
-    logo_url text not null check (logo_url <> ''),
-    name text not null check (name <> ''),
+    group_sponsor_id uuid not null references group_sponsor,
 
-    website_url text check (website_url <> '')
+    primary key (group_sponsor_id, event_id)
 );
 
 create index event_sponsor_event_id_idx on event_sponsor (event_id);
+create index event_sponsor_group_sponsor_id_idx on event_sponsor (group_sponsor_id);
 
 -- =============================================================================
 -- SESSION TABLES

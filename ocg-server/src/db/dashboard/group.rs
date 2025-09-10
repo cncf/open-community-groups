@@ -18,7 +18,7 @@ use crate::{
         event::{
             EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
         },
-        group::{GroupRole, GroupRoleSummary, GroupSummary},
+        group::{GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary},
     },
 };
 
@@ -66,6 +66,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all available group roles.
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
+
+    /// Lists all sponsors for a group.
+    async fn list_group_sponsors(&self, group_id: Uuid) -> Result<Vec<GroupSponsor>>;
 
     /// Lists all group team members.
     async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
@@ -306,6 +309,20 @@ impl DBDashboardGroup for PgDB {
         let roles: Vec<GroupRoleSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(roles)
+    }
+
+    /// [`DBDashboardGroup::list_group_sponsors`]
+    #[instrument(skip(self), err)]
+    async fn list_group_sponsors(&self, group_id: Uuid) -> Result<Vec<GroupSponsor>> {
+        trace!("db: list group sponsors");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_group_sponsors($1::uuid)::text", &[&group_id])
+            .await?;
+        let sponsors: Vec<GroupSponsor> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(sponsors)
     }
 
     /// [`DBDashboardGroup::list_group_team_members`]

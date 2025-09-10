@@ -321,3 +321,20 @@ pub struct GroupRoleSummary {
     /// Role identifier.
     pub group_role_id: String,
 }
+
+/// Group sponsor with identifier (used for dashboard selection lists).
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupSponsor {
+    /// Group sponsor identifier.
+    pub group_sponsor_id: Uuid,
+    /// Sponsor level.
+    pub level: String,
+    /// URL to sponsor logo.
+    pub logo_url: String,
+    /// Sponsor name.
+    pub name: String,
+
+    /// Sponsor website URL.
+    pub website_url: Option<String>,
+}

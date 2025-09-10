@@ -17,6 +17,8 @@ select plan(5);
 \set user2ID '00000000-0000-0000-0000-000000000021'
 \set user3ID '00000000-0000-0000-0000-000000000022'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
+\set sponsorOrigID '00000000-0000-0000-0000-000000000061'
+\set sponsorNewID '00000000-0000-0000-0000-000000000062'
 
 -- ============================================================================
 -- SEED DATA
@@ -76,6 +78,12 @@ insert into "group" (
     '00000000-0000-0000-0000-000000000010'
 );
 
+-- Group Sponsors
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
+values
+    (:'sponsorOrigID', :'group1ID', 'Original Sponsor', 'https://example.com/sponsor.png', 'Bronze', null),
+    (:'sponsorNewID',  :'group1ID', 'NewSponsor Inc',   'https://example.com/newsponsor.png', 'Platinum', 'https://newsponsor.com');
+
 -- Event
 insert into event (
     event_id,
@@ -99,8 +107,8 @@ insert into event (
 
 -- Add initial host and sponsor to the event
 insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
-insert into event_sponsor (event_id, name, logo_url, level)
-values (:'event1ID', 'Original Sponsor', 'https://example.com/sponsor.png', 'Bronze');
+insert into event_sponsor (event_id, group_sponsor_id)
+values (:'event1ID', :'sponsorOrigID');
 
 -- ============================================================================
 -- TESTS
@@ -166,14 +174,7 @@ select update_event(
         "venue_name": "New Venue",
         "venue_zip_code": "100-0001",
         "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
-        "sponsors": [
-            {
-                "name": "NewSponsor Inc",
-                "logo_url": "https://example.com/newsponsor.png",
-                "level": "Platinum",
-                "website_url": "https://newsponsor.com"
-            }
-        ],
+        "sponsors": ["00000000-0000-0000-0000-000000000062"],
         "sessions": [
             {
                 "name": "Updated Session",
@@ -227,7 +228,7 @@ select is(
         "venue_name": "New Venue",
         "venue_zip_code": "100-0001",
         "sponsors": [
-            {"level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
         ],
         "sessions": [
             {

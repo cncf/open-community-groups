@@ -17,6 +17,8 @@ select plan(3);
 \set user2ID '00000000-0000-0000-0000-000000000021'
 \set user3ID '00000000-0000-0000-0000-000000000022'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
+\set sponsor1ID '00000000-0000-0000-0000-000000000061'
+\set sponsor2ID '00000000-0000-0000-0000-000000000062'
 
 -- ============================================================================
 -- SEED DATA
@@ -73,6 +75,12 @@ insert into "group" (
     'A study group focused on Kubernetes best practices and implementation',
     :'groupCategoryID'
 );
+
+-- Group Sponsors
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
+values
+    (:'sponsor1ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com'),
+    (:'sponsor2ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null);
 
 -- ============================================================================
 -- TESTS
@@ -151,17 +159,8 @@ with new_event as (
                 }
             ],
             "sponsors": [
-                {
-                    "name": "TechCorp",
-                    "logo_url": "https://example.com/techcorp.png",
-                    "level": "Gold",
-                    "website_url": "https://techcorp.com"
-                },
-                {
-                    "name": "CloudInc",
-                    "logo_url": "https://example.com/cloudinc.png",
-                    "level": "Silver"
-                }
+                "00000000-0000-0000-0000-000000000061",
+                "00000000-0000-0000-0000-000000000062"
             ]
         }'::jsonb
     ) as event_id
@@ -230,8 +229,8 @@ select is(
             }
         ],
         "sponsors": [
-            {"level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
-            {"level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
         ]
     }'::jsonb,
     'add_event should create event with all fields including hosts, sponsors, and sessions'
