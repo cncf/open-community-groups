@@ -36,11 +36,14 @@
 {{ template "dashboard-community/update_community.sql" }}
 
 {{ template "dashboard-group/add_event.sql" }}
+{{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
 {{ template "dashboard-group/archive_event.sql" }}
 {{ template "dashboard-group/delete_event.sql" }}
+{{ template "dashboard-group/delete_group_sponsor.sql" }}
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/get_attendees_filters_options.sql" }}
+{{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/list_event_attendees_ids.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
@@ -54,6 +57,7 @@
 {{ template "dashboard-group/list_user_groups.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
+{{ template "dashboard-group/update_group_sponsor.sql" }}
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 

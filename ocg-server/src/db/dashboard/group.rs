@@ -12,6 +12,7 @@ use crate::{
         attendees::{Attendee, AttendeesFilterOptions, AttendeesFilters},
         events::Event,
         members::GroupMember,
+        sponsors::Sponsor,
         team::GroupTeamMember,
     },
     types::{
@@ -28,6 +29,9 @@ pub(crate) trait DBDashboardGroup {
     /// Adds a user to the group team (pending by default).
     async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()>;
 
+    /// Adds a new sponsor to the database.
+    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid>;
+
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
 
@@ -40,11 +44,17 @@ pub(crate) trait DBDashboardGroup {
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
     async fn delete_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
+    /// Deletes a sponsor from the database.
+    async fn delete_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<()>;
+
     /// Deletes a user from the group team.
     async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
 
     /// Returns attendees filters options for a group.
     async fn get_attendees_filters_options(&self, group_id: Uuid) -> Result<AttendeesFilterOptions>;
+
+    /// Gets a single sponsor from the database.
+    async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
 
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
@@ -92,6 +102,14 @@ pub(crate) trait DBDashboardGroup {
     /// Updates an existing event.
     async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
 
+    /// Updates an existing sponsor.
+    async fn update_group_sponsor(
+        &self,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+        sponsor: &Sponsor,
+    ) -> Result<()>;
+
     /// Updates a group team member role.
     async fn update_group_team_member_role(
         &self,
@@ -116,6 +134,22 @@ impl DBDashboardGroup for PgDB {
         .await?;
 
         Ok(())
+    }
+    /// [`DBDashboardGroup::add_group_sponsor`]
+    #[instrument(skip(self, sponsor), err)]
+    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid> {
+        trace!("db: add group sponsor");
+
+        let db = self.pool.get().await?;
+        let id = db
+            .query_one(
+                "select add_group_sponsor($1::uuid, $2::jsonb)::uuid",
+                &[&group_id, &Json(sponsor)],
+            )
+            .await?
+            .get(0);
+
+        Ok(id)
     }
     /// [`DBDashboardGroup::add_event`]
     #[instrument(skip(self, event), err)]
@@ -185,6 +219,21 @@ impl DBDashboardGroup for PgDB {
         Ok(())
     }
 
+    /// [`DBDashboardGroup::delete_group_sponsor`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<()> {
+        trace!("db: delete group sponsor");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select delete_group_sponsor($1::uuid, $2::uuid)",
+            &[&group_id, &group_sponsor_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     /// [`DBDashboardGroup::delete_group_team_member`]
     #[instrument(skip(self), err)]
     async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
@@ -215,6 +264,23 @@ impl DBDashboardGroup for PgDB {
         let filters_options: AttendeesFilterOptions = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(filters_options)
+    }
+
+    /// [`DBDashboardGroup::get_group_sponsor`]
+    #[instrument(skip(self), err)]
+    async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor> {
+        trace!("db: get group sponsor");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_group_sponsor($1::uuid, $2::uuid)::text",
+                &[&group_sponsor_id, &group_id],
+            )
+            .await?;
+        let sponsor: GroupSponsor = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(sponsor)
     }
 
     /// [`DBDashboardGroup::list_event_categories`]
@@ -410,6 +476,26 @@ impl DBDashboardGroup for PgDB {
         db.execute(
             "select update_event($1::uuid, $2::uuid, $3::jsonb)",
             &[&group_id, &event_id, &Json(event)],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardGroup::update_group_sponsor`]
+    #[instrument(skip(self, sponsor), err)]
+    async fn update_group_sponsor(
+        &self,
+        group_id: Uuid,
+        group_sponsor_id: Uuid,
+        sponsor: &Sponsor,
+    ) -> Result<()> {
+        trace!("db: update group sponsor");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_group_sponsor($1::uuid, $2::uuid, $3::jsonb)",
+            &[&group_id, &group_sponsor_id, &Json(sponsor)],
         )
         .await?;
 

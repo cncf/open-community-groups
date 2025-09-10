@@ -24,7 +24,7 @@ use crate::{
         dashboard::group::{
             attendees, events,
             home::{Content, Page, Tab},
-            members, settings, team,
+            members, settings, sponsors, team,
         },
     },
 };
@@ -98,6 +98,10 @@ pub(crate) async fn page(
                 group,
                 regions,
             }))
+        }
+        Tab::Sponsors => {
+            let sponsors = db.list_group_sponsors(group_id).await?;
+            Content::Sponsors(sponsors::ListPage { sponsors })
         }
         Tab::Team => {
             let (members, roles) =
