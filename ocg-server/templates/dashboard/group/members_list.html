@@ -38,7 +38,7 @@
                 </avatar-image>
                 <div class="min-w-0">
                   <div class="font-medium text-stone-900 truncate">
-                    {{ member.name.as_deref().unwrap_or(member.username) }}
+                    {{ member.name.as_deref().unwrap_or(member.username.as_str()) }}
                   </div>
                   <div class="text-xs text-stone-600 truncate">@{{ member.username }}</div>
                 </div>
