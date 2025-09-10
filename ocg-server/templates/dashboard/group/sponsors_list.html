@@ -1,4 +1,5 @@
 {% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "common.html" as common -%}
 
 {# Sponsors header with title and add button -#}
 <div class="flex items-center">
@@ -29,14 +30,15 @@
            role="rowgroup">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Sponsor</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Level</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Level</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Website</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
       </tr>
     </thead>
     <tbody id="sponsors-list" role="rowgroup">
       {% if sponsors.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="3">
+          <td class="px-8 py-12 text-center" colspan="4">
             <div class="text-xl lg:text-2xl mb-6">No sponsors yet.</div>
             <p class="text-sm lg:text-md text-stone-700">Sponsors for this group will appear here once added.</p>
           </td>
@@ -62,7 +64,7 @@
             {# End sponsor -#}
 
             {# Level -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[120px]">{{ sponsor.level }}</td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[120px]">{% call common::badge(content = sponsor.level) -%}</td>
             {# End level -#}
 
             {# Website -#}
@@ -77,6 +79,62 @@
               {% endif -%}
             </td>
             {# End website -#}
+
+            {# Actions -#}
+            <td class="px-3 xl:px-5 py-4 w-32 xl:w-40 w-27">
+              <div class="flex items-center gap-x-3">
+                <div>
+                  <button hx-get="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/update"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-swap="innerHTML show:body:top"
+                          hx-disabled-elt="this"
+                          class="btn-tertiary p-2"
+                          aria-label="Edit sponsor: {{ sponsor.name }}">
+                    <div class="svg-icon size-4 icon-pencil"></div>
+                  </button>
+                </div>
+                <div>
+                  <button id="delete-sponsor-{{ sponsor.group_sponsor_id }}"
+                          hx-delete="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/delete"
+                          hx-target="#dashboard-content"
+                          hx-indicator="#dashboard-spinner"
+                          hx-trigger="confirmed"
+                          class="btn-tertiary p-2"
+                          aria-label="Delete sponsor: {{ sponsor.name }}">
+                    <div class="svg-icon size-4 icon-trash"></div>
+                  </button>
+                  <script type="module">
+                    import {
+                      showConfirmAlert,
+                      showErrorAlert,
+                      showSuccessAlert,
+                    } from '/static/js/common/alerts.js';
+                    import { isSuccessfulXHRStatus } from '/static/js/common/common.js';
+
+                    const deleteButton = document.getElementById('delete-sponsor-{{ sponsor.group_sponsor_id }}');
+                    if (deleteButton) {
+                      deleteButton.addEventListener('click', () => {
+                        showConfirmAlert(
+                          'Are you sure you would like to delete this sponsor?',
+                          'delete-sponsor-{{ sponsor.group_sponsor_id }}',
+                          'Yes',
+                        );
+                      });
+
+                      deleteButton.addEventListener('htmx:afterRequest', (e) => {
+                        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                          showSuccessAlert('You have successfully deleted the sponsor.');
+                        } else {
+                          showErrorAlert('An error occurred deleting this sponsor, please try again later.');
+                        }
+                      });
+                    }
+                  </script>
+                </div>
+              </div>
+            </td>
+            {# End actions -#}
           </tr>
         {% endfor -%}
       {% endif -%}
