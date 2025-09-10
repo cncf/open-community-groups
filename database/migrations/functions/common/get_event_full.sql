@@ -109,13 +109,15 @@ returns json as $$
         ),
         'sponsors', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
-                'level', es.level,
-                'logo_url', es.logo_url,
-                'name', es.name,
+                'group_sponsor_id', gs.group_sponsor_id,
+                'level', gs.level,
+                'logo_url', gs.logo_url,
+                'name', gs.name,
 
-                'website_url', es.website_url
-            )) order by es.name), '[]')
+                'website_url', gs.website_url
+            )) order by gs.name), '[]')
             from event_sponsor es
+            join group_sponsor gs on gs.group_sponsor_id = es.group_sponsor_id
             where es.event_id = e.event_id
         )
     )) as json_data

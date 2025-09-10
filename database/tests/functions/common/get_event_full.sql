@@ -19,6 +19,8 @@ select plan(2);
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
 \set session1ID '00000000-0000-0000-0000-000000000051'
 \set session2ID '00000000-0000-0000-0000-000000000052'
+\set sponsor1ID '00000000-0000-0000-0000-000000000061'
+\set sponsor2ID '00000000-0000-0000-0000-000000000062'
 \set user1ID '00000000-0000-0000-0000-000000000041'
 \set user2ID '00000000-0000-0000-0000-000000000042'
 \set user3ID '00000000-0000-0000-0000-000000000043'
@@ -211,11 +213,17 @@ insert into session (
 insert into session_speaker (session_id, user_id, featured)
 values (:'session1ID', :'user3ID', true);
 
--- Sponsors
-insert into event_sponsor (event_id, name, logo_url, level, website_url)
+-- Group Sponsors
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
 values
-    (:'eventID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
-    (:'eventID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+    (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
+    (:'sponsor2ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+
+-- Event Sponsors (linking group sponsors to event)
+insert into event_sponsor (event_id, group_sponsor_id)
+values
+    (:'eventID', :'sponsor1ID'),
+    (:'eventID', :'sponsor2ID');
 
 -- Event (unpublished)
 insert into event (
@@ -380,11 +388,13 @@ select is(
         ],
         "sponsors": [
             {
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000061",
                 "level": "Silver",
                 "logo_url": "https://example.com/cloudinc.png",
                 "name": "CloudInc"
             },
             {
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000062",
                 "level": "Gold",
                 "logo_url": "https://example.com/techcorp.png",
                 "name": "TechCorp",

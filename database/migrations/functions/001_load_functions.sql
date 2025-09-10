@@ -48,6 +48,7 @@
 {{ template "dashboard-group/list_group_members.sql" }}
 {{ template "dashboard-group/list_group_members_ids.sql" }}
 {{ template "dashboard-group/list_group_roles.sql" }}
+{{ template "dashboard-group/list_group_sponsors.sql" }}
 {{ template "dashboard-group/list_group_team_members.sql" }}
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}

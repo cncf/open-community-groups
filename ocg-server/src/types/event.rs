@@ -13,7 +13,7 @@ use crate::{
         common::User,
         helpers::{LocationParts, build_location, color},
     },
-    types::group::GroupSummary,
+    types::group::{GroupSponsor, GroupSummary},
 };
 
 /// Summary event information.
@@ -241,7 +241,7 @@ pub struct EventFull {
     /// URL slug of the event.
     pub slug: String,
     /// Event sponsors.
-    pub sponsors: Vec<Sponsor>,
+    pub sponsors: Vec<GroupSponsor>,
     /// Timezone for event times.
     pub timezone: Tz,
 
@@ -395,19 +395,4 @@ pub struct SessionKindSummary {
     pub session_kind_id: String,
     /// Display name.
     pub display_name: String,
-}
-
-/// Sponsor information for an event.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Sponsor {
-    /// Sponsor level.
-    pub level: String,
-    /// URL to sponsor logo.
-    pub logo_url: String,
-    /// Sponsor name.
-    pub name: String,
-
-    /// Sponsor website URL.
-    pub website_url: Option<String>,
 }

@@ -9,8 +9,9 @@ use uuid::Uuid;
 use crate::{
     templates::{filters, helpers::DATE_FORMAT},
     types::event::{
-        EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary, Sponsor,
+        EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
     },
+    types::group::GroupSponsor,
 };
 
 // Pages templates.
@@ -27,6 +28,8 @@ pub(crate) struct AddPage {
     pub event_kinds: Vec<EventKindSummary>,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
+    /// List of sponsors available for this group.
+    pub sponsors: Vec<GroupSponsor>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }
@@ -53,6 +56,8 @@ pub(crate) struct UpdatePage {
     pub event_kinds: Vec<EventKindSummary>,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
+    /// List of sponsors available for this group.
+    pub sponsors: Vec<GroupSponsor>,
     /// List of available timezones.
     pub timezones: Vec<String>,
 }
@@ -98,8 +103,8 @@ pub(crate) struct Event {
     pub registration_required: Option<bool>,
     /// Event sessions with speakers.
     pub sessions: Option<Vec<Session>>,
-    /// Event sponsors.
-    pub sponsors: Option<Vec<Sponsor>>,
+    /// Event sponsors (group sponsor identifiers).
+    pub sponsors: Option<Vec<Uuid>>,
     /// Event start time.
     pub starts_at: Option<NaiveDateTime>,
     /// Streaming URL.

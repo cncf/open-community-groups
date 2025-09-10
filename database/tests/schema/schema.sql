@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(76);
+select plan(77);
 
 -- ============================================================================
 -- TESTS
@@ -150,14 +150,9 @@ select columns_are('event_kind', array[
 
 -- Test: event_sponsor columns should match expected
 select columns_are('event_sponsor', array[
-    'event_sponsor_id',
     'created_at',
     'event_id',
-    'level',
-    'logo_url',
-    'name',
-
-    'website_url'
+    'group_sponsor_id'
 ]);
 
 -- Test: group columns should match expected
@@ -341,6 +336,13 @@ select indexes_are('group', array[
     'group_tsdoc_idx',
     'group_location_idx',
     'group_search_idx'
+]);
+
+-- Test: event_sponsor indexes should match expected
+select indexes_are('event_sponsor', array[
+    'event_sponsor_pkey',
+    'event_sponsor_event_id_idx',
+    'event_sponsor_group_sponsor_id_idx'
 ]);
 
 -- Test: group_team indexes should match expected

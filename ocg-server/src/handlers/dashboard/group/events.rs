@@ -39,10 +39,11 @@ pub(crate) async fn add_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (categories, event_kinds, session_kinds, timezones) = tokio::try_join!(
+    let (categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
+        db.list_group_sponsors(group_id),
         db.list_timezones()
     )?;
     let template = events::AddPage {
@@ -50,6 +51,7 @@ pub(crate) async fn add_page(
         categories,
         event_kinds,
         session_kinds,
+        sponsors,
         timezones,
     };
 
@@ -78,11 +80,12 @@ pub(crate) async fn update_page(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (event, categories, event_kinds, session_kinds, timezones) = tokio::try_join!(
+    let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.get_event_full(event_id),
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
+        db.list_group_sponsors(group_id),
         db.list_timezones()
     )?;
     let template = events::UpdatePage {
@@ -91,6 +94,7 @@ pub(crate) async fn update_page(
         categories,
         event_kinds,
         session_kinds,
+        sponsors,
         timezones,
     };
 
