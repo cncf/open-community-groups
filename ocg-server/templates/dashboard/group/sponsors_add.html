@@ -30,7 +30,6 @@
                    spellcheck="false"
                    required>
           </div>
-          <p class="form-legend">Sponsor display name.</p>
         </div>
         {# End Sponsor name -#}
 
@@ -52,7 +51,6 @@
                    spellcheck="false"
                    required>
           </div>
-          <p class="form-legend">Sponsorship tier or level.</p>
         </div>
         {# End Sponsorship level -#}
 
@@ -69,7 +67,6 @@
                    placeholder="https://example.com/logo.png"
                    required>
           </div>
-          <p class="form-legend">URL to the sponsor's logo image.</p>
         </div>
         {# End Logo URL -#}
 
@@ -83,7 +80,6 @@
                    class="input-primary"
                    placeholder="https://example.com">
           </div>
-          <p class="form-legend">Sponsor website (optional).</p>
         </div>
         {# End Website URL -#}
       </div>
@@ -107,24 +103,21 @@
 </form>
 
 <script type="module">
-  import { isSuccessfulXHRStatus } from '/static/js/common/common.js';
-  import { showErrorAlert, showSuccessAlert } from '/static/js/common/alerts.js';
+  import {
+    isSuccessfulXHRStatus
+  } from '/static/js/common/common.js';
+  import {
+    showErrorAlert,
+    showSuccessAlert
+  } from '/static/js/common/alerts.js';
 
   const sponsorForm = document.getElementById('sponsor-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      try { history.pushState({}, 'Sponsors list', '/dashboard/group?tab=sponsors'); } catch (_) {}
-    });
-  }
 
   if (sponsorForm) {
     sponsorForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'sponsor-form') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
           showSuccessAlert('Sponsor added successfully.');
-          try { window.location.href = '/dashboard/group?tab=sponsors'; } catch (_) {}
         } else {
           showErrorAlert('Something went wrong adding the sponsor, please try again later.');
         }
