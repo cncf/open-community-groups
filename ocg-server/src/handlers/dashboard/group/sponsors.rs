@@ -71,10 +71,7 @@ pub(crate) async fn add(
 
     Ok((
         StatusCode::CREATED,
-        [(
-            "HX-Trigger",
-            "refresh-sponsors-table,refresh-group-dashboard-table",
-        )],
+        [("HX-Trigger", "refresh-group-dashboard-table")],
     )
         .into_response())
 }
@@ -91,10 +88,7 @@ pub(crate) async fn delete(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-sponsors-table,refresh-group-dashboard-table",
-        )],
+        [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
 }
 
@@ -111,9 +105,6 @@ pub(crate) async fn update(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [(
-            "HX-Trigger",
-            "refresh-sponsors-table,refresh-group-dashboard-table",
-        )],
+        [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
 }
