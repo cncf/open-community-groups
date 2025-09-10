@@ -14,7 +14,7 @@ description = "Manage invitations to join communities."
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Community</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
-          <th scope="col" class="p-4 w-32"></th>
+          <th scope="col" class="p-4 w-32 w-27"></th>
         </tr>
       </thead>
       <tbody>
@@ -39,7 +39,7 @@ description = "Manage invitations to join communities."
               {# End created at date -#}
 
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 w-27">
                 <div class="flex items-center justify-center gap-x-2">
                   <div>
                     <button hx-put="/dashboard/user/invitations/community/accept"
@@ -115,7 +115,7 @@ description = "Manage invitations to join groups."
           <th scope="col" class="px-3 xl:px-5 py-3 w-auto lg:w-2/5 xl:w-1/3">Group</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Role</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Created</th>
-          <th scope="col" class="p-4 w-32"></th>
+          <th scope="col" class="p-4 w-32 w-27"></th>
         </tr>
       </thead>
       <tbody>
@@ -144,7 +144,7 @@ description = "Manage invitations to join groups."
               {# End created at date -#}
 
               {# Actions -#}
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 w-27">
                 <div class="flex items-center justify-center gap-x-2">
                   <div>
                     <button hx-put="/dashboard/user/invitations/group/{{ invitation.group_id }}/accept"
