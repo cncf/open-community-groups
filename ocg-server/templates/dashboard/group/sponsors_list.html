@@ -64,7 +64,9 @@
             {# End sponsor -#}
 
             {# Level -#}
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[120px]">{% call common::badge(content = sponsor.level) -%}</td>
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[120px]">
+              {% call common::badge(content = sponsor.level) -%}
+            </td>
             {# End level -#}
 
             {# Website -#}
@@ -110,7 +112,9 @@
                       showErrorAlert,
                       showSuccessAlert,
                     } from '/static/js/common/alerts.js';
-                    import { isSuccessfulXHRStatus } from '/static/js/common/common.js';
+                    import {
+                      isSuccessfulXHRStatus
+                    } from '/static/js/common/common.js';
 
                     const deleteButton = document.getElementById('delete-sponsor-{{ sponsor.group_sponsor_id }}');
                     if (deleteButton) {
