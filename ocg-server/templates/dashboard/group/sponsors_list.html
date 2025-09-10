@@ -1,1 +1,87 @@
+{% import "dashboard/dashboard_macros.html" as macros -%}
 
+{# Sponsors header with title and add button -#}
+<div class="flex items-center">
+  <div>{% call macros::form_title(title = "Sponsors") -%}</div>
+  <div class="ms-auto">
+    <button id="add-sponsor-button"
+            hx-get="/dashboard/group/sponsors/add"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary">Add Sponsor</button>
+  </div>
+  <script type="module">
+    const addSponsorButton = document.getElementById('add-sponsor-button');
+    if (addSponsorButton) {
+      addSponsorButton.addEventListener('htmx:afterRequest', () => {
+        history.pushState({}, 'Sponsors list', '/dashboard/group?tab=sponsors');
+      });
+    }
+  </script>
+</div>
+
+{# Sponsors table -#}
+<div class="relative overflow-visible mt-10">
+  <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+         role="table"
+         aria-label="Sponsors list">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+           role="rowgroup">
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Sponsor</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Level</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Website</th>
+      </tr>
+    </thead>
+    <tbody id="sponsors-list" role="rowgroup">
+      {% if sponsors.is_empty() -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-12 text-center" colspan="3">
+            <div class="text-xl lg:text-2xl mb-6">No sponsors yet.</div>
+            <p class="text-sm lg:text-md text-stone-700">Sponsors for this group will appear here once added.</p>
+          </td>
+        </tr>
+      {% else -%}
+        {% for sponsor in sponsors -%}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Sponsor -#}
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex items-center space-x-4">
+                <div class="h-10 w-10 min-w-10 rounded-lg overflow-hidden outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white bg-white">
+                  <img src="{{ sponsor.logo_url }}"
+                       alt="{{ sponsor.name }} logo"
+                       class="h-full w-full object-contain"
+                       height="auto"
+                       width="auto" />
+                </div>
+                <div class="min-w-0">
+                  <div class="font-medium text-stone-900 truncate">{{ sponsor.name }}</div>
+                </div>
+              </div>
+            </td>
+            {# End sponsor -#}
+
+            {# Level -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[120px]">{{ sponsor.level }}</td>
+            {# End level -#}
+
+            {# Website -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[180px]">
+              {% if let Some(website) = sponsor.website_url -%}
+                <a href="{{ website }}"
+                   target="_blank"
+                   rel="noopener"
+                   class="text-primary-600 hover:underline break-all">{{ website }}</a>
+              {% else -%}
+                -
+              {% endif -%}
+            </td>
+            {# End website -#}
+          </tr>
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+  {# End table -#}
+
+</div>
