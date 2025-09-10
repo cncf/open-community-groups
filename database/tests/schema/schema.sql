@@ -100,6 +100,7 @@ select columns_are('event', array[
     'deleted_at',
     'description_short',
     'ends_at',
+    'legacy_id',
     'logo_url',
     'meetup_url',
     'photos_urls',
@@ -180,6 +181,7 @@ select columns_are('group', array[
     'flickr_url',
     'github_url',
     'instagram_url',
+    'legacy_id',
     'linkedin_url',
     'location',
     'logo_url',
@@ -273,6 +275,7 @@ select columns_are('user', array[
     'country',
     'facebook_url',
     'interests',
+    'legacy_id',
     'linkedin_url',
     'name',
     'password',
@@ -316,6 +319,7 @@ select indexes_are('community', array[
 -- Test: event indexes should match expected
 select indexes_are('event', array[
     'event_pkey',
+    'event_legacy_id_key',
     'event_slug_group_id_key',
     'event_group_id_idx',
     'event_event_category_id_idx',
@@ -328,6 +332,7 @@ select indexes_are('event', array[
 -- Test: group indexes should match expected
 select indexes_are('group', array[
     'group_pkey',
+    'group_legacy_id_key',
     'group_slug_community_id_key',
     'group_community_id_idx',
     'group_group_category_id_idx',
@@ -356,6 +361,7 @@ select indexes_are('group_team', array[
 -- Test: user indexes should match expected
 select indexes_are('user', array[
     'user_pkey',
+    'user_legacy_id_key',
     'user_email_community_id_key',
     'user_username_community_id_key',
     'user_community_id_idx',

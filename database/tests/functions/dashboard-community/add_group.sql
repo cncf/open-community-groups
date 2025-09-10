@@ -181,7 +181,7 @@ begin
 end $$;
 
 select is(
-    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location'
+    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location' - 'legacy_id'
      from (
         select * from "group"
         where slug = 'empty-string-test-group-unique'
