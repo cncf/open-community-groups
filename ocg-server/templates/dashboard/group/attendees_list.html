@@ -130,9 +130,11 @@
                   </avatar-image>
                   <div class="min-w-0">
                     <div class="font-medium text-stone-900 truncate">
-                      {{ attendee.name.as_deref().unwrap_or(attendee.username) }}
+                      {{ attendee.name|display_some_or(format!("@{}", attendee.username)) }}
                     </div>
-                    <div class="text-xs text-stone-600 truncate">@{{ attendee.username }}</div>
+                    {% if attendee.name.is_some() -%}
+                      <div class="text-xs text-stone-600 truncate">@{{ attendee.username }}</div>
+                    {% endif -%}
                   </div>
                 </div>
               </td>
