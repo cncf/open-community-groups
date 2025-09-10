@@ -9,7 +9,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::group::{attendees, events, members, settings, team},
+        dashboard::group::{attendees, events, members, settings, sponsors, team},
         filters,
     },
     types::{community::Community, group::GroupSummary},
@@ -51,6 +51,8 @@ pub(crate) enum Content {
     Members(members::ListPage),
     /// Settings management page.
     Settings(Box<settings::UpdatePage>),
+    /// Sponsors management page.
+    Sponsors(sponsors::ListPage),
     /// Team management page.
     Team(team::ListPage),
 }
@@ -86,6 +88,12 @@ impl Content {
         matches!(self, Content::Settings(_))
     }
 
+    /// Check if the content is the sponsors page.
+    #[allow(dead_code)]
+    fn is_sponsors(&self) -> bool {
+        matches!(self, Content::Sponsors(_))
+    }
+
     /// Check if the content is the team page.
     #[allow(dead_code)]
     fn is_team(&self) -> bool {
@@ -101,6 +109,7 @@ impl std::fmt::Display for Content {
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
+            Content::Sponsors(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
         }
     }
@@ -121,6 +130,8 @@ pub(crate) enum Tab {
     Members,
     /// Settings management tab.
     Settings,
+    /// Sponsors management tab.
+    Sponsors,
     /// Team management tab.
     Team,
 }

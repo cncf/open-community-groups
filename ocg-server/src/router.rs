@@ -287,6 +287,19 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )
+        .route("/sponsors", get(dashboard::group::sponsors::list_page))
+        .route(
+            "/sponsors/add",
+            get(dashboard::group::sponsors::add_page).post(dashboard::group::sponsors::add),
+        )
+        .route(
+            "/sponsors/{group_sponsor_id}/delete",
+            delete(dashboard::group::sponsors::delete),
+        )
+        .route(
+            "/sponsors/{group_sponsor_id}/update",
+            get(dashboard::group::sponsors::update_page).put(dashboard::group::sponsors::update),
+        )
         .route("/team", get(dashboard::group::team::list_page))
         .route("/team/add", post(dashboard::group::team::add))
         .route("/team/{user_id}/delete", delete(dashboard::group::team::delete))

@@ -5,4 +5,5 @@ pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod members;
 pub(crate) mod settings;
+pub(crate) mod sponsors;
 pub(crate) mod team;
