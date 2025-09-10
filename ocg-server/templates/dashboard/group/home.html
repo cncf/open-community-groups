@@ -73,6 +73,7 @@
           {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/group?tab=settings") -%}
           {% call dashboard_macros::menu_item(name = "Team", icon = "team", is_active = content.is_team(), href = "/dashboard/group?tab=team") -%}
           {% call dashboard_macros::menu_item(name = "Members", icon = "members", is_active = content.is_members(), href = "/dashboard/group?tab=members") -%}
+          {% call dashboard_macros::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors(), href = "/dashboard/group?tab=sponsors") -%}
         </div>
       {% endif -%}
     </div>
