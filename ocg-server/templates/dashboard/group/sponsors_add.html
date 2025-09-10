@@ -1,1 +1,128 @@
+{% import "common.html" as common -%}
+{% import "dashboard/dashboard_macros.html" as macros -%}
 
+{# Add Sponsor form -#}
+<form id="sponsor-form"
+      hx-post="/dashboard/group/sponsors/add"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {% call macros::form_title(title = "Sponsor Details", description = "Please provide the sponsor information.") -%}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
+        {# Sponsor name -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="name" class="form-label">
+            Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="100"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   required>
+          </div>
+        </div>
+        {# End Sponsor name -#}
+
+        {# Sponsorship level -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="level" class="form-label">
+            Level <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="level"
+                   id="level"
+                   maxlength="50"
+                   class="input-primary"
+                   placeholder="Gold, Silver, Bronze, ..."
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   required>
+          </div>
+        </div>
+        {# End Sponsorship level -#}
+
+        {# Logo URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="logo_url" class="form-label">
+            Logo URL <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="url"
+                   name="logo_url"
+                   id="logo_url"
+                   class="input-primary"
+                   placeholder="https://example.com/logo.png"
+                   required>
+          </div>
+        </div>
+        {# End Logo URL -#}
+
+        {# Website URL -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="website_url" class="form-label">Website</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="website_url"
+                   id="website_url"
+                   class="input-primary"
+                   placeholder="https://example.com">
+          </div>
+        </div>
+        {# End Website URL -#}
+      </div>
+    </div>
+
+    <div class="mt-6 flex items-center justify-end gap-x-6">
+      {# Cancel button -#}
+      <button id="cancel-button"
+              type="button"
+              hx-get="/dashboard/group?tab=sponsors"
+              hx-target="body"
+              hx-indicator="#dashboard-spinner"
+              class="btn-primary-outline">Cancel</button>
+      {# End cancel button -#}
+
+      {# Save button -#}
+      <button type="submit" class="btn-primary">Add Sponsor</button>
+      {# End save button -#}
+    </div>
+  </div>
+</form>
+
+<script type="module">
+  import {
+    isSuccessfulXHRStatus
+  } from '/static/js/common/common.js';
+  import {
+    showErrorAlert,
+    showSuccessAlert
+  } from '/static/js/common/alerts.js';
+
+  const sponsorForm = document.getElementById('sponsor-form');
+
+  if (sponsorForm) {
+    sponsorForm.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.id === 'sponsor-form') {
+        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+          showSuccessAlert('Sponsor added successfully.');
+        } else {
+          showErrorAlert('Something went wrong adding the sponsor, please try again later.');
+        }
+      }
+    });
+  }
+</script>
+{# End Add Sponsor form -#}

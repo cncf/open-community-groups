@@ -16,7 +16,7 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
-        <th scope="col" class="p-4 w-12"></th>
+        <th scope="col" class="p-4 w-12 w-27"></th>
       </tr>
     </thead>
     <tbody id="team-list">
@@ -60,7 +60,7 @@
             {# End member -#}
 
             {# Actions -#}
-            <td>
+            <td class="w-27">
               <div>
                 {% let disabledButton = approved_members_count == 1 && member.accepted -%}
                 <button id="remove-member-{{ member.user_id }}"

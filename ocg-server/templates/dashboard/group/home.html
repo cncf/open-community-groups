@@ -73,6 +73,7 @@
           {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/group?tab=settings") -%}
           {% call dashboard_macros::menu_item(name = "Team", icon = "team", is_active = content.is_team(), href = "/dashboard/group?tab=team") -%}
           {% call dashboard_macros::menu_item(name = "Members", icon = "members", is_active = content.is_members(), href = "/dashboard/group?tab=members") -%}
+          {% call dashboard_macros::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors(), href = "/dashboard/group?tab=sponsors") -%}
         </div>
       {% endif -%}
     </div>
@@ -104,7 +105,7 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{% match content -%}{% when Content::Team(_) -%}team{% when Content::Sponsors(_) -%}sponsors{% when _ -%}events{% endmatch -%}"
        hx-trigger="refresh-group-dashboard-table"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
