@@ -5,6 +5,12 @@ import "/static/js/common/avatar-image.js";
 import { computeUserInitials, isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 
+// TODO - Hardcoded role options for add endpoint
+const ROLE_OPTIONS = {
+  group: [{ value: "organizer", label: "Organizer" }],
+  community: [],
+};
+
 /**
  * TeamAddMember component for inviting team members.
  *
@@ -223,12 +229,29 @@ export class TeamAddMember extends LitWrapper {
                   <user-search-field
                     dashboard-type="${this.dashboardType}"
                     label="team member"
-                    legend="Search for users by their username"
+                    legend="Search for users by their name or username"
                     .disabledUserIds="${this.disabledUserIds || []}"
                     @user-selected="${(e) => this._onUserSelected(e)}"
                   ></user-search-field>
                   <input type="hidden" name="user_id" id="team-add-user-id" />
                 </div>
+                ${(() => {
+                  const opts = ROLE_OPTIONS[this.dashboardType] || [];
+                  if (!opts.length) return html``;
+                  return html`
+                    <div class="mb-6">
+                      <label for="team-add-role" class="form-label">Role</label>
+                      <select
+                        id="team-add-role"
+                        name="role"
+                        class="input-primary"
+                        ?required=${this.dashboardType === "group"}
+                      >
+                        ${opts.map((o) => html`<option value="${o.value}">${o.label}</option>`)}
+                      </select>
+                    </div>
+                  `;
+                })()}
                 <div class="flex items-center justify-between gap-4">
                   <div>${this._renderSelectedBadge()}</div>
                   <button

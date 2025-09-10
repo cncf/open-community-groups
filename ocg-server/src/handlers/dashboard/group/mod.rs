@@ -26,6 +26,5 @@ pub(crate) async fn select_group(
     Ok((
         StatusCode::NO_CONTENT,
         [("HX-Location", r#"{"path":"/dashboard/group", "target":"body"}"#)],
-    )
-        .into_response())
+    ))
 }

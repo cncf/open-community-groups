@@ -501,7 +501,7 @@ pub(crate) async fn verify_email(
     } else {
         messages.error("Error verifying email (please note that links are only valid for 24 hours).");
     }
-    Ok(Redirect::to(LOG_IN_URL).into_response())
+    Ok(Redirect::to(LOG_IN_URL))
 }
 
 /// Get the log in url including the next url if provided.
