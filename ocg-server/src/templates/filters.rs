@@ -28,7 +28,7 @@ where
 }
 
 /// Display the formatted datetime if present, otherwise return an empty string.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
 pub(crate) fn display_some_datetime(
     value: &Option<DateTime<Utc>>,
     _: &dyn askama::Values,
@@ -37,6 +37,23 @@ pub(crate) fn display_some_datetime(
     match value {
         Some(value) => Ok(value.format(format).to_string()),
         None => Ok(String::new()),
+    }
+}
+
+/// Display the value if present, otherwise return the provided alternative value.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
+pub(crate) fn display_some_or<T, U>(
+    value: &Option<T>,
+    _: &dyn askama::Values,
+    alternative: U,
+) -> askama::Result<String>
+where
+    T: std::fmt::Display,
+    U: std::fmt::Display,
+{
+    match value {
+        Some(value) => Ok(value.to_string()),
+        None => Ok(alternative.to_string()),
     }
 }
 
