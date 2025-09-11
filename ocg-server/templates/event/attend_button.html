@@ -1,0 +1,136 @@
+{# Attend button section -#}
+<div class="mb-6" id="attendance-container">
+
+  <!-- Loading spinner (shown initially) -->
+  <button id="loading-btn"
+          disabled
+          class="group is-loading btn-primary w-full opacity-50 cursor-not-allowed flex items-center justify-center">
+    {% import "common.html" as common -%}
+    {% call common::small_spinner(size = "size-4") -%}
+    <span class="ms-2">Checking...</span>
+  </button>
+
+  <!-- Sign in prompt (hidden initially) -->
+  <a id="signin-btn"
+     href="/log-in?next_url={{ path|urlencode }}"
+     hx-boost="true"
+     class="hidden btn-primary-anchor w-full text-center">Sign in to Attend</a>
+
+  <!-- Attend button (hidden initially) -->
+  <button id="attend-btn"
+          hx-post="/event/{{ event.event_id }}/attend"
+          hx-swap="none"
+          class="hidden btn-primary w-full">Attend Event</button>
+
+  <!-- Leave button (hidden initially) -->
+  <button id="leave-btn"
+          hx-delete="/event/{{ event.event_id }}/leave"
+          hx-trigger="confirmed"
+          hx-swap="none"
+          class="hidden btn-secondary w-full">Cancel Attendance</button>
+
+  <!-- Hidden element that checks attendance status -->
+  <div id="attendance-checker"
+       hx-get="/event/{{ event.event_id }}/attendance"
+       hx-trigger="load, attendance-changed from:body"
+       hx-swap="none"></div>
+</div>
+
+<script type="module">
+  import {
+    showConfirmAlert,
+    showSuccessAlert,
+    showErrorAlert,
+  } from '/static/js/common/alerts.js';
+
+  const attendanceHandler = document.getElementById('attendance-checker');
+
+  // Handle attendance check response
+  attendanceHandler.addEventListener('htmx:afterRequest', (evt) => {
+    const loadingBtn = document.getElementById('loading-btn');
+    const signinBtn = document.getElementById('signin-btn');
+    const attendBtn = document.getElementById('attend-btn');
+    const leaveBtn = document.getElementById('leave-btn');
+
+    // Ensure all buttons exist
+    if (!loadingBtn || !signinBtn || !attendBtn || !leaveBtn) {
+      return;
+    }
+
+    // Hide all buttons first
+    loadingBtn.classList.add('hidden');
+    signinBtn.classList.add('hidden');
+    attendBtn.classList.add('hidden');
+    leaveBtn.classList.add('hidden');
+
+    if (evt.detail.successful && evt.detail.xhr.status === 200) {
+      // User is authenticated, parse response
+      try {
+        const response = JSON.parse(evt.detail.xhr.responseText);
+
+        if (response.is_attendee) {
+          leaveBtn.classList.remove('hidden');
+        } else {
+          attendBtn.classList.remove('hidden');
+        }
+      } catch (error) {
+        signinBtn.classList.remove('hidden');
+      }
+    } else {
+      // User not authenticated or error
+      signinBtn.classList.remove('hidden');
+    }
+  });
+
+  // Handle attend button
+  document.getElementById('attend-btn').addEventListener('htmx:beforeRequest', () => {
+    // Show loading while posting
+    document.getElementById('attend-btn').classList.add('hidden');
+    document.getElementById('loading-btn').classList.remove('hidden');
+  });
+
+  document.getElementById('attend-btn').addEventListener('htmx:afterRequest', (evt) => {
+    if (evt.detail.xhr && evt.detail.xhr.status === 204) {
+      showSuccessAlert('You have successfully registered for this event.');
+      // Fire custom event to trigger attendance check
+      document.body.dispatchEvent(new Event('attendance-changed'));
+    } else {
+      showErrorAlert('Something went wrong registering for this event. Please try again later.');
+      // Restore buttons state
+      document.getElementById('loading-btn').classList.add('hidden');
+      document.getElementById('attend-btn').classList.remove('hidden');
+    }
+  });
+
+  // Handle leave button
+  document.getElementById('leave-btn').addEventListener('htmx:beforeRequest', () => {
+    // Show loading while deleting
+    document.getElementById('leave-btn').classList.add('hidden');
+    document.getElementById('loading-btn').classList.remove('hidden');
+  });
+
+  document.getElementById('leave-btn').addEventListener('htmx:afterRequest', (evt) => {
+    if (evt.detail.xhr && evt.detail.xhr.status === 204) {
+      showSuccessAlert('You have successfully canceled your attendance.');
+      // Fire custom event to trigger attendance check
+      document.body.dispatchEvent(new Event('attendance-changed'));
+    } else {
+      showErrorAlert('Something went wrong canceling your attendance. Please try again later.');
+      // Restore buttons state
+      document.getElementById('loading-btn').classList.add('hidden');
+      document.getElementById('leave-btn').classList.remove('hidden');
+    }
+  });
+
+  // Ask for confirmation before canceling attendance
+  const leaveBtnEl = document.getElementById('leave-btn');
+  if (leaveBtnEl) {
+    leaveBtnEl.addEventListener('click', () => {
+      showConfirmAlert(
+        'Are you sure you want to cancel your attendance?',
+        'leave-btn',
+        'Yes'
+      );
+    });
+  }
+</script>
