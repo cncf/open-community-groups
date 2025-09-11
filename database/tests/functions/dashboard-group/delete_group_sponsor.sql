@@ -49,8 +49,8 @@ insert into "group" (group_id, community_id, name, slug, group_category_id)
 values (:'groupID', :'communityID', 'Group London', 'group-london', '40000000-0000-0000-0000-000000000010');
 
 -- Sponsor
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
-values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', 'Silver', null);
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
+values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', null);
 
 -- Event category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -70,8 +70,8 @@ values (
 );
 
 -- Event references sponsor
-insert into event_sponsor (event_id, group_sponsor_id)
-values (:'eventID', :'sponsorID');
+insert into event_sponsor (event_id, group_sponsor_id, level)
+values (:'eventID', :'sponsorID', 'Gold');
 
 -- ============================================================================
 -- TESTS

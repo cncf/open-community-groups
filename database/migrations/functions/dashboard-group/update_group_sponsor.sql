@@ -6,7 +6,6 @@ create or replace function update_group_sponsor(
 )
 returns void as $$
     update group_sponsor set
-        level = p_sponsor->>'level',
         logo_url = p_sponsor->>'logo_url',
         name = p_sponsor->>'name',
         website_url = p_sponsor->>'website_url'

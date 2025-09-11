@@ -214,16 +214,16 @@ insert into session_speaker (session_id, user_id, featured)
 values (:'session1ID', :'user3ID', true);
 
 -- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values
-    (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null),
-    (:'sponsor2ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com');
+    (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null),
+    (:'sponsor2ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com');
 
 -- Event Sponsors (linking group sponsors to event)
-insert into event_sponsor (event_id, group_sponsor_id)
+insert into event_sponsor (event_id, group_sponsor_id, level)
 values
-    (:'eventID', :'sponsor1ID'),
-    (:'eventID', :'sponsor2ID');
+    (:'eventID', :'sponsor1ID', 'Silver'),
+    (:'eventID', :'sponsor2ID', 'Gold');
 
 -- Event (unpublished)
 insert into event (

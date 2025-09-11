@@ -79,10 +79,10 @@ insert into "group" (
 );
 
 -- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values
-    (:'sponsorOrigID', :'group1ID', 'Original Sponsor', 'https://example.com/sponsor.png', 'Bronze', null),
-    (:'sponsorNewID',  :'group1ID', 'NewSponsor Inc',   'https://example.com/newsponsor.png', 'Platinum', 'https://newsponsor.com');
+    (:'sponsorOrigID', :'group1ID', 'Original Sponsor', 'https://example.com/sponsor.png', null),
+    (:'sponsorNewID',  :'group1ID', 'NewSponsor Inc',   'https://example.com/newsponsor.png', 'https://newsponsor.com');
 
 -- Event
 insert into event (
@@ -107,8 +107,8 @@ insert into event (
 
 -- Add initial host and sponsor to the event
 insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
-insert into event_sponsor (event_id, group_sponsor_id)
-values (:'event1ID', :'sponsorOrigID');
+insert into event_sponsor (event_id, group_sponsor_id, level)
+values (:'event1ID', :'sponsorOrigID', 'Bronze');
 
 -- ============================================================================
 -- TESTS
@@ -174,7 +174,7 @@ select update_event(
         "venue_name": "New Venue",
         "venue_zip_code": "100-0001",
         "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
-        "sponsors": ["00000000-0000-0000-0000-000000000062"],
+        "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum"}],
         "sessions": [
             {
                 "name": "Updated Session",

@@ -47,8 +47,8 @@ insert into "group" (group_id, community_id, name, slug, group_category_id)
 values (:'groupID', :'communityID', 'Group Berlin', 'group-berlin', '20000000-0000-0000-0000-000000000010');
 
 -- Sponsor
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
-values (:'sponsorID', :'groupID', 'Theta', 'https://ex.com/theta.png', 'Gold', 'https://theta.io');
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
+values (:'sponsorID', :'groupID', 'Theta', 'https://ex.com/theta.png', 'https://theta.io');
 
 -- ============================================================================
 -- TESTS
@@ -59,7 +59,6 @@ select is(
     get_group_sponsor(:'sponsorID'::uuid, :'groupID'::uuid)::jsonb,
     '{
         "group_sponsor_id": "20000000-0000-0000-0000-000000000003",
-        "level":"Gold",
         "logo_url":"https://ex.com/theta.png",
         "name":"Theta",
         "website_url":"https://theta.io"
@@ -73,4 +72,3 @@ select is(
 
 select * from finish();
 rollback;
-

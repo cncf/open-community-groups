@@ -153,7 +153,8 @@ select columns_are('event_kind', array[
 select columns_are('event_sponsor', array[
     'created_at',
     'event_id',
-    'group_sponsor_id'
+    'group_sponsor_id',
+    'level'
 ]);
 
 -- Test: group columns should match expected
@@ -230,7 +231,6 @@ select columns_are('group_sponsor', array[
     'group_sponsor_id',
     'created_at',
     'group_id',
-    'level',
     'logo_url',
     'name',
 

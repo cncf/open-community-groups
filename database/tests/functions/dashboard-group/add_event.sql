@@ -77,10 +77,10 @@ insert into "group" (
 );
 
 -- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values
-    (:'sponsor1ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'Gold', 'https://techcorp.com'),
-    (:'sponsor2ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', 'Silver', null);
+    (:'sponsor1ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com'),
+    (:'sponsor2ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null);
 
 -- ============================================================================
 -- TESTS
@@ -159,8 +159,8 @@ with new_event as (
                 }
             ],
             "sponsors": [
-                "00000000-0000-0000-0000-000000000061",
-                "00000000-0000-0000-0000-000000000062"
+                {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"},
+                {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver"}
             ]
         }'::jsonb
     ) as event_id
