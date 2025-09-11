@@ -77,6 +77,7 @@ create table "user" (
     country text check (country <> ''),
     facebook_url text check (facebook_url <> ''),
     interests text[],
+    legacy_id integer unique,
     linkedin_url text check (linkedin_url <> ''),
     name text,
     password text check (password <> ''),
@@ -186,6 +187,7 @@ create table "group" (
     flickr_url text check (flickr_url <> ''),
     github_url text check (github_url <> ''),
     instagram_url text check (instagram_url <> ''),
+    legacy_id integer unique,
     linkedin_url text check (linkedin_url <> ''),
     location geography(point, 4326), -- PostGIS geographic point
     logo_url text check (logo_url <> ''),
@@ -321,6 +323,7 @@ create table event (
     deleted_at timestamptz,
     description_short text check (description_short <> ''),
     ends_at timestamptz,
+    legacy_id integer unique,
     logo_url text check (logo_url <> ''),
     meetup_url text check (meetup_url <> ''),
     photos_urls text[],
