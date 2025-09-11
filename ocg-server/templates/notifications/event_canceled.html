@@ -1,1 +1,41 @@
+{% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
+
+{% block subject -%}
+  Event canceled: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ event.name }} has been canceled. See details and updates.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    We are sorry to inform you that the event
+    <strong>{{ event.name }}</strong> from
+    <strong>{{ event.group_name }}</strong> has been <strong>canceled</strong>.
+    <br />
+    <br />
+    {% if let Some(starts_at) = event.starts_at -%}
+      Original date: {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+      <br />
+    {% endif -%}
+    {% if let Some(location) = self.event.location(90) -%}
+      Location: {{ location }}
+      <br />
+    {% endif -%}
+  </p>
+
+  {% call macros::email_button(link = link, text = "View event details") %}
+
+  <p class="default mt-30 mb-15">
+    If the event is rescheduled, you will receive another notification with
+    the updated information.
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you follow {{ event.group_name }} or opted in to
+  event updates. If this does not apply to you, you can ignore this message.
+{% endblock footer -%}
 

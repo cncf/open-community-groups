@@ -1,1 +1,39 @@
+{% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
+
+{% block subject -%}
+  Event rescheduled: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ event.name }} has a new date/time. See updated details.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    The event <strong>{{ event.name }}</strong> from
+    <strong>{{ event.group_name }}</strong> has been rescheduled.
+    <br />
+    <br />
+    {% if let Some(starts_at) = event.starts_at -%}
+      New date: {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+      <br />
+    {% endif -%}
+    {% if let Some(location) = self.event.location(90) -%}
+      Location: {{ location }}
+      <br />
+    {% endif -%}
+  </p>
+
+  {% call macros::email_button(link = link, text = "View updated event") %}
+
+  <p class="default mt-30 mb-15">
+    Thanks for your understanding. Please review the updated details.
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you follow {{ event.group_name }} or opted in to
+  event updates. If this does not apply to you, you can ignore this message.
+{% endblock footer -%}
 

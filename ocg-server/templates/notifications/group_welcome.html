@@ -1,1 +1,38 @@
+{% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
+
+{% block subject -%}
+  Welcome to {{ group.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  You have joined {{ group.name }}. Visit your group page.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Welcome to <strong>{{ group.name }}</strong> on
+    <strong>Open Community Groups</strong>!
+    <br />
+    <br />
+    {% if let Some(location) = self.group.location(90) -%}
+      Location: {{ location }}
+      <br />
+      <br />
+    {% endif -%}
+    Head over to the group page to see events, updates, and ways to
+    participate.
+  </p>
+
+  {% call macros::email_button(link = link, text = "Visit group") %}
+
+  <p class="default mt-30 mb-15">
+    Thanks for being part of the community!
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  If you did not expect this, it is likely your email was added by mistake.
+  You can ignore this message.
+{% endblock footer -%}
 
