@@ -1,5 +1,5 @@
-{# Attend button section -#}
-<div class="mb-6" id="attendance-container">
+{# Membership button section -#}
+<div class="mb-6" id="membership-container">
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
@@ -14,54 +14,54 @@
   <a id="signin-btn"
      href="/log-in?next_url={{ path|urlencode }}"
      hx-boost="true"
-     class="hidden btn-primary-anchor w-full text-center">Sign in to Attend</a>
+     class="hidden btn-primary-anchor w-full text-center">Sign in to Join</a>
 
-  <!-- Attend button (hidden initially) -->
-  <button id="attend-btn"
-          hx-post="/event/{{ event.event_id }}/attend"
+  <!-- Join button (hidden initially) -->
+  <button id="join-btn"
+          hx-post="/group/{{ group.group_id }}/join"
           hx-swap="none"
-          class="hidden btn-primary w-full">Attend Event</button>
+          class="hidden btn-primary w-full">Join Group</button>
 
   <!-- Leave button (hidden initially) -->
   <button id="leave-btn"
-          hx-delete="/event/{{ event.event_id }}/leave"
+          hx-delete="/group/{{ group.group_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden btn-secondary w-full">Cancel Attendance</button>
+          class="hidden btn-secondary w-full">Leave Group</button>
 
-  <!-- Hidden element that checks attendance status -->
-  <div id="attendance-checker"
-       hx-get="/event/{{ event.event_id }}/attendance"
-       hx-trigger="load, attendance-changed from:body"
+  <!-- Hidden element that checks membership status -->
+  <div id="membership-checker"
+       hx-get="/group/{{ group.group_id }}/membership"
+       hx-trigger="load, membership-changed from:body"
        hx-swap="none"></div>
 </div>
 
 <script type="module">
   import {
     showConfirmAlert,
-    showSuccessAlert,
     showErrorAlert,
+    showSuccessAlert,
   } from '/static/js/common/alerts.js';
   import { isSuccessfulXHRStatus } from '/static/js/common/common.js';
 
-  const attendanceHandler = document.getElementById('attendance-checker');
+  const membershipHandler = document.getElementById('membership-checker');
 
-  // Handle attendance check response
-  attendanceHandler.addEventListener('htmx:afterRequest', (evt) => {
+  // Handle membership check response
+  membershipHandler.addEventListener('htmx:afterRequest', (evt) => {
     const loadingBtn = document.getElementById('loading-btn');
     const signinBtn = document.getElementById('signin-btn');
-    const attendBtn = document.getElementById('attend-btn');
+    const joinBtn = document.getElementById('join-btn');
     const leaveBtn = document.getElementById('leave-btn');
 
     // Ensure all buttons exist
-    if (!loadingBtn || !signinBtn || !attendBtn || !leaveBtn) {
+    if (!loadingBtn || !signinBtn || !joinBtn || !leaveBtn) {
       return;
     }
 
     // Hide all buttons first
     loadingBtn.classList.add('hidden');
     signinBtn.classList.add('hidden');
-    attendBtn.classList.add('hidden');
+    joinBtn.classList.add('hidden');
     leaveBtn.classList.add('hidden');
 
     if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
@@ -69,10 +69,10 @@
       try {
         const response = JSON.parse(evt.detail.xhr.responseText);
 
-        if (response.is_attendee) {
+        if (response.is_member) {
           leaveBtn.classList.remove('hidden');
         } else {
-          attendBtn.classList.remove('hidden');
+          joinBtn.classList.remove('hidden');
         }
       } catch (error) {
         signinBtn.classList.remove('hidden');
@@ -83,55 +83,49 @@
     }
   });
 
-  // Handle attend button
-  document.getElementById('attend-btn').addEventListener('htmx:beforeRequest', () => {
-    // Show loading while posting
-    document.getElementById('attend-btn').classList.add('hidden');
+  // Handle join button
+  document.getElementById('join-btn').addEventListener('htmx:beforeRequest', function () {
+    this.classList.add('hidden');
     document.getElementById('loading-btn').classList.remove('hidden');
   });
 
-  document.getElementById('attend-btn').addEventListener('htmx:afterRequest', (evt) => {
+  document.getElementById('join-btn').addEventListener('htmx:afterRequest', (evt) => {
     if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
-      showSuccessAlert('You have successfully registered for this event.');
-      // Fire custom event to trigger attendance check
-      document.body.dispatchEvent(new Event('attendance-changed'));
+      showSuccessAlert('You have successfully joined this group.');
+      // Fire custom event to trigger membership check
+      document.body.dispatchEvent(new Event('membership-changed'));
     } else {
-      showErrorAlert('Something went wrong registering for this event. Please try again later.');
+      showErrorAlert('Something went wrong joining this group. Please try again later.');
       // Restore buttons state
       document.getElementById('loading-btn').classList.add('hidden');
-      document.getElementById('attend-btn').classList.remove('hidden');
+      document.getElementById('join-btn').classList.remove('hidden');
     }
   });
 
   // Handle leave button
-  document.getElementById('leave-btn').addEventListener('htmx:beforeRequest', () => {
-    // Show loading while deleting
-    document.getElementById('leave-btn').classList.add('hidden');
+  document.getElementById('leave-btn').addEventListener('htmx:beforeRequest', function () {
+    this.classList.add('hidden');
     document.getElementById('loading-btn').classList.remove('hidden');
   });
 
   document.getElementById('leave-btn').addEventListener('htmx:afterRequest', (evt) => {
     if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
-      showSuccessAlert('You have successfully canceled your attendance.');
-      // Fire custom event to trigger attendance check
-      document.body.dispatchEvent(new Event('attendance-changed'));
+      showSuccessAlert('You have successfully left this group.');
+      // Fire custom event to trigger membership check
+      document.body.dispatchEvent(new Event('membership-changed'));
     } else {
-      showErrorAlert('Something went wrong canceling your attendance. Please try again later.');
+      showErrorAlert('Something went wrong leaving this group. Please try again later.');
       // Restore buttons state
       document.getElementById('loading-btn').classList.add('hidden');
       document.getElementById('leave-btn').classList.remove('hidden');
     }
   });
 
-  // Ask for confirmation before canceling attendance
+  // Ask for confirmation before leaving the group
   const leaveBtnEl = document.getElementById('leave-btn');
   if (leaveBtnEl) {
     leaveBtnEl.addEventListener('click', () => {
-      showConfirmAlert(
-        'Are you sure you want to cancel your attendance?',
-        'leave-btn',
-        'Yes'
-      );
+      showConfirmAlert('Are you sure you want to leave this group?', 'leave-btn', 'Yes');
     });
   }
 </script>
