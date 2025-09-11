@@ -96,7 +96,7 @@
     sponsorForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'sponsor-form') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('Sponsor added successfully.');
+          showSuccessAlert('You have successfully added the sponsor.');
         } else {
           showErrorAlert('Something went wrong adding the sponsor, please try again later.');
         }

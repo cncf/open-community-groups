@@ -617,7 +617,7 @@
     addEventButton.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'add-event-button') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('Event created successfully.');
+          showSuccessAlert('You have successfully created the event.');
         } else {
           showErrorAlert('Something went wrong creating the event, please try again later.');
         }

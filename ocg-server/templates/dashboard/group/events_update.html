@@ -643,7 +643,7 @@
     updateEventButton.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'update-event-button') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('Event updated successfully.');
+          showSuccessAlert('You have successfully updated the event.');
         } else {
           showErrorAlert('Something went wrong updating the event, please try again later.');
         }
