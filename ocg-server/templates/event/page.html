@@ -417,6 +417,58 @@
     {% endif -%}
     {# End sessions section -#}
 
+    {# Sponsors section - Full width -#}
+    {% if !event.sponsors.is_empty() -%}
+      <div class="px-4 sm:px-6 lg:px-8">
+        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Sponsors</h2>
+        <div class="flex flex-wrap gap-4">
+          {% for sponsor in event.sponsors -%}
+            {% if let Some(website_url) = sponsor.website_url -%}
+              <a href="{{ website_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors px-4 py-3 min-w-[200px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+                <div class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
+                  <img src="{{ sponsor.logo_url }}"
+                       alt="{{ sponsor.name }} logo"
+                       class="h-6 w-6 object-contain"
+                       width="auto"
+                       height="auto"
+                       loading="lazy" />
+                  <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+                    <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+                  </div>
+                </div>
+                <div class="leading-tight">
+                  <div class="text-sm md:text-base font-semibold text-stone-900">{{ sponsor.name }}</div>
+                  <div class="text-xs uppercase tracking-wide text-stone-600">{{ sponsor.level }}</div>
+                </div>
+              </a>
+            {% else -%}
+              <div class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 min-w-[200px]">
+                <div class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
+                  <img src="{{ sponsor.logo_url }}"
+                       alt="{{ sponsor.name }} logo"
+                       class="h-6 w-6 object-contain"
+                       width="auto"
+                       height="auto"
+                       loading="lazy" />
+                  <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+                    <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+                  </div>
+                </div>
+                <div class="leading-tight">
+                  <div class="text-sm md:text-base font-semibold text-stone-900">{{ sponsor.name }}</div>
+                  <div class="text-xs uppercase tracking-wide text-stone-600">{{ sponsor.level }}</div>
+                </div>
+              </div>
+            {% endif -%}
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+    {# End sponsors section -#}
+
     {# Hosts section - Full width -#}
     {% if !event.hosts.is_empty() -%}
       <div class="px-4 sm:px-6 lg:px-8">

@@ -209,11 +209,15 @@ export class UserSearchField extends LitWrapper {
   render() {
     return html`
       <div class="relative ${this.wrapperClass || ""}">
+        <!-- Left search icon -->
+        <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+        </div>
+
         <input
           id="search-input"
           type="text"
-          class="peer w-full rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-stone-400 focus:ring block flex-1 min-w-0 text-md p-2.5 ps-4 pe-14 ${this
-            .inputClass || ""}"
+          class="input-primary peer ps-9 ${this.inputClass || ""}"
           placeholder="Search ${this.label || ""} by username"
           .value="${this._searchQuery}"
           @input="${this._handleSearchInput}"
@@ -223,18 +227,11 @@ export class UserSearchField extends LitWrapper {
           spellcheck="false"
         />
 
-        <!-- Clear button (shows when input has value) -->
-        <div class="absolute right-[40px] top-[10px] ${this._searchQuery ? "block" : "hidden"}">
-          <button type="button" class="mr-2 mt-[2px]" @click="${this._clearSearch}">
-            <div class="svg-icon h-5 w-5 bg-stone-400 hover:bg-stone-700 transition-colors icon-close"></div>
+        <!-- Clear button -->
+        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+          <button type="button" class="cursor-pointer mt-[2px]" @click="${this._clearSearch}">
+            <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
           </button>
-        </div>
-
-        <!-- Search icon button -->
-        <div class="absolute right-[6px] top-[5px]">
-          <div class="btn-secondary group p-1.5 h-[30px] w-[30px] mt-[3px] mr-[3px] pointer-events-none">
-            <div class="svg-icon h-4 w-4 mx-auto bg-primary-500 icon-magnifying-glass"></div>
-          </div>
         </div>
 
         ${this.legend ? html`<p class="form-legend mt-2">${this.legend}</p>` : ""}
@@ -243,7 +240,7 @@ export class UserSearchField extends LitWrapper {
         ${this._searchQuery !== ""
           ? html`
               <div
-                class="absolute left-0 right-0 top-12 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 z-10 ${this
+                class="absolute left-0 right-0 top-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 z-10 ${this
                   ._isSearching || this._searchResults.length === 0
                   ? ""
                   : "max-h-80 overflow-y-auto"}"

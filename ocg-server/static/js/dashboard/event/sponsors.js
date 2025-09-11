@@ -1,314 +1,333 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
-import { isObjectEmpty } from "/static/js/common/common.js";
+import { html } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
- * Component for managing sponsor entries in events.
- * Supports adding, removing, and reordering sponsor items.
+ * Event sponsors selector.
+ * Allows searching and selecting sponsors from the group's list and renders
+ * hidden inputs with selected sponsor IDs for form submission.
  * @extends LitWrapper
  */
 export class SponsorsSection extends LitWrapper {
   /**
-   * Component properties definition
-   * @property {Array} sponsors - List of sponsor entries
-   * Each entry contains:
-   *  - id: Unique identifier
-   *  - name: Sponsor organization name
-   *  - tier: Sponsor tier level (gold, silver, bronze, etc.)
-   *  - description: Sponsor description (markdown format)
-   *  - website_url: Sponsor website URL
-   *  - logo_url: Sponsor logo image URL (optional)
+   * Component properties
+   * - sponsors: list of available group sponsors
+   * - selectedSponsors: list of selected sponsor IDs (uuids)
+   * - enteredValue: current search input value
+   * - visibleOptions: filtered suggestions
+   * - visibleDropdown: dropdown visibility flag
+   * - activeIndex: active suggestion index
    */
   static properties = {
     sponsors: { type: Array },
+    selectedSponsors: { type: Array, attribute: "selected-sponsors" },
+    enteredValue: { type: String },
+    visibleOptions: { type: Array },
+    visibleDropdown: { type: Boolean },
+    activeIndex: { type: Number },
   };
 
   constructor() {
     super();
     this.sponsors = [];
+    this.selectedSponsors = [];
+    this.enteredValue = "";
+    this.visibleOptions = [];
+    this.visibleDropdown = false;
+    this.activeIndex = null;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this._initializeSponsorIds();
+
+    // Parse JSON provided via attributes when needed
+    this._ensureArrayProp("sponsors");
+    this._ensureArrayProp("selectedSponsors");
+
+    // Normalize selected sponsors into full objects
+    this._initializeSelectedFromIds();
+
+    window.addEventListener("mousedown", this._handleClickOutside);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener("mousedown", this._handleClickOutside);
   }
 
   /**
-   * Assigns unique IDs to sponsor entries.
-   * Creates initial entry if none exist or array is empty.
+   * Ensures a property is an array by parsing JSON attribute if string.
+   * @param {"sponsors"|"selectedSponsors"} prop
    * @private
    */
-  _initializeSponsorIds() {
-    if (this.sponsors === null || this.sponsors.length === 0) {
-      this.sponsors = [this._getData()];
-    } else {
-      this.sponsors = this.sponsors.map((item, index) => {
-        return { ...this._getData(), ...item, id: index };
-      });
+  _ensureArrayProp(prop) {
+    const value = this[prop];
+    if (typeof value === "string") {
+      try {
+        this[prop] = JSON.parse(value || "[]");
+      } catch (_e) {
+        this[prop] = [];
+      }
+    }
+    if (!Array.isArray(this[prop])) {
+      this[prop] = [];
     }
   }
 
   /**
-   * Creates a new empty sponsor data object.
-   * @returns {Object} Empty sponsor entry
+   * Initializes selected sponsors list from provided IDs.
+   * Accepts either an array of UUID strings or of full sponsor objects.
    * @private
    */
-  _getData = () => {
-    let item = {
-      id: this.sponsors ? this.sponsors.length : 0,
-      name: "",
-      level: "",
-      website_url: "",
-      logo_url: "",
-    };
+  _initializeSelectedFromIds() {
+    if (this.selectedSponsors.length === 0) return;
 
-    return item;
-  };
-
-  /**
-   * Adds a new sponsor entry at specified index.
-   * @param {number} index - Position to insert new entry
-   * @private
-   */
-  _addSponsorItem(index) {
-    const currentSponsors = [...this.sponsors];
-    currentSponsors.splice(index, 0, this._getData());
-
-    this.sponsors = currentSponsors;
+    // If items are objects already, keep them; otherwise map IDs to objects
+    const looksLikeId = (v) => typeof v === "string" || typeof v === "number";
+    if (this.selectedSponsors.every((v) => looksLikeId(v))) {
+      const byId = new Map(this.sponsors.map((s) => [s.group_sponsor_id, s]));
+      this.selectedSponsors = this.selectedSponsors.map((id) => byId.get(id)).filter((s) => !!s);
+    }
   }
 
   /**
-   * Removes sponsor entry at specified index.
-   * Ensures at least one empty entry remains.
-   * @param {number} index - Position of entry to remove
+   * Handles click outside to close the dropdown.
+   * @param {MouseEvent} event
    * @private
    */
-  _removeSponsorItem(index) {
-    const tmpSponsors = this.sponsors.filter((_, i) => i !== index);
-    // If there are no more sponsor items, add a new one
-    this.sponsors = tmpSponsors.length === 0 ? [this._getData()] : tmpSponsors;
-  }
-
-  /**
-   * Updates sponsor data at specified index.
-   * @param {Object} data - Updated sponsor data
-   * @param {number} index - Index of entry to update
-   * @private
-   */
-  _onDataChange = (data, index) => {
-    this.sponsors[index] = data;
+  _handleClickOutside = (event) => {
+    if (!this.contains(event.target)) {
+      this._cleanEnteredValue();
+    }
   };
 
   /**
-   * Renders a sponsor entry with controls.
-   * @param {number} index - Entry index
-   * @param {Object} sponsor - Sponsor data
-   * @returns {import('lit').TemplateResult} Entry template
+   * Filters available sponsors based on entered text and current selection.
    * @private
    */
-  _getSponsorForm(index, sponsor) {
-    const hasSingleSponsorItem = this.sponsors.length === 1;
+  _filterOptions() {
+    const term = (this.enteredValue || "").trim().toLowerCase();
+    const baseOptions = this.sponsors || [];
 
-    return html`<div class="mt-10">
-      <div class="flex w-full xl:w-2/3">
-        <div class="flex flex-col space-y-3 me-3">
-          <div>
-            <button
-              @click=${() => this._addSponsorItem(index)}
-              type="button"
-              class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
-              title="Add above"
-            >
-              <div class="svg-icon size-4 icon-plus-top bg-stone-600"></div>
-            </button>
-          </div>
-          <div>
-            <button
-              @click=${() => this._addSponsorItem(index + 1)}
-              type="button"
-              class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
-              title="Add below"
-            >
-              <div class="svg-icon size-4 icon-plus-bottom bg-stone-600"></div>
-            </button>
-          </div>
-          <div>
-            <button
-              @click=${() => this._removeSponsorItem(index)}
-              type="button"
-              class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
-              title="${hasSingleSponsorItem ? "Clean" : "Delete"}"
-            >
-              <div
-                class="svg-icon size-4 icon-${hasSingleSponsorItem ? "eraser" : "trash"} bg-stone-600"
-              ></div>
-            </button>
-          </div>
+    this.visibleOptions =
+      term.length === 0 ? baseOptions : baseOptions.filter((s) => s.name.toLowerCase().includes(term));
+    this.visibleDropdown = true;
+    this.activeIndex = this.visibleOptions.length > 0 ? 0 : null;
+  }
+
+  /**
+   * Handles search input changes.
+   * @param {Event} event
+   * @private
+   */
+  _onInputChange(event) {
+    this.enteredValue = event.target.value || "";
+    this._filterOptions();
+  }
+
+  /**
+   * Shows full list on input focus (before typing).
+   * @private
+   */
+  _onInputFocus() {
+    this._filterOptions();
+  }
+
+  /**
+   * Clears input and closes suggestion dropdown.
+   * @private
+   */
+  _cleanEnteredValue() {
+    this.enteredValue = "";
+    this.visibleDropdown = false;
+    this.visibleOptions = [];
+    this.activeIndex = null;
+  }
+
+  /**
+   * Keyboard navigation for suggestions.
+   * @param {KeyboardEvent} event
+   * @private
+   */
+  _handleKeyDown(event) {
+    if (!this.visibleDropdown || this.visibleOptions.length === 0) return;
+
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        if (this.activeIndex === null) this.activeIndex = 0;
+        else this.activeIndex = (this.activeIndex + 1) % this.visibleOptions.length;
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        if (this.activeIndex === null) this.activeIndex = 0;
+        else
+          this.activeIndex = (this.activeIndex - 1 + this.visibleOptions.length) % this.visibleOptions.length;
+        break;
+      case "Enter":
+        event.preventDefault();
+        if (this.activeIndex !== null) {
+          const item = this.visibleOptions[this.activeIndex];
+          if (item) this._onSelect(item);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  /**
+   * Adds a sponsor to the selected list.
+   * @param {Object} sponsor
+   * @private
+   */
+  _onSelect(sponsor) {
+    const exists = (this.selectedSponsors || []).some((s) => s.group_sponsor_id === sponsor.group_sponsor_id);
+    if (!exists) {
+      this.selectedSponsors = [...(this.selectedSponsors || []), sponsor];
+    }
+    this._cleanEnteredValue();
+  }
+
+  /**
+   * Removes a sponsor from the selected list.
+   * @param {string} sponsorId
+   * @private
+   */
+  _onRemove(sponsorId) {
+    this.selectedSponsors = (this.selectedSponsors || []).filter((s) => s.group_sponsor_id !== sponsorId);
+  }
+
+  /**
+   * Renders a single suggestion item.
+   * @param {Object} option
+   * @param {number} index
+   * @private
+   */
+  _renderOption(option, index) {
+    const isActive = this.activeIndex === index;
+    const isSelected = (this.selectedSponsors || []).some(
+      (s) => s.group_sponsor_id === option.group_sponsor_id,
+    );
+    const rowClass = `flex items-center gap-3 px-4 py-2 ${
+      isSelected ? "opacity-50 cursor-not-allowed bg-stone-50" : "hover:bg-stone-50 cursor-pointer"
+    } ${isActive ? "bg-stone-50" : ""}`;
+    return html`<li data-index="${index}">
+      <div
+        class="${rowClass}"
+        aria-disabled="${isSelected ? "true" : "false"}"
+        @click=${() => {
+          if (!isSelected) this._onSelect(option);
+        }}
+        @mouseover=${() => (this.activeIndex = index)}
+      >
+        <div
+          class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+        >
+          <img
+            src="${option.logo_url}"
+            alt="${option.name} logo"
+            class="h-6 w-6 object-contain"
+            loading="lazy"
+          />
         </div>
-        <sponsor-item
-          .data=${sponsor}
-          .index=${index}
-          .onDataChange=${this._onDataChange}
-          class="w-full"
-        ></sponsor-item>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-stone-900 truncate">${option.name}</div>
+          <div class="text-xs uppercase tracking-wide text-stone-600 truncate">${option.level}</div>
+        </div>
       </div>
-    </div>`;
+    </li>`;
   }
 
   render() {
-    return html` <div class="text-sm/6 text-stone-500">
-        Add sponsors for your event. You can add additional sponsors by clicking on the
-        <span class="font-semibold">+</span> buttons on the left of the card (
-        <div class="inline-block svg-icon size-4 icon-plus-top bg-stone-600 relative -bottom-[2px]"></div>
-        to add the new sponsor above,
-        <div class="inline-block svg-icon size-4 icon-plus-bottom bg-stone-600 relative -bottom-[2px]"></div>
-        to add it below). Sponsors will be displayed in the order provided.
+    return html`
+      <div class="space-y-4">
+        <div class="text-sm/6 text-stone-500">
+          Select sponsors for your event from the group's sponsors list.
+        </div>
+
+        <div class="relative w-full xl:w-2/3">
+          <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+          </div>
+          <input
+            type="text"
+            class="input-primary peer ps-9"
+            placeholder="Search sponsors"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            .value=${this.enteredValue}
+            @input=${(e) => this._onInputChange(e)}
+            @keydown=${(e) => this._handleKeyDown(e)}
+            @focus=${() => this._onInputFocus()}
+          />
+          <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+            <button @click=${() => this._cleanEnteredValue()} type="button" class="cursor-pointer mt-[2px]">
+              <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+            </button>
+          </div>
+
+          <div class="absolute z-10 start-0 end-0">
+            <div
+              class="${!this.visibleDropdown
+                ? "hidden"
+                : ""} bg-white divide-y divide-stone-100 rounded-lg shadow w-full border border-stone-200 mt-1"
+            >
+              ${this.visibleOptions && this.visibleOptions.length > 0
+                ? html`<ul class="py-1 text-stone-700 overflow-auto max-h-80">
+                    ${this.visibleOptions.map((opt, idx) => this._renderOption(opt, idx))}
+                  </ul>`
+                : html`<div class="px-8 py-4 text-sm/6 text-stone-600 italic">No sponsors found</div>`}
+            </div>
+          </div>
+        </div>
+
+        ${this.selectedSponsors && this.selectedSponsors.length > 0
+          ? html`<div class="flex gap-2 mt-2 flex-wrap w-full xl:w-2/3">
+              ${this.selectedSponsors.map(
+                (s) =>
+                  html`<div
+                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 min-w-[200px]"
+                    >
+                      <div
+                        class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+                      >
+                        <img
+                          src="${s.logo_url}"
+                          alt="${s.name} logo"
+                          class="h-6 w-6 object-contain"
+                          loading="lazy"
+                        />
+                        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+                          <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+                        </div>
+                      </div>
+                      <div class="leading-tight min-w-0 flex-1">
+                        <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
+                          ${s.name}
+                        </div>
+                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate">
+                          ${s.level || ""}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                        aria-label="Remove ${s.name}"
+                        title="Remove"
+                        @click=${() => this._onRemove(s.group_sponsor_id)}
+                      >
+                        <div class="svg-icon size-4 icon-close bg-stone-600"></div>
+                      </button>
+                    </div>
+                    <input type="hidden" name="sponsors[]" value="${s.group_sponsor_id}" />`,
+              )}
+            </div>`
+          : ""}
       </div>
-      <div id="sponsors-section">
-        ${repeat(
-          this.sponsors,
-          (s) => s.id,
-          (s, index) => this._getSponsorForm(index, s),
-        )}
-      </div>`;
+    `;
   }
 }
+
 customElements.define("sponsors-section", SponsorsSection);
-
-/**
- * Individual sponsor entry component.
- * Handles form inputs and validation for a single sponsor item.
- * @extends LitWrapper
- */
-class SponsorItem extends LitWrapper {
-  /**
-   * Component properties definition
-   * @property {Object} data - Sponsor entry data
-   * @property {number} index - Position of the entry in the list
-   * @property {boolean} isObjectEmpty - Indicates if the data object is empty
-   * @property {Function} onDataChange - Callback function to notify parent component of changes
-   */
-  static properties = {
-    data: { type: Object },
-    index: { type: Number },
-    isObjectEmpty: { type: Boolean },
-    onDataChange: { type: Function },
-  };
-
-  constructor() {
-    super();
-    this.data = {
-      id: 0,
-      name: "",
-      level: "",
-      website_url: "",
-      logo_url: "",
-    };
-    this.index = 0;
-    this.isObjectEmpty = true;
-    this.onDataChange = () => {};
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this.isObjectEmpty = isObjectEmpty(this.data);
-  }
-
-  /**
-   * Handles input field changes.
-   * @param {Event} event - Input event
-   * @private
-   */
-  _onInputChange = (event) => {
-    const value = event.target.value;
-    const name = event.target.dataset.name;
-
-    this.data[name] = value;
-    this.isObjectEmpty = isObjectEmpty(this.data);
-    this.onDataChange(this.data, this.index);
-  };
-
-  render() {
-    return html` <div
-      class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 border-2 border-stone-200 border-dashed p-8 rounded-lg bg-stone-50/25 w-full"
-    >
-      <div class="col-span-3">
-        <label class="form-label"> Organization Name <span class="asterisk">*</span> </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="name"
-            type="text"
-            name="sponsors[${this.index}][name]"
-            class="input-primary"
-            value="${this.data.name}"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            ?required=${!this.isObjectEmpty}
-          />
-        </div>
-      </div>
-
-      <div class="col-span-3">
-        <label class="form-label"> Sponsor Level <span class="asterisk">*</span> </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="level"
-            type="text"
-            name="sponsors[${this.index}][level]"
-            class="input-primary"
-            value="${this.data.level}"
-            placeholder="e.g., Gold, Silver, Bronze, Partner"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            ?required=${!this.isObjectEmpty}
-          />
-        </div>
-      </div>
-
-      <div class="col-span-full">
-        <label class="form-label"> Logo URL <span class="asterisk">*</span> </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="logo_url"
-            type="url"
-            name="sponsors[${this.index}][logo_url]"
-            class="input-primary"
-            value="${this.data.logo_url}"
-            placeholder="Sponsor's logo image URL"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            ?required=${!this.isObjectEmpty}
-          />
-        </div>
-      </div>
-
-      <div class="col-span-full">
-        <label class="form-label"> Website URL </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="website_url"
-            type="url"
-            name="sponsors[${this.index}][website_url]"
-            class="input-primary"
-            value="${this.data.website_url}"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-        </div>
-      </div>
-    </div>`;
-  }
-}
-customElements.define("sponsor-item", SponsorItem);
