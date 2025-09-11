@@ -24,6 +24,9 @@ export class SponsorsSection extends LitWrapper {
     visibleOptions: { type: Array },
     visibleDropdown: { type: Boolean },
     activeIndex: { type: Number },
+    showLevelModal: { type: Boolean },
+    pendingSponsor: { type: Object },
+    pendingLevel: { type: String },
   };
 
   constructor() {
@@ -34,6 +37,9 @@ export class SponsorsSection extends LitWrapper {
     this.visibleOptions = [];
     this.visibleDropdown = false;
     this.activeIndex = null;
+    this.showLevelModal = false;
+    this.pendingSponsor = null;
+    this.pendingLevel = "";
   }
 
   connectedCallback() {
@@ -47,6 +53,26 @@ export class SponsorsSection extends LitWrapper {
     this._initializeSelectedFromIds();
 
     window.addEventListener("mousedown", this._handleClickOutside);
+
+    // Validate levels before submitting add/update event forms
+    const addBtn = document.getElementById("add-event-button");
+    const updateBtn = document.getElementById("update-event-button");
+    const beforeSubmit = (e) => {
+      if (!this._requireLevels()) {
+        e.preventDefault();
+        e.stopPropagation();
+        const missing = (this.selectedSponsors || []).find(
+          (s) => !s.level || !String(s.level).trim().length,
+        );
+        if (missing) {
+          this.pendingSponsor = missing;
+          this.pendingLevel = "";
+          this.showLevelModal = true;
+        }
+      }
+    };
+    if (addBtn) addBtn.addEventListener("click", beforeSubmit, true);
+    if (updateBtn) updateBtn.addEventListener("click", beforeSubmit, true);
   }
 
   disconnectedCallback() {
@@ -183,9 +209,13 @@ export class SponsorsSection extends LitWrapper {
   _onSelect(sponsor) {
     const exists = (this.selectedSponsors || []).some((s) => s.group_sponsor_id === sponsor.group_sponsor_id);
     if (!exists) {
-      this.selectedSponsors = [...(this.selectedSponsors || []), sponsor];
+      // Open level modal for the selected sponsor
+      this.pendingSponsor = sponsor;
+      this.pendingLevel = "";
+      this.showLevelModal = true;
+    } else {
+      this._cleanEnteredValue();
     }
-    this._cleanEnteredValue();
   }
 
   /**
@@ -232,10 +262,55 @@ export class SponsorsSection extends LitWrapper {
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-stone-900 truncate">${option.name}</div>
-          <div class="text-xs uppercase tracking-wide text-stone-600 truncate">${option.level}</div>
         </div>
       </div>
     </li>`;
+  }
+
+  /**
+   * Confirms adding the pending sponsor with provided level.
+   * @private
+   */
+  _confirmAddSponsorLevel() {
+    if (!this.pendingSponsor) return;
+    const levelVal = (this.pendingLevel || "").trim();
+    if (!levelVal) {
+      return; // guard; button disabled when empty
+    }
+    const id = this.pendingSponsor.group_sponsor_id;
+    const exists = (this.selectedSponsors || []).some((s) => s.group_sponsor_id === id);
+    if (exists) {
+      this.selectedSponsors = (this.selectedSponsors || []).map((s) =>
+        s.group_sponsor_id === id ? { ...s, level: levelVal } : s,
+      );
+    } else {
+      const sponsor = { ...this.pendingSponsor, level: levelVal };
+      this.selectedSponsors = [...(this.selectedSponsors || []), sponsor];
+    }
+    this._closeLevelModal();
+    this._cleanEnteredValue();
+  }
+
+  /**
+   * Closes the level modal and clears pending state.
+   * @private
+   */
+  _closeLevelModal() {
+    this.showLevelModal = false;
+    this.pendingSponsor = null;
+    this.pendingLevel = "";
+    // Also close suggestions dropdown and reset search state
+    this._cleanEnteredValue();
+  }
+
+  /**
+   * Validates that all selected sponsors have non-empty levels.
+   * @returns {boolean}
+   * @private
+   */
+  _requireLevels() {
+    const items = this.selectedSponsors || [];
+    return items.every((s) => s && s.group_sponsor_id && s.level && String(s.level).trim().length > 0);
   }
 
   render() {
@@ -286,7 +361,7 @@ export class SponsorsSection extends LitWrapper {
         ${this.selectedSponsors && this.selectedSponsors.length > 0
           ? html`<div class="flex gap-2 mt-2 flex-wrap w-full xl:w-2/3">
               ${this.selectedSponsors.map(
-                (s) =>
+                (s, i) =>
                   html`<div
                       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 min-w-[200px]"
                     >
@@ -321,9 +396,56 @@ export class SponsorsSection extends LitWrapper {
                         <div class="svg-icon size-4 icon-close bg-stone-600"></div>
                       </button>
                     </div>
-                    <input type="hidden" name="sponsors[]" value="${s.group_sponsor_id}" />`,
+                    <input type="hidden" name="sponsors[${i}][group_sponsor_id]" value="${s.group_sponsor_id}" />
+                    <input type="hidden" name="sponsors[${i}][level]" value="${s.level || ''}" />`,
               )}
             </div>`
+          : ""}
+
+        ${this.showLevelModal
+          ? html`
+              <div class="fixed inset-0 z-20 flex items-center justify-center">
+                <div class="absolute inset-0 bg-black/30" @click=${() => this._closeLevelModal()}></div>
+                <div class="relative bg-white rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6">
+                  <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
+                  <div class="flex items-center gap-3 mb-4">
+                    <div
+                      class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+                    >
+                      <img
+                        src="${this.pendingSponsor?.logo_url || ''}"
+                        alt="${this.pendingSponsor?.name || ''} logo"
+                        class="h-6 w-6 object-contain"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="text-sm font-medium text-stone-900 truncate">${this.pendingSponsor?.name || ''}</div>
+                  </div>
+                  <label class="form-label" for="sponsor-level-input">Level</label>
+                  <input
+                    id="sponsor-level-input"
+                    type="text"
+                    class="input-primary mt-2 w-full"
+                    placeholder="Gold, Silver, Bronze, ..."
+                    .value=${this.pendingLevel}
+                    @input=${(e) => (this.pendingLevel = e.target.value || "")}
+                  />
+                  <div class="mt-6 flex items-center justify-end gap-3">
+                    <button type="button" class="btn-primary-outline" @click=${() => this._closeLevelModal()}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-primary"
+                      ?disabled=${!(this.pendingLevel || "").trim().length}
+                      @click=${() => this._confirmAddSponsorLevel()}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `
           : ""}
       </div>
     `;
