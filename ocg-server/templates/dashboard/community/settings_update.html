@@ -469,7 +469,7 @@
     settingsForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'settings-form') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('Community settings updated successfully.');
+          showSuccessAlert('You have successfully updated the community settings.');
         } else {
           showErrorAlert('Something went wrong updating the settings, please try again later.');
         }

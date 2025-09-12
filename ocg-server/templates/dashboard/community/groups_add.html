@@ -386,7 +386,7 @@
     groupsForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'groups-form') {
         if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('Group created successfully.');
+          showSuccessAlert('You have successfully created the group.');
         } else {
           showErrorAlert('Something went wrong creating the group, please try again later.');
         }

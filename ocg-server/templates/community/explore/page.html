@@ -51,5 +51,14 @@
       hideLoadingSpinner("loading-filters-mobile");
     });
   }
+
+  // Re-initialize dynamic widgets (e.g., calendar) on history restore
+  document.body.addEventListener('htmx:historyRestore', async () => {
+    const calendarBox = document.getElementById('calendar-box');
+    if (calendarBox) {
+      const module = await import('/static/js/community/explore/calendar.js');
+      new module.Calendar();
+    }
+  });
 </script>
 {% endblock content -%}

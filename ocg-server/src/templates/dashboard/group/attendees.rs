@@ -8,7 +8,10 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    templates::helpers::{InitialsCount, user_initials},
+    templates::{
+        filters,
+        helpers::{InitialsCount, user_initials},
+    },
     types::event::EventSummary,
 };
 

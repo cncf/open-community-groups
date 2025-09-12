@@ -41,7 +41,7 @@ pub(crate) fn display_some_datetime(
 }
 
 /// Display the value if present, otherwise return the provided alternative value.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
 pub(crate) fn display_some_or<T, U>(
     value: &Option<T>,
     _: &dyn askama::Values,

@@ -116,9 +116,30 @@ export class Calendar {
       events = await this.fetchEvents();
     }
 
+    // Toggle placeholder visibility and calendar opacity
+    const calendarEl = document.getElementById("calendar-box");
+    const wrapper = calendarEl ? calendarEl.parentElement : null;
+    const placeholderAlert = wrapper ? wrapper.querySelector('[role="alert"]') : null;
+    const placeholderContainer = placeholderAlert ? placeholderAlert.closest(".absolute") : null;
+
     if (events && events.length > 0) {
+      // Ensure calendar is fully visible
+      if (calendarEl) {
+        calendarEl.classList.remove("opacity-30");
+      }
+      // Hide placeholder overlay if present
+      if (placeholderContainer) {
+        placeholderContainer.classList.add("hidden");
+      }
       this.addEvents(events);
     } else {
+      // Show placeholder overlay if present and dim calendar
+      if (calendarEl) {
+        calendarEl.classList.add("opacity-30");
+      }
+      if (placeholderContainer) {
+        placeholderContainer.classList.remove("hidden");
+      }
       // Hide loading spinner
       hideLoadingSpinner("loading-calendar");
     }

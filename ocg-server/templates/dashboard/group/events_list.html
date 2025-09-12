@@ -308,7 +308,7 @@
                                 if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
                                   showSuccessAlert("You have successfully canceled the event.");
                                 } else {
-                                  showErrorAlert("An error occurred canceling this event, please try again later.");
+                                  showErrorAlert("Something went wrong canceling this event. Please try again later.");
                                 }
                               });
                             }
@@ -349,7 +349,7 @@
                               if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
                                 showSuccessAlert("You have successfully deleted the event.");
                               } else {
-                                showErrorAlert("An error occurred deleting this event, please try again later.");
+                                showErrorAlert("Something went wrong deleting this event. Please try again later.");
                               }
                             });
                           }

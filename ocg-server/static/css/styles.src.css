@@ -492,6 +492,10 @@ input:placeholder-shown {
   font-weight: 600 !important;
 }
 
+.markdown pre {
+  overflow-x: auto;
+}
+
 /* End markdown */
 
 
@@ -557,3 +561,17 @@ input:placeholder-shown {
 }
 
 /* End EasyMD Editor */
+
+/* Spinner */
+
+.hx-spinner {
+  display: none;
+}
+.htmx-request .hx-spinner {
+  display: inline;
+}
+.htmx-request.hx-spinner {
+  display: inline;
+}
+
+/* End spinner */
