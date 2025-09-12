@@ -1,0 +1,136 @@
+import { html } from "/static/vendor/js/lit-all.v3.2.1.min.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { computeUserInitials } from "/static/js/common/common.js";
+import "/static/js/common/avatar-image.js";
+
+/**
+ * UserChip shows a small user card with avatar, name, title,
+ * and an optional tooltip with a bio.
+ *
+ * Attributes/props:
+ * - name: string (required)
+ * - username: string (optional, used for initials)
+ * - image-url: string (optional)
+ * - title: string (optional)
+ * - bio: string (optional)
+ * - bio-is-html: boolean (optional). When true, bio is rendered as HTML.
+ * - delay: number (optional). Show delay in ms (default: 300).
+ * - tooltip-visible: boolean (optional). When true, tooltip is shown.
+ */
+export class UserChip extends LitWrapper {
+  static get properties() {
+    return {
+      name: { type: String },
+      username: { type: String },
+      imageUrl: { type: String, attribute: "image-url" },
+      title: { type: String },
+      bio: { type: String },
+      bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
+      tooltipVisible: { type: Boolean, attribute: "tooltip-visible" },
+      delay: { type: Number },
+      _hasBio: { type: Boolean, state: true },
+    };
+  }
+
+  constructor() {
+    super();
+    this.name = "";
+    this.username = "";
+    this.imageUrl = "";
+    this.title = "";
+    this.bio = "";
+    this.bioIsHtml = false;
+    this.tooltipVisible = false;
+    this.delay = 300;
+    this._hasBio = false;
+    this._timer = null;
+  }
+
+  firstUpdated() {
+    this._hasBio = typeof this.bio === "string" && this.bio.trim().length > 0;
+  }
+
+  _showTooltip = () => {
+    this._timer = setTimeout(() => {
+      this.tooltipVisible = true;
+    }, this.delay);
+  };
+
+  _hideTooltip = () => {
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => {
+      this.tooltipVisible = false;
+    }, 120);
+  };
+
+  _onTooltipEnter = () => {
+    clearTimeout(this._timer);
+    this.tooltipVisible = true;
+  };
+
+  _onTooltipLeave = () => {
+    this._hideTooltip();
+  };
+
+  _onKeydown = (e) => {
+    if (e.key === "Escape" && this._hasBio) {
+      e.preventDefault();
+      this.tooltipVisible = false;
+      clearTimeout(this._timer);
+    }
+  };
+
+  _renderHeader() {
+    const initials = computeUserInitials(this.name, this.username, 1);
+    return html`
+      <avatar-image image-url="${this.imageUrl || ""}" size="size-12" placeholder="${initials}">
+      </avatar-image>
+      <div class="leading-tight min-w-0">
+        <div class="font-semibold text-stone-900">${this.name || ""}</div>
+        ${this.title ? html`<div class="text-sm text-stone-600 mt-0.5">${this.title}</div>` : ""}
+      </div>
+    `;
+  }
+
+  render() {
+    const header = this._renderHeader();
+
+    return html`
+      <div
+        class="relative flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full ${this
+          ._hasBio
+          ? "cursor-pointer"
+          : ""}"
+        tabindex="${this._hasBio ? 0 : -1}"
+        aria-haspopup="true"
+        @mouseenter=${this._hasBio ? this._showTooltip : null}
+        @mouseleave=${this._hasBio ? this._hideTooltip : null}
+        @focusin=${this._hasBio ? this._showTooltip : null}
+        @focusout=${this._hasBio ? this._hideTooltip : null}
+        @keydown=${this._hasBio ? this._onKeydown : null}
+      >
+        ${header}
+        ${this.tooltipVisible
+          ? html`
+              <div
+                role="tooltip"
+                aria-hidden="${this.tooltipVisible ? "false" : "true"}"
+                class="chip-tooltip absolute start-0 top-full pt-1.5 z-10 inline-block max-w-[380px] text-sm text-stone-600 transition-opacity duration-150 tooltip-with-arrow"
+                @mouseenter=${this._hasBio ? this._onTooltipEnter : null}
+                @mouseleave=${this._hasBio ? this._onTooltipLeave : null}
+              >
+                <div class="bg-white border border-stone-200 p-4 rounded-lg shadow-lg">
+                  <div class="flex items-start gap-3">${header}</div>
+                  ${this.bioIsHtml
+                    ? html`<div class="text-stone-700 text-sm mt-3" .innerHTML=${this.bio}></div>`
+                    : html`<div class="text-stone-700 text-sm mt-3">${this.bio}</div>`}
+                </div>
+              </div>
+            `
+          : ""}
+      </div>
+    `;
+  }
+}
+
+customElements.define("user-chip", UserChip);

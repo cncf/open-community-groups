@@ -4,6 +4,7 @@
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
+  <script type="module" src="/static/js/common/user-chip.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -282,19 +283,11 @@
               {% if !session.speakers.is_empty() -%}
                 <div class="mt-4">
                   <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
-                  <div class="flex flex-wrap gap-2">
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {% for speaker in session.speakers -%}
-                      {# Only display speakers that have a first name or last name defined -#}
                       {% if speaker.name.is_some() -%}
-                        <div class="flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-3 py-1">
-                          <avatar-image
-                          {% if let Some(photo_url) = speaker.photo_url -%}
-                            image-url="{{ photo_url }}"
-                          {% endif -%}
-                          size="size-[24px]" hide-border="true" placeholder="{{ self::user_initials(speaker.name.as_deref() , speaker.username.as_str(), InitialsCount::One) }}">
-                          </avatar-image>
-                          <span class="text-sm text-stone-700">{{ speaker.name|display_some }}</span>
-                        </div>
+                        <user-chip name="{{ speaker.name|display_some }}" username="{{ speaker.username }}" image-url="{{ speaker.photo_url|display_some }}" title="{{ speaker.title|display_some }}">
+                        </user-chip>
                       {% endif -%}
                     {% endfor -%}
                   </div>
@@ -359,64 +352,51 @@
     {% endif -%}
     {# End sponsors section -#}
 
+    {# Speakers section (legacy data) - Full width -#}
+    {% if let Some(legacy_speakers) = event.legacy_speakers -%}
+      {% if !legacy_speakers.is_empty() -%}
+        <div class="px-4 sm:px-6 lg:px-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Speakers</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for speaker in legacy_speakers -%}
+              {% if speaker.name.is_some() -%}
+                <user-chip name="{{ speaker.name|display_some }}" username="" image-url="{{ speaker.photo_url|display_some }}" title="{{ speaker.title|display_some }}" bio-is-html bio="{{ speaker.bio.as_deref().unwrap_or("")|md_to_html }}">
+                </user-chip>
+              {% endif -%}
+            {% endfor -%}
+          </div>
+        </div>
+      {% endif -%}
+    {% endif -%}
+    {# End speakers section (legacy data) -#}
+
+    {# Hosts section (legacy data) - Full width -#}
+    {% if let Some(legacy_hosts) = event.legacy_hosts -%}
+      {% if !legacy_hosts.is_empty() -%}
+        <div class="px-4 sm:px-6 lg:px-8">
+          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Hosts</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for host in legacy_hosts -%}
+              {% if host.name.is_some() -%}
+                <user-chip name="{{ host.name|display_some }}" username="" image-url="{{ host.photo_url|display_some }}" title="{{ host.title|display_some }}" bio-is-html bio="{{ host.bio.as_deref().unwrap_or("")|md_to_html }}">
+                </user-chip>
+              {% endif -%}
+            {% endfor -%}
+          </div>
+        </div>
+      {% endif -%}
+    {% endif -%}
+    {# End hosts section (legacy data) -#}
+
     {# Hosts section - Full width -#}
     {% if !event.hosts.is_empty() -%}
       <div class="px-4 sm:px-6 lg:px-8">
         <h2 class="text-2xl font-semibold text-stone-900 mb-6">Hosts</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {% for host in event.hosts -%}
-            {# Only display hosts that have a first name or last name defined -#}
             {% if host.name.is_some() -%}
-              <div class="border border-stone-200 rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  {# Host photo -#}
-                  <div class="flex-shrink-0">
-                    <avatar-image
-                    {% if let Some(photo_url) = host.photo_url -%}
-                      image-url="{{ photo_url }}"
-                    {% endif -%}
-                    size="size-12" placeholder="{{ self::user_initials(host.name.as_deref() , host.username.as_str(), InitialsCount::Two) }}">
-                    </avatar-image>
-                  </div>
-                  {# End host photo -#}
-
-                  {# Host details -#}
-                  <div class="flex-1">
-                    {# Host name -#}
-                    <div class="font-semibold text-stone-900">{{ host.name|display_some }}</div>
-                    {# End host name -#}
-
-                    {# Host role/title and company if available -#}
-                    <div class="text-sm text-stone-600 mt-0.5">
-                      {% if let Some(title) = host.title -%}
-                        <span>{{ title }}</span>
-                        {% if let Some(company) = host.company -%}
-                          <span>at {{ company }}</span>
-                        {% endif -%}
-                      {% else if let Some(company) = host.company -%}
-                        <span>{{ company }}</span>
-                      {% endif -%}
-                    </div>
-
-                    {# Host social links if available -#}
-                    <div class="flex gap-2 mt-2">
-                      {% if let Some(linkedin_url) = host.linkedin_url -%}
-                        {% call host_social_link(url = linkedin_url, label = "LinkedIn profile", icon = "linkedin") -%}
-                      {% endif -%}
-                      {% if let Some(twitter_url) = host.twitter_url -%}
-                        {% call host_social_link(url = twitter_url, label = "Twitter profile", icon = "twitter") -%}
-                      {% endif -%}
-                      {% if let Some(facebook_url) = host.facebook_url -%}
-                        {% call host_social_link(url = facebook_url, label = "Facebook profile", icon = "facebook") -%}
-                      {% endif -%}
-                      {% if let Some(website_url) = host.website_url -%}
-                        {% call host_social_link(url = website_url, label = "Personal website", icon = "website") -%}
-                      {% endif -%}
-                    </div>
-                  </div>
-                  {# End host details -#}
-                </div>
-              </div>
+              <user-chip name="{{ host.name|display_some }}" username="{{ host.username }}" image-url="{{ host.photo_url|display_some }}" title="{{ host.title|display_some }}">
+              </user-chip>
             {% endif -%}
           {% endfor -%}
         </div>
