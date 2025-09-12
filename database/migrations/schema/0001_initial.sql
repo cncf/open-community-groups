@@ -500,7 +500,7 @@ create table legacy_event_host (
     event_id uuid not null references event,
 
     bio text check (bio <> ''),
-    name text,
+    name text check (name <> ''),
     photo_url text check (photo_url <> ''),
     title text check (title <> '')
 );
@@ -514,7 +514,7 @@ create table legacy_event_speaker (
     event_id uuid not null references event,
 
     bio text check (bio <> ''),
-    name text,
+    name text check (name <> ''),
     photo_url text check (photo_url <> ''),
     title text check (title <> '')
 );
