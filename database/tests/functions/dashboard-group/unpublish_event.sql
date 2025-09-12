@@ -112,33 +112,33 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Test: archive_event should clear published flags and metadata
-select archive_event(:'groupID'::uuid, :'eventID'::uuid);
+-- Test: unpublish_event should clear published flags and metadata
+select unpublish_event(:'groupID'::uuid, :'eventID'::uuid);
 
 select is(
     (select published from event where event_id = :'eventID'),
     false,
-    'archive_event should set published=false'
+    'unpublish_event should set published=false'
 );
 
 select is(
     (select published_at from event where event_id = :'eventID'),
     null,
-    'archive_event should set published_at to null'
+    'unpublish_event should set published_at to null'
 );
 
 select is(
     (select published_by from event where event_id = :'eventID'),
     null,
-    'archive_event should set published_by to null'
+    'unpublish_event should set published_by to null'
 );
 
--- Test: archive_event should throw error when group_id does not match
+-- Test: unpublish_event should throw error when group_id does not match
 select throws_ok(
-    $$select archive_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    $$select unpublish_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',
     'event not found',
-    'archive_event should throw error when group_id does not match'
+    'unpublish_event should throw error when group_id does not match'
 );
 
 -- ============================================================================
@@ -147,4 +147,3 @@ select throws_ok(
 
 select * from finish();
 rollback;
-

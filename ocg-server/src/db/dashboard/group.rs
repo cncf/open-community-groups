@@ -35,9 +35,6 @@ pub(crate) trait DBDashboardGroup {
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
 
-    /// Archives an event (sets published=false and clears publication metadata).
-    async fn archive_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
-
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
@@ -98,6 +95,9 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         filters: &AttendeesFilters,
     ) -> Result<Vec<Attendee>>;
+
+    /// Unpublishes an event (sets published=false and clears publication metadata).
+    async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Updates an existing event.
     async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
@@ -166,21 +166,6 @@ impl DBDashboardGroup for PgDB {
             .get(0);
 
         Ok(event_id)
-    }
-
-    /// [`DBDashboardGroup::archive_event`]
-    #[instrument(skip(self), err)]
-    async fn archive_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
-        trace!("db: archive event");
-
-        let db = self.pool.get().await?;
-        db.execute(
-            "select archive_event($1::uuid, $2::uuid)",
-            &[&group_id, &event_id],
-        )
-        .await?;
-
-        Ok(())
     }
 
     /// [`DBDashboardGroup::cancel_event`]
@@ -465,6 +450,21 @@ impl DBDashboardGroup for PgDB {
         let attendees = Attendee::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(attendees)
+    }
+
+    /// [`DBDashboardGroup::unpublish_event`]
+    #[instrument(skip(self), err)]
+    async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
+        trace!("db: unpublish event");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select unpublish_event($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardGroup::update_event`]
