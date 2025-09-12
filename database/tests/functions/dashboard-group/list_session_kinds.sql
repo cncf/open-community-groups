@@ -14,6 +14,10 @@ select is(
     list_session_kinds()::jsonb,
     '[
         {
+            "session_kind_id": "hybrid",
+            "display_name": "Hybrid"
+        },
+        {
             "session_kind_id": "in-person",
             "display_name": "In-Person"
         },
@@ -31,4 +35,3 @@ select is(
 
 select * from finish();
 rollback;
-

@@ -270,10 +270,15 @@
               {% endif -%}
               <div class="flex items-center text-sm text-stone-600 mb-2">
                 <div class="svg-icon size-3 mr-1 bg-stone-600 icon-clock"></div>
-                {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ session.ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
+                {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }}
+                {% if let Some(ends_at) = session.ends_at -%}
+                  - {{ ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
+                {% endif -%}
                 {% call common::event_badge(kind = session.kind, extra_styles = Some("flex sm:hidden ms-3")) -%}
               </div>
-              <div class="text-stone-700 text-sm line-clamp-3 flex-grow">{{ session.description|md_to_html|safe }}</div>
+              {% if let Some(description) = session.description -%}
+                <div class="text-stone-700 text-sm line-clamp-3 flex-grow">{{ description|md_to_html|safe }}</div>
+              {% endif -%}
               {% if !session.speakers.is_empty() -%}
                 <div class="mt-4">
                   <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>

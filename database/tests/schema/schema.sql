@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(85);
+select plan(97);
 
 -- ============================================================================
 -- TESTS
@@ -33,6 +33,9 @@ select has_table('group_team');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
 select has_table('region');
+select has_table('session');
+select has_table('session_kind');
+select has_table('session_speaker');
 select has_table('user');
 
 -- Test: community columns should match expected
@@ -250,6 +253,36 @@ select columns_are('group_team', array[
     'order'
 ]);
 
+-- Test: session columns should match expected
+select columns_are('session', array[
+    'session_id',
+    'created_at',
+    'event_id',
+    'name',
+    'session_kind_id',
+    'starts_at',
+
+    'description',
+    'ends_at',
+    'location',
+    'recording_url',
+    'streaming_url'
+]);
+
+-- Test: session_kind columns should match expected
+select columns_are('session_kind', array[
+    'session_kind_id',
+    'display_name'
+]);
+
+-- Test: session_speaker columns should match expected
+select columns_are('session_speaker', array[
+    'created_at',
+    'featured',
+    'session_id',
+    'user_id'
+]);
+
 -- Test: legacy_event_host columns should match expected
 select columns_are('legacy_event_host', array[
     'legacy_event_host_id',
@@ -330,6 +363,9 @@ select has_pk('group_team');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
 select has_pk('region');
+select has_pk('session');
+select has_pk('session_kind');
+select has_pk('session_speaker');
 select has_pk('user');
 
 -- Check tables have expected indexes
@@ -396,6 +432,20 @@ select indexes_are('legacy_event_speaker', array[
     'legacy_event_speaker_event_id_idx'
 ]);
 
+-- Test: session indexes should match expected
+select indexes_are('session', array[
+    'session_pkey',
+    'session_event_id_idx',
+    'session_session_kind_id_idx'
+]);
+
+-- Test: session_speaker indexes should match expected
+select indexes_are('session_speaker', array[
+    'session_speaker_pkey',
+    'session_speaker_session_id_idx',
+    'session_speaker_user_id_idx'
+]);
+
 -- Test: user indexes should match expected
 select indexes_are('user', array[
     'user_pkey',
@@ -431,6 +481,17 @@ select results_eq(
         ('virtual', 'Virtual')
     $$,
     'Event kinds should exist'
+);
+
+-- Test: session kinds should match expected values
+select results_eq(
+    'select * from session_kind order by session_kind_id',
+    $$ values
+        ('hybrid', 'Hybrid'),
+        ('in-person', 'In-Person'),
+        ('virtual', 'Virtual')
+    $$,
+    'Session kinds should exist'
 );
 
 -- Test: community site layout should match expected
