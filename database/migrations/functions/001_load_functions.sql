@@ -38,6 +38,7 @@
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
+{{ template "dashboard-group/cancel_event.sql" }}
 {{ template "dashboard-group/delete_event.sql" }}
 {{ template "dashboard-group/delete_group_sponsor.sql" }}
 {{ template "dashboard-group/delete_group_team_member.sql" }}

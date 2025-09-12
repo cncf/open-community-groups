@@ -1,6 +1,6 @@
 //! Database interface for group dashboard operations.
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
@@ -174,20 +174,8 @@ impl DBDashboardGroup for PgDB {
         trace!("db: cancel event");
 
         let db = self.pool.get().await?;
-        let rows_affected = db
-            .execute(
-                "
-                update event set canceled = true
-                where event_id = $1
-                and group_id = $2
-                and deleted = false;
-                ",
-                &[&event_id, &group_id],
-            )
+        db.execute("select cancel_event($1::uuid, $2::uuid)", &[&group_id, &event_id])
             .await?;
-        if rows_affected == 0 {
-            bail!("event not found or already deleted");
-        }
 
         Ok(())
     }
