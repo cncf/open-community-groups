@@ -24,6 +24,10 @@ select plan(2);
 \set user1ID '00000000-0000-0000-0000-000000000041'
 \set user2ID '00000000-0000-0000-0000-000000000042'
 \set user3ID '00000000-0000-0000-0000-000000000043'
+\set legacyHost1ID '00000000-0000-0000-0000-000000000071'
+\set legacyHost2ID '00000000-0000-0000-0000-000000000072'
+\set legacySpeaker1ID '00000000-0000-0000-0000-000000000073'
+\set legacySpeaker2ID '00000000-0000-0000-0000-000000000074'
 
 -- ============================================================================
 -- SEED DATA
@@ -225,6 +229,54 @@ values
     (:'eventID', :'sponsor1ID', 'Silver'),
     (:'eventID', :'sponsor2ID', 'Gold');
 
+-- Legacy Event Hosts
+insert into legacy_event_host (
+    legacy_event_host_id,
+    event_id,
+    name,
+    bio,
+    title,
+    photo_url
+) values (
+    :'legacyHost1ID',
+    :'eventID',
+    'Ada Lovelace (Legacy)',
+    'Pioneer of computing and analytics',
+    'Mathematician',
+    'https://example.com/ada.png'
+), (
+    :'legacyHost2ID',
+    :'eventID',
+    'Bruno Díaz (Legacy)',
+    'Cloud native advocate and speaker',
+    'Engineer',
+    'https://example.com/bruno.png'
+);
+
+-- Legacy Event Speakers
+insert into legacy_event_speaker (
+    legacy_event_speaker_id,
+    event_id,
+    name,
+    bio,
+    title,
+    photo_url
+) values (
+    :'legacySpeaker1ID',
+    :'eventID',
+    'Carol Speaker (Legacy)',
+    'Distributed systems researcher and speaker',
+    'Researcher',
+    'https://example.com/carol.png'
+), (
+    :'legacySpeaker2ID',
+    :'eventID',
+    'Diego Speaker (Legacy)',
+    'Kubernetes contributor and speaker',
+    'Engineer',
+    'https://example.com/diego.png'
+);
+
 -- Event (unpublished)
 insert into event (
     event_id,
@@ -336,6 +388,34 @@ select is(
                 "title": "Principal Engineer",
                 "twitter_url": "https://twitter.com/sarahchen",
                 "website_url": "https://sarahchen.dev"
+            }
+        ],
+        "legacy_hosts": [
+            {
+                "bio": "Pioneer of computing and analytics",
+                "name": "Ada Lovelace (Legacy)",
+                "photo_url": "https://example.com/ada.png",
+                "title": "Mathematician"
+            },
+            {
+                "bio": "Cloud native advocate and speaker",
+                "name": "Bruno Díaz (Legacy)",
+                "photo_url": "https://example.com/bruno.png",
+                "title": "Engineer"
+            }
+        ],
+        "legacy_speakers": [
+            {
+                "bio": "Distributed systems researcher and speaker",
+                "name": "Carol Speaker (Legacy)",
+                "photo_url": "https://example.com/carol.png",
+                "title": "Researcher"
+            },
+            {
+                "bio": "Kubernetes contributor and speaker",
+                "name": "Diego Speaker (Legacy)",
+                "photo_url": "https://example.com/diego.png",
+                "title": "Engineer"
             }
         ],
         "organizers": [

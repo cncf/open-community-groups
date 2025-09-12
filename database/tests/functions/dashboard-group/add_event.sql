@@ -92,8 +92,8 @@ select is(
         add_event(
             :'groupID'::uuid,
             '{"name": "Kubernetes Fundamentals Workshop", "slug": "k8s-fundamentals-workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
-        )
-    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group')),
+    )
+    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers')),
     '{
         "canceled": false,
         "category_name": "Conference",
@@ -166,7 +166,7 @@ with new_event as (
     ) as event_id
 )
 select is(
-    (select get_event_full(event_id)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'sessions' from new_event)
+    (select get_event_full(event_id)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' from new_event)
         -- Add back sessions without session_ids (which are random)
         || jsonb_build_object('sessions',
             (select jsonb_agg(session - 'session_id' order by session->>'name')

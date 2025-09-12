@@ -52,6 +52,26 @@ returns json as $$
             join "user" u using (user_id)
             where eh.event_id = e.event_id
         ),
+        'legacy_hosts', (
+            select coalesce(json_agg(json_strip_nulls(json_build_object(
+                'bio', leh.bio,
+                'name', leh.name,
+                'photo_url', leh.photo_url,
+                'title', leh.title
+            )) order by leh.name), '[]')
+            from legacy_event_host leh
+            where leh.event_id = e.event_id
+        ),
+        'legacy_speakers', (
+            select coalesce(json_agg(json_strip_nulls(json_build_object(
+                'bio', les.bio,
+                'name', les.name,
+                'photo_url', les.photo_url,
+                'title', les.title
+            )) order by les.name), '[]')
+            from legacy_event_speaker les
+            where les.event_id = e.event_id
+        ),
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
