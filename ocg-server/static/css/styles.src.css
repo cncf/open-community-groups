@@ -492,6 +492,10 @@ input:placeholder-shown {
   font-weight: 600 !important;
 }
 
+.markdown pre {
+  overflow-x: auto;
+}
+
 /* End markdown */
 
 
