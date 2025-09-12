@@ -120,7 +120,7 @@ export class Calendar {
     const calendarEl = document.getElementById("calendar-box");
     const wrapper = calendarEl ? calendarEl.parentElement : null;
     const placeholderAlert = wrapper ? wrapper.querySelector('[role="alert"]') : null;
-    const placeholderContainer = placeholderAlert ? placeholderAlert.closest('.absolute') : null;
+    const placeholderContainer = placeholderAlert ? placeholderAlert.closest(".absolute") : null;
 
     if (events && events.length > 0) {
       // Ensure calendar is fully visible
