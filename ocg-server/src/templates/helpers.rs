@@ -174,6 +174,7 @@ pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>
 /// How many initials to generate.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum InitialsCount {
+    #[allow(dead_code)]
     One,
     Two,
 }
