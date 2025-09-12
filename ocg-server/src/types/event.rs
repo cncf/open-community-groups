@@ -380,23 +380,23 @@ pub struct LegacyUser {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
-    /// Full session description.
-    pub description: String,
-    /// Session end time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub ends_at: DateTime<Utc>,
-    /// Unique identifier for the session.
-    pub session_id: Uuid,
-    /// Type of session (in-person, virtual).
+    /// Type of session (hybrid, in-person, virtual).
     pub kind: SessionKind,
     /// Session title.
     pub name: String,
+    /// Unique identifier for the session.
+    pub session_id: Uuid,
     /// Session speakers.
     pub speakers: Vec<User>,
     /// Session start time in UTC.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub starts_at: DateTime<Utc>,
 
+    /// Full session description.
+    pub description: Option<String>,
+    /// Session end time in UTC.
+    #[serde(with = "chrono::serde::ts_seconds_option")]
+    pub ends_at: Option<DateTime<Utc>>,
     /// Location details for the session.
     pub location: Option<String>,
     /// URL for session recording.
@@ -409,6 +409,7 @@ pub struct Session {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SessionKind {
+    Hybrid,
     #[default]
     InPerson,
     Virtual,
@@ -417,6 +418,7 @@ pub enum SessionKind {
 impl std::fmt::Display for SessionKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            SessionKind::Hybrid => write!(f, "hybrid"),
             SessionKind::InPerson => write!(f, "in-person"),
             SessionKind::Virtual => write!(f, "virtual"),
         }

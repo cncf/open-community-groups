@@ -125,17 +125,17 @@ pub(crate) struct Event {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Session {
-    /// Session description.
-    pub description: String,
-    /// Session end time.
-    pub ends_at: NaiveDateTime,
-    /// Type of session (in-person, virtual).
+    /// Type of session (hybrid, in-person, virtual).
     pub kind: SessionKind,
     /// Session name.
     pub name: String,
     /// Session start time.
     pub starts_at: NaiveDateTime,
 
+    /// Session description.
+    pub description: Option<String>,
+    /// Session end time.
+    pub ends_at: Option<NaiveDateTime>,
     /// Location for the session.
     pub location: Option<String>,
     /// Recording URL for the session.

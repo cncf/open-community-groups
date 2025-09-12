@@ -399,20 +399,21 @@ create table session_kind (
     display_name text not null unique
 );
 
+insert into session_kind values ('hybrid', 'Hybrid');
 insert into session_kind values ('in-person', 'In-Person');
 insert into session_kind values ('virtual', 'Virtual');
 
--- Sessions within events (for multi-track conferences, workshops with parts).
+-- Sessions within events.
 create table session (
     session_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
-    description text not null check (description <> ''),
-    ends_at timestamptz not null,
     event_id uuid not null references event,
     name text not null,
     session_kind_id text not null references session_kind,
     starts_at timestamptz not null,
 
+    description text check (description <> ''),
+    ends_at timestamptz,
     location text check (location <> ''),
     recording_url text check (recording_url <> ''),
     streaming_url text check (streaming_url <> '')
