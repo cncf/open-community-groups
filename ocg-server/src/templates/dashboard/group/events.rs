@@ -103,8 +103,8 @@ pub(crate) struct Event {
     pub registration_required: Option<bool>,
     /// Event sessions with speakers.
     pub sessions: Option<Vec<Session>>,
-    /// Event sponsors (group sponsor identifiers).
-    pub sponsors: Option<Vec<Uuid>>,
+    /// Event sponsors.
+    pub sponsors: Option<Vec<EventSponsor>>,
     /// Event start time.
     pub starts_at: Option<NaiveDateTime>,
     /// Streaming URL.
@@ -144,4 +144,14 @@ pub(crate) struct Session {
     pub speakers: Option<Vec<Uuid>>,
     /// Streaming URL for the session.
     pub streaming_url: Option<String>,
+}
+
+/// Event sponsor information.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventSponsor {
+    /// Group sponsor identifier.
+    pub group_sponsor_id: Uuid,
+    /// Sponsor level for this event.
+    pub level: String,
 }
