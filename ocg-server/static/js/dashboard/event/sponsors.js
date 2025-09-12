@@ -61,9 +61,7 @@ export class SponsorsSection extends LitWrapper {
       if (!this._requireLevels()) {
         e.preventDefault();
         e.stopPropagation();
-        const missing = (this.selectedSponsors || []).find(
-          (s) => !s.level || !String(s.level).trim().length,
-        );
+        const missing = (this.selectedSponsors || []).find((s) => !s.level || !String(s.level).trim().length);
         if (missing) {
           this.pendingSponsor = missing;
           this.pendingLevel = "";
@@ -396,30 +394,37 @@ export class SponsorsSection extends LitWrapper {
                         <div class="svg-icon size-4 icon-close bg-stone-600"></div>
                       </button>
                     </div>
-                    <input type="hidden" name="sponsors[${i}][group_sponsor_id]" value="${s.group_sponsor_id}" />
-                    <input type="hidden" name="sponsors[${i}][level]" value="${s.level || ''}" />`,
+                    <input
+                      type="hidden"
+                      name="sponsors[${i}][group_sponsor_id]"
+                      value="${s.group_sponsor_id}"
+                    />
+                    <input type="hidden" name="sponsors[${i}][level]" value="${s.level || ""}" />`,
               )}
             </div>`
           : ""}
-
         ${this.showLevelModal
           ? html`
               <div class="fixed inset-0 z-20 flex items-center justify-center">
                 <div class="absolute inset-0 bg-black/30" @click=${() => this._closeLevelModal()}></div>
-                <div class="relative bg-white rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6">
+                <div
+                  class="relative bg-white rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6"
+                >
                   <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
                   <div class="flex items-center gap-3 mb-4">
                     <div
                       class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
                     >
                       <img
-                        src="${this.pendingSponsor?.logo_url || ''}"
-                        alt="${this.pendingSponsor?.name || ''} logo"
+                        src="${this.pendingSponsor?.logo_url || ""}"
+                        alt="${this.pendingSponsor?.name || ""} logo"
                         class="h-6 w-6 object-contain"
                         loading="lazy"
                       />
                     </div>
-                    <div class="text-sm font-medium text-stone-900 truncate">${this.pendingSponsor?.name || ''}</div>
+                    <div class="text-sm font-medium text-stone-900 truncate">
+                      ${this.pendingSponsor?.name || ""}
+                    </div>
                   </div>
                   <label class="form-label" for="sponsor-level-input">Level</label>
                   <input
