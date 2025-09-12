@@ -37,7 +37,9 @@
                 size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str(), InitialsCount::Two) }}">
                 </avatar-image>
                 <div class="min-w-0">
-                  <div class="font-medium text-stone-900 truncate">{{ member.name|display_some_or(format!("@{}", member.username)) }}</div>
+                  <div class="font-medium text-stone-900 truncate">
+                    {{ member.name|display_some_or(format!("@{}", member.username) ) }}
+                  </div>
                   {% if member.name.is_some() -%}
                     <div class="text-xs text-stone-600 truncate">@{{ member.username }}</div>
                   {% endif -%}

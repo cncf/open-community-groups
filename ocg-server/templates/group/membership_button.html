@@ -42,7 +42,9 @@
     showErrorAlert,
     showSuccessAlert,
   } from '/static/js/common/alerts.js';
-  import { isSuccessfulXHRStatus } from '/static/js/common/common.js';
+  import {
+    isSuccessfulXHRStatus
+  } from '/static/js/common/common.js';
 
   const membershipHandler = document.getElementById('membership-checker');
 
@@ -84,7 +86,7 @@
   });
 
   // Handle join button
-  document.getElementById('join-btn').addEventListener('htmx:beforeRequest', function () {
+  document.getElementById('join-btn').addEventListener('htmx:beforeRequest', function() {
     this.classList.add('hidden');
     document.getElementById('loading-btn').classList.remove('hidden');
   });
@@ -103,7 +105,7 @@
   });
 
   // Handle leave button
-  document.getElementById('leave-btn').addEventListener('htmx:beforeRequest', function () {
+  document.getElementById('leave-btn').addEventListener('htmx:beforeRequest', function() {
     this.classList.add('hidden');
     document.getElementById('loading-btn').classList.remove('hidden');
   });
