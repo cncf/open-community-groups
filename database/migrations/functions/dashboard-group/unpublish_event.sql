@@ -1,5 +1,5 @@
--- archive_event sets published=false and clears publication metadata for an event.
-create or replace function archive_event(
+-- unpublish_event sets published=false and clears publication metadata for an event.
+create or replace function unpublish_event(
     p_group_id uuid,
     p_event_id uuid
 )
@@ -18,4 +18,3 @@ begin
     end if;
 end;
 $$ language plpgsql;
-

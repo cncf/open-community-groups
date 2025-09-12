@@ -193,18 +193,18 @@
                        class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                     <ul class="py-2 text-sm text-stone-700"
                         aria-labelledby="dropdownDefaultButton">
-                      {# Publish/Archive button depending on status -#}
+                      {# Publish/Unpublish button depending on status -#}
                       {% if event.published || event.canceled -%}
                         <li>
-                          <button id="archive-event-{{ event.event_id }}"
-                                  hx-put="/dashboard/group/events/{{ event.event_id }}/archive"
+                          <button id="unpublish-event-{{ event.event_id }}"
+                                  hx-put="/dashboard/group/events/{{ event.event_id }}/unpublish"
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
                                   class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
                             <div class="flex items-center">
                               <div class="svg-icon size-4 icon-power bg-stone-600"></div>
-                              <div class="ms-2">Archive</div>
+                              <div class="ms-2">Unpublish</div>
                             </div>
                           </button>
                           <script type="module">
@@ -217,17 +217,17 @@
                               isSuccessfulXHRStatus
                             } from '/static/js/common/common.js';
 
-                            const archiveEventButton = document.getElementById('archive-event-{{ event.event_id }}');
-                            if (archiveEventButton) {
-                              archiveEventButton.addEventListener('click', () => {
-                                showConfirmAlert("Are you sure you wish to archive this event?", "archive-event-{{ event.event_id }}", "Yes");
+                            const unpublishEventButton = document.getElementById('unpublish-event-{{ event.event_id }}');
+                            if (unpublishEventButton) {
+                              unpublishEventButton.addEventListener('click', () => {
+                                showConfirmAlert("Are you sure you wish to unpublish this event?", "unpublish-event-{{ event.event_id }}", "Yes");
                               });
 
-                              archiveEventButton.addEventListener("htmx:afterRequest", (e) => {
+                              unpublishEventButton.addEventListener("htmx:afterRequest", (e) => {
                                 if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                  showSuccessAlert("You have successfully archived the event.");
+                                  showSuccessAlert("You have successfully unpublished the event.");
                                 } else {
-                                  showErrorAlert("An error occurred archiving this event, please try again later.");
+                                  showErrorAlert("An error occurred unpublishing this event, please try again later.");
                                 }
                               });
                             }
@@ -273,7 +273,7 @@
                           </script>
                         </li>
                       {% endif -%}
-                      {# End publish/archive button -#}
+                      {# End publish/unpublish button -#}
                       {# Cancel button -#}
                       {% if !event.canceled -%}
                         <li>

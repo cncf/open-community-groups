@@ -127,19 +127,6 @@ pub(crate) async fn add(
         .into_response())
 }
 
-/// Archives an event (sets published=false and clears publication metadata).
-#[instrument(skip_all, err)]
-pub(crate) async fn archive(
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    Path(event_id): Path<Uuid>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Mark event as archived in database
-    db.archive_event(group_id, event_id).await?;
-
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
-}
-
 /// Cancels an event (sets canceled=true).
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
@@ -237,6 +224,19 @@ pub(crate) async fn delete(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Delete event from database (soft delete)
     db.delete_event(group_id, event_id).await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
+}
+
+/// Unpublishes an event (sets published=false and clears publication metadata).
+#[instrument(skip_all, err)]
+pub(crate) async fn unpublish(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Mark event as unpublished in database
+    db.unpublish_event(group_id, event_id).await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
 }

@@ -1,6 +1,6 @@
 //! Database interface for group dashboard operations.
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use async_trait::async_trait;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
@@ -34,9 +34,6 @@ pub(crate) trait DBDashboardGroup {
 
     /// Adds a new event to the database.
     async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
-
-    /// Archives an event (sets published=false and clears publication metadata).
-    async fn archive_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
@@ -98,6 +95,9 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         filters: &AttendeesFilters,
     ) -> Result<Vec<Attendee>>;
+
+    /// Unpublishes an event (sets published=false and clears publication metadata).
+    async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Updates an existing event.
     async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
@@ -168,41 +168,14 @@ impl DBDashboardGroup for PgDB {
         Ok(event_id)
     }
 
-    /// [`DBDashboardGroup::archive_event`]
-    #[instrument(skip(self), err)]
-    async fn archive_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
-        trace!("db: archive event");
-
-        let db = self.pool.get().await?;
-        db.execute(
-            "select archive_event($1::uuid, $2::uuid)",
-            &[&group_id, &event_id],
-        )
-        .await?;
-
-        Ok(())
-    }
-
     /// [`DBDashboardGroup::cancel_event`]
     #[instrument(skip(self), err)]
     async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
         trace!("db: cancel event");
 
         let db = self.pool.get().await?;
-        let rows_affected = db
-            .execute(
-                "
-                update event set canceled = true
-                where event_id = $1
-                and group_id = $2
-                and deleted = false;
-                ",
-                &[&event_id, &group_id],
-            )
+        db.execute("select cancel_event($1::uuid, $2::uuid)", &[&group_id, &event_id])
             .await?;
-        if rows_affected == 0 {
-            bail!("event not found or already deleted");
-        }
 
         Ok(())
     }
@@ -465,6 +438,21 @@ impl DBDashboardGroup for PgDB {
         let attendees = Attendee::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(attendees)
+    }
+
+    /// [`DBDashboardGroup::unpublish_event`]
+    #[instrument(skip(self), err)]
+    async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()> {
+        trace!("db: unpublish event");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select unpublish_event($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardGroup::update_event`]

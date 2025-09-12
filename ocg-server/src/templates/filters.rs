@@ -5,6 +5,7 @@
 //! functionality with application-specific formatting needs.
 
 use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use num_format::{Locale, ToFormattedString};
 use tracing::error;
 use unicode_segmentation::UnicodeSegmentation;
@@ -36,6 +37,21 @@ pub(crate) fn display_some_datetime(
 ) -> askama::Result<String> {
     match value {
         Some(value) => Ok(value.format(format).to_string()),
+        None => Ok(String::new()),
+    }
+}
+
+/// Display the formatted datetime in the provided timezone if present, otherwise
+/// return an empty string.
+#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
+pub(crate) fn display_some_datetime_tz(
+    value: &Option<DateTime<Utc>>,
+    _: &dyn askama::Values,
+    format: &str,
+    timezone: Tz,
+) -> askama::Result<String> {
+    match value {
+        Some(value) => Ok(value.with_timezone(&timezone).format(format).to_string()),
         None => Ok(String::new()),
     }
 }
