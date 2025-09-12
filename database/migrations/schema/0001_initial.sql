@@ -488,3 +488,35 @@ create table notification (
 create index notification_not_processed_idx on notification (notification_id) where processed = 'false';
 create index notification_kind_idx on notification(kind);
 create index notification_user_id_idx on notification(user_id);
+
+-- =============================================================================
+-- LEGACY TABLES
+-- =============================================================================
+
+-- Denormalized legacy event hosts. This table is populated externally and is
+-- not used by event creation/update flows. It links directly to events.
+create table legacy_event_host (
+    legacy_event_host_id uuid primary key default gen_random_uuid(),
+    event_id uuid not null references event,
+
+    bio text check (bio <> ''),
+    name text check (name <> ''),
+    photo_url text check (photo_url <> ''),
+    title text check (title <> '')
+);
+
+create index legacy_event_host_event_id_idx on legacy_event_host (event_id);
+
+-- Denormalized legacy event speakers. This table is populated externally and
+-- is not used by event creation/update flows. It links directly to events.
+create table legacy_event_speaker (
+    legacy_event_speaker_id uuid primary key default gen_random_uuid(),
+    event_id uuid not null references event,
+
+    bio text check (bio <> ''),
+    name text check (name <> ''),
+    photo_url text check (photo_url <> ''),
+    title text check (title <> '')
+);
+
+create index legacy_event_speaker_event_id_idx on legacy_event_speaker (event_id);

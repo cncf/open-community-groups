@@ -129,7 +129,7 @@ select update_event(
 );
 
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group')),
+    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers')),
     '{
         "canceled": false,
         "category_name": "Workshop",
@@ -190,7 +190,7 @@ select update_event(
 );
 
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'sessions'))
+    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'))
         -- Add back sessions without session_ids (which are random)
         || jsonb_build_object('sessions', 
             (select jsonb_agg(session - 'session_id')

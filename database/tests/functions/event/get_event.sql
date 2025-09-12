@@ -192,6 +192,8 @@ select is(
                 "photo_url": "https://example.com/john.png"
             }
         ],
+        "legacy_hosts": [],
+        "legacy_speakers": [],
         "ends_at": 1718470800,
         "canceled": false,
         "capacity": 500,

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(77);
+select plan(85);
 
 -- ============================================================================
 -- TESTS
@@ -30,6 +30,8 @@ select has_table('group_role');
 select has_table('group_site_layout');
 select has_table('group_sponsor');
 select has_table('group_team');
+select has_table('legacy_event_host');
+select has_table('legacy_event_speaker');
 select has_table('region');
 select has_table('user');
 
@@ -248,6 +250,28 @@ select columns_are('group_team', array[
     'order'
 ]);
 
+-- Test: legacy_event_host columns should match expected
+select columns_are('legacy_event_host', array[
+    'legacy_event_host_id',
+    'event_id',
+
+    'bio',
+    'name',
+    'photo_url',
+    'title'
+]);
+
+-- Test: legacy_event_speaker columns should match expected
+select columns_are('legacy_event_speaker', array[
+    'legacy_event_speaker_id',
+    'event_id',
+
+    'bio',
+    'name',
+    'photo_url',
+    'title'
+]);
+
 -- Test: region columns should match expected
 select columns_are('region', array[
     'region_id',
@@ -303,6 +327,8 @@ select has_pk('group_role');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
 select has_pk('group_team');
+select has_pk('legacy_event_host');
+select has_pk('legacy_event_speaker');
 select has_pk('region');
 select has_pk('user');
 
@@ -356,6 +382,18 @@ select indexes_are('group_team', array[
     'group_team_group_id_idx',
     'group_team_user_id_idx',
     'group_team_role_idx'
+]);
+
+-- Test: legacy_event_host indexes should match expected
+select indexes_are('legacy_event_host', array[
+    'legacy_event_host_pkey',
+    'legacy_event_host_event_id_idx'
+]);
+
+-- Test: legacy_event_speaker indexes should match expected
+select indexes_are('legacy_event_speaker', array[
+    'legacy_event_speaker_pkey',
+    'legacy_event_speaker_event_id_idx'
 ]);
 
 -- Test: user indexes should match expected

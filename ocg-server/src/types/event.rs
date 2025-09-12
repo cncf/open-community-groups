@@ -256,6 +256,10 @@ pub struct EventFull {
     pub ends_at: Option<DateTime<Utc>>,
     /// Latitude for map display.
     pub latitude: Option<f64>,
+    /// Legacy event hosts.
+    pub legacy_hosts: Option<Vec<LegacyUser>>,
+    /// Legacy event speakers.
+    pub legacy_speakers: Option<Vec<LegacyUser>>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
     /// Longitude for map display.
@@ -356,6 +360,20 @@ pub struct EventKindSummary {
     pub event_kind_id: String,
     /// Display name.
     pub display_name: String,
+}
+
+/// Legacy user information.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LegacyUser {
+    /// Short biography.
+    pub bio: Option<String>,
+    /// Display name.
+    pub name: Option<String>,
+    /// URL to the profile photo.
+    pub photo_url: Option<String>,
+    /// Professional title.
+    pub title: Option<String>,
 }
 
 /// Session information within an event.
