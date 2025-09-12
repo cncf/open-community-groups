@@ -41,8 +41,6 @@ pub(crate) struct UpdatePage {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Sponsor {
-    /// Sponsorship level.
-    pub level: String,
     /// URL to sponsor logo.
     pub logo_url: String,
     /// Sponsor name.

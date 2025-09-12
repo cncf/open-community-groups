@@ -11,7 +11,9 @@ declare
     v_session jsonb;
     v_session_id uuid;
     v_speaker_id uuid;
+    v_sponsor jsonb;
     v_sponsor_id uuid;
+    v_sponsor_level text;
 begin
     -- Get community_id for validation
     select community_id into v_community_id
@@ -78,10 +80,17 @@ begin
         end loop;
     end if;
 
-    -- Insert event sponsors (link to group sponsors)
+    -- Insert event sponsors with per-event level
     if p_event->'sponsors' is not null then
-        for v_sponsor_id in select (jsonb_array_elements_text(p_event->'sponsors'))::uuid
+        for v_sponsor in select jsonb_array_elements(p_event->'sponsors')
         loop
+            -- Extract sponsor details
+            v_sponsor_id := (v_sponsor->>'group_sponsor_id')::uuid;
+            v_sponsor_level := v_sponsor->>'level';
+            if v_sponsor_id is null or v_sponsor_level is null then
+                raise exception 'invalid sponsor payload: each sponsor must include group_sponsor_id and level';
+            end if;
+
             -- Validate sponsor belongs to the group
             if not exists (
                 select 1 from group_sponsor
@@ -91,8 +100,8 @@ begin
                 raise exception 'sponsor % not found in group', v_sponsor_id;
             end if;
 
-            insert into event_sponsor (event_id, group_sponsor_id)
-            values (p_event_id, v_sponsor_id);
+            insert into event_sponsor (event_id, group_sponsor_id, level)
+            values (p_event_id, v_sponsor_id, v_sponsor_level);
         end loop;
     end if;
 

@@ -256,7 +256,6 @@ create table group_sponsor (
     group_sponsor_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
     group_id uuid not null references "group",
-    level text not null check (level <> ''),
     logo_url text not null check (logo_url <> ''),
     name text not null check (name <> ''),
 
@@ -382,6 +381,7 @@ create table event_sponsor (
     created_at timestamptz default current_timestamp not null,
     event_id uuid not null references event,
     group_sponsor_id uuid not null references group_sponsor,
+    level text not null check (level <> ''),
 
     primary key (group_sponsor_id, event_id)
 );

@@ -328,8 +328,6 @@ pub struct GroupRoleSummary {
 pub struct GroupSponsor {
     /// Group sponsor identifier.
     pub group_sponsor_id: Uuid,
-    /// Sponsor level.
-    pub level: String,
     /// URL to sponsor logo.
     pub logo_url: String,
     /// Sponsor name.

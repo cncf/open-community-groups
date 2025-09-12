@@ -5,7 +5,6 @@ returns json as $$
         json_agg(
             json_strip_nulls(json_build_object(
                 'group_sponsor_id', gs.group_sponsor_id,
-                'level', gs.level,
                 'logo_url', gs.logo_url,
                 'name', gs.name,
 
@@ -16,4 +15,3 @@ returns json as $$
     from group_sponsor gs
     where gs.group_id = p_group_id;
 $$ language sql;
-

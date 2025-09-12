@@ -30,7 +30,6 @@
            role="rowgroup">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Sponsor</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Level</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Website</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
       </tr>
@@ -38,7 +37,7 @@
     <tbody id="sponsors-list" role="rowgroup">
       {% if sponsors.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="4">
+          <td class="px-8 py-12 text-center" colspan="3">
             <div class="text-xl lg:text-2xl mb-6">No sponsors yet.</div>
             <p class="text-sm lg:text-md text-stone-700">Sponsors for this group will appear here once added.</p>
           </td>
@@ -62,12 +61,6 @@
               </div>
             </td>
             {# End sponsor -#}
-
-            {# Level -#}
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[120px]">
-              {% call common::badge(content = sponsor.level) -%}
-            </td>
-            {# End level -#}
 
             {# Website -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[180px]">

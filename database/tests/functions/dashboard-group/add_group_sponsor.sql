@@ -55,7 +55,6 @@ select is(
         select (get_group_sponsor(
             add_group_sponsor(:'groupID'::uuid, '{
                 "name":"Epsilon",
-                "level":"Silver",
                 "logo_url":"https://ex.com/epsilon.png",
                 "website_url":"https://epsi.io"
             }'::jsonb
@@ -64,7 +63,6 @@ select is(
         )::jsonb - 'group_sponsor_id')
     ),
     '{
-        "level":"Silver",
         "logo_url":"https://ex.com/epsilon.png",
         "name":"Epsilon",
         "website_url":"https://epsi.io"

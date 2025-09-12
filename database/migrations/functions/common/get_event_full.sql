@@ -110,7 +110,7 @@ returns json as $$
         'sponsors', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'group_sponsor_id', gs.group_sponsor_id,
-                'level', gs.level,
+                'level', es.level,
                 'logo_url', gs.logo_url,
                 'name', gs.name,
 

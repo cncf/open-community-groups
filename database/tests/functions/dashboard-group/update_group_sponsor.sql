@@ -47,8 +47,8 @@ insert into "group" (group_id, community_id, name, slug, group_category_id)
 values (:'groupID', :'communityID', 'Group Paris', 'group-paris', '30000000-0000-0000-0000-000000000010');
 
 -- Sponsor
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
-values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', 'Bronze', null);
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
+values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', null);
 
 -- ============================================================================
 -- TESTS
@@ -66,8 +66,8 @@ select lives_ok(
 );
 
 select results_eq(
-    $$select name, level, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
-    $$values ('Iota Updated'::text, 'Gold'::text, 'https://ex.com/iota2.png'::text, 'https://iota.io'::text)$$,
+    $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
+    $$values ('Iota Updated'::text, 'https://ex.com/iota2.png'::text, 'https://iota.io'::text)$$,
     'update_group_sponsor should update fields'
 );
 

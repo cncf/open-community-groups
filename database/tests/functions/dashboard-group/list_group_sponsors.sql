@@ -52,11 +52,11 @@ values
     (:'group2ID', :'communityID', 'Group Two', 'group-two', '00000000-0000-0000-0000-000000000010');
 
 -- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, level, website_url)
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values
-    (:'sponsor1ID', :'group1ID', 'Alpha', 'https://ex.com/alpha.png', 'Gold', null),
-    (:'sponsor2ID', :'group1ID', 'Beta',  'https://ex.com/beta.png',  'Silver', 'https://beta.io'),
-    (:'sponsor3ID', :'group2ID', 'Gamma', 'https://ex.com/gamma.png', 'Bronze', null);
+    (:'sponsor1ID', :'group1ID', 'Alpha', 'https://ex.com/alpha.png', null),
+    (:'sponsor2ID', :'group1ID', 'Beta',  'https://ex.com/beta.png',  'https://beta.io'),
+    (:'sponsor3ID', :'group2ID', 'Gamma', 'https://ex.com/gamma.png', null);
 
 -- ============================================================================
 -- TESTS
@@ -66,8 +66,8 @@ values
 select is(
     list_group_sponsors(:'group1ID'::uuid)::jsonb,
     '[
-        {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
-        {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
+        {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
+        {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
     ]'::jsonb,
     'list_group_sponsors should return group sponsors sorted by name'
 );
