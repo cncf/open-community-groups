@@ -39,9 +39,7 @@
             <div class="hidden md:flex flex-col items-end gap-2">
               {# Event status badge -#}
               {% if event.canceled -%}
-                <div class="px-3 py-1 text-xs font-semibold uppercase rounded-full bg-red-100 text-red-700">Cancelled</div>
-              {% else if !event.published -%}
-                <div class="px-3 py-1 text-xs font-semibold uppercase rounded-full bg-gray-100 text-gray-700">Draft</div>
+                {% call common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5")) -%}
               {% endif -%}
               {# End event status badge -#}
 
@@ -72,7 +70,7 @@
                 <span class="text-sm">{{ capacity }} capacity</span>
               </div>
             {% endif -%}
-            {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5")) -%}
+            {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5")) -%}
           </div>
           {# End event details and date -#}
         </div>
@@ -262,7 +260,7 @@
             <div class="border border-stone-200 rounded-lg p-4 flex flex-col h-full">
               <div class="flex items-start justify-between mb-2">
                 <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-                {% call common::event_badge(kind = session.kind, extra_styles = Some("hidden sm:flex ms-3")) -%}
+                {% call common::event_badge(kind = session.kind, extra_styles = Some("hidden sm:flex ms-3 px-2.5 py-0.5")) -%}
               </div>
               {% if let Some(location) = session.location -%}
                 <div class="flex items-center text-sm text-stone-600 mb-2">
