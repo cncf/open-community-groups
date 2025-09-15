@@ -1,5 +1,9 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
-import { isObjectEmpty, convertTimestampToDateTimeLocal } from "/static/js/common/common.js";
+import {
+  isObjectEmpty,
+  convertTimestampToDateTimeLocal,
+  convertTimestampToDateTimeLocalInTz,
+} from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-selector.js";
 
@@ -28,6 +32,8 @@ export class SessionsSection extends LitWrapper {
     sessions: { type: Array },
     // List of available session kinds to render options
     sessionKinds: { type: Array, attribute: "session-kinds" },
+    // Timezone to render datetime-local values (e.g. "Europe/Amsterdam")
+    timezone: { type: String, attribute: "timezone" },
   };
 
   constructor() {
@@ -85,12 +91,16 @@ export class SessionsSection extends LitWrapper {
       this.sessions = [this._getData()];
     } else {
       this.sessions = this.sessions.map((item, index) => {
+        const toLocal = (ts) =>
+          this.timezone
+            ? convertTimestampToDateTimeLocalInTz(ts, this.timezone)
+            : convertTimestampToDateTimeLocal(ts);
         return {
           ...this._getData(),
           ...item,
           id: index,
-          starts_at: convertTimestampToDateTimeLocal(item.starts_at),
-          ends_at: convertTimestampToDateTimeLocal(item.ends_at),
+          starts_at: toLocal(item.starts_at),
+          ends_at: toLocal(item.ends_at),
         };
       });
     }
