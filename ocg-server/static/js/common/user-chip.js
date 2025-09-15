@@ -83,7 +83,7 @@ export class UserChip extends LitWrapper {
     }
   };
 
-  _renderHeader(isSmall = false) {
+  _renderHeader(isTooltip = false, isSmall = false) {
     const initials = computeUserInitials(this.name, this.username, 2);
     if (isSmall) {
       return html`
@@ -99,19 +99,20 @@ export class UserChip extends LitWrapper {
       `;
     }
     return html`
-      <avatar-image image-url="${this.imageUrl || ""}" size="size-12" placeholder="${initials}">
+      <avatar-image image-url="${this.imageUrl || ""}" size="size-14" placeholder="${initials}">
       </avatar-image>
       <div class="leading-tight min-w-0">
-        <div class="font-semibold text-stone-900">${this.name || ""}</div>
-        ${this.title ? html`<div class="text-sm text-stone-600 mt-0.5">${this.title}</div>` : ""}
+        <div class="font-semibold text-stone-900 ${!isTooltip ? "truncate" : ""}">${this.name || ""}</div>
+        ${this.title
+          ? html`<div class="text-sm text-stone-600 mt-0.5 ${!isTooltip ? "truncate" : ""}">
+              ${this.title}
+            </div>`
+          : ""}
       </div>
     `;
   }
 
   render() {
-    const headerMain = this._renderHeader(this.small);
-    const headerTooltip = this._renderHeader(false);
-
     return html`
       <div
         class="relative ${this.small
@@ -128,7 +129,7 @@ export class UserChip extends LitWrapper {
         @focusout=${this._hasBio ? this._hideTooltip : null}
         @keydown=${this._hasBio ? this._onKeydown : null}
       >
-        ${headerMain}
+        ${this._renderHeader(false, this.small)}
         ${this.tooltipVisible
           ? html`
               <div
@@ -139,7 +140,7 @@ export class UserChip extends LitWrapper {
                 @mouseleave=${this._hasBio ? this._onTooltipLeave : null}
               >
                 <div class="bg-white border border-stone-200 p-4 rounded-lg shadow-lg">
-                  <div class="flex items-start gap-3">${headerTooltip}</div>
+                  <div class="flex items-start gap-3">${this._renderHeader(true, false)}</div>
                   ${this.bioIsHtml
                     ? html`<div class="text-stone-700 text-sm mt-3" .innerHTML=${this.bio}></div>`
                     : html`<div class="text-stone-700 text-sm mt-3">${this.bio}</div>`}
