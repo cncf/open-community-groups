@@ -3,10 +3,11 @@
 {# Event card -#}
 <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
    hx-boost="true"
-   hx-target="body">
+   hx-target="body"
+   class="group">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
-    <div class="card-logo">
+    <div class="card-logo group-hover:opacity-75 transition-opacity">
       {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = event.group_color, name = Some(event.group_name)) -%}
       {% call common::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -%}
     </div>
@@ -22,7 +23,7 @@
           {# End event group name -#}
 
           {# Event name -#}
-          <div class="line-clamp-2 text-[0.9rem] md:text-base font-semibold md:mt-1 md:line-clamp-1">
+          <div class="line-clamp-2 text-[0.9rem] md:text-base font-semibold md:mt-1 md:line-clamp-1 group-hover:underline">
             {{ event.name|demoji }}
           </div>
           {# End event name -#}

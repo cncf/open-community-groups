@@ -2,10 +2,10 @@
 
 {# Event card -#}
 <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-   class="flex flex-1 flex-row items-center"
+   class="flex flex-1 flex-row items-center group"
    hx-boost="true"
    hx-target="body">
-  <div class="relative">
+  <div class="relative group-hover:opacity-75 transition-opacity">
     {# Event icon -#}
     {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
     {# End event icon -#}
@@ -21,7 +21,7 @@
         {# End event group name -#}
 
         {# Event title -#}
-        <div class="card-title">{{ event.name|demoji }}</div>
+        <div class="card-title group-hover:underline">{{ event.name|demoji }}</div>
         {# End event title -#}
       </div>
 
