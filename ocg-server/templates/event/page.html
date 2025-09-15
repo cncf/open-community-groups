@@ -65,23 +65,31 @@
               {# End event status and social networks -#}
             </div>
 
-            {# Event details and date -#}
-            <div class="mt-auto flex items-center gap-4 text-stone-600">
-              {% if let Some(starts_at) = event.starts_at -%}
-                <div class="flex items-center">
-                  <div class="svg-icon size-3.5 mr-2 bg-stone-600 icon-date"></div>
-                  <span class="text-sm">{{ starts_at.with_timezone(event.timezone).format("%B %e, %Y") }}</span>
-                </div>
-              {% endif -%}
-              {% if let Some(capacity) = event.capacity -%}
-                <div class="flex items-center">
-                  <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
-                  <span class="text-sm">{{ capacity }} capacity</span>
-                </div>
-              {% endif -%}
-              {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5")) -%}
+            <div class="mt-auto flex items-center justify-between">
+              {# Event details and date -#}
+              <div class="flex items-center gap-4 text-stone-600">
+                {% if let Some(starts_at) = event.starts_at -%}
+                  <div class="flex items-center">
+                    <div class="svg-icon size-3.5 mr-2 bg-stone-600 icon-date"></div>
+                    <span class="text-sm">{{ starts_at.with_timezone(event.timezone).format("%B %e, %Y") }}</span>
+                  </div>
+                {% endif -%}
+                {% if let Some(capacity) = event.capacity -%}
+                  <div class="flex items-center">
+                    <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+                    <span class="text-sm">{{ capacity }} capacity</span>
+                  </div>
+                {% endif -%}
+                {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5")) -%}
+              </div>
+              {# End event details and date -#}
+
+              <div class="hidden md:flex flex-col items-end">
+                {# Attend button section -#}
+                {% include "event/attend_button.html" %}
+                {# End attend button section -#}
+              </div>
             </div>
-            {# End event details and date -#}
           </div>
 
         </div>
@@ -147,10 +155,6 @@
 
           {# Right column (30%) -#}
           <div class="max-w-[450px] lg:col-span-3">
-            {# Attend button section -#}
-            {% include "event/attend_button.html" %}
-            {# End attend button section -#}
-
             {# Event details section -#}
             <div class="border border-stone-200 rounded-lg mb-6">
               {# Date and time -#}
