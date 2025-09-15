@@ -161,7 +161,7 @@
            class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
-          <li>
+          <li class="border-b border-stone-200 mb-2 pb-2" role="none">
             <div class="flex flex-col px-4 py-2">
               <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user.username|display_some }}</div>
               <div class="text-xs/4 truncate">{{ user.name|display_some }}</div>
@@ -177,19 +177,6 @@
                 {% endif -%}
               {% endif -%}
             </div>
-          </li>
-
-          <li class="border-t border-stone-200 mt-2 pt-2" role="none">
-            <a href="/dashboard/user"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-user bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">User Dashboard</div>
-              </div>
-            </a>
           </li>
 
           {# Dashboard links -#}
@@ -226,6 +213,19 @@
               </li>
             {% endif -%}
           {% endif -%}
+
+          <li role="none">
+            <a href="/dashboard/user"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-user bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">User Dashboard</div>
+              </div>
+            </a>
+          </li>
 
           {# Logout -#}
           <li class="border-t border-stone-200 mt-2 pt-2" role="none">
