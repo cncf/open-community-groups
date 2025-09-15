@@ -13,6 +13,7 @@ export class AvatarImage extends LitWrapper {
    * @property {string} imageUrl - URL of the avatar image to display
    * @property {string} placeholder - Text to show when image is not available (typically initials)
    * @property {number} size - Size of the avatar in pixels (default: 40)
+   * @property {string} fontSize - Tailwind text size class for initials
    * @property {boolean} hideOnError - If true, hides the entire component when image fails to load
    * @property {boolean} hideBorder - If true, removes the border from the avatar
    * @property {boolean} _hasError - Internal state tracking if image failed to load
@@ -23,6 +24,7 @@ export class AvatarImage extends LitWrapper {
       imageUrl: { type: String, attribute: "image-url" },
       placeholder: { type: String },
       size: { type: String },
+      fontSize: { type: String, attribute: "font-size" },
       hideOnError: { type: Boolean, attribute: "hide-on-error" },
       hideBorder: { type: Boolean, attribute: "hide-border" },
       _hasError: { type: Boolean },
@@ -35,6 +37,7 @@ export class AvatarImage extends LitWrapper {
     this.imageUrl = "";
     this.placeholder = "-";
     this.size = "size-10";
+    this.fontSize = "text-sm";
     this.hideOnError = false; // Default to showing placeholder on error
     this.hideBorder = false; // Default to showing border
     this._hasError = false;
@@ -107,7 +110,8 @@ export class AvatarImage extends LitWrapper {
         <div
           class="${showPlaceholder
             ? "flex"
-            : "hidden"} absolute inset-0 items-center justify-center rounded-full bg-stone-200 ${borderClass} text-stone-700 font-semibold text-sm"
+            : "hidden"} absolute inset-0 items-center justify-center rounded-full bg-stone-200 ${borderClass} text-stone-700 font-semibold ${this
+            .fontSize}"
         >
           ${this.placeholder}
         </div>

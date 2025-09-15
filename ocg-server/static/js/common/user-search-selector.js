@@ -112,6 +112,7 @@ export class UserSearchSelector extends LitWrapper {
           image-url="${user.photo_url || ""}"
           placeholder="${initials}"
           size="size-[24px]"
+          font-size="text-xs"
           hide-border="true"
         >
         </avatar-image>

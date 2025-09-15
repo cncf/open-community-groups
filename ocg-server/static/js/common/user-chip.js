@@ -28,6 +28,8 @@ export class UserChip extends LitWrapper {
       bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
       tooltipVisible: { type: Boolean, attribute: "tooltip-visible" },
       delay: { type: Number },
+      // When true, renders a compact badge-like chip
+      small: { type: Boolean },
       _hasBio: { type: Boolean, state: true },
     };
   }
@@ -42,6 +44,7 @@ export class UserChip extends LitWrapper {
     this.bioIsHtml = false;
     this.tooltipVisible = false;
     this.delay = 300;
+    this.small = false;
     this._hasBio = false;
     this._timer = null;
   }
@@ -80,8 +83,21 @@ export class UserChip extends LitWrapper {
     }
   };
 
-  _renderHeader() {
+  _renderHeader(isSmall = false) {
     const initials = computeUserInitials(this.name, this.username, 1);
+    if (isSmall) {
+      return html`
+        <avatar-image
+          image-url="${this.imageUrl || ""}"
+          placeholder="${initials}"
+          size="size-[24px]"
+          font-size="text-xs"
+          hide-border="true"
+        >
+        </avatar-image>
+        <span class="text-sm text-stone-700 pe-2">${this.name || ""}</span>
+      `;
+    }
     return html`
       <avatar-image image-url="${this.imageUrl || ""}" size="size-12" placeholder="${initials}">
       </avatar-image>
@@ -93,11 +109,14 @@ export class UserChip extends LitWrapper {
   }
 
   render() {
-    const header = this._renderHeader();
+    const headerMain = this._renderHeader(this.small);
+    const headerTooltip = this._renderHeader(false);
 
     return html`
       <div
-        class="relative flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full ${this
+        class="relative ${this.small
+          ? "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1"
+          : "flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full"} ${this
           ._hasBio
           ? "cursor-pointer"
           : ""}"
@@ -109,7 +128,7 @@ export class UserChip extends LitWrapper {
         @focusout=${this._hasBio ? this._hideTooltip : null}
         @keydown=${this._hasBio ? this._onKeydown : null}
       >
-        ${header}
+        ${headerMain}
         ${this.tooltipVisible
           ? html`
               <div
@@ -120,7 +139,7 @@ export class UserChip extends LitWrapper {
                 @mouseleave=${this._hasBio ? this._onTooltipLeave : null}
               >
                 <div class="bg-white border border-stone-200 p-4 rounded-lg shadow-lg">
-                  <div class="flex items-start gap-3">${header}</div>
+                  <div class="flex items-start gap-3">${headerTooltip}</div>
                   ${this.bioIsHtml
                     ? html`<div class="text-stone-700 text-sm mt-3" .innerHTML=${this.bio}></div>`
                     : html`<div class="text-stone-700 text-sm mt-3">${this.bio}</div>`}
