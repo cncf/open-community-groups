@@ -254,48 +254,63 @@
 
     {# Sessions section - Full width -#}
     {% if !event.sessions.is_empty() -%}
+      {% let days_count = event.sessions.len() -%}
       <div class="px-4 sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Sessions</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {% for session in event.sessions -%}
-            <div class="border border-stone-200 rounded-lg p-4 flex flex-col h-full">
-              <div class="flex items-start justify-between mb-2">
-                <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-                {% call common::event_badge(kind = session.kind, extra_styles = Some("hidden sm:flex ms-3 px-2.5 py-0.5")) -%}
-              </div>
-              {% if let Some(location) = session.location -%}
-                <div class="flex items-center text-sm text-stone-600 mb-2">
-                  <div class="svg-icon size-3 mr-1 bg-stone-600 icon-location"></div>
-                  {{ location }}
-                </div>
-              {% endif -%}
-              <div class="flex items-center text-sm text-stone-600 mb-2">
-                <div class="svg-icon size-3 mr-1 bg-stone-600 icon-clock"></div>
-                {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }}
-                {% if let Some(ends_at) = session.ends_at -%}
-                  - {{ ends_at.with_timezone(event.timezone).format("%l:%M %p") }}
-                {% endif -%}
-                {% call common::event_badge(kind = session.kind, extra_styles = Some("flex sm:hidden ms-3")) -%}
-              </div>
-              {% if let Some(description) = session.description -%}
-                <div class="text-stone-700 text-sm line-clamp-3 flex-grow">{{ description|md_to_html|safe }}</div>
-              {% endif -%}
-              {% if !session.speakers.is_empty() -%}
-                <div class="mt-4">
-                  <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {% for speaker in session.speakers -%}
-                      {% if speaker.name.is_some() -%}
-                        <user-chip name="{{ speaker.name|display_some }}" username="{{ speaker.username }}" image-url="{{ speaker.photo_url|display_some }}" title="{{ speaker.title|display_some }}">
-                        </user-chip>
-                      {% endif -%}
-                    {% endfor -%}
-                  </div>
-                </div>
-              {% endif -%}
+        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Agenda</h2>
+
+        {# Single-day agenda: no date title -#}
+        {% if days_count == 1 -%}
+          {% for day in event.sessions -%}
+            <ol class="relative border-s border-stone-200">
+              {% for session in day.1 %}
+                {% call session_item(session = session) -%}
+              {% endfor %}
+            </ol>
+          {% endfor -%}
+        {% else -%}
+          {# Multi-day agenda: tabs with one day per tab -#}
+          <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
+            {% for day in event.sessions -%}
+              <li>
+                <button type="button"
+                        data-day-tab="day-{{ loop.index }}"
+                        data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
+                        class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+                  {{ day.0.format("%A, %B %e, %Y") }}
+                </button>
+              </li>
+            {% endfor -%}
+          </ul>
+
+          {% for day in event.sessions -%}
+            <div data-day-content="day-{{ loop.index }}"
+                 {% if !loop.first -%}
+                   hidden
+                 {% endif -%}
+                 class="pt-6">
+              <ol class="relative border-s border-stone-200">
+                {% for session in day.1 %}
+                  {% call session_item(session = session) -%}
+                {% endfor %}
+              </ol>
             </div>
           {% endfor -%}
-        </div>
+
+          <script type="module">
+            const dayTabs = document.querySelectorAll('[data-day-tab]');
+            const dayPanels = document.querySelectorAll('[data-day-content]');
+            dayTabs.forEach((btn) => {
+              btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-day-tab');
+                dayTabs.forEach(b => b.setAttribute('data-active', b === btn ? 'true' : 'false'));
+                dayPanels.forEach(panel => {
+                  const isTarget = panel.getAttribute('data-day-content') === target;
+                  panel.toggleAttribute('hidden', !isTarget);
+                });
+              });
+            });
+          </script>
+        {% endif -%}
       </div>
     {% endif -%}
     {# End sessions section -#}
@@ -447,3 +462,41 @@
   </a>
 {% endmacro -%}
 {# End macro for rendering a single host social link -#}
+
+{# Macro for rendering a single session item -#}
+{% macro session_item(session) -%}
+  <li class="mb-10 ms-4">
+    <div class="absolute size-3 bg-stone-300 rounded-full mt-1 -start-1.5 border border-white"></div>
+    <div class="mb-2 text-sm text-stone-500/75">
+      {% if let Some(ends_at) = session.ends_at -%}
+        {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ ends_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}
+      {% else -%}
+        {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}
+      {% endif -%}
+    </div>
+    <div class="flex items-center gap-2">
+      <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
+      {% call common::event_badge(kind = session.kind ) -%}
+    </div>
+    {% if let Some(location) = session.location -%}
+      <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
+    {% endif -%}
+    {% if let Some(description) = session.description -%}
+      <div class="text-sm/6 text-stone-600 markdown">{{ description|md_to_html|safe }}</div>
+    {% endif -%}
+    {% if !session.speakers.is_empty() -%}
+      <div class="mt-4">
+        <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
+        <div class="flex flex-grap gap-4">
+          {% for speaker in session.speakers -%}
+            {% if speaker.name.is_some() -%}
+              <user-chip name="{{ speaker.name|display_some }}" username="{{ speaker.username }}" image-url="{{ speaker.photo_url|display_some }}" title="{{ speaker.title|display_some }}" small>
+              </user-chip>
+            {% endif -%}
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+  </li>
+{% endmacro -%}
+{# End macro for rendering a single session item -#}

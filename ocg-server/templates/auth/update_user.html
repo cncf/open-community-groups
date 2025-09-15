@@ -111,7 +111,7 @@
         <div class="col-span-full">
           <label for="bio" class="form-label">Bio</label>
           <div class="mt-2">
-            <markdown-editor id="bio" name="bio" content="{%- if let Some(bio) = user.bio -%}{{ bio }}{%- endif -%}" mini></markdown-editor>
+            <textarea id="bio" name="bio" rows="2" class="input-primary" maxlength="200">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
           </div>
           <p class="form-legend">A brief description about yourself and your background.</p>
         </div>

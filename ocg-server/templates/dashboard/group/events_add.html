@@ -605,7 +605,7 @@
 
         // Convert datetime-local values to proper ISO format for PostgreSQL
         Object.keys(e.detail.parameters).forEach(key => {
-          if (key.match(/^(starts_at_input|ends_at_input)$/) || key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/)) {
+          if (key.match(/^(starts_at|ends_at)$/) || key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/)) {
             if (e.detail.parameters[key]) {
               e.detail.parameters[key] = convertDateTimeLocalToISO(e.detail.parameters[key]);
             }

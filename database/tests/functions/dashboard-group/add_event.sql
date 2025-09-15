@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -82,6 +82,7 @@ values
     (:'sponsor1ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com'),
     (:'sponsor2ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null);
 
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -103,7 +104,7 @@ select is(
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
         "sponsors": [],
-        "sessions": [],
+        "sessions": {},
         "slug": "k8s-fundamentals-workshop",
         "timezone": "America/New_York"
     }'::jsonb,
@@ -165,15 +166,11 @@ with new_event as (
         }'::jsonb
     ) as event_id
 )
+select event_id from new_event \gset
+
+-- Check event fields except sessions
 select is(
-    (select get_event_full(event_id)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' from new_event)
-        -- Add back sessions without session_ids (which are random)
-        || jsonb_build_object('sessions',
-            (select jsonb_agg(session - 'session_id' order by session->>'name')
-             from jsonb_array_elements((
-                select get_event_full(event_id)::jsonb->'sessions' from new_event
-             )) as session)
-        ),
+    (select get_event_full(:'event_id'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'),
     '{
         "canceled": false,
         "category_name": "Conference",
@@ -203,7 +200,19 @@ select is(
         "venue_city": "San Francisco",
         "venue_name": "Tech Center",
         "venue_zip_code": "94105",
-        "sessions": [
+        "sponsors": [
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
+        ]
+    }'::jsonb,
+    'add_event should create event with all fields (excluding sessions)'
+);
+
+
+-- Sessions assertions: contents ignoring session_id (order-insensitive)
+select ok(
+    (select (get_event_full(:'event_id'::uuid)::jsonb->'sessions'->'2025-01-01') @>
+        '[
             {
                 "name": "Kubernetes Best Practices",
                 "description": "Deep dive into Kubernetes best practices",
@@ -227,13 +236,9 @@ select is(
                     {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1"}
                 ]
             }
-        ],
-        "sponsors": [
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
-        ]
-    }'::jsonb,
-    'add_event should create event with all fields including hosts, sponsors, and sessions'
+        ]'::jsonb
+    ),
+    'sessions contain expected rows (ignoring session_id)'
 );
 
 -- add_event throws error for invalid host user_id

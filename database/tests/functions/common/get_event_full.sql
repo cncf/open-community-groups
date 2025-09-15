@@ -19,6 +19,7 @@ select plan(2);
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
 \set session1ID '00000000-0000-0000-0000-000000000051'
 \set session2ID '00000000-0000-0000-0000-000000000052'
+\set session3ID '00000000-0000-0000-0000-000000000053'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
 \set sponsor2ID '00000000-0000-0000-0000-000000000062'
 \set user1ID '00000000-0000-0000-0000-000000000041'
@@ -206,9 +207,34 @@ insert into session (
     'Workshop: Kubernetes Security Best Practices',
     'Hands-on workshop covering security fundamentals for Kubernetes deployments',
     'virtual',
-    '2024-06-15 10:30:00+00',
-    '2024-06-15 11:30:00+00',
+    '2024-06-16 10:30:00+00',
+    '2024-06-16 11:30:00+00',
     'Room A',
+    null,
+    null
+);
+
+-- Additional session on the same day to verify sorting within the day
+insert into session (
+    session_id,
+    event_id,
+    name,
+    description,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    location,
+    streaming_url,
+    recording_url
+) values (
+    :'session3ID',
+    :'eventID',
+    'Breakfast & Registration',
+    'Start your day and pick up badges',
+    'in-person',
+    '2024-06-15 08:00:00+00',
+    '2024-06-15 08:45:00+00',
+    'Lobby',
     null,
     null
 );
@@ -432,40 +458,54 @@ select is(
                 "website_url": "https://mikerodriguez.io"
             }
         ],
-        "sessions": [
-            {
-                "description": "Welcome keynote exploring the evolving landscape of cloud native technologies",
-                "ends_at": 1718445600,
-                "session_id": "00000000-0000-0000-0000-000000000051",
-                "kind": "in-person",
-                "name": "Opening Keynote: The Future of Cloud Native",
-                "starts_at": 1718442000,
-                "location": "Main Hall",
-                "recording_url": "https://youtube.com/watch?v=session1",
-                "streaming_url": "https://stream.example.com/session1",
-                "speakers": [
-                    {
-                        "user_id": "00000000-0000-0000-0000-000000000043",
-                        "username": "alex-speaker",
-                        "name": "Alex Thompson",
-                        "company": "Google",
-                        "linkedin_url": "https://linkedin.com/in/alexthompson",
-                        "photo_url": "https://example.com/alex.png",
-                        "title": "Staff Engineer"
-                    }
-                ]
-            },
-            {
-                "description": "Hands-on workshop covering security fundamentals for Kubernetes deployments",
-                "ends_at": 1718451000,
-                "session_id": "00000000-0000-0000-0000-000000000052",
-                "kind": "virtual",
-                "name": "Workshop: Kubernetes Security Best Practices",
-                "starts_at": 1718447400,
-                "location": "Room A",
-                "speakers": []
-            }
-        ],
+        "sessions": {
+            "2024-06-15": [
+                {
+                    "description": "Start your day and pick up badges",
+                    "ends_at": 1718441100,
+                    "session_id": "00000000-0000-0000-0000-000000000053",
+                    "kind": "in-person",
+                    "name": "Breakfast & Registration",
+                    "starts_at": 1718438400,
+                    "location": "Lobby",
+                    "speakers": []
+                },
+                {
+                    "description": "Welcome keynote exploring the evolving landscape of cloud native technologies",
+                    "ends_at": 1718445600,
+                    "session_id": "00000000-0000-0000-0000-000000000051",
+                    "kind": "in-person",
+                    "name": "Opening Keynote: The Future of Cloud Native",
+                    "starts_at": 1718442000,
+                    "location": "Main Hall",
+                    "recording_url": "https://youtube.com/watch?v=session1",
+                    "streaming_url": "https://stream.example.com/session1",
+                    "speakers": [
+                        {
+                            "user_id": "00000000-0000-0000-0000-000000000043",
+                            "username": "alex-speaker",
+                            "name": "Alex Thompson",
+                            "company": "Google",
+                            "linkedin_url": "https://linkedin.com/in/alexthompson",
+                            "photo_url": "https://example.com/alex.png",
+                            "title": "Staff Engineer"
+                        }
+                    ]
+                }
+            ],
+            "2024-06-16": [
+                {
+                    "description": "Hands-on workshop covering security fundamentals for Kubernetes deployments",
+                    "ends_at": 1718537400,
+                    "session_id": "00000000-0000-0000-0000-000000000052",
+                    "kind": "virtual",
+                    "name": "Workshop: Kubernetes Security Best Practices",
+                    "starts_at": 1718533800,
+                    "location": "Room A",
+                    "speakers": []
+                }
+            ]
+        },
         "sponsors": [
             {
                 "group_sponsor_id": "00000000-0000-0000-0000-000000000061",

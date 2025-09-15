@@ -15,10 +15,10 @@ export class SessionsSection extends LitWrapper {
    * Each entry contains:
    *  - id: Unique identifier
    *  - name: Session title
-   *  - description: Full session description (markdown format)
-   *  - kind: Session type (in-person, virtual)
+   *  - description: Full session description (markdown format, optional)
+   *  - kind: Session type (hybrid, in-person, virtual)
    *  - starts_at: Session start time (datetime-local format)
-   *  - ends_at: Session end time (datetime-local format)
+   *  - ends_at: Session end time (datetime-local format, optional)
    *  - location: Location details (optional)
    *  - recording_url: URL for session recording (optional)
    *  - streaming_url: URL for session live stream (optional)
@@ -38,6 +38,40 @@ export class SessionsSection extends LitWrapper {
 
   connectedCallback() {
     super.connectedCallback();
+
+    // Accept JSON passed via attributes when used from server templates.
+    if (typeof this.sessions === "string") {
+      try {
+        this.sessions = JSON.parse(this.sessions || "[]");
+      } catch (_) {
+        this.sessions = [];
+      }
+    }
+
+    // When an object is received, extract and flatten its array values to
+    // obtain a sessions array.
+    if (!Array.isArray(this.sessions) && this.sessions && typeof this.sessions === "object") {
+      try {
+        const values = Object.values(this.sessions);
+        this.sessions = values.reduce((acc, v) => {
+          if (Array.isArray(v)) acc.push(...v);
+          return acc;
+        }, []);
+      } catch (_) {
+        // If anything goes wrong, fall back to empty array below.
+      }
+    }
+    if (!Array.isArray(this.sessions)) this.sessions = [];
+
+    if (typeof this.sessionKinds === "string") {
+      try {
+        this.sessionKinds = JSON.parse(this.sessionKinds || "[]");
+      } catch (_) {
+        this.sessionKinds = [];
+      }
+    }
+    if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
+
     this._initializeSessionIds();
   }
 
@@ -290,20 +324,6 @@ class SessionItem extends LitWrapper {
         </div>
       </div>
 
-      <div class="col-span-full">
-        <label for="summary" class="form-label"> Description <span class="asterisk">*</span> </label>
-        <div class="mt-2">
-          <markdown-editor
-            id="sessions[${this.index}][description]"
-            name="sessions[${this.index}][description]"
-            content="${this.data.description}"
-            .onChange="${(value) => this._onTextareaChange(value)}"
-            mini
-            ?required=${!this.isObjectEmpty}
-          ></markdown-editor>
-        </div>
-      </div>
-
       <div class="col-span-2">
         <label class="form-label"> Session Type <span class="asterisk">*</span> </label>
         <div class="mt-2">
@@ -341,7 +361,7 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-2">
-        <label class="form-label"> End Time <span class="asterisk">*</span> </label>
+        <label class="form-label"> End Time </label>
         <div class="mt-2">
           <input
             type="datetime-local"
@@ -350,8 +370,20 @@ class SessionItem extends LitWrapper {
             name="sessions[${this.index}][ends_at]"
             class="input-primary"
             value="${this.data.ends_at || ""}"
-            ?required=${!this.isObjectEmpty}
           />
+        </div>
+      </div>
+
+      <div class="col-span-full">
+        <label for="summary" class="form-label"> Description </label>
+        <div class="mt-2">
+          <markdown-editor
+            id="sessions[${this.index}][description]"
+            name="sessions[${this.index}][description]"
+            content="${this.data.description}"
+            .onChange="${(value) => this._onTextareaChange(value)}"
+            mini
+          ></markdown-editor>
         </div>
       </div>
 
