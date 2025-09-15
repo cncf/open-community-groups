@@ -84,14 +84,14 @@ export class UserChip extends LitWrapper {
   };
 
   _renderHeader(isSmall = false) {
-    const initials = computeUserInitials(this.name, this.username, 1);
+    const initials = computeUserInitials(this.name, this.username, 2);
     if (isSmall) {
       return html`
         <avatar-image
           image-url="${this.imageUrl || ""}"
           placeholder="${initials}"
           size="size-[24px]"
-          font-size="text-xs"
+          font-size="text-[0.65rem]"
           hide-border="true"
         >
         </avatar-image>
