@@ -59,7 +59,7 @@
           {# End event location -#}
 
           {# Event date -#}
-          <div class="flex items-center pt-0.5">
+          <div class="flex items-center pt-0.75">
             {% if let Some(starts_at) = event.starts_at -%}
               {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -%}
             {% endif -%}
