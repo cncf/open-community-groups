@@ -1,9 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
-import {
-  isObjectEmpty,
-  convertTimestampToDateTimeLocal,
-  convertDateTimeLocalToISO,
-} from "/static/js/common/common.js";
+import { isObjectEmpty, convertTimestampToDateTimeLocal } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-selector.js";
 
@@ -32,7 +28,6 @@ export class SessionsSection extends LitWrapper {
     sessions: { type: Array },
     // List of available session kinds to render options
     sessionKinds: { type: Array, attribute: "session-kinds" },
-    _sessionsJson: { type: String, attribute: false },
   };
 
   constructor() {
@@ -78,20 +73,6 @@ export class SessionsSection extends LitWrapper {
     if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
 
     this._initializeSessionIds();
-
-    // Initialize JSON payload and keep it in sync with user interactions
-    this._updateSessionsJson(true);
-
-    // Update JSON when a user is selected in any nested search control
-    this.addEventListener("user-selected", () => this._updateSessionsJson(true));
-    // Heuristic: also update on clicks inside the component (covers removals)
-    this.addEventListener("click", (e) => {
-      const el = e.target?.closest?.("user-search-selector");
-      if (el) this._updateSessionsJson(true);
-    });
-
-    // Ensure JSON is updated right before HTMX submits the forms
-    document.body.addEventListener("htmx:beforeRequest", () => this._updateSessionsJson(true));
   }
 
   /**
@@ -138,56 +119,6 @@ export class SessionsSection extends LitWrapper {
   };
 
   /**
-   * Builds and stores the JSON payload reflecting current sessions state.
-   * Optionally reads speakers from DOM to ensure up-to-date selection.
-   * @param {boolean} readSpeakersFromDom
-   * @private
-   */
-  _updateSessionsJson(readSpeakersFromDom = false) {
-    const normalizeSpeakers = (speakers) => {
-      const arr = Array.isArray(speakers) ? speakers : [];
-      return arr
-        .map((s) => {
-          if (!s) return null;
-          if (typeof s === "string") return s;
-          if (typeof s === "number") return String(s);
-          if (typeof s === "object" && s.user_id) return String(s.user_id);
-          return null;
-        })
-        .filter((x) => !!x);
-    };
-
-    let domSpeakers = null;
-    if (readSpeakersFromDom) {
-      const selectors = Array.from(this.querySelectorAll("user-search-selector"));
-      domSpeakers = selectors.map((sel) => normalizeSpeakers(sel.selectedUsers || []));
-    }
-
-    const out = [];
-    this.sessions.forEach((s, idx) => {
-      if (isObjectEmpty(s)) return;
-      const item = {
-        name: s.name || "",
-        kind: s.kind || "",
-        starts_at: convertDateTimeLocalToISO(s.starts_at || ""),
-        ends_at: convertDateTimeLocalToISO(s.ends_at || ""),
-        description: s.description || "",
-        location: s.location || "",
-        recording_url: s.recording_url || "",
-        streaming_url: s.streaming_url || "",
-        speakers: domSpeakers ? domSpeakers[idx] || [] : normalizeSpeakers(s.speakers),
-      };
-      out.push(item);
-    });
-
-    try {
-      this._sessionsJson = JSON.stringify(out);
-    } catch (_) {
-      this._sessionsJson = "[]";
-    }
-  }
-
-  /**
    * Adds a new session entry at specified index.
    * @param {number} index - Position to insert new entry
    * @private
@@ -197,7 +128,6 @@ export class SessionsSection extends LitWrapper {
     currentSessions.splice(index, 0, this._getData());
 
     this.sessions = currentSessions;
-    this._updateSessionsJson(true);
   }
 
   /**
@@ -210,7 +140,6 @@ export class SessionsSection extends LitWrapper {
     const tmpSessions = this.sessions.filter((_, i) => i !== index);
     // If there are no more session items, add a new one
     this.sessions = tmpSessions.length === 0 ? [this._getData()] : tmpSessions;
-    this._updateSessionsJson(true);
   }
 
   /**
@@ -221,7 +150,6 @@ export class SessionsSection extends LitWrapper {
    */
   _onDataChange = (data, index) => {
     this.sessions[index] = data;
-    this._updateSessionsJson();
   };
 
   /**
