@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    templates::{PageId, auth::User, filters},
+    templates::{PageId, auth::User, filters, helpers::{InitialsCount, user_initials}},
     types::{
         community::Community,
         event::{EventFull, EventKind},

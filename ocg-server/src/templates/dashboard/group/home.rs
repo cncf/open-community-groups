@@ -11,6 +11,7 @@ use crate::{
         auth::User,
         dashboard::group::{attendees, events, members, settings, sponsors, team},
         filters,
+        helpers::{InitialsCount, user_initials},
     },
     types::{community::Community, group::GroupSummary},
 };

@@ -10,7 +10,7 @@ use crate::{
     auth::AuthSession,
     config::LoginOptions,
     handlers::auth::AUTH_PROVIDER_KEY,
-    templates::{PageId, filters},
+    templates::{PageId, filters, helpers::{InitialsCount, user_initials}},
     types::community::Community,
 };
 
