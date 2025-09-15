@@ -2,7 +2,8 @@
 
 {# Event card -#}
 <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-   hx-boost="true">
+   hx-boost="true"
+   hx-target="body">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
     <div class="card-logo">
