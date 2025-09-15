@@ -1,7 +1,9 @@
 //! Event type definitions.
 
+use std::collections::BTreeMap;
+
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -236,8 +238,8 @@ pub struct EventFull {
     pub organizers: Vec<User>,
     /// Whether the event is published.
     pub published: bool,
-    /// Event sessions.
-    pub sessions: Vec<Session>,
+    /// Event sessions grouped by day.
+    pub sessions: BTreeMap<NaiveDate, Vec<Session>>,
     /// URL slug of the event.
     pub slug: String,
     /// Event sponsors.
@@ -395,7 +397,7 @@ pub struct Session {
     /// Full session description.
     pub description: Option<String>,
     /// Session end time in UTC.
-    #[serde(with = "chrono::serde::ts_seconds_option")]
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
     /// Location details for the session.
     pub location: Option<String>,

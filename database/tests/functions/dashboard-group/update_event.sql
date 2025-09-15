@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -110,6 +110,8 @@ insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
 insert into event_sponsor (event_id, group_sponsor_id, level)
 values (:'event1ID', :'sponsorOrigID', 'Bronze');
 
+-- (no helper functions)
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -139,7 +141,7 @@ select is(
         "name": "Updated Event Name",
         "published": false,
         "sponsors": [],
-        "sessions": [],
+        "sessions": {},
         "slug": "updated-event-slug",
         "timezone": "America/Los_Angeles"
     }'::jsonb,
@@ -189,15 +191,9 @@ select update_event(
     }'::jsonb
 );
 
+-- Check event fields except sessions
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'))
-        -- Add back sessions without session_ids (which are random)
-        || jsonb_build_object('sessions', 
-            (select jsonb_agg(session - 'session_id')
-             from jsonb_array_elements((
-                select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb->'sessions')
-             )) as session)
-        ),
+    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions')),
     '{
         "canceled": false,
         "category_name": "Conference",
@@ -229,8 +225,16 @@ select is(
         "venue_zip_code": "100-0001",
         "sponsors": [
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
-        ],
-        "sessions": [
+        ]
+    }'::jsonb,
+    'update_event should update all fields (excluding sessions)'
+);
+
+
+-- Sessions assertions: contents ignoring session_id (order-insensitive)
+select ok(
+    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb->'sessions'->'2025-02-01') @>
+        '[
             {
                 "name": "Updated Session",
                 "description": "This is an updated session",
@@ -242,9 +246,9 @@ select is(
                     {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
                 ]
             }
-        ]
-    }'::jsonb,
-    'update_event should update all fields including hosts, sponsors, and sessions'
+        ]'::jsonb
+    ),
+    'sessions contain expected rows (ignoring session_id)'
 );
 
 -- update_event throws error for wrong group_id

@@ -199,7 +199,7 @@ select is(
         "capacity": 500,
         "event_id": "00000000-0000-0000-0000-000000000041",
         "logo_url": "https://example.com/event-logo.png",
-        "sessions": [],
+        "sessions": {},
         "timezone": "America/New_York",
         "published": true,
         "sponsors": [

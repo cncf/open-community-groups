@@ -93,39 +93,54 @@ returns json as $$
             and gt.accepted = true
         ),
         'sessions', (
-            select coalesce(json_agg(json_strip_nulls(json_build_object(
-                'description', s.description,
-                'ends_at', floor(extract(epoch from s.ends_at)),
-                'session_id', s.session_id,
-                'kind', s.session_kind_id,
-                'name', s.name,
-                'starts_at', floor(extract(epoch from s.starts_at)),
+            with
+            event_sessions as (
+                select
+                    to_char((s.starts_at at time zone e.timezone)::date, 'YYYY-MM-DD') as day,
+                    s.starts_at,
+                    json_strip_nulls(json_build_object(
+                        'session_id', s.session_id,
+                        'kind', s.session_kind_id,
+                        'name', s.name,
+                        'starts_at', floor(extract(epoch from s.starts_at)),
 
-                'location', s.location,
-                'recording_url', s.recording_url,
-                'streaming_url', s.streaming_url,
+                        'description', s.description,
+                        'ends_at', floor(extract(epoch from s.ends_at)),
+                        'location', s.location,
+                        'recording_url', s.recording_url,
+                        'streaming_url', s.streaming_url,
 
-                'speakers', (
-                    select coalesce(json_agg(json_strip_nulls(json_build_object(
-                        'user_id', u.user_id,
-                        'username', u.username,
+                        'speakers', (
+                            select coalesce(json_agg(json_strip_nulls(json_build_object(
+                                'user_id', u.user_id,
+                                'username', u.username,
 
-                        'company', u.company,
-                        'facebook_url', u.facebook_url,
-                        'linkedin_url', u.linkedin_url,
-                        'name', u.name,
-                        'photo_url', u.photo_url,
-                        'title', u.title,
-                        'twitter_url', u.twitter_url,
-                        'website_url', u.website_url
-                    )) order by ss.featured desc, u.name), '[]')
-                    from session_speaker ss
-                    join "user" u using (user_id)
-                    where ss.session_id = s.session_id
-                )
-            )) order by s.starts_at), '[]')
-            from session s
-            where s.event_id = e.event_id
+                                'company', u.company,
+                                'facebook_url', u.facebook_url,
+                                'linkedin_url', u.linkedin_url,
+                                'name', u.name,
+                                'photo_url', u.photo_url,
+                                'title', u.title,
+                                'twitter_url', u.twitter_url,
+                                'website_url', u.website_url
+                            )) order by ss.featured desc, u.name), '[]')
+                            from session_speaker ss
+                            join "user" u using (user_id)
+                            where ss.session_id = s.session_id
+                        )
+                    )) as session_json
+                from session s
+                where s.event_id = e.event_id
+            ),
+            event_sessions_grouped as (
+                select day, json_agg(session_json order by starts_at) as sessions
+                from event_sessions
+                group by day
+            )
+            select coalesce(
+                (select jsonb_object_agg(day, sessions order by day) from event_sessions_grouped),
+                '{}'::jsonb
+            )::json
         ),
         'sponsors', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
