@@ -528,9 +528,6 @@
     showErrorAlert,
     showSuccessAlert
   } from '/static/js/common/alerts.js';
-  import {
-    generateSlug
-  } from '/static/js/dashboard/common.js';
   import '/static/js/common/user-search-selector.js';
 
   const updateEventButton = document.getElementById('update-event-button');
@@ -619,15 +616,9 @@
       }
     });
 
-    // Generate slug and add to request parameters
+    // Preserve slug from form; only generate if missing
     updateEventButton.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'update-event-button') {
-        const nameInput = document.getElementById('name');
-
-        if (nameInput && nameInput.value.trim()) {
-          const slug = generateSlug(nameInput.value);
-          e.detail.parameters.slug = slug;
-        }
 
         // Convert datetime-local values to proper ISO format for PostgreSQL
         Object.keys(e.detail.parameters).forEach(key => {
