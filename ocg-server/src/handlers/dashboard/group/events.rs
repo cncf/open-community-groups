@@ -212,7 +212,10 @@ pub(crate) async fn publish(
         }
     }
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
 }
 
 /// Deletes an event from the database (soft delete).
@@ -225,7 +228,10 @@ pub(crate) async fn delete(
     // Delete event from database (soft delete)
     db.delete_event(group_id, event_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
 }
 
 /// Unpublishes an event (sets published=false and clears publication metadata).
@@ -238,7 +244,10 @@ pub(crate) async fn unpublish(
     // Mark event as unpublished in database
     db.unpublish_event(group_id, event_id).await?;
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
 }
 
 /// Updates an existing event's information in the database.
@@ -287,5 +296,9 @@ pub(crate) async fn update(
         }
     }
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-events-table")]).into_response())
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    )
+        .into_response())
 }
