@@ -296,8 +296,7 @@ export class SessionsSection extends LitWrapper {
           (s) => s.id,
           (s, index) => this._getSessionForm(index, s),
         )}
-      </div>
-      <input type="hidden" name="sessions" .value=${this._sessionsJson || "[]"} />`;
+      </div>`;
   }
 }
 customElements.define("sessions-section", SessionsSection);
