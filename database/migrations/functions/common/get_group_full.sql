@@ -70,6 +70,21 @@ returns json as $$
             where gt.group_id = g.group_id
             and gt.role = 'organizer'
             and gt.accepted = true
+        ),
+        'sponsors', (
+            select coalesce(
+                json_agg(
+                    json_strip_nulls(json_build_object(
+                        'group_sponsor_id', gs.group_sponsor_id,
+                        'logo_url', gs.logo_url,
+                        'name', gs.name,
+
+                        'website_url', gs.website_url
+                    )) order by gs.name
+                ), '[]'::json
+            )
+            from group_sponsor gs
+            where gs.group_id = g.group_id
         )
     )) as json_data
     from "group" g

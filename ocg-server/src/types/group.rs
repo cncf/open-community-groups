@@ -195,6 +195,8 @@ pub struct GroupFull {
     pub organizers: Vec<User>,
     /// URL slug of the group.
     pub slug: String,
+    /// List of group sponsors.
+    pub sponsors: Vec<GroupSponsor>,
 
     /// Banner image URL for the group page.
     pub banner_url: Option<String>,

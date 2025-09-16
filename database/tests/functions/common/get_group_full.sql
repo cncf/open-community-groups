@@ -14,6 +14,8 @@ select plan(2);
 \set regionID '00000000-0000-0000-0000-000000000012'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set sponsor1ID '00000000-0000-0000-0000-000000000041'
+\set sponsor2ID '00000000-0000-0000-0000-000000000042'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 \set user3ID '00000000-0000-0000-0000-000000000033'
@@ -125,6 +127,17 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
+-- Group Sponsor
+insert into group_sponsor (
+    group_sponsor_id,
+    group_id,
+    logo_url,
+    name,
+    website_url
+) values
+    (:'sponsor1ID', :'groupID', 'https://example.com/logos/devops-tools.png', 'DevOps Tools Inc', 'https://devopstools.example.com'),
+    (:'sponsor2ID', :'groupID', 'https://example.com/logos/kube-corp.png', 'Kube Corp', null);
+
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
 values
@@ -227,6 +240,19 @@ select is(
                 "photo_url": "https://example.com/bob.png",
                 "title": "Engineer",
                 "website_url": "https://bob.com"
+            }
+        ],
+        "sponsors": [
+            {
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000041",
+                "logo_url": "https://example.com/logos/devops-tools.png",
+                "name": "DevOps Tools Inc",
+                "website_url": "https://devopstools.example.com"
+            },
+            {
+                "group_sponsor_id": "00000000-0000-0000-0000-000000000042",
+                "logo_url": "https://example.com/logos/kube-corp.png",
+                "name": "Kube Corp"
             }
         ]
     }'::jsonb,

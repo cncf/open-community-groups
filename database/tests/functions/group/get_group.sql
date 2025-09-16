@@ -132,6 +132,7 @@ select is(
         "group_id": "00000000-0000-0000-0000-000000000031",
         "latitude": 40.7128,
         "logo_url": "https://example.com/k8s-logo.png",
+        "sponsors": [],
         "longitude": -74.006,
         "banner_url": "https://example.com/k8s-banner.png",
         "github_url": "https://github.com/k8snyc",
