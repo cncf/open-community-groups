@@ -10,15 +10,13 @@ use crate::{
     db::PgDB,
     templates::dashboard::group::{
         attendees::{Attendee, AttendeesFilterOptions, AttendeesFilters},
-        events::Event,
+        events::{Event, GroupEvents},
         members::GroupMember,
         sponsors::Sponsor,
         team::GroupTeamMember,
     },
     types::{
-        event::{
-            EventCategory, EventKindSummary as EventKind, EventSummary, SessionKindSummary as SessionKind,
-        },
+        event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
         group::{GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary},
     },
 };
@@ -63,7 +61,7 @@ pub(crate) trait DBDashboardGroup {
     async fn list_event_attendees_ids(&self, event_id: Uuid) -> Result<Vec<Uuid>>;
 
     /// Lists all events for a group for management.
-    async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>>;
+    async fn list_group_events(&self, group_id: Uuid) -> Result<GroupEvents>;
 
     /// Lists all group members.
     async fn list_group_members(&self, group_id: Uuid) -> Result<Vec<GroupMember>>;
@@ -298,14 +296,14 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
-    async fn list_group_events(&self, group_id: Uuid) -> Result<Vec<EventSummary>> {
+    async fn list_group_events(&self, group_id: Uuid) -> Result<GroupEvents> {
         trace!("db: list group events");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_group_events($1::uuid)::text", &[&group_id])
             .await?;
-        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let events = GroupEvents::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

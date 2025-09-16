@@ -1,13 +1,18 @@
 //! Templates and types for managing events in the group dashboard.
 
+use anyhow::Result;
 use askama::Template;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    templates::{filters, helpers::DATE_FORMAT},
+    templates::{
+        filters,
+        helpers::{DATE_FORMAT, color},
+    },
     types::event::{
         EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
     },
@@ -38,8 +43,8 @@ pub(crate) struct AddPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/events_list.html")]
 pub(crate) struct ListPage {
-    /// List of events in the group.
-    pub events: Vec<EventSummary>,
+    /// Group events split by upcoming and past ones.
+    pub events: GroupEvents,
 }
 
 /// Update event page template.
@@ -121,6 +126,39 @@ pub(crate) struct Event {
     pub venue_zip_code: Option<String>,
 }
 
+/// Event sponsor information.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventSponsor {
+    /// Group sponsor identifier.
+    pub group_sponsor_id: Uuid,
+    /// Sponsor level for this event.
+    pub level: String,
+}
+
+/// Group events separated by status.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupEvents {
+    /// Events that already happened.
+    pub past: Vec<EventSummary>,
+    /// Events happening in the future.
+    pub upcoming: Vec<EventSummary>,
+}
+
+impl GroupEvents {
+    /// Try to create group events split into past and upcoming from JSON.
+    #[instrument(skip_all, err)]
+    pub fn try_from_json(data: &str) -> Result<Self> {
+        let mut events: Self = serde_json::from_str(data)?;
+
+        for event in events.past.iter_mut().chain(events.upcoming.iter_mut()) {
+            event.group_color = color(&event.group_name).to_string();
+        }
+
+        Ok(events)
+    }
+}
+
 /// Session details within an event.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,14 +182,4 @@ pub(crate) struct Session {
     pub speakers: Option<Vec<Uuid>>,
     /// Streaming URL for the session.
     pub streaming_url: Option<String>,
-}
-
-/// Event sponsor information.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventSponsor {
-    /// Group sponsor identifier.
-    pub group_sponsor_id: Uuid,
-    /// Sponsor level for this event.
-    pub level: String,
 }

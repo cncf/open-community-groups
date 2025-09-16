@@ -100,50 +100,10 @@ insert into event (
 -- Test: get_group_upcoming_events should return published future events JSON
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "group_category_name": "Technology",
-            "kind": "virtual",
-            "name": "Future Event 1",
-            "published": true,
-            "slug": "future-event-1",
-            "logo_url": "https://example.com/future-event-1.png",
-            "timezone": "UTC",
-            "starts_at": 1769936400,
-            "ends_at": 1769943600,
-            "description_short": "First future event",
-            "group_city": "Los Angeles",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "venue_city": "Online",
-            "group_state": "CA",
-            "group_country_code": "US",
-            "group_country_name": "United States"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000043",
-            "group_category_name": "Technology",
-            "kind": "hybrid",
-            "name": "Future Event 2",
-            "published": true,
-            "slug": "future-event-2",
-            "logo_url": "https://example.com/future-event-2.png",
-            "timezone": "UTC",
-            "starts_at": 1770714000,
-            "ends_at": 1770721200,
-            "description_short": "Second future event",
-            "group_city": "Los Angeles",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "venue_city": "Los Angeles",
-            "group_state": "CA",
-            "group_country_code": "US",
-            "group_country_name": "United States"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb
+    ),
     'get_group_upcoming_events should return published future events ordered by date ASC as JSON'
 );
 

@@ -114,7 +114,7 @@ insert into event (
         :'category1ID',
         'in-person',
         'America/New_York',
-        '2025-12-01 10:00:00+00',
+        '2099-12-01 10:00:00+00',
         '2024-01-01 00:00:00',
         'https://example.com/future-logo.png',
         'San Francisco'
@@ -128,7 +128,7 @@ insert into event (
         :'category1ID',
         'virtual',
         'America/Los_Angeles',
-        '2024-01-15 14:00:00+00',
+        '2000-01-15 14:00:00+00',
         '2024-01-02 00:00:00',
         null,
         null
@@ -156,7 +156,7 @@ insert into event (
         :'category1ID',
         'in-person',
         'America/Chicago',
-        '2025-06-01 09:00:00+00',
+        '2099-06-01 09:00:00+00',
         '2024-01-04 00:00:00',
         null,
         'Chicago'
@@ -193,95 +193,32 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Test: list_group_events should return empty array for group with no events
 select is(
-    list_group_events('00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
-    'list_group_events should return empty array for group with no events'
+    list_group_events('00000000-0000-0000-0000-000000000099'::uuid)::jsonb,
+    jsonb_build_object('past', '[]'::jsonb, 'upcoming', '[]'::jsonb),
+    'list_group_events should return empty arrays for group with no events'
 );
 
--- Test: list_group_events should return full JSON for group1 ordered correctly
 select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000021",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "in-person",
-            "name": "Future Event",
-            "published": false,
-            "slug": "future-event",
-            "timezone": "America/New_York",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "CA",
-            "logo_url": "https://example.com/future-logo.png",
-            "starts_at": 1764583200,
-            "venue_city": "San Francisco"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000022",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "virtual",
-            "name": "Past Event",
-            "published": false,
-            "slug": "past-event",
-            "timezone": "America/Los_Angeles",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "CA",
-            "starts_at": 1705327200
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000023",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "hybrid",
-            "name": "Event Without Date",
-            "published": false,
-            "slug": "event-without-date",
-            "timezone": "Europe/London",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "CA",
-            "logo_url": "https://example.com/no-date-logo.png",
-            "venue_city": "London"
-        }
-    ]'::jsonb,
-    'list_group_events should return events with full JSON structure ordered by starts_at desc with nulls last'
+    jsonb_build_object(
+        'past', jsonb_build_array(get_event_summary(:'event2ID'::uuid)::jsonb),
+        'upcoming', jsonb_build_array(
+            get_event_summary(:'event1ID'::uuid)::jsonb,
+            get_event_summary(:'event3ID'::uuid)::jsonb
+        )
+    ),
+    'list_group_events should group events by timeframe with ordering'
 );
 
 -- Test: list_group_events should return full JSON for group2 single event
 select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000024",
-            "group_name": "Another Group",
-            "group_slug": "another-group",
-            "kind": "in-person",
-            "name": "Other Group Event",
-            "published": false,
-            "slug": "other-group-event",
-            "timezone": "America/Chicago",
-            "group_city": "New York",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "NY",
-            "starts_at": 1748768400,
-            "venue_city": "Chicago"
-        }
-    ]'::jsonb,
-    'list_group_events should return correct full JSON for specified group'
+    jsonb_build_object(
+        'past', '[]'::jsonb,
+        'upcoming', jsonb_build_array(get_event_summary(:'event4ID'::uuid)::jsonb)
+    ),
+    'list_group_events should return correct grouped JSON for specified group'
 );
 
 -- ============================================================================
