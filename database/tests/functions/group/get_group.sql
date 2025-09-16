@@ -51,11 +51,11 @@ insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, company, title, photo_url, created_at)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, bio, name, company, title, photo_url, created_at)
 values
-    (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
-    (:'memberID', 'member@example.com', 'member1', false, 'test_hash', :'communityID', 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
+    (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Group founder and speaker', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
+    (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Community events coordinator', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
+    (:'memberID', 'member@example.com', 'member1', false, 'test_hash', :'communityID', null, 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
 
 -- Group
 insert into "group" (
@@ -142,6 +142,7 @@ select is(
                 "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000041",
                 "username": "organizer1",
+                "bio": "Group founder and speaker",
                 "name": "John Doe",
                 "photo_url": "https://example.com/john.png"
             },
@@ -150,6 +151,7 @@ select is(
                 "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000042",
                 "username": "organizer2",
+                "bio": "Community events coordinator",
                 "name": "Jane Smith",
                 "photo_url": "https://example.com/jane.png"
             }

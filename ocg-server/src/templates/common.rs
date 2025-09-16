@@ -16,6 +16,8 @@ pub(crate) struct User {
     /// User's username.
     pub username: String,
 
+    /// Short biography.
+    pub bio: Option<String>,
     /// Company the user works for.
     pub company: Option<String>,
     /// Facebook profile URL.
