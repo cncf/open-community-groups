@@ -326,9 +326,7 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-3">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
-                <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white transition-colors">
-                  {{ event|safe }}
-                </div>
+                {{ event|safe }}
               {% endfor -%}
             </div>
           </div>
