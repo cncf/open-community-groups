@@ -99,44 +99,10 @@ insert into event (
 -- Test: get_group_past_events should return published past events JSON
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "kind": "virtual",
-            "name": "Past Event 2",
-            "published": true,
-            "slug": "past-event-2",
-            "logo_url": "https://example.com/past-event-2.png",
-            "timezone": "UTC",
-            "starts_at": 1704877200,
-            "group_city": "San Francisco",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "venue_city": "Online",
-            "group_state": "CA",
-            "group_country_code": "US",
-            "group_country_name": "United States"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000041",
-            "kind": "in-person",
-            "name": "Past Event 1",
-            "published": true,
-            "slug": "past-event-1",
-            "logo_url": "https://example.com/past-event-1.png",
-            "timezone": "UTC",
-            "starts_at": 1704099600,
-            "group_city": "San Francisco",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "venue_city": "San Francisco",
-            "group_state": "CA",
-            "group_country_code": "US",
-            "group_country_name": "United States"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'event2ID'::uuid)::jsonb,
+        get_event_summary(:'event1ID'::uuid)::jsonb
+    ),
     'get_group_past_events should return published past events ordered by date DESC as JSON'
 );
 

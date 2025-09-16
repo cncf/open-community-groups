@@ -103,82 +103,11 @@ insert into event (
 -- Test: search_community_events without filters should return all events with expected JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{}'::jsonb))::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000041",
-            "kind": "in-person",
-            "name": "Kubernetes Workshop",
-            "published": true,
-            "slug": "kubernetes-workshop",
-            "timezone": "UTC",
-            "description_short": "K8s intro workshop",
-            "ends_at": 1769947200,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/k8s-workshop.png",
-            "longitude": -122.4194,
-            "starts_at": 1769940000,
-            "venue_city": "San Francisco",
-            "venue_name": "Tech Hub",
-            "venue_address": "123 Market St"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "kind": "virtual",
-            "name": "Docker Training",
-            "published": true,
-            "slug": "docker-training",
-            "timezone": "UTC",
-            "description_short": "Docker basics",
-            "ends_at": 1770037200,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/docker-training.png",
-            "longitude": -122.4194,
-            "starts_at": 1770026400,
-            "venue_city": "New York",
-            "venue_name": "Online"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000043",
-            "kind": "hybrid",
-            "name": "Cloud Summit",
-            "published": true,
-            "slug": "cloud-summit",
-            "timezone": "UTC",
-            "description_short": "Cloud conf 2026",
-            "ends_at": 1770138000,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/cloud-summit.png",
-            "longitude": -122.4194,
-            "starts_at": 1770112800,
-            "venue_city": "London",
-            "venue_name": "Convention Center",
-            "venue_address": "456 Oxford St"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb
+    ),
     'search_community_events without filters returns all published events with correct JSON structure'
 );
 
@@ -199,121 +128,24 @@ select is(
 -- Test: search_community_events kind filter should return only Docker Training JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"kind":["virtual"]}'::jsonb))::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "kind": "virtual",
-            "name": "Docker Training",
-            "published": true,
-            "slug": "docker-training",
-            "timezone": "UTC",
-            "description_short": "Docker basics",
-            "ends_at": 1770037200,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/docker-training.png",
-            "longitude": -122.4194,
-            "starts_at": 1770026400,
-            "venue_city": "New York",
-            "venue_name": "Online"
-        }
-    ]'::jsonb,
+    jsonb_build_array(get_event_detailed(:'event2ID'::uuid)::jsonb),
     'search_community_events kind filter returns expected event JSON'
 );
 
 -- Test: search_community_events ts_query filter should return only Docker Training JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"ts_query":"Docker"}'::jsonb))::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "kind": "virtual",
-            "name": "Docker Training",
-            "published": true,
-            "slug": "docker-training",
-            "timezone": "UTC",
-            "description_short": "Docker basics",
-            "ends_at": 1770037200,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/docker-training.png",
-            "longitude": -122.4194,
-            "starts_at": 1770026400,
-            "venue_city": "New York",
-            "venue_name": "Online"
-        }
-    ]'::jsonb,
+    jsonb_build_array(get_event_detailed(:'event2ID'::uuid)::jsonb),
     'search_community_events ts_query filter returns expected event JSON'
 );
 
 -- Test: search_community_events date_from should return remaining 2 events JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"date_from":"2026-02-02"}'::jsonb))::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "kind": "virtual",
-            "name": "Docker Training",
-            "published": true,
-            "slug": "docker-training",
-            "timezone": "UTC",
-            "description_short": "Docker basics",
-            "ends_at": 1770037200,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/docker-training.png",
-            "longitude": -122.4194,
-            "starts_at": 1770026400,
-            "venue_city": "New York",
-            "venue_name": "Online"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000043",
-            "kind": "hybrid",
-            "name": "Cloud Summit",
-            "published": true,
-            "slug": "cloud-summit",
-            "timezone": "UTC",
-            "description_short": "Cloud conf 2026",
-            "ends_at": 1770138000,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/cloud-summit.png",
-            "longitude": -122.4194,
-            "starts_at": 1770112800,
-            "venue_city": "London",
-            "venue_name": "Convention Center",
-            "venue_address": "456 Oxford St"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb
+    ),
     'search_community_events date_from returns expected events JSON'
 );
 
@@ -323,82 +155,11 @@ select is(
         :'communityID'::uuid,
         '{"latitude":37.7749, "longitude":-122.4194, "distance":1000}'::jsonb
      ))::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000041",
-            "group_category_name": "Technology",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "in-person",
-            "name": "Kubernetes Workshop",
-            "published": true,
-            "slug": "kubernetes-workshop",
-            "timezone": "UTC",
-            "description_short": "K8s intro workshop",
-            "ends_at": 1769947200,
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/k8s-workshop.png",
-            "longitude": -122.4194,
-            "starts_at": 1769940000,
-            "venue_address": "123 Market St",
-            "venue_city": "San Francisco",
-            "venue_name": "Tech Hub"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "group_category_name": "Technology",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "virtual",
-            "name": "Docker Training",
-            "published": true,
-            "slug": "docker-training",
-            "timezone": "UTC",
-            "description_short": "Docker basics",
-            "ends_at": 1770037200,
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/docker-training.png",
-            "longitude": -122.4194,
-            "starts_at": 1770026400,
-            "venue_city": "New York",
-            "venue_name": "Online"
-        },
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000043",
-            "group_category_name": "Technology",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "hybrid",
-            "name": "Cloud Summit",
-            "published": true,
-            "slug": "cloud-summit",
-            "timezone": "UTC",
-            "description_short": "Cloud conf 2026",
-            "ends_at": 1770138000,
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/cloud-summit.png",
-            "longitude": -122.4194,
-            "starts_at": 1770112800,
-            "venue_address": "456 Oxford St",
-            "venue_city": "London",
-            "venue_name": "Convention Center"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb
+    ),
     'search_community_events distance filter returns expected events JSON in SF'
 );
 

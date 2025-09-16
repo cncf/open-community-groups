@@ -94,24 +94,7 @@ insert into event (
 -- get_community_upcoming_events function returns correct data
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "kind": "virtual",
-            "name": "Future Event 1",
-            "published": true,
-            "slug": "future-event-1",
-            "timezone": "UTC",
-            "group_city": "New York",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_state": "NY",
-            "starts_at": 1769936400
-        }
-    ]'::jsonb,
+    jsonb_build_array(get_event_summary(:'event2ID'::uuid)::jsonb),
     'get_community_upcoming_events should return only published future events as JSON'
 );
 
