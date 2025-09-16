@@ -313,7 +313,9 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Upcoming Events</div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {% for event in upcoming_events -%}
-                {{ event|safe }}
+                {% if loop.index <= 6 -%}
+                  {{ event|safe }}
+                {% endif -%}
               {% endfor -%}
             </div>
           </div>
@@ -326,7 +328,9 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
-                {{ event|safe }}
+                {% if loop.index <= 6 -%}
+                  {{ event|safe }}
+                {% endif -%}
               {% endfor -%}
             </div>
           </div>
