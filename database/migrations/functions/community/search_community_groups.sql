@@ -52,10 +52,11 @@ begin
     return query
     with filtered_groups as (
         select
-            g.group_id,
             g.created_at,
+            st_distance(g.location, v_user_location) as distance,
+            g.group_id,
             g.location,
-            st_distance(g.location, v_user_location) as distance
+            g.name
         from "group" g
         join group_category gc using (group_category_id)
         left join region r using (region_id)
@@ -84,6 +85,7 @@ begin
         order by
             (case when v_sort_by = 'date' then created_at end) desc,
             (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
+            (case when v_sort_by = 'name' then name end) asc,
             created_at desc
         limit v_limit
         offset v_offset

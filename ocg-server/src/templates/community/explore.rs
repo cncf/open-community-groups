@@ -354,7 +354,7 @@ impl Pagination for EventsFilters {
 /// entities. Supports location-based filtering, categorical filtering, and full-text
 /// search.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct GroupsFilters {
     /// Selected group categories to filter by.
     #[serde(default)]

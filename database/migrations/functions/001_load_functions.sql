@@ -29,7 +29,6 @@
 {{ template "dashboard-community/deactivate_group.sql" }}
 {{ template "dashboard-community/delete_community_team_member.sql" }}
 {{ template "dashboard-community/delete_group.sql" }}
-{{ template "dashboard-community/list_community_groups.sql" }}
 {{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}

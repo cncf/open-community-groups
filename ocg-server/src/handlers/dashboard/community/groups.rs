@@ -1,9 +1,11 @@
 //! HTTP handlers for managing groups in the community dashboard.
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -13,8 +15,14 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CommunityId},
-    templates::dashboard::community::groups::{self, Group},
+    templates::{
+        community::explore,
+        dashboard::community::groups::{self, Group},
+    },
 };
+
+/// Maximum number of groups returned when listing dashboard groups.
+pub(crate) const MAX_GROUPS_LISTED: usize = 1000;
 
 // Pages handlers.
 
@@ -23,9 +31,16 @@ use crate::{
 pub(crate) async fn list_page(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
+    Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let groups = db.list_community_groups(community_id).await?;
+    let filters = explore::GroupsFilters {
+        limit: Some(MAX_GROUPS_LISTED),
+        sort_by: Some(String::from("name")),
+        ts_query: query.get("ts_query").cloned(),
+        ..explore::GroupsFilters::default()
+    };
+    let groups = db.search_community_groups(community_id, &filters).await?.groups;
     let template = groups::ListPage { groups };
 
     Ok(Html(template.render()?))
