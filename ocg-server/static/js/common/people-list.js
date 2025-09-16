@@ -95,8 +95,8 @@ export class PeopleList extends LitWrapper {
           ${person.title
             ? html`<p class="text-xs text-stone-600 mt-1 truncate">${person.title}</p>`
             : person.company
-              ? html`<p class="text-xs text-stone-600 mt-1 truncate">${person.company}</p>`
-              : ""}
+            ? html`<p class="text-xs text-stone-600 mt-1 truncate">${person.company}</p>`
+            : ""}
         </div>
         <!-- End name and details -->
       </div>

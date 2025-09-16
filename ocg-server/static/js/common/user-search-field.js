@@ -257,18 +257,18 @@ export class UserSearchField extends LitWrapper {
                       </div>
                     `
                   : this._searchResults.length === 0
-                    ? html`
-                        <div class="p-4 text-center text-stone-500">
-                          <p class="text-sm">No ${this.label || "users"} found for "${this._searchQuery}"</p>
-                        </div>
-                      `
-                    : html`<div class="py-1">
-                        ${repeat(
-                          this._searchResults,
-                          (u) => u.username,
-                          (u) => this._renderResult(u),
-                        )}
-                      </div>`}
+                  ? html`
+                      <div class="p-4 text-center text-stone-500">
+                        <p class="text-sm">No ${this.label || "users"} found for "${this._searchQuery}"</p>
+                      </div>
+                    `
+                  : html`<div class="py-1">
+                      ${repeat(
+                        this._searchResults,
+                        (u) => u.username,
+                        (u) => this._renderResult(u),
+                      )}
+                    </div>`}
               </div>
             `
           : ""}
