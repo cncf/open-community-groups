@@ -45,6 +45,8 @@ pub struct Community {
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Link to the community's Facebook page.
     pub facebook_url: Option<String>,
+    /// URL to the small icon displayed in browser tabs and bookmarks.
+    pub favicon_url: Option<String>,
     /// Link to the community's Flickr photo collection.
     pub flickr_url: Option<String>,
     /// URL to the logo image shown in the page footer.
@@ -57,6 +59,8 @@ pub struct Community {
     pub linkedin_url: Option<String>,
     /// Instructions for creating new groups.
     pub new_group_details: Option<String>,
+    /// URL to the Open Graph image used for link previews.
+    pub og_image_url: Option<String>,
     /// Collection of photo URLs for community galleries or slideshows.
     pub photos_urls: Option<Vec<String>>,
     /// Link to the community's Slack workspace.
