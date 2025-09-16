@@ -9,7 +9,10 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    templates::{filters, helpers::{color, DATE_FORMAT}},
+    templates::{
+        filters,
+        helpers::{DATE_FORMAT, color},
+    },
     types::event::{
         EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
     },
