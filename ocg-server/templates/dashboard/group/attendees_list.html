@@ -126,7 +126,7 @@
                   {% if let Some(photo_url) = attendee.photo_url -%}
                     image-url="{{ photo_url }}"
                   {% endif -%}
-                  size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str(), InitialsCount::Two) }}">
+                  size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
                   </avatar-image>
                   <div class="min-w-0">
                     <div class="font-medium text-stone-900 truncate">

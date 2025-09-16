@@ -6,10 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::templates::{
-    filters,
-    helpers::{InitialsCount, user_initials},
-};
+use crate::templates::{filters, helpers::user_initials};
 
 // Pages templates.
 
