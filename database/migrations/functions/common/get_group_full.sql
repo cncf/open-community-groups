@@ -56,6 +56,7 @@ returns json as $$
                 'user_id', u.user_id,
                 'username', u.username,
 
+                'bio', u.bio,
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,

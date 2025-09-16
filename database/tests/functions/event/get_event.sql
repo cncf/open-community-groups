@@ -59,12 +59,12 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name, photo_url, company, title, created_at)
+insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, bio, name, photo_url, company, title, created_at)
 values
-    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash', :'communityID', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash', :'communityID', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
-    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
-    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
+    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash', :'communityID', 'Conference opening speaker', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
+    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash', :'communityID', 'Community host and emcee', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
+    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Community programs lead', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
+    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Operations and logistics manager', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
 
 -- Event
 insert into event (
@@ -180,6 +180,7 @@ select is(
                 "company": "Dev Inc",
                 "user_id": "00000000-0000-0000-0000-000000000052",
                 "username": "host2",
+                "bio": "Community host and emcee",
                 "name": "Jane Smith",
                 "photo_url": "https://example.com/jane.png"
             },
@@ -188,6 +189,7 @@ select is(
                 "company": "Tech Corp",
                 "user_id": "00000000-0000-0000-0000-000000000051",
                 "username": "host1",
+                "bio": "Conference opening speaker",
                 "name": "John Doe",
                 "photo_url": "https://example.com/john.png"
             }
@@ -226,6 +228,7 @@ select is(
                 "company": "Cloud Co",
                 "user_id": "00000000-0000-0000-0000-000000000053",
                 "username": "organizer1",
+                "bio": "Community programs lead",
                 "name": "Alice Johnson",
                 "photo_url": "https://example.com/alice.png"
             },
@@ -234,6 +237,7 @@ select is(
                 "company": "StartUp",
                 "user_id": "00000000-0000-0000-0000-000000000054",
                 "username": "organizer2",
+                "bio": "Operations and logistics manager",
                 "name": "Bob Wilson",
                 "photo_url": "https://example.com/bob.png"
             }
