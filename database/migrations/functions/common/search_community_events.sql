@@ -7,6 +7,7 @@ declare
     v_date_to date := (p_filters->>'date_to');
     v_event_category text[];
     v_group_category text[];
+    v_group_ids uuid[];
     v_kind text[];
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_max_distance real;
@@ -33,6 +34,10 @@ begin
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category
         from jsonb_array_elements_text(p_filters->'group_category') e;
+    end if;
+    if p_filters ? 'group' then
+        select array_agg(e::uuid) into v_group_ids
+        from jsonb_array_elements_text(p_filters->'group') e;
     end if;
     if p_filters ? 'kind' then
         select array_agg(e::text) into v_kind
@@ -86,6 +91,9 @@ begin
         and
             case when cardinality(v_group_category) > 0 then
             gc.normalized_name = any(v_group_category) else true end
+        and
+            case when cardinality(v_group_ids) > 0 then
+            g.group_id = any(v_group_ids) else true end
         and
             case when cardinality(v_kind) > 0 then
             e.event_kind_id = any(v_kind) else true end

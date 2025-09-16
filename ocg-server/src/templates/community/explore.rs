@@ -10,6 +10,7 @@ use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tracing::{instrument, trace};
+use uuid::Uuid;
 
 use crate::{
     db::BBox,
@@ -205,11 +206,14 @@ impl Display for Entity {
 /// location-based filters (bounding box, distance), temporal filters (date range),
 /// categorical filters, etc.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct EventsFilters {
     /// Selected event categories to filter by.
     #[serde(default)]
     pub event_category: Vec<String>,
+    /// Selected groups to filter by.
+    #[serde(default)]
+    pub group: Vec<Uuid>,
     /// Selected group categories to filter by.
     #[serde(default)]
     pub group_category: Vec<String>,
