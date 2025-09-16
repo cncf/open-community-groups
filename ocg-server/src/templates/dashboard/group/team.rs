@@ -6,11 +6,10 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::{
-    filters,
-    helpers::{InitialsCount, user_initials},
+use crate::{
+    templates::{filters, helpers::user_initials},
+    types::group::{GroupRole, GroupRoleSummary},
 };
-use crate::types::group::{GroupRole, GroupRoleSummary};
 
 // Pages templates.
 
