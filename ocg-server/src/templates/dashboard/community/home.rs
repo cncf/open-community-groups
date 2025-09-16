@@ -10,7 +10,7 @@ use crate::{
         auth::User,
         dashboard::community::{groups, settings, team},
         filters,
-        helpers::{InitialsCount, user_initials},
+        helpers::user_initials,
     },
     types::community::Community,
 };

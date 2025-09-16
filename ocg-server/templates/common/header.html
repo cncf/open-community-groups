@@ -164,7 +164,7 @@
               data-logged-in="true"
               class="cursor-pointer group rounded-full bg-white border text-base leading-none border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
         <div class="font-semibold uppercase mt-px">
-          {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or(""), InitialsCount::Two) }}
+          {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
         </div>
       </button>
 

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::{InitialsCount, user_initials}},
+    templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         community::Community,
         event::{EventKind, EventSummary},
