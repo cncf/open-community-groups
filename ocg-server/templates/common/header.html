@@ -11,11 +11,21 @@
       <div class="me-3">
         {% if path != "/" %}<a href="/" aria-label="Go to homepage">{% endif %}
           <div class="-m-1.5 p-1.5">
-            <img class="h-10 w-50"
-                 width="208"
-                 height="40"
-                 src="{{ self.community.header_logo_url }}"
-                 alt="{{ community.display_name }} logo" />
+            <div class="flex items-top gap-x-2">
+              <div>
+                <img class="h-10 w-50"
+                     width="208"
+                     height="40"
+                     src="{{ self.community.header_logo_url }}"
+                     alt="{{ community.display_name }} logo" />
+              </div>
+              {# Beta badge -#}
+              <div>
+                <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 font-semibold">
+                  BETA
+                </div>
+              </div>
+            </div>
           </div>
           {% if path != "/" %}</a>{% endif %}
       </div>
@@ -77,7 +87,7 @@
        role="dialog"
        class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex">
     <div id="backdrop-new-group-modal"
-         class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
     <div class="relative p-4 w-full max-w-2xl max-h-full">
       <div class="relative bg-white rounded-lg shadow">
         {# Modal header -#}
@@ -127,6 +137,8 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <a href="{{ href }}"
+     hx-boost="true"
+     hx-target="body"
      class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
             {% if current_path == href -%}
               border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
@@ -148,12 +160,12 @@
 {% macro user_menu(user) -%}
   <div class="relative">
     {% if user.logged_in -%}
-      {% let name = user.name|display_some -%}
-      {% let initial = name.chars().nth(0).unwrap_or('-') -%}
       <button id="user-dropdown-button"
               data-logged-in="true"
-              class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
-        <div class="font-semibold uppercase mt-px">{{ initial }}</div>
+              class="cursor-pointer group rounded-full bg-white border text-base leading-none border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
+        <div class="font-semibold uppercase mt-px">
+          {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
+        </div>
       </button>
 
       {# User dropdown menu -#}
@@ -161,10 +173,10 @@
            class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
-          <li>
+          <li class="border-b border-stone-200 mb-2 pb-2" role="none">
             <div class="flex flex-col px-4 py-2">
               <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user.username|display_some }}</div>
-              <div class="text-xs/4 truncate">{{ name }}</div>
+              <div class="text-xs/4 truncate">{{ user.name|display_some }}</div>
               {% if let Some(auth_provider) = user.auth_provider -%}
                 {% if auth_provider == "linuxfoundation" -%}
                   <a class="text-xs/6 text-stone-500 flex items-center mt-3"
@@ -172,24 +184,11 @@
                      target="_blank"
                      rel="noopener noreferrer">
                     <div class="underline">openprofile.dev account</div>
-                    <div class="svg-icon size-2.5 icon-external_link bg-stone-500 ms-2"></div>
+                    <div class="svg-icon size-2.5 icon-external-link bg-stone-500 ms-2"></div>
                   </a>
                 {% endif -%}
               {% endif -%}
             </div>
-          </li>
-
-          <li class="border-t border-stone-200 mt-2 pt-2" role="none">
-            <a href="/dashboard/user"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-user bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">User Dashboard</div>
-              </div>
-            </a>
           </li>
 
           {# Dashboard links -#}
@@ -226,6 +225,19 @@
               </li>
             {% endif -%}
           {% endif -%}
+
+          <li role="none">
+            <a href="/dashboard/user"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-user-small bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">User Dashboard</div>
+              </div>
+            </a>
+          </li>
 
           {# Logout -#}
           <li class="border-t border-stone-200 mt-2 pt-2" role="none">

@@ -344,6 +344,7 @@ input:placeholder-shown {
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }
+.icon-external-link { --icon-url: url('/static/images/icons/external_link.svg'); }
 .icon-facebook { --icon-url: url('/static/images/icons/facebook.svg'); }
 .icon-filter { --icon-url: url('/static/images/icons/filter.svg'); }
 .icon-flickr { --icon-url: url('/static/images/icons/flickr.svg'); }
@@ -385,6 +386,7 @@ input:placeholder-shown {
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
 .icon-user { --icon-url: url('/static/images/icons/user.svg'); }
 .icon-user-plus { --icon-url: url('/static/images/icons/user_plus.svg'); }
+.icon-user-small { --icon-url: url('/static/images/icons/user_small.svg'); }
 .icon-vertical-dots { --icon-url: url('/static/images/icons/vertical_dots.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
@@ -494,6 +496,10 @@ input:placeholder-shown {
 
 .markdown pre {
   overflow-x: auto;
+}
+
+.markdown code {
+  text-wrap: auto;
 }
 
 /* End markdown */

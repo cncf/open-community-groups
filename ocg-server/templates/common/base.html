@@ -49,12 +49,6 @@
         }
       });
     </script>
-    <script type="text/javascript">
-      // Fallback on history cache errors to avoid broken navigation
-      document.addEventListener('htmx:historyCacheError', () => {
-        window.location.reload();
-      });
-    </script>
   </head>
   {# djlint:off #}
   <body class="h-full" hx-get

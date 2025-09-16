@@ -29,7 +29,7 @@ where
 }
 
 /// Display the formatted datetime if present, otherwise return an empty string.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
 pub(crate) fn display_some_datetime(
     value: &Option<DateTime<Utc>>,
     _: &dyn askama::Values,
@@ -43,7 +43,7 @@ pub(crate) fn display_some_datetime(
 
 /// Display the formatted datetime in the provided timezone if present, otherwise
 /// return an empty string.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
+#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
 pub(crate) fn display_some_datetime_tz(
     value: &Option<DateTime<Utc>>,
     _: &dyn askama::Values,

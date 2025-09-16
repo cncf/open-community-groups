@@ -215,6 +215,48 @@ export const convertTimestampToDateTimeLocal = (tsSeconds) => {
 };
 
 /**
+ * Converts a Unix timestamp (seconds) to datetime-local using a timezone.
+ *
+ * Uses Intl.DateTimeFormat to produce a YYYY-MM-DDTHH:MM string in the
+ * provided IANA timezone (e.g. "America/New_York"). Returns empty string
+ * if input is invalid.
+ *
+ * @param {number} tsSeconds - Unix timestamp in seconds.
+ * @param {string} timezone - IANA timezone identifier.
+ * @returns {string} Datetime string in YYYY-MM-DDTHH:MM or "".
+ */
+export const convertTimestampToDateTimeLocalInTz = (tsSeconds, timezone) => {
+  if (
+    typeof tsSeconds !== "number" ||
+    !Number.isFinite(tsSeconds) ||
+    typeof timezone !== "string" ||
+    timezone.length === 0
+  ) {
+    return "";
+  }
+
+  const dtf = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+
+  const parts = dtf.formatToParts(new Date(tsSeconds * 1000));
+  const get = (type) => parts.find((p) => p.type === type)?.value || "";
+  const y = get("year");
+  const m = get("month");
+  const d = get("day");
+  const h = get("hour");
+  const min = get("minute");
+  if (!y || !m || !d || !h || !min) return "";
+  return `${y}-${m}-${d}T${h}:${min}`;
+};
+
+/**
  * Checks if an object contains only empty values.
  * Excludes the id field from the check, useful for form validation.
  * @param {Object} obj - The object to check

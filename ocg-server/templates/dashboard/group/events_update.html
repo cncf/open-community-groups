@@ -338,7 +338,7 @@
                            name="starts_at"
                            id="starts_at"
                            class="input-primary"
-                           value="{{ event.starts_at|display_some_datetime(DATE_FORMAT) }}">
+                           value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
                   </div>
                   <p class="form-legend">When the event starts.</p>
                 </div>
@@ -352,7 +352,7 @@
                            name="ends_at"
                            id="ends_at"
                            class="input-primary"
-                           value="{{ event.ends_at|display_some_datetime(DATE_FORMAT) }}">
+                           value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
                   </div>
                   <p class="form-legend">When the event ends.</p>
                 </div>
@@ -482,7 +482,7 @@
         <form id="sessions-form">
           <div class="pb-12">
             <div class="mt-10">
-              <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}"></sessions-section>
+              <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}"></sessions-section>
             </div>
           </div>
         </form>

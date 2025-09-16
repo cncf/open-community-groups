@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::{PageId, auth::User, filters},
+    templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         community::Community,
         event::{EventDetailed, EventKind, EventSummary},

@@ -4,130 +4,116 @@
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
+  <script type="module" src="/static/js/common/user-chip.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
   {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
 
-  <div class="max-w-7xl bg-white border border-stone-200 rounded-lg mx-4 lg:mx-5 xl:mx-auto my-5 md:my-7 flex flex-col gap-y-8 py-8">
-    {# Group header with name and region -#}
-    <div class="px-4 sm:px-6 lg:px-8">
-      {# Main flex container for logo, name/region, and social networks -#}
-      <div class="flex flex-1 flex-row items-stretch gap-6">
-        {# Group logo -#}
-        {% call common::logo(logo_url = group.logo_url, classes = "hidden sm:block h-20 w-20 md:h-28 md:w-28", size = 112, color = group.color, name = Some(group.name)) -%}
-        {# End group logo -#}
+  {# Community title -#}
+  <div class="text-center pt-2 xl:pt-5">
+    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-[1.15rem] font-semibold tracking-tight leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+      {{ community.title }}
+    </h1>
+  </div>
+  {# End community title -#}
+  <div class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col gap-y-8 py-8 w-full">
+      {# Group header with name and region -#}
+      <div class="px-4 sm:px-6 lg:px-8">
+        {# Main flex container for logo, name/region, and social networks -#}
+        <div class="flex flex-1 flex-row items-stretch gap-6">
+          {# Group logo -#}
+          {% call common::logo(logo_url = group.logo_url, classes = "hidden sm:block h-20 w-20 md:h-28 md:w-28", size = 112, color = group.color, name = Some(group.name)) -%}
+          {# End group logo -#}
 
-        <div class="flex-1 flex flex-col justify-between">
-          <div class="flex-1 flex justify-between">
-            <div class="flex flex-col justify-between">
-              <div>
-                {# Region/Category legend -#}
+          <div class="flex-1 flex flex-col justify-between">
+            <div class="flex-1 flex justify-between">
+              <div class="flex flex-col justify-between">
                 <div>
-                  <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
-                    {% if let Some(region) = &group.region -%}
-                      {{ region.name }}
-                    {% else -%}
-                      {{ group.category.name }}
-                    {% endif -%}
-                  </span>
+                  {# Region/Category legend -#}
+                  <div>
+                    <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
+                      {% if let Some(region) = &group.region -%}
+                        {{ region.name }}
+                      {% else -%}
+                        {{ group.category.name }}
+                      {% endif -%}
+                    </span>
+                  </div>
+                  {# End region/category legend -#}
+
+                  {# Group name -#}
+                  <h1 class="text-xl lg:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-1 lg:line-clamp-2">
+                    {{ group.name|demoji }}
+                  </h1>
+                  {# End group name -#}
                 </div>
-                {# End region/category legend -#}
+              </div>
 
-                {# Group name -#}
-                <h1 class="text-xl lg:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-1 lg:line-clamp-2">
-                  {{ group.name|demoji }}
-                </h1>
-                {# End group name -#}
+              {# Social networks -#}
+              {% if has_social_links -%}
+                <div class="hidden md:flex flex-col items-end gap-2">
+                  <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
+                </div>
+              {% endif -%}
+              {# End social networks -#}
+            </div>
+
+            <div class="mt-auto flex items-center justify-between">
+              {# Members count and founded date -#}
+              <div class="flex items-center gap-4 text-stone-600">
+                <div class="flex items-center">
+                  <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
+                  <span class="text-sm">{{ group.members_count }} members</span>
+                </div>
+                <div class="flex items-center">
+                  <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
+                  <span class="text-sm">{{ group.created_at.format("%B %Y") }}</span>
+                </div>
+              </div>
+              {# End members count and founded date -#}
+
+              <div class="hidden md:flex flex-col items-end">
+                {# Membership button section -#}
+                {% include "group/membership_button.html" %}
+                {# End membership button section -#}
               </div>
             </div>
-
-            {# Social networks -#}
-            {% if has_social_links -%}
-              <div class="hidden md:flex flex-col items-end gap-2">
-                <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
-              </div>
-            {% endif -%}
-            {# End social networks -#}
           </div>
-
-          {# Members count and founded date -#}
-          <div class="mt-auto flex items-center gap-4 text-stone-600">
-            <div class="flex items-center">
-              <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
-              <span class="text-sm">{{ group.members_count }} members</span>
-            </div>
-            <div class="flex items-center">
-              <div class="svg-icon size-4 mr-2 bg-stone-600 icon-date"></div>
-              <span class="text-sm">Founded {{ group.created_at.format("%B %Y") }}</span>
-            </div>
-          </div>
-          {# End members count and founded date -#}
         </div>
+        {# End main flex container -#}
 
       </div>
-      {# End main flex container -#}
+      {# End group header -#}
 
-    </div>
-    {# End group header -#}
-
-    {# Two column layout -#}
-    <div class="px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 lg:grid-cols-10 lg:gap-10">
-        {# Left column (70%) -#}
-        <div class="lg:col-span-7">
-          {# Group banner -#}
-          {% if let Some(banner_url) = group.banner_url -%}
-            <div class="w-full mb-8">
-              <div class="relative w-full aspect-[4/1] overflow-hidden rounded-lg bg-white max-h-64 lg:max-h-80">
-                <img src="{{ banner_url }}"
-                     alt="Group banner"
-                     class="absolute inset-0 w-full h-full object-cover"
-                     height="auto"
-                     width="auto"
-                     loading="lazy" />
-              </div>
+      <div class="px-4 sm:px-6 lg:px-8">
+        {# Group banner -#}
+        {% if let Some(banner_url) = group.banner_url -%}
+          <div class="w-full mb-8">
+            <div class="relative w-full aspect-[4/1] overflow-hidden max-h-64 lg:max-h-80">
+              <img src="{{ banner_url }}"
+                   alt="Group banner"
+                   class="absolute inset-0 w-auto h-full object-cover p-[5px] bg-white border border-stone-200 rounded-lg"
+                   height="auto"
+                   width="auto"
+                   loading="lazy" />
             </div>
-          {% endif -%}
-          {# End group banner -#}
+          </div>
+        {% endif -%}
+        {# End group banner -#}
 
-          {# Group description -#}
-          {% if let Some(description) = group.description -%}
-            <div>
-              <div class="pb-8">
-                <h2 class="text-2xl font-semibold text-stone-900 mb-6">About this group</h2>
-                <div class="prose prose-stone max-w-none">
-                  <div class="text-stone-700 text-base/6 markdown">{{ description|md_to_html|safe }}</div>
-                </div>
-              </div>
-            </div>
-          {% endif -%}
-          {# End group description -#}
+        {# Location and event section -#}
+        {% if let Some(lat) = group.latitude %}
+          {% if let Some(lng) = group.longitude %}
+            <div class="border border-stone-200 rounded-lg mb-6 overflow-hidden">
+              <div class="grid md:grid-cols-2">
 
-          {# Social networks (mobile only) -#}
-          {% if has_social_links -%}
-            <div class="md:hidden mb-8 md:mb-0">
-              <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
-            </div>
-          {% endif -%}
-          {# End social networks (mobile) -#}
-        </div>
-        {# End left column -#}
-
-        {# Right column (30%) -#}
-        <div class="max-w-[450px] lg:col-span-3">
-          {# Membership button section -#}
-          {% include "group/membership_button.html" %}
-          {# End membership button section -#}
-          {# Location and map section -#}
-          {% if let Some(lat) = group.latitude %}
-            {% if let Some(lng) = group.longitude %}
-              <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4">Location</h2>
-              <div class="border border-stone-200 rounded-lg mb-6 overflow-hidden">
                 <div class="grid grid-cols-2">
                   {# Location details -#}
-                  <div class="space-y-3">
-                    <div class="flex items-start p-3">
+                  <div class="p-3">
+                    <h2 class="text-sm uppercase font-semibold text-stone-500 mb-2">Location</h2>
+                    <div class="flex items-start space-y-3">
                       <div class="svg-icon size-3 mr-2 mt-[0.175rem] bg-stone-600 icon-location shrink-0"></div>
                       <div class="space-y-1">
                         {% if let Some(city) = group.city -%}
@@ -146,93 +132,264 @@
 
                   {# Map -#}
                   <div class="h-full overflow-hidden border-l border-stone-200">
-                    <div id="group-map" class="w-full h-full"></div>
+                    <div id="group-map"
+                         class="w-full h-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                         role="button"
+                         tabindex="0"
+                         aria-label="Open full map view"></div>
                   </div>
                   {# End map -#}
                 </div>
-              </div>
 
-              {# Map initialization script -#}
-              {# djlint:off #}
-              <script type="module">
-                import {
-                  loadMap
-                } from "/static/js/common/common.js";
-
-                // Initialize the map with group coordinates
-                loadMap('group-map', {{ lat }}, {{ lng }});
-</script>
-              {# djlint:on #}
-              {# End map initialization script -#}
-            {% endif -%}
-          {% endif -%}
-          {# End location and map section -#}
-
-          {# Organizers section -#}
-          {% if !group.organizers.is_empty() -%}
-            <h2 class="text-lg uppercase font-semibold text-stone-500 mb-4 mt-8">Organizers</h2>
-            <people-list id="organizers-list" people="{{ group.organizers|json }}">
-            </people-list>
-          {% endif -%}
-          {# End organizers section -#}
-
-          {# Tags if available -#}
-          {% if let Some(tags) = group.tags -%}
-            {% if !tags.is_empty() -%}
-              <div class="mt-8">
-                <h3 class="text-lg font-semibold text-stone-900 mb-4">Topics</h3>
-                <div class="flex flex-wrap gap-2">
-                  {% for tag in tags -%}
-                    <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
-                  {% endfor -%}
+                <div class="hidden md:block border-l border-stone-200">
+                  <div class="p-4">
+                    <h2 class="text-sm uppercase font-semibold text-stone-500 mb-2">Next event</h2>
+                    {% let next_event = upcoming_events.first() -%}
+                    {% if let Some(next_event_card) = next_event -%}
+                      <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
+                         hx-boost="true"
+                         hx-target="body">
+                        {% if let Some(starts_at) = next_event_card.event.starts_at -%}
+                          <div class="text-xl xl:text-3xl font-semibold text-stone-900">
+                            {{ starts_at.with_timezone(next_event_card.event.timezone).format("%B %e, %G · %I:%M %p %Z") }}
+                          </div>
+                        {% endif -%}
+                        <div class="mt-3 text-lg font-semibold text-stone-900 line-clamp-3">
+                          {{ next_event_card.event.name|demoji }}
+                        </div>
+                        <div class="mt-4 flex items-center gap-3">
+                          {% if next_event_card.event.canceled -%}
+                            {% call common::event_badge(kind = next_event_card.event.kind, canceled = true) -%}
+                          {% else -%}
+                            {% call common::event_badge(kind = next_event_card.event.kind) -%}
+                          {% endif -%}
+                        </div>
+                      </a>
+                    {% else -%}
+                      <div class="space-y-4">
+                        <div role="status"
+                             class="flex flex-col gap-4 rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
+                          <div class="h-4 w-3/5 rounded bg-stone-100"></div>
+                          <div class="h-3 w-4/5 rounded bg-stone-100"></div>
+                          <div class="h-3 w-2/5 rounded bg-stone-100"></div>
+                          <span class="sr-only">No upcoming event loaded</span>
+                        </div>
+                      </div>
+                    {% endif -%}
+                  </div>
                 </div>
               </div>
-            {% endif -%}
-          {% endif -%}
-          {# End tags -#}
-        </div>
-        {# End right column -#}
-      </div>
-    </div>
-    {# End two column layout -#}
-
-    {# Next events section -#}
-    {% if !upcoming_events.is_empty() -%}
-      <div class="px-4 sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Upcoming Events</h2>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {% for event in upcoming_events -%}
-            {{ event|safe }}
-          {% endfor -%}
-        </div>
-      </div>
-    {% endif -%}
-    {# End next events section -#}
-
-    {# Past events section -#}
-    {% if !past_events.is_empty() -%}
-      <div class="px-4 sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-semibold text-stone-900 mb-6">Past Events</h2>
-        <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {% for event in past_events -%}
-            <div class="flex flex-col rounded-lg p-4 border border-stone-200 hover:bg-stone-50 bg-white transition-colors">
-              {{ event|safe }}
             </div>
-          {% endfor -%}
-        </div>
-      </div>
-    {% endif -%}
-    {# End past events section -#}
 
-    {# Photo gallery -#}
-    {% if let Some(photos_urls) = group.photos_urls -%}
-      {% if !photos_urls.is_empty() -%}
-        <div class="px-4 sm:px-6 lg:px-8">
-          <h2 class="text-2xl font-semibold text-stone-900 mb-6">Gallery</h2>
-          <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
-        </div>
-      {% endif -%}
-    {% endif -%}
-    {# End photo gallery -#}
+            {# Group map modal -#}
+            <div id="group-map-modal"
+                 tabindex="-1"
+                 aria-hidden="true"
+                 aria-modal="true"
+                 role="dialog"
+                 class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1200] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+              <div id="backdrop-group-map-modal"
+                   class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
+              <div class="relative p-4 w-full max-w-3xl max-h-full">
+                <div class="relative bg-white rounded-lg shadow">
+                  <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+                    <h3 id="group-map-modal-title"
+                        class="text-xl font-semibold text-stone-900">{{ group.name|demoji }} location</h3>
+                    <button id="close-group-map-modal"
+                            type="button"
+                            class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center">
+                      <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+                      <span class="sr-only">Close modal</span>
+                    </button>
+                  </div>
+                  <div class="p-4 md:p-6">
+                    <div id="group-map-modal-map"
+                         class="w-full h-[400px] md:h-[500px] rounded-lg overflow-hidden border border-stone-200">
+                    </div>
+                    <div class="flex items-center gap-3 mt-4 text-stone-700 text-sm">
+                      <div class="svg-icon size-3 bg-stone-700 icon-location"></div>
+                      <div>
+                        {% if let Some(city) = group.city -%}
+                          <span>{{ city }}</span>
+                          {% if group.state.is_some() || group.country_name.is_some() -%}
+                            ,
+                          {% endif -%}
+                        {% endif -%}
+                        {% if let Some(state) = group.state -%}
+                          <span>{{ state }}</span>
+                          {% if group.country_name.is_some() -%}
+                            ,
+                          {% endif -%}
+                        {% endif -%}
+                        {% if let Some(country_name) = group.country_name -%}
+                          <span>{{ country_name }}</span>
+                        {% endif -%}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {# End group map modal -#}
+
+            {# Map initialization script -#}
+            {# djlint:off #}
+              <script type="module">
+                import {
+                  loadMap,
+                  toggleModalVisibility
+                } from "/static/js/common/common.js";
+
+                const mapContainer = document.getElementById('group-map');
+                const modalId = 'group-map-modal';
+                const modalMapId = 'group-map-modal-map';
+                let modalMapLoaded = false;
+
+                const ensureModalMap = () => {
+                  if (modalMapLoaded) {
+                    return;
+                  }
+                  modalMapLoaded = true;
+                  requestAnimationFrame(() => {
+                    loadMap(modalMapId, {{ lat }}, {{ lng }});
+                  });
+                };
+
+                const openGroupMapModal = () => {
+                  toggleModalVisibility(modalId);
+                  ensureModalMap();
+                };
+
+                loadMap('group-map', {{ lat }}, {{ lng }});
+
+                if (mapContainer) {
+                  mapContainer.addEventListener('click', openGroupMapModal);
+                  mapContainer.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openGroupMapModal();
+                    }
+                  });
+                }
+
+                const closeGroupMapModal = document.getElementById('close-group-map-modal');
+                if (closeGroupMapModal) {
+                  closeGroupMapModal.addEventListener('click', () => toggleModalVisibility(modalId));
+                }
+
+                const backdropGroupMapModal = document.getElementById('backdrop-group-map-modal');
+                if (backdropGroupMapModal) {
+                  backdropGroupMapModal.addEventListener('click', () => toggleModalVisibility(modalId));
+                }
+</script>
+            {# djlint:on #}
+            {# End map initialization script -#}
+          {% endif -%}
+        {% endif -%}
+        {# End location and map section -#}
+
+        {# Group description -#}
+        {% if let Some(description) = group.description -%}
+          <div>
+            <div class="pt-2 pb-8">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this group</div>
+              <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
+            </div>
+          </div>
+        {% endif -%}
+        {# End group description -#}
+
+        {# Social networks (mobile only) -#}
+        {% if has_social_links -%}
+          <div class="md:hidden mb-8 md:mb-0">
+            <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
+          </div>
+        {% endif -%}
+        {# End social networks (mobile) -#}
+
+        {# Next events section -#}
+        {% if !upcoming_events.is_empty() -%}
+          <div class="pt-2 pb-8">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Upcoming Events</div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {% for event in upcoming_events -%}
+                {{ event|safe }}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End next events section -#}
+
+        {# Past events section -#}
+        {% if !past_events.is_empty() -%}
+          <div class="pt-2 pb-8">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Past Events</div>
+            <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
+              {% for event in past_events -%}
+                {{ event|safe }}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End past events section -#}
+
+        {# Organizers section - Full width -#}
+        {% if !group.organizers.is_empty() -%}
+          <div class="pt-2 pb-8">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Organizers</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {% for organizer in group.organizers -%}
+                {% if organizer.name.is_some() -%}
+                  <user-chip name="{{ organizer.name|display_some }}" username="{{ organizer.username }}" image-url="{{ organizer.photo_url|display_some }}" title="{{ organizer.title|display_some }}">
+                  </user-chip>
+                {% endif -%}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End organizers section -#}
+
+        {# Sponsors section -#}
+        {% if !group.sponsors.is_empty() -%}
+          <div class="pt-2 pb-8">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Sponsors</div>
+            <div class="flex flex-wrap gap-4">
+              {% for sponsor in group.sponsors -%}
+                {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -%}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End sponsors section -#}
+
+        {# Tags if available -#}
+        {% if let Some(tags) = group.tags -%}
+          {% if !tags.is_empty() -%}
+            <div class="pt-2 pb-8">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Topics</div>
+              <div class="flex flex-wrap gap-2">
+                {% for tag in tags -%}
+                  <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+                {% endfor -%}
+              </div>
+            </div>
+          {% endif -%}
+        {% endif -%}
+        {# End tags -#}
+
+        {# Photo gallery -#}
+        {% if let Some(photos_urls) = group.photos_urls -%}
+          {% if !photos_urls.is_empty() -%}
+            <div class="pt-2 pb-8">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Gallery</div>
+              <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
+            </div>
+          {% endif -%}
+        {% endif -%}
+        {# End photo gallery -#}
+
+      </div>
+
+    </div>
   </div>
 {% endblock content -%}

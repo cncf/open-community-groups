@@ -1,12 +1,17 @@
 {% import "common.html" as common -%}
 
 {# Group card -#}
-<a class="p-5 md:p-7" href="/group/{{ group.slug }}" hx-boost="true">
+<a class="p-5 md:p-7 group select-none"
+   href="/group/{{ group.slug }}"
+   hx-boost="true"
+   hx-target="body">
   <div class="flex flex-1 flex-row items-stretch">
-    {# Group icon -#}
-    {% call common::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name)) -%}
-    {% call common::logo(logo_url = group.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group.color) -%}
-    {# End group icon -#}
+    <div class="group-hover:opacity-75 transition-opacity">
+      {# Group icon -#}
+      {% call common::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name)) -%}
+      {% call common::logo(logo_url = group.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group.color) -%}
+      {# End group icon -#}
+    </div>
 
     <div class="min-w-0 pl-4 content-center">
       <div class="flex flex-col justify-between h-full">
@@ -24,7 +29,7 @@
           {# End group region -#}
 
           {# Group name -#}
-          <div class="line-clamp-2 text-[0.9rem] md:text-base font-semibold md:mt-1 md:line-clamp-1">
+          <div class="line-clamp-2 text-[0.9rem] md:text-base font-semibold md:mt-1 md:line-clamp-1 group-hover:underline">
             {{ group.name|demoji }}
           </div>
           {# End group name -#}
@@ -52,7 +57,7 @@
           {# End group location -#}
 
           {# Group creation date -#}
-          <div class="flex items-center pt-0.5">
+          <div class="flex items-center pt-0.75">
             <div class="flex flex-row items-center leading-4">
               <div class="svg-icon -mt-[2px] w-3 h-3 me-2 bg-stone-700 icon-date"></div>
               <span class="truncate text-stone-700 text-xs uppercase">{{ group.created_at.format("%B %e · %Y") }}</span>

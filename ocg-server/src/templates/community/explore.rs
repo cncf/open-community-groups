@@ -13,7 +13,12 @@ use tracing::{instrument, trace};
 
 use crate::{
     db::BBox,
-    templates::{PageId, auth::User, filters, helpers::extract_location},
+    templates::{
+        PageId,
+        auth::User,
+        filters,
+        helpers::{extract_location, user_initials},
+    },
     types::{
         community::Community,
         event::{EventDetailed, EventKind, EventSummary},

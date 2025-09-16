@@ -52,7 +52,10 @@
         </div>
         {# End search bar -#}
 
-        <a href="/explore" class="btn-primary-anchor">Explore all</a>
+        <a href="/explore"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-primary-anchor">Explore all</a>
       </div>
 
       {# Jumbotron background image -#}
@@ -160,7 +163,10 @@
 
       {# See all events on desktop -#}
       <div class="hidden justify-self-end md:flex">
-        <a href="{{ link }}" class="btn-secondary-anchor ms-4">See all events</a>
+        <a href="{{ link }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-secondary-anchor ms-4">See all events</a>
       </div>
       {# End see all events on desktop -#}
     </div>
@@ -175,7 +181,10 @@
 
       {# See all events on mobile -#}
       <div class="flex mt-10 justify-self-center md:hidden md:mt-0">
-        <a href="{{ link }}" class="btn-secondary-anchor">See all events</a>
+        <a href="{{ link }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-secondary-anchor">See all events</a>
       </div>
       {# See all events on mobile -#}
     </div>

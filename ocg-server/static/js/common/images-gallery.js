@@ -123,7 +123,7 @@ export class ImagesGallery extends LitWrapper {
           : "opacity-0 pointer-events-none"} fixed w-full h-full top-0 left-0 flex items-center justify-center z-1000"
       >
         <!-- Modal overlay -->
-        <div class="modal-overlay absolute w-full h-full bg-black opacity-75"></div>
+        <div class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
         <!-- End modal overlay -->
 
         <div class="modal-container fixed w-full h-full z-50 overflow-y-auto">
@@ -132,14 +132,14 @@ export class ImagesGallery extends LitWrapper {
             class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full hover:bg-stone-300/30"
             @click="${this._closeModal}"
           >
-            <div class="svg-icon size-8 bg-stone-100 icon-close"></div>
+            <div class="svg-icon size-8 bg-stone-950 icon-close"></div>
           </button>
           <!-- End close button -->
 
           <div class="modal-content container mx-auto h-full p-10 flex flex-col">
             <!-- Title -->
             <div
-              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-100 text-center leading-10 mb-10"
+              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-950 text-center leading-10 mb-10"
             >
               ${this.title}
             </div>
@@ -180,7 +180,7 @@ export class ImagesGallery extends LitWrapper {
                   class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none"
                   @click="${() => this._navigateCarousel("prev")}"
                 >
-                  <div class="svg-icon h-4 w-2.5 bg-white icon-prev"></div>
+                  <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-prev"></div>
                   <span class="sr-only">Previous</span>
                 </button>
                 <!-- End prev button -->
@@ -191,7 +191,7 @@ export class ImagesGallery extends LitWrapper {
                   class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-300/30 hover:bg-primary-500 focus:ring-0 focus:outline-none"
                   @click="${() => this._navigateCarousel("next")}"
                 >
-                  <div class="svg-icon h-4 w-2.5 bg-white icon-next"></div>
+                  <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-next"></div>
                   <span class="sr-only">Next</span>
                 </button>
                 <!-- End next button -->

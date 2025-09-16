@@ -102,7 +102,7 @@ export class AvatarImage extends LitWrapper {
 
     const showPlaceholder = !this.imageUrl || this._hasError || !this._hasLoaded;
     const showImage = this.imageUrl && !this._hasError && this._hasLoaded;
-    const borderClass = this.hideBorder ? "" : "border-2 border-stone-400";
+    const borderClass = this.hideBorder ? "" : "border border-stone-200";
 
     return html`
       <div class="relative flex-shrink-0 ${this.size}">
