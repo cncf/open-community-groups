@@ -293,7 +293,7 @@
           <div>
             <div class="pt-2 pb-8">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this group</div>
-              <div class="text-stone-600 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
+              <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
             </div>
           </div>
         {% endif -%}
@@ -348,6 +348,19 @@
           </div>
         {% endif -%}
         {# End organizers section -#}
+
+        {# Sponsors section -#}
+        {% if !group.sponsors.is_empty() -%}
+          <div class="pt-2 pb-8">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Sponsors</div>
+            <div class="flex flex-wrap gap-4">
+              {% for sponsor in group.sponsors -%}
+                {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -%}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End sponsors section -#}
 
         {# Tags if available -#}
         {% if let Some(tags) = group.tags -%}

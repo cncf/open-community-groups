@@ -254,3 +254,52 @@
 {% endmacro alerts -%}
 {# djlint:on #}
 {# End alerts #}
+
+{# Sponsor badge -#}
+{% macro sponsor_badge(name, logo_url, website_url, level = "", with_level = false) -%}
+  {% if let Some(website_url) = website_url -%}
+    <a href="{{ website_url }}"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors px-4 py-3 min-w-[200px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+      <div class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
+        <img src="{{ logo_url }}"
+             alt="{{ name }} logo"
+             class="h-6 w-6 object-contain"
+             width="auto"
+             height="auto"
+             loading="lazy" />
+        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+          <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+        </div>
+      </div>
+      <div class="leading-tight">
+        <div class="text-sm md:text-base font-semibold text-stone-900">{{ name }}</div>
+        {% if with_level -%}
+          <div class="text-xs uppercase tracking-wide text-stone-600">{{ level }}</div>
+        {% endif -%}
+      </div>
+    </a>
+  {% else -%}
+    <div class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 min-w-[200px]">
+      <div class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
+        <img src="{{ logo_url }}"
+             alt="{{ name }} logo"
+             class="h-6 w-6 object-contain"
+             width="auto"
+             height="auto"
+             loading="lazy" />
+        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+          <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+        </div>
+      </div>
+      <div class="leading-tight">
+        <div class="text-sm md:text-base font-semibold text-stone-900">{{ name }}</div>
+        {% if with_level -%}
+          <div class="text-xs uppercase tracking-wide text-stone-600">{{ level }}</div>
+        {% endif -%}
+      </div>
+    </div>
+  {% endif -%}
+{% endmacro sponsor_badge -%}
+{# End sponsor badge -#}
