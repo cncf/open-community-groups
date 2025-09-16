@@ -20,7 +20,7 @@ use crate::{
     },
     templates::{
         PageId,
-        auth::{self, User, UserDetails},
+        auth::User,
         dashboard::group::{
             attendees, events,
             home::{Content, Page, Tab},
@@ -57,14 +57,6 @@ pub(crate) async fn page(
 
     // Prepare content for the selected tab
     let content = match tab {
-        Tab::Account => {
-            let timezones = db.list_timezones().await?;
-            Content::Account(Box::new(auth::UpdateUserPage {
-                has_password: user.has_password.unwrap_or(false),
-                timezones,
-                user: UserDetails::from(user),
-            }))
-        }
         Tab::Attendees => {
             let filters: attendees::AttendeesFilters = serde_qs_de
                 .deserialize_str(&raw_query.unwrap_or_default())

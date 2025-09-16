@@ -17,7 +17,7 @@ use crate::{
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::{
         PageId,
-        auth::{self, User, UserDetails},
+        auth::User,
         dashboard::community::{
             groups,
             home::{Content, Page, Tab},
@@ -38,9 +38,6 @@ pub(crate) async fn page(
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
-
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
@@ -49,14 +46,6 @@ pub(crate) async fn page(
 
     // Prepare content for the selected tab
     let content = match tab {
-        Tab::Account => {
-            let timezones = db.list_timezones().await?;
-            Content::Account(Box::new(auth::UpdateUserPage {
-                has_password: user.has_password.unwrap_or(false),
-                timezones,
-                user: UserDetails::from(user),
-            }))
-        }
         Tab::Groups => {
             let groups = db.list_community_groups(community_id).await?;
             Content::Groups(groups::ListPage { groups })
