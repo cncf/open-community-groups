@@ -132,7 +132,11 @@
 
                   {# Map -#}
                   <div class="h-full overflow-hidden border-l border-stone-200">
-                    <div id="group-map" class="w-full h-full"></div>
+                    <div id="group-map"
+                         class="w-full h-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                         role="button"
+                         tabindex="0"
+                         aria-label="Open full map view"></div>
                   </div>
                   {# End map -#}
                 </div>
@@ -149,11 +153,12 @@
                           <div class="flex size-[140px] items-center justify-center rounded-lg bg-stone-100"></div>
                           <div class="flex flex-1 flex-col justify-between space-y-2">
                             <div class="h-3 rounded-full bg-stone-100 w-2/3"></div>
-                            <div class="h-3 rounded-full bg-stone-100 w-3/4"></div>
-                            <div class="h-3 rounded-full bg-stone-100 w-full"></div>
-                            <div class="h-3 rounded-full bg-stone-100 w-full"></div>
-                            <div class="h-3"></div>
-                            <div class="h-3 rounded-full bg-stone-100 w-3/4"></div>
+                            <div class="h-4 rounded-full bg-stone-100 w-3/4"></div>
+                            <div class="h-2 rounded-full bg-stone-100 w-full"></div>
+                            <div class="h-2 rounded-full bg-stone-100 w-full"></div>
+                            <div class="h-4"></div>
+                            <div class="h-2 rounded-full bg-stone-100 w-3/4"></div>
+                            <div class="h-2 rounded-full bg-stone-100 w-3/4"></div>
                           </div>
                           <span class="sr-only">Loading upcoming event...</span>
                         </div>
@@ -164,15 +169,106 @@
               </div>
             </div>
 
+            {# Group map modal -#}
+            <div id="group-map-modal"
+                 tabindex="-1"
+                 aria-hidden="true"
+                 aria-modal="true"
+                 role="dialog"
+                 class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1200] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+              <div id="backdrop-group-map-modal"
+                   class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
+              <div class="relative p-4 w-full max-w-3xl max-h-full">
+                <div class="relative bg-white rounded-lg shadow">
+                  <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+                    <h3 id="group-map-modal-title"
+                        class="text-xl font-semibold text-stone-900">{{ group.name|demoji }}</h3>
+                    <button id="close-group-map-modal"
+                            type="button"
+                            class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center">
+                      <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+                      <span class="sr-only">Close modal</span>
+                    </button>
+                  </div>
+                  <div class="p-4 md:p-6">
+                    <div id="group-map-modal-map"
+                         class="w-full h-[400px] md:h-[500px] rounded-lg overflow-hidden border border-stone-200">
+                    </div>
+                    <div class="flex items-center gap-3 mt-4 text-stone-700 text-sm">
+                      <div class="svg-icon size-3 bg-stone-700 icon-location"></div>
+                      <div>
+                        {% if let Some(city) = group.city -%}
+                          <span>{{ city }}</span>
+                          {% if group.state.is_some() || group.country_name.is_some() -%}
+                            ,
+                          {% endif -%}
+                        {% endif -%}
+                        {% if let Some(state) = group.state -%}
+                          <span>{{ state }}</span>
+                          {% if group.country_name.is_some() -%}
+                            ,
+                          {% endif -%}
+                        {% endif -%}
+                        {% if let Some(country_name) = group.country_name -%}
+                          <span>{{ country_name }}</span>
+                        {% endif -%}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {# End group map modal -#}
+
             {# Map initialization script -#}
             {# djlint:off #}
               <script type="module">
                 import {
-                  loadMap
+                  loadMap,
+                  toggleModalVisibility
                 } from "/static/js/common/common.js";
 
-                // Initialize the map with group coordinates
+                const mapContainer = document.getElementById('group-map');
+                const modalId = 'group-map-modal';
+                const modalMapId = 'group-map-modal-map';
+                let modalMapLoaded = false;
+
+                const ensureModalMap = () => {
+                  if (modalMapLoaded) {
+                    return;
+                  }
+                  modalMapLoaded = true;
+                  requestAnimationFrame(() => {
+                    loadMap(modalMapId, {{ lat }}, {{ lng }});
+                  });
+                };
+
+                const openGroupMapModal = () => {
+                  toggleModalVisibility(modalId);
+                  ensureModalMap();
+                };
+
                 loadMap('group-map', {{ lat }}, {{ lng }});
+
+                if (mapContainer) {
+                  mapContainer.addEventListener('click', openGroupMapModal);
+                  mapContainer.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      openGroupMapModal();
+                    }
+                  });
+                }
+
+                const closeGroupMapModal = document.getElementById('close-group-map-modal');
+                if (closeGroupMapModal) {
+                  closeGroupMapModal.addEventListener('click', () => toggleModalVisibility(modalId));
+                }
+
+                const backdropGroupMapModal = document.getElementById('backdrop-group-map-modal');
+                if (backdropGroupMapModal) {
+                  backdropGroupMapModal.addEventListener('click', () => toggleModalVisibility(modalId));
+                }
 </script>
             {# djlint:on #}
             {# End map initialization script -#}
