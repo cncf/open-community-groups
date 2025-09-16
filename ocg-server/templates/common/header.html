@@ -192,38 +192,34 @@
           </li>
 
           {# Dashboard links -#}
-          {% if let Some(belongs_to_community_team) = user.belongs_to_community_team -%}
-            {% if belongs_to_community_team -%}
-              <li role="none">
-                <a href="/dashboard/community"
-                   hx-boost="true"
-                   hx-target="body"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-                   role="menuitem">
-                  <div class="flex items-center">
-                    <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
-                    <div class="ms-2 text-xs/6">Community Dashboard</div>
-                  </div>
-                </a>
-              </li>
-            {% endif -%}
+          {% if user.belongs_to_community_team.unwrap_or(false) -%}
+            <li role="none">
+              <a href="/dashboard/community"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                 role="menuitem">
+                <div class="flex items-center">
+                  <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
+                  <div class="ms-2 text-xs/6">Community Dashboard</div>
+                </div>
+              </a>
+            </li>
           {% endif -%}
 
-          {% if let Some(belongs_to_any_group_team) = user.belongs_to_any_group_team -%}
-            {% if belongs_to_any_group_team -%}
-              <li role="none">
-                <a href="/dashboard/group"
-                   hx-boost="true"
-                   hx-target="body"
-                   class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-                   role="menuitem">
-                  <div class="flex items-center">
-                    <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
-                    <div class="ms-2 text-xs/6">Group Dashboard</div>
-                  </div>
-                </a>
-              </li>
-            {% endif -%}
+          {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
+            <li role="none">
+              <a href="/dashboard/group"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+                 role="menuitem">
+                <div class="flex items-center">
+                  <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
+                  <div class="ms-2 text-xs/6">Group Dashboard</div>
+                </div>
+              </a>
+            </li>
           {% endif -%}
 
           <li role="none">
