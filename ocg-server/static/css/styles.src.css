@@ -498,6 +498,10 @@ input:placeholder-shown {
   overflow-x: auto;
 }
 
+.markdown code {
+  text-wrap: auto;
+}
+
 /* End markdown */
 
 
