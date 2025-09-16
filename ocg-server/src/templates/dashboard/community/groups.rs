@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary};
+use crate::types::group::{GroupCategory, GroupDetailed, GroupFull, GroupRegion};
 
 // Pages templates.
 
@@ -26,7 +26,7 @@ pub(crate) struct AddPage {
 #[template(path = "dashboard/community/groups_list.html")]
 pub(crate) struct ListPage {
     /// List of groups in the community.
-    pub groups: Vec<GroupSummary>,
+    pub groups: Vec<GroupDetailed>,
 }
 
 /// Update group page template.

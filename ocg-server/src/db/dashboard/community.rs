@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::community::{groups::Group, settings::CommunityUpdate, team::CommunityTeamMember},
-    types::group::{GroupCategory, GroupRegion, GroupSummary},
+    types::group::{GroupCategory, GroupRegion},
 };
 
 /// Database trait for community dashboard operations.
@@ -32,9 +32,6 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Deletes a group (soft delete by setting active=false).
     async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
-
-    /// Lists all groups in a community for management.
-    async fn list_community_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
 
     /// Lists all community team members.
     async fn list_community_team_members(&self, community_id: Uuid) -> Result<Vec<CommunityTeamMember>>;
@@ -141,20 +138,6 @@ impl DBDashboardCommunity for PgDB {
         .await?;
 
         Ok(())
-    }
-
-    /// [`DBDashboardCommunity::list_community_groups`]
-    #[instrument(skip(self), err)]
-    async fn list_community_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
-        trace!("db: list community groups");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one("select list_community_groups($1::uuid)::text", &[&community_id])
-            .await?;
-        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
-
-        Ok(groups)
     }
 
     /// [`DBDashboardCommunity::list_community_team_members`]

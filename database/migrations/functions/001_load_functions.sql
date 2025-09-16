@@ -5,12 +5,13 @@
 {{ template "auth/user_owns_group.sql" }}
 {{ template "auth/verify_email.sql" }}
 
-{{ template "common/get_group_summary.sql" }}
+{{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_detailed.sql" }}
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_group_detailed.sql" }}
 {{ template "common/get_group_full.sql" }}
+{{ template "common/search_community_groups.sql" }}
 
 {{ template "community/get_community.sql" }}
 {{ template "community/get_community_filters_options.sql" }}
@@ -18,7 +19,6 @@
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_upcoming_events.sql" }}
 {{ template "community/search_community_events.sql" }}
-{{ template "community/search_community_groups.sql" }}
 
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
@@ -29,7 +29,6 @@
 {{ template "dashboard-community/deactivate_group.sql" }}
 {{ template "dashboard-community/delete_community_team_member.sql" }}
 {{ template "dashboard-community/delete_group.sql" }}
-{{ template "dashboard-community/list_community_groups.sql" }}
 {{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}

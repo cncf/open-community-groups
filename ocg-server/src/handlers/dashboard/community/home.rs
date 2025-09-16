@@ -14,10 +14,13 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{
+        dashboard::community::groups::MAX_GROUPS_LISTED, error::HandlerError, extractors::CommunityId,
+    },
     templates::{
         PageId,
         auth::User,
+        community::explore::GroupsFilters,
         dashboard::community::{
             groups,
             home::{Content, Page, Tab},
@@ -47,7 +50,13 @@ pub(crate) async fn page(
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Groups => {
-            let groups = db.list_community_groups(community_id).await?;
+            let filters = GroupsFilters {
+                limit: Some(MAX_GROUPS_LISTED),
+                sort_by: Some("name".to_string()),
+                ts_query: query.get("ts_query").cloned(),
+                ..GroupsFilters::default()
+            };
+            let groups = db.search_community_groups(community_id, &filters).await?.groups;
             Content::Groups(groups::ListPage { groups })
         }
         Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {

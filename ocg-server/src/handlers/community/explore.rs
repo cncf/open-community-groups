@@ -16,10 +16,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{
-        DynDB,
-        community::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
-    },
+    db::{DynDB, common::SearchCommunityGroupsOutput, community::SearchCommunityEventsOutput},
     handlers::{error::HandlerError, extractors::CommunityId},
     templates::{
         PageId,
