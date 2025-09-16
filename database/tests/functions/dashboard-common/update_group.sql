@@ -165,7 +165,8 @@ select is(
         "twitter_url": "https://twitter.com/updated",
         "tags": ["updated", "test"],
         "logo_url": "https://example.com/updated-logo.png",
-        "organizers": []
+        "organizers": [],
+        "sponsors": []
     }'::jsonb,
     'update_group should update all provided fields and return expected structure'
 );
@@ -244,7 +245,7 @@ select update_group(
 
 -- Test: update_group should keep minimal fields after empty-string conversion
 select is(
-    (select get_group_full(:'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
+    (select get_group_full(:'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "updated-group-empty-strings"
@@ -280,7 +281,7 @@ select update_group(
 
 -- Test: update_group should persist explicit null arrays in result
 select is(
-    (select get_group_full(:'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers'),
+    (select get_group_full(:'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Null Arrays",
         "slug": "updated-group-null-arrays",

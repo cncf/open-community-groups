@@ -68,7 +68,8 @@ select is(
         },
         "description": "A simple test group",
         "description_short": "Brief overview of the test group",
-        "organizers": []
+        "organizers": [],
+        "sponsors": []
     }'::jsonb,
     'add_group should create group with minimal required fields and return expected structure'
 );
@@ -141,7 +142,8 @@ select is(
         "tags": ["technology", "community", "open-source"],
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}],
-        "organizers": []
+        "organizers": [],
+        "sponsors": []
     }'::jsonb,
     'add_group should create group with all fields and return expected structure'
 );
