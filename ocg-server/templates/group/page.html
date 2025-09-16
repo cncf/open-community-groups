@@ -5,6 +5,7 @@
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
+  <script type="module" src="/static/js/common/banner-image.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -91,14 +92,7 @@
         {# Group banner -#}
         {% if let Some(banner_url) = group.banner_url -%}
           <div class="w-full mb-8">
-            <div class="relative w-full aspect-[4/1] overflow-hidden max-h-64 lg:max-h-80">
-              <img src="{{ banner_url }}"
-                   alt="Group banner"
-                   class="absolute inset-0 w-auto h-full object-cover p-[5px] bg-white border border-stone-200 rounded-lg"
-                   height="auto"
-                   width="auto"
-                   loading="lazy" />
-            </div>
+            <banner-image image-url="{{ banner_url }}" alt="Group banner"></banner-image>
           </div>
         {% endif -%}
         {# End group banner -#}

@@ -5,6 +5,7 @@
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
+  <script type="module" src="/static/js/common/banner-image.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -126,14 +127,7 @@
           {# Event banner -#}
           {% if let Some(banner_url) = event.banner_url -%}
             <div class="w-full mb-8">
-              <div class="relative w-full aspect-[4/1] overflow-hidden rounded-lg bg-white max-h-64 lg:max-h-80">
-                <img src="{{ banner_url }}"
-                     alt="Event banner"
-                     class="absolute inset-0 w-full h-full object-cover"
-                     height="auto"
-                     width="auto"
-                     loading="lazy" />
-              </div>
+              <banner-image image-url="{{ banner_url }}" alt="Event banner"></banner-image>
             </div>
           {% endif -%}
           {# End event banner -#}
