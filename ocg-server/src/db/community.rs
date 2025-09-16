@@ -12,7 +12,7 @@ use crate::{
     templates::community::{explore, home},
     types::{
         event::{EventDetailed, EventKind, EventSummary},
-        group::{GroupDetailed, GroupSummary},
+        group::GroupSummary,
     },
 };
 
@@ -44,13 +44,6 @@ pub(crate) trait DBCommunity {
         community_id: Uuid,
         filters: &explore::EventsFilters,
     ) -> Result<SearchCommunityEventsOutput>;
-
-    /// Searches for groups within a community based on filter criteria.
-    async fn search_community_groups(
-        &self,
-        community_id: Uuid,
-        filters: &explore::GroupsFilters,
-    ) -> Result<SearchCommunityGroupsOutput>;
 }
 
 #[async_trait]
@@ -180,56 +173,12 @@ impl DBCommunity for PgDB {
 
         Ok(output)
     }
-
-    /// [`DB::search_community_groups`]
-    #[instrument(skip(self), err)]
-    async fn search_community_groups(
-        &self,
-        community_id: Uuid,
-        filters: &explore::GroupsFilters,
-    ) -> Result<SearchCommunityGroupsOutput> {
-        trace!("db: search community groups");
-
-        // Query database
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "
-                select groups::text, bbox::text, total
-                from search_community_groups($1::uuid, $2::jsonb)
-                ",
-                &[&community_id, &Json(filters)],
-            )
-            .await?;
-
-        // Prepare search output
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchCommunityGroupsOutput {
-            groups: GroupDetailed::try_from_json_array(&row.get::<_, String>("groups"))?,
-            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-                serde_json::from_str(&bbox)?
-            } else {
-                None
-            },
-            total: row.get::<_, i64>("total") as usize,
-        };
-
-        Ok(output)
-    }
 }
 
 /// Output structure for community events search operations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityEventsOutput {
     pub events: Vec<EventDetailed>,
-    pub bbox: Option<BBox>,
-    pub total: Total,
-}
-
-/// Output structure for community groups search operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct SearchCommunityGroupsOutput {
-    pub groups: Vec<GroupDetailed>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }
