@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     templates::{
         PageId,
-        auth::{self, User},
+        auth::User,
         dashboard::group::{attendees, events, members, settings, sponsors, team},
         filters,
     },
@@ -41,8 +41,6 @@ pub(crate) struct Page {
 /// Content section for the group dashboard home page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
-    /// User account page.
-    Account(Box<auth::UpdateUserPage>),
     /// Attendees list page.
     Attendees(attendees::ListPage),
     /// Events management page.
@@ -58,12 +56,6 @@ pub(crate) enum Content {
 }
 
 impl Content {
-    /// Check if the content is the account page.
-    #[allow(dead_code)]
-    fn is_account(&self) -> bool {
-        matches!(self, Content::Account(_))
-    }
-
     /// Check if the content is the attendees page.
     #[allow(dead_code)]
     fn is_attendees(&self) -> bool {
@@ -104,7 +96,6 @@ impl Content {
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Content::Account(template) => write!(f, "{}", template.render()?),
             Content::Attendees(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
@@ -119,8 +110,6 @@ impl std::fmt::Display for Content {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
-    /// User account tab.
-    Account,
     /// Attendees list tab.
     Attendees,
     /// Events management tab (default).
