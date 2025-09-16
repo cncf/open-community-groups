@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,10 +13,12 @@ select plan(9);
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
+\set group2ID '00000000-0000-0000-0000-000000000032'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
+\set event5ID '00000000-0000-0000-0000-000000000045'
 
 -- ============================================================================
 -- SEED DATA
@@ -49,9 +51,13 @@ values (:'category1ID', 'Technology', :'communityID');
 
 -- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url, location)
-values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID',
-        'San Francisco', 'CA', 'US', 'United States', 'https://example.com/group-logo.png',
-        ST_GeogFromText('POINT(-122.4194 37.7749)'));
+values
+    (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID',
+     'San Francisco', 'CA', 'US', 'United States', 'https://example.com/group-logo.png',
+     ST_GeogFromText('POINT(-122.4194 37.7749)')),
+    (:'group2ID', 'Cloud Group', 'cloud-group', :'communityID', :'category1ID',
+     'New York', 'NY', 'US', 'United States', 'https://example.com/cloud-group.png',
+     ST_GeogFromText('POINT(-73.935242 40.73061)'));
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -94,19 +100,23 @@ insert into event (
     (:'event4ID', 'Canceled Tech Conference', 'canceled-tech-conf', 'This event was canceled', 'Canceled conf', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      '2026-01-20 09:00:00+00', '2026-01-20 18:00:00+00', array['tech', 'conference'],
-     'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true);
+     'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true),
+    (:'event5ID', 'Cloud Innovation Summit', 'cloud-innovation-summit', 'Cloud innovations', 'Cloud summit', 'UTC',
+     :'eventCategory1ID', 'in-person', :'group2ID', true,
+     '2026-02-04 10:00:00+00', '2026-02-04 17:00:00+00', array['cloud', 'innovation'],
+     'New York', 'Innovation Center', '123 Tech Ave', 'https://example.com/cloud-innovation.png', false);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Test: search_community_events without filters should return all events with expected JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{}'::jsonb))::jsonb,
     jsonb_build_array(
         get_event_detailed(:'event1ID'::uuid)::jsonb,
         get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb
+        get_event_detailed(:'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'event5ID'::uuid)::jsonb
     ),
     'search_community_events without filters returns all published events with correct JSON structure'
 );
@@ -114,7 +124,7 @@ select is(
 -- Test: search_community_events should return correct total count
 select is(
     (select total from search_community_events(:'communityID'::uuid, '{}'::jsonb)),
-    3::bigint,
+    4::bigint,
     'search_community_events returns correct total count'
 );
 
@@ -144,7 +154,8 @@ select is(
     (select events from search_community_events(:'communityID'::uuid, '{"date_from":"2026-02-02"}'::jsonb))::jsonb,
     jsonb_build_array(
         get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb
+        get_event_detailed(:'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'event5ID'::uuid)::jsonb
     ),
     'search_community_events date_from returns expected events JSON'
 );
@@ -195,11 +206,28 @@ select is(
     'search_community_events pagination returns expected event JSON'
 );
 
+-- Test: search_community_events group filter should return events from selected groups
+select is(
+    (
+        select events
+        from search_community_events(
+            :'communityID'::uuid,
+            jsonb_build_object('group', jsonb_build_array(:'group1ID'))
+        )
+    )::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb
+    ),
+    'search_community_events group filter returns expected events JSON'
+);
+
 -- Test: search_community_events include_bbox should return bbox at group location
 select is(
     (select bbox from search_community_events(:'communityID'::uuid, '{"include_bbox":true}'::jsonb))::jsonb,
-    '{"ne_lat": 37.7749, "ne_lon": -122.4194, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
-    'search_community_events include_bbox returns expected bbox at group location'
+    '{"ne_lat": 40.73061, "ne_lon": -73.935242, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
+    'search_community_events include_bbox returns expected bbox covering all group locations'
 );
 
 -- ============================================================================
