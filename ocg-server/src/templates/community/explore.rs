@@ -16,7 +16,7 @@ use crate::{
         PageId,
         auth::User,
         filters,
-        helpers::{extract_location, user_initials},
+        helpers::{location::extract_location, user_initials},
     },
     types::{
         community::Community,

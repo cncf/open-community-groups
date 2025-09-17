@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use crate::templates::{
     common::User,
-    helpers::{LocationParts, build_location, color},
+    helpers::{
+        color,
+        location::{LocationParts, build_location},
+    },
 };
 
 /// Summary group information.
