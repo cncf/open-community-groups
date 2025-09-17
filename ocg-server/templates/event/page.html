@@ -129,14 +129,20 @@
               <div class="p-4">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
                 <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
-                  {% if let Some(starts_at) = event.starts_at -%}
-                    <div class="text-xl xl:text-3xl font-semibold text-stone-900">
-                      {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
+                  <div class="flex items-start gap-3">
+                    <div class="svg-icon size-5 bg-stone-800 icon-date mt-2"></div>
+                    <div>
+                      {% if let Some(starts_at) = event.starts_at -%}
+                        <div class="text-xl xl:text-3xl font-semibold text-stone-800">
+                          {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
+                        </div>
+                        <div class="mt-2 text-base text-stone-600">
+                          {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
+                        </div>
+                      {% endif -%}
                     </div>
-                    <div class="mt-2 text-base text-stone-600">
-                      {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
-                    </div>
-                  {% endif -%}
+                  </div>
+
                   {% if let Some(streaming_url) = event.streaming_url -%}
                     <div class="mt-4">
                       <a href="{{ streaming_url }}"

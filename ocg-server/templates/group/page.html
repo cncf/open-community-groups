@@ -99,7 +99,7 @@
                 {% if let Some(next_event_card) = next_event -%}
                   {% if let Some(starts_at) = next_event_card.event.starts_at -%}
                     <div class="flex items-start gap-2 text-lg/5 xl:text-xl/6 font-semibold text-stone-500">
-                      <div class="svg-icon size-4 bg-stone-500 icon-date"></div>
+                      <div class="svg-icon size-4 bg-stone-500 icon-date mt-0.5"></div>
                       <span>{{ starts_at.with_timezone(next_event_card.event.timezone).format("%B %e, %G · %I:%M %p %Z") }}</span>
                     </div>
                   {% endif -%}
