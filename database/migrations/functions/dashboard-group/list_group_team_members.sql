@@ -8,13 +8,14 @@ returns json as $$
             u.user_id,
             u.username,
 
+            u.company,
             u.name,
             u.photo_url,
-            gt.role
+            gt.role,
+            u.title
         from group_team gt
         join "user" u using (user_id)
         where gt.group_id = p_group_id
         order by coalesce(lower(u.name), lower(u.username)) asc
     ) member;
 $$ language sql;
-

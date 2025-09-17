@@ -171,7 +171,8 @@ pub(crate) struct GroupCard {
 ///
 /// The explore page can display either events or groups. This enum determines which
 /// section is shown.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "kebab-case")]
 pub(crate) enum Entity {
     /// Explore events (default).
     #[default]
@@ -182,10 +183,7 @@ pub(crate) enum Entity {
 
 impl From<Option<&String>> for Entity {
     fn from(entity: Option<&String>) -> Self {
-        match entity.map(String::as_str) {
-            Some("groups") => Entity::Groups,
-            _ => Entity::Events,
-        }
+        entity.and_then(|value| value.parse().ok()).unwrap_or_default()
     }
 }
 

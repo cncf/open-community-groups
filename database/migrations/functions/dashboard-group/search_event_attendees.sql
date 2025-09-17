@@ -11,8 +11,10 @@ returns json as $$
                 extract(epoch from ea.created_at)::bigint as created_at,
                 u.username,
 
+                u.company,
                 u.name,
-                u.photo_url
+                u.photo_url,
+                u.title
             from event_attendee ea
             join event e on e.event_id = ea.event_id
             join "user" u on u.user_id = ea.user_id
@@ -23,4 +25,3 @@ returns json as $$
     select coalesce(json_agg(row_to_json(attendees)), '[]'::json)
     from attendees;
 $$ language sql;
-

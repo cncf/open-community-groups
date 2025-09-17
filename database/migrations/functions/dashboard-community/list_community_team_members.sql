@@ -8,8 +8,10 @@ returns json as $$
             u.user_id,
             u.username,
 
+            u.company,
             u.name,
-            u.photo_url
+            u.photo_url,
+            u.title
         from community_team ct
         join "user" u on u.user_id = ct.user_id and u.community_id = ct.community_id
         where ct.community_id = p_community_id

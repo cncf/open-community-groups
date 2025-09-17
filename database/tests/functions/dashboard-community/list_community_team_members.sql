@@ -43,14 +43,16 @@ insert into "user" (
     user_id,
     auth_hash,
     community_id,
+    company,
     email,
     name,
+    title,
     username,
     email_verified,
     photo_url
 ) values
-    (:'user1ID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true, 'https://example.com/a.png'),
-    (:'user2ID', gen_random_bytes(32), :'communityID', 'bob@example.com', 'Bob', 'bob', true, 'https://example.com/b.png');
+    (:'user1ID', gen_random_bytes(32), :'communityID', 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://example.com/a.png'),
+    (:'user2ID', gen_random_bytes(32), :'communityID', null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://example.com/b.png');
 
 -- Team
 insert into community_team (accepted, community_id, user_id) values
@@ -65,8 +67,8 @@ insert into community_team (accepted, community_id, user_id) values
 select is(
     list_community_team_members(:'communityID'::uuid)::jsonb,
     '[
-        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "name": "Alice", "photo_url": "https://example.com/a.png"},
-        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "name": "Bob", "photo_url": "https://example.com/b.png"}
+        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
+        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://example.com/b.png", "title": null}
     ]'::jsonb,
     'list_community_team_members should return expected members in alphabetical order including accepted flag'
 );

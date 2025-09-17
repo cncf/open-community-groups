@@ -37,12 +37,16 @@ pub struct GroupTeamMember {
     /// Username.
     pub username: String,
 
+    /// Company the user represents.
+    pub company: Option<String>,
     /// Full name.
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
     /// Team role.
     pub role: Option<GroupRole>,
+    /// Title held by the user.
+    pub title: Option<String>,
 }
 
 impl GroupTeamMember {
