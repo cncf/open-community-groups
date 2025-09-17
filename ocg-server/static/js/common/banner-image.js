@@ -34,13 +34,9 @@ export class BannerImage extends LitWrapper {
 
   /**
    * Lifecycle callback when component is added to DOM.
-   * Resets loading states to ensure fresh image load attempt.
    */
   connectedCallback() {
     super.connectedCallback();
-    // Reset states when component is connected
-    this._hasError = false;
-    this._hasLoaded = false;
   }
 
   /**
@@ -89,15 +85,15 @@ export class BannerImage extends LitWrapper {
 
     const showSkeleton = !this._hasLoaded;
     const showImage = this._hasLoaded;
+    const skeletonVisibility = showSkeleton ? "opacity-100" : "opacity-0 pointer-events-none";
+    const imageVisibility = showImage ? "opacity-100" : "opacity-0";
 
     return html`
-      <div class="flex justify-center">
+      <div class="flex justify-center min-h-64 min-h-80">
         <div class="relative inline-block">
           <!-- Skeleton placeholder (visible during loading) -->
           <div
-            class="${showSkeleton
-              ? "flex"
-              : "hidden"} absolute aspect-[4/1] max-h-64 lg:max-h-80 w-full min-w-[300px] items-center justify-center skeleton-shimmer p-[5px]"
+            class="flex absolute w-full h-full min-w-[300px] items-center justify-center skeleton-shimmer transition-opacity duration-300 ${skeletonVisibility}"
           >
             <div
               class="w-full h-full bg-stone-200 rounded-lg flex items-center justify-center border border-stone-200"
@@ -114,9 +110,7 @@ export class BannerImage extends LitWrapper {
             alt="${this.alt}"
             @load="${this._handleImageLoad}"
             @error="${this._handleImageError}"
-            class="${showImage
-              ? ""
-              : "opacity-0 pointer-events-none"} max-h-64 lg:max-h-80 w-auto h-auto p-[5px] bg-white border border-stone-200 rounded-lg"
+            class="${imageVisibility} transition-opacity duration-300 max-h-64 lg:max-h-80 w-auto h-auto p-[5px] bg-white border border-stone-200 rounded-lg"
             loading="lazy"
           />
         </div>
