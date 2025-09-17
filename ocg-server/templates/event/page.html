@@ -131,187 +131,47 @@
           {% endif -%}
           {# End event banner -#}
 
-          {# Location and date section -#}
-          {% if event.kind != EventKind::Virtual %}
-            {% if event.latitude.is_some() && event.longitude.is_some() %}
-              <div class="border border-stone-200 rounded-lg mb-8 overflow-hidden">
-                <div class="grid md:grid-cols-2">
-                  <div class="grid grid-cols-2">
-                    {# Location details -#}
-                    <div class="p-3">
-                      <h2 class="text-sm uppercase font-semibold text-stone-500 mb-2">Location</h2>
-                      <div class="flex items-start space-y-3">
-                        <div class="svg-icon size-3 mr-2 mt-[0.175rem] bg-stone-600 icon-location shrink-0"></div>
-                        <div class="space-y-1">
-                          {% if let Some(venue_name) = event.venue_name -%}
-                            <div class="text-sm font-medium text-stone-900">{{ venue_name }}</div>
-                          {% endif -%}
-                          {% if let Some(venue_address) = event.venue_address -%}
-                            <div class="text-xs text-stone-700">{{ venue_address }}</div>
-                          {% endif -%}
-                          {% if let Some(venue_city) = event.venue_city -%}
-                            <div class="text-xs text-stone-700">
-                              {% if let Some(venue_zip_code) = event.venue_zip_code -%}
-                                <span>{{ venue_zip_code }},</span>
-                              {% endif -%}
-                              <span>{{ venue_city }}</span>
-                            </div>
-                          {% endif -%}
-                        </div>
-                      </div>
+          <div class="grid md:grid-cols-2 gap-4 md:gap-8 mb-8">
+            <div class="border border-stone-200 rounded-lg">
+              <div class="p-4">
+                <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
+                <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
+                  {% if let Some(starts_at) = event.starts_at -%}
+                    <div class="text-xl xl:text-3xl font-semibold text-stone-900">
+                      {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
                     </div>
-                    {# End location details -#}
-
-                    {# Map -#}
-                    <div class="h-full overflow-hidden border-l border-stone-200">
-                      <div id="event-map"
-                           class="w-full h-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
-                           role="button"
-                           tabindex="0"
-                           aria-label="Open full map view"></div>
+                    <div class="mt-2 text-base text-stone-600">
+                      {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
                     </div>
-                    {# End map -#}
-                  </div>
-
-                  <div class="border-t md:border-t-0 md:border-l border-stone-200">
-                    <div class="p-4">
-                      <h2 class="text-sm uppercase font-semibold text-stone-500 mb-2">Event Date</h2>
-                      {% if let Some(starts_at) = event.starts_at -%}
-                        <div class="text-xl xl:text-3xl font-semibold text-stone-900">
-                          {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
-                        </div>
-                        <div class="mt-2 text-base text-stone-600">
-                          {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
-                        </div>
-                      {% endif -%}
-                      {% if let Some(streaming_url) = event.streaming_url -%}
-                        <div class="mt-4">
-                          <a href="{{ streaming_url }}"
-                             target="_blank"
-                             rel="noopener noreferrer"
-                             class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>
-                        </div>
-                      {% endif -%}
+                  {% endif -%}
+                  {% if let Some(streaming_url) = event.streaming_url -%}
+                    <div class="mt-4">
+                      <a href="{{ streaming_url }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>
                     </div>
-                  </div>
+                  {% endif -%}
                 </div>
               </div>
-
-              {# Event map modal -#}
-              <div id="event-map-modal"
-                   tabindex="-1"
-                   aria-hidden="true"
-                   aria-modal="true"
-                   role="dialog"
-                   class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1200] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
-                <div id="backdrop-event-map-modal"
-                     class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
-                <div class="relative p-4 w-full max-w-3xl max-h-full">
-                  <div class="relative bg-white rounded-lg shadow">
-                    <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-                      <h3 id="event-map-modal-title"
-                          class="text-xl font-semibold text-stone-900">{{ event.name|demoji }} location</h3>
-                      <button id="close-event-map-modal"
-                              type="button"
-                              class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center">
-                        <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
-                        <span class="sr-only">Close modal</span>
-                      </button>
-                    </div>
-                    <div class="p-4 md:p-6">
-                      <div id="event-map-modal-map"
-                           class="w-full h-[400px] md:h-[500px] rounded-lg overflow-hidden border border-stone-200">
-                      </div>
-                      <div class="flex items-center gap-3 mt-4 text-stone-700 text-sm">
-                        <div class="svg-icon size-3 bg-stone-700 icon-location"></div>
-                        <div>
-                          {% if let Some(venue_name) = event.venue_name -%}
-                            <span>{{ venue_name }}</span>
-                            {% if event.venue_address.is_some() || event.venue_city.is_some() -%}
-                              ,
-                            {% endif -%}
-                          {% endif -%}
-                          {% if let Some(venue_address) = event.venue_address -%}
-                            <span>{{ venue_address }}</span>
-                            {% if event.venue_city.is_some() -%}
-                              ,
-                            {% endif -%}
-                          {% endif -%}
-                          {% if let Some(venue_city) = event.venue_city -%}
-                            {% if let Some(venue_zip_code) = event.venue_zip_code -%}
-                              <span>{{ venue_zip_code }},</span>
-                            {% endif -%}
-                            <span>{{ venue_city }}</span>
-                          {% endif -%}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            </div>
+            {# Location -#}
+            {% if event.kind != EventKind::Virtual %}
+              {% if event.latitude.is_some() && event.longitude.is_some() %}
+                <div class="border border-stone-200 rounded-lg p-4">
+                  <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
+                  {% let location_text = event.venue_name -%}
+                  {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, modal_title = event.name|demoji) -%}
                 </div>
-              </div>
-              {# End event map modal -#}
-
-              {# Map initialization script -#}
-              {# djlint:off #}
-                <script type="module">
-                  import {
-                    loadMap,
-                    toggleModalVisibility
-                  } from "/static/js/common/common.js";
-
-                  const mapContainer = document.getElementById('event-map');
-                  const modalId = 'event-map-modal';
-                  const modalMapId = 'event-map-modal-map';
-                  let modalMapLoaded = false;
-
-                  const ensureModalMap = () => {
-                    if (modalMapLoaded) {
-                      return;
-                    }
-                    modalMapLoaded = true;
-                    requestAnimationFrame(() => {
-                      loadMap(modalMapId, {{ event.latitude.unwrap() }}, {{ event.longitude.unwrap() }});
-                    });
-                  };
-
-                  const openEventMapModal = () => {
-                    toggleModalVisibility(modalId);
-                    ensureModalMap();
-                  };
-
-                  loadMap('event-map', {{ event.latitude.unwrap() }}, {{ event.longitude.unwrap() }});
-
-                  if (mapContainer) {
-                    mapContainer.addEventListener('click', openEventMapModal);
-                    mapContainer.addEventListener('keydown', (event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        openEventMapModal();
-                      }
-                    });
-                  }
-
-                  const closeEventMapModal = document.getElementById('close-event-map-modal');
-                  if (closeEventMapModal) {
-                    closeEventMapModal.addEventListener('click', () => toggleModalVisibility(modalId));
-                  }
-
-                  const backdropEventMapModal = document.getElementById('backdrop-event-map-modal');
-                  if (backdropEventMapModal) {
-                    backdropEventMapModal.addEventListener('click', () => toggleModalVisibility(modalId));
-                  }
-</script>
-              {# djlint:on #}
-              {# End map initialization script -#}
+              {% endif -%}
             {% endif -%}
-          {% endif -%}
-          {# End location and date section -#}
+            {# End location -#}
+          </div>
         </div>
       </div>
 
       {# Event description -#}
       <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
-
         <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this event</div>
         <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
       </div>
