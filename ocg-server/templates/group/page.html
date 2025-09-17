@@ -284,11 +284,9 @@
 
         {# Group description -#}
         {% if let Some(description) = group.description -%}
-          <div>
-            <div class="pt-2 pb-8">
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this group</div>
-              <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
-            </div>
+          <div class="pt-2 pb-8">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this group</div>
+            <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
           </div>
         {% endif -%}
         {# End group description -#}
