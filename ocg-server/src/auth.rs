@@ -501,7 +501,7 @@ impl UserSummary {
     async fn from_github_profile(access_token: &str) -> Result<Self> {
         // Setup headers for GitHub API requests.
         let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, "gitjobs".parse()?);
+        headers.insert(USER_AGENT, "open-community-groups".parse()?);
         headers.insert(AUTHORIZATION, format!("Bearer {access_token}").as_str().parse()?);
 
         // Get user profile from GitHub.
