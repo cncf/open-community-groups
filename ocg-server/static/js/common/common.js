@@ -76,19 +76,11 @@ const loadLeafletScript = () => {
  * @param {number} long - The longitude coordinate for the map center and marker
  * @returns {Promise} Promise that resolves when the map is loaded
  */
-export const loadMap = async (
-  divId,
-  lat,
-  long,
-  options = {},
-) => {
+export const loadMap = async (divId, lat, long, options = {}) => {
   // Ensure Leaflet is loaded
   await loadLeafletScript();
 
-  const map = L.map(divId, { zoomControl: false }).setView(
-    [lat, long],
-    options.zoom ?? 13,
-  );
+  const map = L.map(divId, { zoomControl: false }).setView([lat, long], options.zoom ?? 13);
 
   const interactive = options.interactive !== false;
 
