@@ -32,9 +32,10 @@
               <div class="flex flex-col justify-between">
                 <div>
                   {# Group/Category legend -#}
-                  <div>
-                    <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">{{ event.group.name }}</span>
-                  </div>
+                  <a href="/group/{{ event.group.slug }}"
+                     class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline"
+                     hx-boost="true"
+                     hx-target="body">{{ event.group.name }}</a>
                   {# End group/category legend -#}
 
                   {# Event name -#}
