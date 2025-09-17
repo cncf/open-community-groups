@@ -19,8 +19,8 @@ axum-extra = { version = "0.10.1", features = ["form", "query"] }
 axum-login = "0.18.0"
 axum-messages = "0.8.0"
 cached = { version = "0.56.0", features = ["async"] }
-clap = { version = "4.5.46", features = ["derive"] }
-chrono = { version = "0.4.41", features = ["serde"] }
+clap = { version = "4.5.47", features = ["derive"] }
+chrono = { version = "0.4.42", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
 emojis = "0.7.2"
@@ -38,15 +38,15 @@ password-auth = "1.0.0"
 postgres-openssl = "0.5.1"
 reqwest = { version = "0.12.20", features = ["json"] }
 rust-embed = "8.7.2"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_html_form = "0.2.7"
-serde_json = "1.0.143"
+serde = { version = "1.0.225", features = ["derive"] }
+serde_html_form = "0.2.8"
+serde_json = "1.0.145"
 serde_qs = "0.15.0"
 serde_with = "3.14.0"
 sha2 = "0.10.9"
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0.16"
-time = "0.3.42"
+time = "0.3.43"
 tokio = { version = "1.47.1", features = [
     "macros",
     "process",
@@ -67,5 +67,5 @@ tower-sessions = { version = "0.14.0", features = ["signed"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
 unicode-segmentation = "1.12.0"
-uuid = { version = "1.18.0", features = ["serde", "v4"] }
+uuid = { version = "1.18.1", features = ["serde", "v4"] }
 which = "8.0.0"
