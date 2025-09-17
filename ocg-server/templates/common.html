@@ -273,10 +273,10 @@
           <div class="svg-icon size-6 bg-amber-500 icon-handshake"></div>
         </div>
       </div>
-      <div class="leading-tight">
+      <div class="leading-tight min-w-0">
         <div class="text-sm md:text-base font-semibold text-stone-900 truncate">{{ name }}</div>
         {% if with_level -%}
-          <div class="text-xs uppercase tracking-wide text-stone-600">{{ level }}</div>
+          <div class="text-xs uppercase tracking-wide text-stone-600 truncate">{{ level }}</div>
         {% endif -%}
       </div>
     </a>
@@ -293,7 +293,7 @@
           <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
         </div>
       </div>
-      <div class="leading-tight">
+      <div class="leading-tight min-w-0">
         <div class="text-sm md:text-base font-semibold text-stone-900">{{ name }}</div>
         {% if with_level -%}
           <div class="text-xs uppercase tracking-wide text-stone-600">{{ level }}</div>

@@ -99,7 +99,12 @@ export class UserChip extends LitWrapper {
       `;
     }
     return html`
-      <avatar-image image-url="${this.imageUrl || ""}" size="size-18" placeholder="${initials}">
+      <avatar-image
+        image-url="${this.imageUrl || ""}"
+        size="size-18"
+        placeholder="${initials}"
+        font-size="text-lg"
+      >
       </avatar-image>
       <div class="leading-tight min-w-0">
         <div class="font-semibold text-stone-900 ${!isTooltip ? "truncate" : ""}">${this.name || ""}</div>

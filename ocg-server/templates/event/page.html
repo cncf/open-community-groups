@@ -18,9 +18,9 @@
   </div>
   {# End community title -#}
   <div class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col gap-y-8 py-8 w-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col py-8 w-full">
       {# Event header with name and group -#}
-      <div class="px-4 sm:px-6 lg:px-8">
+      <div class="px-4 sm:px-6 lg:px-8 pb-8">
         {# Main flex container for logo, name/group, and social networks -#}
         <div class="flex flex-1 flex-row items-stretch gap-6">
           {# Event logo -#}
@@ -123,66 +123,65 @@
       {# End event header -#}
 
       <div class="px-4 sm:px-6 lg:px-8">
-        <div>
-          <div class="grid md:grid-cols-2 gap-4 md:gap-8">
-            <div class="border border-stone-200 rounded-lg">
-              <div class="p-4">
-                <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
-                <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
-                  <div class="flex items-start gap-3">
-                    <div class="svg-icon size-5 bg-stone-800 icon-date mt-2"></div>
-                    <div>
-                      {% if let Some(starts_at) = event.starts_at -%}
-                        <div class="text-xl xl:text-3xl font-semibold text-stone-800">
-                          {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
-                        </div>
-                        <div class="mt-2 text-base text-stone-600">
-                          {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
-                        </div>
-                      {% endif -%}
-                    </div>
-                  </div>
-
-                  {% if let Some(streaming_url) = event.streaming_url -%}
-                    <div class="mt-4">
-                      <a href="{{ streaming_url }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>
-                    </div>
-                  {% endif -%}
-                </div>
-              </div>
-            </div>
-            {# Location -#}
-            <div class="border border-stone-200 rounded-lg p-4">
-              <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
-              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
-                {% if event.kind != EventKind::Virtual %}
-                  {% if event.latitude.is_some() && event.longitude.is_some() %}
-                    {% let location_text = self.event.location(90) -%}
-                    {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, modal_title = event.name|demoji) -%}
-                  {% else -%}
-                    <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+        <div class="grid md:grid-cols-2 gap-4 md:gap-8 pt-2 pb-8">
+          {# Event date -#}
+          <div class="border border-stone-200 rounded-lg">
+            <div class="p-4">
+              <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
+              <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
+                <div class="flex items-start gap-3">
+                  <div class="svg-icon size-5 bg-stone-800 icon-date mt-2"></div>
+                  <div>
+                    {% if let Some(starts_at) = event.starts_at -%}
+                      <div class="text-xl xl:text-3xl font-semibold text-stone-800">
+                        {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
                       </div>
-                      <div class="relative text-base text-stone-600">Location not provided</div>
-                    </div>
-                  {% endif -%}
-                {% else -%}
-                  <div class="relative flex min-h-25 w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                    <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                    </div>
-                    <div class="relative flex w-full items-center justify-center">
-                      <div class="text-base text-stone-600">Virtual event</div>
-                    </div>
+                      <div class="mt-2 text-base text-stone-600">
+                        {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
+                      </div>
+                    {% endif -%}
+                  </div>
+                </div>
+
+                {% if let Some(streaming_url) = event.streaming_url -%}
+                  <div class="mt-4">
+                    <a href="{{ streaming_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>
                   </div>
                 {% endif -%}
               </div>
             </div>
-
-            {# End location -#}
           </div>
+          {# Location -#}
+          <div class="border border-stone-200 rounded-lg p-4">
+            <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
+            <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
+              {% if event.kind != EventKind::Virtual %}
+                {% if event.latitude.is_some() && event.longitude.is_some() %}
+                  {% let location_text = self.event.location(90) -%}
+                  {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, modal_title = event.name|demoji) -%}
+                {% else -%}
+                  <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                    <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                    </div>
+                    <div class="relative text-base text-stone-600">Location not provided</div>
+                  </div>
+                {% endif -%}
+              {% else -%}
+                <div class="relative flex min-h-25 w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                  <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                  </div>
+                  <div class="relative flex w-full items-center justify-center">
+                    <div class="text-base text-stone-600">Virtual event</div>
+                  </div>
+                </div>
+              {% endif -%}
+            </div>
+          </div>
+
+          {# End location -#}
         </div>
       </div>
 
@@ -219,63 +218,61 @@
       {% if !event.sessions.is_empty() -%}
         {% let days_count = event.sessions.len() -%}
         <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
-          <div class="pt-2 pb-8">
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Agenda</div>
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Agenda</div>
 
-            {# Single-day agenda: no date title -#}
-            {% if days_count == 1 -%}
+          {# Single-day agenda: no date title -#}
+          {% if days_count == 1 -%}
+            {% for day in event.sessions -%}
+              <ol class="relative border-s border-stone-200">
+                {% for session in day.1 %}
+                  {% call session_item(session = session, is_last = loop.last) -%}
+                {% endfor %}
+              </ol>
+            {% endfor -%}
+          {% else -%}
+            {# Multi-day agenda: tabs with one day per tab -#}
+            <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
               {% for day in event.sessions -%}
+                <li>
+                  <button type="button"
+                          data-day-tab="day-{{ loop.index }}"
+                          data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
+                          class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+                    {{ day.0.format("%A, %B %e, %Y") }}
+                  </button>
+                </li>
+              {% endfor -%}
+            </ul>
+
+            {% for day in event.sessions -%}
+              <div data-day-content="day-{{ loop.index }}"
+                   {% if !loop.first -%}
+                     hidden
+                   {% endif -%}
+                   class="pt-6">
                 <ol class="relative border-s border-stone-200">
                   {% for session in day.1 %}
                     {% call session_item(session = session, is_last = loop.last) -%}
                   {% endfor %}
                 </ol>
-              {% endfor -%}
-            {% else -%}
-              {# Multi-day agenda: tabs with one day per tab -#}
-              <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
-                {% for day in event.sessions -%}
-                  <li>
-                    <button type="button"
-                            data-day-tab="day-{{ loop.index }}"
-                            data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
-                            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
-                      {{ day.0.format("%A, %B %e, %Y") }}
-                    </button>
-                  </li>
-                {% endfor -%}
-              </ul>
+              </div>
+            {% endfor -%}
 
-              {% for day in event.sessions -%}
-                <div data-day-content="day-{{ loop.index }}"
-                     {% if !loop.first -%}
-                       hidden
-                     {% endif -%}
-                     class="pt-6">
-                  <ol class="relative border-s border-stone-200">
-                    {% for session in day.1 %}
-                      {% call session_item(session = session, is_last = loop.last) -%}
-                    {% endfor %}
-                  </ol>
-                </div>
-              {% endfor -%}
-
-              <script type="module">
-                const dayTabs = document.querySelectorAll('[data-day-tab]');
-                const dayPanels = document.querySelectorAll('[data-day-content]');
-                dayTabs.forEach((btn) => {
-                  btn.addEventListener('click', () => {
-                    const target = btn.getAttribute('data-day-tab');
-                    dayTabs.forEach(b => b.setAttribute('data-active', b === btn ? 'true' : 'false'));
-                    dayPanels.forEach(panel => {
-                      const isTarget = panel.getAttribute('data-day-content') === target;
-                      panel.toggleAttribute('hidden', !isTarget);
-                    });
+            <script type="module">
+              const dayTabs = document.querySelectorAll('[data-day-tab]');
+              const dayPanels = document.querySelectorAll('[data-day-content]');
+              dayTabs.forEach((btn) => {
+                btn.addEventListener('click', () => {
+                  const target = btn.getAttribute('data-day-tab');
+                  dayTabs.forEach(b => b.setAttribute('data-active', b === btn ? 'true' : 'false'));
+                  dayPanels.forEach(panel => {
+                    const isTarget = panel.getAttribute('data-day-content') === target;
+                    panel.toggleAttribute('hidden', !isTarget);
                   });
                 });
-              </script>
-            {% endif -%}
-          </div>
+              });
+            </script>
+          {% endif -%}
         </div>
       {% endif -%}
       {# End sessions section -#}
@@ -425,7 +422,7 @@
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
     {% endif -%}
     {% if let Some(description) = session.description -%}
-      <div class="text-sm/6 text-stone-600 markdown">{{ description|md_to_html|safe }}</div>
+      <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
     {% endif -%}
     {% if !session.speakers.is_empty() -%}
       <div class="mt-4">
