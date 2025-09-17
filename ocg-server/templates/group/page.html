@@ -89,14 +89,6 @@
       {# End group header -#}
 
       <div class="px-4 sm:px-6 lg:px-8">
-        {# Group banner -#}
-        {% if let Some(banner_url) = group.banner_url -%}
-          <div class="w-full mb-8">
-            <banner-image image-url="{{ banner_url }}" alt="Group banner"></banner-image>
-          </div>
-        {% endif -%}
-        {# End group banner -#}
-
         <div class="grid md:grid-cols-2 gap-4 md:gap-8 mb-8">
           <div class="border border-stone-200 rounded-lg">
             <div class="p-4">
@@ -159,6 +151,15 @@
         {% if let Some(description) = group.description -%}
           <div class="pt-2 pb-8">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this group</div>
+
+            {# Group banner -#}
+            {% if let Some(banner_url) = group.banner_url -%}
+              <div class="max-w-1/2 mb-8 h-20 lg:h-40">
+                <banner-image image-url="{{ banner_url }}" alt="Group banner"></banner-image>
+              </div>
+            {% endif -%}
+            {# End group banner -#}
+
             <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
           </div>
         {% endif -%}

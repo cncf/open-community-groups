@@ -37,6 +37,7 @@ export class BannerImage extends LitWrapper {
    */
   connectedCallback() {
     super.connectedCallback();
+    this.classList.add("block", "h-full", "w-full");
   }
 
   /**
@@ -83,37 +84,18 @@ export class BannerImage extends LitWrapper {
       return html``;
     }
 
-    const showSkeleton = !this._hasLoaded;
-    const showImage = this._hasLoaded;
-    const skeletonVisibility = showSkeleton ? "opacity-100" : "opacity-0 pointer-events-none";
-    const imageVisibility = showImage ? "opacity-100" : "opacity-0";
+    const imageVisibility = this._hasLoaded ? "opacity-100" : "opacity-0";
 
     return html`
-      <div class="flex justify-center min-h-64 min-h-80">
-        <div class="relative inline-block">
-          <!-- Skeleton placeholder (visible during loading) -->
-          <div
-            class="flex absolute w-full h-full min-w-[300px] items-center justify-center skeleton-shimmer transition-opacity duration-300 ${skeletonVisibility}"
-          >
-            <div
-              class="w-full h-full bg-stone-200 rounded-lg flex items-center justify-center border border-stone-200"
-            >
-              <div class="text-stone-400 text-center">
-                <div class="text-sm font-medium">Loading banner...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Banner image (always rendered if URL exists, visibility controlled by load state) -->
-          <img
-            src="${this.imageUrl}"
-            alt="${this.alt}"
-            @load="${this._handleImageLoad}"
-            @error="${this._handleImageError}"
-            class="${imageVisibility} transition-opacity duration-300 max-h-64 lg:max-h-80 w-auto h-auto p-[5px] bg-white border border-stone-200 rounded-lg"
-            loading="lazy"
-          />
-        </div>
+      <div class="max-w-full h-full relative">
+        <img
+          src="${this.imageUrl}"
+          alt="${this.alt}"
+          @load="${this._handleImageLoad}"
+          @error="${this._handleImageError}"
+          class="w-auto max-w-full bg-white border-[5px] border-white outline outline-1 outline-stone-200 rounded-lg overflow-hidden h-full ${imageVisibility} transition-opacity duration-300"
+          loading="lazy"
+        />
       </div>
     `;
   }

@@ -124,14 +124,6 @@
 
       <div class="px-4 sm:px-6 lg:px-8">
         <div>
-          {# Event banner -#}
-          {% if let Some(banner_url) = event.banner_url -%}
-            <div class="w-full mb-8">
-              <banner-image image-url="{{ banner_url }}" alt="Event banner"></banner-image>
-            </div>
-          {% endif -%}
-          {# End event banner -#}
-
           <div class="grid md:grid-cols-2 gap-4 md:gap-8 mb-8">
             <div class="border border-stone-200 rounded-lg">
               <div class="p-4">
@@ -174,6 +166,13 @@
       {# Event description -#}
       <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
         <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this event</div>
+        {# Event banner -#}
+        {% if let Some(banner_url) = event.banner_url -%}
+          <div class="max-w-1/2 mb-8 h-20 lg:h-40">
+            <banner-image image-url="{{ banner_url }}" alt="Event banner"></banner-image>
+          </div>
+        {% endif -%}
+        {# End event banner -#}
         <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
       </div>
       {# End event description -#}
