@@ -131,19 +131,34 @@
           </div>
 
           {# Location and event section -#}
-          {% if let Some(lat) = group.latitude %}
-            {% if let Some(lng) = group.longitude %}
-              <div class="border border-stone-200 rounded-lg flex flex-col">
-                {# Location details -#}
-                <div class="flex flex-col p-4 h-full">
-                  <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
-                  {% let location_text = self.group.location(150) -%}
-                  {% call common::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, modal_title = group.name|demoji) -%}
-                </div>
-                {# End location details -#}
+          <div class="border border-stone-200 rounded-lg flex flex-col">
+            {# Location details -#}
+            <div class="flex flex-col p-4 h-full">
+              <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
+              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
+                {% let location_text = self.group.location(150) -%}
+                {% if let Some(lat) = group.latitude %}
+                  {% if let Some(lng) = group.longitude %}
+                    {% call common::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, modal_title = group.name|demoji) -%}
+                  {% else -%}
+                    <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                      </div>
+                      <div class="relative text-base text-stone-600">Location not provided</div>
+                    </div>
+                  {% endif -%}
+                {% else -%}
+                  <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                    <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                    </div>
+                    <div class="relative text-base text-stone-600">Location not provided</div>
+                  </div>
+                {% endif -%}
               </div>
-            {% endif -%}
-          {% endif -%}
+            </div>
+            {# End location details -#}
+          </div>
+
           {# End location and map section -#}
         </div>
 

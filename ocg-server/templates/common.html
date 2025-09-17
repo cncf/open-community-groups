@@ -307,18 +307,16 @@
 {# djlint:off #}
 {# Map with modal -#}
 {% macro map_with_modal(base_id, lat, lng, overlay_text = "", modal_title = "") -%}
-  <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow">
-    <div id="{{ base_id }}-map"
-         class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
-         role="button"
-         tabindex="0"
-         aria-label="Open full map view"></div>
-    {% if let Some(text) = overlay_text -%}
-      <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000">
-        {{ text }}
-      </div>
-    {% endif -%}
-  </div>
+  <div id="{{ base_id }}-map"
+        class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+        role="button"
+        tabindex="0"
+        aria-label="Open full map view"></div>
+  {% if let Some(text) = overlay_text -%}
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000">
+      {{ text }}
+    </div>
+  {% endif -%}
 
   <div id="{{ base_id }}-map-modal"
        tabindex="-1"

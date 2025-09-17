@@ -155,15 +155,32 @@
               </div>
             </div>
             {# Location -#}
-            {% if event.kind != EventKind::Virtual %}
-              {% if event.latitude.is_some() && event.longitude.is_some() %}
-                <div class="border border-stone-200 rounded-lg p-4">
-                  <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
-                  {% let location_text = event.venue_name -%}
-                  {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, modal_title = event.name|demoji) -%}
-                </div>
-              {% endif -%}
-            {% endif -%}
+            <div class="border border-stone-200 rounded-lg p-4">
+              <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
+              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
+                {% if event.kind != EventKind::Virtual %}
+                  {% if event.latitude.is_some() && event.longitude.is_some() %}
+                    {% let location_text = event.venue_name -%}
+                    {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, modal_title = event.name|demoji) -%}
+                  {% else -%}
+                    <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                      <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                      </div>
+                      <div class="relative text-base text-stone-600">Location not provided</div>
+                    </div>
+                  {% endif -%}
+                {% else -%}
+                  <div class="relative flex min-h-25 w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                    <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                    </div>
+                    <div class="relative flex w-full items-center justify-center">
+                      <div class="text-base text-stone-600">Virtual event</div>
+                    </div>
+                  </div>
+                {% endif -%}
+              </div>
+            </div>
+
             {# End location -#}
           </div>
         </div>
