@@ -295,6 +295,21 @@ pub struct EventFull {
 }
 
 impl EventFull {
+    /// Build a display-friendly location string from available location data.
+    #[allow(dead_code)]
+    pub fn location(&self, max_len: usize) -> Option<String> {
+        let parts = LocationParts::new()
+            .group_city(self.group.city.as_ref())
+            .group_country_code(self.group.country_code.as_ref())
+            .group_country_name(self.group.country_name.as_ref())
+            .group_state(self.group.state.as_ref())
+            .venue_address(self.venue_address.as_ref())
+            .venue_city(self.venue_city.as_ref())
+            .venue_name(self.venue_name.as_ref());
+
+        build_location(&parts, max_len)
+    }
+
     /// Try to create an `EventFull` instance from a JSON string.
     #[instrument(skip_all, err)]
     pub fn try_from_json(data: &str) -> Result<Self> {
