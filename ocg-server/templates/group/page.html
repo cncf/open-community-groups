@@ -349,7 +349,7 @@
         {% if !group.sponsors.is_empty() -%}
           <div class="pt-2 pb-8">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Sponsors</div>
-            <div class="flex flex-wrap gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {% for sponsor in group.sponsors -%}
                 {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -%}
               {% endfor -%}
