@@ -16,6 +16,7 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Role</th>
         <th scope="col" class="p-4 w-12 w-27"></th>
       </tr>
     </thead>
@@ -58,6 +59,14 @@
               </div>
             </td>
             {# End member -#}
+
+            {# Role -#}
+            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              {% if let Some(role) = member.role -%}
+                {% call common::badge(content = role, extra_styles = Some("px-2.5 py-0.5")) -%}
+              {% endif -%}
+            </td>
+            {# End role -#}
 
             {# Actions -#}
             <td class="w-27">
