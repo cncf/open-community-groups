@@ -76,11 +76,21 @@ const loadLeafletScript = () => {
  * @param {number} long - The longitude coordinate for the map center and marker
  * @returns {Promise} Promise that resolves when the map is loaded
  */
-export const loadMap = async (divId, lat, long) => {
+export const loadMap = async (
+  divId,
+  lat,
+  long,
+  options = {},
+) => {
   // Ensure Leaflet is loaded
   await loadLeafletScript();
 
-  const map = L.map(divId, { zoomControl: false }).setView([lat, long], 13);
+  const map = L.map(divId, { zoomControl: false }).setView(
+    [lat, long],
+    options.zoom ?? 13,
+  );
+
+  const interactive = options.interactive !== false;
 
   L.tileLayer(
     `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}${
@@ -109,13 +119,59 @@ export const loadMap = async (divId, lat, long) => {
   // Create marker
   const marker = L.marker(L.latLng(lat, long), {
     icon: icon,
-    interactive: false,
+    interactive,
     autoPanOnFocus: false,
     bubblingMouseEvents: false,
   });
 
-  // Add popup to marker
   marker.addTo(map);
+
+  if (options.popupContent) {
+    const popupOptions = {
+      autoPan: false,
+      closeButton: interactive,
+      closeOnClick: interactive,
+      className: options.popupClassName,
+    };
+    if (!interactive) {
+      popupOptions.closeButton = false;
+      popupOptions.closeOnClick = false;
+    }
+    marker.bindPopup(options.popupContent, popupOptions);
+    if (options.openPopup !== false) {
+      marker.openPopup();
+    }
+  }
+
+  if (!interactive) {
+    if (map.dragging?.disable) {
+      map.dragging.disable();
+    }
+    if (map.touchZoom?.disable) {
+      map.touchZoom.disable();
+    }
+    if (map.scrollWheelZoom?.disable) {
+      map.scrollWheelZoom.disable();
+    }
+    if (map.doubleClickZoom?.disable) {
+      map.doubleClickZoom.disable();
+    }
+    if (map.boxZoom?.disable) {
+      map.boxZoom.disable();
+    }
+    if (map.keyboard?.disable) {
+      map.keyboard.disable();
+    }
+    if (map.tap?.disable) {
+      map.tap.disable();
+    }
+  }
+
+  requestAnimationFrame(() => {
+    map.invalidateSize();
+  });
+
+  return map;
 };
 
 /**
