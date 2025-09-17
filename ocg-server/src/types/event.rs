@@ -336,23 +336,14 @@ pub struct EventSponsor {
 ///
 /// Distinguishes between physical, online, and mixed attendance events
 /// for filtering and display purposes.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum EventKind {
     Hybrid,
     #[default]
     InPerson,
     Virtual,
-}
-
-impl std::fmt::Display for EventKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            EventKind::Hybrid => write!(f, "hybrid"),
-            EventKind::InPerson => write!(f, "in-person"),
-            EventKind::Virtual => write!(f, "virtual"),
-        }
-    }
 }
 
 /// Event kind summary.
@@ -408,23 +399,14 @@ pub struct Session {
 }
 
 /// Categorization of session attendance modes.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum SessionKind {
     Hybrid,
     #[default]
     InPerson,
     Virtual,
-}
-
-impl std::fmt::Display for SessionKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            SessionKind::Hybrid => write!(f, "hybrid"),
-            SessionKind::InPerson => write!(f, "in-person"),
-            SessionKind::Virtual => write!(f, "virtual"),
-        }
-    }
 }
 
 /// Session kind summary.

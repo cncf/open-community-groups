@@ -34,14 +34,15 @@ pub(crate) async fn list_page(
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
+    let ts_query = query.get("ts_query").cloned();
     let filters = explore::GroupsFilters {
         limit: Some(MAX_GROUPS_LISTED),
         sort_by: Some(String::from("name")),
-        ts_query: query.get("ts_query").cloned(),
+        ts_query: ts_query.clone(),
         ..explore::GroupsFilters::default()
     };
     let groups = db.search_community_groups(community_id, &filters).await?.groups;
-    let template = groups::ListPage { groups };
+    let template = groups::ListPage { groups, ts_query };
 
     Ok(Html(template.render()?))
 }

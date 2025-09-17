@@ -27,6 +27,9 @@ pub(crate) struct AddPage {
 pub(crate) struct ListPage {
     /// List of groups in the community.
     pub groups: Vec<GroupDetailed>,
+
+    /// Text search query used to filter results.
+    pub ts_query: Option<String>,
 }
 
 /// Update group page template.

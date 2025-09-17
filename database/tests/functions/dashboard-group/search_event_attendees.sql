@@ -39,10 +39,20 @@ insert into "group" (group_id, community_id, group_category_id, name, slug, acti
 values (:'groupID', :'communityID', :'categoryID', 'G', 'g', true, false);
 
 -- Users
-insert into "user" (user_id, username, email, community_id, auth_hash, name, photo_url)
+insert into "user" (
+    auth_hash,
+    community_id,
+    company,
+    email,
+    name,
+    photo_url,
+    title,
+    user_id,
+    username
+)
 values
-    (:'user1ID', 'alice', 'alice@example.com', :'communityID', 'h', 'Alice', 'https://example.com/a.png'),
-    (:'user2ID', 'bob',   'bob@example.com',   :'communityID', 'h', null,     'https://example.com/b.png');
+    ('h', :'communityID', 'Cloud Corp', 'alice@example.com', 'Alice', 'https://example.com/a.png', 'Principal Engineer', :'user1ID', 'alice'),
+    ('h', :'communityID', null, 'bob@example.com', null, 'https://example.com/b.png', null, :'user2ID', 'bob');
 
 -- Events
 insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted)
@@ -65,8 +75,8 @@ values
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000041"}'::jsonb)::jsonb,
     '[
-        {"checked_in": true,  "created_at": 1704067200, "username": "alice", "name": "Alice", "photo_url": "https://example.com/a.png"},
-        {"checked_in": false, "created_at": 1704153600, "username": "bob",   "name": null,     "photo_url": "https://example.com/b.png"}
+        {"checked_in": true,  "created_at": 1704067200, "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
+        {"checked_in": false, "created_at": 1704153600, "username": "bob",   "company": null, "name": null,     "photo_url": "https://example.com/b.png", "title": null}
     ]'::jsonb,
     'Should return attendees for event1 with expected fields and order'
 );
@@ -75,7 +85,7 @@ select is(
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000042"}'::jsonb)::jsonb,
     '[
-        {"checked_in": true, "created_at": 1704240000, "username": "bob", "name": null, "photo_url": "https://example.com/b.png"}
+        {"checked_in": true, "created_at": 1704240000, "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
     ]'::jsonb,
     'Should return attendees for event2'
 );

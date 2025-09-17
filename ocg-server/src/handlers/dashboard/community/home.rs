@@ -50,14 +50,15 @@ pub(crate) async fn page(
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Groups => {
+            let ts_query = query.get("ts_query").cloned();
             let filters = GroupsFilters {
                 limit: Some(MAX_GROUPS_LISTED),
                 sort_by: Some("name".to_string()),
-                ts_query: query.get("ts_query").cloned(),
+                ts_query: ts_query.clone(),
                 ..GroupsFilters::default()
             };
             let groups = db.search_community_groups(community_id, &filters).await?.groups;
-            Content::Groups(groups::ListPage { groups })
+            Content::Groups(groups::ListPage { groups, ts_query })
         }
         Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
             community: community.clone(),
