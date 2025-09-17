@@ -26,6 +26,23 @@ db:
   user: postgres
   password: postgres
 
+# Email configuration
+email:
+  # From address used in emails
+  fromAddress: ""
+  # From name used in emails
+  fromName: ""
+  # SMTP server configuration
+  smtp:
+    # Hostname
+    host: ""
+    # Port
+    port: 587
+    # Username
+    username: ""
+    # Password
+    password: ""
+
 # Log configuration
 log:
   # Output format [json|pretty]
@@ -43,14 +60,58 @@ server:
   # Address to listen on
   addr: 0.0.0.0:9000
 
-  # Basic auth configuration
-  basicAuth:
-    # Enable basic auth
-    enabled: false
-    # Basic auth username
-    username: ocg
-    # Basic auth password
-    password: changeme
+  # Base URL
+  baseUrl: "https://{YOUR_OCG_HOSTNAME}"
+
+  # Cookie configuration
+  cookie:
+    secure: false
+
+  # Login options enabled
+  login:
+    # Enable email login
+    email: true
+    # Enable GitHub login
+    github: false
+    # Enable Linux Foundation login
+    linuxfoundation: false
+
+  # OAuth2 configuration
+  oauth2:
+    # GitHub provider configuration
+    github:
+      # Auth URL
+      authUrl: https://github.com/login/oauth/authorize
+      # Client ID
+      clientId: ""
+      # Client secret
+      clientSecret: ""
+      # Redirect URI
+      redirectUri: "https://{YOUR_OCG_HOSTNAME}/log-in/oauth2/github/callback"
+      # Scopes
+      scopes:
+        - "read:user"
+        - "user:email"
+      # Token URL
+      tokenUrl: https://github.com/login/oauth/access_token
+
+  # OIDC configuration
+  oidc:
+    # Linux Foundation SSO provider configuration
+    linuxfoundation:
+      # Client ID
+      clientId: ""
+      # Client secret
+      clientSecret: ""
+      # Issuer URL
+      issuerUrl: https://{YOUR_OIDC_PROVIDER_ISSUER_URL}
+      # Redirect URI
+      redirectUri: "https://{YOUR_OCG_HOSTNAME}/log-in/oidc/linuxfoundation/callback"
+      # Scopes
+      scopes:
+        - openid
+        - profile
+        - email
 
   # Ingress configuration
   ingress:
