@@ -1,7 +1,5 @@
 //! Templates and types for the community site explore page.
 
-use std::fmt::{self, Display, Formatter};
-
 use anyhow::Result;
 use askama::Template;
 use axum::http::HeaderMap;
@@ -173,7 +171,7 @@ pub(crate) struct GroupCard {
 ///
 /// The explore page can display either events or groups. This enum determines which
 /// section is shown.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
 pub(crate) enum Entity {
     /// Explore events (default).
     #[default]
@@ -187,15 +185,6 @@ impl From<Option<&String>> for Entity {
         match entity.map(String::as_str) {
             Some("groups") => Entity::Groups,
             _ => Entity::Events,
-        }
-    }
-}
-
-impl Display for Entity {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self {
-            Entity::Events => write!(f, "events"),
-            Entity::Groups => write!(f, "groups"),
         }
     }
 }
