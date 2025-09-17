@@ -7,12 +7,9 @@ create or replace function update_community(
 begin
     update community
     set
-        active = coalesce((p_data->>'active')::boolean, active),
-        community_site_layout_id = coalesce(p_data->>'community_site_layout_id', community_site_layout_id),
         description = coalesce(p_data->>'description', description),
         display_name = coalesce(p_data->>'display_name', display_name),
         header_logo_url = coalesce(p_data->>'header_logo_url', header_logo_url),
-        host = coalesce(p_data->>'host', host),
         name = coalesce(p_data->>'name', name),
         theme = case when p_data ? 'primary_color' then jsonb_build_object('primary_color', p_data->>'primary_color') else theme end,
         title = coalesce(p_data->>'title', title),
