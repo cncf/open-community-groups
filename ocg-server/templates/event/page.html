@@ -160,7 +160,7 @@
               <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
                 {% if event.kind != EventKind::Virtual %}
                   {% if event.latitude.is_some() && event.longitude.is_some() %}
-                    {% let location_text = event.venue_name -%}
+                    {% let location_text = self.event.location(90) -%}
                     {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, modal_title = event.name|demoji) -%}
                   {% else -%}
                     <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">

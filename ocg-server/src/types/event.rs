@@ -296,7 +296,6 @@ pub struct EventFull {
 
 impl EventFull {
     /// Build a display-friendly location string from available location data.
-    #[allow(dead_code)]
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .group_city(self.group.city.as_ref())
