@@ -357,19 +357,19 @@ export class SponsorsSection extends LitWrapper {
         </div>
 
         ${this.selectedSponsors && this.selectedSponsors.length > 0
-          ? html`<div class="flex gap-2 mt-2 flex-wrap w-full xl:w-2/3">
+          ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full xl:w-2/3">
               ${this.selectedSponsors.map(
                 (s, i) =>
                   html`<div
-                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 min-w-[200px]"
+                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 w-full"
                     >
                       <div
-                        class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+                        class="relative flex items-center justify-center size-12 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
                       >
                         <img
                           src="${s.logo_url}"
                           alt="${s.name} logo"
-                          class="h-6 w-6 object-contain"
+                          class="size-10 object-contain"
                           loading="lazy"
                         />
                         <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
