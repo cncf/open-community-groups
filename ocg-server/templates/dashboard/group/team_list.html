@@ -44,9 +44,7 @@
                 </avatar-image>
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1">
-                    <div class="font-medium text-stone-900 truncate">
-                      {{ member.name|display_some_or(format!("@{}", member.username) ) }}
-                    </div>
+                    <div class="font-medium text-stone-900 truncate">{{ member.name|display_some_or(member.username) }}</div>
                     {% if !member.accepted -%}
                       <div class="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
                         Invitation sent
@@ -54,7 +52,7 @@
                     {% endif -%}
                   </div>
                   {% if member.name.is_some() -%}
-                    <div class="text-xs text-stone-600 truncate">@{{ member.username }}</div>
+                    <div class="text-xs text-stone-600 truncate">{{ member.username }}</div>
                   {% endif -%}
                 </div>
               </div>
