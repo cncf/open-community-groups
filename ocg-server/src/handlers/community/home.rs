@@ -10,11 +10,12 @@ use axum::{
     http::Uri,
     response::{Html, IntoResponse},
 };
+use chrono::Duration;
 use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{error::HandlerError, extractors::CommunityId, prepare_headers},
     templates::{PageId, auth::User, community::home},
     types::event::EventKind,
 };
@@ -56,5 +57,8 @@ pub(crate) async fn page(
         user: User::default(),
     };
 
-    Ok(Html(template.render()?))
+    // Prepare response headers
+    let headers = prepare_headers(Duration::hours(1), &[])?;
+
+    Ok((headers, Html(template.render()?)))
 }

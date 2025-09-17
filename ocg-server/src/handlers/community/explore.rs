@@ -8,10 +8,12 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
+    Json,
     extract::{Query, RawQuery, State},
     http::{HeaderMap, Uri},
     response::{Html, IntoResponse},
 };
+use chrono::Duration;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -20,7 +22,7 @@ use crate::{
         DynDB,
         common::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
     },
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{error::HandlerError, extractors::CommunityId, prepare_headers},
     templates::{
         PageId,
         auth::User,
@@ -72,7 +74,10 @@ pub(crate) async fn page(
         }
     }
 
-    Ok(Html(template.render()?))
+    // Prepare response headers
+    let headers = prepare_headers(Duration::minutes(10), &[])?;
+
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that renders the events section of the explore page.
@@ -88,10 +93,9 @@ pub(crate) async fn events_section(
     let template = prepare_events_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
-    let headers = [(
-        "HX-Push-Url",
-        pagination::build_url("/explore?entity=events", &filters)?,
-    )];
+    let url = pagination::build_url("/explore?entity=events", &filters)?;
+    let extra_headers = [("HX-Push-Url", url.as_str())];
+    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -109,10 +113,9 @@ pub(crate) async fn events_results_section(
     let template = prepare_events_result_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
-    let headers = [(
-        "HX-Push-Url",
-        pagination::build_url("/explore?entity=events", &filters)?,
-    )];
+    let url = pagination::build_url("/explore?entity=events", &filters)?;
+    let extra_headers = [("HX-Push-Url", url.as_str())];
+    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -124,6 +127,7 @@ async fn prepare_events_section(
     community_id: Uuid,
     filters: &EventsFilters,
 ) -> Result<explore::EventsSection> {
+    // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         prepare_events_result_section(db, community_id, filters)
@@ -186,10 +190,9 @@ pub(crate) async fn groups_section(
     let template = prepare_groups_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
-    let headers = [(
-        "HX-Push-Url",
-        pagination::build_url("/explore?entity=groups", &filters)?,
-    )];
+    let url = pagination::build_url("/explore?entity=groups", &filters)?;
+    let extra_headers = [("HX-Push-Url", url.as_str())];
+    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -207,10 +210,9 @@ pub(crate) async fn groups_results_section(
     let template = prepare_groups_result_section(&db, community_id, &filters).await?;
 
     // Prepare response headers
-    let headers = [(
-        "HX-Push-Url",
-        pagination::build_url("/explore?entity=groups", &filters)?,
-    )];
+    let url = pagination::build_url("/explore?entity=groups", &filters)?;
+    let extra_headers = [("HX-Push-Url", url.as_str())];
+    let headers = prepare_headers(Duration::minutes(10), &extra_headers)?;
 
     Ok((headers, Html(template.render()?)))
 }
@@ -222,6 +224,7 @@ async fn prepare_groups_section(
     community_id: Uuid,
     filters: &GroupsFilters,
 ) -> Result<explore::GroupsSection> {
+    // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
         db.get_community_filters_options(community_id),
         prepare_groups_result_section(db, community_id, filters)
@@ -290,8 +293,10 @@ pub(crate) async fn search_events(
         event.popover_html = Some(render_event_popover(event)?);
     }
 
-    let json_data = serde_json::to_string(&search_events_output)?;
-    Ok(json_data)
+    // Prepare response headers
+    let headers = prepare_headers(Duration::hours(1), &[])?;
+
+    Ok((headers, Json(search_events_output)).into_response())
 }
 
 /// Handler for the groups search endpoint (JSON format).
@@ -311,6 +316,8 @@ pub(crate) async fn search_groups(
         group.popover_html = Some(render_group_popover(group)?);
     }
 
-    let json_data = serde_json::to_string(&search_groups_output)?;
-    Ok(json_data)
+    // Prepare response headers
+    let headers = prepare_headers(Duration::hours(1), &[])?;
+
+    Ok((headers, Json(search_groups_output)).into_response())
 }

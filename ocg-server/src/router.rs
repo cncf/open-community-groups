@@ -33,12 +33,6 @@ use crate::{
     services::notifications::DynNotificationsManager,
 };
 
-/// Default cache duration for HTTP responses in seconds.
-#[cfg(debug_assertions)]
-pub(crate) const DEFAULT_CACHE_DURATION: usize = 0; // No cache
-#[cfg(not(debug_assertions))]
-pub(crate) const DEFAULT_CACHE_DURATION: usize = 60 * 5; // 5 minutes
-
 /// Static file embedder using rust-embed.
 ///
 /// Embeds all files from the static directory into the binary.
@@ -156,7 +150,7 @@ pub(crate) async fn setup(
         .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
-            HeaderValue::try_from(format!("max-age={DEFAULT_CACHE_DURATION}")).expect("valid header value"),
+            HeaderValue::from_static("max-age=0"),
         ));
 
     Ok(router.with_state(state))
@@ -168,43 +162,6 @@ pub(crate) async fn setup(
 #[instrument(skip_all)]
 async fn health_check() -> impl IntoResponse {
     StatusCode::OK
-}
-
-/// Static file handler for embedded assets.
-///
-/// Serves files embedded in the binary with appropriate MIME types and cache headers.
-#[instrument]
-async fn static_handler(uri: Uri) -> impl IntoResponse {
-    // Extract file path from URI
-    let path = uri.path().trim_start_matches("/static/");
-
-    // Set cache duration based on resource type
-    #[cfg(not(debug_assertions))]
-    let cache_max_age = if path.starts_with("js/") || path.starts_with("css/") {
-        // These assets are hashed
-        60 * 60 * 24 * 365 // 1 year
-    } else if path.starts_with("vendor/") {
-        // Vendor libraries files include versions
-        60 * 60 * 24 * 365 // 1 year
-    } else if path.starts_with("images/") {
-        60 * 60 * 24 * 7 // 1 week
-    } else {
-        // Default cache duration for other static resources
-        60 * 60 // 1 hour
-    };
-    #[cfg(debug_assertions)]
-    let cache_max_age = 0;
-
-    // Get file content and return it (if available)
-    match StaticFile::get(path) {
-        Some(file) => {
-            let mime = mime_guess::from_path(path).first_or_octet_stream();
-            let cache = format!("max-age={cache_max_age}");
-            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
-            (headers, file.data).into_response()
-        }
-        None => StatusCode::NOT_FOUND.into_response(),
-    }
 }
 
 /// Sets up the community dashboard router and its routes.
@@ -334,4 +291,41 @@ fn setup_user_dashboard_router() -> Router<State> {
             "/invitations/group/{group_id}/reject",
             put(dashboard::user::invitations::reject_group_team_invitation),
         )
+}
+
+/// Static file handler for embedded assets.
+///
+/// Serves files embedded in the binary with appropriate MIME types and cache headers.
+#[instrument]
+async fn static_handler(uri: Uri) -> impl IntoResponse {
+    // Extract file path from URI
+    let path = uri.path().trim_start_matches("/static/");
+
+    // Set cache duration based on resource type
+    #[cfg(not(debug_assertions))]
+    let cache_max_age = if path.starts_with("js/") || path.starts_with("css/") {
+        // These assets are hashed
+        60 * 60 * 24 * 365 // 1 year
+    } else if path.starts_with("vendor/") {
+        // Vendor libraries files include versions
+        60 * 60 * 24 * 365 // 1 year
+    } else if path.starts_with("images/") {
+        60 * 60 * 24 * 7 // 1 week
+    } else {
+        // Default cache duration for other static resources
+        60 * 60 // 1 hour
+    };
+    #[cfg(debug_assertions)]
+    let cache_max_age = 0;
+
+    // Get file content and return it (if available)
+    match StaticFile::get(path) {
+        Some(file) => {
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
+            let cache = format!("max-age={cache_max_age}");
+            let headers = [(CONTENT_TYPE, mime.as_ref()), (CACHE_CONTROL, &cache)];
+            (headers, file.data).into_response()
+        }
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }

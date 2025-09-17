@@ -7,6 +7,7 @@ use axum::{
     http::{StatusCode, Uri},
     response::{Html, IntoResponse},
 };
+use chrono::Duration;
 use serde_json::json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -14,6 +15,7 @@ use uuid::Uuid;
 use crate::{
     auth::AuthSession,
     db::DynDB,
+    handlers::prepare_headers,
     templates::{PageId, auth::User, event::Page},
 };
 
@@ -42,7 +44,10 @@ pub(crate) async fn page(
         user: User::default(),
     };
 
-    Ok(Html(template.render()?))
+    // Prepare response headers
+    let headers = prepare_headers(Duration::hours(1), &[])?;
+
+    Ok((headers, Html(template.render()?)))
 }
 
 // Actions handlers.
