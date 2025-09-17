@@ -443,7 +443,7 @@ input:placeholder-shown {
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-  color: var(--color-stone-600);
+  color: var(--color-stone-500);
   font-size: 1.075rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
