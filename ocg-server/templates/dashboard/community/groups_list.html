@@ -4,55 +4,80 @@
 {# Groups list header with title -#}
 {% call macros::form_title(title = "Groups") -%}
 
-<div class="flex justify-between my-10">
-  <div class="flex items-center gap-x-6">
-    {# Search groups input (display only) -#}
-    <div class="relative">
-      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+<form id="groups-search-form"
+      hx-get="/dashboard/community/groups"
+      hx-trigger="change, submit"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner">
+
+  <div class="flex justify-between my-10">
+    <div class="flex items-center gap-x-6">
+      {# Search groups input -#}
+      <div class="relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+        </div>
+        <input id="search_groups"
+               name="ts_query"
+               type="text"
+               value=""
+               class="input-primary peer ps-9 w-96"
+               placeholder="Search groups"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false">
+        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+          <button id="clean-search-groups"
+                  type="button"
+                  class="cursor-pointer mt-[2px]">
+            <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+          </button>
+        </div>
       </div>
-      <input id="search_groups"
-             name="search_groups"
-             type="text"
-             value=""
-             class="input-primary peer ps-9 w-96"
-             placeholder="Search groups"
-             autocomplete="off"
-             autocorrect="off"
-             autocapitalize="off"
-             spellcheck="false"
-             disabled>
-      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-        <button id="clean-search-groups"
-                type="button"
-                class="cursor-pointer mt-[2px]"
-                disabled>
-          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-        </button>
-      </div>
+      {# End search groups input -#}
     </div>
-    {# End search groups input -#}
-  </div>
 
-  {# Add group button -#}
-  <div>
-    <button id="add-group-button"
-            hx-get="/dashboard/community/groups/add"
-            hx-target="#dashboard-content"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary">Add Group</button>
-  </div>
-  {# End add group button -#}
+    {# Add group button -#}
+    <div>
+      <button id="add-group-button"
+              hx-get="/dashboard/community/groups/add"
+              hx-target="#dashboard-content"
+              hx-indicator="#dashboard-spinner"
+              class="btn-primary">Add Group</button>
+    </div>
+    {# End add group button -#}
 
-  <script type="module">
-    const addGroupButton = document.getElementById('add-group-button');
-    if (addGroupButton) {
-      addGroupButton.addEventListener('htmx:afterRequest', () => {
-        history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
-      });
-    }
-  </script>
-</div>
+    <script type="module">
+      import {
+        cleanInputField,
+        searchOnEnter,
+        triggerChangeOnForm
+      } from '/static/js/community/explore/filters.js';
+
+      const searchInput = document.getElementById('search_groups');
+      if (searchInput) {
+        searchInput.addEventListener('keydown', (event) => {
+          searchOnEnter(event, 'groups-search-form');
+        });
+      }
+
+      const cleanSearchBtn = document.getElementById('clean-search-groups');
+      if (cleanSearchBtn) {
+        cleanSearchBtn.addEventListener('click', () => {
+          cleanInputField('search_groups', 'groups-search-form');
+        });
+      }
+
+      const addGroupButton = document.getElementById('add-group-button');
+      if (addGroupButton) {
+        addGroupButton.addEventListener('htmx:afterRequest', () => {
+          history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
+        });
+      }
+    </script>
+  </div>
+</form>
 
 {# Groups Table -#}
 <div class="relative overflow-visible">
@@ -61,9 +86,9 @@
       {# Header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Category</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Location</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Created</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Category</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
       </tr>
     </thead>
@@ -84,16 +109,15 @@
             <th scope="row"
                 class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
               <div class="flex items-center">
-                {# Group logo -#}
-                <div class="mr-3">
-                  {% call common::logo(logo_url = group.logo_url, classes = "h-10 w-10 min-w-10", size = 40, color = group.color) -%}
-                </div>
-                {# End group logo -#}
-
                 <div class="min-w-0">
                   {# Group name with inactive badge if needed -#}
                   <div class="max-w-full truncate flex items-center gap-x-2">
-                    <span class="truncate">{{ group.name }}</span>
+                    <div hx-put="/dashboard/group/{{ group.group_id }}/select"
+                         hx-trigger="click"
+                         hx-target="#dashboard-content"
+                         hx-indicator="#dashboard-spinner"
+                         role="button"
+                         class="truncate cursor-pointer">{{ group.name }}</div>
                     {% if !group.active -%}
                       <span class="inline-block px-2 py-0.5 bg-amber-600 text-white text-[10px] leading-4 rounded-full uppercase whitespace-nowrap">Inactive</span>
                     {% endif -%}
@@ -112,12 +136,6 @@
               </div>
             </th>
 
-            {# Category -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-              <div class="max-w-full truncate">{{ group.category.name }}</div>
-            </td>
-            {# End category -#}
-
             {# Location -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
               {% if let Some(location) = group.location(50) -%}
@@ -133,6 +151,12 @@
               {{ group.created_at.format("%B %e, %Y") }}
             </td>
             {# End created date -#}
+
+            {# Category -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+              <div class="max-w-full truncate">{{ group.category.name }}</div>
+            </td>
+            {# End category -#}
 
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-32 xl:w-40 w-27">

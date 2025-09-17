@@ -5,6 +5,7 @@
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
+  <script type="module" src="/static/js/common/banner-image.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -91,14 +92,7 @@
         {# Group banner -#}
         {% if let Some(banner_url) = group.banner_url -%}
           <div class="w-full mb-8">
-            <div class="relative w-full aspect-[4/1] overflow-hidden max-h-64 lg:max-h-80">
-              <img src="{{ banner_url }}"
-                   alt="Group banner"
-                   class="absolute inset-0 w-auto h-full object-cover p-[5px] bg-white border border-stone-200 rounded-lg"
-                   height="auto"
-                   width="auto"
-                   loading="lazy" />
-            </div>
+            <banner-image image-url="{{ banner_url }}" alt="Group banner"></banner-image>
           </div>
         {% endif -%}
         {# End group banner -#}
@@ -106,7 +100,7 @@
         {# Location and event section -#}
         {% if let Some(lat) = group.latitude %}
           {% if let Some(lng) = group.longitude %}
-            <div class="border border-stone-200 rounded-lg mb-6 overflow-hidden">
+            <div class="border border-stone-200 rounded-lg mb-8 overflow-hidden">
               <div class="grid md:grid-cols-2">
 
                 <div class="grid grid-cols-2">
@@ -313,7 +307,9 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Upcoming Events</div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {% for event in upcoming_events -%}
-                {{ event|safe }}
+                {% if loop.index <= 6 -%}
+                  {{ event|safe }}
+                {% endif -%}
               {% endfor -%}
             </div>
           </div>
@@ -326,7 +322,9 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
-                {{ event|safe }}
+                {% if loop.index <= 6 -%}
+                  {{ event|safe }}
+                {% endif -%}
               {% endfor -%}
             </div>
           </div>

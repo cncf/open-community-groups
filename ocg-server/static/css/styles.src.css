@@ -443,7 +443,7 @@ input:placeholder-shown {
 .markdown h4,
 .markdown h5,
 .markdown h6 {
-  color: var(--color-stone-800);
+  color: var(--color-stone-600);
   font-size: 1.075rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
@@ -483,7 +483,16 @@ input:placeholder-shown {
 }
 
 .markdown a {
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.markdown a:hover {
   text-decoration: underline;
+}
+
+.markdown img {
+  display: none;
 }
 
 .markdown hr {

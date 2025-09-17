@@ -6,6 +6,35 @@
           content="{{ community.display_name }} community groups">
     <meta name="keywords" content="community, groups, events">
 
+    {#- OG tags #}
+    <meta property="og:type" content="website">
+    <meta property="og:title"
+          content="{{ community.display_name }} community groups">
+    <meta property="og:url" content="https://demo-cncf.ocgroups.dev/">
+    <meta property="og:description"
+          content="{{ community.display_name }} community groups">
+    {% if let Some(og_image_url) = community.og_image_url -%}
+      <meta property="og:image" content="{{ og_image_url }}">
+    {% endif -%}
+    {#- End OG tags  #}
+
+    {#- Twitter tags #}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta property="twitter:domain" content="demo-cncf.ocgroups.dev">
+    <meta property="twitter:url" content="https://demo-cncf.ocgroups.dev">
+    <meta name="twitter:title"
+          content="{{ community.display_name }} community groups">
+    <meta name="twitter:description"
+          content="{{ community.display_name }} community groups">
+    {% if let Some(og_image_url) = community.og_image_url -%}
+      <meta name="twitter:image" content="{{ og_image_url }}">
+    {% endif -%}
+    {#- End Twitter tags #}
+
+    {% if let Some(favicon_url) = community.favicon_url -%}
+      <link rel="icon" href="{{ favicon_url }}" sizes="any">
+
+    {% endif -%}
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
