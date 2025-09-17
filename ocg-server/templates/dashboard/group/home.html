@@ -9,6 +9,7 @@
   <script type="module" src="/static/js/dashboard/event/sessions.js"></script>
   <script type="module" src="/static/js/dashboard/event/sponsors.js"></script>
   <script type="module" src="/static/js/dashboard/community/team-add-member.js"></script>
+  <script type="module" src="/static/js/dashboard/group/group-selector.js"></script>
 {% endblock scripts -%}
 
 {% block menu -%}
@@ -21,53 +22,16 @@
     {# Groups -#}
     <div>
       {% call dashboard_macros::menu_title(text = "Group", extra_styles = "py-1.5") -%}
-      <div class="mt-2 relative">
-        {% for group in groups -%}
-          {% if group.group_id == selected_group_id -%}
-            {% let selected_group = group -%}
-            {# Group button to open dropdown -#}
-            <button id="group-btn"
-                    class="cursor-pointer select select-primary"
-                    aria-label="Select group">
-              <div class="flex items-center relative">
-                {% call group_content_list(name = selected_group.name, logo_url = selected_group.logo_url, color = selected_group.color) -%}
-              </div>
-              <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-                <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
-              </div>
-            </button>
-            {% if !selected_group.active -%}
-              <div class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">
-                This group has been deactivated. Please contact to a community admin.
-              </div>
-            {% endif -%}
-            {# End group button to open dropdown -#}
-          {% endif -%}
-        {% endfor -%}
-
-        {# Dropdown groups -#}
-        <div id="dropdown-groups"
-             class="hidden absolute top-10 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200">
-          <ul class="max-h-48 overflow-y-auto text-stone-700">
-            {% for group in groups -%}
-              {% let is_selected = selected_group_id == group.group_id -%}
-              <li>
-                <button hx-put="/dashboard/group/{{ group.group_id }}/select"
-                        hx-trigger="click"
-                        hx-target="#dashboard-content"
-                        hx-indicator="#dashboard-spinner"
-                        hx-disabled-elt=".group-button"
-                        class="group-button cursor-pointer w-full flex items-center px-4 py-2 text-sm/6 hover:bg-stone-100
-                               {% if is_selected -%}bg-stone-100{%- endif %}"
-                        {% if is_selected %}disabled{% endif %}>
-                  {% call group_content_list(name = group.name, logo_url = group.logo_url, color = group.color) -%}
-                </button>
-              </li>
-            {% endfor -%}
-          </ul>
-        </div>
-        {# End dropdown groups -#}
+      <div class="mt-2">
+        <group-selector groups="{{ groups|json }}" selected-group-id="{{ selected_group_id }}" search-delay="250"></group-selector>
       </div>
+      {% for group in groups -%}
+        {% if group.group_id == selected_group_id && !group.active -%}
+          <div class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">
+            This group has been deactivated. Please contact to a community admin.
+          </div>
+        {% endif -%}
+      {% endfor -%}
       {% if !groups.is_empty() -%}
         <div class="mt-3 grid gap-y-0.5">
           {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/group?tab=settings") -%}
@@ -106,45 +70,9 @@
     {# End Content -#}
   </div>
 
-  <script type="module">
-    const groupBtn = document.getElementById('group-btn');
-    const dropdownGroups = document.getElementById('dropdown-groups');
-    if (groupBtn) {
-      groupBtn.addEventListener('click', () => {
-        const isOpen = dropdownGroups.classList.contains('hidden');
-        dropdownGroups.classList.toggle('hidden');
-
-        // Close dropdown groups when clicking outside
-        if (isOpen) {
-          document.addEventListener('click', (event) => {
-            if (!dropdownGroups.contains(event.target) && !groupBtn.contains(event.target)) {
-              dropdownGroups.classList.add('hidden');
-            }
-          });
-        } else {
-          // Remove event listener when dropdown is closed
-          document.removeEventListener('click', () => {});
-        }
-      });
-    }
-
-    const dropdownGroupBtns = document.querySelectorAll('button.group-button');
-    dropdownGroupBtns.forEach((btn) => {
-      btn.addEventListener("htmx:beforeRequest", () => {
-        dropdownGroups.classList.add('hidden');
-      });
-    })
-  </script>
   {# Messages -#}
   {% if !messages.is_empty() -%}
     {% call common::alerts(messages) -%}
   {% endif -%}
   {# End messages -#}
 {% endblock dashboard_main -%}
-
-{% macro group_content_list(name, logo_url, color) -%}
-  <div class="me-3">
-    {% call common::logo(logo_url = logo_url, classes = "size-6", size = 24, color = color, border = false) -%}
-  </div>
-  <div class="truncate">{{ name }}</div>
-{% endmacro group_content_list -%}
