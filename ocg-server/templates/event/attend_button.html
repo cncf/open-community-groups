@@ -4,7 +4,7 @@
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
           disabled
-          class="group is-loading btn-primary-outline w-40 h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
+          class="group is-loading btn-primary-outline w-52 h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "common.html" as common -%}
     {% call common::small_spinner(size = "size-4") -%}
     <span class="ms-2">Checking...</span>
@@ -14,7 +14,7 @@
   <a id="signin-btn"
      href="/log-in?next_url={{ path|urlencode }}"
      hx-boost="true"
-     class="hidden group btn-primary-outline-anchor w-40 h-[30px] flex items-center justify-center space-x-2">
+     class="hidden group btn-primary-outline-anchor w-52 h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-login group-hover:bg-white transition-colors"></div>
     <span>Sign in</span>
   </a>
@@ -23,7 +23,7 @@
   <button id="attend-btn"
           hx-post="/event/{{ event.event_id }}/attend"
           hx-swap="none"
-          class="hidden group btn-primary-outline w-40 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline w-52 h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
     <span>Attend event</span>
   </button>
@@ -33,7 +33,7 @@
           hx-delete="/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline w-40 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline w-52 h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-logout group-hover:bg-white transition-colors"></div>
     <span>Cancel attendance</span>
   </button>
