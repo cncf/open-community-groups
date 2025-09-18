@@ -351,7 +351,7 @@ export class SponsorsSection extends LitWrapper {
                 ? html`<ul class="py-1 text-stone-700 overflow-auto max-h-80">
                     ${this.visibleOptions.map((opt, idx) => this._renderOption(opt, idx))}
                   </ul>`
-                : html`<div class="px-8 py-4 text-sm/6 text-stone-600 italic">No sponsors found</div>`}
+                : html`<div class="px-8 py-4 text-sm/6 text-stone-600 font-semibold">No sponsors found</div>`}
             </div>
           </div>
         </div>

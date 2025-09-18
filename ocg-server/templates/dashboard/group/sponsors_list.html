@@ -38,8 +38,12 @@
       {% if sponsors.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
           <td class="px-8 py-12 text-center" colspan="3">
-            <div class="text-xl lg:text-2xl mb-6">No sponsors yet.</div>
-            <p class="text-sm lg:text-md text-stone-700">Sponsors for this group will appear here once added.</p>
+            <div class="flex flex-col items-center justify-center min-h-[125px]">
+              <div class="text-xl lg:text-2xl mb-6">This group does not have any sponsors yet.</div>
+              <p class="text-sm lg:text-md text-stone-700">
+                You can add sponsors by clicking on the <span class="font-semibold">Add Sponsor</span> button in the top right corner.
+              </p>
+            </div>
           </td>
         </tr>
       {% else -%}

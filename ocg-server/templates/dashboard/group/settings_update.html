@@ -10,7 +10,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "Group Details", description = "Please update as many details about this group as possible.") -%}
+      {% call macros::form_title(title = "Group Details", description = "Information about the group.") -%}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Group name -#}
@@ -55,7 +55,7 @@
               {% endfor %}
             </select>
           </div>
-          <p class="form-legend">Type of group or event series.</p>
+          <p class="form-legend">Group's category.</p>
         </div>
         {# End Group category -#}
 
@@ -238,7 +238,7 @@
 
         {# Twitter URL -#}
         <div class="col-span-full lg:col-span-3">
-          <label for="twitter_url" class="form-label">Twitter</label>
+          <label for="twitter_url" class="form-label">X</label>
           <div class="mt-2 relative">
             <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
               <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
@@ -247,7 +247,7 @@
                    name="twitter_url"
                    id="twitter_url"
                    class="input-primary ps-10"
-                   placeholder="https://twitter.com/username"
+                   placeholder="https://x.com/username"
                    {% if let Some(twitter_url) = group.twitter_url %}value="{{ twitter_url }}"{% endif %}>
           </div>
         </div>

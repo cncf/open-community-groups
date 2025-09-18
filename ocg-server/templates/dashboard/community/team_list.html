@@ -3,7 +3,7 @@
 
 {# Header with title and add button -#}
 <div class="flex justify-between items-center">
-  <div>{% call macros::form_title(title = "Team") -%}</div>
+  <div>{% call macros::form_title(title = "Community Team") -%}</div>
   <div>
     <team-add-member selected-users='{{ members|json }}'></team-add-member>
   </div>
@@ -16,18 +16,21 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
-        <th scope="col" class="p-4 w-12 w-27"></th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="p-4 w-12"></th>
       </tr>
     </thead>
     <tbody id="team-list">
       {% if members.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="2">
-            <div class="text-xl lg:text-2xl mb-6">It looks like there are no team members yet.</div>
-            <p class="text-sm lg:text-md text-stone-700">
-              Use the <span class="italic">Add Member</span> button above to
-              invite someone to the community team.
-            </p>
+          <td class="px-8 py-12 text-center" colspan="3">
+            <div class="flex flex-col items-center justify-center min-h-[125px]">
+              <div class="text-xl lg:text-2xl mb-6">It looks like there are no team members yet.</div>
+              <p class="text-sm lg:text-md text-stone-700">
+                Use the <span class="font-semibold">Add Member</span> button above to
+                invite someone to the community team.
+              </p>
+            </div>
           </td>
         </tr>
       {% else -%}
@@ -59,8 +62,19 @@
             </td>
             {# End member -#}
 
+            {# Position -#}
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex flex-col space-y-1">
+                <div class="font-medium text-stone-900 truncate">{{ member.company|display_some_or("-") }}</div>
+                {% if let Some(title) = member.title -%}
+                  <div class="text-xs text-stone-600 truncate">{{ title }}</div>
+                {% endif -%}
+              </div>
+            </td>
+            {# End Position -#}
+
             {# Actions -#}
-            <td class="w-27">
+            <td class="w-12">
               <div>
                 {% let disabledButton = approved_members_count == 1 && member.accepted -%}
                 <button id="remove-member-{{ member.user_id }}"
