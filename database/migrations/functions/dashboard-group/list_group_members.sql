@@ -14,6 +14,6 @@ returns json as $$
         from group_member gm
         join "user" u using (user_id)
         where gm.group_id = p_group_id
-        order by coalesce(lower(u.name), lower(u.username)) asc
+        order by (u.name is not null) desc, lower(u.name) asc, lower(u.username) asc
     ) member;
 $$ language sql;
