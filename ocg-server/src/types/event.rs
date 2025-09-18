@@ -13,10 +13,15 @@ use uuid::Uuid;
 use crate::{
     templates::{
         common::User,
-        helpers::{LocationParts, build_location, color},
+        helpers::{
+            color,
+            location::{LocationParts, build_location},
+        },
     },
     types::group::GroupSummary,
 };
+
+// Event types: summary, detailed, and full.
 
 /// Summary event information.
 #[skip_serializing_none]
@@ -318,6 +323,8 @@ impl EventFull {
     }
 }
 
+// Other related types.
+
 /// Event category information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventCategory {
@@ -327,23 +334,6 @@ pub struct EventCategory {
     pub name: String,
     /// URL-friendly identifier.
     pub slug: String,
-}
-
-/// Event sponsor information.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventSponsor {
-    /// Group sponsor identifier.
-    pub group_sponsor_id: Uuid,
-    /// Sponsor level for this event.
-    pub level: String,
-    /// URL to sponsor logo.
-    pub logo_url: String,
-    /// Sponsor name.
-    pub name: String,
-
-    /// Sponsor website URL.
-    pub website_url: Option<String>,
 }
 
 /// Categorization of event attendance modes.
@@ -367,6 +357,23 @@ pub struct EventKindSummary {
     pub event_kind_id: String,
     /// Display name.
     pub display_name: String,
+}
+
+/// Event sponsor information.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventSponsor {
+    /// Group sponsor identifier.
+    pub group_sponsor_id: Uuid,
+    /// Sponsor level for this event.
+    pub level: String,
+    /// URL to sponsor logo.
+    pub logo_url: String,
+    /// Sponsor name.
+    pub name: String,
+
+    /// Sponsor website URL.
+    pub website_url: Option<String>,
 }
 
 /// Legacy user information.

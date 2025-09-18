@@ -8,9 +8,11 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
+// Community types.
+
 /// Community information used in some community pages.
 #[allow(clippy::struct_field_names)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Community {
     /// Whether the community is active.
     pub active: bool,
@@ -85,11 +87,13 @@ impl Community {
     }
 }
 
+// Other related types.
+
 /// Theme information used to customize the selected layout.
 ///
 /// Defines the primary color and derived color palette used throughout the community's
 /// pages for consistent branding.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Theme {
     #[serde(default)]
     pub palette: Palette,
@@ -100,6 +104,8 @@ pub struct Theme {
 ///
 /// Lower numbers represent lighter shades, higher numbers darker shades.
 pub type Palette = BTreeMap<u32, String>;
+
+// Helpers.
 
 /// Generates a complete color palette from a single primary color.
 ///
@@ -124,6 +130,8 @@ fn generate_palette(color: &str) -> Result<Palette> {
     Ok(palette)
 }
 
+// Tests.
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +147,12 @@ mod tests {
         assert_eq!(palette[&500], "#D62293");
         assert_eq!(palette[&700], "#AB1B76");
         assert_eq!(palette[&900], "#6B114A");
+    }
+
+    #[test]
+    fn test_generate_palette_returns_error_for_invalid_color() {
+        let invalid_color = "#GGGGGG";
+
+        assert!(generate_palette(invalid_color).is_err());
     }
 }

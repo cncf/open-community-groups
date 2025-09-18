@@ -58,17 +58,17 @@ pub(crate) struct GroupCard {
 }
 
 /// Community statistics for the home page.
-#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
 #[template(path = "community/home/stats.html")]
 pub(crate) struct Stats {
     /// Total number of groups in the community.
-    groups: i64,
+    pub groups: i64,
     /// Total number of members across all groups.
-    groups_members: i64,
+    pub groups_members: i64,
     /// Total number of events hosted by all groups.
-    events: i64,
+    pub events: i64,
     /// Total number of attendees across all events.
-    events_attendees: i64,
+    pub events_attendees: i64,
 }
 
 impl Stats {

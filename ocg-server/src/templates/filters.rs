@@ -92,8 +92,12 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> as
     Ok(n.to_formatted_string(&Locale::en))
 }
 
+// Tests.
+
 #[cfg(test)]
 mod tests {
+    use chrono::TimeZone;
+
     use super::*;
 
     #[test]
@@ -118,6 +122,52 @@ mod tests {
 
         // Complex emojis (multi-codepoint)
         assert_eq!(demoji("👨‍👩‍👧‍👦Family", &()).unwrap(), "Family");
+    }
+
+    #[test]
+    fn test_display_some() {
+        assert_eq!(display_some(&Some(42), &()).unwrap(), "42");
+        assert_eq!(display_some(&None::<i32>, &()).unwrap(), "");
+    }
+
+    #[test]
+    fn test_display_some_datetime() {
+        let datetime = Utc.with_ymd_and_hms(2024, 5, 10, 12, 30, 45).unwrap();
+        let format = "%Y-%m-%d %H:%M";
+
+        let formatted = display_some_datetime(&Some(datetime), &(), format).unwrap();
+        assert_eq!(formatted, "2024-05-10 12:30");
+
+        let empty = display_some_datetime(&None, &(), "%Y").unwrap();
+        assert_eq!(empty, "");
+    }
+
+    #[test]
+    fn test_display_some_datetime_tz() {
+        let datetime = Utc.with_ymd_and_hms(2024, 1, 5, 18, 15, 0).unwrap();
+        let format = "%Y-%m-%d %H:%M";
+        let timezone = chrono_tz::America::New_York;
+
+        let formatted = display_some_datetime_tz(&Some(datetime), &(), format, timezone).unwrap();
+        assert_eq!(formatted, "2024-01-05 13:15");
+
+        let empty = display_some_datetime_tz(&None, &(), "%Y-%m-%d", timezone).unwrap();
+        assert_eq!(empty, "");
+    }
+
+    #[test]
+    fn test_display_some_or() {
+        let value = display_some_or(&Some("value"), &(), "alternative").unwrap();
+        assert_eq!(value, "value");
+
+        let alternative = display_some_or(&None::<&str>, &(), "alternative").unwrap();
+        assert_eq!(alternative, "alternative");
+    }
+
+    #[test]
+    fn test_md_to_html() {
+        assert_eq!(md_to_html("# Title", &()).unwrap(), "<h1>Title</h1>");
+        assert_eq!(md_to_html("Plain text", &()).unwrap(), "<p>Plain text</p>");
     }
 
     #[test]

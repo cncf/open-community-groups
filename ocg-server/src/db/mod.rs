@@ -35,6 +35,10 @@ pub(crate) mod event;
 /// Module containing database functionality for the group site.
 pub(crate) mod group;
 
+/// Module containing mock database implementation for testing.
+#[cfg(test)]
+pub(crate) mod mock;
+
 /// Module containing database functionality for managing notifications.
 pub(crate) mod notifications;
 
