@@ -156,14 +156,6 @@ pub(crate) async fn setup(
     Ok(router.with_state(state))
 }
 
-/// Health check endpoint handler.
-///
-/// Returns 200 OK for monitoring and load balancer health checks.
-#[instrument(skip_all)]
-async fn health_check() -> impl IntoResponse {
-    StatusCode::OK
-}
-
 /// Sets up the community dashboard router and its routes.
 fn setup_community_dashboard_router(state: State) -> Router<State> {
     // Setup authorization middleware
@@ -293,6 +285,14 @@ fn setup_user_dashboard_router() -> Router<State> {
         )
 }
 
+/// Health check endpoint handler.
+///
+/// Returns 200 OK for monitoring and load balancer health checks.
+#[instrument(skip_all)]
+async fn health_check() -> impl IntoResponse {
+    StatusCode::OK
+}
+
 /// Static file handler for embedded assets.
 ///
 /// Serves files embedded in the binary with appropriate MIME types and cache headers.
@@ -327,5 +327,53 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
             (headers, file.data).into_response()
         }
         None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::{
+        body::to_bytes,
+        http::{HeaderValue, StatusCode, Uri},
+    };
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_health_check_returns_ok() {
+        let response = health_check().await.into_response();
+        let (parts, body) = response.into_parts();
+
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_static_handler_serves_existing_asset() {
+        let uri = Uri::from_static("/static/images/icons/arrow_left.svg");
+        let response = static_handler(uri).await.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("image/svg+xml")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static("max-age=0")
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_static_handler_missing_asset_returns_not_found() {
+        let uri = Uri::from_static("/static/does/not/exist.txt");
+        let response = static_handler(uri).await.into_response();
+        let (parts, body) = response.into_parts();
+
+        assert_eq!(parts.status, StatusCode::NOT_FOUND);
+        assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
     }
 }

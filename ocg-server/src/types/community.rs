@@ -146,4 +146,11 @@ mod tests {
         assert_eq!(palette[&700], "#AB1B76");
         assert_eq!(palette[&900], "#6B114A");
     }
+
+    #[test]
+    fn test_generate_palette_returns_error_for_invalid_color() {
+        let invalid_color = "#GGGGGG";
+
+        assert!(generate_palette(invalid_color).is_err());
+    }
 }
