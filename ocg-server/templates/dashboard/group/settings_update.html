@@ -10,7 +10,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "Group Details", description = "Please update as many details about this group as possible.") -%}
+      {% call macros::form_title(title = "Group Details", description = "Information about the group.") -%}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Group name -#}
@@ -55,7 +55,7 @@
               {% endfor %}
             </select>
           </div>
-          <p class="form-legend">Type of group or event series.</p>
+          <p class="form-legend">Group's category.</p>
         </div>
         {# End Group category -#}
 
