@@ -37,7 +37,6 @@ export class BannerImage extends LitWrapper {
    */
   connectedCallback() {
     super.connectedCallback();
-    this.classList.add("block", "h-full", "w-full");
   }
 
   /**
@@ -84,10 +83,23 @@ export class BannerImage extends LitWrapper {
       return html``;
     }
 
+    const spinnerVisibility = !this._hasLoaded ? "opacity-100" : "opacity-0 pointer-events-none";
     const imageVisibility = this._hasLoaded ? "opacity-100" : "opacity-0";
 
     return html`
       <div class="max-w-full h-full relative">
+        <div class="absolute inset-0 flex items-center ${spinnerVisibility} transition-opacity duration-300">
+          <div role="status" class="flex size-8">
+            <img
+              src="/static/images/spinner/spinner_1.svg"
+              height="auto"
+              width="auto"
+              alt="Loading spinner"
+              class="size-auto animate-spin"
+            />
+            <span class="sr-only">Loading...</span>
+          </div>
+        </div>
         <img
           src="${this.imageUrl}"
           alt="${this.alt}"
