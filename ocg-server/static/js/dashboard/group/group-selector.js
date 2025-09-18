@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.2.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -99,7 +99,17 @@ export class GroupSelector extends LitWrapper {
       window.htmx &&
       typeof window.htmx.process === "function"
     ) {
-      window.htmx.process(this);
+      this.updateComplete.then(() => {
+        const buttons = this.querySelectorAll(".group-button");
+        if (buttons.length === 0) {
+          window.htmx.process(this);
+          return;
+        }
+        buttons.forEach((button) => {
+          button.removeAttribute("hx-processed");
+          window.htmx.process(button);
+        });
+      });
     }
   }
 
@@ -484,7 +494,11 @@ export class GroupSelector extends LitWrapper {
         role="listbox"
         aria-activedescendant="${this._activeDescendantId()}"
       >
-        ${this._filteredGroups.map((group, index) => this._renderGroupItem(group, index))}
+        ${repeat(
+          this._filteredGroups,
+          (group) => group.group_id,
+          (group, index) => this._renderGroupItem(group, index),
+        )}
       </ul>
     `;
   }

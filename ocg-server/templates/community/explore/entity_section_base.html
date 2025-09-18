@@ -194,10 +194,16 @@
                 {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
                   <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
                 {% endif -%}
+                {% if entity == Entity::Groups -%}
+                  <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
+                {% endif -%}
               {% else -%}
                 <option value="date" selected>Date</option>
                 {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
                   <option value="distance">Distance</option>
+                {% endif -%}
+                {% if entity == Entity::Groups -%}
+                  <option value="name">Name</option>
                 {% endif -%}
               {% endif -%}
             </select>

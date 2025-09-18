@@ -261,22 +261,22 @@
     <a href="{{ website_url }}"
        target="_blank"
        rel="noopener noreferrer"
-       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors px-4 py-3 min-w-[200px] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-      <div class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
+       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+      <div class="relative flex items-center justify-center size-12 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
         <img src="{{ logo_url }}"
              alt="{{ name }} logo"
-             class="h-6 w-6 object-contain"
+             class="size-10 object-contain"
              width="auto"
              height="auto"
              loading="lazy" />
         <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
-          <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+          <div class="svg-icon size-6 bg-amber-500 icon-handshake"></div>
         </div>
       </div>
-      <div class="leading-tight">
-        <div class="text-sm md:text-base font-semibold text-stone-900">{{ name }}</div>
+      <div class="leading-tight min-w-0">
+        <div class="text-sm md:text-base font-semibold text-stone-900 truncate">{{ name }}</div>
         {% if with_level -%}
-          <div class="text-xs uppercase tracking-wide text-stone-600">{{ level }}</div>
+          <div class="text-xs uppercase tracking-wide text-stone-600 truncate">{{ level }}</div>
         {% endif -%}
       </div>
     </a>
@@ -293,7 +293,7 @@
           <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
         </div>
       </div>
-      <div class="leading-tight">
+      <div class="leading-tight min-w-0">
         <div class="text-sm md:text-base font-semibold text-stone-900">{{ name }}</div>
         {% if with_level -%}
           <div class="text-xs uppercase tracking-wide text-stone-600">{{ level }}</div>
@@ -303,3 +303,109 @@
   {% endif -%}
 {% endmacro sponsor_badge -%}
 {# End sponsor badge -#}
+
+{# djlint:off #}
+{# Map with modal -#}
+{% macro map_with_modal(base_id, lat, lng, overlay_text = "", modal_title = "") -%}
+  <div id="{{ base_id }}-map"
+        class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+        role="button"
+        tabindex="0"
+        aria-label="Open full map view"></div>
+  {% if let Some(text) = overlay_text -%}
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000">
+      {{ text }}
+    </div>
+  {% endif -%}
+
+  <div id="{{ base_id }}-map-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       aria-modal="true"
+       role="dialog"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1200] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+    <div id="backdrop-{{ base_id }}-map-modal"
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
+    <div class="relative p-4 w-full max-w-4xl max-h-full">
+      <div class="relative bg-white rounded-lg shadow">
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          <h3 id="{{ base_id }}-map-modal-title"
+              class="text-xl font-semibold text-stone-900">{{ modal_title }} location</h3>
+          <button id="close-{{ base_id }}-map-modal"
+                  type="button"
+                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+            <span class="sr-only">Close modal</span>
+          </button>
+        </div>
+        <div class="p-4 md:p-6">
+          <div class="relative">
+            <div id="{{ base_id }}-map-modal-map"
+                 class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
+            </div>
+            {% if let Some(text) = overlay_text -%}
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000">
+                {{ text }}
+              </div>
+            {% endif -%}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      loadMap,
+      toggleModalVisibility
+    } from "/static/js/common/common.js";
+
+    const mapContainer = document.getElementById('{{ base_id }}-map');
+    const modalId = '{{ base_id }}-map-modal';
+    const modalMapId = '{{ base_id }}-map-modal-map';
+    const closeButtonId = 'close-{{ base_id }}-map-modal';
+    const backdropId = 'backdrop-{{ base_id }}-map-modal';
+    let modalMapLoaded = false;
+
+    const ensureModalMap = () => {
+      if (modalMapLoaded) {
+        return;
+      }
+      modalMapLoaded = true;
+      requestAnimationFrame(() => {
+        loadMap(modalMapId, {{ lat }}, {{ lng }});
+      });
+    };
+
+    const openModal = () => {
+      toggleModalVisibility(modalId);
+      ensureModalMap();
+    };
+
+    loadMap('{{ base_id }}-map', {{ lat }}, {{ lng }}, {
+      interactive: false
+    });
+
+    if (mapContainer) {
+      mapContainer.addEventListener('click', openModal);
+      mapContainer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openModal();
+        }
+      });
+    }
+
+    const closeButton = document.getElementById(closeButtonId);
+    if (closeButton) {
+      closeButton.addEventListener('click', () => toggleModalVisibility(modalId));
+    }
+
+    const backdrop = document.getElementById(backdropId);
+    if (backdrop) {
+      backdrop.addEventListener('click', () => toggleModalVisibility(modalId));
+    }
+</script>
+{% endmacro map_with_modal -%}
+{# End map with modal -#}
+{# djlint:on #}
