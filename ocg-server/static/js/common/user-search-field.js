@@ -60,12 +60,24 @@ export class UserSearchField extends LitWrapper {
     this._searchResults = [];
     this._searchQuery = "";
     this._searchTimeoutId = 0;
+    this._outsidePointerHandler = null;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    if (!this._outsidePointerHandler) {
+      this._outsidePointerHandler = (event) => this._handleOutsidePointer(event);
+    }
+    document.addEventListener("pointerdown", this._outsidePointerHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this._searchTimeoutId) {
       clearTimeout(this._searchTimeoutId);
+    }
+    if (this._outsidePointerHandler) {
+      document.removeEventListener("pointerdown", this._outsidePointerHandler);
     }
   }
 
@@ -155,6 +167,15 @@ export class UserSearchField extends LitWrapper {
       }),
     );
     // Reset input after selection
+    this._clearSearch();
+  }
+
+  /**
+   * Hides dropdown when clicking outside of the component.
+   * @param {Event} event - Pointer event
+   * @private
+   */
+  _handleOutsidePointer(event) {
     this._clearSearch();
   }
 
