@@ -122,7 +122,7 @@
                     </div>
 
                     <div class="absolute inset-0 flex items-center justify-center">
-                      <div class="text-base text-stone-600 bg-white/30 rounded-lg px-4 py-2">No upcoming events</div>
+                      <div class="text-xl font-semibold text-stone-700">No upcoming events</div>
                     </div>
                   </div>
                 {% endif -%}
@@ -144,14 +144,18 @@
                     <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                       <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                       </div>
-                      <div class="relative text-base text-stone-600">Location not provided</div>
+                      <div class="relative flex w-full items-center justify-center">
+                        <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                      </div>
                     </div>
                   {% endif -%}
                 {% else -%}
                   <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                     <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                     </div>
-                    <div class="relative text-base text-stone-600">Location not provided</div>
+                    <div class="relative flex w-full items-center justify-center">
+                      <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                    </div>
                   </div>
                 {% endif -%}
               </div>
