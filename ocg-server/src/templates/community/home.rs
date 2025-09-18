@@ -43,7 +43,7 @@ pub(crate) struct Page {
 
 /// Event card template for home page display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "common/event_card_small.html")]
+#[template(path = "common/event_card_small_base.html")]
 pub(crate) struct EventCard {
     /// Event data
     pub event: EventSummary,

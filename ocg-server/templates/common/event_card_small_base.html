@@ -16,7 +16,9 @@
       <div>
         {# Event group name -#}
         <div class="card-header">
-          <span>{{ event.group_name }}</span>
+          {% block preheader %}
+            <span>{{ event.group_name }}</span>
+          {% endblock preheader %}
         </div>
         {# End event group name -#}
 
