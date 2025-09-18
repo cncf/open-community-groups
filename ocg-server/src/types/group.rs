@@ -7,7 +7,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tracing::instrument;
-
 use uuid::Uuid;
 
 use crate::templates::{
@@ -17,6 +16,8 @@ use crate::templates::{
         location::{LocationParts, build_location},
     },
 };
+
+// Group types: summary, detailed, and full.
 
 /// Summary group information.
 #[skip_serializing_none]
@@ -272,6 +273,8 @@ impl GroupFull {
         Ok(group)
     }
 }
+
+// Other related types.
 
 /// Group category information.
 #[derive(Debug, Clone, Serialize, Deserialize)]

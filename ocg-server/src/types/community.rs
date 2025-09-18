@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
+// Community types.
+
 /// Community information used in some community pages.
 #[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +87,8 @@ impl Community {
     }
 }
 
+// Other related types.
+
 /// Theme information used to customize the selected layout.
 ///
 /// Defines the primary color and derived color palette used throughout the community's
@@ -100,6 +104,8 @@ pub struct Theme {
 ///
 /// Lower numbers represent lighter shades, higher numbers darker shades.
 pub type Palette = BTreeMap<u32, String>;
+
+// Helpers.
 
 /// Generates a complete color palette from a single primary color.
 ///
