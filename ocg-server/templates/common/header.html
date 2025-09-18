@@ -32,7 +32,7 @@
       {# End logo -#}
 
       {# Desktop links -#}
-      <div class="hidden lg:flex lg:gap-x-8">
+      <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
         {% call link(content = "Home", href = "/", current_path = path) -%}
         {% call link(content = "Explore", href = "/explore", current_path = path) -%}
         {% if let Some(new_group_details) = self.community.new_group_details -%}
