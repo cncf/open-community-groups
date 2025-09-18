@@ -91,7 +91,7 @@ export class BannerImage extends LitWrapper {
         <div class="absolute inset-0 flex items-center ${spinnerVisibility} transition-opacity duration-300">
           <div role="status" class="flex size-8">
             <img
-              src="/static/images/spinner/spinner_1.svg"
+              src="/static/images/spinner/spinner_2.svg"
               height="auto"
               width="auto"
               alt="Loading spinner"

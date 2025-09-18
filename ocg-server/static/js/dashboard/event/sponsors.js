@@ -364,12 +364,12 @@ export class SponsorsSection extends LitWrapper {
                       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 w-full"
                     >
                       <div
-                        class="relative flex items-center justify-center size-12 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+                        class="relative flex items-center justify-center size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
                       >
                         <img
                           src="${s.logo_url}"
                           alt="${s.name} logo"
-                          class="size-10 object-contain"
+                          class="size-16 object-contain"
                           loading="lazy"
                         />
                         <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
@@ -380,7 +380,7 @@ export class SponsorsSection extends LitWrapper {
                         <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
                           ${s.name}
                         </div>
-                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate">
+                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-0.5">
                           ${s.level || ""}
                         </div>
                       </div>

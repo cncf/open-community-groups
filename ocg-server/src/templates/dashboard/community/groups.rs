@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::types::group::{GroupCategory, GroupDetailed, GroupFull, GroupRegion};
+use crate::{
+    templates::filters,
+    types::group::{GroupCategory, GroupDetailed, GroupFull, GroupRegion},
+};
 
 // Pages templates.
 

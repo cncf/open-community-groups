@@ -109,12 +109,14 @@
 
 {# Current page -#}
 {% macro current_page(total, items_number, offset_value) -%}
-  {%- if let Some(offset) = offset_value -%}
-    {{ offset + 1 }} - {{ items_number + offset }}
-  {%- else -%}
-    1 - {{ items_number }}
-  {%- endif -%}
-  {{ "" }} of {{ total }} results
+  {% if items_number + 0 > 0 -%}
+    {%- if let Some(offset) = offset_value -%}
+      {{ offset + 1 }} - {{ items_number + offset }}
+    {%- else -%}
+      1 - {{ items_number }}
+    {%- endif -%}
+    {{ "" }} of {{ total }} results
+  {% endif -%}
 {%- endmacro current_page -%}
 {# End current page -#}
 
@@ -262,10 +264,10 @@
        target="_blank"
        rel="noopener noreferrer"
        class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
-      <div class="relative flex items-center justify-center size-12 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden">
+      <div class="relative flex items-center justify-center size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden">
         <img src="{{ logo_url }}"
              alt="{{ name }} logo"
-             class="size-10 object-contain"
+             class="size-16 object-contain"
              width="auto"
              height="auto"
              loading="lazy" />
@@ -276,7 +278,7 @@
       <div class="leading-tight min-w-0">
         <div class="text-sm md:text-base font-semibold text-stone-900 truncate">{{ name }}</div>
         {% if with_level -%}
-          <div class="text-xs uppercase tracking-wide text-stone-600 truncate">{{ level }}</div>
+          <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-0.5">{{ level }}</div>
         {% endif -%}
       </div>
     </a>

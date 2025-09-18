@@ -4,80 +4,74 @@
 {# Groups list header with title -#}
 {% call macros::form_title(title = "Groups") -%}
 
-<form id="groups-search-form"
-      hx-get="/dashboard/community/groups"
-      hx-trigger="change, submit"
-      hx-target="#dashboard-content"
-      hx-indicator="#dashboard-spinner">
-
-  <div class="flex justify-between my-10">
-    <div class="flex items-center gap-x-6">
-      {# Search groups input -#}
-      <div class="relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-search bg-stone-300"></div>
-        </div>
+<div class="flex justify-between my-10">
+  <div class="flex items-center gap-x-6">
+    {# Search groups input -#}
+    <div class="relative">
+      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <form id="groups-search-form"
+            hx-get="/dashboard/community/groups"
+            hx-trigger="change, submit"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner">
         <input id="search_groups"
                name="ts_query"
                type="text"
-               value=""
+               value="{{ ts_query|display_some }}"
                class="input-primary peer ps-9 w-96"
                placeholder="Search groups"
                autocomplete="off"
                autocorrect="off"
                autocapitalize="off"
                spellcheck="false">
-        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-          <button id="clean-search-groups"
-                  type="button"
-                  class="cursor-pointer mt-[2px]">
-            <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-          </button>
-        </div>
+      </form>
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button hx-get="/dashboard/community/groups"
+                hx-trigger="click"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                class="cursor-pointer mt-[2px]">
+          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+        </button>
       </div>
-      {# End search groups input -#}
     </div>
-
-    {# Add group button -#}
-    <div>
-      <button id="add-group-button"
-              hx-get="/dashboard/community/groups/add"
-              hx-target="#dashboard-content"
-              hx-indicator="#dashboard-spinner"
-              class="btn-primary">Add Group</button>
-    </div>
-    {# End add group button -#}
-
-    <script type="module">
-      import {
-        cleanInputField,
-        searchOnEnter,
-        triggerChangeOnForm
-      } from '/static/js/community/explore/filters.js';
-
-      const searchInput = document.getElementById('search_groups');
-      if (searchInput) {
-        searchInput.addEventListener('keydown', (event) => {
-          searchOnEnter(event, 'groups-search-form');
-        });
-      }
-
-      const cleanSearchBtn = document.getElementById('clean-search-groups');
-      if (cleanSearchBtn) {
-        cleanSearchBtn.addEventListener('click', () => {
-          cleanInputField('search_groups', 'groups-search-form');
-        });
-      }
-
-      const addGroupButton = document.getElementById('add-group-button');
-      if (addGroupButton) {
-        addGroupButton.addEventListener('htmx:afterRequest', () => {
-          history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
-        });
-      }
-    </script>
+    {# End search groups input -#}
   </div>
-</form>
+
+  {# Add group button -#}
+  <div>
+    <button id="add-group-button"
+            hx-get="/dashboard/community/groups/add"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary">Add Group</button>
+  </div>
+  {# End add group button -#}
+
+  <script type="module">
+    import {
+      cleanInputField,
+      searchOnEnter,
+      triggerChangeOnForm
+    } from '/static/js/community/explore/filters.js';
+
+    const searchInput = document.getElementById('search_groups');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (event) => {
+        searchOnEnter(event, 'groups-search-form');
+      });
+    }
+
+    const addGroupButton = document.getElementById('add-group-button');
+    if (addGroupButton) {
+      addGroupButton.addEventListener('htmx:afterRequest', () => {
+        history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
+      });
+    }
+  </script>
+</div>
 
 {# Groups Table -#}
 <div class="relative overflow-visible">

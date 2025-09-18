@@ -109,7 +109,7 @@ export class UserChip extends LitWrapper {
       <div class="leading-tight min-w-0">
         <div class="font-semibold text-stone-900 ${!isTooltip ? "truncate" : ""}">${this.name || ""}</div>
         ${this.title
-          ? html`<div class="text-sm text-stone-600 mt-0.5 ${!isTooltip ? "line-clamp-2" : ""}">
+          ? html`<div class="text-xs text-stone-600 mt-0.5 ${!isTooltip ? "line-clamp-2" : ""}">
               ${this.title}
             </div>`
           : ""}
@@ -122,37 +122,9 @@ export class UserChip extends LitWrapper {
       <div
         class="relative ${this.small
           ? "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1"
-          : "flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full"} ${this
-          ._hasBio
-          ? "cursor-pointer"
-          : ""}"
-        tabindex="${this._hasBio ? 0 : -1}"
-        aria-haspopup="true"
-        @mouseenter=${this._hasBio ? this._showTooltip : null}
-        @mouseleave=${this._hasBio ? this._hideTooltip : null}
-        @focusin=${this._hasBio ? this._showTooltip : null}
-        @focusout=${this._hasBio ? this._hideTooltip : null}
-        @keydown=${this._hasBio ? this._onKeydown : null}
+          : "flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full"}"
       >
         ${this._renderHeader(false, this.small)}
-        ${this.tooltipVisible
-          ? html`
-              <div
-                role="tooltip"
-                aria-hidden="${this.tooltipVisible ? "false" : "true"}"
-                class="chip-tooltip absolute start-0 top-full pt-1.5 z-10 inline-block max-w-[380px] text-sm text-stone-600 transition-opacity duration-150 tooltip-with-arrow"
-                @mouseenter=${this._hasBio ? this._onTooltipEnter : null}
-                @mouseleave=${this._hasBio ? this._onTooltipLeave : null}
-              >
-                <div class="bg-white border border-stone-200 p-4 rounded-lg shadow-lg">
-                  <div class="flex items-start gap-3">${this._renderHeader(true, false)}</div>
-                  ${this.bioIsHtml
-                    ? html`<div class="text-stone-700 text-sm mt-3" .innerHTML=${this.bio}></div>`
-                    : html`<div class="text-stone-700 text-sm mt-3">${this.bio}</div>`}
-                </div>
-              </div>
-            `
-          : ""}
       </div>
     `;
   }
