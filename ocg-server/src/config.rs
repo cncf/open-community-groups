@@ -102,7 +102,7 @@ pub(crate) enum LogFormat {
 }
 
 /// HTTP server configuration settings.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HttpServerConfig {
     /// The address the HTTP server will listen on.
     pub addr: String,
@@ -127,7 +127,7 @@ pub(crate) struct CookieConfig {
 }
 
 /// Login options enabled for the server.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct LoginOptions {
     /// Enable email login.

@@ -140,6 +140,8 @@ pub(crate) fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>
     (None, None)
 }
 
+// Tests.
+
 #[cfg(test)]
 mod tests {
     use axum::http::{HeaderMap, HeaderValue};

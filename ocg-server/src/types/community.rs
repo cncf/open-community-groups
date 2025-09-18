@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 /// Community information used in some community pages.
 #[allow(clippy::struct_field_names)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Community {
     /// Whether the community is active.
     pub active: bool,
@@ -93,7 +93,7 @@ impl Community {
 ///
 /// Defines the primary color and derived color palette used throughout the community's
 /// pages for consistent branding.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Theme {
     #[serde(default)]
     pub palette: Palette,
@@ -129,6 +129,8 @@ fn generate_palette(color: &str) -> Result<Palette> {
 
     Ok(palette)
 }
+
+// Tests.
 
 #[cfg(test)]
 mod tests {

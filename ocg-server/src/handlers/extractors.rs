@@ -1,12 +1,15 @@
 //! Custom extractors for handlers.
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+#[cfg(not(test))]
+use std::time::Duration;
 
 use anyhow::Result;
 use axum::{
     extract::{FromRequestParts, Path},
     http::{StatusCode, header::HOST, request::Parts},
 };
+#[cfg(not(test))]
 use cached::proc_macro::cached;
 use tower_sessions::Session;
 use tracing::{error, instrument};
@@ -56,16 +59,20 @@ impl FromRequestParts<router::State> for CommunityId {
     }
 }
 
-/// Cached lookup function for resolving community IDs from hostnames.
+/// Lookup function for resolving community IDs from hostnames.
 ///
-/// Results are cached for 24 hours (86400 seconds) to minimize database queries. The
-/// cache uses the hostname as the key and is synchronized to prevent duplicate lookups.
-#[cached(
-    time = 86400,
-    key = "String",
-    convert = r#"{ String::from(host) }"#,
-    sync_writes = "by_key",
-    result = true
+/// In non-test builds, results are cached for 24 hours (86400 seconds) to minimize
+/// database queries. During tests the cache is disabled to avoid cross-test
+/// contamination when multiple tests reuse the same host value.
+#[cfg_attr(
+    not(test),
+    cached(
+        time = 86400,
+        key = "String",
+        convert = r#"{ String::from(host) }"#,
+        sync_writes = "by_key",
+        result = true
+    )
 )]
 #[instrument(skip(db), err)]
 async fn lookup_community_id(db: DynDB, host: &str) -> Result<Option<Uuid>> {

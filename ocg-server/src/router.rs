@@ -330,6 +330,23 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
+// Tests helpers.
+
+#[cfg(test)]
+use crate::db::mock::MockDB;
+#[cfg(test)]
+use crate::services::notifications::MockNotificationsManager;
+
+#[cfg(test)]
+pub(crate) async fn setup_test_router(db: MockDB, nm: MockNotificationsManager) -> Router {
+    use std::sync::Arc;
+
+    let cfg = HttpServerConfig::default();
+    setup(&Arc::new(cfg), Arc::new(db), Arc::new(nm)).await.unwrap()
+}
+
+// Tests.
+
 #[cfg(test)]
 mod tests {
     use axum::{

@@ -89,6 +89,8 @@ pub(crate) fn user_initials(name: Option<&str>, username: &str) -> String {
     }
 }
 
+// Tests.
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -62,3 +62,154 @@ pub(crate) async fn page(
 
     Ok((headers, Html(template.render()?)))
 }
+
+// Tests.
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use axum::body::to_bytes;
+    use axum::http::{
+        HeaderValue, Request, StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST},
+    };
+    use tower::ServiceExt;
+    use uuid::Uuid;
+
+    use crate::{
+        db::mock::MockDB,
+        router::setup_test_router,
+        services::notifications::MockNotificationsManager,
+        templates::community::home::Stats,
+        types::{
+            community::{Community, Theme},
+            event::EventKind,
+        },
+    };
+
+    #[tokio::test]
+    async fn test_page_success() {
+        // Setup database mock
+        let community_id = Uuid::new_v4();
+        let mut db = MockDB::new();
+        db.expect_get_community_id()
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_community()
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_get_community_recently_added_groups()
+            .withf(move |id| *id == community_id)
+            .returning(|_| Ok(vec![]));
+        db.expect_get_community_upcoming_events()
+            .withf(move |id, kinds| {
+                *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
+            })
+            .returning(|_, _| Ok(vec![]));
+        db.expect_get_community_upcoming_events()
+            .withf(move |id, kinds| {
+                *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
+            })
+            .returning(|_, _| Ok(vec![]));
+        db.expect_get_community_home_stats()
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(Stats::default()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = setup_test_router(db, nm).await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/")
+            .header(HOST, "example.test")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static("max-age=0")
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_page_db_error() {
+        // Setup database mock
+        let community_id = Uuid::new_v4();
+        let mut db = MockDB::new();
+        db.expect_get_community_id()
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_community()
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_get_community_recently_added_groups()
+            .withf(move |id| *id == community_id)
+            .returning(|_| Ok(vec![]));
+        db.expect_get_community_upcoming_events()
+            .withf(move |id, kinds| {
+                *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
+            })
+            .returning(|_, _| Ok(vec![]));
+        db.expect_get_community_upcoming_events()
+            .withf(move |id, kinds| {
+                *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
+            })
+            .returning(|_, _| Err(anyhow::anyhow!("db error")));
+        db.expect_get_community_home_stats()
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(Stats::default()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = setup_test_router(db, nm).await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/")
+            .header(HOST, "example.test")
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
+    }
+
+    /// Helper to create a sample community for tests.
+    fn sample_community(community_id: Uuid) -> Community {
+        Community {
+            active: true,
+            community_id,
+            community_site_layout_id: "default".to_string(),
+            created_at: 0,
+            description: "Test community".to_string(),
+            display_name: "Test".to_string(),
+            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
+            host: "example.test".to_string(),
+            name: "test".to_string(),
+            theme: Theme {
+                palette: BTreeMap::new(),
+                primary_color: "#000000".to_string(),
+            },
+            title: "Test Community".to_string(),
+            ..Default::default()
+        }
+    }
+}

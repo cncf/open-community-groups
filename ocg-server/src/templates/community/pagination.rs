@@ -203,6 +203,8 @@ fn get_url_filters_separator(url: &str) -> &str {
     }
 }
 
+// Tests.
+
 #[cfg(test)]
 mod tests {
     use super::{DEFAULT_PAGINATION_LIMIT, NavigationLinksOffsets, get_url_filters_separator};

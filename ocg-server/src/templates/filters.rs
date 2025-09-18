@@ -92,6 +92,8 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> as
     Ok(n.to_formatted_string(&Locale::en))
 }
 
+// Tests.
+
 #[cfg(test)]
 mod tests {
     use chrono::TimeZone;
