@@ -109,7 +109,7 @@ export class UserChip extends LitWrapper {
       <div class="leading-tight min-w-0">
         <div class="font-semibold text-stone-900 ${!isTooltip ? "truncate" : ""}">${this.name || ""}</div>
         ${this.title
-          ? html`<div class="text-xs text-stone-600 mt-0.5 ${!isTooltip ? "line-clamp-2" : ""}">
+          ? html`<div class="text-xs text-stone-600 mt-1.5 ${!isTooltip ? "line-clamp-2" : ""}">
               ${this.title}
             </div>`
           : ""}
