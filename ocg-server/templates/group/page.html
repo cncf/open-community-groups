@@ -122,7 +122,7 @@
                     </div>
 
                     <div class="absolute inset-0 flex items-center justify-center">
-                      <div class="text-base text-stone-600 bg-white/30 rounded-lg px-4 py-2">No upcoming events</div>
+                      <div class="text-xl font-semibold text-stone-700">No upcoming events</div>
                     </div>
                   </div>
                 {% endif -%}
@@ -144,14 +144,18 @@
                     <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                       <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                       </div>
-                      <div class="relative text-base text-stone-600">Location not provided</div>
+                      <div class="relative flex w-full items-center justify-center">
+                        <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                      </div>
                     </div>
                   {% endif -%}
                 {% else -%}
                   <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                     <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                     </div>
-                    <div class="relative text-base text-stone-600">Location not provided</div>
+                    <div class="relative flex w-full items-center justify-center">
+                      <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                    </div>
                   </div>
                 {% endif -%}
               </div>
@@ -164,7 +168,12 @@
 
         {# Group description -#}
         {% if let Some(description) = group.description -%}
-          <div class="pt-2 pb-8">
+          <div class="pt-2
+                      {% if let Some(banner_url) = group.banner_url -%}
+                        pb-9
+                      {% else -%}
+                        pb-8
+                      {% endif -%}">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this group</div>
 
             {# Group banner -#}
@@ -190,7 +199,7 @@
 
         {# Next events section -#}
         {% if !upcoming_events.is_empty() -%}
-          <div class="pt-2 pb-8">
+          <div class="pt-2 pb-9">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Upcoming Events</div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {% for event in upcoming_events -%}
@@ -205,7 +214,7 @@
 
         {# Past events section -#}
         {% if !past_events.is_empty() -%}
-          <div class="pt-2 pb-8">
+          <div class="pt-2 pb-9">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
@@ -220,7 +229,7 @@
 
         {# Organizers section - Full width -#}
         {% if !group.organizers.is_empty() -%}
-          <div class="pt-2 pb-8">
+          <div class="pt-2 pb-9">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Organizers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in group.organizers -%}
@@ -236,7 +245,7 @@
 
         {# Sponsors section -#}
         {% if !group.sponsors.is_empty() -%}
-          <div class="pt-2 pb-8">
+          <div class="pt-2 pb-9">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Sponsors</div>
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {% for sponsor in group.sponsors -%}
@@ -250,7 +259,7 @@
         {# Tags if available -#}
         {% if let Some(tags) = group.tags -%}
           {% if !tags.is_empty() -%}
-            <div class="pt-2 pb-8">
+            <div class="pt-2 pb-9">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Topics</div>
               <div class="flex flex-wrap gap-2">
                 {% for tag in tags -%}
@@ -265,7 +274,7 @@
         {# Photo gallery -#}
         {% if let Some(photos_urls) = group.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
-            <div class="pt-2 pb-8">
+            <div class="pt-2 pb-9">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Gallery</div>
               <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>

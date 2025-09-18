@@ -123,7 +123,7 @@
       {# End event header -#}
 
       <div class="px-4 sm:px-6 lg:px-8">
-        <div class="grid md:grid-cols-2 gap-4 md:gap-8 pt-2 pb-8">
+        <div class="grid md:grid-cols-2 gap-4 md:gap-8 pt-2 pb-9">
           {# Event date -#}
           <div class="border border-stone-200 rounded-lg">
             <div class="p-4">
@@ -166,7 +166,9 @@
                   <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                     <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                     </div>
-                    <div class="relative text-base text-stone-600">Location not provided</div>
+                    <div class="relative flex w-full items-center justify-center">
+                      <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                    </div>
                   </div>
                 {% endif -%}
               {% else -%}
@@ -174,7 +176,7 @@
                   <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                   </div>
                   <div class="relative flex w-full items-center justify-center">
-                    <div class="text-base text-stone-600">Virtual event</div>
+                    <div class="text-xl font-semibold text-stone-700">Virtual event</div>
                   </div>
                 </div>
               {% endif -%}
@@ -186,7 +188,12 @@
       </div>
 
       {# Event description -#}
-      <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+      <div class="pt-2 px-4 sm:px-6 lg:px-8
+                  {% if let Some(banner_url) = event.banner_url -%}
+                    pb-9
+                  {% else -%}
+                    pb-8
+                  {% endif -%}">
         <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">About this event</div>
         {# Event banner -#}
         {% if let Some(banner_url) = event.banner_url -%}
@@ -202,7 +209,7 @@
       {# Tags if available -#}
       {% if let Some(tags) = event.tags -%}
         {% if !tags.is_empty() -%}
-          <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+          <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Topics</div>
             <div class="flex flex-wrap gap-2">
               {% for tag in tags -%}
@@ -217,7 +224,7 @@
       {# Sessions section - Full width -#}
       {% if !event.sessions.is_empty() -%}
         {% let days_count = event.sessions.len() -%}
-        <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+        <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Agenda</div>
 
           {# Single-day agenda: no date title -#}
@@ -279,7 +286,7 @@
 
       {# Organizers section - Full width -#}
       {% if !event.organizers.is_empty() -%}
-        <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+        <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Organizers</div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for organizer in event.organizers -%}
@@ -295,7 +302,7 @@
 
       {# Sponsors section - Full width -#}
       {% if !event.sponsors.is_empty() -%}
-        <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+        <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Sponsors</div>
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {% for sponsor in event.sponsors -%}
@@ -309,7 +316,7 @@
       {# Speakers section (legacy data) - Full width -#}
       {% if let Some(legacy_speakers) = event.legacy_speakers -%}
         {% if !legacy_speakers.is_empty() -%}
-          <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+          <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Speakers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for speaker in legacy_speakers -%}
@@ -327,7 +334,7 @@
       {# Hosts section (legacy data) - Full width -#}
       {% if let Some(legacy_hosts) = event.legacy_hosts -%}
         {% if !legacy_hosts.is_empty() -%}
-          <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+          <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Hosts</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for host in legacy_hosts -%}
@@ -344,7 +351,7 @@
 
       {# Hosts section - Full width -#}
       {% if !event.hosts.is_empty() -%}
-        <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+        <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Hosts</div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for host in event.hosts -%}
@@ -361,7 +368,7 @@
       {# Gallery -#}
       {% if let Some(photos_urls) = event.photos_urls -%}
         {% if !photos_urls.is_empty() -%}
-          <div class="pt-2 pb-8 px-4 sm:px-6 lg:px-8">
+          <div class="pt-2 pb-9 px-4 sm:px-6 lg:px-8">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6">Gallery</div>
             <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
           </div>
@@ -372,24 +379,6 @@
     </div>
   </div>
 {% endblock content -%}
-
-{# Macro for rendering venue address details -#}
-{% macro venue_address(venue_name, venue_address, venue_city, venue_zip_code) -%}
-  {% if let Some(name) = venue_name -%}
-    <div class="text-sm font-medium text-stone-900 mb-1">{{ name }}</div>
-  {% endif -%}
-  {% if let Some(address) = venue_address -%}
-    <div class="text-xs text-stone-600 mb-0.5">{{ address }}</div>
-  {% endif -%}
-  {% if let Some(city) = venue_city -%}
-    <div class="text-xs text-stone-600">
-      {% if let Some(zip_code) = venue_zip_code -%}
-        <span>{{ zip_code }},</span>
-      {% endif -%}
-      <span class="text-xs text-stone-600">{{ city }}</span>
-    </div>
-  {% endif -%}
-{% endmacro -%}
 
 {# Macro for rendering a single host social link -#}
 {% macro host_social_link(url, label, icon) -%}
