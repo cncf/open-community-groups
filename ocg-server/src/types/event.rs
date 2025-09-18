@@ -31,6 +31,8 @@ pub struct EventSummary {
     pub canceled: bool,
     /// Unique identifier for the event.
     pub event_id: Uuid,
+    /// Category of the hosting group.
+    pub group_category_name: String,
     /// Color associated with the group hosting this event, used for visual styling.
     #[serde(default)]
     pub group_color: String,
@@ -71,6 +73,7 @@ impl From<EventDetailed> for EventSummary {
         Self {
             canceled: event.canceled,
             event_id: event.event_id,
+            group_category_name: event.group_category_name,
             group_color: event.group_color,
             group_name: event.group_name,
             group_slug: event.group_slug,

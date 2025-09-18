@@ -114,6 +114,7 @@ select is(
     '{
         "canceled": false,
         "event_id": "00000000-0000-0000-0000-000000000031",
+        "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",
         "group_slug": "seattle-kubernetes-meetup",
         "kind": "in-person",
