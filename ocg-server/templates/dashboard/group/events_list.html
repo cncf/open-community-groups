@@ -75,11 +75,13 @@
         {% if events.upcoming.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             <td class="px-8 py-20 text-center" colspan="6">
-              <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any upcoming events.</div>
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any upcoming events.</div>
 
-              <p class="text-sm lg:text-md text-stone-700">
-                You can create a new event by clicking on the <span class="font-semibold">Add Event</span> button in the top right corner.
-              </p>
+                <p class="text-sm lg:text-md text-stone-700">
+                  You can create a new event by clicking on the <span class="font-semibold">Add Event</span> button in the top right corner.
+                </p>
+              </div>
             </td>
           </tr>
         {% else -%}
@@ -93,7 +95,7 @@
                     <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
                        target="_blank"
                        rel="noopener noreferrer"
-                       class="max-w-full truncate hover:underline">{{ event.name }}</a>
+                       class="block max-w-full truncate hover:underline">{{ event.name }}</a>
                     {# End event name -#}
 
                     {# Mobile type and date -#}
@@ -387,11 +389,13 @@
         {% if events.past.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             <td class="px-8 py-20 text-center" colspan="6">
-              <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any past events.</div>
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any past events.</div>
 
-              <p class="text-sm lg:text-md text-stone-700">
-                Past events will appear here once your upcoming events have concluded.
-              </p>
+                <p class="text-sm lg:text-md text-stone-700">
+                  Past events will appear here once your upcoming events have concluded.
+                </p>
+              </div>
             </td>
           </tr>
         {% else -%}
@@ -405,7 +409,7 @@
                     <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
                        target="_blank"
                        rel="noopener noreferrer"
-                       class="max-w-full truncate hover:underline">{{ event.name }}</a>
+                       class="block max-w-full truncate hover:underline">{{ event.name }}</a>
                     {# End event name -#}
 
                     {# Mobile type and date -#}

@@ -4,8 +4,15 @@
 {# Members header -#}
 {% call macros::form_title(title = "Members") -%}
 
-<div class="text-sm text-stone-600 mt-10 mb-3 text-end">
-  Total members: <span class="font-semibold">{{ members.len() }}</span>
+<div class="flex text-sm text-stone-600 mb-3 justify-end">
+  <div>Total members:</div>
+  <div class="font-semibold ms-1 text-end w-7">
+    {% if members.is_empty() -%}
+      -
+    {% else %}
+      {{ members.len() }}
+    {% endif -%}
+  </div>
 </div>
 
 {# Members table -#}
@@ -17,15 +24,18 @@
            role="rowgroup">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Joined</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Joined</th>
       </tr>
     </thead>
     <tbody id="members-list" role="rowgroup">
       {% if members.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="2">
-            <div class="text-xl lg:text-2xl mb-6">No members yet.</div>
-            <p class="text-sm lg:text-md text-stone-700">Members of this group will appear here once users join.</p>
+          <td class="px-8 py-12 text-center" colspan="3">
+            <div class="flex flex-col items-center justify-center min-h-[125px]">
+              <div class="text-xl lg:text-2xl mb-6">No members yet.</div>
+              <p class="text-sm lg:text-md text-stone-700">Members of this group will appear here once users join.</p>
+            </div>
           </td>
         </tr>
       {% else -%}
@@ -52,8 +62,19 @@
             </td>
             {# End member -#}
 
+            {# Position -#}
+            <td class="px-3 xl:px-5 py-4">
+              <div class="flex flex-col space-y-1">
+                {# <div class="font-medium text-stone-900 truncate">{{ member.company|display_some_or("-") }}</div>
+                {% if let Some(title) = member.title -%}
+                  <div class="text-xs text-stone-600 truncate">{{ title }}</div>
+                {% endif -%} #}
+              </div>
+            </td>
+            {# End Position -#}
+
             {# Joined -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ member.created_at.format("%b %d, %Y") }}
             </td>
             {# End joined -#}
