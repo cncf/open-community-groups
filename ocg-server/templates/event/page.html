@@ -70,12 +70,6 @@
             <div class="mt-auto flex items-center justify-between">
               {# Event details and date -#}
               <div class="flex items-center gap-4 text-stone-600">
-                {% if let Some(starts_at) = event.starts_at -%}
-                  <div class="flex items-center">
-                    <div class="svg-icon size-3.5 mr-2 bg-stone-600 icon-date"></div>
-                    <span class="text-sm">{{ starts_at.with_timezone(event.timezone).format("%B %e, %Y") }}</span>
-                  </div>
-                {% endif -%}
                 {% if let Some(capacity) = event.capacity -%}
                   <div class="flex items-center">
                     <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
