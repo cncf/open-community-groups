@@ -239,7 +239,7 @@
                           data-day-tab="day-{{ loop.index }}"
                           data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
                           class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
-                    {{ day.0.format("%A, %B %e, %Y") }}
+                    {{ day.0.format("%A, %B %e") }}
                   </button>
                 </li>
               {% endfor -%}
