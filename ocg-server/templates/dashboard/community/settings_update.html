@@ -40,24 +40,6 @@
         <input type="hidden" name="name" value="{{ community.name }}">
         {# End hidden name field -#}
 
-        {# Host -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="host" class="form-label">
-            Host <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="host"
-                   id="host"
-                   class="input-primary"
-                   placeholder="community.example.com"
-                   value="{{ community.host }}"
-                   required>
-          </div>
-          <p class="form-legend">Host domain for the community.</p>
-        </div>
-        {# End host -#}
-
         {# Title -#}
         <div class="col-span-full lg:col-span-3">
           <label for="title" class="form-label">
@@ -83,7 +65,9 @@
           <div class="mt-2">
             <markdown-editor id="description" name="description" content="{{ community.description }}" required></markdown-editor>
           </div>
-          <p class="form-legend">Brief description of the community's purpose or focus.</p>
+          <p class="form-legend">
+            Brief description of the community's purpose or focus. This information will be featured in the community site home page.
+          </p>
         </div>
         {# End description -#}
 
@@ -98,27 +82,6 @@
                name="community_site_layout_id"
                value="{{ community.community_site_layout_id }}">
         {# End hidden layout field -#}
-
-        {# Active status -#}
-        <div class="col-span-full">
-          <label class="inline-flex items-center cursor-pointer">
-            <input id="toggle_active"
-                   name="toggle_active"
-                   value="active"
-                   type="checkbox"
-                   class="sr-only peer"
-                   {% if community.active %}checked{% endif %}>
-            <input type="hidden"
-                   id="active"
-                   name="active"
-                   value="{{ community.active }}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Community is active</span>
-          </label>
-          <p class="form-legend">Whether the community is active and visible to users.</p>
-        </div>
-        {# End active status -#}
       </div>
     </div>
 
@@ -218,7 +181,7 @@
 
         {# Twitter URL -#}
         <div class="col-span-full lg:col-span-3">
-          <label for="twitter_url" class="form-label">Twitter</label>
+          <label for="twitter_url" class="form-label">X</label>
           <div class="mt-2 relative">
             <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
               <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
@@ -362,7 +325,7 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Ad banner URL -#}
         <div class="col-span-full lg:col-span-3">
-          <label for="ad_banner_url" class="form-label">Banner URL</label>
+          <label for="ad_banner_url" class="form-label">Banner Image URL</label>
           <div class="mt-2">
             <input type="url"
                    name="ad_banner_url"
@@ -416,12 +379,12 @@
 
         {# Photo URLs -#}
         <div class="col-span-4">
-          <label class="form-label">Photo URLs</label>
+          <label class="form-label">Photos URLs</label>
           <div class="mt-2">
             <multiple-inputs field-name="photos_urls" input-type="url" items="{{ community.photos_urls|json }}" placeholder="https://example.com/photo.jpg" label="Photo URL">
             </multiple-inputs>
           </div>
-          <p class="form-legend">Photo URLs for community galleries or slideshows.</p>
+          <p class="form-legend">URLs of the photos that will be displayed in the community gallery.</p>
         </div>
         {# End photo URLs -#}
 
@@ -432,7 +395,7 @@
             <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{{ community.extra_links|json }}" label="Link">
             </key-value-inputs>
           </div>
-          <p class="form-legend">Additional custom links displayed in the community navigation.</p>
+          <p class="form-legend">Additional custom links displayed in the footer.</p>
         </div>
         {# End extra links -#}
       </div>
@@ -474,14 +437,6 @@
           showErrorAlert('Something went wrong updating the settings, please try again later.');
         }
       }
-    });
-  }
-
-  // Handle active toggle
-  const toggleActive = document.getElementById('toggle_active');
-  if (toggleActive) {
-    toggleActive.addEventListener('change', () => {
-      document.getElementById('active').value = toggleActive.checked;
     });
   }
 </script>
