@@ -51,8 +51,8 @@ values
 select is(
     list_group_members(:'groupID'::uuid)::jsonb,
     '[
-        {"created_at": 1704067200, "username": "alice", "name": "Alice", "photo_url": "https://example.com/alice.png"},
-        {"created_at": 1704153600, "username": "bob", "name": null, "photo_url": "https://example.com/bob.png"}
+        {"created_at": 1704067200, "username": "alice", "company": null, "name": "Alice", "photo_url": "https://example.com/alice.png", "title": null},
+        {"created_at": 1704153600, "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
     ]'::jsonb,
     'Should return list of group members with created_at'
 );

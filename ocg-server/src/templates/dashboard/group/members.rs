@@ -29,10 +29,14 @@ pub struct GroupMember {
     /// Username.
     pub username: String,
 
+    /// Company the user represents.
+    pub company: Option<String>,
     /// Full name.
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
+    /// Title held by the user.
+    pub title: Option<String>,
 }
 
 impl GroupMember {
