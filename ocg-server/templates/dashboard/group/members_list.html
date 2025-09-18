@@ -4,8 +4,12 @@
 {# Members header -#}
 {% call macros::form_title(title = "Members") -%}
 
+<div class="text-sm text-stone-600 mt-10 mb-3 text-end">
+  Total members: <span class="font-semibold">{{ members.len() }}</span>
+</div>
+
 {# Members table -#}
-<div class="relative overflow-visible mt-10">
+<div class="relative overflow-visible">
   <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
          role="table"
          aria-label="Members list">
@@ -37,7 +41,9 @@
                 size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
                 </avatar-image>
                 <div class="min-w-0">
-                  <div class="font-medium text-stone-900 truncate">{{ member.name|display_some_or(member.username) }}</div>
+                  <div class="font-medium text-stone-900 truncate mb-1">
+                    {{ member.name|display_some_or(member.username) }}
+                  </div>
                   {% if member.name.is_some() -%}
                     <div class="text-xs text-stone-600 truncate">{{ member.username }}</div>
                   {% endif -%}
