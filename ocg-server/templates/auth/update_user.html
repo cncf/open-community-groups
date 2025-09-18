@@ -48,27 +48,9 @@
               {% endfor %}
             </select>
           </div>
-          <p class="form-legend">Your preferred timezone (e.g. America/New_York, Europe/Amsterdam).</p>
+          <p class="form-legend">Your preferred timezone.</p>
         </div>
         {# End timezone -#}
-
-        {# Title -#}
-        <div class="col-span-3">
-          <label for="title" class="form-label">Title</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="title"
-                   id="title"
-                   value="{%- if let Some(title) = user.title -%}{{ title }}{%- endif -%}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false">
-          </div>
-          <p class="form-legend">Your professional title or role (e.g. Software Engineer, Product Manager).</p>
-        </div>
-        {# End title -#}
 
         {# Company -#}
         <div class="col-span-3">
@@ -87,6 +69,24 @@
           <p class="form-legend">The organization or company you work for.</p>
         </div>
         {# End company -#}
+
+        {# Title -#}
+        <div class="col-span-3">
+          <label for="title" class="form-label">Title</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="title"
+                   id="title"
+                   value="{%- if let Some(title) = user.title -%}{{ title }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+          <p class="form-legend">Your professional title or role (e.g. Software Engineer, Product Manager).</p>
+        </div>
+        {# End title -#}
 
         {# Photo URL -#}
         <div class="col-span-full">
@@ -213,7 +213,7 @@
 
         {# Twitter URL -#}
         <div class="col-span-full lg:col-span-3">
-          <label for="twitter_url" class="form-label">Twitter</label>
+          <label for="twitter_url" class="form-label">X</label>
           <div class="mt-2 relative">
             <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
               <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
@@ -223,7 +223,7 @@
                    id="twitter_url"
                    value="{%- if let Some(twitter_url) = user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
                    class="input-primary ps-10"
-                   placeholder="https://twitter.com/username">
+                   placeholder="https://x.com/username">
           </div>
         </div>
         {# End Twitter URL -#}
