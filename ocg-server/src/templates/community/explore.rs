@@ -103,7 +103,7 @@ impl EventsResultsSection {
 
 /// Event card template for explore page display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "common/event_card_medium_base.html")]
+#[template(path = "common/event_card_medium.html")]
 pub(crate) struct EventCard {
     /// Event data
     #[serde(flatten)]
