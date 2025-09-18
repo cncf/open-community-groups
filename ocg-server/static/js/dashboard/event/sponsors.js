@@ -380,7 +380,7 @@ export class SponsorsSection extends LitWrapper {
                         <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
                           ${s.name}
                         </div>
-                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate">
+                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-0.5">
                           ${s.level || ""}
                         </div>
                       </div>
