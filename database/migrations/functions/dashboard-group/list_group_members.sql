@@ -7,12 +7,13 @@ returns json as $$
             extract(epoch from gm.created_at)::bigint as created_at,
             u.username,
 
+            u.company,
             u.name,
-            u.photo_url
+            u.photo_url,
+            u.title
         from group_member gm
         join "user" u using (user_id)
         where gm.group_id = p_group_id
-        order by coalesce(lower(u.name), lower(u.username)) asc
+        order by (u.name is not null) desc, lower(u.name) asc, lower(u.username) asc
     ) member;
 $$ language sql;
-
