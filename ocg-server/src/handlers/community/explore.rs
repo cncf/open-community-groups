@@ -360,8 +360,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_db_error() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -392,8 +394,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_events_invalid_filters() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -424,8 +428,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_groups_invalid_filters() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -456,9 +462,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_success_events() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -503,9 +511,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_success_groups() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -550,9 +560,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_events_section_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -599,9 +611,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_events_results_section_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -645,9 +659,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_groups_section_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -694,9 +710,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_groups_results_section_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -740,9 +758,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_search_events_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -781,9 +801,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_search_groups_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -870,10 +892,8 @@ mod tests {
     /// Helper to create a sample event for tests.
     fn sample_event(event_id: Uuid) -> EventDetailed {
         EventDetailed {
-            canceled: false,
             event_id,
             group_category_name: "Category".to_string(),
-            group_color: String::new(),
             group_name: "Group".to_string(),
             group_slug: "group".to_string(),
             kind: EventKind::InPerson,
@@ -881,20 +901,18 @@ mod tests {
             published: true,
             slug: "sample-event".to_string(),
             timezone: chrono_tz::UTC,
-            description_short: None,
             ends_at: Some(Utc.timestamp_opt(1_000, 0).unwrap()),
             group_city: Some("City".to_string()),
             group_country_code: Some("US".to_string()),
             group_country_name: Some("United States".to_string()),
             group_state: Some("CA".to_string()),
             latitude: Some(1.0),
-            logo_url: None,
             longitude: Some(2.0),
-            popover_html: None,
             starts_at: Some(Utc.timestamp_opt(0, 0).unwrap()),
             venue_address: Some("123 Main St".to_string()),
             venue_city: Some("City".to_string()),
             venue_name: Some("Venue".to_string()),
+            ..Default::default()
         }
     }
 
@@ -933,7 +951,6 @@ mod tests {
                 normalized_name: "category".to_string(),
                 order: None,
             },
-            color: String::new(),
             created_at: Utc.timestamp_opt(0, 0).unwrap(),
             group_id,
             name: "Sample Group".to_string(),
@@ -941,11 +958,8 @@ mod tests {
             city: Some("City".to_string()),
             country_code: Some("US".to_string()),
             country_name: Some("United States".to_string()),
-            description_short: None,
             latitude: Some(1.0),
-            logo_url: None,
             longitude: Some(2.0),
-            popover_html: None,
             region: Some(GroupRegion {
                 region_id,
                 name: "Region".to_string(),
@@ -953,24 +967,29 @@ mod tests {
                 order: None,
             }),
             state: Some("CA".to_string()),
+            ..Default::default()
         }
     }
 
     /// Helper to create sample events search output for tests.
     fn sample_search_community_events_output(event_id: Uuid) -> SearchCommunityEventsOutput {
-        SearchCommunityEventsOutput {
+        let mut output = SearchCommunityEventsOutput {
             events: vec![sample_event(event_id)],
-            bbox: Some(sample_bbox()),
             total: 1,
-        }
+            ..Default::default()
+        };
+        output.bbox = Some(sample_bbox());
+        output
     }
 
     /// Helper to create sample groups search output for tests.
     fn sample_search_community_groups_output(group_id: Uuid) -> SearchCommunityGroupsOutput {
-        SearchCommunityGroupsOutput {
+        let mut output = SearchCommunityGroupsOutput {
             groups: vec![sample_group(group_id)],
-            bbox: Some(sample_bbox()),
             total: 1,
-        }
+            ..Default::default()
+        };
+        output.bbox = Some(sample_bbox());
+        output
     }
 }

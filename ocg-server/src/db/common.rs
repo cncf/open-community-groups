@@ -239,7 +239,7 @@ impl DBCommon for PgDB {
 }
 
 /// Output structure for community events search operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityEventsOutput {
     pub events: Vec<EventDetailed>,
     pub bbox: Option<BBox>,
@@ -247,7 +247,7 @@ pub(crate) struct SearchCommunityEventsOutput {
 }
 
 /// Output structure for community groups search operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityGroupsOutput {
     pub groups: Vec<GroupDetailed>,
     pub bbox: Option<BBox>,

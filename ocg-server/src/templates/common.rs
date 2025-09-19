@@ -9,7 +9,7 @@ use uuid::Uuid;
 /// This struct represents basic user profile information that can be displayed
 /// throughout the application.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct User {
     /// Unique identifier for the user.
     pub user_id: Uuid,

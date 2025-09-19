@@ -90,8 +90,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_success() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -146,8 +148,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_page_db_error() {
-        // Setup database mock
+        // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
             .withf(|host| host == "example.test")
@@ -191,6 +195,8 @@ mod tests {
         assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(bytes.is_empty());
     }
+
+    // Helpers
 
     /// Helper to create a sample community for tests.
     fn sample_community(community_id: Uuid) -> Community {

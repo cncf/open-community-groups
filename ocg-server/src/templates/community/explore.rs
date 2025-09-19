@@ -443,7 +443,7 @@ impl Pagination for GroupsFilters {
 /// Available options for filters.
 ///
 /// This struct provides the lists of available options for some filters.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
     /// Available event categories.
     pub event_category: Vec<FilterOption>,
@@ -466,7 +466,7 @@ impl FiltersOptions {
 }
 
 /// Individual filter option with display name and value.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct FilterOption {
     /// Display name shown to users.
     pub name: String,
