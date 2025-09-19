@@ -17,104 +17,42 @@ export class GroupSelector extends LitWrapper {
   static properties = {
     groups: {
       attribute: "groups",
-      converter: {
-        /**
-         * Parses the JSON encoded groups list passed through the attribute.
-         * @param {string} value Attribute value from the DOM
-         * @returns {Array<object>} Parsed collection or empty array on failure
-         */
-        fromAttribute(value) {
-          if (!value) return [];
-          try {
-            return JSON.parse(value);
-          } catch (err) {
-            console.error("Invalid groups data", err);
-            return [];
-          }
-        },
-      },
+      type: Array,
     },
     selectedGroupId: { type: String, attribute: "selected-group-id" },
-    searchDelay: { type: Number, attribute: "search-delay" },
     _isOpen: { state: true },
     _query: { state: true },
-    _filteredGroups: { state: true },
-    _highlightIndex: { state: true },
+    _isSubmitting: { state: true },
+    _activeIndex: { state: true },
   };
 
   constructor() {
     super();
     this.groups = [];
     this.selectedGroupId = "";
-    this.searchDelay = 250;
     this._isOpen = false;
     this._query = "";
-    this._filteredGroups = [];
-    this._highlightIndex = -1;
+    this._isSubmitting = false;
+    this._activeIndex = null;
     this._searchTimeoutId = 0;
     this._documentClickHandler = null;
-    this._boundHandleKeydown = this._handleKeydown.bind(this);
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener("keydown", this._boundHandleKeydown);
-    if (this._filteredGroups.length === 0 && this.groups.length > 0) {
-      this._filteredGroups = [...this.groups];
-    }
+    this.addEventListener("keydown", this._handleKeydown.bind(this));
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeEventListener("keydown", this._boundHandleKeydown);
     this._removeDocumentListener();
     if (this._searchTimeoutId) {
       window.clearTimeout(this._searchTimeoutId);
-      this._searchTimeoutId = 0;
     }
   }
 
   /**
-   * Keeps internal collections aligned with external props.
-   * @param {Map<string, unknown>} changedProps Changed reactive properties
-   */
-  willUpdate(changedProps) {
-    if (changedProps.has("groups")) {
-      this._filteredGroups = Array.isArray(this.groups) ? [...this.groups] : [];
-      this._highlightIndex = -1;
-    }
-    if (changedProps.has("selectedGroupId") && this._isOpen) {
-      this._syncHighlightWithSelection();
-    }
-  }
-
-  /**
-   * Processes HTMX hooks when dropdown content changes in the light DOM.
-   * @param {Map<string, unknown>} changedProps Changed reactive properties
-   */
-  updated(changedProps) {
-    if (
-      (changedProps.has("_filteredGroups") || changedProps.has("_isOpen")) &&
-      typeof window !== "undefined" &&
-      window.htmx &&
-      typeof window.htmx.process === "function"
-    ) {
-      this.updateComplete.then(() => {
-        const buttons = this.querySelectorAll(".group-button");
-        if (buttons.length === 0) {
-          window.htmx.process(this);
-          return;
-        }
-        buttons.forEach((button) => {
-          button.removeAttribute("hx-processed");
-          window.htmx.process(button);
-        });
-      });
-    }
-  }
-
-  /**
-   * Stores the current query and triggers the debounced filtering.
+   * Stores the current query and triggers filtering with simple debounce.
    * @param {InputEvent} event Native input event
    */
   _handleSearchInput(event) {
@@ -124,89 +62,106 @@ export class GroupSelector extends LitWrapper {
       window.clearTimeout(this._searchTimeoutId);
     }
     this._searchTimeoutId = window.setTimeout(() => {
-      this._applyFilter();
-    }, this.searchDelay);
+      this._activeIndex = null;
+      this.requestUpdate();
+    }, 200);
   }
 
   /**
-   * Applies the current query to the groups collection.
+   * Gets filtered groups based on current query.
    */
-  _applyFilter() {
+  get _filteredGroups() {
     const normalized = (this._query || "").trim().toLowerCase();
     if (!normalized) {
-      this._filteredGroups = [...this.groups];
-    } else {
-      this._filteredGroups = this.groups.filter((group) => {
-        return (group.name || "").toLowerCase().includes(normalized);
-      });
+      return this.groups;
     }
-    this._syncHighlightWithSelection();
+    return this.groups.filter((group) => {
+      return (group.name || "").toLowerCase().includes(normalized);
+    });
   }
 
   /**
-   * Handles clicks on a group option and closes the dropdown when needed.
+   * Triggers dashboard group selection via HTMX or falls back to reloading.
+   * @param {string|number} groupId Identifier of the group to select
+   * @returns {XMLHttpRequest|null} Active HTMX request when available
+   */
+  _selectDashboardGroup(groupId) {
+    const url = `/dashboard/group/${groupId}/select`;
+
+    if (typeof window !== "undefined" && window.htmx && typeof window.htmx.ajax === "function") {
+      const request = window.htmx.ajax("PUT", url, {
+        target: "#dashboard-content",
+        indicator: "#dashboard-spinner",
+      });
+      return request ?? null;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.assign("/dashboard/group");
+    }
+    return null;
+  }
+
+  /**
+   * Handles clicks on a group option and closes the dropdown.
    * @param {MouseEvent} event Option click event
    * @param {object} group Associated group data
    */
   _handleGroupClick(event, group) {
-    if (this._isSelected(group)) {
+    if (this._isSelected(group) || this._isSubmitting) {
       event.preventDefault();
-      event.stopPropagation();
       return;
     }
-    this._closeDropdown({ focusButton: true });
+    event.preventDefault();
+    this._isSubmitting = true;
+    this._selectDashboardGroup(group.group_id, {
+      target: "#dashboard-content",
+      indicator: "#dashboard-spinner",
+    });
+    this._closeDropdown();
   }
 
   /**
    * Toggles dropdown visibility.
    */
   _toggleDropdown() {
+    if (this._isSubmitting) {
+      return;
+    }
     if (this._isOpen) {
-      this._closeDropdown({ focusButton: false });
+      this._closeDropdown();
     } else {
       this._openDropdown();
     }
   }
 
   /**
-   * Opens the dropdown, resets search and attaches outside click handler.
+   * Opens the dropdown and resets search.
    */
   _openDropdown() {
-    if (this.groups.length === 0) {
+    if (this.groups.length === 0 || this._isSubmitting) {
       return;
     }
     this._isOpen = true;
     this._query = "";
-    this._filteredGroups = [...this.groups];
-    this._syncHighlightWithSelection();
+    this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
       const input = this.querySelector("#group-search-input");
       if (input) {
         input.focus();
-        input.select();
       }
     });
   }
 
   /**
-   * Closes the dropdown, clears search state and optionally refocuses button.
-   * @param {{focusButton: boolean}} options Behavior tweak flags
+   * Closes the dropdown and clears search state.
    */
-  _closeDropdown({ focusButton }) {
+  _closeDropdown() {
     this._isOpen = false;
     this._query = "";
-    this._filteredGroups = [...this.groups];
-    this._highlightIndex = -1;
+    this._activeIndex = null;
     this._removeDocumentListener();
-    if (focusButton) {
-      this.updateComplete.then(() => {
-        const btn = this.querySelector("#group-selector-button");
-        if (btn) {
-          btn.focus();
-        }
-      });
-    }
   }
 
   /**
@@ -218,7 +173,7 @@ export class GroupSelector extends LitWrapper {
     }
     this._documentClickHandler = (event) => {
       if (!this.contains(event.target)) {
-        this._closeDropdown({ focusButton: false });
+        this._closeDropdown();
       }
     };
     document.addEventListener("click", this._documentClickHandler);
@@ -236,25 +191,18 @@ export class GroupSelector extends LitWrapper {
   }
 
   /**
-   * Handles keyboard shortcuts for toggling, navigating and selecting.
+   * Handles keyboard navigation and shortcuts.
    * @param {KeyboardEvent} event Native keyboard event
    */
   _handleKeydown(event) {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || this._isSubmitting) {
       return;
     }
 
-    if (!this._isOpen) {
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    if (!this._isOpen || this._filteredGroups.length === 0) {
+      if (this._isOpen && event.key === "Escape") {
         event.preventDefault();
-        this._openDropdown();
-        this._changeHighlight(event.key === "ArrowDown" ? 1 : -1);
-      } else if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        this._toggleDropdown();
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        this._closeDropdown({ focusButton: true });
+        this._closeDropdown();
       }
       return;
     }
@@ -262,120 +210,37 @@ export class GroupSelector extends LitWrapper {
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        this._changeHighlight(1);
+        if (this._activeIndex === null) {
+          this._activeIndex = 0;
+        } else {
+          this._activeIndex = (this._activeIndex + 1) % this._filteredGroups.length;
+        }
         break;
       case "ArrowUp":
         event.preventDefault();
-        this._changeHighlight(-1);
-        break;
-      case "Home":
-        event.preventDefault();
-        this._jumpToEdge(0);
-        break;
-      case "End":
-        event.preventDefault();
-        this._jumpToEdge(this._filteredGroups.length - 1);
+        if (this._activeIndex === null) {
+          this._activeIndex = 0;
+        } else {
+          this._activeIndex =
+            (this._activeIndex - 1 + this._filteredGroups.length) % this._filteredGroups.length;
+        }
         break;
       case "Enter":
         event.preventDefault();
-        this._activateHighlight();
+        if (this._activeIndex !== null) {
+          const group = this._filteredGroups[this._activeIndex];
+          if (group && !this._isSelected(group)) {
+            this._handleGroupClick(event, group);
+          }
+        }
         break;
       case "Escape":
         event.preventDefault();
-        this._closeDropdown({ focusButton: true });
+        this._closeDropdown();
         break;
       default:
         break;
     }
-  }
-
-  /**
-   * Updates highlight index based on keyboard navigation.
-   * @param {number} step Direction to move the highlight (positive or negative)
-   */
-  _changeHighlight(step) {
-    const total = this._filteredGroups.length;
-    if (!total) {
-      this._highlightIndex = -1;
-      return;
-    }
-    if (this._highlightIndex === -1) {
-      this._highlightIndex = step > 0 ? 0 : total - 1;
-    } else {
-      this._highlightIndex = (this._highlightIndex + step + total) % total;
-    }
-    this.updateComplete.then(() => this._scrollHighlightedIntoView());
-  }
-
-  /**
-   * Moves highlight to an absolute index when Home/End is pressed.
-   * @param {number} index Target index within filtered results
-   */
-  _jumpToEdge(index) {
-    if (!this._filteredGroups.length) {
-      this._highlightIndex = -1;
-      return;
-    }
-    const bounded = Math.min(Math.max(index, 0), this._filteredGroups.length - 1);
-    this._highlightIndex = bounded;
-    this.updateComplete.then(() => this._scrollHighlightedIntoView());
-  }
-
-  /**
-   * Handles activation of the highlighted item via keyboard.
-   */
-  _activateHighlight() {
-    if (this._highlightIndex < 0 || this._highlightIndex >= this._filteredGroups.length) {
-      return;
-    }
-    const group = this._filteredGroups[this._highlightIndex];
-    if (!group || this._isSelected(group)) {
-      return;
-    }
-    const button = this.querySelector(`button[data-group-id="${group.group_id}"]`);
-    if (button) {
-      button.click();
-    }
-  }
-
-  /**
-   * Sets the highlight index when hovering or focusing via pointer.
-   * @param {number} index Candidate index
-   */
-  _setHighlight(index) {
-    if (index == null || index < 0 || index >= this._filteredGroups.length) {
-      return;
-    }
-    if (this._highlightIndex === index) {
-      return;
-    }
-    this._highlightIndex = index;
-    this.updateComplete.then(() => this._scrollHighlightedIntoView());
-  }
-
-  /**
-   * Keeps the highlighted item within the scrollable viewport.
-   */
-  _scrollHighlightedIntoView() {
-    if (this._highlightIndex < 0) {
-      return;
-    }
-    const list = this.querySelector("#group-selector-list");
-    if (!list) {
-      return;
-    }
-    const item = list.querySelector(`li[data-index="${this._highlightIndex}"]`);
-    if (item && typeof item.scrollIntoView === "function") {
-      item.scrollIntoView({ block: "nearest" });
-    }
-  }
-
-  /**
-   * Resets highlight to the first option that is not already selected.
-   */
-  _syncHighlightWithSelection() {
-    const firstAvailable = this._filteredGroups.findIndex((group) => !this._isSelected(group));
-    this._highlightIndex = firstAvailable >= 0 ? firstAvailable : -1;
   }
 
   /**
@@ -399,40 +264,25 @@ export class GroupSelector extends LitWrapper {
     return String(group.group_id) === String(this.selectedGroupId || "");
   }
 
-  /**
-   * Returns the id used for aria-activedescendant referencing the highlight.
-   * @returns {string}
-   */
-  _activeDescendantId() {
-    if (this._highlightIndex < 0 || this._highlightIndex >= this._filteredGroups.length) {
-      return "";
-    }
-    const group = this._filteredGroups[this._highlightIndex];
-    if (!group) {
-      return "";
-    }
-    return `group-option-${group.group_id}`;
-  }
-
   render() {
     const selectedGroup = this._findSelectedGroup();
-    const isDisabled = this.groups.length === 0;
+    const isDisabled = this.groups.length === 0 || this._isSubmitting;
 
     return html`
       <div class="relative">
         <button
           id="group-selector-button"
           type="button"
-          class="cursor-pointer select select-primary relative text-left pe-9 ${isDisabled
+          class="select select-primary relative text-left pe-9 ${isDisabled
             ? "opacity-60 cursor-not-allowed"
-            : ""}"
+            : "cursor-pointer"}"
           ?disabled="${isDisabled}"
           aria-haspopup="listbox"
           aria-expanded="${this._isOpen ? "true" : "false"}"
           @click="${() => this._toggleDropdown()}"
         >
-          <div class="flex flex-col justify-center min-h-[40px] whitespace-normal leading-tight">
-            <div class="text-sm font-medium text-stone-900 whitespace-normal leading-tight">
+          <div class="flex flex-col justify-center min-h-[40px]">
+            <div class="text-xs/4 text-stone-900 line-clamp-2">
               ${selectedGroup ? selectedGroup.name : "Select a group"}
             </div>
           </div>
@@ -447,110 +297,67 @@ export class GroupSelector extends LitWrapper {
             ? ""
             : "hidden"}"
         >
-          ${this._renderSearchInput()}
-          ${this._filteredGroups.length > 0 ? this._renderResultsList() : this._renderEmptyState()}
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Renders the search input that powers the filtering behavior.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderSearchInput() {
-    return html`
-      <div class="p-3 border-b border-stone-200">
-        <div class="relative">
-          <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+          <div class="p-3 border-b border-stone-200">
+            <div class="relative">
+              <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
+                <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+              </div>
+              <input
+                id="group-search-input"
+                type="search"
+                class="input-primary w-full ps-9"
+                placeholder="Search groups"
+                autocomplete="off"
+                .value="${this._query}"
+                @input="${(event) => this._handleSearchInput(event)}"
+              />
+            </div>
           </div>
-          <input
-            id="group-search-input"
-            type="search"
-            class="input-primary w-full ps-9"
-            placeholder="Search groups"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            .value="${this._query}"
-            @input="${(event) => this._handleSearchInput(event)}"
-          />
+
+          ${this._filteredGroups.length > 0
+            ? html`
+                <ul id="group-selector-list" class="max-h-48 overflow-y-auto text-stone-700" role="listbox">
+                  ${repeat(
+                    this._filteredGroups,
+                    (group) => group.group_id,
+                    (group, index) => {
+                      const isSelected = this._isSelected(group);
+                      const isActive = this._activeIndex === index;
+                      const isDisabled = isSelected || this._isSubmitting;
+
+                      let statusClass = "";
+                      if (isDisabled) {
+                        statusClass = "opacity-50 cursor-not-allowed bg-stone-100";
+                      } else if (isActive) {
+                        statusClass = "cursor-pointer bg-stone-50";
+                      } else {
+                        statusClass = "cursor-pointer hover:bg-stone-50";
+                      }
+
+                      return html`
+                        <li role="presentation" data-index="${index}">
+                          <button
+                            id="group-option-${group.group_id}"
+                            type="button"
+                            class="group-button w-full px-4 py-2 whitespace-normal min-h-[40px] flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                            role="option"
+                            data-group-id="${group.group_id}"
+                            ?disabled="${isDisabled}"
+                            @click="${(event) => this._handleGroupClick(event, group)}"
+                            @mouseover="${() => (this._activeIndex = index)}"
+                          >
+                            <div class="text-xs/4 text-stone-900 line-clamp-2">${group.name}</div>
+                          </button>
+                        </li>
+                      `;
+                    },
+                  )}
+                </ul>
+              `
+            : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`}
         </div>
       </div>
     `;
-  }
-
-  /**
-   * Renders the listbox with the current filtered groups.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderResultsList() {
-    return html`
-      <ul
-        id="group-selector-list"
-        class="max-h-48 overflow-y-auto text-stone-700"
-        role="listbox"
-        aria-activedescendant="${this._activeDescendantId()}"
-      >
-        ${repeat(
-          this._filteredGroups,
-          (group) => group.group_id,
-          (group, index) => this._renderGroupItem(group, index),
-        )}
-      </ul>
-    `;
-  }
-
-  /**
-   * Renders the button element for an individual group option.
-   * @param {object} group Group object containing group_id and name
-   * @param {number} index Index used for highlighting
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderGroupItem(group, index) {
-    const isSelected = this._isSelected(group);
-    const isHighlighted = index === this._highlightIndex;
-    const backgroundClass = (() => {
-      if (isSelected && isHighlighted) return "bg-stone-200";
-      if (isSelected) return "bg-stone-100";
-      if (isHighlighted) return "bg-stone-50";
-      return "";
-    })();
-
-    return html`
-      <li role="presentation" data-index="${index}">
-        <button
-          id="group-option-${group.group_id}"
-          type="button"
-          class="group-button w-full px-4 py-2 text-sm/6 whitespace-normal leading-tight min-h-[40px] flex flex-col justify-center text-left focus:outline-none ${isSelected
-            ? "opacity-50 cursor-not-allowed"
-            : "cursor-pointer hover:bg-stone-50"} ${backgroundClass}"
-          role="option"
-          data-group-id="${group.group_id}"
-          ?disabled="${isSelected}"
-          hx-put="/dashboard/group/${group.group_id}/select"
-          hx-trigger="click"
-          hx-target="#dashboard-content"
-          hx-indicator="#dashboard-spinner"
-          hx-disabled-elt=".group-button"
-          @click="${(event) => this._handleGroupClick(event, group)}"
-          @mouseenter="${() => this._setHighlight(index)}"
-          @focus="${() => this._setHighlight(index)}"
-        >
-          <div class="text-sm font-medium text-stone-900 whitespace-normal leading-tight">${group.name}</div>
-        </button>
-      </li>
-    `;
-  }
-
-  /**
-   * Provides feedback when no group matches the search query.
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderEmptyState() {
-    return html` <div class="px-4 py-3 text-sm text-stone-500">No groups found.</div> `;
   }
 }
 

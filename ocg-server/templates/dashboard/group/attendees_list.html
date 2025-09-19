@@ -4,27 +4,14 @@
 {# Attendees header -#}
 {% call macros::form_title(title = "Attendees") -%}
 
-{# Filters: Event selector -#}
-<div class="flex flex-col my-10">
-  <label for="event-btn" class="form-label mb-2">Event</label>
-  <div class="relative w-full">
-    {# Event selector button -#}
-    <button id="event-btn"
-            class="cursor-pointer select select-primary w-3/4 max-w-[90vw] text-left"
-            aria-label="Select event">
-      <div class="flex items-center relative">
-        <div class="min-w-0">
-          <div class="max-w-full truncate">Select event</div>
-          <div class="text-xs text-stone-500 truncate">Choose an event to view attendees</div>
-        </div>
-      </div>
-      <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-        <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
-      </div>
-    </button>
-  </div>
+<div class="flex flex-col my-10 w-3/4 max-w-[90vw] relative">
+  <label for="group-event-selector-button" class="form-label mb-2">Event</label>
+  <event-selector button-id="group-event-selector-button" group-id="{{ group_id }}"
+  {% if let Some(selected_event) = event -%}
+    selected-event-id="{{ selected_event.event_id }}" selected-event="{{ selected_event|json }}"
+  {% endif -%}
+  ></event-selector>
 </div>
-{# End filters -#}
 
 <div class="flex text-sm text-stone-600 mb-3 justify-end">
   <div>Total attendees:</div>
@@ -133,46 +120,3 @@
   </table>
 </div>
 {# End attendees table -#}
-
-{% macro event_content_list(event) -%}
-  <div class="mr-3">
-    {% call common::logo(logo_url = event.logo_url, classes = "size-8", size = 40, color = event.group_color, border = false) -%}
-  </div>
-  <div class="flex flex-col min-w-0 items-start">
-    <div class="max-w-full truncate">{{ event.name }}</div>
-    <div class="flex items-center gap-x-2 text-xs text-stone-500">
-      {% if let Some(start_time) = event.starts_at -%}
-        <span class="me-3">{{ start_time.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z") }}</span>
-      {% endif -%}
-      {% call common::event_badge(kind = event.kind, canceled = event.canceled) -%}
-    </div>
-  </div>
-{% endmacro event_content_list -%}
-
-<script type="module">
-  const eventBtn = document.getElementById('event-btn');
-  const dropdownEvents = document.getElementById('dropdown-events');
-  if (eventBtn && dropdownEvents) {
-    eventBtn.addEventListener('click', () => {
-      const isOpen = dropdownEvents.classList.contains('hidden');
-      dropdownEvents.classList.toggle('hidden');
-
-      if (isOpen) {
-        document.addEventListener('click', (event) => {
-          if (!dropdownEvents.contains(event.target) && !eventBtn.contains(event.target)) {
-            dropdownEvents.classList.add('hidden');
-          }
-        });
-      } else {
-        document.removeEventListener('click', () => {});
-      }
-    });
-  }
-
-  const dropdownEventBtns = document.querySelectorAll('button.event-button');
-  dropdownEventBtns.forEach((btn) => {
-    btn.addEventListener('htmx:beforeRequest', () => {
-      if (dropdownEvents) dropdownEvents.classList.add('hidden');
-    });
-  });
-</script>

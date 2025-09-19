@@ -361,7 +361,7 @@ export class SponsorsSection extends LitWrapper {
               ${this.selectedSponsors.map(
                 (s, i) =>
                   html`<div
-                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3 w-full"
+                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
                     >
                       <div
                         class="relative flex items-center justify-center size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
@@ -380,7 +380,7 @@ export class SponsorsSection extends LitWrapper {
                         <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
                           ${s.name}
                         </div>
-                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-0.5">
+                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">
                           ${s.level || ""}
                         </div>
                       </div>
@@ -413,12 +413,12 @@ export class SponsorsSection extends LitWrapper {
                   <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
                   <div class="flex items-center gap-3 mb-4">
                     <div
-                      class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+                      class="relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
                     >
                       <img
                         src="${this.pendingSponsor?.logo_url || ""}"
                         alt="${this.pendingSponsor?.name || ""} logo"
-                        class="h-6 w-6 object-contain"
+                        class="size-8 object-contain"
                         loading="lazy"
                       />
                     </div>

@@ -176,6 +176,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   _handleOutsidePointer(event) {
+    if (this.contains(event.target)) return;
     this._clearSearch();
   }
 
