@@ -171,7 +171,9 @@
           </ul>
 
           {# Loading spinner -#}
-          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">{% call common::spinner() -%}</div>
+          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
+            {% call common::spinner(htmx = false) -%}
+          </div>
           {# End loading spinner -#}
         </div>
         {# End view mode -#}
