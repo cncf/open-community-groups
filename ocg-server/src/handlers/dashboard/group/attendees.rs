@@ -32,8 +32,8 @@ pub(crate) async fn list_page(
     };
     let template = attendees::ListPage {
         attendees,
-        event,
         group_id,
+        event,
     };
 
     Ok(Html(template.render()?))

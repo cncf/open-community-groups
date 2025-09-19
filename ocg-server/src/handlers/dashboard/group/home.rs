@@ -67,11 +67,11 @@ pub(crate) async fn page(
             } else {
                 None
             };
-            Content::Attendees(attendees::ListPage {
+            Content::Attendees(Box::new(attendees::ListPage {
                 attendees,
-                event,
                 group_id,
-            })
+                event,
+            }))
         }
         Tab::Events => {
             let events = db.list_group_events(group_id).await?;
