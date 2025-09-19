@@ -8,66 +8,20 @@
 <div class="flex flex-col my-10">
   <label for="event-btn" class="form-label mb-2">Event</label>
   <div class="relative w-full">
-    {% if filters_options.events.is_empty() -%}
-      <button id="event-btn"
-              class="select select-primary w-3/4 max-w-[90vw] opacity-50 cursor-not-allowed text-left"
-              aria-label="No events"
-              disabled>
-        <div class="flex items-center relative">
-          <div class="min-w-0">
-            <div class="max-w-full truncate text-stone-500">No events</div>
-            <div class="text-xs text-stone-500 truncate">Create an event to view attendees</div>
-          </div>
+    {# Event selector button -#}
+    <button id="event-btn"
+            class="cursor-pointer select select-primary w-3/4 max-w-[90vw] text-left"
+            aria-label="Select event">
+      <div class="flex items-center relative">
+        <div class="min-w-0">
+          <div class="max-w-full truncate">Select event</div>
+          <div class="text-xs text-stone-500 truncate">Choose an event to view attendees</div>
         </div>
-      </button>
-    {% else -%}
-      {# Event selector button -#}
-      <button id="event-btn"
-              class="cursor-pointer select select-primary w-3/4 max-w-[90vw] text-left"
-              aria-label="Select event">
-        <div class="flex items-center relative">
-          {% if let Some(selected_id) = filters.event_id -%}
-            {% for event in filters_options.events -%}
-              {% if selected_id == &event.event_id -%}
-                {% call event_content_list(event) -%}
-              {% endif -%}
-            {% endfor -%}
-          {% else -%}
-            <div class="min-w-0">
-              <div class="max-w-full truncate">Select event</div>
-              <div class="text-xs text-stone-500 truncate">Choose an event to view attendees</div>
-            </div>
-          {% endif -%}
-        </div>
-        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-          <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
-        </div>
-      </button>
-
-      {# Dropdown events -#}
-      <div id="dropdown-events"
-           class="hidden absolute top-10 start-0 w-[520px] max-w-[90vw] z-10 bg-white rounded-lg shadow-sm border border-stone-200">
-        <ul class="max-h-64 overflow-y-auto text-stone-700">
-          {% for event in filters_options.events -%}
-            {% let is_selected = filters.event_id.is_some() && filters.event_id.as_ref().unwrap() == &event.event_id -%}
-            <li>
-              <button id="select-event-{{ event.event_id }}"
-                      hx-get="/dashboard/group/attendees?event_id={{ event.event_id }}"
-                      hx-target="#dashboard-content"
-                      hx-indicator="#dashboard-spinner"
-                      hx-swap="innerHTML show:body:top"
-                      hx-disabled-elt=".event-button"
-                      class="event-button cursor-pointer w-full flex items-center justify-between px-4 py-2 text-sm/6 hover:bg-stone-100
-                             {% if is_selected -%}bg-stone-100{%- endif %}"
-                      {% if is_selected %}disabled{% endif %}>
-                <div class="flex items-center min-w-0">{% call event_content_list(event) -%}</div>
-              </button>
-            </li>
-          {% endfor -%}
-        </ul>
       </div>
-      {# End dropdown events -#}
-    {% endif -%}
+      <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+        <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
+      </div>
+    </button>
   </div>
 </div>
 {# End filters -#}
@@ -98,31 +52,7 @@
       </tr>
     </thead>
     <tbody id="attendees-list" role="rowgroup">
-      {% if filters.event_id.is_none() -%}
-        <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="4">
-            <div class="flex flex-col items-center justify-center min-h-[125px]">
-              {% if filters_options.events.is_empty() -%}
-                <div class="text-xl lg:text-2xl mb-6">It looks like you haven't created any events yet.</div>
-                <p class="text-sm lg:text-md text-stone-700 mb-8">
-                  Create your first event to start tracking attendees for this group.
-                </p>
-                <button id="add-event-button"
-                        hx-get="/dashboard/group/events/add"
-                        hx-target="#dashboard-content"
-                        hx-indicator="#dashboard-spinner"
-                        class="btn-primary">Add Event</button>
-              {% else -%}
-                <div class="text-xl lg:text-2xl mb-6">Select an event to view attendees.</div>
-                <p class="text-sm lg:text-md text-stone-700">
-                  Use the <span class="font-semibold">Event</span> dropdown above to pick an event
-                  and load its attendees.
-                </p>
-              {% endif -%}
-            </div>
-          </td>
-        </tr>
-      {% else -%}
+      {% if let Some(event) = event -%}
         {% if attendees.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             <td class="px-8 py-12 text-center" colspan="4">
@@ -186,6 +116,18 @@
             </tr>
           {% endfor -%}
         {% endif -%}
+      {% else -%}
+        <tr class="bg-white border-b border-stone-200">
+          <td class="px-8 py-12 text-center" colspan="4">
+            <div class="flex flex-col items-center justify-center min-h-[125px]">
+              <div class="text-xl lg:text-2xl mb-6">Select an event to view attendees.</div>
+              <p class="text-sm lg:text-md text-stone-700">
+                Use the <span class="font-semibold">Event</span> dropdown above to pick an event
+                and load its attendees.
+              </p>
+            </div>
+          </td>
+        </tr>
       {% endif -%}
     </tbody>
   </table>

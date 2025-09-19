@@ -43,7 +43,7 @@ pub(crate) struct Page {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
     /// Attendees list page.
-    Attendees(attendees::ListPage),
+    Attendees(Box<attendees::ListPage>),
     /// Events management page.
     Events(events::ListPage),
     /// Members list page.

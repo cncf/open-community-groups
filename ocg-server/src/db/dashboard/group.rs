@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::group::{
-        attendees::{Attendee, AttendeesFilterOptions, AttendeesFilters},
+        attendees::{Attendee, AttendeesFilters},
         events::{Event, GroupEvents},
         members::GroupMember,
         sponsors::Sponsor,
@@ -44,9 +44,6 @@ pub(crate) trait DBDashboardGroup {
 
     /// Deletes a user from the group team.
     async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
-
-    /// Returns attendees filters options for a group.
-    async fn get_attendees_filters_options(&self, group_id: Uuid) -> Result<AttendeesFilterOptions>;
 
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
@@ -218,23 +215,6 @@ impl DBDashboardGroup for PgDB {
         .await?;
 
         Ok(())
-    }
-
-    /// [`DBDashboardGroup::get_attendees_filters_options`]
-    #[instrument(skip(self), err)]
-    async fn get_attendees_filters_options(&self, group_id: Uuid) -> Result<AttendeesFilterOptions> {
-        trace!("db: get attendees filters options");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_attendees_filters_options($1::uuid)::text",
-                &[&group_id],
-            )
-            .await?;
-        let filters_options: AttendeesFilterOptions = serde_json::from_str(&row.get::<_, String>(0))?;
-
-        Ok(filters_options)
     }
 
     /// [`DBDashboardGroup::get_group_sponsor`]
