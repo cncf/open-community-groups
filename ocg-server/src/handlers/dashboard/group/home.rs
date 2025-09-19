@@ -61,14 +61,16 @@ pub(crate) async fn page(
             let filters: attendees::AttendeesFilters = serde_qs_de
                 .deserialize_str(&raw_query.unwrap_or_default())
                 .map_err(anyhow::Error::new)?;
-            let (filters_options, attendees) = tokio::try_join!(
-                db.get_attendees_filters_options(group_id),
-                db.search_event_attendees(group_id, &filters)
-            )?;
+            let attendees = db.search_event_attendees(group_id, &filters).await?;
+            let event = if let Some(event_id) = filters.event_id {
+                Some(db.get_event_summary(event_id).await?)
+            } else {
+                None
+            };
             Content::Attendees(attendees::ListPage {
                 attendees,
-                filters,
-                filters_options,
+                event,
+                group_id,
             })
         }
         Tab::Events => {

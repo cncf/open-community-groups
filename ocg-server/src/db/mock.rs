@@ -207,12 +207,6 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
-        async fn get_attendees_filters_options(
-            &self,
-            group_id: Uuid,
-        ) -> Result<
-            crate::templates::dashboard::group::attendees::AttendeesFilterOptions,
-        >;
         async fn get_group_sponsor(
             &self,
             group_id: Uuid,

@@ -20,10 +20,11 @@ use crate::{
 pub(crate) struct ListPage {
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
-    /// Applied filters.
-    pub filters: AttendeesFilters,
-    /// Available filters options.
-    pub filters_options: AttendeesFilterOptions,
+    /// Identifier of the current group.
+    pub group_id: Uuid,
+
+    /// Event currently selected in the filters.
+    pub event: Option<EventSummary>,
 }
 
 // Types.
@@ -63,11 +64,4 @@ impl Attendee {
 pub(crate) struct AttendeesFilters {
     /// Selected event to scope attendees list.
     pub event_id: Option<Uuid>,
-}
-
-/// Available options for attendees filters.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct AttendeesFilterOptions {
-    /// Events available for selection.
-    pub events: Vec<EventSummary>,
 }

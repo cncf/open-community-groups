@@ -3,10 +3,9 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     response::{Html, IntoResponse},
 };
-use axum_extra::extract::Query as QsQuery;
 use tracing::instrument;
 
 use crate::{
@@ -22,17 +21,19 @@ use crate::{
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    QsQuery(filters): QsQuery<attendees::AttendeesFilters>,
+    Query(filters): Query<attendees::AttendeesFilters>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (filters_options, attendees) = tokio::try_join!(
-        db.get_attendees_filters_options(group_id),
-        db.search_event_attendees(group_id, &filters)
-    )?;
+    let attendees = db.search_event_attendees(group_id, &filters).await?;
+    let event = if let Some(event_id) = filters.event_id {
+        Some(db.get_event_summary(event_id).await?)
+    } else {
+        None
+    };
     let template = attendees::ListPage {
         attendees,
-        filters,
-        filters_options,
+        event,
+        group_id,
     };
 
     Ok(Html(template.render()?))
