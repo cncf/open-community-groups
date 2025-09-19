@@ -12,7 +12,7 @@
 
     <div class="flex items-center">
       {# Loading spinner -#}
-      <div id="loading-calendar" class="me-3 w-6 group">{% call common::spinner() -%}</div>
+      <div id="loading-calendar" class="me-3 w-6 group">{% call common::spinner(htmx = false) -%}</div>
       {# End loading spinner -#}
 
       {# Today button -#}
@@ -129,7 +129,9 @@
 <div class="mt-5 border-t border-stone-100 md:mt-7 p-5 md:p-7">
   <div class="relative w-full border border-stone-200 h-[600px] md:h-[820px] overflow-hidden">
     {# Loading spinner -#}
-    <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">{% call common::spinner() -%}</div>
+    <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">
+      {% call common::spinner(htmx = false) -%}
+    </div>
     {# End loading spinner -#}
 
     {# Placeholder map -#}

@@ -151,9 +151,14 @@
 {# End logo -#}
 
 {# Small spinner -#}
-{% macro spinner(size = "size-6", spinner_type = "1", extra_styles = "") -%}
+{% macro spinner(size = "size-6", spinner_type = "1", extra_styles = "", htmx = true) -%}
   <div role="status"
-       class="hidden group-[.is-loading]:flex group-[.htmx-request]:flex {{ extra_styles }}">
+       class="{% if htmx -%}
+                flex
+              {% else -%}
+                hidden group-[.is-loading]:flex
+              {% endif -%}
+              {{ extra_styles }}">
     <img src="/static/images/spinner/spinner_{{ spinner_type }}.svg"
          height="auto"
          width="auto"
