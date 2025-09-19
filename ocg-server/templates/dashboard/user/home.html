@@ -27,7 +27,9 @@
 {% endblock menu -%}
 
 {% block dashboard_main -%}
-  <div id="dashboard-content" class="p-4 sm:p-6 lg:p-12">
+  <div id="dashboard-content"
+       hx-swap="innerHTML show:window:top"
+       class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}
     {# End Content -#}

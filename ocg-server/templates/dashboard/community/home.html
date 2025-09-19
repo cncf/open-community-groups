@@ -46,6 +46,7 @@
   <div id="dashboard-content"
        hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- else -%}groups{%- endif -%}"
        hx-trigger="refresh-community-dashboard-table"
+       hx-swap="innerHTML show:window:top"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}
