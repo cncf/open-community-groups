@@ -159,7 +159,7 @@
             <div class="flex flex-col p-4 h-full">
               <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
               <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
-                {% let location_text = self.group.location(75) -%}
+                {% let location_text = self.group.location(70) -%}
                 {% if let Some(lat) = group.latitude %}
                   {% if let Some(lng) = group.longitude %}
                     {% call common::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, modal_title = group.name|demoji) -%}
