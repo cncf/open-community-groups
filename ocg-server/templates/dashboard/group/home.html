@@ -71,7 +71,7 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
