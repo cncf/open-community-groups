@@ -11,7 +11,6 @@ class EventSelector extends LitWrapper {
    * - selectedEvent: preloaded event payload to render selected label
    * - groupId: optional override group uuid
    * - buttonId: optional button id to control focus interactions
-   * - hasEvents: indicates if the group has any events to fetch
    * - _isOpen: dropdown visibility flag
    * - _query: current search term
    * - _results: fetched events list
@@ -37,7 +36,6 @@ class EventSelector extends LitWrapper {
     },
     groupId: { type: String, attribute: "group-id" },
     buttonId: { type: String, attribute: "button-id" },
-    hasEvents: { type: Boolean, attribute: "has-events" },
     _isOpen: { state: true },
     _query: { state: true },
     _results: { state: true },
@@ -52,7 +50,6 @@ class EventSelector extends LitWrapper {
     this.selectedEvent = null;
     this.groupId = "";
     this.buttonId = "";
-    this.hasEvents = false;
     this._isOpen = false;
     this._query = "";
     this._results = [];
@@ -80,6 +77,12 @@ class EventSelector extends LitWrapper {
    * @param {Map<string, unknown>} changed Changed reactive props
    */
   updated(changed) {
+    if (changed.has("selectedEvent")) {
+      this._syncSelectedEvent();
+    }
+    if (changed.has("selectedEventId") && !this.selectedEvent) {
+      this._hasFetched = false;
+    }
     if (
       (changed.has("_results") || changed.has("_isOpen")) &&
       typeof window !== "undefined" &&
@@ -152,9 +155,6 @@ class EventSelector extends LitWrapper {
    */
   _toggleDropdown(event) {
     event.preventDefault();
-    if (!this.hasEvents) {
-      return;
-    }
     if (this._isOpen) {
       this._closeDropdown();
     } else {
@@ -166,9 +166,6 @@ class EventSelector extends LitWrapper {
    * Opens dropdown and performs the initial fetch when needed.
    */
   _openDropdown() {
-    if (!this.hasEvents) {
-      return;
-    }
     if (this._isOpen) return;
     this._isOpen = true;
     this._addOutsideListener();
@@ -213,14 +210,25 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Keeps selected event id aligned with provided event payload.
+   */
+  _syncSelectedEvent() {
+    const event = this.selectedEvent;
+    if (!event || typeof event !== "object") {
+      return;
+    }
+
+    const eventId = event?.event_id ? String(event.event_id) : "";
+    if (eventId && eventId !== (this.selectedEventId ?? "")) {
+      this.selectedEventId = eventId;
+    }
+  }
+
+  /**
    * Queries remote events using the selected group id.
    */
   async _fetchEvents() {
-    if (!this.hasEvents) {
-      this._results = [];
-      return;
-    }
-    const groupId = this._resolveGroupId();
+    const groupId = this.groupId ? String(this.groupId) : "";
     if (!groupId) {
       this._results = [];
       return;
@@ -265,18 +273,6 @@ class EventSelector extends LitWrapper {
     } finally {
       this._loading = false;
     }
-  }
-
-  /**
-   * Determines which group id should be used for searches.
-   * @returns {string}
-   */
-  _resolveGroupId() {
-    if (this.groupId) {
-      return this.groupId;
-    }
-    const selector = document.querySelector("group-selector");
-    return selector?.getAttribute("selected-group-id") ?? "";
   }
 
   /**
@@ -375,6 +371,12 @@ class EventSelector extends LitWrapper {
       </ul>`;
     }
     if (!this._results || this._results.length === 0) {
+      const trimmed = this._query.trim();
+      if (trimmed.length <= 2) {
+        return html`<ul class="max-h-64 overflow-y-auto text-stone-700">
+          <li class="px-4 py-4 text-sm text-stone-500">Type at least 3 characters to search</li>
+        </ul>`;
+      }
       return html`<ul class="max-h-64 overflow-y-auto text-stone-700">
         <li class="px-4 py-4 text-sm text-stone-500">No events found</li>
       </ul>`;
@@ -482,25 +484,6 @@ class EventSelector extends LitWrapper {
   render() {
     const buttonId = this._ensureButtonId();
     const selectedEvent = this._findSelectedEvent();
-
-    if (!this.hasEvents) {
-      return html`
-        <button
-          id="${buttonId}"
-          class="select select-primary w-full opacity-50 cursor-not-allowed
-                 text-left"
-          aria-label="No events"
-          disabled
-        >
-          <div class="flex items-center relative">
-            <div class="min-w-0">
-              <div class="max-w-full truncate text-stone-500">No events</div>
-              <div class="text-xs text-stone-500 truncate">Create an event to view attendees</div>
-            </div>
-          </div>
-        </button>
-      `;
-    }
 
     return html`
       <button
