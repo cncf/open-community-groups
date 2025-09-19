@@ -128,10 +128,15 @@ pub(crate) struct AuthnBackend {
 
 impl AuthnBackend {
     /// Create a new `AuthnBackend` instance.
+    #[allow(unused_mut)]
     pub async fn new(db: DynDB, oauth2_cfg: &OAuth2Config, oidc_cfg: &OidcConfig) -> Result<Self> {
-        let http_client = reqwest::ClientBuilder::new()
-            .redirect(reqwest::redirect::Policy::none())
-            .build()?;
+        let mut builder = reqwest::ClientBuilder::new().redirect(reqwest::redirect::Policy::none());
+        #[cfg(test)]
+        {
+            // macOS sandbox testing workaround
+            builder = builder.no_proxy();
+        }
+        let http_client = builder.build()?;
         let oauth2_providers = Self::setup_oauth2_providers(oauth2_cfg)?;
         let oidc_providers = Self::setup_oidc_providers(oidc_cfg, http_client.clone()).await?;
 
@@ -407,7 +412,7 @@ pub(crate) struct PasswordCredentials {
 // User types and implementations.
 
 /// Represents a user in the system.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub(crate) struct User {
     /// Unique user ID.
     pub user_id: Uuid,

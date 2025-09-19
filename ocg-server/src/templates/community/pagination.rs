@@ -209,199 +209,209 @@ fn get_url_filters_separator(url: &str) -> &str {
 mod tests {
     use super::{DEFAULT_PAGINATION_LIMIT, NavigationLinksOffsets, get_url_filters_separator};
 
-    macro_rules! navigation_links_offsets_tests {
-        ($(
-            $name:ident: {
-                offset: $offset:expr,
-                limit: $limit:expr,
-                total: $total:expr,
-                expected_offsets: $expected_offsets:expr
-            }
-        ,)*) => {
-        $(
-            #[test]
-            fn $name() {
-                let offsets = NavigationLinksOffsets::new($offset, $limit, $total);
-                assert_eq!(offsets, $expected_offsets);
-            }
-        )*
-        }
-    }
-
-    navigation_links_offsets_tests! {
-        test_navigation_links_offsets_1: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 20,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_1() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: Some(10),
                 next: Some(10),
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_2: {
-            offset: Some(10),
-            limit: Some(10),
-            total: 20,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_2() {
+        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: Some(0),
                 last: None,
                 next: None,
                 prev: Some(0),
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_3: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 21,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_3() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 21);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: Some(20),
                 next: Some(10),
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_4: {
-            offset: Some(10),
-            limit: Some(10),
-            total: 15,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_4() {
+        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 15);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: Some(0),
                 last: None,
                 next: None,
                 prev: Some(0),
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_5: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 10,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_5() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 10);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: None,
                 next: None,
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_6: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 5,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_6() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: None,
                 next: None,
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_7: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 0,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_7() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 0);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: None,
                 next: None,
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_8: {
-            offset: None,
-            limit: Some(10),
-            total: 15,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_8() {
+        let offsets = NavigationLinksOffsets::new(None, Some(10), 15);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: Some(10),
                 next: Some(10),
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_9: {
-            offset: None,
-            limit: None,
-            total: 15,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_9() {
+        let offsets = NavigationLinksOffsets::new(None, None, 15);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: Some(DEFAULT_PAGINATION_LIMIT),
                 next: Some(DEFAULT_PAGINATION_LIMIT),
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_10: {
-            offset: Some(20),
-            limit: Some(10),
-            total: 50,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_10() {
+        let offsets = NavigationLinksOffsets::new(Some(20), Some(10), 50);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: Some(0),
                 last: Some(40),
                 next: Some(30),
                 prev: Some(10),
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_11: {
-            offset: Some(2),
-            limit: Some(10),
-            total: 20,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_11() {
+        let offsets = NavigationLinksOffsets::new(Some(2), Some(10), 20);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: Some(0),
                 last: Some(10),
                 next: Some(12),
                 prev: Some(0),
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_12: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 5,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_12() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: None,
                 next: None,
                 prev: None,
             }
-        },
+        );
+    }
 
-        test_navigation_links_offsets_13: {
-            offset: Some(0),
-            limit: Some(10),
-            total: 11,
-            expected_offsets: NavigationLinksOffsets {
+    #[test]
+    fn test_navigation_links_offsets_13() {
+        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 11);
+        assert_eq!(
+            offsets,
+            NavigationLinksOffsets {
                 first: None,
                 last: Some(10),
                 next: Some(10),
                 prev: None,
             }
-        },
+        );
     }
 
-    macro_rules! get_url_filters_separator_tests {
-        ($($name:ident: $value:expr,)*) => {
-        $(
-            #[test]
-            fn $name() {
-                let (url, expected_sep) = $value;
-                assert_eq!(get_url_filters_separator(url), expected_sep);
-            }
-        )*
-        }
+    #[test]
+    fn test_get_url_filters_separator_1() {
+        let url = "https://example.com";
+        assert_eq!(get_url_filters_separator(url), "?");
     }
 
-    get_url_filters_separator_tests! {
-        test_get_url_filters_separator_1: ("https://example.com", "?"),
-        test_get_url_filters_separator_2: ("https://example.com?", ""),
-        test_get_url_filters_separator_3: ("https://example.com?param1=value1", "&"),
-        test_get_url_filters_separator_4: ("https://example.com?param1=value1&", ""),
+    #[test]
+    fn test_get_url_filters_separator_2() {
+        let url = "https://example.com?";
+        assert_eq!(get_url_filters_separator(url), "");
+    }
+
+    #[test]
+    fn test_get_url_filters_separator_3() {
+        let url = "https://example.com?param1=value1";
+        assert_eq!(get_url_filters_separator(url), "&");
+    }
+
+    #[test]
+    fn test_get_url_filters_separator_4() {
+        let url = "https://example.com?param1=value1&";
+        assert_eq!(get_url_filters_separator(url), "");
     }
 }

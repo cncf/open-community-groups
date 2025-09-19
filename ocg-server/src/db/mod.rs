@@ -180,7 +180,7 @@ impl DB for PgDB {
 }
 
 /// Geographic bounding box coordinates.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct BBox {
     pub ne_lat: f64,
     pub ne_lon: f64,

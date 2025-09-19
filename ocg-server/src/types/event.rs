@@ -218,7 +218,7 @@ impl EventDetailed {
 
 /// Full event information.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EventFull {
     /// Whether the event has been canceled.
     pub canceled: bool,

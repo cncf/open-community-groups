@@ -21,7 +21,7 @@ use crate::templates::{
 
 /// Summary group information.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupSummary {
     /// Whether the group is active.
     pub active: bool,
@@ -89,7 +89,7 @@ impl GroupSummary {
 
 /// Detailed group information.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupDetailed {
     /// Whether the group is active.
     pub active: bool,
@@ -177,7 +177,7 @@ impl From<GroupDetailed> for GroupSummary {
 
 /// Full group information.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupFull {
     /// Whether the group is active.
     pub active: bool,
@@ -277,7 +277,7 @@ impl GroupFull {
 // Other related types.
 
 /// Group category information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupCategory {
     /// Unique identifier for the category.
     pub group_category_id: Uuid,
@@ -292,7 +292,7 @@ pub struct GroupCategory {
 }
 
 /// Geographic region information.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupRegion {
     /// Unique identifier for the region.
     pub region_id: Uuid,
