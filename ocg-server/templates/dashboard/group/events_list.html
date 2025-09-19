@@ -64,10 +64,10 @@
         {# Header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
         </tr>
       </thead>
@@ -112,37 +112,6 @@
                 </div>
               </th>
 
-              {# Status -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {% if event.canceled -%}
-                  {% call common::status_badge(label = "Canceled", canceled = true, published = false) -%}
-                {% else if event.published -%}
-                  {% call common::status_badge(label = "Published", canceled = false, published = true) -%}
-                {% else -%}
-                  {% call common::status_badge(label = "Draft", canceled = false, published = false) -%}
-                {% endif -%}
-              </td>
-              {# End status -#}
-
-              {# Event Type -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {% call common::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -%}
-              </td>
-              {# End event type -#}
-
-              {# Date & Time -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
-                {% if let Some(start_time) = event.starts_at -%}
-                  <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
-                  <div class="max-w-full truncate text-xs text-stone-400">
-                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
-                  </div>
-                {% else -%}
-                  <span class="text-stone-400">TBD</span>
-                {% endif -%}
-              </td>
-              {# End date & time -#}
-
               {# Location -#}
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
                 {# TODO - fix comparison #}
@@ -157,6 +126,37 @@
                 {% endif -%}
               </td>
               {# End location -#}
+
+              {# Date & Time -#}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
+                {% if let Some(start_time) = event.starts_at -%}
+                  <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
+                  <div class="max-w-full truncate text-xs text-stone-400">
+                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
+                  </div>
+                {% else -%}
+                  <span class="text-stone-400">TBD</span>
+                {% endif -%}
+              </td>
+              {# End date & time -#}
+
+              {# Event Type -#}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+                {% call common::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -%}
+              </td>
+              {# End event type -#}
+
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+                {% if event.canceled -%}
+                  {% call common::status_badge(label = "Canceled", canceled = true, published = false) -%}
+                {% else if event.published -%}
+                  {% call common::status_badge(label = "Published", canceled = false, published = true) -%}
+                {% else -%}
+                  {% call common::status_badge(label = "Draft", canceled = false, published = false) -%}
+                {% endif -%}
+              </td>
+              {# End status -#}
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-27">

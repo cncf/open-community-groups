@@ -116,13 +116,7 @@ class EventSelector extends LitWrapper {
   _handleSearchInput(event) {
     this._query = event.target.value || "";
     this._activeIndex = -1;
-    const trimmed = this._query.trim();
-    if (trimmed.length > 2) {
-      this._fetchEvents();
-    } else {
-      this._loading = false;
-      this._results = [];
-    }
+    this._fetchEvents();
   }
 
   /**
@@ -177,11 +171,7 @@ class EventSelector extends LitWrapper {
       }
     });
     if (!this._hasFetched) {
-      const trimmed = this._query.trim();
-      if (trimmed.length > 2) {
-        this._fetchEvents();
-        this._hasFetched = true;
-      }
+      this._fetchEvents();
     }
   }
 
@@ -231,21 +221,19 @@ class EventSelector extends LitWrapper {
     const groupId = this.groupId ? String(this.groupId) : "";
     if (!groupId) {
       this._results = [];
+      this._loading = false;
       return;
     }
+    const trimmed = this._query.trim();
     this._loading = true;
     this._error = "";
     const params = new URLSearchParams();
     params.append("group", groupId);
     params.set("limit", "10");
     params.set("date_from", "2000-01-01");
-    const trimmed = this._query.trim();
-    if (trimmed.length <= 2) {
-      this._results = [];
-      this._loading = false;
-      return;
+    if (trimmed.length > 0) {
+      params.set("ts_query", trimmed);
     }
-    params.set("ts_query", trimmed);
 
     try {
       const response = await fetch(`/explore/events/search?${params.toString()}`, {
@@ -371,14 +359,10 @@ class EventSelector extends LitWrapper {
       </ul>`;
     }
     if (!this._results || this._results.length === 0) {
-      const trimmed = this._query.trim();
-      if (trimmed.length <= 2) {
-        return html`<ul class="max-h-64 overflow-y-auto text-stone-700">
-          <li class="px-4 py-4 text-sm text-stone-500">Type at least 3 characters to search</li>
-        </ul>`;
-      }
       return html`<ul class="max-h-64 overflow-y-auto text-stone-700">
-        <li class="px-4 py-4 text-sm text-stone-500">No events found</li>
+        <li class="px-4 py-4 text-sm text-stone-500">
+          ${this._hasFetched ? "No events available." : "No events found."}
+        </li>
       </ul>`;
     }
     return html`
@@ -458,6 +442,7 @@ class EventSelector extends LitWrapper {
       input.value = "";
       input.focus();
     }
+    this._fetchEvents();
   }
 
   /**
