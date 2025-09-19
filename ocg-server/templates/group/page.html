@@ -225,6 +225,21 @@
         {% endif -%}
         {# End social networks (mobile) -#}
 
+        {# Tags if available -#}
+        {% if let Some(tags) = group.tags -%}
+          {% if !tags.is_empty() -%}
+            <div class="pt-2 pb-9">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-10">Topics</div>
+              <div class="flex flex-wrap gap-2">
+                {% for tag in tags -%}
+                  <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
+                {% endfor -%}
+              </div>
+            </div>
+          {% endif -%}
+        {% endif -%}
+        {# End tags -#}
+
         {# Next events section -#}
         {% if !upcoming_events.is_empty() -%}
           <div class="pt-2 pb-9">
@@ -283,21 +298,6 @@
           </div>
         {% endif -%}
         {# End sponsors section -#}
-
-        {# Tags if available -#}
-        {% if let Some(tags) = group.tags -%}
-          {% if !tags.is_empty() -%}
-            <div class="pt-2 pb-9">
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-10">Topics</div>
-              <div class="flex flex-wrap gap-2">
-                {% for tag in tags -%}
-                  <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
-                {% endfor -%}
-              </div>
-            </div>
-          {% endif -%}
-        {% endif -%}
-        {# End tags -#}
 
         {# Photo gallery -#}
         {% if let Some(photos_urls) = group.photos_urls -%}
