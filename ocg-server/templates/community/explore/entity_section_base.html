@@ -103,7 +103,7 @@
           {# End searchbar -#}
         </div>
       </div>
-      <div class="flex flex-row items-center justify-between px-5 md:px-7">
+      <div class="flex flex-row items-center justify-between px-5 md:px-7 h-[30px]">
         {# Current page results -#}
         <div class="flex-1">
           {% if view_mode == ViewMode::List -%}
@@ -171,9 +171,7 @@
           </ul>
 
           {# Loading spinner -#}
-          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
-            {% call common::small_spinner() -%}
-          </div>
+          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">{% call common::spinner() -%}</div>
           {# End loading spinner -#}
         </div>
         {# End view mode -#}

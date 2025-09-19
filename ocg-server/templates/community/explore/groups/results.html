@@ -40,9 +40,7 @@
 <div class="mt-5 border-t border-stone-100 md:mt-7 p-5 md:p-7">
   <div class="relative w-full border border-stone-200 h-[600px] md:h-[820px] overflow-hidden">
     {# Loading spinner -#}
-    <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">
-      {% call common::small_spinner() -%}
-    </div>
+    <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">{% call common::spinner() -%}</div>
     {# End loading spinner -#}
 
     {# Placeholder map -#}

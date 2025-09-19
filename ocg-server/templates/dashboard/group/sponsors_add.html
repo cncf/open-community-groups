@@ -6,7 +6,7 @@
       hx-post="/dashboard/group/sponsors/add"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
-      hx-indicator="#dashboard-spinner"
+      hx-indicator="#dashboard-spinner, #group-sponsor-create-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
@@ -75,7 +75,10 @@
       {# End cancel button -#}
 
       {# Save button -#}
-      <button type="submit" class="btn-primary">Add Sponsor</button>
+      <button type="submit" class="btn-primary relative">
+        {% call common::btn_spinner(id = "group-sponsor-create-spinner", spinner_type = "2") -%}
+        Add Sponsor
+      </button>
       {# End save button -#}
     </div>
   </div>

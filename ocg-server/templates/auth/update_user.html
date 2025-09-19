@@ -6,7 +6,7 @@
       hx-put="/dashboard/account/update/details"
       hx-ext="no-empty-vals"
       hx-trigger="submit"
-      hx-indicator="#dashboard-spinner"
+      hx-indicator="#dashboard-spinner, #user-details-spinner"
       hx-disabled-elt="button[type=submit]">
   <div class="space-y-12">
     {# Personal Details section -#}
@@ -249,7 +249,10 @@
     {# End social links section -#}
 
     <div class="mt-6">
-      <button type="submit" class="btn-primary">Save</button>
+      <button type="submit" class="btn-primary relative">
+        {% call common::btn_spinner(id = "user-details-spinner", spinner_type = "2") -%}
+        Save
+      </button>
     </div>
   </div>
 </form>
@@ -264,7 +267,7 @@
         hx-ext="no-empty-vals"
         hx-trigger="submit"
         hx-target="body"
-        hx-indicator="#dashboard-spinner"
+        hx-indicator="#dashboard-spinner, #password-update-spinner"
         hx-disabled-elt="button[type=submit]">
     <div class="space-y-12">
       <div>
@@ -315,7 +318,10 @@
       </div>
 
       <div class="mt-6 items-center">
-        <button type="submit" class="btn-primary">Save</button>
+        <button type="submit" class="btn-primary relative">
+          {% call common::btn_spinner(id = "password-update-spinner", spinner_type = "2") -%}
+          Save
+        </button>
       </div>
     </div>
   </form>

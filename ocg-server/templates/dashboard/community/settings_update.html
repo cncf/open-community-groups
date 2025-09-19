@@ -7,7 +7,7 @@
       hx-ext="no-empty-vals"
       hx-exclude="[name=toggle_active]"
       hx-target="#dashboard-content"
-      hx-indicator="#dashboard-spinner"
+      hx-indicator="#dashboard-spinner, #community-settings-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
@@ -404,7 +404,10 @@
 
     <div class="mt-6 flex items-center justify-end gap-x-6">
       {# Save button -#}
-      <button type="submit" class="btn-primary">Update Settings</button>
+      <button type="submit" class="btn-primary relative">
+        {% call common::btn_spinner(id = "community-settings-spinner", spinner_type = "2") -%}
+        Update Settings
+      </button>
       {# End save button -#}
     </div>
   </div>
