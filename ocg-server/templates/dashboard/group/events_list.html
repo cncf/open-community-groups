@@ -34,31 +34,31 @@
   <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
     <li>
       <button type="button"
-              id="upcoming-tab"
-              data-events-tab="upcoming"
+              id="past-tab"
+              data-events-tab="past"
               data-active="true"
               class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
-        Upcoming events
+        Past events
       </button>
     </li>
     <li>
       <button type="button"
-              id="past-tab"
-              data-events-tab="past"
+              id="upcoming-tab"
+              data-events-tab="upcoming"
               data-active="false"
               class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
-        Past events
+        Upcoming events
       </button>
     </li>
   </ul>
 </div>
 
-{# Upcoming Events Section -#}
-<div id="upcoming-content" data-events-content="upcoming">
+{# Past Events Section -#}
+<div id="past-content" data-events-content="past">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
            role="table"
-           aria-label="Upcoming events list">
+           aria-label="Past events list">
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
         {# Header -#}
@@ -71,21 +71,21 @@
           <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
         </tr>
       </thead>
-      <tbody id="upcoming-events-list" role="rowgroup">
-        {% if events.upcoming.is_empty() -%}
+      <tbody id="past-events-list" role="rowgroup">
+        {% if events.past.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             <td class="px-8 py-20 text-center" colspan="6">
               <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any upcoming events.</div>
+                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any past events.</div>
 
                 <p class="text-sm lg:text-md text-stone-700">
-                  You can create a new event by clicking on the <span class="font-semibold">Add Event</span> button in the top right corner.
+                  Past events will appear here once your upcoming events have concluded.
                 </p>
               </div>
             </td>
           </tr>
         {% else -%}
-          {% for event in events.upcoming -%}
+          {% for event in events.past -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
@@ -157,6 +157,197 @@
                 {% endif -%}
               </td>
               {# End location -#}
+
+              {# Actions -#}
+              <td class="px-3 xl:px-5 py-4 w-27">
+                <div class="flex items-center gap-x-1 xl:gap-x-3">
+                  {# Update event button -#}
+                  <div>
+                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                            hx-target="#dashboard-content"
+                            hx-indicator="#dashboard-spinner"
+                            hx-swap="innerHTML show:body:top"
+                            hx-disabled-elt="this"
+                            class="btn-tertiary p-2
+                                   {% if event.canceled %}opacity-50 cursor-not-allowed{% endif %}"
+                            {% if event.canceled %}disabled title="Event is canceled"{% endif %}
+                            aria-label="Edit event: {{ event.name }}">
+                      <div class="svg-icon size-4 icon-pencil"></div>
+                    </button>
+                  </div>
+                  {# End update event button -#}
+
+                  <div class="group relative">
+                    <button data-event-id="{{ event.event_id }}"
+                            class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
+                      <div class="svg-icon size-4 icon-vertical-dots"></div>
+                    </button>
+
+                    {# Dropdown actions -#}
+                    <div id="dropdown-actions-{{ event.event_id }}"
+                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                      <ul class="py-2 text-sm text-stone-700"
+                          aria-labelledby="dropdownDefaultButton">
+                        {# Delete button -#}
+                        <li>
+                          <button id="delete-event-{{ event.event_id }}"
+                                  hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
+                                  hx-target="#dashboard-content"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-trigger="confirmed"
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
+                            <div class="flex items-center">
+                              <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                              <div class="ms-2">Delete</div>
+                            </div>
+                          </button>
+                          <script type="module">
+                            import {
+                              showConfirmAlert,
+                              showErrorAlert,
+                              showSuccessAlert,
+                            } from '/static/js/common/alerts.js';
+                            import {
+                              isSuccessfulXHRStatus
+                            } from '/static/js/common/common.js';
+
+                            const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
+                            if (deleteEventButton) {
+                              deleteEventButton.addEventListener('click', (event) => {
+                                showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.event_id }}", "Yes");
+                              });
+
+                              deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
+                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+                                  showSuccessAlert("You have successfully deleted the event.");
+                                } else {
+                                  showErrorAlert("Something went wrong deleting this event. Please try again later.");
+                                }
+                              });
+                            }
+                          </script>
+                        </li>
+                        {# End delete button -#}
+                      </ul>
+                    </div>
+                    {# End dropdown actions -#}
+                  </div>
+                </div>
+              </td>
+              {# End actions -#}
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+{# End Past Events Section -#}
+
+{# Upcoming Events Section -#}
+<div id="upcoming-content" data-events-content="upcoming" class="hidden">
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+           role="table"
+           aria-label="Upcoming events list">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
+             role="rowgroup">
+        {# Header -#}
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
+        </tr>
+      </thead>
+      <tbody id="upcoming-events-list" role="rowgroup">
+        {% if events.upcoming.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-20 text-center" colspan="6">
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any upcoming events.</div>
+
+                <p class="text-sm lg:text-md text-stone-700">
+                  You can create a new event by clicking on the <span class="font-semibold">Add Event</span> button in the top right corner.
+                </p>
+              </div>
+            </td>
+          </tr>
+        {% else -%}
+          {% for event in events.upcoming -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <th scope="row"
+                  class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+                <div class="flex items-center">
+                  <div class="min-w-0">
+                    {# Event name -#}
+                    <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="block max-w-full truncate hover:underline">{{ event.name }}</a>
+                    {# End event name -#}
+
+                    {# Mobile type and date -#}
+                    <div class="block xl:hidden text-xs text-stone-500">
+                      <div class="max-w-full truncate">{{ event.kind }}</div>
+                      {% if let Some(start_time) = event.starts_at -%}
+                        <div class="max-w-full truncate">
+                          {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
+                        </div>
+                      {% endif -%}
+                    </div>
+                    {# End mobile type and date -#}
+                  </div>
+                </div>
+              </th>
+
+              {# Location -#}
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
+                {# TODO - fix comparison #}
+                {% if event.kind.to_string() != "virtual" -%}
+                  {% if let Some(location) = event.location(90) -%}
+                    <div class="max-w-full truncate">{{ location }}</div>
+                  {% else -%}
+                    <span class="text-stone-400">-</span>
+                  {% endif -%}
+                {% else -%}
+                  <span class="text-stone-500">Virtual</span>
+                {% endif -%}
+              </td>
+              {# End location -#}
+
+              {# Date & Time -#}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
+                {% if let Some(start_time) = event.starts_at -%}
+                  <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
+                  <div class="max-w-full truncate text-xs text-stone-400">
+                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
+                  </div>
+                {% else -%}
+                  <span class="text-stone-400">TBD</span>
+                {% endif -%}
+              </td>
+              {# End date & time -#}
+
+              {# Event Type -#}
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+                {% call common::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -%}
+              </td>
+              {# End event type -#}
+
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+                {% if event.canceled -%}
+                  {% call common::status_badge(label = "Canceled", canceled = true, published = false) -%}
+                {% else if event.published -%}
+                  {% call common::status_badge(label = "Published", canceled = false, published = true) -%}
+                {% else -%}
+                  {% call common::status_badge(label = "Draft", canceled = false, published = false) -%}
+                {% endif -%}
+              </td>
+              {# End status -#}
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-27">
@@ -366,197 +557,6 @@
   </div>
 </div>
 {# End Upcoming Events Section -#}
-
-{# Past Events Section -#}
-<div id="past-content" data-events-content="past" class="hidden">
-  <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
-           role="table"
-           aria-label="Past events list">
-      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-             role="rowgroup">
-        {# Header -#}
-        <tr>
-          <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Type</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Date</th>
-          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-27"></th>
-        </tr>
-      </thead>
-      <tbody id="past-events-list" role="rowgroup">
-        {% if events.past.is_empty() -%}
-          <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-20 text-center" colspan="6">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any past events.</div>
-
-                <p class="text-sm lg:text-md text-stone-700">
-                  Past events will appear here once your upcoming events have concluded.
-                </p>
-              </div>
-            </td>
-          </tr>
-        {% else -%}
-          {% for event in events.past -%}
-            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
-              <th scope="row"
-                  class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
-                <div class="flex items-center">
-                  <div class="min-w-0">
-                    {# Event name -#}
-                    <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="block max-w-full truncate hover:underline">{{ event.name }}</a>
-                    {# End event name -#}
-
-                    {# Mobile type and date -#}
-                    <div class="block xl:hidden text-xs text-stone-500">
-                      <div class="max-w-full truncate">{{ event.kind }}</div>
-                      {% if let Some(start_time) = event.starts_at -%}
-                        <div class="max-w-full truncate">
-                          {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
-                        </div>
-                      {% endif -%}
-                    </div>
-                    {# End mobile type and date -#}
-                  </div>
-                </div>
-              </th>
-
-              {# Status -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {% if event.canceled -%}
-                  {% call common::status_badge(label = "Canceled", canceled = true, published = false) -%}
-                {% else if event.published -%}
-                  {% call common::status_badge(label = "Published", canceled = false, published = true) -%}
-                {% else -%}
-                  {% call common::status_badge(label = "Draft", canceled = false, published = false) -%}
-                {% endif -%}
-              </td>
-              {# End status -#}
-
-              {# Event Type -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {% call common::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -%}
-              </td>
-              {# End event type -#}
-
-              {# Date & Time -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
-                {% if let Some(start_time) = event.starts_at -%}
-                  <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
-                  <div class="max-w-full truncate text-xs text-stone-400">
-                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
-                  </div>
-                {% else -%}
-                  <span class="text-stone-400">TBD</span>
-                {% endif -%}
-              </td>
-              {# End date & time -#}
-
-              {# Location -#}
-              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
-                {# TODO - fix comparison #}
-                {% if event.kind.to_string() != "virtual" -%}
-                  {% if let Some(location) = event.location(90) -%}
-                    <div class="max-w-full truncate">{{ location }}</div>
-                  {% else -%}
-                    <span class="text-stone-400">-</span>
-                  {% endif -%}
-                {% else -%}
-                  <span class="text-stone-500">Virtual</span>
-                {% endif -%}
-              </td>
-              {# End location -#}
-
-              {# Actions -#}
-              <td class="px-3 xl:px-5 py-4 w-27">
-                <div class="flex items-center gap-x-1 xl:gap-x-3">
-                  {# Update event button -#}
-                  <div>
-                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
-                            hx-target="#dashboard-content"
-                            hx-indicator="#dashboard-spinner"
-                            hx-swap="innerHTML show:body:top"
-                            hx-disabled-elt="this"
-                            class="btn-tertiary p-2
-                                   {% if event.canceled %}opacity-50 cursor-not-allowed{% endif %}"
-                            {% if event.canceled %}disabled title="Event is canceled"{% endif %}
-                            aria-label="Edit event: {{ event.name }}">
-                      <div class="svg-icon size-4 icon-pencil"></div>
-                    </button>
-                  </div>
-                  {# End update event button -#}
-
-                  <div class="group relative">
-                    <button data-event-id="{{ event.event_id }}"
-                            class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
-                      <div class="svg-icon size-4 icon-vertical-dots"></div>
-                    </button>
-
-                    {# Dropdown actions -#}
-                    <div id="dropdown-actions-{{ event.event_id }}"
-                         class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                      <ul class="py-2 text-sm text-stone-700"
-                          aria-labelledby="dropdownDefaultButton">
-                        {# Delete button -#}
-                        <li>
-                          <button id="delete-event-{{ event.event_id }}"
-                                  hx-delete="/dashboard/group/events/{{ event.event_id }}/delete"
-                                  hx-target="#dashboard-content"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-trigger="confirmed"
-                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100">
-                            <div class="flex items-center">
-                              <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
-                              <div class="ms-2">Delete</div>
-                            </div>
-                          </button>
-                          <script type="module">
-                            import {
-                              showConfirmAlert,
-                              showErrorAlert,
-                              showSuccessAlert,
-                            } from '/static/js/common/alerts.js';
-                            import {
-                              isSuccessfulXHRStatus
-                            } from '/static/js/common/common.js';
-
-                            const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
-                            if (deleteEventButton) {
-                              deleteEventButton.addEventListener('click', (event) => {
-                                showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.event_id }}", "Yes");
-                              });
-
-                              deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                  showSuccessAlert("You have successfully deleted the event.");
-                                } else {
-                                  showErrorAlert("Something went wrong deleting this event. Please try again later.");
-                                }
-                              });
-                            }
-                          </script>
-                        </li>
-                        {# End delete button -#}
-                      </ul>
-                    </div>
-                    {# End dropdown actions -#}
-                  </div>
-                </div>
-              </td>
-              {# End actions -#}
-            </tr>
-          {% endfor -%}
-        {% endif -%}
-      </tbody>
-    </table>
-  </div>
-</div>
-{# End Past Events Section -#}
 
 <script type="module">
   // Tab switching functionality

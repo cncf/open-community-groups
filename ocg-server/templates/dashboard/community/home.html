@@ -11,8 +11,8 @@
 
 {% block menu -%}
   <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
-    <div class="font-semibold text-stone-900 text-lg lg:text-2xl">Dashboard</div>
-    <div id="dashboard-spinner" class="group hx-spinner -mt-1.5 relative">
+    <div class="font-semibold text-stone-900 text-sm lg:text-lg">Community Dashboard</div>
+    <div id="dashboard-spinner" class="group hx-spinner -mt-0.5 relative">
       {% call common::spinner(size = "size-5") -%}
     </div>
   </div>
@@ -46,6 +46,7 @@
   <div id="dashboard-content"
        hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- else -%}groups{%- endif -%}"
        hx-trigger="refresh-community-dashboard-table"
+       hx-swap="innerHTML show:window:top"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}

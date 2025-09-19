@@ -11,13 +11,11 @@
   </button>
 
   <!-- Sign in prompt (hidden initially) -->
-  <a id="signin-btn"
-     href="/log-in?next_url={{ path|urlencode }}"
-     hx-boost="true"
-     class="hidden group btn-primary-outline-anchor w-40 h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-login group-hover:bg-white transition-colors"></div>
-    <span>Sign in</span>
-  </a>
+  <button id="signin-btn"
+          class="hidden group btn-primary-outline-anchor w-40 h-[30px] flex items-center justify-center space-x-2">
+    <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
+    <span>Join group</span>
+  </button>
 
   <!-- Join button (hidden initially) -->
   <button id="join-btn"
@@ -50,6 +48,7 @@
     showConfirmAlert,
     showErrorAlert,
     showSuccessAlert,
+    showInfoAlert,
   } from '/static/js/common/alerts.js';
   import {
     isSuccessfulXHRStatus
@@ -131,6 +130,17 @@
       document.getElementById('leave-btn').classList.remove('hidden');
     }
   });
+
+  // Handle sign in button
+  const signinBtn = document.getElementById("signin-btn");
+  if (signinBtn) {
+    signinBtn.addEventListener("click", () => {
+      showInfoAlert(
+        "You need to be <a href='/log-in' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.",
+        true,
+      );
+    });
+  }
 
   // Ask for confirmation before leaving the group
   const leaveBtnEl = document.getElementById('leave-btn');

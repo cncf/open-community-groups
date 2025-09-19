@@ -4,7 +4,7 @@
 {# Attendees header -#}
 {% call macros::form_title(title = "Attendees") -%}
 
-<div class="flex flex-col my-10 w-3/4 max-w-[90vw] relative">
+<div class="flex flex-col mt-10 mb-6 w-3/4 max-w-[90vw] relative">
   <label for="group-event-selector-button" class="form-label mb-2">Event</label>
   <event-selector button-id="group-event-selector-button" group-id="{{ group_id }}"
   {% if let Some(selected_event) = event -%}
@@ -13,9 +13,9 @@
   ></event-selector>
 </div>
 
-<div class="flex text-sm text-stone-600 mb-3 justify-end">
+<div class="flex text-sm text-stone-600 mb-5 justify-end">
   <div>Total attendees:</div>
-  <div class="font-semibold ms-1 text-end w-7">
+  <div class="font-semibold ms-1 text-end">
     {% if attendees.is_empty() -%}
       -
     {% else %}

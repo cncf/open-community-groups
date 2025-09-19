@@ -109,14 +109,14 @@
 
 {# Current page -#}
 {% macro current_page(total, items_number, offset_value) -%}
-  {% if items_number + 0 > 0 -%}
+  {%- if items_number + 0 > 0 -%}
     {%- if let Some(offset) = offset_value -%}
       {{ offset + 1 }} - {{ items_number + offset }}
     {%- else -%}
       1 - {{ items_number }}
     {%- endif -%}
     {{ "" }} of {{ total }} results
-  {% endif -%}
+  {%- endif -%}
 {%- endmacro current_page -%}
 {# End current page -#}
 
@@ -329,7 +329,7 @@
         tabindex="0"
         aria-label="Open full map view"></div>
   {% if let Some(text) = overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000">
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none">
       {{ text }}
     </div>
   {% endif -%}
@@ -360,7 +360,7 @@
                  class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
             </div>
             {% if let Some(text) = overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000">
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none">
                 {{ text }}
               </div>
             {% endif -%}

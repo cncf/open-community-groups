@@ -308,6 +308,9 @@ export class GroupSelector extends LitWrapper {
                 class="input-primary w-full ps-9"
                 placeholder="Search groups"
                 autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
                 .value="${this._query}"
                 @input="${(event) => this._handleSearchInput(event)}"
               />
