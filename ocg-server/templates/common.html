@@ -164,6 +164,17 @@
 {% endmacro spinner -%}
 {# End small spinner -#}
 
+{# Button spinner -#}
+{% macro btn_spinner(id, size = "size-5", spinner_type = "1", htmx = true) -%}
+  <div id="{{ id }}"
+       class="absolute inset-0 bg-inherit {%- if htmx %} hx-spinner{%- endif -%}">
+    <div class="flex items-center justify-center h-full w-full">
+      {% call spinner(size = size, spinner_type = spinner_type) -%}
+    </div>
+  </div>
+{% endmacro btn_spinner -%}
+{# End button spinner -#}
+
 {# Main loading -#}
 {% macro main_loading() -%}
   <div class="w-20 h-20 text-stone-200 animate-spin">

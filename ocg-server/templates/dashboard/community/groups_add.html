@@ -6,7 +6,7 @@
       hx-post="/dashboard/community/groups/add"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
-      hx-indicator="#dashboard-spinner"
+      hx-indicator="#dashboard-spinner, #community-groups-create-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
@@ -343,7 +343,10 @@
       {# End cancel button -#}
 
       {# Save button -#}
-      <button type="submit" class="btn-primary">Create Group</button>
+      <button type="submit"  class="btn-primary relative">
+        {% call common::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -%}
+        Create Group
+      </button>
       {# End save button -#}
     </div>
   </div>

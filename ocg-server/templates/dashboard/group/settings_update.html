@@ -6,7 +6,7 @@
       hx-put="/dashboard/group/settings/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
-      hx-indicator="#dashboard-spinner"
+      hx-indicator="#dashboard-spinner, #group-settings-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
@@ -367,7 +367,10 @@
       {# End cancel button -#}
 
       {# Save button -#}
-      <button type="submit" class="btn-primary">Update Group</button>
+      <button type="submit" class="btn-primary relative">
+        {% call common::btn_spinner(id = "group-settings-update-spinner", spinner_type = "2") -%}
+        Update Group
+      </button>
       {# End save button -#}
     </div>
   </div>

@@ -4,7 +4,7 @@
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
           disabled
-          class="group is-loading btn-primary-outline w-52 h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
+          class="group relative is-loading btn-primary-outline w-52 h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "common.html" as common -%}
     {% call common::spinner(size = "size-4") -%}
     <span class="ms-2">Checking...</span>
