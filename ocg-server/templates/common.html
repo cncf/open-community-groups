@@ -322,14 +322,19 @@
 
 {# djlint:off #}
 {# Map with modal -#}
-{% macro map_with_modal(base_id, lat, lng, overlay_text = "", modal_title = "") -%}
+{% macro map_with_modal(base_id, lat, lng, overlay_text = "", small_overlay_text = "", modal_title = "") -%}
   <div id="{{ base_id }}-map"
         class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
         role="button"
         tabindex="0"
         aria-label="Open full map view"></div>
   {% if let Some(text) = overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none">
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+      {{ text }}
+    </div>
+  {% endif -%}
+  {% if let Some(text) = small_overlay_text -%}
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
       {{ text }}
     </div>
   {% endif -%}
@@ -360,7 +365,12 @@
                  class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
             </div>
             {% if let Some(text) = overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none">
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+                {{ text }}
+              </div>
+            {% endif -%}
+            {% if let Some(text) = small_overlay_text -%}
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-3 py-1 z-1000 pointer-events-none md:block xl:hidden">
                 {{ text }}
               </div>
             {% endif -%}
