@@ -192,9 +192,35 @@
             </div>
           </li>
 
+          <li class="lg:hidden" role="none">
+            <a href="/"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-home bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Home</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="/explore"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-search bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Explore</div>
+              </div>
+            </a>
+          </li>
+
           {# Dashboard links -#}
           {% if user.belongs_to_community_team.unwrap_or(false) -%}
-            <li role="none">
+            <li class="hidden lg:block" role="none">
               <a href="/dashboard/community"
                  hx-boost="true"
                  hx-target="body"
@@ -209,7 +235,7 @@
           {% endif -%}
 
           {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
-            <li role="none">
+            <li class="hidden lg:block" role="none">
               <a href="/dashboard/group"
                  hx-boost="true"
                  hx-target="body"
@@ -223,7 +249,7 @@
             </li>
           {% endif -%}
 
-          <li role="none">
+          <li class="hidden lg:block" role="none">
             <a href="/dashboard/user"
                hx-boost="true"
                hx-target="body"
@@ -263,6 +289,32 @@
            class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
+          <li class="lg:hidden" role="none">
+            <a href="/"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-home bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Home</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="/explore"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-search bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Explore</div>
+              </div>
+            </a>
+          </li>
+
           {# Sign up -#}
           <li role="none">
             <a href="/sign-up"
