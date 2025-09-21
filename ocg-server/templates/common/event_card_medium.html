@@ -20,8 +20,8 @@
           <div class="card-header truncate">
             {% block preheader %}
               <span>{{ event.group_name }}</span>
-              <span class="px-1">·</span>
-              <span>{{ event.group_category_name }}</span>
+              <span class="px-1 hidden sm:inline">·</span>
+              <span class="hidden sm:inline">{{ event.group_category_name }}</span>
             {% endblock preheader %}
           </div>
           {# End event group name -#}
