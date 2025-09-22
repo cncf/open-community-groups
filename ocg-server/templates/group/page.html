@@ -61,7 +61,7 @@
               {# End social networks -#}
             </div>
 
-            <div class="mt-auto flex items-center justify-between">
+            <div class="mt-2 sm:mt-auto flex items-center justify-between">
               {# Members count and founded date -#}
               <div class="flex items-center gap-4 text-stone-600">
                 <div class="flex items-center">
@@ -99,10 +99,10 @@
                 {% if let Some(next_event_card) = next_event -%}
                   {% if let Some(starts_at) = next_event_card.event.starts_at -%}
                     <div class="flex items-start gap-3">
-                      <div class="svg-icon size-5 bg-stone-800 icon-date mt-2"></div>
+                      <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
                       <div class="flex-grow">
                         {% if let Some(starts_at) = next_event_card.event.starts_at -%}
-                          <div class="text-xl xl:text-3xl font-semibold text-stone-800">
+                          <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
                             {{ starts_at.with_timezone(next_event_card.event.timezone).format("%B %e, %G") }}
                           </div>
                           <div class="flex items-center justify-between mt-1.5 w-full">
@@ -207,7 +207,7 @@
 
             {# Group banner -#}
             {% if let Some(banner_url) = group.banner_url -%}
-              <div class="max-w-1/2 mb-8 h-20 lg:h-40">
+              <div class="w-full md:max-w-2/3 lg:max-w-1/2 mb-8 h-24 md:h-30 lg:h-40">
                 <banner-image image-url="{{ banner_url }}" alt="Group banner"></banner-image>
               </div>
             {% endif -%}
