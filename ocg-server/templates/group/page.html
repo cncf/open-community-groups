@@ -61,7 +61,7 @@
               {# End social networks -#}
             </div>
 
-            <div class="mt-2 sm:mt-auto flex items-center justify-between">
+            <div class="mt-2 sm:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
               {# Members count and founded date -#}
               <div class="flex items-center gap-4 text-stone-600">
                 <div class="flex items-center">
@@ -75,7 +75,7 @@
               </div>
               {# End members count and founded date -#}
 
-              <div class="hidden md:flex flex-col items-end">
+              <div class="mt-3 md:mt-0 flex flex:row md:flex-col items-end md:ml-auto">
                 {# Membership button section -#}
                 {% include "group/membership_button.html" %}
                 {# End membership button section -#}

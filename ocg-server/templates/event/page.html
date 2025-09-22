@@ -67,7 +67,7 @@
               {# End event status and social networks -#}
             </div>
 
-            <div class="mt-2 sm:mt-auto flex items-center justify-between">
+            <div class="mt-2 sm:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
               {# Event details and date -#}
               <div class="flex items-center gap-4 text-stone-600">
                 {% if let Some(capacity) = event.capacity -%}
@@ -80,7 +80,7 @@
               </div>
               {# End event details and date -#}
 
-              <div class="hidden md:flex flex-col items-end">
+              <div class="mt-3 md:mt-0 flex flex:row md:flex-col items-end md:ml-auto">
                 {# Attend button section -#}
                 {% include "event/attend_button.html" %}
                 {# End attend button section -#}
