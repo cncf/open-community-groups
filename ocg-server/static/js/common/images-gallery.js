@@ -1,6 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.2.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 
 /**
  * ImagesGallery component for displaying images with modal carousel.
