@@ -118,7 +118,7 @@
       </div>
       <div class="my-6 md:my-10">
         {# Groups cards -#}
-        <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
+        <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden sm:[&>a:nth-child(n+6)]:flex xl:grid-cols-3">
           {% for group in recently_added_groups -%}
             {{ group|safe }}
           {% endfor -%}
@@ -172,7 +172,7 @@
     </div>
     <div class="my-6 md:my-10">
       {# Cards list -#}
-      <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>div:nth-child(7)]:hidden [&>div:nth-child(8)]:hidden [&>div:nth-child(9)]:hidden md:[&>div:nth-child(7)]:flex md:[&>div:nth-child(8)]:flex xl:[&>div:nth-child(9)]:flex xl:grid-cols-3">
+      <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden sm:[&>a:nth-child(n+6)]:flex xl:grid-cols-3">
         {% for event in events -%}
           {{ event|safe }}
         {% endfor -%}
