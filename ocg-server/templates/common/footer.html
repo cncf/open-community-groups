@@ -37,7 +37,7 @@
     {# Extra links -#}
     {% if let Some(extra_links) = self.community.extra_links -%}
       <div class="font-bold text-sm uppercase text-stone-300">Quick links</div>
-      <div class="pb-8 pt-2 text-sm md:text-base">
+      <div class="pb-8 pt-2 text-sm/6 md:text-base">
         {% for (name, url) in extra_links -%}
           {# Extra link -#}
           {% if !loop.first -%}
