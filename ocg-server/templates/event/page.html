@@ -245,7 +245,8 @@
                           data-day-tab="day-{{ loop.index }}"
                           data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
                           class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
-                    {{ day.0.format("%A, %B %e") }}
+                    <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
+                    <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
                   </button>
                 </li>
               {% endfor -%}
@@ -403,9 +404,9 @@
         {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}
       {% endif -%}
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-col sm:flex-row items-start gap-2">
       <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-      {% call common::event_badge(kind = session.kind ) -%}
+      {% call common::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5")) -%}
     </div>
     {% if let Some(location) = session.location -%}
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
