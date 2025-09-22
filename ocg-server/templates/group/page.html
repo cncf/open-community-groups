@@ -75,6 +75,14 @@
               </div>
               {# End members count and founded date -#}
 
+              {# Social networks (mobile only) -#}
+              {% if has_social_links -%}
+                <div class="md:hidden mt-4 md:mb-0">
+                  <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
+                </div>
+              {% endif -%}
+              {# End social networks (mobile) -#}
+
               <div class="mt-4 md:mt-0 flex flex:row md:flex-col items-end md:ml-auto">
                 {# Membership button section -#}
                 {% include "group/membership_button.html" %}
@@ -145,7 +153,7 @@
                     </div>
 
                     <div class="absolute inset-0 flex items-center justify-center">
-                      <div class="text-xl font-semibold text-stone-700">No upcoming events scheduled</div>
+                      <div class="text-xl font-semibold text-stone-700 text-center">No upcoming events scheduled</div>
                     </div>
                   </div>
                 {% endif -%}
@@ -217,14 +225,6 @@
           </div>
         {% endif -%}
         {# End group description -#}
-
-        {# Social networks (mobile only) -#}
-        {% if has_social_links -%}
-          <div class="md:hidden mb-8 md:mb-0">
-            <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
-          </div>
-        {% endif -%}
-        {# End social networks (mobile) -#}
 
         {# Tags if available -#}
         {% if let Some(tags) = group.tags -%}
