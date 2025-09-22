@@ -14,6 +14,10 @@ declare
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
+    v_sort_direction text := case lower(coalesce(p_filters->>'sort_direction', 'asc'))
+        when 'desc' then 'desc'
+        else 'asc'
+    end;
     v_tsquery_with_prefix_matching tsquery;
     v_user_location geography;
 begin
@@ -118,8 +122,22 @@ begin
         select event_id
         from filtered_events
         order by
-            (case when v_sort_by = 'date' then starts_at end) asc,
-            (case when v_sort_by = 'distance' and v_user_location is not null then distance end) asc,
+            (case when v_sort_by = 'date' and v_sort_direction = 'asc' then starts_at end) asc,
+            (case when v_sort_by = 'date' and v_sort_direction = 'desc' then starts_at end) desc,
+            (
+                case
+                    when v_sort_by = 'distance'
+                    and v_sort_direction = 'asc'
+                    and v_user_location is not null then distance
+                end
+            ) asc,
+            (
+                case
+                    when v_sort_by = 'distance'
+                    and v_sort_direction = 'desc'
+                    and v_user_location is not null then distance
+                end
+            ) desc,
             starts_at asc
         limit v_limit
         offset v_offset

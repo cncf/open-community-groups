@@ -237,6 +237,8 @@ pub(crate) struct EventsFilters {
     pub offset: Option<usize>,
     /// Sort order for results (e.g., "date", "distance").
     pub sort_by: Option<String>,
+    /// Sort direction for results ("asc" or "desc").
+    pub sort_direction: Option<String>,
     /// Full-text search query.
     pub ts_query: Option<String>,
     /// Display mode for results (list, calendar, or map).
@@ -319,6 +321,9 @@ impl ToRawQuery for EventsFilters {
         filters.longitude = None;
         if filters.sort_by == Some("date".to_string()) {
             filters.sort_by = None;
+        }
+        if filters.sort_direction == Some("asc".to_string()) {
+            filters.sort_direction = None;
         }
 
         serde_html_form::to_string(&filters).map_err(anyhow::Error::from)

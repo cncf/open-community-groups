@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -121,6 +121,36 @@ select is(
     'search_community_events without filters returns all published events with correct JSON structure'
 );
 
+-- Test: search_community_events sort_direction asc should return events ascending
+select is(
+    (select events from search_community_events(
+        :'communityID'::uuid,
+        '{"sort_direction":"asc"}'::jsonb
+    ))::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'event5ID'::uuid)::jsonb
+    ),
+    'search_community_events sort_direction asc returns events ascending by date'
+);
+
+-- Test: search_community_events sort_direction desc should return events descending
+select is(
+    (select events from search_community_events(
+        :'communityID'::uuid,
+        '{"sort_direction":"desc"}'::jsonb
+    ))::jsonb,
+    jsonb_build_array(
+        get_event_detailed(:'event5ID'::uuid)::jsonb,
+        get_event_detailed(:'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'event1ID'::uuid)::jsonb
+    ),
+    'search_community_events sort_direction desc returns events descending by date'
+);
+
 -- Test: search_community_events should return correct total count
 select is(
     (select total from search_community_events(:'communityID'::uuid, '{}'::jsonb)),
@@ -177,32 +207,7 @@ select is(
 -- Test: search_community_events pagination should return second item JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"limit":1, "offset":1}'::jsonb))::jsonb,
-    '[
-        {
-            "canceled": false,
-            "event_id": "00000000-0000-0000-0000-000000000042",
-            "kind": "virtual",
-            "name": "Docker Training",
-            "published": true,
-            "slug": "docker-training",
-            "timezone": "UTC",
-            "description_short": "Docker basics",
-            "ends_at": 1770037200,
-            "group_category_name": "Technology",
-            "group_city": "San Francisco",
-            "group_country_code": "US",
-            "group_country_name": "United States",
-            "group_name": "Test Group",
-            "group_slug": "test-group",
-            "group_state": "CA",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/docker-training.png",
-            "longitude": -122.4194,
-            "starts_at": 1770026400,
-            "venue_city": "New York",
-            "venue_name": "Online"
-        }
-    ]'::jsonb,
+    jsonb_build_array(get_event_detailed(:'event2ID'::uuid)::jsonb),
     'search_community_events pagination returns expected event JSON'
 );
 
