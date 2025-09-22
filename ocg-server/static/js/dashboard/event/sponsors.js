@@ -249,7 +249,7 @@ export class SponsorsSection extends LitWrapper {
         @mouseover=${() => (this.activeIndex = index)}
       >
         <div
-          class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+          class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
         >
           <img
             src="${option.logo_url}"
@@ -357,7 +357,7 @@ export class SponsorsSection extends LitWrapper {
         </div>
 
         ${this.selectedSponsors && this.selectedSponsors.length > 0
-          ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full xl:w-2/3">
+          ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full">
               ${this.selectedSponsors.map(
                 (s, i) =>
                   html`<div
@@ -426,7 +426,9 @@ export class SponsorsSection extends LitWrapper {
                       ${this.pendingSponsor?.name || ""}
                     </div>
                   </div>
-                  <label class="form-label" for="sponsor-level-input">Level</label>
+                  <label class="form-label" for="sponsor-level-input"
+                    >Level <span class="asterisk">*</span></label
+                  >
                   <input
                     id="sponsor-level-input"
                     type="text"
