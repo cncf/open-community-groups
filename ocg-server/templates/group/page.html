@@ -13,13 +13,13 @@
 
   {# Community title -#}
   <div class="text-center pt-2 xl:pt-5">
-    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-xl font-semibold tracking-tight leading-6 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-xl font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
       {{ community.title }}
     </h1>
   </div>
   {# End community title -#}
   <div class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col py-4 sm:py-8 w-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full">
       <div class="flex gap-y-5 sm:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
         {# Group header with name and region -#}
         <div>
@@ -97,81 +97,92 @@
         </div>
         {# End group header -#}
 
-        <div class="grid md:grid-cols-2 gap-4 md:gap-8">
-          <div class="border border-stone-200 rounded-lg">
-            <div class="p-4">
-              <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Next event</div>
-              {% let next_event = upcoming_events.first() -%}
+        {# Next event and location -#}
+        <div>
+          <div class="grid md:grid-cols-2 gap-5 md:gap-8 mt-3">
+            <div class="border border-stone-200 rounded-lg">
+              <div class="p-4">
+                <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Next event</div>
+                {% let next_event = upcoming_events.first() -%}
 
-              <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
-                {% if let Some(next_event_card) = next_event -%}
-                  {% if let Some(starts_at) = next_event_card.event.starts_at -%}
-                    <div class="flex items-start gap-3">
-                      <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
-                      <div class="flex-grow">
-                        {% if let Some(starts_at) = next_event_card.event.starts_at -%}
-                          <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
-                            {{ starts_at.with_timezone(next_event_card.event.timezone).format("%B %e, %G") }}
-                          </div>
-                          <div class="flex items-center justify-between mt-1.5 w-full">
-                            <div class="text-base text-stone-600">
-                              {{ starts_at.with_timezone(next_event_card.event.timezone).format("%I:%M %p %Z") }}
+                <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
+                  {% if let Some(next_event_card) = next_event -%}
+                    {% if let Some(starts_at) = next_event_card.event.starts_at -%}
+                      <div class="flex items-start gap-3">
+                        <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
+                        <div class="flex-grow">
+                          {% if let Some(starts_at) = next_event_card.event.starts_at -%}
+                            <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                              {{ starts_at.with_timezone(next_event_card.event.timezone).format("%B %e, %G") }}
                             </div>
-                            <div class="flex justify-end">
-                              <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
-                                 class="btn-secondary-anchor btn-mini ml-auto"
-                                 hx-boost="true"
-                                 hx-target="body">See details</a>
+                            <div class="flex items-center justify-between mt-1.5 w-full">
+                              <div class="text-base text-stone-600">
+                                {{ starts_at.with_timezone(next_event_card.event.timezone).format("%I:%M %p %Z") }}
+                              </div>
+                              <div class="flex justify-end">
+                                <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
+                                   class="btn-secondary-anchor btn-mini ml-auto"
+                                   hx-boost="true"
+                                   hx-target="body">See details</a>
+                              </div>
                             </div>
-                          </div>
-                        {% endif -%}
+                          {% endif -%}
+                        </div>
                       </div>
-                    </div>
+                    {% else -%}
+                      <div class="flex items-start gap-3">
+                        <div class="svg-icon size-5 bg-stone-800 icon-date mt-2"></div>
+                        <div>
+                          <div class="text-xl xl:text-3xl font-semibold text-stone-800 truncate">
+                            {{ next_event_card.event.name|demoji }}
+                          </div>
+                          <div class="flex items-center justify-end mt-1.5 w-full">
+                            <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
+                               class="btn-secondary-anchor btn-mini ml-auto"
+                               hx-boost="true"
+                               hx-target="body">See details</a>
+                          </div>
+                        </div>
+                      </div>
+                    {% endif -%}
+
                   {% else -%}
-                    <div class="flex items-start gap-3">
-                      <div class="svg-icon size-5 bg-stone-800 icon-date mt-2"></div>
-                      <div>
-                        <div class="text-xl xl:text-3xl font-semibold text-stone-800 truncate">
-                          {{ next_event_card.event.name|demoji }}
-                        </div>
-                        <div class="flex items-center justify-end mt-1.5 w-full">
-                          <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
-                             class="btn-secondary-anchor btn-mini ml-auto"
-                             hx-boost="true"
-                             hx-target="body">See details</a>
-                        </div>
+                    <div class="flex flex-col gap-3 relative">
+                      <div class="h-4 w-3/5 rounded bg-stone-100"></div>
+                      <div class="h-2 w-1/2 rounded bg-stone-100"></div>
+                      <div class="flex justify-end mt-2">
+                        <div class="h-3 w-1/5 rounded bg-stone-100"></div>
+                      </div>
+
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="text-xl font-semibold text-stone-700 text-center">No upcoming events scheduled</div>
                       </div>
                     </div>
                   {% endif -%}
-
-                {% else -%}
-                  <div class="flex flex-col gap-3 relative">
-                    <div class="h-4 w-3/5 rounded bg-stone-100"></div>
-                    <div class="h-2 w-1/2 rounded bg-stone-100"></div>
-                    <div class="flex justify-end mt-2">
-                      <div class="h-3 w-1/5 rounded bg-stone-100"></div>
-                    </div>
-
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <div class="text-xl font-semibold text-stone-700 text-center">No upcoming events scheduled</div>
-                    </div>
-                  </div>
-                {% endif -%}
+                </div>
               </div>
             </div>
-          </div>
 
-          {# Location and event section -#}
-          <div class="border border-stone-200 rounded-lg flex flex-col">
-            {# Location details -#}
-            <div class="flex flex-col p-4 h-full">
-              <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
-              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
-                {% if let Some(lat) = group.latitude %}
-                  {% if let Some(lng) = group.longitude %}
-                    {% let location_text = self.group.location(70) -%}
-                    {% let location_text_small = self.group.location(35) -%}
-                    {% call common::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -%}
+            {# Location and event section -#}
+            <div class="border border-stone-200 rounded-lg flex flex-col">
+              {# Location details -#}
+              <div class="flex flex-col p-4 h-full">
+                <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
+                <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
+                  {% if let Some(lat) = group.latitude %}
+                    {% if let Some(lng) = group.longitude %}
+                      {% let location_text = self.group.location(70) -%}
+                      {% let location_text_small = self.group.location(35) -%}
+                      {% call common::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -%}
+                    {% else -%}
+                      <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
+                        <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
+                        </div>
+                        <div class="relative flex w-full items-center justify-center">
+                          <div class="text-xl font-semibold text-stone-700">Location not provided</div>
+                        </div>
+                      </div>
+                    {% endif -%}
                   {% else -%}
                     <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                       <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
@@ -181,31 +192,24 @@
                       </div>
                     </div>
                   {% endif -%}
-                {% else -%}
-                  <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
-                    <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
-                    </div>
-                    <div class="relative flex w-full items-center justify-center">
-                      <div class="text-xl font-semibold text-stone-700">Location not provided</div>
-                    </div>
-                  </div>
-                {% endif -%}
+                </div>
               </div>
+              {# End location details -#}
             </div>
-            {# End location details -#}
-          </div>
 
-          {# End location and map section -#}
+            {# End location and map section -#}
+          </div>
         </div>
+        {# End next event and location -#}
 
         {# Group description -#}
         {% if let Some(description) = group.description -%}
           <div>
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10
                         {% if let Some(banner_url) = group.banner_url -%}
-                          pb-7 md:pb-9
+                          pb-5 md:pb-9
                         {% else -%}
-                          pb-8 md:pb-10
+                          pb-6 md:pb-10
                         {% endif -%}">About this group</div>
 
             {# Group banner -#}
@@ -225,7 +229,7 @@
         {% if let Some(tags) = group.tags -%}
           {% if !tags.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 md:pb-10">Topics</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Topics</div>
               <div class="flex flex-wrap gap-2">
                 {% for tag in tags -%}
                   <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
@@ -239,7 +243,7 @@
         {# Next events section -#}
         {% if !upcoming_events.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 md:pb-10">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">
               Upcoming Events
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -256,7 +260,7 @@
         {# Past events section -#}
         {% if !past_events.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 md:pb-10">Past Events</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
                 {% if loop.index <= 6 -%}
@@ -271,7 +275,7 @@
         {# Organizers section - Full width -#}
         {% if !group.organizers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 md:pb-10">Organizers</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Organizers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in group.organizers -%}
                 {% if organizer.name.is_some() -%}
@@ -287,7 +291,7 @@
         {# Sponsors section -#}
         {% if !group.sponsors.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 md:pb-10">Sponsors</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in group.sponsors -%}
                 {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -%}
@@ -301,7 +305,7 @@
         {% if let Some(photos_urls) = group.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 md:pb-10">Gallery</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Gallery</div>
               <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>
           {% endif -%}

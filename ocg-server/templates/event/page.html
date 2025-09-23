@@ -12,13 +12,13 @@
   {% let has_social_links = event.meetup_url.is_some() -%}
   {# Community title -#}
   <div class="text-center pt-2 xl:pt-5">
-    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-xl font-semibold tracking-tight leading-6 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-xl font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
       {{ community.title }}
     </h1>
   </div>
   {# End community title -#}
   <div class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col py-4 sm:py-8 w-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full">
       <div class="flex gap-y-5 sm:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
         {# Event header with name and group -#}
         <div>
@@ -92,17 +92,8 @@
           </div>
           {# End main flex container -#}
 
-          {# Event status and social networks (mobile only) -#}
-          <div class="md:hidden flex flex-wrap gap-2 mt-4">
-            {# Event status badge -#}
-            {% if event.canceled -%}
-              <div class="px-3 py-1 text-xs font-semibold uppercase rounded-full bg-red-100 text-red-700">Cancelled</div>
-            {% else if !event.published -%}
-              <div class="px-3 py-1 text-xs font-semibold uppercase rounded-full bg-gray-100 text-gray-700">Draft</div>
-            {% endif -%}
-            {# End event status badge -#}
-
-            {# Social networks -#}
+          {# Social networks (mobile only) -#}
+          <div class="inline md:hidden mt-4">
             {% if has_social_links -%}
               <div class="flex flex-wrap gap-2">
                 {% if let Some(meetup_url) = event.meetup_url -%}
@@ -110,16 +101,15 @@
                 {% endif -%}
               </div>
             {% endif -%}
-            {# End social networks -#}
           </div>
-          {# End event status and social networks (mobile) -#}
+          {# End social networks (mobile) -#}
 
         </div>
         {# End event header -#}
 
         {# Event date and location -#}
         <div>
-          <div class="grid md:grid-cols-2 gap-4 md:gap-8">
+          <div class="grid md:grid-cols-2 gap-5 md:gap-8 mt-3">
             {# Event date -#}
             <div class="border border-stone-200 rounded-lg">
               <div class="p-4">
@@ -189,9 +179,9 @@
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10
                       {% if let Some(banner_url) = event.banner_url -%}
-                        pb-3 md:pb-9
+                        pb-5 md:pb-9
                       {% else -%}
-                        pb-4 md:pb-10
+                        pb-6 md:pb-10
                       {% endif -%}">About this event</div>
           {# Event banner -#}
           {% if let Some(banner_url) = event.banner_url -%}
@@ -208,7 +198,7 @@
         {% if let Some(tags) = event.tags -%}
           {% if !tags.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Topics</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Topics</div>
               <div class="flex flex-wrap gap-2">
                 {% for tag in tags -%}
                   <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
@@ -223,7 +213,7 @@
         {% if !event.sessions.is_empty() -%}
           {% let days_count = event.sessions.len() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Agenda</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Agenda</div>
 
             {# Single-day agenda: no date title -#}
             {% if days_count == 1 -%}
@@ -287,7 +277,7 @@
         {% if let Some(legacy_hosts) = event.legacy_hosts -%}
           {% if !legacy_hosts.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Hosts</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Hosts</div>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for host in legacy_hosts -%}
                   {% if host.name.is_some() -%}
@@ -304,7 +294,7 @@
         {# Hosts section - Full width -#}
         {% if !event.hosts.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Hosts</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Hosts</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for host in event.hosts -%}
                 {% if host.name.is_some() -%}
@@ -321,7 +311,7 @@
         {% if let Some(legacy_speakers) = event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Speakers</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Speakers</div>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for speaker in legacy_speakers -%}
                   {% if speaker.name.is_some() -%}
@@ -338,7 +328,7 @@
         {# Organizers section - Full width -#}
         {% if !event.organizers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Organizers</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Organizers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in event.organizers -%}
                 {% if organizer.name.is_some() -%}
@@ -354,7 +344,7 @@
         {# Sponsors section - Full width -#}
         {% if !event.sponsors.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Sponsors</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in event.sponsors -%}
                 {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url, level = sponsor.level, with_level = true) -%}
@@ -368,7 +358,7 @@
         {% if let Some(photos_urls) = event.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 md:pb-10">Gallery</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Gallery</div>
               <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>
           {% endif -%}

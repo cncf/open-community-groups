@@ -17,7 +17,7 @@
 
 {# Search bar -#}
 {% block search_bar -%}
-  {% call common::search_bar(placeholder = "Search events by name, location or tags", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -%}
+  {% call common::search_bar(placeholder = "Search events", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -%}
   <script type="module">
     import {
       cleanInputField,
