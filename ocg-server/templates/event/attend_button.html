@@ -1,10 +1,11 @@
 {# Attend button section -#}
-<div id="attendance-container">
+<div id="attendance-container"
+     data-starts="{%- if let Some(starts_at) = event.starts_at -%}{{ starts_at }}{%- endif -%}">
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
           disabled
-          class="group relative is-loading btn-primary-outline w-52 h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
+          class="group relative is-loading btn-primary-outline w-52 h-[40px] md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "common.html" as common -%}
     {% call common::spinner(size = "size-4") -%}
     <span class="ms-2">Checking...</span>
@@ -12,7 +13,7 @@
 
   <!-- Sign in prompt (hidden initially) -->
   <button id="signin-btn"
-          class="hidden group btn-primary-outline-anchor w-52 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline-anchor w-52 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
     <span>Attend event</span>
   </button>
@@ -21,7 +22,7 @@
   <button id="attend-btn"
           hx-post="/event/{{ event.event_id }}/attend"
           hx-swap="none"
-          class="hidden group btn-primary-outline w-52 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline w-52 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
     <span>Attend event</span>
   </button>
@@ -31,7 +32,7 @@
           hx-delete="/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline w-52 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline w-52 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-logout group-hover:bg-white transition-colors"></div>
     <span>Cancel attendance</span>
   </button>
