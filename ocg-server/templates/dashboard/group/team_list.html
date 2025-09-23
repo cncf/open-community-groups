@@ -16,7 +16,7 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Position</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-40">Role</th>
         <th scope="col" class="p-4 w-12"></th>
       </tr>
@@ -58,13 +58,26 @@
                   {% if member.name.is_some() -%}
                     <div class="text-xs text-stone-600 truncate">{{ member.username }}</div>
                   {% endif -%}
+                  {# Company and Title - big table -#}
+                  {% if let Some(company) = member.company -%}
+                    <div class="block xl:hidden mt-2 min-w-0">
+                      {% if let Some(title) = member.title -%}
+                        <div class="text-xs text-stone-600 truncate">
+                          {{ title }} at <span class="font-medium text-stone-900">{{ company }}</span>
+                        </div>
+                      {% else -%}
+                        <div class="font-medium text-stone-900 truncate">{{ company }}</div>
+                      {% endif -%}
+                    </div>
+                  {% endif -%}
+                  {# End company and Title - big table -#}
                 </div>
               </div>
             </td>
             {# End member -#}
 
             {# Position -#}
-            <td class="px-3 xl:px-5 py-4">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
               <div class="flex flex-col space-y-1">
                 <div class="font-medium text-stone-900 truncate">{{ member.company|display_some_or("-") }}</div>
                 {% if let Some(title) = member.title -%}
