@@ -196,9 +196,9 @@
 {% macro icon_text(icon_name, text, extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  <div class="icon-text {{ extra_styles_ }}">
+  <div class="icon-text min-w-0 {{ extra_styles_ }}">
     <div class="svg-icon w-3 h-3 mr-2 bg-stone-700 icon-{{ icon_name }}"></div>
-    <span>{{ text }}</span>
+    <span class="truncate">{{ text }}</span>
   </div>
 {% endmacro icon_text -%}
 {# End icon text -#}
