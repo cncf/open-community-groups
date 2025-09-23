@@ -2,20 +2,27 @@
 create or replace function list_group_events(p_group_id uuid)
 returns json as $$
     with group_events as (
-        select e.event_id, e.name, e.starts_at
+        select e.event_id, e.name, e.starts_at, e.group_id, g.community_id
         from event e
+        join "group" g using (group_id)
         where e.group_id = p_group_id
         and e.deleted = false
     )
     select json_build_object(
         'past', coalesce((
-            select json_agg(get_event_summary(ge.event_id) order by ge.starts_at desc nulls last, ge.name asc)
+            select json_agg(
+                get_event_summary(ge.community_id, ge.group_id, ge.event_id)
+                order by ge.starts_at desc nulls last, ge.name asc
+            )
             from group_events ge
             where ge.starts_at is not null
             and ge.starts_at < current_timestamp
         ), '[]'::json),
         'upcoming', coalesce((
-            select json_agg(get_event_summary(ge.event_id) order by ge.starts_at asc nulls last, ge.name asc)
+            select json_agg(
+                get_event_summary(ge.community_id, ge.group_id, ge.event_id)
+                order by ge.starts_at asc nulls last, ge.name asc
+            )
             from group_events ge
             where ge.starts_at is null
             or ge.starts_at >= current_timestamp

@@ -1,5 +1,8 @@
--- Returns detailed information about a group by its ID.
-create or replace function get_group_detailed(p_group_id uuid)
+-- Returns detailed information about a group.
+create or replace function get_group_detailed(
+    p_community_id uuid,
+    p_group_id uuid
+)
 returns json as $$
     select json_strip_nulls(json_build_object(
         'active', g.active,
@@ -34,5 +37,6 @@ returns json as $$
     from "group" g
     join group_category gc using (group_category_id)
     left join region r using (region_id)
-    where g.group_id = p_group_id;
+    where g.group_id = p_group_id
+    and g.community_id = p_community_id;
 $$ language sql;

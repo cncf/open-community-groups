@@ -28,16 +28,21 @@ pub(crate) trait DBCommon {
     async fn get_community(&self, community_id: Uuid) -> Result<Community>;
 
     /// Gets full event details.
-    async fn get_event_full(&self, event_id: Uuid) -> Result<EventFull>;
+    async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull>;
 
     /// Gets summary event details.
-    async fn get_event_summary(&self, event_id: Uuid) -> Result<EventSummary>;
+    async fn get_event_summary(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventSummary>;
 
     /// Gets group full details.
-    async fn get_group_full(&self, group_id: Uuid) -> Result<GroupFull>;
+    async fn get_group_full(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupFull>;
 
     /// Gets group summary details.
-    async fn get_group_summary(&self, group_id: Uuid) -> Result<GroupSummary>;
+    async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary>;
 
     /// Lists all available timezones.
     async fn list_timezones(&self) -> Result<Vec<String>>;
@@ -75,12 +80,15 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::get_event_full`]
     #[instrument(skip(self), err)]
-    async fn get_event_full(&self, event_id: Uuid) -> Result<EventFull> {
+    async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull> {
         trace!("db: get event full");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_event_full($1::uuid)::text", &[&event_id])
+            .query_one(
+                "select get_event_full($1::uuid, $2::uuid, $3::uuid)::text",
+                &[&community_id, &group_id, &event_id],
+            )
             .await?;
         let event = EventFull::try_from_json(&row.get::<_, String>(0))?;
 
@@ -89,12 +97,20 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::get_event_summary`]
     #[instrument(skip(self), err)]
-    async fn get_event_summary(&self, event_id: Uuid) -> Result<EventSummary> {
+    async fn get_event_summary(
+        &self,
+        community_id: Uuid,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<EventSummary> {
         trace!("db: get event summary");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_event_summary($1::uuid)::text", &[&event_id])
+            .query_one(
+                "select get_event_summary($1::uuid, $2::uuid, $3::uuid)::text",
+                &[&community_id, &group_id, &event_id],
+            )
             .await?;
         let event = EventSummary::try_from_json(&row.get::<_, String>(0))?;
 
@@ -103,12 +119,15 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::get_group_full`]
     #[instrument(skip(self), err)]
-    async fn get_group_full(&self, group_id: Uuid) -> Result<GroupFull> {
+    async fn get_group_full(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupFull> {
         trace!("db: get group full");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_group_full($1::uuid)::text", &[&group_id])
+            .query_one(
+                "select get_group_full($1::uuid, $2::uuid)::text",
+                &[&community_id, &group_id],
+            )
             .await?;
         let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
 
@@ -117,12 +136,15 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::get_group_summary`]
     #[instrument(skip(self), err)]
-    async fn get_group_summary(&self, group_id: Uuid) -> Result<GroupSummary> {
+    async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary> {
         trace!("db: get group summary");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_group_summary($1::uuid)::text", &[&group_id])
+            .query_one(
+                "select get_group_summary($1::uuid, $2::uuid)::text",
+                &[&community_id, &group_id],
+            )
             .await?;
         let group = GroupSummary::try_from_json(&row.get::<_, String>(0))?;
 

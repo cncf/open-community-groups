@@ -29,7 +29,7 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (group, categories, regions) = tokio::try_join!(
-        db.get_group_full(group_id),
+        db.get_group_full(community_id, group_id),
         db.list_group_categories(community_id),
         db.list_regions(community_id)
     )?;

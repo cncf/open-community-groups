@@ -113,10 +113,10 @@ insert into event (
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{}'::jsonb))::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'event1ID'::uuid)::jsonb,
-        get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb,
-        get_event_detailed(:'event5ID'::uuid)::jsonb
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'search_community_events without filters returns all published events with correct JSON structure'
 );
@@ -128,10 +128,10 @@ select is(
         '{"sort_direction":"asc"}'::jsonb
     ))::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'event1ID'::uuid)::jsonb,
-        get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb,
-        get_event_detailed(:'event5ID'::uuid)::jsonb
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'search_community_events sort_direction asc returns events ascending by date'
 );
@@ -143,10 +143,10 @@ select is(
         '{"sort_direction":"desc"}'::jsonb
     ))::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'event5ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb,
-        get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event1ID'::uuid)::jsonb
+        get_event_detailed(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'search_community_events sort_direction desc returns events descending by date'
 );
@@ -168,14 +168,18 @@ select is(
 -- Test: search_community_events kind filter should return only Docker Training JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"kind":["virtual"]}'::jsonb))::jsonb,
-    jsonb_build_array(get_event_detailed(:'event2ID'::uuid)::jsonb),
+    jsonb_build_array(
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+    ),
     'search_community_events kind filter returns expected event JSON'
 );
 
 -- Test: search_community_events ts_query filter should return only Docker Training JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"ts_query":"Docker"}'::jsonb))::jsonb,
-    jsonb_build_array(get_event_detailed(:'event2ID'::uuid)::jsonb),
+    jsonb_build_array(
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+    ),
     'search_community_events ts_query filter returns expected event JSON'
 );
 
@@ -183,9 +187,9 @@ select is(
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"date_from":"2026-02-02"}'::jsonb))::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb,
-        get_event_detailed(:'event5ID'::uuid)::jsonb
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'search_community_events date_from returns expected events JSON'
 );
@@ -197,9 +201,9 @@ select is(
         '{"latitude":37.7749, "longitude":-122.4194, "distance":1000}'::jsonb
      ))::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'event1ID'::uuid)::jsonb,
-        get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'search_community_events distance filter returns expected events JSON in SF'
 );
@@ -207,7 +211,9 @@ select is(
 -- Test: search_community_events pagination should return second item JSON
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"limit":1, "offset":1}'::jsonb))::jsonb,
-    jsonb_build_array(get_event_detailed(:'event2ID'::uuid)::jsonb),
+    jsonb_build_array(
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+    ),
     'search_community_events pagination returns expected event JSON'
 );
 
@@ -221,9 +227,9 @@ select is(
         )
     )::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'event1ID'::uuid)::jsonb,
-        get_event_detailed(:'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'event3ID'::uuid)::jsonb
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_detailed(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'search_community_events group filter returns expected events JSON'
 );

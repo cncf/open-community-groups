@@ -94,7 +94,9 @@ insert into event (
 -- get_community_upcoming_events function returns correct data
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
-    jsonb_build_array(get_event_summary(:'event2ID'::uuid)::jsonb),
+    jsonb_build_array(
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+    ),
     'get_community_upcoming_events should return only published future events as JSON'
 );
 

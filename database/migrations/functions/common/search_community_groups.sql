@@ -97,7 +97,7 @@ begin
     select
         (
             select coalesce(json_agg(
-                get_group_detailed(group_id)
+                get_group_detailed(p_community_id, group_id)
             ), '[]')
             from filtered_groups_page
         ),

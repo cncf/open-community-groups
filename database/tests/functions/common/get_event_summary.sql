@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -110,7 +110,11 @@ insert into event (
 
 -- Test: get_event_summary should return correct event summary JSON
 select is(
-    get_event_summary('00000000-0000-0000-0000-000000000031'::uuid)::jsonb,
+    get_event_summary(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb,
     '{
         "canceled": false,
         "event_id": "00000000-0000-0000-0000-000000000031",
@@ -135,8 +139,32 @@ select is(
 
 -- Test: get_event_summary with non-existent event ID should return null
 select ok(
-    get_event_summary('00000000-0000-0000-0000-000000999999'::uuid) is null,
+    get_event_summary(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        '00000000-0000-0000-0000-000000999999'::uuid
+    ) is null,
     'get_event_summary with non-existent event ID should return null'
+);
+
+-- Test: get_event_summary should return null when group does not match event
+select ok(
+    get_event_summary(
+        :'communityID'::uuid,
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        :'eventID'::uuid
+    ) is null,
+    'get_event_summary should return null when group does not match event'
+);
+
+-- Test: get_event_summary should return null when community does not match event
+select ok(
+    get_event_summary(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    ) is null,
+    'get_event_summary should return null when community does not match event'
 );
 
 -- ============================================================================

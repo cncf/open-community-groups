@@ -63,7 +63,7 @@ pub(crate) async fn page(
                 .map_err(anyhow::Error::new)?;
             let attendees = db.search_event_attendees(group_id, &filters).await?;
             let event = if let Some(event_id) = filters.event_id {
-                Some(db.get_event_summary(event_id).await?)
+                Some(db.get_event_summary(community_id, group_id, event_id).await?)
             } else {
                 None
             };
@@ -83,7 +83,7 @@ pub(crate) async fn page(
         }
         Tab::Settings => {
             let (group, categories, regions) = tokio::try_join!(
-                db.get_group_full(group_id),
+                db.get_group_full(community_id, group_id),
                 db.list_group_categories(community_id),
                 db.list_regions(community_id)
             )?;

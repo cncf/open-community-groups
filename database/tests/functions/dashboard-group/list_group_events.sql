@@ -202,10 +202,12 @@ select is(
 select is(
     list_group_events(:'group1ID'::uuid)::jsonb,
     jsonb_build_object(
-        'past', jsonb_build_array(get_event_summary(:'event2ID'::uuid)::jsonb),
+        'past', jsonb_build_array(
+            get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+        ),
         'upcoming', jsonb_build_array(
-            get_event_summary(:'event1ID'::uuid)::jsonb,
-            get_event_summary(:'event3ID'::uuid)::jsonb
+            get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+            get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
         )
     ),
     'list_group_events should group events by timeframe with ordering'
@@ -216,7 +218,9 @@ select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     jsonb_build_object(
         'past', '[]'::jsonb,
-        'upcoming', jsonb_build_array(get_event_summary(:'event4ID'::uuid)::jsonb)
+        'upcoming', jsonb_build_array(
+            get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
+        )
     ),
     'list_group_events should return correct grouped JSON for specified group'
 );

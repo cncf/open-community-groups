@@ -89,12 +89,16 @@ values
 
 -- add_event function creates event with required fields only
 select is(
-    (select (get_event_full(
-        add_event(
+    (select (
+        get_event_full(
+            :'communityID'::uuid,
             :'groupID'::uuid,
-            '{"name": "Kubernetes Fundamentals Workshop", "slug": "k8s-fundamentals-workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
-    )
-    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers')),
+            add_event(
+                :'groupID'::uuid,
+                '{"name": "Kubernetes Fundamentals Workshop", "slug": "k8s-fundamentals-workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+            )
+        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
+    )),
     '{
         "canceled": false,
         "category_name": "Conference",
@@ -170,7 +174,11 @@ select event_id from new_event \gset
 
 -- Check event fields except sessions
 select is(
-    (select get_event_full(:'event_id'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'),
+    (select get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'event_id'::uuid
+    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'),
     '{
         "canceled": false,
         "category_name": "Conference",
@@ -211,7 +219,13 @@ select is(
 
 -- Sessions assertions: contents ignoring session_id (order-insensitive)
 select ok(
-    (select (get_event_full(:'event_id'::uuid)::jsonb->'sessions'->'2025-01-01') @>
+    (select (
+        get_event_full(
+            :'communityID'::uuid,
+            :'groupID'::uuid,
+            :'event_id'::uuid
+        )::jsonb->'sessions'->'2025-01-01'
+    ) @>
         '[
             {
                 "name": "Kubernetes Best Practices",

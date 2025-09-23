@@ -100,8 +100,8 @@ insert into event (
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
-        get_event_summary(:'event2ID'::uuid)::jsonb,
-        get_event_summary(:'event1ID'::uuid)::jsonb
+        get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'get_group_past_events should return published past events ordered by date DESC as JSON'
 );
