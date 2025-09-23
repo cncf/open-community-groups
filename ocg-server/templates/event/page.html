@@ -25,7 +25,7 @@
           {# Main flex container for logo, name/group, and social networks -#}
           <div class="flex flex-1 flex-row items-stretch gap-6">
             {# Event logo -#}
-            {% call common::logo(logo_url = event.logo_url, classes = "hidden sm:block size-24 md:size-28", size = 112, color = event.color, name = Some(event.group.name)) -%}
+            {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = event.color, name = Some(event.group.name)) -%}
             {# End event logo -#}
 
             <div class="flex-1 flex flex-col justify-between">
@@ -40,7 +40,7 @@
                     {# End group/category legend -#}
 
                     {# Event name -#}
-                    <h1 class="text-lg/5 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 sm:mt-0">
+                    <h1 class="text-lg/5 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-0">
                       {{ event.name|demoji }}
                     </h1>
                     {# End event name -#}
@@ -68,7 +68,7 @@
                 {# End event status and social networks -#}
               </div>
 
-              <div class="mt-2 sm:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
+              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
                 {# Event details and date -#}
                 <div class="flex items-center gap-4 text-stone-600">
                   {% if let Some(capacity) = event.capacity -%}
@@ -109,7 +109,7 @@
 
         {# Event date and location -#}
         <div>
-          <div class="grid md:grid-cols-2 gap-5 lg:gap-8 mt-3 lg:mt-0">
+          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8 mt-3 lg:mt-0">
             {# Event date -#}
             <div class="border border-stone-200 rounded-lg">
               <div class="p-4">
