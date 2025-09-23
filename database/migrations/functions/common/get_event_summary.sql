@@ -1,5 +1,9 @@
--- Returns summary information about an event by its ID.
-create or replace function get_event_summary(p_event_id uuid)
+-- Returns summary information about an event.
+create or replace function get_event_summary(
+    p_community_id uuid,
+    p_group_id uuid,
+    p_event_id uuid
+)
 returns json as $$
     select json_strip_nulls(json_build_object(
         'canceled', e.canceled,
@@ -12,7 +16,7 @@ returns json as $$
         'published', e.published,
         'slug', e.slug,
         'timezone', e.timezone,
-        
+
         'group_city', g.city,
         'group_country_code', g.country_code,
         'group_country_name', g.country_name,
@@ -24,5 +28,7 @@ returns json as $$
     from event e
     join "group" g using (group_id)
     join group_category gc on g.group_category_id = gc.group_category_id
-    where e.event_id = p_event_id;
+    where e.event_id = p_event_id
+    and g.group_id = p_group_id
+    and g.community_id = p_community_id;
 $$ language sql;

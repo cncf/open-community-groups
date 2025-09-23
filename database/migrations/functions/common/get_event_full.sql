@@ -1,5 +1,9 @@
--- Returns full information about an event by its ID.
-create or replace function get_event_full(p_event_id uuid)
+-- Returns full information about an event.
+create or replace function get_event_full(
+    p_community_id uuid,
+    p_group_id uuid,
+    p_event_id uuid
+)
 returns json as $$
     select json_strip_nulls(json_build_object(
         'canceled', e.canceled,
@@ -33,7 +37,7 @@ returns json as $$
         'venue_name', e.venue_name,
         'venue_zip_code', e.venue_zip_code,
 
-        'group', get_group_summary(g.group_id),
+        'group', get_group_summary(g.community_id, g.group_id),
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
@@ -162,5 +166,7 @@ returns json as $$
     from event e
     join "group" g using (group_id)
     join event_category ec using (event_category_id)
-    where e.event_id = p_event_id;
+    where e.event_id = p_event_id
+    and g.group_id = p_group_id
+    and g.community_id = p_community_id;
 $$ language sql;

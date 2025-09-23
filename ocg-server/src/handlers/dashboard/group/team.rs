@@ -15,7 +15,10 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedGroupId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, SelectedGroupId},
+    },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::group::team,
     templates::notifications::GroupTeamInvitation,
@@ -47,6 +50,7 @@ pub(crate) async fn list_page(
 /// Adds a user to the group team.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
@@ -58,7 +62,7 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification
-    let group = db.get_group_summary(group_id).await?;
+    let group = db.get_group_summary(community_id, group_id).await?;
     let template_data = GroupTeamInvitation {
         group,
         link: format!(

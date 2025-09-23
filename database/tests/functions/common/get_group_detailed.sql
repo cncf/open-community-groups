@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -108,7 +108,10 @@ insert into "group" (
 
 -- Test: get_group_detailed should return correct detailed group JSON
 select is(
-    get_group_detailed('00000000-0000-0000-0000-000000000021'::uuid)::jsonb,
+    get_group_detailed(
+        :'communityID'::uuid,
+        :'groupID'::uuid
+    )::jsonb,
     '{
         "active": true,
         "category": {
@@ -139,8 +142,20 @@ select is(
 
 -- Test: get_group_detailed with non-existent group should return null
 select ok(
-    get_group_detailed('00000000-0000-0000-0000-000000999999'::uuid) is null,
+    get_group_detailed(
+        :'communityID'::uuid,
+        '00000000-0000-0000-0000-000000999999'::uuid
+    ) is null,
     'get_group_detailed with non-existent group ID should return null'
+);
+
+-- Test: get_group_detailed should return null when community does not match group
+select ok(
+    get_group_detailed(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        :'groupID'::uuid
+    ) is null,
+    'get_group_detailed should return null when community does not match group'
 );
 
 -- ============================================================================

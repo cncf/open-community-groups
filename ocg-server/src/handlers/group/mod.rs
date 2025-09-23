@@ -88,7 +88,7 @@ pub(crate) async fn join_group(
     db.join_group(community_id, group_id, user.user_id).await?;
 
     // Enqueue welcome to group notification
-    let group = db.get_group_summary(group_id).await?;
+    let group = db.get_group_summary(community_id, group_id).await?;
     let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
     let template_data = GroupWelcome {
         link: format!("{}/group/{}", base_url, group.slug),
@@ -317,8 +317,8 @@ mod tests {
             .withf(move |id, gid, uid| *id == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(()));
         db.expect_get_group_summary()
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(sample_group_summary(group_id)));
+            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+            .returning(move |_, _| Ok(sample_group_summary(group_id)));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();

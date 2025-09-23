@@ -78,13 +78,31 @@ mock! {
             &self,
             community_id: Uuid,
         ) -> Result<crate::types::community::Community>;
-        async fn get_event_full(&self, event_id: Uuid)
+        async fn get_event_full(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+        )
             -> Result<crate::types::event::EventFull>;
-        async fn get_event_summary(&self, event_id: Uuid)
+        async fn get_event_summary(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+            event_id: Uuid,
+        )
             -> Result<crate::types::event::EventSummary>;
-        async fn get_group_full(&self, group_id: Uuid)
+        async fn get_group_full(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        )
             -> Result<crate::types::group::GroupFull>;
-        async fn get_group_summary(&self, group_id: Uuid)
+        async fn get_group_summary(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        )
             -> Result<crate::types::group::GroupSummary>;
         async fn list_timezones(&self) -> Result<Vec<String>>;
         async fn search_community_events(

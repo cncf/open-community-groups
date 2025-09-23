@@ -74,6 +74,7 @@ begin
     with filtered_events as (
         select
             e.event_id,
+            e.group_id,
             e.starts_at,
             g.location,
             st_distance(g.location, v_user_location) as distance
@@ -119,7 +120,7 @@ begin
             else true end
     ),
     filtered_events_page as (
-        select event_id
+        select event_id, group_id
         from filtered_events
         order by
             (case when v_sort_by = 'date' and v_sort_direction = 'asc' then starts_at end) asc,
@@ -149,7 +150,7 @@ begin
     select
         (
             select coalesce(json_agg(
-                get_event_detailed(event_id)
+                get_event_detailed(p_community_id, group_id, event_id)
             ), '[]')
             from filtered_events_page
         ),

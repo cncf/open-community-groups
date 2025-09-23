@@ -131,7 +131,13 @@ select update_event(
 );
 
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers')),
+    (select (
+        get_event_full(
+            :'community1ID'::uuid,
+            :'group1ID'::uuid,
+            :'event1ID'::uuid
+        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
+    )),
     '{
         "canceled": false,
         "category_name": "Workshop",
@@ -193,7 +199,13 @@ select update_event(
 
 -- Check event fields except sessions
 select is(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions')),
+    (select (
+        get_event_full(
+            :'community1ID'::uuid,
+            :'group1ID'::uuid,
+            :'event1ID'::uuid
+        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'
+    )),
     '{
         "canceled": false,
         "category_name": "Conference",
@@ -233,7 +245,13 @@ select is(
 
 -- Sessions assertions: contents ignoring session_id (order-insensitive)
 select ok(
-    (select (get_event_full('00000000-0000-0000-0000-000000000003'::uuid)::jsonb->'sessions'->'2025-02-01') @>
+    (select (
+        get_event_full(
+            :'community1ID'::uuid,
+            :'group1ID'::uuid,
+            :'event1ID'::uuid
+        )::jsonb->'sessions'->'2025-02-01'
+    ) @>
         '[
             {
                 "name": "Updated Session",

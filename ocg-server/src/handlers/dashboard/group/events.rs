@@ -81,7 +81,7 @@ pub(crate) async fn update_page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
-        db.get_event_full(event_id),
+        db.get_event_full(community_id, group_id, event_id),
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
@@ -130,6 +130,7 @@ pub(crate) async fn add(
 /// Cancels an event (sets canceled=true).
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
@@ -137,7 +138,7 @@ pub(crate) async fn cancel(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load event summary before canceling
-    let mut event = db.get_event_summary(event_id).await?;
+    let mut event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Mark event as canceled in database
     db.cancel_event(group_id, event_id).await?;
@@ -176,6 +177,7 @@ pub(crate) async fn cancel(
 #[instrument(skip_all, err)]
 pub(crate) async fn publish(
     auth_session: AuthSession,
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
@@ -186,7 +188,7 @@ pub(crate) async fn publish(
     let user = auth_session.user.expect("user to be logged in");
 
     // Load event summary before publishing
-    let event = db.get_event_summary(event_id).await?;
+    let event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Mark event as published in database
     db.publish_event(group_id, event_id, user.user_id).await?;
@@ -199,7 +201,7 @@ pub(crate) async fn publish(
     if should_notify {
         let user_ids = db.list_group_members_ids(group_id).await?;
         if !user_ids.is_empty() {
-            let event = db.get_event_summary(event_id).await?;
+            let event = db.get_event_summary(community_id, group_id, event_id).await?;
             let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
             let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
             let template_data = EventPublished { link, event };
@@ -251,8 +253,10 @@ pub(crate) async fn unpublish(
 }
 
 /// Updates an existing event's information in the database.
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
@@ -268,13 +272,13 @@ pub(crate) async fn update(
     };
 
     // Load event summary before update to detect reschedule
-    let before = db.get_event_summary(event_id).await?;
+    let before = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Update event in database
     db.update_event(group_id, event_id, &event).await?;
 
     // Notify attendees if event was rescheduled
-    let after = db.get_event_summary(event_id).await?;
+    let after = db.get_event_summary(community_id, group_id, event_id).await?;
     let should_notify = match (before.published, before.starts_at, after.starts_at) {
         (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
             (a_starts_at - b_starts_at).abs() >= MIN_RESCHEDULE_SHIFT

@@ -3,12 +3,12 @@
 create or replace function list_user_groups(p_user_id uuid)
 returns json as $$
     select coalesce(json_agg(
-        get_group_summary(g.group_id)
-        order by (get_group_summary(g.group_id)::jsonb->>'name') asc
+        get_group_summary(g.community_id, g.group_id)
+        order by (get_group_summary(g.community_id, g.group_id)::jsonb->>'name') asc
     ), '[]')
     from (
         -- Get all groups if user is a community team member
-        select g.group_id
+        select g.group_id, g.community_id
         from "group" g
         join "user" u on u.user_id = p_user_id
         where exists (
@@ -24,7 +24,7 @@ returns json as $$
         union
         
         -- Get only groups where user is a team member if not a community team member
-        select g.group_id
+        select g.group_id, g.community_id
         from "group" g
         join group_team gt using (group_id)
         join "user" u on u.user_id = p_user_id

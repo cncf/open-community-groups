@@ -52,12 +52,15 @@ values (:'categoryID', 'Technology', :'communityID');
 
 -- Test: add_group with required fields only should create group
 select is(
-    (select (get_group_full(
-        add_group(
+    (select (
+        get_group_full(
             :'communityID'::uuid,
-            '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
-        )
-    )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id')),
+            add_group(
+                :'communityID'::uuid,
+                '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
+            )
+        )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id'
+    )),
     '{
         "name": "Simple Test Group",
         "slug": "simple-test-group",
@@ -76,10 +79,12 @@ select is(
 
 -- Test: add_group with all fields should create group
 select is(
-    (select (get_group_full(
-        add_group(
+    (select (
+        get_group_full(
             :'communityID'::uuid,
-            '{
+            add_group(
+                :'communityID'::uuid,
+                '{
                 "name": "Full Test Group",
                 "slug": "full-test-group",
                 "category_id": "00000000-0000-0000-0000-000000000011",
@@ -106,8 +111,9 @@ select is(
                 "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
                 "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}]
             }'::jsonb
-        )
-    )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id')),
+            )
+        )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id'
+    )),
     '{
         "name": "Full Test Group",
         "slug": "full-test-group",

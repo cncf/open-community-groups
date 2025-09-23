@@ -10,7 +10,10 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedGroupId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, SelectedGroupId},
+    },
     templates::dashboard::group::attendees,
 };
 
@@ -19,6 +22,7 @@ use crate::{
 /// Displays the list of attendees for the selected event and filters.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
+    CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Query(filters): Query<attendees::AttendeesFilters>,
@@ -26,7 +30,7 @@ pub(crate) async fn list_page(
     // Prepare template
     let attendees = db.search_event_attendees(group_id, &filters).await?;
     let event = if let Some(event_id) = filters.event_id {
-        Some(db.get_event_summary(event_id).await?)
+        Some(db.get_event_summary(community_id, group_id, event_id).await?)
     } else {
         None
     };
