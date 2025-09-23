@@ -8,6 +8,8 @@
 | ![Screenshot 1](docs/screenshots/ocg1.png?raw=true) | ![Screenshot 2](docs/screenshots/ocg2.png?raw=true) |
 | --------------------------------------------------- | --------------------------------------------------- |
 | ![Screenshot 3](docs/screenshots/ocg3.png?raw=true) | ![Screenshot 4](docs/screenshots/ocg4.png?raw=true) |
+| --------------------------------------------------- | --------------------------------------------------- |
+| ![Screenshot 5](docs/screenshots/ocg5.png?raw=true) | ![Screenshot 6](docs/screenshots/ocg6.png?raw=true) |
 
 ## Contributing
 
