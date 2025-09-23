@@ -1,10 +1,11 @@
 {# Attend button section -#}
-<div id="attendance-container">
+<div id="attendance-container"
+     {% if let Some(starts_at) = event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}>
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
           disabled
-          class="group relative is-loading btn-primary-outline w-52 h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
+          class="group relative is-loading btn-primary-outline w-52 h-[40px] md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "common.html" as common -%}
     {% call common::spinner(size = "size-4") -%}
     <span class="ms-2">Checking...</span>
@@ -12,7 +13,7 @@
 
   <!-- Sign in prompt (hidden initially) -->
   <button id="signin-btn"
-          class="hidden group btn-primary-outline-anchor w-52 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline-anchor w-52 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
     <span>Attend event</span>
   </button>
@@ -21,7 +22,7 @@
   <button id="attend-btn"
           hx-post="/event/{{ event.event_id }}/attend"
           hx-swap="none"
-          class="hidden group btn-primary-outline w-52 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline w-52 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
     <span>Attend event</span>
   </button>
@@ -31,7 +32,7 @@
           hx-delete="/event/{{ event.event_id }}/leave"
           hx-trigger="confirmed"
           hx-swap="none"
-          class="hidden group btn-primary-outline w-52 h-[30px] flex items-center justify-center space-x-2">
+          class="hidden group btn-primary-outline w-52 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-logout group-hover:bg-white transition-colors"></div>
     <span>Cancel attendance</span>
   </button>
@@ -53,6 +54,39 @@
   import {
     isSuccessfulXHRStatus
   } from '/static/js/common/common.js';
+
+  const attendanceContainer = document.getElementById('attendance-container');
+  const startsAtValue = attendanceContainer?.dataset?.starts ?? null;
+  const isPastEvent = (() => {
+    if (!startsAtValue) {
+      return false;
+    }
+    const parsedDate = new Date(startsAtValue);
+    if (Number.isNaN(parsedDate.valueOf())) {
+      return false;
+    }
+    const now = new Date();
+    return parsedDate < now;
+  })();
+  const pastEventTitle =
+    'You cannot change attendance because the event has already started.';
+  const updateButtonStateForEventDate = (button) => {
+    if (!button) {
+      return;
+    }
+    if (isPastEvent) {
+      button.disabled = true;
+      button.title = pastEventTitle;
+      button.classList.add('cursor-not-allowed', 'opacity-50');
+    } else {
+      button.disabled = false;
+      button.removeAttribute('title');
+      button.classList.remove('cursor-not-allowed', 'opacity-50');
+    }
+  };
+
+  updateButtonStateForEventDate(document.getElementById('attend-btn'));
+  updateButtonStateForEventDate(document.getElementById('leave-btn'));
 
   const attendanceHandler = document.getElementById('attendance-checker');
 
@@ -81,15 +115,19 @@
 
         if (response.is_attendee) {
           leaveBtn.classList.remove('hidden');
+          updateButtonStateForEventDate(leaveBtn);
         } else {
           attendBtn.classList.remove('hidden');
+          updateButtonStateForEventDate(attendBtn);
         }
       } catch (error) {
         signinBtn.classList.remove('hidden');
+        updateButtonStateForEventDate(signinBtn);
       }
     } else {
       // User not authenticated or error
       signinBtn.classList.remove('hidden');
+      updateButtonStateForEventDate(signinBtn);
     }
   });
 

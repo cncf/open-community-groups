@@ -4,7 +4,9 @@
   <div class="flex items-center">
     {# Filters view mode -#}
     {# Loading spinner -#}
-    <div id="loading-filters" class="me-3 w-6 group">{% call common::spinner(htmx = false) -%}</div>
+    <div id="loading-filters" class="me-6 w-6 group">
+      {% call common::spinner(size = "size-5", htmx = false) -%}
+    </div>
     {# End loading spinner -#}
 
     <button id="reset-filters"

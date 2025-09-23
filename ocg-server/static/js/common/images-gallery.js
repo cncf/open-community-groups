@@ -139,7 +139,7 @@ export class ImagesGallery extends LitWrapper {
           <div class="modal-content container mx-auto h-full p-10 flex flex-col">
             <!-- Title -->
             <div
-              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-800 text-center leading-10 mb-10 w-full bg-stone-200/75 rounded-full"
+              class="uppercase text-lg lg:text-2xl tracking-wide font-bold text-stone-800 text-center leading-10 mb-10 w-1/2 mx-auto min-w-[200px] bg-stone-200/75 rounded-full"
             >
               ${this.title}
             </div>

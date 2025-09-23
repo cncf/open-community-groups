@@ -249,7 +249,7 @@ export class SponsorsSection extends LitWrapper {
         @mouseover=${() => (this.activeIndex = index)}
       >
         <div
-          class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white border border-stone-200 overflow-hidden"
+          class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
         >
           <img
             src="${option.logo_url}"
@@ -357,19 +357,19 @@ export class SponsorsSection extends LitWrapper {
         </div>
 
         ${this.selectedSponsors && this.selectedSponsors.length > 0
-          ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full xl:w-2/3">
+          ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full">
               ${this.selectedSponsors.map(
                 (s, i) =>
                   html`<div
                       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
                     >
                       <div
-                        class="relative flex items-center justify-center size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                        class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
                       >
                         <img
                           src="${s.logo_url}"
                           alt="${s.name} logo"
-                          class="size-16 object-contain"
+                          class="size-13 md:size-16 object-contain"
                           loading="lazy"
                         />
                         <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
@@ -426,7 +426,9 @@ export class SponsorsSection extends LitWrapper {
                       ${this.pendingSponsor?.name || ""}
                     </div>
                   </div>
-                  <label class="form-label" for="sponsor-level-input">Level</label>
+                  <label class="form-label" for="sponsor-level-input"
+                    >Level <span class="asterisk">*</span></label
+                  >
                   <input
                     id="sponsor-level-input"
                     type="text"

@@ -101,7 +101,7 @@ export class UserChip extends LitWrapper {
     return html`
       <avatar-image
         image-url="${this.imageUrl || ""}"
-        size="size-18"
+        size="size-15 md:size-18"
         placeholder="${initials}"
         font-size="text-lg"
       >
