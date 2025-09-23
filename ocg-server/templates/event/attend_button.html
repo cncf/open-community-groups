@@ -1,6 +1,6 @@
 {# Attend button section -#}
 <div id="attendance-container"
-     data-starts="{%- if let Some(starts_at) = event.starts_at -%}{{ starts_at }}{%- endif -%}">
+     {% if let Some(starts_at) = event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}>
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
@@ -55,6 +55,39 @@
     isSuccessfulXHRStatus
   } from '/static/js/common/common.js';
 
+  const attendanceContainer = document.getElementById('attendance-container');
+  const startsAtValue = attendanceContainer?.dataset?.starts ?? null;
+  const isPastEvent = (() => {
+    if (!startsAtValue) {
+      return false;
+    }
+    const parsedDate = new Date(startsAtValue);
+    if (Number.isNaN(parsedDate.valueOf())) {
+      return false;
+    }
+    const now = new Date();
+    return parsedDate < now;
+  })();
+  const pastEventTitle =
+    'You cannot change attendance because the event has already started.';
+  const updateButtonStateForEventDate = (button) => {
+    if (!button) {
+      return;
+    }
+    if (isPastEvent) {
+      button.disabled = true;
+      button.title = pastEventTitle;
+      button.classList.add('cursor-not-allowed', 'opacity-50');
+    } else {
+      button.disabled = false;
+      button.removeAttribute('title');
+      button.classList.remove('cursor-not-allowed', 'opacity-50');
+    }
+  };
+
+  updateButtonStateForEventDate(document.getElementById('attend-btn'));
+  updateButtonStateForEventDate(document.getElementById('leave-btn'));
+
   const attendanceHandler = document.getElementById('attendance-checker');
 
   // Handle attendance check response
@@ -82,15 +115,19 @@
 
         if (response.is_attendee) {
           leaveBtn.classList.remove('hidden');
+          updateButtonStateForEventDate(leaveBtn);
         } else {
           attendBtn.classList.remove('hidden');
+          updateButtonStateForEventDate(attendBtn);
         }
       } catch (error) {
         signinBtn.classList.remove('hidden');
+        updateButtonStateForEventDate(signinBtn);
       }
     } else {
       // User not authenticated or error
       signinBtn.classList.remove('hidden');
+      updateButtonStateForEventDate(signinBtn);
     }
   });
 
