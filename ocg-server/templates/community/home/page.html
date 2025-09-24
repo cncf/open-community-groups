@@ -9,7 +9,7 @@
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">
     <section>
-      <div class="relative z-10 max-w-screen-xl pb-10 md:pb-20">
+      <div class="relative z-10 max-w-screen-xl pb-10 lg:pb-20">
         {# Community title -#}
         <h1 class="text-center mb-8 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ community.title }}
@@ -69,12 +69,12 @@
 
 {% block content -%}
   {# Main content -#}
-  <div class="container mx-auto max-w-7xl px-4 pt-12 pb-6 sm:pb-12 sm:px-6 lg:px-8">
+  <div class="container mx-auto max-w-7xl px-4 pt-12 pb-6 lg:pb-12 sm:px-6 lg:px-8">
     {# Stats -#}
     {{ stats|safe }}
     {# End stats -#}
 
-    <div class="pt-3 md:pt-8">
+    <div class="pt-3 lg:pt-8">
       {# Events in-person -#}
       {% call events_list(title = "Upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -%}
       {# End events in-person -#}
@@ -85,7 +85,7 @@
 
       {# Banner -#}
       {% if let Some(ad_banner_url) = community.ad_banner_url -%}
-        <div class="hidden pb-16 md:flex">
+        <div class="hidden pb-2 xl:pb-16 md:flex">
           {% if let Some(ad_banner_link_url) = community.ad_banner_link_url -%}
             <a rel="noopener noreferrer"
                href="{{ ad_banner_link_url }}"
@@ -116,16 +116,16 @@
         </div>
         {# End see all groups on desktop -#}
       </div>
-      <div class="mt-5 mb-3 md:mt-10 md:mb-10">
+      <div class="mt-5 mb-3 lg:mt-10 lg:mb-10">
         {# Groups cards -#}
-        <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden sm:[&>a:nth-child(n+6)]:flex xl:grid-cols-3">
+        <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
           {% for group in recently_added_groups -%}
             {{ group|safe }}
           {% endfor -%}
         </div>
         {# End groups cards -#}
         {# See all groups mobile button -#}
-        <div class="flex mt-9 md:mt-10 justify-self-center md:hidden md:mt-0">
+        <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
           <a href="/explore?entity=groups" class="btn-secondary-anchor">See all groups</a>
         </div>
         {# End see all groups mobile button -#}
@@ -138,10 +138,10 @@
   {# Gallery -#}
   {% if let Some(photos_urls) = community.photos_urls -%}
     {% if !photos_urls.is_empty() -%}
-      <div class="bg-stone-100 pt-2 md:pt-10 pb-6 md:pb-12">
-        <div class="container mx-auto max-w-7xl px-4 py-3 sm:py-10 sm:px-6 lg:px-8">
+      <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
+        <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6 lg:px-8">
           <!-- Title -->
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Gallery</div>
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
           <!-- End title -->
           <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
         </div>
@@ -153,8 +153,8 @@
 
 {# Events list -#}
 {% macro events_list(title, link, events) -%}
-  <div class="my-5 pb-0 md:pb-5 sm:my-8">
-    <div class="flex items-center justify-between mb-3 md:mb-6">
+  <div class="my-5 pb-0 lg:pb-5 lg:my-8">
+    <div class="flex items-center justify-between mb-3 lg:mb-6">
       {# Title -#}
       <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
       {# End title -#}
@@ -168,9 +168,9 @@
       </div>
       {# End see all events on desktop -#}
     </div>
-    <div class="my-5 md:my-10">
+    <div class="my-5 lg:my-10">
       {# Cards list -#}
-      <div class="grid-1 grid gap-8 md:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden sm:[&>a:nth-child(n+6)]:flex xl:grid-cols-3">
+      <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
         {% for event in events -%}
           {{ event|safe }}
         {% endfor -%}
@@ -178,7 +178,7 @@
       {# End cards list -#}
 
       {# See all events on mobile -#}
-      <div class="flex mt-9 md:mt-10 justify-self-center md:hidden md:mt-0">
+      <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
         <a href="{{ link }}"
            hx-boost="true"
            hx-target="body"

@@ -5,6 +5,8 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  * Lightweight dropdown that loads group events on demand for attendee filtering.
  */
 class EventSelector extends LitWrapper {
+  dateFrom = "2000-01-01";
+
   /**
    * Component properties
    * - selectedEventId: currently applied event uuid
@@ -57,6 +59,8 @@ class EventSelector extends LitWrapper {
     this._error = "";
     this._hasFetched = false;
     this._activeIndex = -1;
+    this._primaryResults = [];
+    this._primaryFetchPromise = null;
     this._outsideHandler = (event) => {
       if (!this.contains(event.target)) {
         this._closeDropdown();
@@ -82,6 +86,11 @@ class EventSelector extends LitWrapper {
     }
     if (changed.has("selectedEventId") && !this.selectedEvent) {
       this._hasFetched = false;
+      this._primaryResults = [];
+    }
+    if (changed.has("groupId")) {
+      this._hasFetched = false;
+      this._primaryResults = [];
     }
     if (
       (changed.has("_results") || changed.has("_isOpen")) &&
@@ -215,6 +224,145 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Performs a remote search using the provided config.
+   * @param {{groupId: string, sortDirection?: string, query?: string, dateFrom?: string, dateTo?: string}} config
+   * @returns {Promise<object[]>}
+   */
+  async _requestEvents(config) {
+    const params = new URLSearchParams();
+    params.append("group", config.groupId);
+    params.set("limit", "10");
+    if (config.dateFrom) {
+      params.set("date_from", config.dateFrom);
+    }
+    if (config.dateTo) {
+      params.set("date_to", config.dateTo);
+    }
+    if (config.sortDirection) {
+      params.set("sort_direction", config.sortDirection);
+    }
+    if (config.query) {
+      params.set("ts_query", config.query);
+    }
+
+    const response = await fetch(`/explore/events/search?${params.toString()}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to search events");
+    }
+    const payload = await response.json();
+    const events = Array.isArray(payload?.events) ? payload.events : [];
+    return events;
+  }
+
+  /**
+   * Retrieves 10 events for initial dropdown load (5 upcoming + 5 past closest to today).
+   */
+  async _fetchPrimaryEvents() {
+    const groupId = this.groupId ? String(this.groupId) : "";
+    if (!groupId) {
+      this._results = [];
+      this._primaryResults = [];
+      this._loading = false;
+      return;
+    }
+
+    if (this._primaryResults.length > 0) {
+      this._results = this._primaryResults;
+      this._error = "";
+      this._loading = false;
+      this._activeIndex = -1;
+      this._hasFetched = true;
+      return;
+    }
+
+    if (this._primaryFetchPromise) {
+      this._loading = true;
+      this._error = "";
+      try {
+        await this._primaryFetchPromise;
+      } finally {
+        this._loading = false;
+      }
+      if (this._primaryResults.length > 0) {
+        this._results = this._primaryResults;
+        this._activeIndex = -1;
+        this._hasFetched = true;
+      }
+      return;
+    }
+
+    this._loading = true;
+    this._error = "";
+    const fetchPromise = (async () => {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+
+        const [upcomingEvents, pastEvents] = await Promise.all([
+          this._requestEvents({
+            groupId,
+            sortDirection: "asc",
+            query: "",
+            dateFrom: today,
+          }),
+          this._requestEvents({
+            groupId,
+            sortDirection: "desc",
+            query: "",
+            dateFrom: this.dateFrom,
+            dateTo: today,
+          }),
+        ]);
+
+        if (this.groupId !== groupId) {
+          return;
+        }
+
+        const result = [];
+        result.push(...upcomingEvents.slice(0, 5).reverse());
+        result.push(...pastEvents.slice(0, 5));
+
+        if (result.length < 10) {
+          const remainingSlots = 10 - result.length;
+          const extraUpcoming = upcomingEvents.slice(5, 5 + remainingSlots).reverse();
+          const extraPast = pastEvents.slice(5, 5 + remainingSlots);
+          result.push(...extraUpcoming, ...extraPast);
+        }
+
+        this._primaryResults = result.slice(0, 10);
+        this._results = this._primaryResults;
+        this._activeIndex = -1;
+        this._hasFetched = true;
+
+        if (this.selectedEventId) {
+          const selectedId = String(this.selectedEventId);
+          const match = this._primaryResults.find((item) => item.event_id === selectedId);
+          if (match) {
+            this.selectedEvent = match;
+          }
+        }
+      } catch (_error) {
+        this._error = "Unable to load events";
+        this._primaryResults = [];
+        throw _error;
+      } finally {
+        this._loading = false;
+      }
+    })();
+    this._primaryFetchPromise = fetchPromise;
+    try {
+      await fetchPromise;
+    } catch (_error) {
+      // handled above
+    } finally {
+      this._primaryFetchPromise = null;
+    }
+  }
+
+  /**
    * Queries remote events using the selected group id.
    */
   async _fetchEvents() {
@@ -222,30 +370,25 @@ class EventSelector extends LitWrapper {
     if (!groupId) {
       this._results = [];
       this._loading = false;
+      this._error = "";
       return;
     }
     const trimmed = this._query.trim();
-    this._loading = true;
-    this._error = "";
-    const params = new URLSearchParams();
-    params.append("group", groupId);
-    params.set("limit", "10");
-    params.set("date_from", "2000-01-01");
-    if (trimmed.length > 0) {
-      params.set("ts_query", trimmed);
+    if (trimmed.length === 0) {
+      await this._fetchPrimaryEvents();
+      return;
     }
 
+    this._loading = true;
+    this._error = "";
+
     try {
-      const response = await fetch(`/explore/events/search?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-        },
+      const events = await this._requestEvents({
+        groupId,
+        sortDirection: "desc",
+        query: trimmed,
+        dateFrom: this.dateFrom,
       });
-      if (!response.ok) {
-        throw new Error("Failed to search events");
-      }
-      const payload = await response.json();
-      const events = Array.isArray(payload?.events) ? payload.events : [];
       this._results = events;
       this._activeIndex = -1;
       this._hasFetched = true;
@@ -256,7 +399,7 @@ class EventSelector extends LitWrapper {
           this.selectedEvent = match;
         }
       }
-    } catch (error) {
+    } catch (_error) {
       this._error = "Unable to load events";
     } finally {
       this._loading = false;
@@ -432,17 +575,20 @@ class EventSelector extends LitWrapper {
    */
   _clearSearch() {
     this._query = "";
-    this._results = [];
-    this._loading = false;
-    this._error = "";
     this._activeIndex = -1;
-    this._hasFetched = false;
+    this._error = "";
+    if (this._primaryResults.length > 0) {
+      this._results = this._primaryResults;
+      this._loading = false;
+    } else {
+      this._results = [];
+      this._fetchPrimaryEvents();
+    }
     const input = this.querySelector("#event-search-input");
     if (input) {
       input.value = "";
       input.focus();
     }
-    this._fetchEvents();
   }
 
   /**

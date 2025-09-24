@@ -16,21 +16,20 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Position</th>
         <th scope="col" class="p-4 w-12"></th>
       </tr>
     </thead>
     <tbody id="team-list">
       {% if members.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="3">
-            <div class="flex flex-col items-center justify-center min-h-[125px]">
-              <div class="text-xl lg:text-2xl mb-6">It looks like there are no team members yet.</div>
-              <p class="text-sm lg:text-md text-stone-700">
-                Use the <span class="font-semibold">Add Member</span> button above to
-                invite someone to the community team.
-              </p>
-            </div>
+          {# Mobile: 2 columns (Member, Actions) -#}
+          <td class="xl:hidden px-8 py-12 text-center" colspan="2">
+            {% include "dashboard/placeholders/community_team_table.html" -%}
+          </td>
+          {# xl: 3 columns (adds Position) -#}
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
+            {% include "dashboard/placeholders/community_team_table.html" -%}
           </td>
         </tr>
       {% else -%}
@@ -49,7 +48,7 @@
                   <div class="flex items-center space-x-3 mb-1">
                     <div class="font-medium text-stone-900 truncate">{{ member.name|display_some_or(member.username) }}</div>
                     {% if !member.accepted -%}
-                      <div class="bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
+                      <div class="text-nowrap bg-yellow-100 text-yellow-800 text-xs px-2.5 py-0.5 rounded-full tracking-wide">
                         Invitation sent
                       </div>
                     {% endif -%}
@@ -63,7 +62,7 @@
             {# End member -#}
 
             {# Position -#}
-            <td class="px-3 xl:px-5 py-4">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
               <div class="flex flex-col space-y-1">
                 <div class="font-medium text-stone-900 truncate">{{ member.company|display_some_or("-") }}</div>
                 {% if let Some(title) = member.title -%}

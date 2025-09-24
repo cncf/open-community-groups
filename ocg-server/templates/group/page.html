@@ -18,15 +18,15 @@
     </h1>
   </div>
   {# End community title -#}
-  <div class="relative container mx-auto max-w-7xl p-4 pb-8 sm:p-6 lg:p-8 lg:pb-16 flex grow h-full">
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full">
-      <div class="flex gap-y-5 sm:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
+      <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
         {# Group header with name and region -#}
         <div>
           {# Main flex container for logo, name/region, and social networks -#}
           <div class="flex flex-1 flex-row items-stretch gap-6">
             {# Group logo -#}
-            {% call common::logo(logo_url = group.logo_url, classes = "hidden sm:block size-24 md:size-28", size = 112, color = group.color, name = Some(group.name)) -%}
+            {% call common::logo(logo_url = group.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = group.color, name = Some(group.name)) -%}
             {# End group logo -#}
 
             <div class="flex-1 flex flex-col justify-between">
@@ -46,7 +46,7 @@
                     {# End region/category legend -#}
 
                     {# Group name -#}
-                    <h1 class="text-lg/5 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 sm:mt-0">
+                    <h1 class="text-lg/5 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-0">
                       {{ group.name|demoji }}
                     </h1>
                     {# End group name -#}
@@ -62,7 +62,7 @@
                 {# End social networks -#}
               </div>
 
-              <div class="mt-2 sm:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
+              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
                 {# Members count and founded date -#}
                 <div class="flex items-center gap-4 text-stone-600">
                   <div class="flex items-center">
@@ -99,7 +99,7 @@
 
         {# Next event and location -#}
         <div>
-          <div class="grid md:grid-cols-2 gap-5 md:gap-8 mt-3 md:mt-0">
+          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8 mt-3 lg:mt-0">
             {# Next event section -#}
             <div class="border border-stone-200 rounded-lg">
               <div class="p-4">
@@ -208,9 +208,9 @@
           <div>
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10
                         {% if let Some(banner_url) = group.banner_url -%}
-                          pb-5 md:pb-9
+                          pb-5 lg:pb-9
                         {% else -%}
-                          pb-4 md:pb-10
+                          pb-4 lg:pb-10
                         {% endif -%}">About this group</div>
 
             {# Group banner -#}
@@ -230,7 +230,7 @@
         {% if let Some(tags) = group.tags -%}
           {% if !tags.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Topics</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Topics</div>
               <div class="flex flex-wrap gap-2">
                 {% for tag in tags -%}
                   <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
@@ -244,7 +244,7 @@
         {# Next events section -#}
         {% if !upcoming_events.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">
               Upcoming Events
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -261,7 +261,7 @@
         {# Past events section -#}
         {% if !past_events.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Past Events</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
                 {% if loop.index <= 6 -%}
@@ -276,7 +276,7 @@
         {# Organizers section - Full width -#}
         {% if !group.organizers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Organizers</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Organizers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in group.organizers -%}
                 {% if organizer.name.is_some() -%}
@@ -292,7 +292,7 @@
         {# Sponsors section -#}
         {% if !group.sponsors.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Sponsors</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in group.sponsors -%}
                 {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -%}
@@ -306,7 +306,7 @@
         {% if let Some(photos_urls) = group.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 md:pb-10">Gallery</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
               <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>
           {% endif -%}

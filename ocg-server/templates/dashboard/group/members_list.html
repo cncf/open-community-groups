@@ -4,7 +4,7 @@
 {# Members header -#}
 {% call macros::form_title(title = "Members") -%}
 
-<div class="flex text-sm text-stone-600 mb-5 justify-end">
+<div class="flex text-sm text-stone-600 mb-5">
   <div>Total members:</div>
   <div class="font-semibold ms-1 text-end">
     {% if members.is_empty() -%}
@@ -31,11 +31,13 @@
     <tbody id="members-list" role="rowgroup">
       {% if members.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="3">
-            <div class="flex flex-col items-center justify-center min-h-[125px]">
-              <div class="text-xl lg:text-2xl mb-6">No members yet.</div>
-              <p class="text-sm lg:text-md text-stone-700">Members of this group will appear here once users join.</p>
-            </div>
+          {# Mobile: 2 columns (Member, Position) -#}
+          <td class="xl:hidden px-8 py-12 text-center" colspan="2">
+            {% include "dashboard/placeholders/group_members_table.html" -%}
+          </td>
+          {# xl: 3 columns (adds Joined) -#}
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
+            {% include "dashboard/placeholders/group_members_table.html" -%}
           </td>
         </tr>
       {% else -%}
