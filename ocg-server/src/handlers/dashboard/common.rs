@@ -41,24 +41,21 @@ mod tests {
     use std::collections::HashMap;
 
     use axum::{
-        body::{to_bytes, Body},
+        body::{Body, to_bytes},
         http::{
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
             HeaderValue, Request, StatusCode,
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
         },
     };
     use axum_login::tower_sessions::session;
-    use serde_json::{from_slice, to_value, json};
+    use serde_json::{from_slice, json, to_value};
     use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
         auth::User as AuthUser,
-        db::{
-            dashboard::common::User as DashboardUser,
-            mock::MockDB,
-        },
+        db::{dashboard::common::User as DashboardUser, mock::MockDB},
         router::setup_test_router,
         services::notifications::MockNotificationsManager,
     };
@@ -198,11 +195,7 @@ mod tests {
     }
 
     /// Helper to create a sample session record for tests.
-    fn sample_session_record(
-        session_id: session::Id,
-        user_id: Uuid,
-        auth_hash: &str,
-    ) -> session::Record {
+    fn sample_session_record(session_id: session::Id, user_id: Uuid, auth_hash: &str) -> session::Record {
         let mut data = HashMap::new();
         data.insert(
             "axum-login.data".to_string(),
