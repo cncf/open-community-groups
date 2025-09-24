@@ -69,12 +69,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_group_members()
+            .times(1)
             .withf(move |id| *id == group_id)
             .returning(move |_| Ok(vec![member.clone()]));
 
@@ -119,12 +122,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_group_members()
+            .times(1)
             .withf(move |id| *id == group_id)
             .returning(move |_| Err(anyhow!("db error")));
 

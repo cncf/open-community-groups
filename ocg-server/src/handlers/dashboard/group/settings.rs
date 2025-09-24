@@ -116,21 +116,27 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_group_full()
+            .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(group.clone()));
         db.expect_list_group_categories()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(vec![category.clone()]));
         db.expect_list_regions()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(vec![region.clone()]));
 
@@ -176,15 +182,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_group_full()
+            .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Err(anyhow!("db error")));
 
@@ -224,15 +234,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_update_group()
+            .times(1)
             .withf(move |cid, gid, group| {
                 *cid == community_id
                     && *gid == group_id
@@ -280,12 +294,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
 
@@ -390,24 +407,27 @@ mod tests {
 
     /// Helper to create a sample group update payload for tests.
     fn sample_group_update() -> GroupUpdate {
-        let mut update = GroupUpdate::default();
-        update.name = "Updated Group".to_string();
-        update.slug = "updated-group".to_string();
-        update.category_id = Uuid::new_v4();
-        update.description = "Updated description".to_string();
-        update.banner_url = Some("https://example.test/banner.png".to_string());
-        update.city = Some("Test City".to_string());
-        update.country_code = Some("US".to_string());
-        update.country_name = Some("United States".to_string());
-        update.extra_links = Some(BTreeMap::new());
-        update.facebook_url = Some("https://facebook.com/test".to_string());
-        update.github_url = Some("https://github.com/test".to_string());
-        update.linkedin_url = Some("https://linkedin.com/company/test".to_string());
-        update.logo_url = Some("https://example.test/logo.png".to_string());
-        update.region_id = Some(Uuid::new_v4());
-        update.state = Some("MA".to_string());
-        update.website_url = Some("https://example.test".to_string());
-        update
+        GroupUpdate {
+            category_id: Uuid::new_v4(),
+            description: "Updated description".to_string(),
+            name: "Updated Group".to_string(),
+            slug: "updated-group".to_string(),
+
+            banner_url: Some("https://example.test/banner.png".to_string()),
+            city: Some("Test City".to_string()),
+            country_code: Some("US".to_string()),
+            country_name: Some("United States".to_string()),
+            extra_links: Some(BTreeMap::new()),
+            facebook_url: Some("https://facebook.com/test".to_string()),
+            github_url: Some("https://github.com/test".to_string()),
+            linkedin_url: Some("https://linkedin.com/company/test".to_string()),
+            logo_url: Some("https://example.test/logo.png".to_string()),
+            region_id: Some(Uuid::new_v4()),
+            state: Some("MA".to_string()),
+            website_url: Some("https://example.test".to_string()),
+
+            ..Default::default()
+        }
     }
 
     /// Helper to create a sample session record with selected group ID.

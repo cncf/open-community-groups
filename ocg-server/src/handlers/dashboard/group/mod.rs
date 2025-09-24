@@ -67,18 +67,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_group()
+            .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
         db.expect_update_session()
+            .times(1)
             .withf(move |record| {
                 record.id == session_id
                     && record

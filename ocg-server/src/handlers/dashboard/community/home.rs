@@ -139,21 +139,27 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_search_community_groups()
+            .times(1)
             .withf({
                 let ts_query = ts_query.clone();
                 move |id, filters| {
@@ -206,18 +212,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
 
@@ -263,21 +274,27 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_list_community_team_members()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(members.clone()));
 
@@ -322,19 +339,24 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         let auth_hash_for_user = auth_hash.clone();
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash_for_user))));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Err(anyhow!("db error")));
 

@@ -366,9 +366,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Err(anyhow::anyhow!("db error")));
 
@@ -400,9 +402,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
 
@@ -434,9 +438,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
 
@@ -469,15 +475,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_community_filters_options()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(sample_filters_options()));
         db.expect_search_community_events()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_events_output(event_id)));
 
@@ -518,15 +528,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_community_filters_options()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(sample_filters_options()));
         db.expect_search_community_groups()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_groups_output(group_id)));
 
@@ -567,12 +581,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community_filters_options()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(sample_filters_options()));
         db.expect_search_community_events()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_events_output(event_id)));
 
@@ -618,9 +635,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_search_community_events()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_events_output(event_id)));
 
@@ -666,12 +685,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community_filters_options()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(sample_filters_options()));
         db.expect_search_community_groups()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_groups_output(group_id)));
 
@@ -717,9 +739,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_search_community_groups()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_groups_output(group_id)));
 
@@ -765,9 +789,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_search_community_events()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_events_output(event_id)));
 
@@ -808,9 +834,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_search_community_groups()
+            .times(1)
             .withf(move |id, _| *id == community_id)
             .returning(move |_, _| Ok(sample_search_community_groups_output(group_id)));
 

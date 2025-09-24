@@ -47,7 +47,7 @@ pub(crate) async fn list_page(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::HashMap;
 
     use anyhow::anyhow;
     use axum::{
@@ -72,10 +72,7 @@ mod tests {
         router::setup_test_router,
         services::notifications::MockNotificationsManager,
         templates::dashboard::group::attendees::Attendee,
-        types::{
-            community::Community,
-            event::{EventKind, EventSummary},
-        },
+        types::event::{EventKind, EventSummary},
     };
 
     #[tokio::test]
@@ -89,27 +86,28 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
         let attendee = sample_attendee();
-        let community = sample_community(community_id);
         let event = sample_event_summary(event_id, group_id);
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_search_event_attendees()
+            .times(1)
             .withf(move |id, filters| *id == group_id && filters.event_id == Some(event_id))
             .returning(move |_, _| Ok(vec![attendee.clone()]));
         db.expect_get_event_summary()
+            .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
 
@@ -151,23 +149,23 @@ mod tests {
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
-        let community = sample_community(community_id);
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_search_event_attendees()
+            .times(1)
             .withf(move |id, filters| *id == group_id && filters.event_id.is_none())
             .returning(move |_, _| Err(anyhow!("db error")));
 
@@ -219,27 +217,6 @@ mod tests {
             name: Some("Event Attendee".to_string()),
             photo_url: Some("https://example.test/avatar.png".to_string()),
             title: Some("Engineer".to_string()),
-        }
-    }
-
-    /// Helper to create a sample community for tests.
-    fn sample_community(community_id: Uuid) -> Community {
-        Community {
-            active: true,
-            community_id,
-            community_site_layout_id: "default".to_string(),
-            created_at: 0,
-            description: "Test community".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-            host: "example.test".to_string(),
-            name: "test".to_string(),
-            theme: crate::types::community::Theme {
-                palette: BTreeMap::default(),
-                primary_color: "#000000".to_string(),
-            },
-            title: "Test Community".to_string(),
-            ..Default::default()
         }
     }
 

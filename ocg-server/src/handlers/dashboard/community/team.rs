@@ -146,18 +146,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_list_community_team_members()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(members.clone()));
 
@@ -202,18 +207,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_list_community_team_members()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Err(anyhow!("db error")));
 
@@ -255,27 +265,34 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_add_community_team_member()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == new_member_id)
             .returning(move |_, _| Ok(()));
         db.expect_get_community()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(community_for_db.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
         nm.expect_enqueue()
+            .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::CommunityTeamInvitation)
                     && notification.recipients == vec![new_member_id]
@@ -328,18 +345,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_add_community_team_member()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == new_member_id)
             .returning(move |_, _| Err(anyhow!("db error")));
 
@@ -378,18 +400,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_delete_community_team_member()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == member_id)
             .returning(move |_, _| Ok(()));
 

@@ -180,15 +180,20 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_group_team_members()
+            .times(1)
             .withf(move |id| *id == group_id)
             .returning(move |_| Ok(vec![member.clone(), sample_team_member(false)]));
-        db.expect_list_group_roles().returning(move || Ok(vec![role.clone()]));
+        db.expect_list_group_roles()
+            .times(1)
+            .returning(move || Ok(vec![role.clone()]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -233,33 +238,39 @@ mod tests {
             role: GroupRole::Organizer,
             user_id: new_member_id,
         };
-        let body = format!("role={}&user_id={}", form.role.to_string(), form.user_id);
+        let body = format!("role={}&user_id={}", form.role, form.user_id);
         let group_summary = sample_group_summary(group_id);
         let group_summary_for_db = group_summary.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_add_group_team_member()
+            .times(1)
             .withf(move |id, uid, role| {
                 *id == group_id && *uid == new_member_id && role == &GroupRole::Organizer
             })
             .returning(move |_, _, _| Ok(()));
         db.expect_get_group_summary()
+            .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(group_summary_for_db.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
         nm.expect_enqueue()
+            .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::GroupTeamInvitation)
                     && notification.recipients == vec![new_member_id]
@@ -310,12 +321,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_delete_group_team_member()
+            .times(1)
             .withf(move |id, uid| *id == group_id && *uid == member_id)
             .returning(move |_, _| Ok(()));
 
@@ -356,17 +370,20 @@ mod tests {
         let form = super::NewTeamRole {
             role: GroupRole::Organizer,
         };
-        let body = format!("role={}", form.role.to_string());
+        let body = format!("role={}", form.role);
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_update_group_team_member_role()
+            .times(1)
             .withf(move |id, uid, role| *id == group_id && *uid == member_id && role == &GroupRole::Organizer)
             .returning(move |_, _, _| Ok(()));
 

@@ -69,6 +69,7 @@ pub(crate) async fn page(
 mod tests {
     use std::collections::BTreeMap;
 
+    use anyhow::anyhow;
     use axum::body::to_bytes;
     use axum::http::{
         HeaderValue, Request, StatusCode,
@@ -96,25 +97,31 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_community_recently_added_groups()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
             })
             .returning(|_, _| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
             })
             .returning(|_, _| Ok(vec![]));
         db.expect_get_community_home_stats()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(Stats::default()));
 
@@ -154,27 +161,33 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_community_recently_added_groups()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
             })
             .returning(|_, _| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
             })
-            .returning(|_, _| Err(anyhow::anyhow!("db error")));
+            .returning(|_, _| Ok(vec![]));
         db.expect_get_community_home_stats()
+            .times(1)
             .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(Stats::default()));
+            .returning(move |_| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

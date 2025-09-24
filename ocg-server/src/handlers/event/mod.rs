@@ -150,12 +150,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_event()
+            .times(1)
             .withf(move |id, group_slug, event_slug| {
                 *id == community_id && group_slug == "test-group" && event_slug == "test-event"
             })
@@ -197,12 +200,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_event()
+            .times(1)
             .withf(move |id, group_slug, event_slug| {
                 *id == community_id && group_slug == "test-group" && event_slug == "test-event"
             })
@@ -241,15 +247,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_attend_event()
+            .times(1)
             .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
             .returning(|_, _, _| Ok(()));
 
@@ -287,15 +297,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_is_event_attendee()
+            .times(1)
             .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
 
@@ -342,15 +356,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_leave_event()
+            .times(1)
             .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
             .returning(|_, _, _| Ok(()));
 

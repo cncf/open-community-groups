@@ -77,18 +77,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == session_user_id)
             .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash_clone))));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == session_user_id)
             .returning(|_, _| Ok(true));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_search_user()
+            .times(1)
             .withf(move |id, query| *id == community_id && query == "john")
             .returning(move |_, _| Ok(expected_users_clone.clone()));
 
@@ -135,15 +140,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == session_user_id)
             .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash_clone))));
         db.expect_user_owns_community()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == session_user_id)
             .returning(|_, _| Ok(true));
         db.expect_get_community_id()
+            .times(2)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
 

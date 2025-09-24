@@ -162,18 +162,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_list_user_community_team_invitations()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(move |_, _| Ok(community_invitations.clone()));
         db.expect_list_user_group_team_invitations()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(move |_, _| Ok(group_invitations.clone()));
 
@@ -214,24 +219,30 @@ mod tests {
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let community_invitations = vec![sample_community_invitation()];
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_list_user_community_team_invitations()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(move |_, _| Ok(community_invitations.clone()));
+        db.expect_list_user_group_team_invitations()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(move |_, _| Err(anyhow!("db error")));
-        db.expect_list_user_group_team_invitations()
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(Vec::new()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -266,18 +277,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_accept_community_team_invitation()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(()));
         db.expect_update_session()
+            .times(1)
             .withf(move |record| {
                 record.id == session_id && message_matches(record, "Team invitation accepted.")
             })
@@ -321,18 +337,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_accept_group_team_invitation()
+            .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(()));
         db.expect_update_session()
+            .times(1)
             .withf(move |record| {
                 record.id == session_id && message_matches(record, "Team invitation accepted.")
             })
@@ -375,18 +396,23 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_delete_community_team_member()
+            .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(()));
         db.expect_update_session()
+            .times(1)
             .withf(move |record| {
                 record.id == session_id && message_matches(record, "Team invitation rejected.")
             })
@@ -429,19 +455,19 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        let community_id = Uuid::new_v4();
-        db.expect_get_community_id()
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_delete_group_team_member()
+            .times(1)
             .withf(move |gid, uid| *gid == group_id && *uid == user_id)
             .returning(|_, _| Ok(()));
         db.expect_update_session()
+            .times(1)
             .withf(move |record| {
                 record.id == session_id && message_matches(record, "Team invitation rejected.")
             })

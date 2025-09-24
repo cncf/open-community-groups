@@ -364,24 +364,34 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_list_event_categories()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(vec![category.clone()]));
-        db.expect_list_event_kinds().returning(move || Ok(vec![kind.clone()]));
+        db.expect_list_event_kinds()
+            .times(1)
+            .returning(move || Ok(vec![kind.clone()]));
         db.expect_list_session_kinds()
+            .times(1)
             .returning(move || Ok(vec![session_kind.clone()]));
         db.expect_list_group_sponsors()
+            .times(1)
             .withf(move |id| *id == group_id)
             .returning(move |_| Ok(vec![sponsor.clone()]));
-        db.expect_list_timezones().returning(move || Ok(timezones.clone()));
+        db.expect_list_timezones()
+            .times(1)
+            .returning(move || Ok(timezones.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -425,12 +435,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_group_events()
+            .times(1)
             .withf(move |id| *id == group_id)
             .returning({
                 let group_events = group_events.clone();
@@ -486,27 +499,38 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_event_full()
+            .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event_full.clone()));
         db.expect_list_event_categories()
+            .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(vec![category.clone()]));
-        db.expect_list_event_kinds().returning(move || Ok(vec![kind.clone()]));
+        db.expect_list_event_kinds()
+            .times(1)
+            .returning(move || Ok(vec![kind.clone()]));
         db.expect_list_session_kinds()
+            .times(1)
             .returning(move || Ok(vec![session_kind.clone()]));
         db.expect_list_group_sponsors()
+            .times(1)
             .withf(move |id| *id == group_id)
             .returning(move |_| Ok(vec![sponsor.clone()]));
-        db.expect_list_timezones().returning(move || Ok(timezones.clone()));
+        db.expect_list_timezones()
+            .times(1)
+            .returning(move || Ok(timezones.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -551,12 +575,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_add_event()
+            .times(1)
             .withf(move |id, event| {
                 *id == group_id && event.name == event_form.name && event.slug == event_form.slug
             })
@@ -600,9 +627,11 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
 
@@ -644,27 +673,34 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_event_summary()
+            .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event_summary.clone()));
         db.expect_cancel_event()
+            .times(1)
             .withf(move |id, eid| *id == group_id && *eid == event_id)
             .returning(move |_, _| Ok(()));
         db.expect_list_event_attendees_ids()
+            .times(1)
             .withf(move |eid| *eid == event_id)
             .returning(move |_| Ok(vec![recipient_id]));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
         nm.expect_enqueue()
+            .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::EventCanceled)
                     && notification.recipients == vec![recipient_id]
@@ -718,17 +754,20 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_event_summary()
-            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .times(2)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning({
                 let mut first_call = true;
                 move |_, _, _| {
@@ -742,15 +781,18 @@ mod tests {
                 }
             });
         db.expect_publish_event()
+            .times(1)
             .withf(move |gid, eid, uid| *gid == group_id && *eid == event_id && *uid == user_id)
             .returning(move |_, _, _| Ok(()));
         db.expect_list_group_members_ids()
+            .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id]));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
         nm.expect_enqueue()
+            .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::EventPublished)
                     && notification.recipients == vec![member_id]
@@ -797,12 +839,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_delete_event()
+            .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(()));
 
@@ -844,12 +889,15 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_unpublish_event()
+            .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(()));
 
@@ -900,17 +948,20 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
+            .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
         db.expect_get_user_by_id()
+            .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_event_summary()
-            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .times(2)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
             .returning({
                 let mut first_call = true;
                 move |_, _, _| {
@@ -924,17 +975,20 @@ mod tests {
                 }
             });
         db.expect_update_event()
+            .times(1)
             .withf(move |gid, eid, event| {
                 *gid == group_id && *eid == event_id && event.name == event_form.name
             })
             .returning(move |_, _, _| Ok(()));
         db.expect_list_event_attendees_ids()
+            .times(1)
             .withf(move |eid| *eid == event_id)
             .returning(move |_| Ok(vec![recipient_id]));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
         nm.expect_enqueue()
+            .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::EventRescheduled)
                     && notification.recipients == vec![recipient_id]
