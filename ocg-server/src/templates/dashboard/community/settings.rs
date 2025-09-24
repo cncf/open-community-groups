@@ -22,7 +22,7 @@ pub(crate) struct UpdatePage {
 
 /// Community update form data.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct CommunityUpdate {
     /// Brief description of the community's purpose or focus.
     pub description: String,

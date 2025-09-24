@@ -51,7 +51,7 @@ pub(crate) struct UpdatePage {
 
 /// Group details for dashboard management.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Group {
     /// Group name.
     pub name: String,
