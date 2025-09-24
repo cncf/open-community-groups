@@ -74,7 +74,7 @@
                   {% if let Some(capacity) = event.capacity -%}
                     <div class="flex items-center">
                       <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
-                      <span class="text-sm">{{ capacity }} capacity</span>
+                      <span class="text-sm">Capacity: {{ capacity }}</span>
                     </div>
                   {% endif -%}
                   {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5")) -%}
