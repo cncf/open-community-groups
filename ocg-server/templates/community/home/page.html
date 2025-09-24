@@ -74,7 +74,7 @@
     {{ stats|safe }}
     {# End stats -#}
 
-    <div class="pt-3 lg:pt-8">
+    <div class="pt-3 xl:pt-8">
       {# Events in-person -#}
       {% call events_list(title = "Upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -%}
       {# End events in-person -#}
@@ -85,7 +85,7 @@
 
       {# Banner -#}
       {% if let Some(ad_banner_url) = community.ad_banner_url -%}
-        <div class="hidden pb-2 xl:pb-16 md:flex">
+        <div class="hidden pb-2 lg:pb-8 xl:pb-16 md:flex">
           {% if let Some(ad_banner_link_url) = community.ad_banner_link_url -%}
             <a rel="noopener noreferrer"
                href="{{ ad_banner_link_url }}"
@@ -153,7 +153,7 @@
 
 {# Events list -#}
 {% macro events_list(title, link, events) -%}
-  <div class="my-5 pb-0 lg:pb-5 lg:my-8">
+  <div class="my-5 pb-0 lg:pb-1 xl:pb-5 lg:my-6 xl:my-8">
     <div class="flex items-center justify-between mb-3 lg:mb-6">
       {# Title -#}
       <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
@@ -168,7 +168,7 @@
       </div>
       {# End see all events on desktop -#}
     </div>
-    <div class="my-5 lg:my-10">
+    <div class="my-5 xl:my-10">
       {# Cards list -#}
       <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
         {% for event in events -%}
