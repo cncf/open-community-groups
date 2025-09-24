@@ -74,14 +74,16 @@
       <tbody id="past-events-list" role="rowgroup">
         {% if events.past.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-20 text-center" colspan="6">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any past events.</div>
-
-                <p class="text-sm lg:text-md text-stone-700">
-                  Past events will appear here once your upcoming events have concluded.
-                </p>
-              </div>
+            {# Mobile: 3 columns (Name, Status, Actions) -#}
+            <td class="xl:hidden px-8 py-20 text-center" colspan="3">
+              {% include "dashboard/placeholders/events_past.html" -%}
+            </td>
+            {# xl: 5 columns (adds Date, Type) -#}
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+                colspan="5">{% include "dashboard/placeholders/events_past.html" -%}</td>
+            {# 2xl: 6 columns (adds Location) -#}
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="6">
+              {% include "dashboard/placeholders/events_past.html" -%}
             </td>
           </tr>
         {% else -%}
@@ -265,14 +267,16 @@
       <tbody id="upcoming-events-list" role="rowgroup">
         {% if events.upcoming.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-20 text-center" colspan="6">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-xl lg:text-2xl mb-10">It looks like you don't have any upcoming events.</div>
-
-                <p class="text-sm lg:text-md text-stone-700">
-                  You can create a new event by clicking on the <span class="font-semibold">Add Event</span> button in the top right corner.
-                </p>
-              </div>
+            {# Mobile: 3 columns (Name, Status, Actions) -#}
+            <td class="xl:hidden px-8 py-20 text-center" colspan="3">
+              {% include "dashboard/placeholders/group_events_table.html" -%}
+            </td>
+            {# xl: 5 columns (adds Date, Type) -#}
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+                colspan="5">{% include "dashboard/placeholders/group_events_table.html" -%}</td>
+            {# 2xl: 6 columns (adds Location) -#}
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="6">
+              {% include "dashboard/placeholders/group_events_table.html" -%}
             </td>
           </tr>
         {% else -%}

@@ -42,11 +42,13 @@
       {% if let Some(event) = event -%}
         {% if attendees.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-12 text-center" colspan="4">
-              <div class="flex flex-col items-center justify-center min-h-[125px]">
-                <div class="text-xl lg:text-2xl mb-6">No attendees found for this event.</div>
-                <p class="text-sm lg:text-md text-stone-700">Try a different event.</p>
-              </div>
+            {# Mobile: 3 columns (Attendee, Position, Checked In) -#}
+            <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+              {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            </td>
+            {# xl: 4 columns (adds RSVP Date) -#}
+            <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
+              {% include "dashboard/placeholders/group_attendees_empty.html" -%}
             </td>
           </tr>
         {% else -%}
@@ -105,14 +107,13 @@
         {% endif -%}
       {% else -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-12 text-center" colspan="4">
-            <div class="flex flex-col items-center justify-center min-h-[125px]">
-              <div class="text-xl lg:text-2xl mb-6">Select an event to view attendees.</div>
-              <p class="text-sm lg:text-md text-stone-700">
-                Use the <span class="font-semibold">Event</span> dropdown above to pick an event
-                and load its attendees.
-              </p>
-            </div>
+          {# Mobile: 3 columns (Attendee, Position, Checked In) -#}
+          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
+            {% include "dashboard/placeholders/group_attendees_no_event.html" -%}
+          </td>
+          {# xl: 4 columns (adds RSVP Date) -#}
+          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
+            {% include "dashboard/placeholders/group_attendees_no_event.html" -%}
           </td>
         </tr>
       {% endif -%}

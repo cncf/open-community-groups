@@ -89,14 +89,16 @@
     <tbody id="groups-list">
       {% if groups.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          <td class="px-8 py-20 text-center" colspan="5">
-            <div class="flex flex-col items-center justify-center min-h-[125px]">
-              <div class="text-xl lg:text-2xl mb-10">It looks like you haven't created any groups yet.</div>
-
-              <p class="text-sm lg:text-md text-stone-700">
-                Groups created by this community will be listed here. You can create a new group by clicking on the <span class="font-semibold">Add Group</span> button in the top right corner.
-              </p>
-            </div>
+          {# Mobile: 2 columns (Name, Actions) -#}
+          <td class="xl:hidden px-8 py-20 text-center" colspan="2">
+            {% include "dashboard/placeholders/community_groups_table.html" -%}
+          </td>
+          {# xl: 4 columns (adds Location, Category) -#}
+          <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+              colspan="4">{% include "dashboard/placeholders/community_groups_table.html" -%}</td>
+          {# 2xl: 5 columns (adds Created) -#}
+          <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
+            {% include "dashboard/placeholders/community_groups_table.html" -%}
           </td>
         </tr>
       {% else -%}
