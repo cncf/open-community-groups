@@ -326,8 +326,6 @@ pub(crate) async fn search_groups(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use axum::{
         body::{Body, to_bytes},
         http::{
@@ -335,27 +333,15 @@ mod tests {
             header::{CACHE_CONTROL, CONTENT_TYPE, HOST},
         },
     };
-    use chrono::{TimeZone, Utc};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        db::{
-            BBox,
-            common::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
-            mock::MockDB,
-        },
+        db::mock::MockDB,
+        handlers::tests::*,
         router::setup_test_router,
         services::notifications::MockNotificationsManager,
-        templates::community::{
-            explore::{self, FilterOption},
-            pagination,
-        },
-        types::{
-            community::{Community, Theme},
-            event::{EventDetailed, EventKind},
-            group::{GroupCategory, GroupDetailed, GroupRegion},
-        },
+        templates::community::{explore, pagination},
     };
 
     #[tokio::test]
@@ -884,140 +870,5 @@ mod tests {
         let headers = HeaderMap::new();
         let filters = explore::GroupsFilters::new(&headers, raw_query).unwrap();
         pagination::build_url("/explore?entity=groups", &filters).unwrap()
-    }
-
-    /// Helper to create a sample bounding box for tests.
-    fn sample_bbox() -> BBox {
-        BBox {
-            ne_lat: 1.0,
-            ne_lon: 2.0,
-            sw_lat: -1.0,
-            sw_lon: -2.0,
-        }
-    }
-
-    /// Helper to create a sample community for tests.
-    fn sample_community(community_id: Uuid) -> Community {
-        Community {
-            active: true,
-            community_id,
-            community_site_layout_id: "default".to_string(),
-            created_at: 0,
-            description: "Test community".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-            host: "example.test".to_string(),
-            name: "test".to_string(),
-            theme: Theme {
-                palette: BTreeMap::new(),
-                primary_color: "#000000".to_string(),
-            },
-            title: "Test Community".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample event for tests.
-    fn sample_event(event_id: Uuid) -> EventDetailed {
-        EventDetailed {
-            event_id,
-            group_category_name: "Category".to_string(),
-            group_name: "Group".to_string(),
-            group_slug: "group".to_string(),
-            kind: EventKind::InPerson,
-            name: "Sample Event".to_string(),
-            published: true,
-            slug: "sample-event".to_string(),
-            timezone: chrono_tz::UTC,
-            ends_at: Some(Utc.timestamp_opt(1_000, 0).unwrap()),
-            group_city: Some("City".to_string()),
-            group_country_code: Some("US".to_string()),
-            group_country_name: Some("United States".to_string()),
-            group_state: Some("CA".to_string()),
-            latitude: Some(1.0),
-            longitude: Some(2.0),
-            starts_at: Some(Utc.timestamp_opt(0, 0).unwrap()),
-            venue_address: Some("123 Main St".to_string()),
-            venue_city: Some("City".to_string()),
-            venue_name: Some("Venue".to_string()),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create sample filter options for tests.
-    fn sample_filters_options() -> explore::FiltersOptions {
-        explore::FiltersOptions {
-            distance: vec![FilterOption {
-                name: "5 km".to_string(),
-                value: "5".to_string(),
-            }],
-            event_category: vec![FilterOption {
-                name: "Category".to_string(),
-                value: "category".to_string(),
-            }],
-            group_category: vec![FilterOption {
-                name: "Category".to_string(),
-                value: "category".to_string(),
-            }],
-            region: vec![FilterOption {
-                name: "Region".to_string(),
-                value: "region".to_string(),
-            }],
-        }
-    }
-
-    /// Helper to create a sample group for tests.
-    fn sample_group(group_id: Uuid) -> GroupDetailed {
-        let group_category_id = Uuid::from_u128(2);
-        let region_id = Uuid::from_u128(3);
-
-        GroupDetailed {
-            active: true,
-            category: GroupCategory {
-                group_category_id,
-                name: "Category".to_string(),
-                normalized_name: "category".to_string(),
-                order: None,
-            },
-            created_at: Utc.timestamp_opt(0, 0).unwrap(),
-            group_id,
-            name: "Sample Group".to_string(),
-            slug: "sample-group".to_string(),
-            city: Some("City".to_string()),
-            country_code: Some("US".to_string()),
-            country_name: Some("United States".to_string()),
-            latitude: Some(1.0),
-            longitude: Some(2.0),
-            region: Some(GroupRegion {
-                region_id,
-                name: "Region".to_string(),
-                normalized_name: "region".to_string(),
-                order: None,
-            }),
-            state: Some("CA".to_string()),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create sample events search output for tests.
-    fn sample_search_community_events_output(event_id: Uuid) -> SearchCommunityEventsOutput {
-        let mut output = SearchCommunityEventsOutput {
-            events: vec![sample_event(event_id)],
-            total: 1,
-            ..Default::default()
-        };
-        output.bbox = Some(sample_bbox());
-        output
-    }
-
-    /// Helper to create sample groups search output for tests.
-    fn sample_search_community_groups_output(group_id: Uuid) -> SearchCommunityGroupsOutput {
-        let mut output = SearchCommunityGroupsOutput {
-            groups: vec![sample_group(group_id)],
-            total: 1,
-            ..Default::default()
-        };
-        output.bbox = Some(sample_bbox());
-        output
     }
 }

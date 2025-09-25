@@ -103,8 +103,6 @@ pub(crate) struct NewTeamMember {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
-
     use anyhow::anyhow;
     use axum::{
         body::{Body, to_bytes},
@@ -114,21 +112,15 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use serde_json::json;
-    use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
         db::mock::MockDB,
+        handlers::tests::*,
         router::setup_test_router,
         services::notifications::{MockNotificationsManager, NotificationKind},
-        templates::{
-            dashboard::community::team::CommunityTeamMember,
-            notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
-        },
-        types::community::{Community, Theme},
+        templates::notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
     };
 
     use super::NewTeamMember;
@@ -140,8 +132,11 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
-        let members = vec![sample_team_member(true), sample_team_member(false)];
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let members = vec![
+            sample_community_team_member(true),
+            sample_community_team_member(false),
+        ];
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -202,7 +197,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -256,10 +251,12 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let community = sample_community(community_id);
         let community_for_db = community.clone();
-        let new_member_form = sample_new_team_member(new_member_id);
+        let new_member_form = NewTeamMember {
+            user_id: new_member_id,
+        };
         let body = serde_qs::to_string(&new_member_form).unwrap();
 
         // Setup database mock
@@ -338,8 +335,10 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
-        let new_member_form = sample_new_team_member(new_member_id);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let new_member_form = NewTeamMember {
+            user_id: new_member_id,
+        };
         let body = serde_qs::to_string(&new_member_form).unwrap();
 
         // Setup database mock
@@ -395,7 +394,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -443,77 +442,5 @@ mod tests {
             &HeaderValue::from_static("refresh-community-dashboard-table"),
         );
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample community.
-    fn sample_community(community_id: Uuid) -> Community {
-        Community {
-            active: true,
-            community_id,
-            community_site_layout_id: "default".to_string(),
-            created_at: 0,
-            description: "Test community".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-            host: "example.test".to_string(),
-            name: "test".to_string(),
-            theme: Theme {
-                palette: BTreeMap::default(),
-                primary_color: "#000000".to_string(),
-            },
-            title: "Test Community".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample new team member form data.
-    fn sample_new_team_member(user_id: Uuid) -> NewTeamMember {
-        NewTeamMember { user_id }
-    }
-
-    /// Helper to create a sample session record.
-    fn sample_session_record(session_id: session::Id, user_id: Uuid, auth_hash: &str) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
-    }
-
-    /// Helper to create a sample community team member.
-    fn sample_team_member(accepted: bool) -> CommunityTeamMember {
-        CommunityTeamMember {
-            accepted,
-            user_id: Uuid::new_v4(),
-            username: "test-user".to_string(),
-            company: Some("Test Co".to_string()),
-            name: Some("Test User".to_string()),
-            photo_url: Some("https://example.test/avatar.png".to_string()),
-            title: Some("Engineer".to_string()),
-        }
     }
 }

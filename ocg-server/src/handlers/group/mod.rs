@@ -144,8 +144,6 @@ pub(crate) async fn membership_status(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
-
     use anyhow::anyhow;
     use axum::{
         body::{Body, to_bytes},
@@ -155,24 +153,17 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use chrono::{TimeZone, Utc};
-    use chrono_tz::UTC;
     use serde_json::{from_slice, json};
-    use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
         db::mock::MockDB,
+        handlers::tests::*,
         router::setup_test_router,
         services::notifications::{MockNotificationsManager, NotificationKind},
-        templates::{common::User as TemplateUser, notifications::GroupWelcome},
-        types::{
-            community::{Community, Theme},
-            event::{EventDetailed, EventKind, EventSummary},
-            group::{GroupCategory, GroupFull, GroupSummary},
-        },
+        templates::notifications::GroupWelcome,
+        types::event::EventKind,
     };
 
     #[tokio::test]
@@ -195,7 +186,7 @@ mod tests {
         db.expect_get_group()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
-            .returning(move |_, _| Ok(sample_group(group_id)));
+            .returning(move |_, _| Ok(sample_group_full(group_id)));
         db.expect_get_group_upcoming_events()
             .times(1)
             .withf(move |id, slug, kinds, limit| {
@@ -213,7 +204,7 @@ mod tests {
                     && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
                     && *limit == 9
             })
-            .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id)]));
+            .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -263,7 +254,7 @@ mod tests {
         db.expect_get_group()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
-            .returning(move |_, _| Ok(sample_group(group_id)));
+            .returning(move |_, _| Ok(sample_group_full(group_id)));
         db.expect_get_group_upcoming_events()
             .times(1)
             .withf(move |id, slug, kinds, limit| {
@@ -311,7 +302,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -379,7 +370,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -429,7 +420,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -478,158 +469,5 @@ mod tests {
         );
         let body: serde_json::Value = from_slice(&bytes).unwrap();
         assert_eq!(body, json!({ "is_member": true }));
-    }
-
-    // Helpers
-
-    /// Helper to create a sample community for tests.
-    fn sample_community(community_id: Uuid) -> Community {
-        Community {
-            active: true,
-            community_id,
-            community_site_layout_id: "default".to_string(),
-            created_at: 0,
-            description: "Test community".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-            host: "example.test".to_string(),
-            name: "test".to_string(),
-            theme: Theme {
-                palette: BTreeMap::new(),
-                primary_color: "#000000".to_string(),
-            },
-            title: "Test Community".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample group for tests.
-    fn sample_group(group_id: Uuid) -> GroupFull {
-        GroupFull {
-            active: true,
-            category: GroupCategory {
-                group_category_id: group_id,
-                name: "Cloud Native".to_string(),
-                normalized_name: "cloud-native".to_string(),
-                order: Some(1),
-            },
-            color: "#336699".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            group_id,
-            members_count: 42,
-            name: "Test Group".to_string(),
-            organizers: vec![sample_template_user()],
-            slug: "test-group".to_string(),
-            city: Some("San Francisco".to_string()),
-            country_code: Some("US".to_string()),
-            country_name: Some("United States".to_string()),
-            description: Some("A test group".to_string()),
-            description_short: Some("Test group".to_string()),
-            latitude: Some(37.0),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            longitude: Some(-122.0),
-            state: Some("CA".to_string()),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample group summary for tests.
-    fn sample_group_summary(group_id: Uuid) -> GroupSummary {
-        GroupSummary {
-            active: true,
-            category: GroupCategory {
-                group_category_id: group_id,
-                name: "Cloud Native".to_string(),
-                normalized_name: "cloud-native".to_string(),
-                order: Some(1),
-            },
-            color: "#336699".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            group_id,
-            name: "Test Group".to_string(),
-            slug: "test-group".to_string(),
-            city: Some("San Francisco".to_string()),
-            country_code: Some("US".to_string()),
-            country_name: Some("United States".to_string()),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            state: Some("CA".to_string()),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample detailed event for tests.
-    fn sample_event_detailed(event_id: Uuid) -> EventDetailed {
-        EventDetailed {
-            canceled: false,
-            event_id,
-            group_category_name: "Cloud Native".to_string(),
-            group_color: "#336699".to_string(),
-            group_name: "Test Group".to_string(),
-            group_slug: "test-group".to_string(),
-            kind: EventKind::InPerson,
-            name: "Test Event".to_string(),
-            published: true,
-            slug: "test-event".to_string(),
-            timezone: UTC,
-            description_short: Some("A test event".to_string()),
-            ends_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
-            group_city: Some("San Francisco".to_string()),
-            group_country_code: Some("US".to_string()),
-            group_country_name: Some("United States".to_string()),
-            group_state: Some("CA".to_string()),
-            latitude: Some(37.0),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            longitude: Some(-122.0),
-            starts_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap()),
-            venue_address: Some("123 Main St".to_string()),
-            venue_city: Some("San Francisco".to_string()),
-            venue_name: Some("Main Venue".to_string()),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample event summary for tests.
-    fn sample_event_summary(event_id: Uuid) -> EventSummary {
-        EventSummary::from(sample_event_detailed(event_id))
-    }
-
-    /// Helper to create a sample authenticated user for tests.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            user_id,
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            username: "test-user".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample session record for tests.
-    fn sample_session_record(session_id: session::Id, user_id: Uuid, auth_hash: &str) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        session::Record {
-            id: session_id,
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-        }
-    }
-
-    /// Helper to create a sample template user for tests.
-    fn sample_template_user() -> TemplateUser {
-        TemplateUser {
-            user_id: Uuid::new_v4(),
-            username: "organizer".to_string(),
-            name: Some("Organizer".to_string()),
-            ..Default::default()
-        }
     }
 }

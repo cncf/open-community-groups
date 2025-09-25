@@ -71,7 +71,7 @@ pub(crate) struct UpdatePage {
 
 /// Event details for dashboard management.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub(crate) struct Event {
     /// Event name.
     pub name: String,

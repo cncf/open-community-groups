@@ -138,8 +138,6 @@ pub(crate) struct NewTeamRole {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use axum::{
         body::{Body, to_bytes},
         http::{
@@ -148,20 +146,17 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use chrono::{TimeZone, Utc};
-    use serde_json::{from_value, json};
-    use time::{Duration as TimeDuration, OffsetDateTime};
+    use serde_json::from_value;
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
         db::mock::MockDB,
-        handlers::auth::SELECTED_GROUP_ID_KEY,
+        handlers::tests::*,
         router::setup_test_router,
         services::notifications::{MockNotificationsManager, NotificationKind},
-        templates::{dashboard::group::team::GroupTeamMember, notifications::GroupTeamInvitation},
-        types::group::{GroupCategory, GroupRegion, GroupRole, GroupRoleSummary, GroupSummary},
+        templates::notifications::GroupTeamInvitation,
+        types::group::GroupRole,
     };
 
     use super::NewTeamMember;
@@ -173,7 +168,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let member = sample_team_member(true);
         let role = sample_group_role_summary();
 
@@ -233,7 +228,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let form = NewTeamMember {
             role: GroupRole::Organizer,
             user_id: new_member_id,
@@ -316,7 +311,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -366,7 +361,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let form = super::NewTeamRole {
             role: GroupRole::Organizer,
         };
@@ -411,107 +406,5 @@ mod tests {
             &HeaderValue::from_static("refresh-group-dashboard-table"),
         );
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user for tests.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample group category for tests.
-    fn sample_group_category() -> GroupCategory {
-        GroupCategory {
-            group_category_id: Uuid::new_v4(),
-            name: "Meetup".to_string(),
-            normalized_name: "meetup".to_string(),
-            order: Some(1),
-        }
-    }
-
-    /// Helper to create a sample group region for tests.
-    fn sample_group_region() -> GroupRegion {
-        GroupRegion {
-            name: "North America".to_string(),
-            normalized_name: "north-america".to_string(),
-            order: Some(1),
-            region_id: Uuid::new_v4(),
-        }
-    }
-
-    /// Helper to create a sample group role summary for tests.
-    fn sample_group_role_summary() -> GroupRoleSummary {
-        GroupRoleSummary {
-            display_name: "Organizer".to_string(),
-            group_role_id: "organizer".to_string(),
-        }
-    }
-
-    /// Helper to create a sample group summary for tests.
-    fn sample_group_summary(group_id: Uuid) -> GroupSummary {
-        GroupSummary {
-            active: true,
-            category: sample_group_category(),
-            color: "#123456".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            group_id,
-            name: "Test Group".to_string(),
-            slug: "test-group".to_string(),
-
-            city: Some("Test City".to_string()),
-            country_code: Some("US".to_string()),
-            country_name: Some("United States".to_string()),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            region: Some(sample_group_region()),
-            state: Some("MA".to_string()),
-        }
-    }
-
-    /// Helper to create a sample team member for tests.
-    fn sample_team_member(accepted: bool) -> GroupTeamMember {
-        GroupTeamMember {
-            accepted,
-            user_id: Uuid::new_v4(),
-            username: "team-member".to_string(),
-
-            company: Some("Example".to_string()),
-            name: Some("Team Member".to_string()),
-            photo_url: Some("https://example.test/photo.png".to_string()),
-            role: Some(GroupRole::Organizer),
-            title: Some("Organizer".to_string()),
-        }
-    }
-
-    /// Helper to create a sample session record with selected group ID.
-    fn sample_session_record(
-        session_id: session::Id,
-        user_id: Uuid,
-        group_id: Uuid,
-        auth_hash: &str,
-    ) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        data.insert(SELECTED_GROUP_ID_KEY.to_string(), json!(group_id));
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
     }
 }

@@ -47,8 +47,6 @@ pub(crate) async fn list_page(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use anyhow::anyhow;
     use axum::{
         body::{Body, to_bytes},
@@ -58,21 +56,12 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use chrono::{TimeZone, Utc};
-    use chrono_tz::UTC;
-    use serde_json::json;
-    use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
-        db::mock::MockDB,
-        handlers::auth::SELECTED_GROUP_ID_KEY,
-        router::setup_test_router,
+        db::mock::MockDB, handlers::tests::*, router::setup_test_router,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::group::attendees::Attendee,
-        types::event::{EventKind, EventSummary},
     };
 
     #[tokio::test]
@@ -84,7 +73,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let attendee = sample_attendee();
         let event = sample_event_summary(event_id, group_id);
 
@@ -148,7 +137,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -188,83 +177,5 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user for tests.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample attendee for tests.
-    fn sample_attendee() -> Attendee {
-        Attendee {
-            checked_in: true,
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-            username: "attendee".to_string(),
-
-            company: Some("Example".to_string()),
-            name: Some("Event Attendee".to_string()),
-            photo_url: Some("https://example.test/avatar.png".to_string()),
-            title: Some("Engineer".to_string()),
-        }
-    }
-
-    /// Helper to create a sample event summary for tests.
-    fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
-        EventSummary {
-            canceled: false,
-            event_id,
-            group_category_name: "Meetup".to_string(),
-            group_color: "#123456".to_string(),
-            group_name: "Test Group".to_string(),
-            group_slug: "test-group".to_string(),
-            kind: EventKind::Virtual,
-            name: "Sample Event".to_string(),
-            published: true,
-            slug: "sample-event".to_string(),
-            timezone: UTC,
-
-            group_city: Some("Test City".to_string()),
-            group_country_code: Some("US".to_string()),
-            group_country_name: Some("United States".to_string()),
-            group_state: Some("MA".to_string()),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            starts_at: Some(Utc.with_ymd_and_hms(2024, 2, 1, 18, 0, 0).unwrap()),
-            venue_city: Some("Boston".to_string()),
-        }
-    }
-
-    /// Helper to create a sample session record including the selected group ID.
-    fn sample_session_record(
-        session_id: session::Id,
-        user_id: Uuid,
-        group_id: Uuid,
-        auth_hash: &str,
-    ) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        data.insert(SELECTED_GROUP_ID_KEY.to_string(), json!(group_id));
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
     }
 }

@@ -311,8 +311,6 @@ pub(crate) async fn update(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
-
     use axum::{
         body::{Body, to_bytes},
         http::{
@@ -321,29 +319,17 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use chrono::{TimeZone, Utc};
-    use chrono_tz::UTC;
-    use serde_json::{from_value, json};
-    use time::{Duration as TimeDuration, OffsetDateTime};
+    use serde_json::from_value;
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
         db::mock::MockDB,
-        handlers::auth::SELECTED_GROUP_ID_KEY,
+        handlers::tests::*,
         router::setup_test_router,
         services::notifications::{MockNotificationsManager, NotificationKind},
-        templates::{
-            dashboard::group::events::{Event, GroupEvents},
-            notifications::{EventCanceled, EventPublished, EventRescheduled},
-        },
-        types::{
-            event::{
-                EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary,
-            },
-            group::{GroupCategory, GroupRegion, GroupSponsor, GroupSummary},
-        },
+        templates::notifications::{EventCanceled, EventPublished, EventRescheduled},
+        types::event::EventSummary,
     };
 
     #[tokio::test]
@@ -354,7 +340,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let category = sample_event_category();
         let kind = sample_event_kind_summary();
         let session_kind = sample_session_kind_summary();
@@ -429,8 +415,8 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
-        let group_events = sample_group_events();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let group_events = sample_group_events(Uuid::new_v4(), group_id);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -488,7 +474,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let event_full = sample_event_full(event_id, group_id);
         let category = sample_event_category();
         let kind = sample_event_kind_summary();
@@ -568,7 +554,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let event_form = sample_event_form();
         let body = serde_qs::to_string(&event_form).unwrap();
 
@@ -622,7 +608,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -667,7 +653,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let event_summary = sample_event_summary(event_id, group_id);
 
         // Setup database mock
@@ -744,7 +730,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let unpublished_event = EventSummary {
             published: false,
             ..sample_event_summary(event_id, group_id)
@@ -834,7 +820,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -884,7 +870,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -936,7 +922,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, group_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let before = sample_event_summary(event_id, group_id);
         let after = EventSummary {
             starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
@@ -1021,236 +1007,5 @@ mod tests {
             &HeaderValue::from_static("refresh-group-dashboard-table"),
         );
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user for tests.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample event category for tests.
-    fn sample_event_category() -> EventCategory {
-        EventCategory {
-            event_category_id: Uuid::new_v4(),
-            name: "Meetup".to_string(),
-            slug: "meetup".to_string(),
-        }
-    }
-
-    /// Helper to create a sample event form payload.
-    fn sample_event_form() -> Event {
-        Event {
-            name: "Sample Event".to_string(),
-            slug: "sample-event".to_string(),
-            description: "Event description".to_string(),
-            timezone: "UTC".to_string(),
-            category_id: Uuid::new_v4(),
-            kind_id: "virtual".to_string(),
-
-            banner_url: Some("https://example.test/banner.png".to_string()),
-            capacity: Some(100),
-            description_short: Some("Short".to_string()),
-            ends_at: None,
-            hosts: None,
-            logo_url: None,
-            meetup_url: None,
-            photos_urls: None,
-            recording_url: None,
-            registration_required: Some(true),
-            sessions: None,
-            sponsors: None,
-            starts_at: None,
-            streaming_url: None,
-            tags: None,
-            venue_address: None,
-            venue_city: None,
-            venue_name: None,
-            venue_zip_code: None,
-        }
-    }
-
-    /// Helper to create a sample event full record for tests.
-    fn sample_event_full(event_id: Uuid, group_id: Uuid) -> EventFull {
-        let group = sample_group_summary(group_id);
-        let mut sessions = BTreeMap::new();
-        sessions.insert(
-            Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap().date_naive(),
-            vec![],
-        );
-        EventFull {
-            canceled: false,
-            category_name: "Meetup".to_string(),
-            color: "#123456".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            description: "Event description".to_string(),
-            group,
-            hosts: Vec::new(),
-            event_id,
-            kind: EventKind::Virtual,
-            name: "Sample Event".to_string(),
-            organizers: Vec::new(),
-            published: true,
-            sessions,
-            slug: "sample-event".to_string(),
-            sponsors: Vec::new(),
-            timezone: UTC,
-
-            banner_url: Some("https://example.test/banner.png".to_string()),
-            capacity: Some(100),
-            description_short: Some("Short".to_string()),
-            ends_at: None,
-            latitude: None,
-            legacy_hosts: None,
-            legacy_speakers: None,
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            longitude: None,
-            meetup_url: None,
-            photos_urls: None,
-            published_at: None,
-            recording_url: None,
-            registration_required: Some(true),
-            starts_at: Some(Utc::now() + chrono::Duration::hours(1)),
-            streaming_url: None,
-            tags: None,
-            venue_address: None,
-            venue_city: None,
-            venue_name: None,
-            venue_zip_code: None,
-        }
-    }
-
-    /// Helper to create a sample event kind summary for tests.
-    fn sample_event_kind_summary() -> EventKindSummary {
-        EventKindSummary {
-            event_kind_id: "virtual".to_string(),
-            display_name: "Virtual".to_string(),
-        }
-    }
-
-    /// Helper to create sample group events for tests.
-    fn sample_group_events() -> GroupEvents {
-        let summary = sample_event_summary(Uuid::new_v4(), Uuid::new_v4());
-        GroupEvents {
-            past: vec![summary.clone()],
-            upcoming: vec![summary],
-        }
-    }
-
-    /// Helper to create a sample group sponsor for tests.
-    fn sample_group_sponsor() -> GroupSponsor {
-        GroupSponsor {
-            group_sponsor_id: Uuid::new_v4(),
-            logo_url: "https://example.test/logo.png".to_string(),
-            name: "Sponsor".to_string(),
-
-            website_url: Some("https://example.test".to_string()),
-        }
-    }
-
-    /// Helper to create a sample group summary for tests.
-    fn sample_group_summary(group_id: Uuid) -> GroupSummary {
-        GroupSummary {
-            active: true,
-            category: sample_group_category(),
-            color: "#123456".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            group_id,
-            name: "Test Group".to_string(),
-            slug: "test-group".to_string(),
-
-            city: Some("Test City".to_string()),
-            country_code: Some("US".to_string()),
-            country_name: Some("United States".to_string()),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            region: Some(sample_group_region()),
-            state: Some("MA".to_string()),
-        }
-    }
-
-    /// Helper to create a sample event summary for tests.
-    fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSummary {
-        EventSummary {
-            canceled: false,
-            event_id,
-            group_category_name: "Meetup".to_string(),
-            group_color: "#123456".to_string(),
-            group_name: "Test Group".to_string(),
-            group_slug: "test-group".to_string(),
-            kind: EventKind::Virtual,
-            name: "Sample Event".to_string(),
-            published: true,
-            slug: "sample-event".to_string(),
-            timezone: UTC,
-
-            group_city: Some("Test City".to_string()),
-            group_country_code: Some("US".to_string()),
-            group_country_name: Some("United States".to_string()),
-            group_state: Some("MA".to_string()),
-            logo_url: Some("https://example.test/logo.png".to_string()),
-            starts_at: Some(Utc::now() + chrono::Duration::hours(1)),
-            venue_city: Some("Boston".to_string()),
-        }
-    }
-
-    /// Helper to create a sample group category for tests.
-    fn sample_group_category() -> GroupCategory {
-        GroupCategory {
-            group_category_id: Uuid::new_v4(),
-            name: "Meetup".to_string(),
-            normalized_name: "meetup".to_string(),
-            order: Some(1),
-        }
-    }
-
-    /// Helper to create a sample group region for tests.
-    fn sample_group_region() -> GroupRegion {
-        GroupRegion {
-            name: "North America".to_string(),
-            normalized_name: "north-america".to_string(),
-            order: Some(1),
-            region_id: Uuid::new_v4(),
-        }
-    }
-
-    /// Helper to create a sample session kind summary for tests.
-    fn sample_session_kind_summary() -> SessionKindSummary {
-        SessionKindSummary {
-            display_name: "Keynote".to_string(),
-            session_kind_id: "hybrid".to_string(),
-        }
-    }
-
-    /// Helper to create a sample session record with selected group ID.
-    fn sample_session_record(
-        session_id: session::Id,
-        user_id: Uuid,
-        group_id: Uuid,
-        auth_hash: &str,
-    ) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        data.insert(SELECTED_GROUP_ID_KEY.to_string(), json!(group_id));
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
     }
 }

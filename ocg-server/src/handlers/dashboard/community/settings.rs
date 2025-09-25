@@ -57,8 +57,6 @@ pub(crate) async fn update(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, HashMap};
-
     use anyhow::anyhow;
     use axum::{
         body::{Body, to_bytes},
@@ -68,18 +66,12 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use serde_json::json;
-    use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
-        db::mock::MockDB,
-        router::setup_test_router,
+        db::mock::MockDB, handlers::tests::*, router::setup_test_router,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::community::settings::CommunityUpdate,
-        types::community::{Community, Theme},
     };
 
     #[tokio::test]
@@ -89,7 +81,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let community = sample_community(community_id);
 
         // Setup database mock
@@ -151,7 +143,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -204,7 +196,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let update = sample_community_update();
         let expected_display_name = update.display_name.clone();
         let expected_primary_color = update.primary_color.clone();
@@ -266,7 +258,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -316,7 +308,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let update = sample_community_update();
         let body = serde_qs::to_string(&update).unwrap();
 
@@ -363,72 +355,5 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample community update.
-    fn sample_community_update() -> CommunityUpdate {
-        CommunityUpdate {
-            description: "Updated description".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/logo.png".to_string(),
-            name: "test".to_string(),
-            primary_color: "#000000".to_string(),
-            title: "Test Community".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample community.
-    fn sample_community(community_id: Uuid) -> Community {
-        Community {
-            active: true,
-            community_id,
-            community_site_layout_id: "default".to_string(),
-            created_at: 0,
-            description: "Test community".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-            host: "example.test".to_string(),
-            name: "test".to_string(),
-            theme: Theme {
-                palette: BTreeMap::default(),
-                primary_color: "#000000".to_string(),
-            },
-            title: "Test Community".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample session record.
-    fn sample_session_record(session_id: session::Id, user_id: Uuid, auth_hash: &str) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
     }
 }

@@ -34,8 +34,6 @@ pub(crate) async fn select_group(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use axum::{
         body::{Body, to_bytes},
         http::{
@@ -45,13 +43,14 @@ mod tests {
     };
     use axum_login::tower_sessions::session;
     use serde_json::json;
-    use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser, db::mock::MockDB, handlers::auth::SELECTED_GROUP_ID_KEY,
-        router::setup_test_router, services::notifications::MockNotificationsManager,
+        db::mock::MockDB,
+        handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
+        router::setup_test_router,
+        services::notifications::MockNotificationsManager,
     };
 
     #[tokio::test]
@@ -62,7 +61,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -116,38 +115,5 @@ mod tests {
             &HeaderValue::from_static(r#"{"path":"/dashboard/group", "target":"body"}"#),
         );
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user for tests.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample session record without an initial selected group.
-    fn sample_session_record(session_id: session::Id, user_id: Uuid, auth_hash: &str) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
     }
 }

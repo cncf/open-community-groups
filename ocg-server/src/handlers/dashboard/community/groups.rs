@@ -188,8 +188,6 @@ pub(crate) async fn update(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use anyhow::anyhow;
     use axum::{
         body::{Body, to_bytes},
@@ -199,19 +197,14 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use chrono::{TimeZone, Utc};
-    use serde_json::json;
-    use time::{Duration as TimeDuration, OffsetDateTime};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        auth::User as AuthUser,
         db::{common::SearchCommunityGroupsOutput, mock::MockDB},
+        handlers::tests::*,
         router::setup_test_router,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::community::groups::Group,
-        types::group::{GroupCategory, GroupDetailed, GroupFull, GroupRegion},
     };
 
     #[tokio::test]
@@ -222,7 +215,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let ts_query = "rust".to_string();
         let groups_output = SearchCommunityGroupsOutput {
             groups: vec![sample_group_detailed(group_id)],
@@ -296,7 +289,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -351,7 +344,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let categories = vec![sample_group_category()];
         let regions = vec![sample_group_region()];
 
@@ -418,7 +411,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -472,7 +465,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let categories = vec![sample_group_category()];
         let regions = vec![sample_group_region()];
         let group_full = sample_group_full(group_id);
@@ -545,7 +538,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -599,7 +592,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
         // Setup database mock
@@ -664,7 +657,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -715,7 +708,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
         // Setup database mock
@@ -772,7 +765,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
         // Setup database mock
@@ -837,7 +830,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -889,7 +882,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
 
         // Setup database mock
@@ -947,7 +940,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1005,7 +998,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1063,7 +1056,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1111,98 +1104,5 @@ mod tests {
             &HeaderValue::from_static("refresh-community-dashboard-table"),
         );
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to create a sample authenticated user for tests.
-    fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
-        AuthUser {
-            auth_hash: auth_hash.to_string(),
-            email: "user@example.test".to_string(),
-            email_verified: true,
-            name: "Test User".to_string(),
-            user_id,
-            username: "test-user".to_string(),
-            belongs_to_any_group_team: Some(true),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample group category for tests.
-    fn sample_group_category() -> GroupCategory {
-        GroupCategory {
-            group_category_id: Uuid::new_v4(),
-            name: "Meetup".to_string(),
-            normalized_name: "meetup".to_string(),
-            order: Some(1),
-        }
-    }
-
-    /// Helper to create a sample group form payload for tests.
-    fn sample_group_form(category_id: Uuid) -> Group {
-        Group {
-            category_id,
-            description: "Group description".to_string(),
-            name: "Test Group".to_string(),
-            slug: "test-group".to_string(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample detailed group for tests.
-    fn sample_group_detailed(group_id: Uuid) -> GroupDetailed {
-        GroupDetailed {
-            active: true,
-            category: sample_group_category(),
-            group_id,
-            name: "Test Group".to_string(),
-            slug: "test-group".to_string(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample full group for tests.
-    fn sample_group_full(group_id: Uuid) -> GroupFull {
-        GroupFull {
-            active: true,
-            category: sample_group_category(),
-            group_id,
-            members_count: 0,
-            name: "Test Group".to_string(),
-            organizers: Vec::new(),
-            slug: "test-group".to_string(),
-            sponsors: Vec::new(),
-            created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-            ..Default::default()
-        }
-    }
-
-    /// Helper to create a sample group region for tests.
-    fn sample_group_region() -> GroupRegion {
-        GroupRegion {
-            region_id: Uuid::new_v4(),
-            name: "North America".to_string(),
-            normalized_name: "north-america".to_string(),
-            order: Some(1),
-        }
-    }
-
-    /// Helper to create a sample session record for tests.
-    fn sample_session_record(session_id: session::Id, user_id: Uuid, auth_hash: &str) -> session::Record {
-        let mut data = HashMap::new();
-        data.insert(
-            "axum-login.data".to_string(),
-            json!({
-                "user_id": user_id,
-                "auth_hash": auth_hash.as_bytes(),
-            }),
-        );
-        session::Record {
-            data,
-            expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
-            id: session_id,
-        }
     }
 }
