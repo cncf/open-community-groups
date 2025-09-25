@@ -89,6 +89,12 @@
     </a>
     {# End skip navigation link -#}
 
+    {% if !path.starts_with("/dashboard") -%}
+      {# Alert -#}
+      {% include "common/base_alert.html" -%}
+      {# End alert -#}
+    {% endif -%}
+
     <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
       <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {% if !path.starts_with("/dashboard") -%}
