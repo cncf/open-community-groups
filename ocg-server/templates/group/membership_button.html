@@ -12,6 +12,7 @@
 
   <!-- Sign in prompt (hidden initially) -->
   <button id="signin-btn"
+          data-path="{{ path }}"
           class="hidden group btn-primary-outline-anchor w-40 h-[40px] md:h-[30px] flex items-center justify-center space-x-2">
     <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
     <span>Join group</span>
@@ -135,8 +136,9 @@
   const signinBtn = document.getElementById("signin-btn");
   if (signinBtn) {
     signinBtn.addEventListener("click", () => {
+      const path = signinBtn.dataset.path || window.location.pathname;
       showInfoAlert(
-        "You need to be <a href='/log-in' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.",
+        `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.`,
         true,
       );
     });
