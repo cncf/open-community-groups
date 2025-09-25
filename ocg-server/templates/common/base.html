@@ -89,19 +89,19 @@
     </a>
     {# End skip navigation link -#}
 
+    {# Alert -#}
     {% if !path.starts_with("/dashboard") -%}
-      {# Alert -#}
-      {% include "common/base_alert.html" -%}
-      {# End alert -#}
+      {% include "common/demo_alert.html" -%}
     {% endif -%}
+    {# End alert -#}
 
     <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
       <div class='{%- if path == "/" -%}bg-stone-100{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
+        {# Header -#}
         {% if !path.starts_with("/dashboard") -%}
-          {# Header -#}
           <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
-          {# End header -#}
         {% endif -%}
+        {# End header -#}
 
         {# Jumbotron -#}
         {% block jumbotron -%}
@@ -116,11 +116,11 @@
       </main>
       {# End content -#}
 
+      {# Footer -#}
       {% if !path.starts_with("/dashboard") && path != "/log-in" && path != "/sign-up" -%}
-        {# Footer -#}
         {% include "common/footer.html" -%}
-        {# End footer -#}
       {% endif -%}
+      {# End footer -#}
     </div>
 
     {% block scripts -%}
