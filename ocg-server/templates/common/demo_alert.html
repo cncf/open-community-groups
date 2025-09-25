@@ -1,0 +1,27 @@
+<div class="p-2 px-10 border-b border-stone-200 bg-white relative"
+     role="alert">
+  <div class="text-xs text-stone-700 text-center">
+    This is a demo of <span class="font-medium text-primary-500">Open Community Groups</span>. <span class="hidden md:inline">The actual CNCF community groups site is <a href="https://community.cncf.io"
+    class="font-medium text-primary-500 hover:underline"
+    target="_blank"
+    rel="noopener noreferrer">https://community.cncf.io</a>.</span>
+  </div>
+  <button id="beta-alert-close"
+          type="button"
+          class="absolute end-5 top-1.5"
+          aria-label="Close">
+    <span class="sr-only">Dismiss</span>
+    <div class="svg-icon size-5 bg-stone-500 hover:bg-stone-800 transition-colors icon-close"></div>
+  </button>
+</div>
+<script type="module">
+  const betaAlertClose = document.getElementById('beta-alert-close');
+  if (betaAlertClose) {
+    betaAlertClose.addEventListener('click', () => {
+      const alert = betaAlertClose.parentElement;
+      if (alert) {
+        alert.classList.add('hidden');
+      }
+    });
+  }
+</script>
