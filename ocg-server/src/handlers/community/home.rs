@@ -67,8 +67,7 @@ pub(crate) async fn page(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
+    use anyhow::anyhow;
     use axum::body::to_bytes;
     use axum::http::{
         HeaderValue, Request, StatusCode,
@@ -78,14 +77,9 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        router::setup_test_router,
-        services::notifications::MockNotificationsManager,
-        templates::community::home::Stats,
-        types::{
-            community::{Community, Theme},
-            event::EventKind,
-        },
+        db::mock::MockDB, handlers::tests::*, router::setup_test_router,
+        services::notifications::MockNotificationsManager, templates::community::home::Stats,
+        types::event::EventKind,
     };
 
     #[tokio::test]
@@ -96,25 +90,31 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_community_recently_added_groups()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
             })
             .returning(|_, _| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
             })
             .returning(|_, _| Ok(vec![]));
         db.expect_get_community_home_stats()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(Stats::default()));
 
@@ -154,27 +154,33 @@ mod tests {
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_community_id()
+            .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_community_recently_added_groups()
+            .times(1)
             .withf(move |id| *id == community_id)
             .returning(|_| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::InPerson, EventKind::Hybrid]
             })
             .returning(|_, _| Ok(vec![]));
         db.expect_get_community_upcoming_events()
+            .times(1)
             .withf(move |id, kinds| {
                 *id == community_id && kinds == &vec![EventKind::Virtual, EventKind::Hybrid]
             })
-            .returning(|_, _| Err(anyhow::anyhow!("db error")));
+            .returning(|_, _| Ok(vec![]));
         db.expect_get_community_home_stats()
+            .times(1)
             .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(Stats::default()));
+            .returning(move |_| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -194,28 +200,5 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(bytes.is_empty());
-    }
-
-    // Helpers
-
-    /// Helper to create a sample community for tests.
-    fn sample_community(community_id: Uuid) -> Community {
-        Community {
-            active: true,
-            community_id,
-            community_site_layout_id: "default".to_string(),
-            created_at: 0,
-            description: "Test community".to_string(),
-            display_name: "Test".to_string(),
-            header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-            host: "example.test".to_string(),
-            name: "test".to_string(),
-            theme: Theme {
-                palette: BTreeMap::new(),
-                primary_color: "#000000".to_string(),
-            },
-            title: "Test Community".to_string(),
-            ..Default::default()
-        }
     }
 }

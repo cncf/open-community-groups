@@ -22,6 +22,9 @@ pub(crate) mod event;
 pub(crate) mod extractors;
 /// Group site handlers.
 pub(crate) mod group;
+/// Shared tests helpers for handlers modules.
+#[cfg(test)]
+pub(crate) mod tests;
 
 /// Helper function to prepare headers for HTTP responses, including cache control and
 /// additional custom headers.
