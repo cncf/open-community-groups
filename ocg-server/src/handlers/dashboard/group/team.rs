@@ -153,7 +153,6 @@ mod tests {
     use crate::{
         db::mock::MockDB,
         handlers::tests::*,
-        router::setup_test_router,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::notifications::GroupTeamInvitation,
         types::group::GroupRole,

@@ -203,7 +203,6 @@ mod tests {
     use crate::{
         db::{common::SearchCommunityGroupsOutput, mock::MockDB},
         handlers::tests::*,
-        router::setup_test_router,
         services::notifications::MockNotificationsManager,
     };
 

@@ -202,7 +202,7 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
 /// Sets up the group dashboard router and its routes.
 fn setup_group_dashboard_router(state: State) -> Router<State> {
     // Setup authorization middleware
-    let check_user_belongs_to_group_team = middleware::from_fn(auth::user_belongs_to_group_team);
+    let check_user_belongs_to_any_group_team = middleware::from_fn(auth::user_belongs_to_any_group_team);
     let check_user_owns_group = middleware::from_fn_with_state(state, auth::user_owns_group);
 
     // Setup router
@@ -258,7 +258,7 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             put(dashboard::group::select_group).route_layer(check_user_owns_group),
         )
         .route("/users/search", get(dashboard::common::search_user))
-        .route_layer(check_user_belongs_to_group_team)
+        .route_layer(check_user_belongs_to_any_group_team)
 }
 
 /// Sets up the user dashboard router and its routes.
@@ -328,21 +328,6 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         }
         None => StatusCode::NOT_FOUND.into_response(),
     }
-}
-
-// Tests helpers.
-
-#[cfg(test)]
-use crate::db::mock::MockDB;
-#[cfg(test)]
-use crate::services::notifications::MockNotificationsManager;
-
-#[cfg(test)]
-pub(crate) async fn setup_test_router(db: MockDB, nm: MockNotificationsManager) -> Router {
-    use std::sync::Arc;
-
-    let cfg = HttpServerConfig::default();
-    setup(&Arc::new(cfg), Arc::new(db), Arc::new(nm)).await.unwrap()
 }
 
 // Tests.
