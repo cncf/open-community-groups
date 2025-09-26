@@ -77,9 +77,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB, handlers::tests::*, router::setup_test_router,
-        services::notifications::MockNotificationsManager, templates::community::home::Stats,
-        types::event::EventKind,
+        db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+        templates::community::home::Stats, types::event::EventKind,
     };
 
     #[tokio::test]

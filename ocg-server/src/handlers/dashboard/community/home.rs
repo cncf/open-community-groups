@@ -106,7 +106,6 @@ mod tests {
     use crate::{
         db::{common::SearchCommunityGroupsOutput, mock::MockDB},
         handlers::{dashboard::community::groups::MAX_GROUPS_LISTED, tests::*},
-        router::setup_test_router,
         services::notifications::MockNotificationsManager,
     };
 

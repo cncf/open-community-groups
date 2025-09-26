@@ -69,10 +69,7 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    use crate::{
-        db::mock::MockDB, handlers::tests::*, router::setup_test_router,
-        services::notifications::MockNotificationsManager,
-    };
+    use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
 
     #[tokio::test]
     async fn test_update_page_success() {

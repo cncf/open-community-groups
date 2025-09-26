@@ -134,10 +134,7 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    use crate::{
-        db::mock::MockDB, handlers::tests::*, router::setup_test_router,
-        services::notifications::MockNotificationsManager,
-    };
+    use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
 
     #[tokio::test]
     async fn test_list_page_success() {
@@ -487,20 +484,5 @@ mod tests {
             &HeaderValue::from_static("refresh-body"),
         );
         assert!(bytes.is_empty());
-    }
-
-    // Helpers.
-
-    /// Helper to check the flash message stored in the session record.
-    fn message_matches(record: &session::Record, expected_message: &str) -> bool {
-        record
-            .data
-            .get("axum-messages.data")
-            .and_then(|value| value.get("pending_messages"))
-            .and_then(|messages| messages.as_array())
-            .and_then(|messages| messages.first())
-            .and_then(|message| message.get("m"))
-            .and_then(|message| message.as_str())
-            == Some(expected_message)
     }
 }

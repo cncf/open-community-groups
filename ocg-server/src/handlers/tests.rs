@@ -1,7 +1,11 @@
 //! Shared sample data builders for handlers tests.
 
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
+use axum::Router;
 use axum_login::tower_sessions::session;
 use chrono::{TimeZone, Utc};
 use chrono_tz::UTC;
@@ -11,12 +15,16 @@ use uuid::Uuid;
 
 use crate::{
     auth::User as AuthUser,
+    config::HttpServerConfig,
     db::{
-        BBox,
+        BBox, DynDB,
         common::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
         dashboard::common::User as DashboardUser,
+        mock::MockDB,
     },
     handlers::auth::SELECTED_GROUP_ID_KEY,
+    router,
+    services::notifications::{DynNotificationsManager, MockNotificationsManager},
     templates::{
         common::User as TemplateUser,
         community::explore::{self, FilterOption},
@@ -45,6 +53,19 @@ use crate::{
         },
     },
 };
+
+/// Helper to check the flash message stored in the session record.
+pub(crate) fn message_matches(record: &session::Record, expected_message: &str) -> bool {
+    record
+        .data
+        .get("axum-messages.data")
+        .and_then(|value| value.get("pending_messages"))
+        .and_then(|messages| messages.as_array())
+        .and_then(|messages| messages.first())
+        .and_then(|message| message.get("m"))
+        .and_then(|message| message.as_str())
+        == Some(expected_message)
+}
 
 /// Sample attendee used in dashboard group home tests.
 pub(crate) fn sample_attendee() -> Attendee {
@@ -565,4 +586,23 @@ pub(crate) fn sample_template_user() -> TemplateUser {
         name: Some("Organizer".to_string()),
         ..Default::default()
     }
+}
+
+/// Builds the application router with the default configuration for handler tests.
+pub(crate) async fn setup_test_router(db: MockDB, nm: MockNotificationsManager) -> Router {
+    setup_test_router_with_config(HttpServerConfig::default(), db, nm).await
+}
+
+/// Builds the application router with a custom configuration for handler tests.
+pub(crate) async fn setup_test_router_with_config(
+    cfg: HttpServerConfig,
+    db: MockDB,
+    nm: MockNotificationsManager,
+) -> Router {
+    let db: DynDB = Arc::new(db);
+    let nm: DynNotificationsManager = Arc::new(nm);
+
+    router::setup(&cfg, db, nm)
+        .await
+        .expect("router setup should succeed")
 }

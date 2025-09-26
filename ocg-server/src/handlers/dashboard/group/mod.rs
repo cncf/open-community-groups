@@ -49,7 +49,6 @@ mod tests {
     use crate::{
         db::mock::MockDB,
         handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
-        router::setup_test_router,
         services::notifications::MockNotificationsManager,
     };
 
