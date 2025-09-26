@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,7 @@ select plan(5);
 \set eventDeleted '00000000-0000-0000-0000-000000000044'
 \set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
 \set eventUnpublished '00000000-0000-0000-0000-000000000046'
+\set eventPast '00000000-0000-0000-0000-000000000047'
 
 -- ============================================================================
 -- SEED DATA
@@ -49,16 +50,31 @@ values
     (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
     (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
 
--- Event
-insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted)
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    canceled,
+    deleted,
+    starts_at,
+    ends_at
+)
 values
-    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false),
-    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true),
-    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false),
-    (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false);
+    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null),
+    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null),
+    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null),
+    (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null),
+    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour');
 
--- Event Attendee
-insert into event_attendee (event_id, user_id) values (:'eventOK', :'user1ID');
+insert into event_attendee (event_id, user_id) values
+    (:'eventOK', :'user1ID'),
+    (:'eventPast', :'user1ID');
 
 -- ============================================================================
 -- TESTS
@@ -92,6 +108,17 @@ select throws_ok(
     'P0001',
     'user is not attending this event',
     'leave_event not attending raises exception'
+);
+
+-- Test: leave_event past event should error
+select throws_ok(
+    format(
+        'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventPast', :'user1ID'
+    ),
+    'P0001',
+    'event not found or inactive',
+    'leave_event past event raises exception'
 );
 
 -- Test: leave_event in inactive group should error
