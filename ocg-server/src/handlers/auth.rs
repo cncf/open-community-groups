@@ -636,6 +636,7 @@ mod tests {
     use axum_extra::extract::Form;
     use axum_login::tower_sessions::session;
     use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
+    use openidconnect as oidc;
     use serde_json::json;
     use time::OffsetDateTime;
     use tower::ServiceExt;
@@ -643,10 +644,13 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        auth::OAuth2ProviderDetails,
+        auth::{OAuth2ProviderDetails, OidcProviderDetails},
         config::{HttpServerConfig, LoginOptions, OAuth2Provider, OAuth2ProviderConfig},
         db::mock::MockDB,
-        handlers::{extractors::OAuth2, tests::*},
+        handlers::{
+            extractors::{OAuth2, Oidc},
+            tests::*,
+        },
         router::State,
         services::notifications::{MockNotificationsManager, NotificationKind},
     };
@@ -932,7 +936,7 @@ mod tests {
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
 
-        // Setup router with email login enabled
+        // Setup router
         let mut cfg = HttpServerConfig::default();
         cfg.login.email = true;
         let router = setup_test_router_with_config(cfg, db, nm).await;
@@ -994,7 +998,7 @@ mod tests {
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
 
-        // Setup router with email login enabled
+        // Setup router
         let mut cfg = HttpServerConfig::default();
         cfg.login.email = true;
         let router = setup_test_router_with_config(cfg, db, nm).await;
@@ -1134,7 +1138,7 @@ mod tests {
         let mut nm = MockNotificationsManager::new();
         nm.expect_enqueue().times(0);
 
-        // Setup router with github oauth enabled
+        // Setup router
         let mut cfg = HttpServerConfig::default();
         cfg.login.github = true;
         cfg.oauth2.insert(
@@ -1154,6 +1158,72 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/log-in/oauth2/github/callback?code=test-code&state=test-state")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(LOG_IN_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_oauth2_callback_state_mismatch() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let mut session_record = empty_session_record(session_id);
+        session_record
+            .data
+            .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue().times(0);
+
+        // Setup router
+        let mut cfg = HttpServerConfig::default();
+        cfg.login.github = true;
+        cfg.oauth2.insert(
+            OAuth2Provider::GitHub,
+            OAuth2ProviderConfig {
+                auth_url: "https://oauth.example/authorize".to_string(),
+                client_id: "client-id".to_string(),
+                client_secret: "client-secret".to_string(),
+                redirect_uri: "https://app.example/log-in/oauth2/github/callback".to_string(),
+                scopes: vec!["read:user".to_string()],
+                token_url: "https://oauth.example/token".to_string(),
+            },
+        );
+        let router = setup_test_router_with_config(cfg, db, nm).await;
+
+        // Setup request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/log-in/oauth2/github/callback?code=test-code&state=state-in-request")
             .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
@@ -1222,6 +1292,240 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_oidc_callback_missing_nonce() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let mut session_record = empty_session_record(session_id);
+        session_record
+            .data
+            .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue().times(0);
+
+        // Setup router
+        let mut cfg = HttpServerConfig::default();
+        cfg.login.linuxfoundation = true;
+        let router = setup_test_router_with_config(cfg, db, nm).await;
+
+        // Setup request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(LOG_IN_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_callback_missing_state() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue().times(0);
+
+        // Setup router
+        let mut cfg = HttpServerConfig::default();
+        cfg.login.linuxfoundation = true;
+        let router = setup_test_router_with_config(cfg, db, nm).await;
+
+        // Setup request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=test-state")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(LOG_IN_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_callback_state_mismatch() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let mut session_record = empty_session_record(session_id);
+        session_record
+            .data
+            .insert(OAUTH2_CSRF_STATE_KEY.to_string(), json!("state-in-session"));
+        session_record
+            .data
+            .insert(OIDC_NONCE_KEY.to_string(), json!("nonce-in-session"));
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue().times(0);
+
+        // Setup router
+        let mut cfg = HttpServerConfig::default();
+        cfg.login.linuxfoundation = true;
+        let router = setup_test_router_with_config(cfg, db, nm).await;
+
+        // Setup request
+        let request = Request::builder()
+            .method("GET")
+            .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-request")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(LOG_IN_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_oidc_redirect_success() {
+        // Setup session and form input
+        let store = Arc::new(MemoryStore::default());
+        let session = Session::new(None, store, None);
+        let form = Form(NextUrl {
+            next_url: Some("/dashboard".to_string()),
+        });
+
+        // Setup oidc provider details
+        let metadata = oidc::core::CoreProviderMetadata::new(
+            oidc::IssuerUrl::new("https://issuer.example".to_string()).unwrap(),
+            oidc::AuthUrl::new("https://issuer.example/authorize".to_string()).unwrap(),
+            oidc::JsonWebKeySetUrl::new("https://issuer.example/jwks".to_string()).unwrap(),
+            vec![oidc::ResponseTypes::new(vec![oidc::core::CoreResponseType::Code])],
+            vec![oidc::core::CoreSubjectIdentifierType::Public],
+            vec![oidc::core::CoreJwsSigningAlgorithm::RsaSsaPkcs1V15Sha256],
+            oidc::EmptyAdditionalProviderMetadata::default(),
+        )
+        .set_jwks(oidc::JsonWebKeySet::new(vec![]));
+        let client = oidc::core::CoreClient::from_provider_metadata(
+            metadata,
+            oidc::ClientId::new("client-id".to_string()),
+            Some(oidc::ClientSecret::new("client-secret".to_string())),
+        )
+        .set_redirect_uri(
+            oidc::RedirectUrl::new("https://app.example/log-in/oidc/provider/callback".to_string()).unwrap(),
+        );
+        let provider = OidcProviderDetails {
+            client,
+            scopes: vec!["openid".to_string()],
+        };
+
+        // Execute handler
+        let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), form)
+            .await
+            .expect("oidc redirect should succeed")
+            .into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        let location = parts.headers.get(LOCATION).unwrap().to_str().unwrap();
+        let (base_url, query) = location
+            .split_once('?')
+            .expect("redirect url to contain query string");
+
+        // Check response matches expectations
+        let csrf_state: Option<String> = session.get(OAUTH2_CSRF_STATE_KEY).await.unwrap();
+        let nonce: Option<String> = session.get(OIDC_NONCE_KEY).await.unwrap();
+        let next_url: Option<Option<String>> = session.get(NEXT_URL_KEY).await.unwrap();
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(base_url, "https://issuer.example/authorize");
+        assert_eq!(
+            csrf_state.as_deref(),
+            query
+                .split('&')
+                .find_map(|pair| pair.strip_prefix("state=").map(String::from))
+                .as_deref(),
+        );
+        assert_eq!(
+            nonce.as_deref(),
+            query
+                .split('&')
+                .find_map(|pair| pair.strip_prefix("nonce=").map(String::from))
+                .as_deref(),
+        );
+        assert_eq!(next_url, Some(Some("/dashboard".to_string())));
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_sign_up_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
@@ -1273,7 +1577,7 @@ mod tests {
             })
             .returning(|_| Box::pin(async { Ok(()) }));
 
-        // Setup router with email sign up enabled
+        // Setup router
         let cfg = HttpServerConfig {
             base_url: "https://app.example".to_string(),
             login: LoginOptions {
