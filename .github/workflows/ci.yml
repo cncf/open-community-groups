@@ -15,7 +15,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.89.0
+          toolchain: 1.90.0
           components: clippy, rustfmt
       - name: Install Tailwind CSS
         run: |
@@ -82,4 +82,3 @@ jobs:
       - name: Run database tests
         working-directory: ./database/tests
         run: PGPASSWORD=tests pg_prove --host postgres --dbname tests --username tests --verbose schema/*.sql functions/*/*.sql
-
