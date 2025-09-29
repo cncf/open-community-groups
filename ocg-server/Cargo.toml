@@ -31,6 +31,7 @@ openidconnect = { workspace = true }
 openssl = { workspace = true }
 palette = { workspace = true }
 password-auth = { workspace = true }
+percent-encoding = { workspace = true }
 postgres-openssl = { workspace = true }
 reqwest = { workspace = true }
 rust-embed = { workspace = true }
