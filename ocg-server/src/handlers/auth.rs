@@ -13,6 +13,7 @@ use axum_extra::extract::Form;
 use axum_messages::Messages;
 use openidconnect as oidc;
 use password_auth::verify_password;
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Deserialize;
 use tower_sessions::Session;
 use tracing::instrument;
@@ -78,6 +79,10 @@ pub(crate) async fn log_in_page(
     // Get community information
     let community = db.get_community(community_id).await?;
 
+    // Sanitize and encode the next url (if any)
+    let next_url =
+        sanitize_next_url(query.get("next_url").map(String::as_str)).map(|value| encode_next_url(&value));
+
     // Prepare template
     let template = templates::auth::LogInPage {
         community,
@@ -87,7 +92,7 @@ pub(crate) async fn log_in_page(
         path: LOG_IN_URL.to_string(),
         user: User::default(),
 
-        next_url: query.get("next_url").cloned(),
+        next_url,
     };
 
     Ok(Html(template.render()?).into_response())
@@ -111,6 +116,10 @@ pub(crate) async fn sign_up_page(
     // Get community information
     let community = db.get_community(community_id).await?;
 
+    // Sanitize and encode the next url (if any)
+    let next_url =
+        sanitize_next_url(query.get("next_url").map(String::as_str)).map(|value| encode_next_url(&value));
+
     // Prepare template
     let template = templates::auth::SignUpPage {
         community,
@@ -120,7 +129,7 @@ pub(crate) async fn sign_up_page(
         path: SIGN_UP_URL.to_string(),
         user: User::default(),
 
-        next_url: query.get("next_url").cloned(),
+        next_url,
     };
 
     Ok(Html(template.render()?).into_response())
@@ -150,6 +159,9 @@ pub(crate) async fn log_in(
     Query(query): Query<HashMap<String, String>>,
     Form(login_form): Form<LoginForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Sanitize next url
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
+
     // Authenticate user
     let creds = PasswordCredentials {
         community_id,
@@ -162,7 +174,7 @@ pub(crate) async fn log_in(
         .map_err(|e| HandlerError::Auth(e.to_string()))?
     else {
         messages.error("Invalid credentials. Please make sure you have verified your email address.");
-        let log_in_url = get_log_in_url(query.get("next_url"));
+        let log_in_url = get_log_in_url(next_url.as_deref());
         return Ok(Redirect::to(&log_in_url));
     };
 
@@ -178,13 +190,7 @@ pub(crate) async fn log_in(
         session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
     }
 
-    // Prepare next url
-    let next_url = if let Some(next_url) = query.get("next_url") {
-        next_url
-    } else {
-        "/"
-    };
-
+    let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
 }
 
@@ -223,8 +229,12 @@ pub(crate) async fn oauth2_callback(
     }
 
     // Get next url from session (if any)
-    let next_url = session.remove::<Option<String>>(NEXT_URL_KEY).await?.flatten();
-    let log_in_url = get_log_in_url(next_url.as_ref());
+    let next_url = session
+        .remove::<Option<String>>(NEXT_URL_KEY)
+        .await?
+        .flatten()
+        .and_then(|value| sanitize_next_url(Some(value.as_str())));
+    let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
     let creds = OAuth2Credentials {
@@ -256,10 +266,8 @@ pub(crate) async fn oauth2_callback(
         session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
     }
 
-    // Prepare next url
-    let next_url = next_url.unwrap_or("/".to_string());
-
-    Ok(Redirect::to(&next_url))
+    let next_url = next_url.as_deref().unwrap_or("/");
+    Ok(Redirect::to(next_url))
 }
 
 /// Handler that redirects the user to the oauth2 provider.
@@ -275,6 +283,9 @@ pub(crate) async fn oauth2_redirect(
         builder = builder.add_scope(oauth2::Scope::new(scope.clone()));
     }
     let (authorize_url, csrf_state) = builder.url();
+
+    // Sanitize the next url (if provided)
+    let next_url = sanitize_next_url(next_url.as_deref());
 
     // Save the csrf state and next url in the session
     session.insert(OAUTH2_CSRF_STATE_KEY, csrf_state.secret()).await?;
@@ -314,8 +325,12 @@ pub(crate) async fn oidc_callback(
     };
 
     // Get next url from session (if any)
-    let next_url = session.remove::<Option<String>>(NEXT_URL_KEY).await?.flatten();
-    let log_in_url = get_log_in_url(next_url.as_ref());
+    let next_url = session
+        .remove::<Option<String>>(NEXT_URL_KEY)
+        .await?
+        .flatten()
+        .and_then(|value| sanitize_next_url(Some(value.as_str())));
+    let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
     let creds = OidcCredentials {
@@ -351,10 +366,8 @@ pub(crate) async fn oidc_callback(
     // Track auth provider in the session
     session.insert(AUTH_PROVIDER_KEY, provider).await?;
 
-    // Prepare next url
-    let next_url = next_url.unwrap_or("/".to_string());
-
-    Ok(Redirect::to(&next_url))
+    let next_url = next_url.as_deref().unwrap_or("/");
+    Ok(Redirect::to(next_url))
 }
 
 /// Handler that redirects the user to the oidc provider.
@@ -374,6 +387,9 @@ pub(crate) async fn oidc_redirect(
         builder = builder.add_scope(oidc::Scope::new(scope.clone()));
     }
     let (authorize_url, csrf_state, nonce) = builder.url();
+
+    // Sanitize the next url (if provided)
+    let next_url = sanitize_next_url(next_url.as_deref());
 
     // Save the csrf state, nonce and next url in the session
     session.insert(OAUTH2_CSRF_STATE_KEY, csrf_state.secret()).await?;
@@ -429,7 +445,8 @@ pub(crate) async fn sign_up(
     }
 
     // Redirect to the log in page on success
-    let log_in_url = get_log_in_url(query.get("next_url"));
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
+    let log_in_url = get_log_in_url(next_url.as_deref());
     Ok(Redirect::to(&log_in_url).into_response())
 }
 
@@ -504,13 +521,32 @@ pub(crate) async fn verify_email(
     Ok(Redirect::to(LOG_IN_URL))
 }
 
+// Helpers.
+
+/// Percent-encode a `next_url` so it can be safely embedded in a query string.
+fn encode_next_url(next_url: &str) -> String {
+    utf8_percent_encode(next_url, NON_ALPHANUMERIC).to_string()
+}
+
 /// Get the log in url including the next url if provided.
-fn get_log_in_url(next_url: Option<&String>) -> String {
+fn get_log_in_url(next_url: Option<&str>) -> String {
     let mut log_in_url = LOG_IN_URL.to_string();
-    if let Some(next_url) = next_url {
-        log_in_url = format!("{log_in_url}?next_url={next_url}");
+    if let Some(next_url) = sanitize_next_url(next_url) {
+        log_in_url = format!("{log_in_url}?next_url={}", encode_next_url(&next_url));
     }
     log_in_url
+}
+
+/// Sanitize a `next_url` value ensuring it points to an in-site path.
+fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
+    let value = next_url?.trim();
+    if value.is_empty() {
+        return None;
+    }
+    if !value.starts_with('/') || value.starts_with("//") {
+        return None;
+    }
+    Some(value.to_string())
 }
 
 // Types.
@@ -1606,7 +1642,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::SEE_OTHER);
         assert_eq!(
             parts.headers.get(LOCATION).unwrap(),
-            &HeaderValue::from_static("/log-in?next_url=/welcome"),
+            &HeaderValue::from_static("/log-in?next_url=%2Fwelcome"),
         );
         assert!(bytes.is_empty());
     }
@@ -2033,8 +2069,33 @@ mod tests {
 
     #[test]
     fn test_get_log_in_url_with_next() {
-        let url = get_log_in_url(Some(&"/dashboard".to_string()));
-        assert_eq!(url, "/log-in?next_url=/dashboard");
+        let url = get_log_in_url(Some("/dashboard"));
+        assert_eq!(url, "/log-in?next_url=%2Fdashboard");
+    }
+
+    #[test]
+    fn test_sanitize_next_url_accepts_internal_paths() {
+        assert_eq!(
+            sanitize_next_url(Some("/dashboard")),
+            Some("/dashboard".to_string())
+        );
+        assert_eq!(
+            sanitize_next_url(Some("/groups?page=2#section")),
+            Some("/groups?page=2#section".to_string())
+        );
+        assert_eq!(
+            sanitize_next_url(Some("   /profile  ")),
+            Some("/profile".to_string())
+        );
+    }
+
+    #[test]
+    fn test_sanitize_next_url_rejects_external_paths() {
+        assert_eq!(sanitize_next_url(Some("")), None);
+        assert_eq!(sanitize_next_url(Some("https://evil.example")), None);
+        assert_eq!(sanitize_next_url(Some("//evil.example")), None);
+        assert_eq!(sanitize_next_url(Some("javascript:alert(1)")), None);
+        assert_eq!(sanitize_next_url(Some("relative/path")), None);
     }
 
     #[tokio::test]
