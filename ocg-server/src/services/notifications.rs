@@ -6,7 +6,7 @@ use anyhow::{Result, anyhow};
 use askama::Template;
 use async_trait::async_trait;
 use lettre::{
-    AsyncSmtpTransport, AsyncTransport, Tokio1Executor,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     message::{Mailbox, MessageBuilder, header::ContentType},
     transport::smtp::authentication::Credentials,
 };
@@ -58,31 +58,24 @@ impl PgNotificationsManager {
     pub(crate) fn new(
         db: DynDB,
         cfg: &EmailConfig,
+        email_sender: &DynEmailSender,
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
-    ) -> Result<Self> {
-        // Setup smtp client
-        let smtp_client = AsyncSmtpTransport::<Tokio1Executor>::relay(&cfg.smtp.host)?
-            .credentials(Credentials::new(
-                cfg.smtp.username.clone(),
-                cfg.smtp.password.clone(),
-            ))
-            .build();
-
+    ) -> Self {
         // Setup and run some workers to deliver notifications
         for _ in 1..=NUM_WORKERS {
             let mut worker = Worker {
                 db: db.clone(),
                 cfg: cfg.clone(),
-                smtp_client: smtp_client.clone(),
                 cancellation_token: cancellation_token.clone(),
+                email_sender: email_sender.clone(),
             };
             task_tracker.spawn(async move {
                 worker.run().await;
             });
         }
 
-        Ok(Self { db })
+        Self { db }
     }
 }
 
@@ -100,10 +93,10 @@ struct Worker {
     db: DynDB,
     /// Email configuration for sending notifications.
     cfg: EmailConfig,
-    /// SMTP client for sending emails.
-    smtp_client: AsyncSmtpTransport<Tokio1Executor>,
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
+    /// Email sender for dispatching messages.
+    email_sender: DynEmailSender,
 }
 
 impl Worker {
@@ -262,8 +255,46 @@ impl Worker {
                 return Ok(());
             }
         }
-        self.smtp_client.send(message).await?;
+        self.email_sender.send(message).await?;
 
+        Ok(())
+    }
+}
+
+/// Trait representing an async email sender used by the notifications workers.
+#[async_trait]
+#[cfg_attr(test, automock)]
+pub(crate) trait EmailSender {
+    /// Send an email represented by the provided message.
+    async fn send(&self, message: Message) -> Result<()>;
+}
+
+/// Shared trait object for an email sender.
+pub(crate) type DynEmailSender = Arc<dyn EmailSender + Send + Sync>;
+
+/// Concrete email sender backed by a Lettre SMTP transport.
+pub(crate) struct LettreEmailSender {
+    transport: AsyncSmtpTransport<Tokio1Executor>,
+}
+
+impl LettreEmailSender {
+    /// Create a new `LettreEmailSender` from the provided config.
+    pub(crate) fn new(cfg: &EmailConfig) -> Result<Self> {
+        let transport = AsyncSmtpTransport::<Tokio1Executor>::relay(&cfg.smtp.host)?
+            .credentials(Credentials::new(
+                cfg.smtp.username.clone(),
+                cfg.smtp.password.clone(),
+            ))
+            .build();
+
+        Ok(Self { transport })
+    }
+}
+
+#[async_trait]
+impl EmailSender for LettreEmailSender {
+    async fn send(&self, message: Message) -> Result<()> {
+        self.transport.send(message).await?;
         Ok(())
     }
 }
