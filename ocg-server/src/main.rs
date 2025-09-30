@@ -21,7 +21,7 @@ use tracing_subscriber::EnvFilter;
 use crate::{
     config::{Config, LogFormat},
     db::PgDB,
-    services::notifications::PgNotificationsManager,
+    services::notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
 };
 
 /// Authentication and authorization functionality.
@@ -89,12 +89,14 @@ async fn main() -> Result<()> {
     }
 
     // Setup notifications manager.
+    let email_sender: DynEmailSender = Arc::new(LettreEmailSender::new(&cfg.email)?);
     let notifications_manager = Arc::new(PgNotificationsManager::new(
         db.clone(),
         &cfg.email,
+        &email_sender,
         &task_tracker,
         &cancellation_token,
-    )?);
+    ));
 
     // Setup and launch the HTTP server.
     let router = router::setup(&cfg.server, db, notifications_manager).await?;
