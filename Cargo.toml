@@ -14,8 +14,8 @@ rust-version = "1.90.0"
 anyhow = "1.0.100"
 askama = { version = "0.14.0", features = ["serde_json"] }
 async-trait = "0.1.89"
-axum = { version = "0.8.5", features = ["macros"] }
-axum-extra = { version = "0.10.2", features = ["form", "query"] }
+axum = { version = "0.8.6", features = ["macros"] }
+axum-extra = { version = "0.10.3", features = ["form", "query"] }
 axum-login = "0.18.0"
 axum-messages = "0.8.0"
 cached = { version = "0.56.0", features = ["async"] }
@@ -44,7 +44,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_html_form = "0.2.8"
 serde_json = "1.0.145"
 serde_qs = "0.15.0"
-serde_with = "3.14.1"
+serde_with = "3.15.0"
 sha2 = "0.10.9"
 strum = { version = "0.27", features = ["derive"] }
 thiserror = "2.0.17"
