@@ -1,8 +1,8 @@
 -- Required extensions for the Open Community Groups platform
 -- pgcrypto: Provides cryptographic functions, primarily for UUID generation
 -- PostGIS: Geographic extensions for location-based features
-create extension pgcrypto;
-create extension postgis;
+create extension if not exists pgcrypto;
+create extension if not exists postgis;
 
 -- Helper function for full-text search: converts text array to space-separated
 -- string for use in tsvector generation. Marked immutable for performance.

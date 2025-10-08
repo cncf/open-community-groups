@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+env:
+  OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+  OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+  OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+  OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+  OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+
 jobs:
   build-ocg-dbmigrator-image:
     if: github.ref == 'refs/heads/main'
@@ -21,12 +28,20 @@ jobs:
       - name: Login to AWS ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to OCI Registry
+        id: login-ocir
+        uses: oracle-actions/login-ocir@v1.3.0
+        with:
+          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
       - name: Build and push ocg-dbmigrator image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          OCIR_REGISTRY: ${{ steps.login-ocir.outputs.ocir_endpoint }}
         run: |
           docker build -f database/migrations/Dockerfile -t $ECR_REGISTRY/ocg/dbmigrator:$GITHUB_SHA .
           docker push $ECR_REGISTRY/ocg/dbmigrator:$GITHUB_SHA
+          docker tag $ECR_REGISTRY/ocg/dbmigrator:$GITHUB_SHA $OCIR_REGISTRY/ocg/dbmigrator:$GITHUB_SHA
+          docker push $OCIR_REGISTRY/ocg/dbmigrator:$GITHUB_SHA
 
   build-ocg-server-image:
     if: github.ref == 'refs/heads/main'
@@ -43,9 +58,17 @@ jobs:
       - name: Login to AWS ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to OCI Registry
+        id: login-ocir
+        uses: oracle-actions/login-ocir@v1.3.0
+        with:
+          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
       - name: Build and push ocg-server image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          OCIR_REGISTRY: ${{ steps.login-ocir.outputs.ocir_endpoint }}
         run: |
           docker build -f ocg-server/Dockerfile -t $ECR_REGISTRY/ocg/server:$GITHUB_SHA .
           docker push $ECR_REGISTRY/ocg/server:$GITHUB_SHA
+          docker tag $ECR_REGISTRY/ocg/server:$GITHUB_SHA $OCIR_REGISTRY/ocg/server:$GITHUB_SHA
+          docker push $OCIR_REGISTRY/ocg/server:$GITHUB_SHA
