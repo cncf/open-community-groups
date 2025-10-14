@@ -59,7 +59,10 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
-    use crate::{db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager};
+    use crate::{
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::MockNotificationsManager,
+    };
 
     #[tokio::test]
     async fn test_list_page_success() {
@@ -121,7 +124,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }

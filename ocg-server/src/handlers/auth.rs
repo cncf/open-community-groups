@@ -687,7 +687,7 @@ mod tests {
             extractors::{OAuth2, Oidc},
             tests::*,
         },
-        router::State,
+        router::{CACHE_CONTROL_NO_CACHE, State},
         services::notifications::{MockNotificationsManager, NotificationKind},
     };
 
@@ -732,7 +732,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }
@@ -825,7 +825,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }
@@ -922,7 +922,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }

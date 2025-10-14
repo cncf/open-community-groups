@@ -106,6 +106,7 @@ mod tests {
     use crate::{
         db::{common::SearchCommunityGroupsOutput, mock::MockDB},
         handlers::{dashboard::community::groups::MAX_GROUPS_LISTED, tests::*},
+        router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
     };
 
@@ -184,7 +185,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }
@@ -245,7 +246,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }
@@ -314,7 +315,7 @@ mod tests {
         );
         assert_eq!(
             parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static("max-age=0"),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
     }
