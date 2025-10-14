@@ -120,13 +120,20 @@ server:
     enabled: true
     annotations:
       kubernetes.io/ingress.class: nginx
+    backendServicePort: 80
     rules: []
     tls: []
 
   # Service configuration
   service:
+    allocateLoadBalancerNodePorts: true
+    annotations: {}
+    ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 9000
     type: NodePort
-    port: 80
 
   # Deployment configuration
   deploy:
@@ -144,7 +151,7 @@ postgresql:
     password: postgres
     database: ocg
   image:
-    repository: bitnami/postgresql
+    repository: docker.io/bitnamilegacy/postgresql
     tag: 17.2.0-debian-12-r3
   postgresqlDataDir: /data/pgdata
   primary:
