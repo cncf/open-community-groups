@@ -33,6 +33,9 @@ use crate::{
     services::notifications::DynNotificationsManager,
 };
 
+/// Cache-Control header value instructing clients not to cache responses.
+pub(crate) const CACHE_CONTROL_NO_CACHE: &str = "max-age=0, private, must-revalidate";
+
 /// Static file embedder using rust-embed.
 ///
 /// Embeds all files from the static directory into the binary.
@@ -150,7 +153,7 @@ pub(crate) async fn setup(
         .route("/static/{*file}", get(static_handler))
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
-            HeaderValue::from_static("max-age=0"),
+            HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         ));
 
     Ok(router.with_state(state))
