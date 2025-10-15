@@ -48,6 +48,10 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.server.deploy.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health-check
+              port: 9000
           command: ['ocg-server', '-c', '{{ .Values.configDir }}/server.yml']
       volumes:
         - name: server-config
