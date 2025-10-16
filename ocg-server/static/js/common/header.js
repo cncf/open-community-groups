@@ -1,48 +1,108 @@
 /**
- * Toggles the user dropdown menu visibility and manages event listeners.
- * Handles click-outside-to-close functionality.
+ * Initializes header dropdown behavior with HTMX awareness.
  */
-export const onClickDropdown = () => {
-  const dropdownButtonDesktop = document.getElementById("user-dropdown-button");
-  const dropdownButtonMobile = document.getElementById("user-dropdown-button-mobile");
-  const dropdownMenu = document.getElementById("dropdown-user");
+let documentHandlersBound = false;
+let lifecycleListenersBound = false;
 
-  if (dropdownMenu) {
-    const isHidden = dropdownMenu.classList.contains("hidden");
+// Ensures global handlers close the dropdown on outside click or Escape.
+const ensureDocumentHandlers = () => {
+  if (documentHandlersBound) {
+    return;
+  }
 
-    if (isHidden) {
-      dropdownMenu.classList.remove("hidden");
+  const handleDocumentClick = (event) => {
+    const button = document.getElementById("user-dropdown-button");
+    const dropdown = document.getElementById("user-dropdown");
 
-      const menuLinks = dropdownMenu.querySelectorAll("a");
-      menuLinks.forEach((link) => {
-        // Close dropdown when clicking on an action before loading the new page
-        link.addEventListener("click", () => {
-          const menu = document.getElementById("dropdown-user");
-          if (menu) {
-            menu.classList.add("hidden");
-          }
-        });
-      });
-
-      // Close dropdown when clicking outside
-      const closeOnClickOutside = (event) => {
-        const clickedOnDesktopButton = dropdownButtonDesktop && dropdownButtonDesktop.contains(event.target);
-        const clickedOnMobileButton = dropdownButtonMobile && dropdownButtonMobile.contains(event.target);
-        const clickedOnDropdown = dropdownMenu.contains(event.target);
-
-        if (!clickedOnDropdown && !clickedOnDesktopButton && !clickedOnMobileButton) {
-          dropdownMenu.classList.add("hidden");
-          // Remove the event listener to prevent memory leaks
-          document.removeEventListener("click", closeOnClickOutside);
-        }
-      };
-
-      // Add the event listener with a small delay to prevent immediate closure
-      setTimeout(() => {
-        document.addEventListener("click", closeOnClickOutside);
-      }, 10);
-    } else {
-      dropdownMenu.classList.add("hidden");
+    if (!button || !dropdown) {
+      return;
     }
+
+    const clickedButton = button.contains(event.target);
+    const clickedDropdown = dropdown.contains(event.target);
+
+    if (!clickedButton && !clickedDropdown) {
+      // Hide if the click did not originate inside the dropdown or trigger.
+      dropdown.classList.add("hidden");
+    }
+  };
+
+  const handleKeydown = (event) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    const button = document.getElementById("user-dropdown-button");
+    const dropdown = document.getElementById("user-dropdown");
+
+    if (!button || !dropdown || dropdown.classList.contains("hidden")) {
+      return;
+    }
+
+    dropdown.classList.add("hidden");
+    button.focus();
+  };
+
+  document.addEventListener("click", handleDocumentClick);
+  document.addEventListener("keydown", handleKeydown);
+
+  documentHandlersBound = true;
+};
+
+// Subscribes to HTMX lifecycle hooks once for history and swap events.
+const bindLifecycleListeners = () => {
+  if (lifecycleListenersBound) {
+    return;
+  }
+
+  document.addEventListener("htmx:historyRestore", initUserDropdown);
+  document.addEventListener("htmx:afterSwap", initUserDropdown);
+  window.addEventListener("pageshow", () => initUserDropdown());
+
+  lifecycleListenersBound = true;
+};
+
+// Toggles dropdown visibility when the avatar button is clicked.
+const toggleDropdownVisibility = (event) => {
+  const dropdown = document.getElementById("user-dropdown");
+  if (!dropdown) {
+    return;
+  }
+
+  event.stopPropagation();
+  dropdown.classList.toggle("hidden");
+};
+
+// Public initializer for the user dropdown interactions.
+export const initUserDropdown = () => {
+  ensureDocumentHandlers();
+  bindLifecycleListeners();
+
+  const button = document.getElementById("user-dropdown-button");
+  const dropdown = document.getElementById("user-dropdown");
+
+  if (!button || !dropdown || button.__ocgDropdownInitialized) {
+    return;
+  }
+
+  button.addEventListener("click", toggleDropdownVisibility);
+  button.__ocgDropdownInitialized = true;
+
+  if (!dropdown.__ocgCloseOnLinkBound) {
+    dropdown.addEventListener(
+      "click",
+      (event) => {
+        const link = event.target.closest("a");
+        if (!link) {
+          return;
+        }
+        // Ensure selecting any link closes the dropdown immediately.
+        dropdown.classList.add("hidden");
+      },
+      true,
+    );
+    dropdown.__ocgCloseOnLinkBound = true;
   }
 };
+
+initUserDropdown();

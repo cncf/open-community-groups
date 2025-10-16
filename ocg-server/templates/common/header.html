@@ -229,6 +229,7 @@
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
                   <div class="ms-2 text-xs/6">Community Dashboard</div>
+                  <div class="ms-auto hx-spinner">{% call common::spinner(size = "size-4") -%}</div>
                 </div>
               </a>
             </li>
@@ -244,6 +245,7 @@
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
                   <div class="ms-2 text-xs/6">Group Dashboard</div>
+                  <div class="ms-auto hx-spinner">{% call common::spinner(size = "size-4") -%}</div>
                 </div>
               </a>
             </li>
@@ -258,6 +260,7 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-user-small bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">User Dashboard</div>
+                <div class="ms-auto hx-spinner">{% call common::spinner(size = "size-4") -%}</div>
               </div>
             </a>
           </li>
@@ -348,30 +351,11 @@
 
     {# Dropdown script -#}
     <script type="module">
-      const userDropdownButton = document.getElementById('user-dropdown-button');
-      const userDropdown = document.getElementById('user-dropdown');
+      import {
+        initUserDropdown
+      } from '/static/js/common/header.js';
 
-      if (userDropdownButton && userDropdown) {
-        userDropdownButton.addEventListener('click', (e) => {
-          e.stopPropagation();
-          userDropdown.classList.toggle('hidden');
-        });
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-          if (!userDropdownButton.contains(e.target) && !userDropdown.contains(e.target)) {
-            userDropdown.classList.add('hidden');
-          }
-        });
-
-        // Close dropdown on Escape key
-        document.addEventListener('keydown', (e) => {
-          if (e.key === 'Escape' && !userDropdown.classList.contains('hidden')) {
-            userDropdown.classList.add('hidden');
-            userDropdownButton.focus();
-          }
-        });
-      }
+      initUserDropdown();
     </script>
   </div>
 {% endmacro user_menu -%}
