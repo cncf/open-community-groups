@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
 # Database configuration
-export PGHOST="${PGHOST:-localhost}"
+export PGHOST="${PGHOST:-/private/tmp}"
 export PGPORT="${PGPORT:-5432}"
 export PGUSER="${PGUSER:-postgres}"
 export PGDATABASE="${PGDATABASE:-ocg_tests}"
 export PGSSLMODE="${PGSSLMODE:-disable}"
 
 # Prepare tern config file
-tern_config=$(mktemp /tmp/tern.conf.XXXXXX)
+export TERN_CONF_TESTS_PATH="${TERN_CONF_TESTS_PATH:-/tmp/ocg/tern.conf.XXXXXX}"
+tern_config=$(mktemp $TERN_CONF_TESTS_PATH)
 cat > "$tern_config" <<EOF
 [database]
 host=$PGHOST

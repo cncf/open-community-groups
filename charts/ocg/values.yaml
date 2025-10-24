@@ -18,6 +18,10 @@ fullnameOverride: ""
 # Directory path where the configuration files should be mounted
 configDir: "/home/ocg/.config/ocg"
 
+# Check database readiness init container configuration
+checkDbIsReadyInitContainer:
+  securityContext: {}
+
 # Database configuration
 db:
   host: ""
@@ -53,9 +57,11 @@ log:
 # Database migrator configuration
 dbmigrator:
   job:
+    containerSecurityContext: {}
     image:
       # Database migrator image repository (without the tag)
       repository: ocg/dbmigrator
+    podSecurityContext: {}
 
 # Server configuration
 server:
@@ -137,10 +143,12 @@ server:
 
   # Deployment configuration
   deploy:
-    replicaCount: 1
+    containerSecurityContext: {}
     image:
       # Database migrator image repository (without the tag)
       repository: ocg/server
+    podSecurityContext: {}
+    replicaCount: 1
     resources: {}
 
 # PostgreSQL configuration
