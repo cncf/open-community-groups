@@ -17,6 +17,10 @@ spec:
         app.kubernetes.io/component: server
         {{- include "chart.selectorLabels" . | nindent 8 }}
     spec:
+    {{- with .Values.server.deploy.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -38,6 +42,10 @@ spec:
         - name: server
           image: {{ .Values.server.deploy.image.repository }}:{{ .Values.imageTag | default (printf "v%s" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.pullPolicy }}
+          {{- with .Values.server.deploy.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: server-config
               mountPath: {{ .Values.configDir | quote }}
