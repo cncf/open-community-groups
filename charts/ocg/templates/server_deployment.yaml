@@ -36,6 +36,10 @@ spec:
           {{ $kubectlImageVersion := ternary "1.33" $kubeVersion (semverCompare ">=1.34.0-0" (printf "%s.0" $kubeVersion)) }}
           image: "docker.io/bitnamilegacy/kubectl:{{ $kubectlImageVersion }}"
           imagePullPolicy: IfNotPresent
+          {{- with .Values.checkDbIsReadyInitContainer.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           command: ['kubectl', 'wait', '--namespace={{ .Release.Namespace }}', '--for=condition=complete', 'job/{{ include "chart.resourceNamePrefix" . }}dbmigrator-install', '--timeout=60s']
         {{- end }}
       containers:
