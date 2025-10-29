@@ -10,8 +10,11 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  {{- $serviceType := default "ClusterIP" .Values.server.service.type }}
+  {{- if eq $serviceType "LoadBalancer" }}
   allocateLoadBalancerNodePorts: {{ .Values.server.service.allocateLoadBalancerNodePorts }}
-  type: {{ .Values.server.service.type }}
+  {{- end }}
+  type: {{ $serviceType }}
   ports:
     {{- toYaml .Values.server.service.ports | nindent 4 }}
   selector:

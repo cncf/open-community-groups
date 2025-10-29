@@ -27,8 +27,8 @@ db:
   host: ""
   port: 5432
   dbname: ocg
-  user: postgres
-  password: postgres
+  user: ocg
+  password: ocg
 
 # Email configuration
 email:
@@ -151,17 +151,25 @@ server:
     replicaCount: 1
     resources: {}
 
-# PostgreSQL configuration
+# Values for postgresql chart dependency
 postgresql:
   enabled: true
   auth:
-    username: postgres
-    password: postgres
     database: ocg
+    password: ocg
+    username: ocg
+  global:
+    security:
+      allowInsecureImages: true
   image:
-    repository: docker.io/bitnamilegacy/postgresql
-    tag: 17.2.0-debian-12-r3
-  postgresqlDataDir: /data/pgdata
+    repository: artifacthub/postgres
+    tag: latest
+  persistence:
+    mountPath: /data
   primary:
-    persistence:
-      mountPath: /data
+    extraVolumes:
+      - name: run
+        emptyDir: {}
+    extraVolumeMounts:
+      - name: run
+        mountPath: /var/run/postgresql
