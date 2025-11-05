@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(97);
+select plan(159);
 
 -- ============================================================================
 -- TESTS
@@ -30,6 +30,7 @@ select has_table('group_role');
 select has_table('group_site_layout');
 select has_table('group_sponsor');
 select has_table('group_team');
+select has_table('images');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
 select has_table('region');
@@ -255,6 +256,15 @@ select columns_are('group_team', array[
     'order'
 ]);
 
+-- Test: images columns should match expected
+select columns_are('images', array[
+    'file_name',
+    'content_type',
+    'created_at',
+    'created_by',
+    'data'
+]);
+
 -- Test: session columns should match expected
 select columns_are('session', array[
     'session_id',
@@ -362,6 +372,7 @@ select has_pk('group_role');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
 select has_pk('group_team');
+select has_pk('images');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
 select has_pk('region');
@@ -422,6 +433,11 @@ select indexes_are('group_team', array[
     'group_team_role_idx'
 ]);
 
+-- Test: images indexes should match expected
+select indexes_are('images', array[
+    'images_pkey'
+]);
+
 -- Test: legacy_event_host indexes should match expected
 select indexes_are('legacy_event_host', array[
     'legacy_event_host_pkey',
@@ -461,18 +477,76 @@ select indexes_are('user', array[
 ]);
 
 -- Test: check expected functions exist
+select has_function('accept_community_team_invitation');
+select has_function('accept_group_team_invitation');
+select has_function('activate_group');
+select has_function('add_community_team_member');
+select has_function('add_event');
+select has_function('add_group');
+select has_function('add_group_sponsor');
+select has_function('add_group_team_member');
+select has_function('attend_event');
+select has_function('cancel_event');
+select has_function('delete_community_team_member');
+select has_function('delete_event');
+select has_function('delete_group');
+select has_function('delete_group_sponsor');
+select has_function('delete_group_team_member');
 select has_function('get_community');
 select has_function('get_community_filters_options');
 select has_function('get_community_home_stats');
 select has_function('get_community_recently_added_groups');
 select has_function('get_community_upcoming_events');
+select has_function('get_event');
+select has_function('get_event_detailed');
+select has_function('get_event_full');
+select has_function('get_event_summary');
+select has_function('get_group');
+select has_function('get_group_detailed');
+select has_function('get_group_full');
+select has_function('get_group_past_events');
+select has_function('get_group_sponsor');
+select has_function('get_group_summary');
+select has_function('get_group_upcoming_events');
+select has_function('get_user_by_id');
+select has_function('i_array_to_string');
+select has_function('is_event_attendee');
+select has_function('is_group_member');
+select has_function('join_group');
+select has_function('leave_event');
+select has_function('leave_group');
+select has_function('list_community_team_members');
+select has_function('list_event_attendees_ids');
+select has_function('list_event_categories');
+select has_function('list_event_kinds');
+select has_function('list_group_categories');
+select has_function('list_group_events');
+select has_function('list_group_members');
+select has_function('list_group_members_ids');
+select has_function('list_group_roles');
+select has_function('list_group_sponsors');
+select has_function('list_group_team_members');
+select has_function('list_regions');
+select has_function('list_session_kinds');
+select has_function('list_user_community_team_invitations');
+select has_function('list_user_group_team_invitations');
+select has_function('list_user_groups');
+select has_function('publish_event');
 select has_function('search_community_events');
 select has_function('search_community_groups');
-select has_function('get_event');
-select has_function('get_group');
-select has_function('get_group_past_events');
-select has_function('get_group_upcoming_events');
-select has_function('i_array_to_string');
+select has_function('search_event_attendees');
+select has_function('search_user');
+select has_function('sign_up_user');
+select has_function('unpublish_event');
+select has_function('update_community');
+select has_function('update_event');
+select has_function('update_group');
+select has_function('update_group_sponsor');
+select has_function('update_group_team_member_role');
+select has_function('update_user_details');
+select has_function('user_owns_community');
+select has_function('user_owns_group');
+select has_function('verify_email');
 
 -- Test: event kinds should match expected values
 select results_eq(

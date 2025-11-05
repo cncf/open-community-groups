@@ -49,6 +49,20 @@ email:
     # Password
     password: ""
 
+# Image storage configuration
+images:
+  # Storage provider [db|s3]
+  provider: db
+
+  # S3 provider configuration (used when provider is set to s3)
+  s3:
+    accessKeyId: ""
+    secretAccessKey: ""
+    bucket: ""
+    region: ""
+    endpoint: null
+    forcePathStyle: true
+
 # Log configuration
 log:
   # Output format [json|pretty]
@@ -74,6 +88,9 @@ server:
   # Cookie configuration
   cookie:
     secure: false
+
+  # Disable referer checks on image endpoints
+  disableRefererChecks: false
 
   # Login options enabled
   login:

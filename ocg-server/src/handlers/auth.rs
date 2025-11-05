@@ -688,7 +688,10 @@ mod tests {
             tests::*,
         },
         router::{CACHE_CONTROL_NO_CACHE, State},
-        services::notifications::{MockNotificationsManager, NotificationKind},
+        services::{
+            images::MockImageStorage,
+            notifications::{MockNotificationsManager, NotificationKind},
+        },
     };
 
     use super::*;
@@ -2124,6 +2127,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2181,6 +2185,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2229,6 +2234,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2291,6 +2297,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2353,6 +2360,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2415,6 +2423,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2478,6 +2487,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2541,6 +2551,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
@@ -2604,6 +2615,7 @@ mod tests {
         let state = State {
             cfg: cfg.clone(),
             db: db.clone(),
+            image_storage: Arc::new(MockImageStorage::new()),
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };

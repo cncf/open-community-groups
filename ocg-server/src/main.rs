@@ -19,8 +19,9 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, LogFormat},
+    config::{Config, ImageStorageConfig, LogFormat},
     db::PgDB,
+    services::images::{DbImageStorage, DynImageStorage, S3ImageStorage},
     services::notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
 };
 
@@ -98,8 +99,14 @@ async fn main() -> Result<()> {
         &cancellation_token,
     ));
 
+    // Setup image storage provider.
+    let image_storage: DynImageStorage = match &cfg.images {
+        ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db.clone())),
+        ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
+    };
+
     // Setup and launch the HTTP server.
-    let router = router::setup(&cfg.server, db, notifications_manager).await?;
+    let router = router::setup(&cfg.server, db, notifications_manager, image_storage).await?;
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");

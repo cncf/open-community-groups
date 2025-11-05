@@ -28,9 +28,9 @@ use crate::{
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        community, dashboard, event, group,
+        community, dashboard, event, group, images,
     },
-    services::notifications::DynNotificationsManager,
+    services::{images::DynImageStorage, notifications::DynNotificationsManager},
 };
 
 /// Cache-Control header value instructing clients not to cache responses.
@@ -50,6 +50,8 @@ pub(crate) struct State {
     pub cfg: HttpServerConfig,
     /// Database handle.
     pub db: DynDB,
+    /// Image storage provider handle.
+    pub image_storage: DynImageStorage,
     /// Notifications manager handle.
     pub notifications_manager: DynNotificationsManager,
     /// `serde_qs` config for query string parsing.
@@ -65,11 +67,13 @@ pub(crate) async fn setup(
     cfg: &HttpServerConfig,
     db: DynDB,
     notifications_manager: DynNotificationsManager,
+    image_storage: DynImageStorage,
 ) -> Result<Router> {
     // Setup router state
     let state = State {
         cfg: cfg.clone(),
         db: db.clone(),
+        image_storage,
         notifications_manager,
         serde_qs_de: serde_qs::Config::new(3, false),
     };
@@ -101,6 +105,7 @@ pub(crate) async fn setup(
         .route("/group/{group_id}/join", post(group::join_group))
         .route("/group/{group_id}/leave", delete(group::leave_group))
         .route("/group/{group_id}/membership", get(group::membership_status))
+        .route("/images", post(images::upload))
         .route_layer(login_required!(
             AuthnBackend,
             login_url = LOG_IN_URL,
@@ -123,6 +128,7 @@ pub(crate) async fn setup(
         .route("/health-check", get(health_check))
         .route("/group/{group_slug}", get(group::page))
         .route("/group/{group_slug}/event/{event_slug}", get(event::page))
+        .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page));
 
     // Setup some routes based on the login options enabled

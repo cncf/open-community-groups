@@ -32,7 +32,6 @@ jobs:
           compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
       - name: Build and push ocg-dbmigrator image
         env:
-          OCIR_REGISTRY: ${{ steps.login-ocir.outputs.ocir_endpoint }}
           OCIR_REPOSITORY: ${{ steps.get-ocir-repository-dbmigrator.outputs.repo_path }}
         run: |
           docker build \
@@ -60,7 +59,6 @@ jobs:
           compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
       - name: Build and push ocg-server image
         env:
-          OCIR_REGISTRY: ${{ steps.login-ocir.outputs.ocir_endpoint }}
           OCIR_REPOSITORY: ${{ steps.get-ocir-repository-server.outputs.repo_path }}
         run: |
           docker build \

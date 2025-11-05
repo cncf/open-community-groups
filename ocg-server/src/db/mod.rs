@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::db::{
     auth::DBAuth, common::DBCommon, community::DBCommunity, dashboard::DBDashboard, event::DBEvent,
-    group::DBGroup, notifications::DBNotifications,
+    group::DBGroup, images::DBImages, notifications::DBNotifications,
 };
 
 /// Module containing authentication database operations.
@@ -34,6 +34,9 @@ pub(crate) mod event;
 
 /// Module containing database functionality for the group site.
 pub(crate) mod group;
+
+/// Module containing database functionality for storing images.
+pub(crate) mod images;
 
 /// Module containing mock database implementation for testing.
 #[cfg(test)]
@@ -55,7 +58,7 @@ const TXS_CLIENT_TIMEOUT: TimeDelta = TimeDelta::seconds(30);
 /// that includes all the functionality defined in other traits.
 #[async_trait]
 pub(crate) trait DB:
-    DBAuth + DBCommon + DBCommunity + DBDashboard + DBEvent + DBGroup + DBNotifications
+    DBAuth + DBCommon + DBCommunity + DBDashboard + DBEvent + DBGroup + DBImages + DBNotifications
 {
     /// Begins a new transaction and returns a unique client identifier.
     async fn tx_begin(&self) -> Result<Uuid>;
