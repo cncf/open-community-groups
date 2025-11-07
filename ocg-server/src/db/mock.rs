@@ -399,6 +399,21 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::images::DBImages for DB {
+        async fn save_image(
+            &self,
+            user_id: Uuid,
+            file_name: &str,
+            data: &[u8],
+            content_type: &str,
+        ) -> Result<()>;
+        async fn get_image(
+            &self,
+            file_name: &str,
+        ) -> Result<Option<crate::services::images::Image>>;
+    }
+
+    #[async_trait]
     impl crate::db::notifications::DBNotifications for DB {
         async fn enqueue_notification(
             &self,

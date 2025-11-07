@@ -161,7 +161,7 @@ impl AuthnBackend {
             .await?
             .access_token()
             .secret()
-            .to_string();
+            .clone();
 
         // Get the user if they exist, otherwise sign them up
         let user_summary = match creds.provider {

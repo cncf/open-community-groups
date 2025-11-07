@@ -24,6 +24,8 @@ pub(crate) struct Config {
     pub db: DbConfig,
     /// Email configuration.
     pub email: EmailConfig,
+    /// Image storage configuration.
+    pub images: ImageStorageConfig,
     /// Logging configuration.
     pub log: LogConfig,
     /// HTTP server configuration.
@@ -42,6 +44,7 @@ impl Config {
     pub(crate) fn new(config_file: Option<&PathBuf>) -> Result<Self> {
         let mut figment = Figment::new()
             .merge(Serialized::default("log.format", "json"))
+            .merge(Serialized::default("images.provider", "db"))
             .merge(Serialized::default("server.addr", "127.0.0.1:9000"));
 
         if let Some(config_file) = config_file {
@@ -69,6 +72,34 @@ pub(crate) struct EmailConfig {
     /// development environments. If not present, all recipients are
     /// allowed. If present and empty, none are allowed.
     pub rcpts_whitelist: Option<Vec<String>>,
+}
+
+/// Image storage configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "provider", rename_all = "snake_case")]
+pub(crate) enum ImageStorageConfig {
+    /// Store images within the main `PostgreSQL` database.
+    Db,
+    /// Store images on an S3-compatible object storage service.
+    S3(ImageStorageConfigS3),
+}
+
+/// Configuration for S3-compatible image storage providers.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct ImageStorageConfigS3 {
+    /// Access key identifier used for authentication.
+    pub access_key_id: String,
+    /// Bucket name where images will be stored.
+    pub bucket: String,
+    /// Region used for the S3-compatible service.
+    pub region: String,
+    /// Secret access key used for authentication.
+    pub secret_access_key: String,
+
+    /// Optional custom endpoint to support non-AWS providers.
+    pub endpoint: Option<String>,
+    /// Use path-style requests for compatibility with certain providers.
+    pub force_path_style: Option<bool>,
 }
 
 /// SMTP server configuration.
@@ -108,6 +139,8 @@ pub(crate) struct HttpServerConfig {
     pub addr: String,
     /// Base URL for the server.
     pub base_url: String,
+    /// Disable referer header validation for image endpoints.
+    pub disable_referer_checks: bool,
     /// Login options configuration.
     pub login: LoginOptions,
     /// `OAuth2` providers configuration.

@@ -173,7 +173,10 @@ mod tests {
         db::{DynDB, mock::MockDB},
         handlers::auth::SELECTED_GROUP_ID_KEY,
         router,
-        services::notifications::{DynNotificationsManager, MockNotificationsManager},
+        services::{
+            images::{DynImageStorage, MockImageStorage},
+            notifications::{DynNotificationsManager, MockNotificationsManager},
+        },
     };
 
     use super::*;
@@ -191,7 +194,8 @@ mod tests {
             .returning(move |_| Ok(Some(community_id)));
         let db: DynDB = Arc::new(db);
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
@@ -201,7 +205,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let CommunityId(extracted) = CommunityId::from_request_parts(&mut parts, &state)
@@ -215,13 +219,14 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let result = CommunityId::from_request_parts(&mut parts, &state).await;
@@ -241,7 +246,8 @@ mod tests {
             .returning(|_| Ok(None));
         let db: DynDB = Arc::new(db);
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
@@ -251,7 +257,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let result = CommunityId::from_request_parts(&mut parts, &state).await;
@@ -271,7 +277,8 @@ mod tests {
             .returning(|_| Err(anyhow!("db error")));
         let db: DynDB = Arc::new(db);
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
@@ -281,7 +288,7 @@ mod tests {
             .body(Body::empty())
             .unwrap();
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let result = CommunityId::from_request_parts(&mut parts, &state).await;
@@ -328,7 +335,8 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup config
@@ -355,7 +363,7 @@ mod tests {
         let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
         // Setup router
-        let mut state = build_state(db, nm);
+        let mut state = build_state(db, is, nm);
         state.cfg = cfg;
         let router = Router::new()
             .route(
@@ -386,13 +394,14 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup router
         let router = Router::new()
             .route("/log-in/oauth2", get(|_oauth2: OAuth2| async { StatusCode::OK }))
-            .with_state(build_state(db, nm));
+            .with_state(build_state(db, is, nm));
 
         // Send request
         let request = Request::builder().uri("/log-in/oauth2").body(Body::empty()).unwrap();
@@ -410,7 +419,8 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup router
@@ -419,7 +429,7 @@ mod tests {
                 "/log-in/oauth2/{provider}",
                 get(|_oauth2: OAuth2| async { StatusCode::OK }),
             )
-            .with_state(build_state(db, nm));
+            .with_state(build_state(db, is, nm));
 
         // Send request
         let request = Request::builder()
@@ -440,7 +450,8 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup auth layer with an empty set of OAuth2 providers
@@ -458,7 +469,7 @@ mod tests {
                 get(|_oauth2: OAuth2| async { StatusCode::OK }),
             )
             .layer(auth_layer)
-            .with_state(build_state(db, nm));
+            .with_state(build_state(db, is, nm));
 
         // Send request
         let request = Request::builder()
@@ -479,13 +490,14 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup router
         let router = Router::new()
             .route("/log-in/oidc", get(|_oidc: Oidc| async { StatusCode::OK }))
-            .with_state(build_state(db, nm));
+            .with_state(build_state(db, is, nm));
 
         // Send request
         let request = Request::builder().uri("/log-in/oidc").body(Body::empty()).unwrap();
@@ -503,7 +515,8 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup router
@@ -512,7 +525,7 @@ mod tests {
                 "/log-in/oidc/{provider}",
                 get(|_oidc: Oidc| async { StatusCode::OK }),
             )
-            .with_state(build_state(db, nm));
+            .with_state(build_state(db, is, nm));
 
         // Send request
         let request = Request::builder()
@@ -533,7 +546,8 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup auth layer with an empty set of OIDC providers
@@ -551,7 +565,7 @@ mod tests {
                 get(|_oidc: Oidc| async { StatusCode::OK }),
             )
             .layer(auth_layer)
-            .with_state(build_state(db, nm));
+            .with_state(build_state(db, is, nm));
 
         // Send request
         let request = Request::builder()
@@ -581,14 +595,15 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
         let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
         request.extensions_mut().insert(session);
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let SelectedGroupId(extracted) = SelectedGroupId::from_request_parts(&mut parts, &state)
@@ -602,13 +617,14 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
         let request = Request::builder().uri("/").body(Body::empty()).unwrap();
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let result = SelectedGroupId::from_request_parts(&mut parts, &state).await;
@@ -627,14 +643,15 @@ mod tests {
         // Setup database mock
         let db: DynDB = Arc::new(MockDB::new());
 
-        // Setup notifications manager mock
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup request parts and state
         let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
         request.extensions_mut().insert(session);
         let (mut parts, _) = request.into_parts();
-        let state = build_state(db, nm);
+        let state = build_state(db, is, nm);
 
         // Check extraction matches expectations
         let result = SelectedGroupId::from_request_parts(&mut parts, &state).await;
@@ -647,11 +664,12 @@ mod tests {
     // Helpers.
 
     /// Builds router state with the provided database and notifications manager.
-    fn build_state(db: DynDB, notifications_manager: DynNotificationsManager) -> router::State {
+    fn build_state(db: DynDB, image_storage: DynImageStorage, nm: DynNotificationsManager) -> router::State {
         router::State {
             cfg: HttpServerConfig::default(),
             db,
-            notifications_manager,
+            image_storage,
+            notifications_manager: nm,
             serde_qs_de: serde_qs::Config::new(3, false),
         }
     }
