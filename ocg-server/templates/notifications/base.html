@@ -17,6 +17,7 @@
     :root {
       color-scheme: light dark;
       supported-color-schemes: light dark;
+      --color-primary-500: #D62293;
     }
 
     @media only screen and (max-width: 620px) {
@@ -121,12 +122,12 @@
     }
 
     .line {
-      border-top: 7px solid #D62293;
+      border-top: 7px solid var(--color-primary-500);
     }
 
     .btn {
-      background-color: #D62293;
-      border: solid 1px #D62293;
+      background-color: var(--color-primary-500);
+      border: solid 1px var(--color-primary-500);
       color: #ffffff;
       border-radius: 25px;
       display: inline-flex;
@@ -145,7 +146,7 @@
       }
 
       .line {
-        border-color: #D62293 !important;
+        border-color: var(--color-primary-500) !important;
       }
 
       .main, .copy-link {
@@ -157,8 +158,8 @@
       }
 
       .btn {
-        background-color: #D62293;
-        border-color: #D62293;
+        background-color: var(--color-primary-500);
+        border-color: var(--color-primary-500);
         color: #ffffff;
       }
     }
