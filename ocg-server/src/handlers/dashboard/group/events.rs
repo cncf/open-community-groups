@@ -154,7 +154,12 @@ pub(crate) async fn cancel(
             event.canceled = true; // Update local event to reflect canceled status
             let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
             let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
-            let template_data = EventCanceled { link, event };
+            let community = db.get_community(community_id).await?;
+            let template_data = EventCanceled {
+                event,
+                link,
+                theme: community.theme,
+            };
             let notification = NewNotification {
                 attachments: vec![],
                 kind: NotificationKind::EventCanceled,
@@ -202,10 +207,17 @@ pub(crate) async fn publish(
     if should_notify {
         let user_ids = db.list_group_members_ids(group_id).await?;
         if !user_ids.is_empty() {
-            let event = db.get_event_summary(community_id, group_id, event_id).await?;
+            let (community, event) = tokio::try_join!(
+                db.get_community(community_id),
+                db.get_event_summary(community_id, group_id, event_id),
+            )?;
             let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
             let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
-            let template_data = EventPublished { link, event };
+            let template_data = EventPublished {
+                event,
+                link,
+                theme: community.theme,
+            };
             let notification = NewNotification {
                 attachments: vec![],
                 kind: NotificationKind::EventPublished,
@@ -292,7 +304,12 @@ pub(crate) async fn update(
         if !user_ids.is_empty() {
             let base = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
             let link = format!("{}/group/{}/event/{}", base, after.group_slug, after.slug);
-            let template_data = EventRescheduled { event: after, link };
+            let community = db.get_community(community_id).await?;
+            let template_data = EventRescheduled {
+                event: after,
+                link,
+                theme: community.theme,
+            };
             let notification = NewNotification {
                 attachments: vec![],
                 kind: NotificationKind::EventRescheduled,
@@ -658,6 +675,8 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let event_summary = sample_event_summary(event_id, group_id);
+        let community = sample_community(community_id);
+        let community_copy = community.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -685,6 +704,10 @@ mod tests {
             .times(1)
             .withf(move |eid| *eid == event_id)
             .returning(move |_| Ok(vec![recipient_id]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(community_copy.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -695,7 +718,10 @@ mod tests {
                     && notification.recipients == vec![recipient_id]
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventCanceled>(value.clone())
-                            .map(|template| template.link == "/group/test-group/event/sample-event")
+                            .map(|template| {
+                                template.link == "/group/test-group/event/sample-event"
+                                    && template.theme.primary_color == community.theme.primary_color
+                            })
                             .unwrap_or(false)
                     })
             })
@@ -739,6 +765,8 @@ mod tests {
             ..sample_event_summary(event_id, group_id)
         };
         let published_event = sample_event_summary(event_id, group_id);
+        let community = sample_community(community_id);
+        let community_copy = community.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -777,6 +805,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(community_copy.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -787,7 +819,10 @@ mod tests {
                     && notification.recipients == vec![member_id]
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventPublished>(value.clone())
-                            .map(|template| template.link == "/group/test-group/event/sample-event")
+                            .map(|template| {
+                                template.link == "/group/test-group/event/sample-event"
+                                    && template.theme.primary_color == community.theme.primary_color
+                            })
                             .unwrap_or(false)
                     })
             })
@@ -931,6 +966,8 @@ mod tests {
             starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
             ..before.clone()
         };
+        let community = sample_community(community_id);
+        let community_copy = community.clone();
         let event_form = sample_event_form();
         let body = serde_qs::to_string(&event_form).unwrap();
 
@@ -973,6 +1010,10 @@ mod tests {
             .times(1)
             .withf(move |eid| *eid == event_id)
             .returning(move |_| Ok(vec![recipient_id]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(community_copy.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -983,7 +1024,10 @@ mod tests {
                     && notification.recipients == vec![recipient_id]
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventRescheduled>(value.clone())
-                            .map(|template| template.link == "/group/test-group/event/sample-event")
+                            .map(|template| {
+                                template.link == "/group/test-group/event/sample-event"
+                                    && template.theme.primary_color == community.theme.primary_color
+                            })
                             .unwrap_or(false)
                     })
             })

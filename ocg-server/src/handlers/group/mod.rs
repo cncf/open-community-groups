@@ -88,11 +88,15 @@ pub(crate) async fn join_group(
     db.join_group(community_id, group_id, user.user_id).await?;
 
     // Enqueue welcome to group notification
-    let group = db.get_group_summary(community_id, group_id).await?;
+    let (community, group) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_group_summary(community_id, group_id)
+    )?;
     let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
     let template_data = GroupWelcome {
         link: format!("{}/group/{}", base_url, group.slug),
         group,
+        theme: community.theme,
     };
     let notification = NewNotification {
         attachments: vec![],
@@ -304,6 +308,8 @@ mod tests {
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let community = sample_community(community_id);
+        let community_copy = community.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -327,6 +333,10 @@ mod tests {
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(sample_group_summary(group_id)));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(community_copy.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -338,7 +348,9 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|data| {
                         serde_json::from_value::<GroupWelcome>(data.clone())
                             .map(|welcome| {
-                                welcome.group.group_id == group_id && welcome.link == "/group/test-group"
+                                welcome.group.group_id == group_id
+                                    && welcome.link == "/group/test-group"
+                                    && welcome.theme.primary_color == community.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

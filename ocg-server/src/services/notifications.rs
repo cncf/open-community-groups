@@ -426,7 +426,7 @@ mod tests {
             attachments: vec![],
             kind: NotificationKind::EmailVerification,
             recipients: expected_recipients.clone(),
-            template_data: Some(json!({ "link": "https://example.test/verify" })),
+            template_data: Some(sample_email_verification_template_data()),
         };
 
         // Setup database mock
@@ -779,5 +779,15 @@ mod tests {
             cancellation_token: CancellationToken::new(),
             email_sender,
         }
+    }
+
+    /// Sample template payload for email verification notifications.
+    fn sample_email_verification_template_data() -> serde_json::Value {
+        json!({
+            "link": "https://example.test/verify",
+            "theme": {
+                "primary_color": "#000000"
+            }
+        })
     }
 }

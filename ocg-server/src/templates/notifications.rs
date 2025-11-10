@@ -3,7 +3,7 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{event::EventSummary, group::GroupSummary};
+use crate::types::{community::Theme, event::EventSummary, group::GroupSummary};
 
 // Emails templates.
 
@@ -15,6 +15,8 @@ pub(crate) struct CommunityTeamInvitation {
     pub community_name: String,
     /// Link to manage invitations in the dashboard.
     pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for email verification notification.
@@ -23,36 +25,44 @@ pub(crate) struct CommunityTeamInvitation {
 pub(crate) struct EmailVerification {
     /// Verification link for the user to confirm their email address.
     pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for event canceled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_canceled.html")]
 pub(crate) struct EventCanceled {
-    /// Link to the event page.
-    pub link: String,
     /// Event summary data.
     pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for event published notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_published.html")]
 pub(crate) struct EventPublished {
-    /// Link to the event page.
-    pub link: String,
     /// Event summary data.
     pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for event rescheduled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_rescheduled.html")]
 pub(crate) struct EventRescheduled {
-    /// Link to the event page.
-    pub link: String,
     /// Event summary data.
     pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for event welcome notification.
@@ -73,6 +83,8 @@ pub(crate) struct GroupTeamInvitation {
     pub group: GroupSummary,
     /// Link to manage invitations in the dashboard.
     pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for group welcome notification.
@@ -83,4 +95,6 @@ pub(crate) struct GroupWelcome {
     pub group: GroupSummary,
     /// Link to the group page.
     pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }

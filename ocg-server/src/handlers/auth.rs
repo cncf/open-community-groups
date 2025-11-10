@@ -429,11 +429,13 @@ pub(crate) async fn sign_up(
 
     // Enqueue email verification notification
     if let Some(code) = email_verification_code {
+        let community = db.get_community(community_id).await?;
         let template_data = EmailVerification {
             link: format!(
                 "{}/verify-email/{code}",
                 cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
             ),
+            theme: community.theme,
         };
         let notification = NewNotification {
             attachments: vec![],
@@ -693,6 +695,7 @@ mod tests {
             images::MockImageStorage,
             notifications::{MockNotificationsManager, NotificationKind},
         },
+        templates::notifications::EmailVerification as EmailVerificationTemplate,
     };
 
     use super::*;
@@ -1574,6 +1577,8 @@ mod tests {
         let email_verification_code = Uuid::new_v4();
         let user = sample_auth_user(Uuid::new_v4(), "hash");
         let user_copy = user.clone();
+        let community = sample_community(community_id);
+        let community_copy = community.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1593,6 +1598,10 @@ mod tests {
                     && !verify
             })
             .returning(move |_, _, _| Ok((user_copy.clone(), Some(email_verification_code))));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(community_copy.clone()));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
@@ -1610,10 +1619,15 @@ mod tests {
             .withf(move |notification| {
                 matches!(&notification.kind, NotificationKind::EmailVerification)
                     && notification.recipients == vec![user.user_id]
-                    && notification.template_data
-                        == Some(json!({
-                            "link": format!("https://app.example/verify-email/{email_verification_code}"),
-                        }))
+                    && notification.template_data.as_ref().is_some_and(|value| {
+                        serde_json::from_value::<EmailVerificationTemplate>(value.clone())
+                            .map(|template| {
+                                template.link
+                                    == format!("https://app.example/verify-email/{email_verification_code}")
+                                    && template.theme.primary_color == community.theme.primary_color
+                            })
+                            .unwrap_or(false)
+                    })
             })
             .returning(|_| Box::pin(async { Ok(()) }));
 
