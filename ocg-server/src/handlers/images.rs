@@ -16,7 +16,6 @@ use axum::{
 use image::ImageFormat;
 use quick_xml::{Reader, events::Event};
 use serde_json::json;
-use sha2::{Digest, Sha256};
 use tracing::instrument;
 
 use crate::{
@@ -24,6 +23,7 @@ use crate::{
     config::HttpServerConfig,
     handlers::error::HandlerError,
     services::images::{DynImageStorage, NewImage},
+    util::compute_hash,
 };
 
 /// Maximum payload size allowed for image uploads (2 MiB).
@@ -133,13 +133,6 @@ pub(crate) async fn upload(
 }
 
 // Helpers
-
-/// Computes the SHA-256 hash of the provided data and returns a hexadecimal string.
-fn compute_hash(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
-}
 
 /// Detects the image format using the `image` crate with a fallback for SVGs.
 fn detect_image_format(bytes: &[u8], extension: &str) -> Result<SupportedImageFormat> {

@@ -156,6 +156,7 @@ pub(crate) async fn cancel(
             let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
             let template_data = EventCanceled { link, event };
             let notification = NewNotification {
+                attachments: vec![],
                 kind: NotificationKind::EventCanceled,
                 recipients: user_ids,
                 template_data: Some(serde_json::to_value(&template_data)?),
@@ -206,6 +207,7 @@ pub(crate) async fn publish(
             let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
             let template_data = EventPublished { link, event };
             let notification = NewNotification {
+                attachments: vec![],
                 kind: NotificationKind::EventPublished,
                 recipients: user_ids,
                 template_data: Some(serde_json::to_value(&template_data)?),
@@ -292,6 +294,7 @@ pub(crate) async fn update(
             let link = format!("{}/group/{}/event/{}", base, after.group_slug, after.slug);
             let template_data = EventRescheduled { event: after, link };
             let notification = NewNotification {
+                attachments: vec![],
                 kind: NotificationKind::EventRescheduled,
                 recipients: user_ids,
                 template_data: Some(serde_json::to_value(&template_data)?),

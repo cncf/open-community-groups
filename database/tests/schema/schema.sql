@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(159);
+select plan(167);
 
 -- ============================================================================
 -- TESTS
@@ -14,6 +14,7 @@ select has_extension('pgcrypto');
 select has_extension('postgis');
 
 -- Test: check expected tables exist
+select has_table('attachment');
 select has_table('community');
 select has_table('community_site_layout');
 select has_table('community_team');
@@ -33,11 +34,22 @@ select has_table('group_team');
 select has_table('images');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
+select has_table('notification_attachment');
 select has_table('region');
 select has_table('session');
 select has_table('session_kind');
 select has_table('session_speaker');
 select has_table('user');
+
+-- Test: attachment columns should match expected
+select columns_are('attachment', array[
+    'attachment_id',
+    'content_type',
+    'created_at',
+    'data',
+    'file_name',
+    'hash'
+]);
 
 -- Test: community columns should match expected
 select columns_are('community', array[
@@ -317,6 +329,12 @@ select columns_are('legacy_event_speaker', array[
     'title'
 ]);
 
+-- Test: notification_attachment columns should match expected
+select columns_are('notification_attachment', array[
+    'notification_id',
+    'attachment_id'
+]);
+
 -- Test: region columns should match expected
 select columns_are('region', array[
     'region_id',
@@ -356,6 +374,7 @@ select columns_are('user', array[
 ]);
 
 -- Test: check tables have expected primary keys
+select has_pk('attachment');
 select has_pk('community');
 select has_pk('community_site_layout');
 select has_pk('community_team');
@@ -375,6 +394,7 @@ select has_pk('group_team');
 select has_pk('images');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
+select has_pk('notification_attachment');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
@@ -382,6 +402,12 @@ select has_pk('session_speaker');
 select has_pk('user');
 
 -- Check tables have expected indexes
+-- Test: attachment indexes should match expected
+select indexes_are('attachment', array[
+    'attachment_pkey',
+    'attachment_hash_idx'
+]);
+
 -- Test: community indexes should match expected
 select indexes_are('community', array[
     'community_pkey',
@@ -448,6 +474,12 @@ select indexes_are('legacy_event_host', array[
 select indexes_are('legacy_event_speaker', array[
     'legacy_event_speaker_pkey',
     'legacy_event_speaker_event_id_idx'
+]);
+
+-- Test: notification_attachment indexes should match expected
+select indexes_are('notification_attachment', array[
+    'notification_attachment_pkey',
+    'notification_attachment_attachment_id_idx'
 ]);
 
 -- Test: session indexes should match expected

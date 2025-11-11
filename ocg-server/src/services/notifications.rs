@@ -7,7 +7,10 @@ use askama::Template;
 use async_trait::async_trait;
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
-    message::{Mailbox, MessageBuilder, header::ContentType},
+    message::{
+        Mailbox, MessageBuilder, MultiPart, SinglePart,
+        header::{ContentDisposition, ContentType},
+    },
     transport::smtp::authentication::Credentials,
 };
 #[cfg(test)]
@@ -154,7 +157,15 @@ impl Worker {
             let (subject, body) = Self::prepare_content(notification)?;
 
             // Prepare message and send email
-            let err = match self.send_email(&notification.email, subject.as_str(), body).await {
+            let err = match self
+                .send_email(
+                    &notification.email,
+                    subject.as_str(),
+                    body,
+                    &notification.attachments,
+                )
+                .await
+            {
                 Ok(()) => None,
                 Err(err) => Some(err.to_string()),
             };
@@ -234,17 +245,35 @@ impl Worker {
     }
 
     /// Send an email to the specified address with the given subject and body.
-    async fn send_email(&self, to_address: &str, subject: &str, body: String) -> Result<()> {
-        // Prepare message
-        let message = MessageBuilder::new()
+    async fn send_email(
+        &self,
+        to_address: &str,
+        subject: &str,
+        body: String,
+        attachments: &[Attachment],
+    ) -> Result<()> {
+        // Prepare email message
+        let body_part = SinglePart::builder().header(ContentType::TEXT_HTML).body(body);
+        let builder = MessageBuilder::new()
             .from(Mailbox::new(
                 Some(self.cfg.from_name.clone()),
                 self.cfg.from_address.parse()?,
             ))
             .to(to_address.parse()?)
-            .header(ContentType::TEXT_HTML)
-            .subject(subject)
-            .body(body)?;
+            .subject(subject);
+        let message = if attachments.is_empty() {
+            builder.singlepart(body_part)?
+        } else {
+            let mut multipart = MultiPart::mixed().singlepart(body_part);
+            for attachment in attachments {
+                let attachment_part = SinglePart::builder()
+                    .header(ContentType::parse(&attachment.content_type)?)
+                    .header(ContentDisposition::attachment(&attachment.file_name))
+                    .body(attachment.data.clone());
+                multipart = multipart.singlepart(attachment_part);
+            }
+            builder.multipart(multipart)?
+        };
 
         // Send email
         if let Some(whitelist) = &self.cfg.rcpts_whitelist {
@@ -299,13 +328,27 @@ impl EmailSender for LettreEmailSender {
     }
 }
 
+/// Represents a file that should be sent with a notification.
+#[derive(Debug, Clone)]
+pub(crate) struct Attachment {
+    /// MIME type for the attachment body.
+    pub content_type: String,
+    /// Raw attachment data.
+    pub data: Vec<u8>,
+    /// File name shown to recipients.
+    pub file_name: String,
+}
+
 /// Data required to create a new notification.
 #[derive(Debug, Clone)]
 pub(crate) struct NewNotification {
+    /// Files to include in the notification email.
+    pub attachments: Vec<Attachment>,
     /// The type of notification to send.
     pub kind: NotificationKind,
     /// The user IDs to notify.
     pub recipients: Vec<Uuid>,
+
     /// Optional template data for the notification content.
     pub template_data: Option<serde_json::Value>,
 }
@@ -313,12 +356,15 @@ pub(crate) struct NewNotification {
 /// Data required to deliver a notification to a user.
 #[derive(Debug, Clone)]
 pub(crate) struct Notification {
-    /// Unique identifier for the notification.
-    pub notification_id: Uuid,
+    /// Files included with the notification.
+    pub attachments: Vec<Attachment>,
     /// Email address to send the notification to.
     pub email: String,
     /// The type of notification.
     pub kind: NotificationKind,
+    /// Unique identifier for the notification.
+    pub notification_id: Uuid,
+
     /// Optional template data for the notification content.
     pub template_data: Option<serde_json::Value>,
 }
@@ -359,7 +405,7 @@ mod tests {
     };
 
     use super::{
-        DynEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
+        Attachment, DynEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
         NotificationsManager, PgNotificationsManager, Worker,
     };
 
@@ -369,6 +415,7 @@ mod tests {
         let recipient = Uuid::new_v4();
         let expected_recipients = vec![recipient];
         let notification = NewNotification {
+            attachments: vec![],
             kind: NotificationKind::EmailVerification,
             recipients: expected_recipients.clone(),
             template_data: Some(json!({ "link": "https://example.test/verify" })),
@@ -382,6 +429,7 @@ mod tests {
                 notif.kind.to_string() == NotificationKind::EmailVerification.to_string()
                     && notif.recipients == expected_recipients
                     && notif.template_data.is_some()
+                    && notif.attachments.is_empty()
             })
             .returning(|_| Ok(()));
         let db: DynDB = Arc::new(db);
@@ -396,9 +444,75 @@ mod tests {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let notification = Notification {
-            notification_id: Uuid::new_v4(),
+            attachments: vec![],
             email: "notify@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
+            notification_id: Uuid::new_v4(),
+            template_data: Some(json!({ "link": "https://example.test/verify" })),
+        };
+        let notification_id = notification.notification_id;
+        let recipient = notification.email.clone();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_tx_begin().times(1).returning(move || Ok(client_id));
+        db.expect_get_pending_notification()
+            .times(1)
+            .withf(move |cid| *cid == client_id)
+            .returning(move |_| Ok(Some(notification.clone())));
+        db.expect_update_notification()
+            .times(1)
+            .withf(move |cid, notif, err| {
+                *cid == client_id && notif.notification_id == notification_id && err.is_none()
+            })
+            .returning(|_, _, _| Ok(()));
+        db.expect_tx_commit()
+            .times(1)
+            .withf(move |cid| *cid == client_id)
+            .returning(|_| Ok(()));
+        let db: DynDB = Arc::new(db);
+
+        // Setup email sender mock
+        let mut es = MockEmailSender::new();
+        es.expect_send()
+            .times(1)
+            .withf(move |message| {
+                message
+                    .envelope()
+                    .to()
+                    .iter()
+                    .any(|rcpt| rcpt.to_string() == recipient)
+            })
+            .returning(|_| Box::pin(async { Ok::<(), anyhow::Error>(()) }));
+        let es: DynEmailSender = Arc::new(es);
+
+        // Setup worker and deliver notification
+        let mut worker = Worker {
+            db,
+            cfg: sample_email_config(None),
+            cancellation_token: CancellationToken::new(),
+            email_sender: es,
+        };
+        let delivered = worker.deliver_notification().await.unwrap();
+
+        // Check result matches expectations
+        assert!(delivered);
+    }
+
+    #[tokio::test]
+    async fn test_worker_deliver_notification_sends_pending_notification_with_attachment() {
+        // Setup identifiers and data structures
+        let client_id = Uuid::new_v4();
+        let attachments = vec![Attachment {
+            content_type: "text/calendar".to_string(),
+            data: b"BEGIN:VCALENDAR".to_vec(),
+            file_name: "event.ics".to_string(),
+        }];
+        let notification = Notification {
+            attachments: attachments.clone(),
+            email: "notify@example.test".to_string(),
+            kind: NotificationKind::EmailVerification,
+            notification_id: Uuid::new_v4(),
             template_data: Some(json!({ "link": "https://example.test/verify" })),
         };
         let notification_id = notification.notification_id;
@@ -491,9 +605,10 @@ mod tests {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let notification = Notification {
-            notification_id: Uuid::new_v4(),
+            attachments: vec![],
             email: "notify@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
+            notification_id: Uuid::new_v4(),
             template_data: Some(json!({ "link": "https://example.test/verify" })),
         };
         let notification_id = notification.notification_id;
@@ -543,9 +658,10 @@ mod tests {
     fn test_worker_prepare_content_email_verification() {
         // Setup notification
         let notification = Notification {
-            notification_id: Uuid::new_v4(),
+            attachments: vec![],
             email: "user@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
+            notification_id: Uuid::new_v4(),
             template_data: Some(json!({ "link": "https://example.test/verify" })),
         };
 
@@ -562,9 +678,10 @@ mod tests {
     fn test_worker_prepare_content_missing_data() {
         // Setup notification
         let notification = Notification {
-            notification_id: Uuid::new_v4(),
+            attachments: vec![],
             email: "user@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
+            notification_id: Uuid::new_v4(),
             template_data: None,
         };
 
@@ -599,6 +716,7 @@ mod tests {
                 "notify@example.test",
                 "Subject line",
                 "<p>Body content</p>".to_string(),
+                &[],
             )
             .await
             .unwrap();
@@ -619,6 +737,7 @@ mod tests {
                 "other@example.test",
                 "Subject line",
                 "<p>Body content</p>".to_string(),
+                &[],
             )
             .await
             .unwrap();

@@ -63,6 +63,7 @@ pub(crate) async fn add(
         ),
     };
     let notification = NewNotification {
+        attachments: vec![],
         kind: NotificationKind::CommunityTeamInvitation,
         recipients: vec![member.user_id],
         template_data: Some(serde_json::to_value(&template_data)?),
