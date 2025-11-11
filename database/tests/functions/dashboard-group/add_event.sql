@@ -194,6 +194,7 @@ select is(
         "timezone": "America/Los_Angeles",
         "banner_url": "https://example.com/banner.jpg",
         "capacity": 100,
+        "remaining_capacity": 100,
         "description_short": "Short description",
         "starts_at": 1735754400,
         "ends_at": 1735761600,

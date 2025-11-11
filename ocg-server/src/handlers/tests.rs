@@ -305,6 +305,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         group_country_name: Some("United States".to_string()),
         group_state: Some("MA".to_string()),
         logo_url: Some("https://example.test/logo.png".to_string()),
+        remaining_capacity: None,
         starts_at: Some(starts_at),
         venue_city: Some("Boston".to_string()),
     }

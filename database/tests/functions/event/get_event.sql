@@ -199,6 +199,7 @@ select is(
         "ends_at": 1718470800,
         "canceled": false,
         "capacity": 500,
+        "remaining_capacity": 498,
         "event_id": "00000000-0000-0000-0000-000000000041",
         "logo_url": "https://example.com/event-logo.png",
         "sessions": {},

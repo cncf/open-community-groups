@@ -17,6 +17,8 @@ select plan(4);
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
+\set attendee1ID '00000000-0000-0000-0000-000000000043'
+\set attendee2ID '00000000-0000-0000-0000-000000000044'
 
 -- ============================================================================
 -- SEED DATA
@@ -78,6 +80,33 @@ insert into "group" (
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326)
 );
 
+-- Attendees for remaining capacity verification
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    auth_hash,
+    community_id,
+    created_at
+) values (
+    :'attendee1ID',
+    'attendee3@example.com',
+    'attendee3',
+    true,
+    'attendee-hash',
+    :'communityID',
+    '2024-01-01 00:00:00+00'
+), (
+    :'attendee2ID',
+    'attendee4@example.com',
+    'attendee4',
+    true,
+    'attendee-hash',
+    :'communityID',
+    '2024-01-01 00:00:00+00'
+);
+
 -- Inactive group
 insert into "group" (
     group_id,
@@ -113,6 +142,7 @@ insert into event (
     venue_name,
     venue_address,
     venue_city,
+    capacity,
     logo_url
 ) values (
     :'eventID',
@@ -131,8 +161,14 @@ insert into event (
     'Convention Center',
     '123 Main St',
     'New York',
+    10,
     'https://example.com/event-logo.png'
 );
+
+insert into event_attendee (event_id, user_id)
+values
+    (:'eventID', :'attendee1ID'),
+    (:'eventID', :'attendee2ID');
 
 -- Unpublished event
 insert into event (
@@ -218,7 +254,8 @@ select is(
         "starts_at": 1718442000,
         "venue_address": "123 Main St",
         "venue_city": "New York",
-        "venue_name": "Convention Center"
+        "venue_name": "Convention Center",
+        "remaining_capacity": 8
     }'::jsonb,
     'get_event_detailed should return correct detailed event data as JSON'
 );
