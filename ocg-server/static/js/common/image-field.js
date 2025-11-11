@@ -291,7 +291,7 @@ export class ImageField extends LitWrapper {
           <p class="form-legend">
             ${isBanner
               ? "Images must be at least 1200x600 in a wide ratio (16:9 or 3:1). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
-              : "Images must be at least 400x400, preferably square. Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."}
+              : "Images must be at least 400x400 (square). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."}
           </p>
           <div class="flex flex-wrap gap-3">
             <label

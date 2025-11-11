@@ -4,7 +4,6 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 /**
  * BannerImage component for displaying banner images with loading skeleton.
  * Handles image loading states gracefully by showing skeleton placeholder.
- * Uses object-contain to display full image without cropping.
  * @extends LitWrapper
  */
 export class BannerImage extends LitWrapper {
@@ -114,7 +113,7 @@ export class BannerImage extends LitWrapper {
           alt="${this.alt}"
           @load="${this._handleImageLoad}"
           @error="${this._handleImageError}"
-          class="w-auto max-w-full bg-white border-[5px] border-white outline outline-1 outline-stone-200 rounded-lg overflow-hidden h-full ${imageVisibility} transition-opacity duration-300"
+          class="w-auto max-w-full object-contain bg-white border-[5px] border-white outline outline-1 outline-stone-200 rounded-lg overflow-hidden h-full ${imageVisibility} transition-opacity duration-300"
           loading="lazy"
         />
       </div>

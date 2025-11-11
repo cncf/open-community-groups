@@ -35,53 +35,44 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-5">
-          <label for="logo_url" class="form-label">
-            Logo URL <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="url"
-                   name="logo_url"
-                   id="logo_url"
-                   class="input-primary"
-                   placeholder="https://example.com/logo.png"
-                   required>
-          </div>
-        </div>
-        {# End Logo URL -#}
-
-        {# Website URL -#}
-        <div class="col-span-full lg:col-span-5">
-          <label for="website_url" class="form-label">Website</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="website_url"
-                   id="website_url"
-                   class="input-primary"
-                   placeholder="https://example.com">
-          </div>
-        </div>
-        {# End Website URL -#}
+          <image-field class="w-full block" label="Logo URL" name="logo_url" image-kind="avatar" instructions="URL to the sponsor's logo image." required>
+        </image-field>
       </div>
-    </div>
+      {# End Logo URL -#}
 
-    <div class="mt-6 flex items-center justify-end gap-x-6">
-      {# Cancel button -#}
-      <button id="cancel-button"
-              type="button"
-              hx-get="/dashboard/group?tab=sponsors"
-              hx-target="body"
-              hx-indicator="#dashboard-spinner"
-              class="btn-primary-outline">Cancel</button>
-      {# End cancel button -#}
-
-      {# Save button -#}
-      <button type="submit" class="btn-primary relative">
-        {% call common::btn_spinner(id = "group-sponsor-create-spinner", spinner_type = "2") -%}
-        Add Sponsor
-      </button>
-      {# End save button -#}
+      {# Website URL -#}
+      <div class="col-span-full lg:col-span-5">
+        <label for="website_url" class="form-label">Website</label>
+        <div class="mt-2">
+          <input type="url"
+                 name="website_url"
+                 id="website_url"
+                 class="input-primary"
+                 placeholder="https://example.com">
+        </div>
+      </div>
+      {# End Website URL -#}
     </div>
   </div>
+
+  <div class="mt-6 flex items-center justify-end gap-x-6">
+    {# Cancel button -#}
+    <button id="cancel-button"
+            type="button"
+            hx-get="/dashboard/group?tab=sponsors"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline">Cancel</button>
+    {# End cancel button -#}
+
+    {# Save button -#}
+    <button type="submit" class="btn-primary relative">
+      {% call common::btn_spinner(id = "group-sponsor-create-spinner", spinner_type = "2") -%}
+      Add Sponsor
+    </button>
+    {# End save button -#}
+  </div>
+</div>
 </form>
 
 <script type="module">

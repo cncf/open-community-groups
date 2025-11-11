@@ -145,352 +145,338 @@
 
               {# Logo URL -#}
               <div class="col-span-full lg:col-span-3">
-                <label for="logo_url" class="form-label">Logo URL</label>
-                <div class="mt-2">
-                  <input type="url"
-                         name="logo_url"
-                         id="logo_url"
-                         class="input-primary"
-                         placeholder="https://example.com/logo.png">
-                </div>
-                <p class="form-legend">URL to the event's logo image.</p>
-              </div>
-              {# End Logo URL -#}
-
-              {# Banner URL -#}
-              <div class="col-span-full lg:col-span-3">
-                <label for="banner_url" class="form-label">Banner URL</label>
-                <div class="mt-2">
-                  <input type="url"
-                         name="banner_url"
-                         id="banner_url"
-                         class="input-primary"
-                         placeholder="https://example.com/banner.jpg">
-                </div>
-                <p class="form-legend">URL to the event's banner image.</p>
-              </div>
-              {# End Banner URL -#}
-
-              {# Short Description -#}
-              <div class="col-span-full">
-                <label for="description_short" class="form-label">Short Description</label>
-                <div class="mt-2">
-                  <textarea id="description_short"
-                            name="description_short"
-                            rows="2"
-                            class="input-primary"
-                            maxlength="200"></textarea>
-                </div>
-                <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
-              </div>
-              {# End Short Description -#}
-
-              {# Event Description -#}
-              <div class="col-span-full">
-                <label for="description" class="form-label">
-                  Description <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2">
-                  <markdown-editor id="description" name="description" required></markdown-editor>
-                </div>
-                <p class="form-legend">Full description of the event and its purpose.</p>
-              </div>
-              {# End Event Description -#}
+                <image-field class="w-full block" label="Logo URL" name="logo_url" image-kind="avatar" instructions="URL to the event's logo image.">
+              </image-field>
             </div>
+            {# End Logo URL -#}
+
+            {# Banner URL -#}
+            <div class="col-span-full">
+              <image-field class="w-full block" label="Banner URL" name="banner_url" image-kind="banner" instructions="URL to the event's banner image.">
+            </image-field>
           </div>
+          {# End Banner URL -#}
 
-          {# Additional Information section -#}
-          <div class="border-t border-stone-900/10 pt-12">
-            {% call macros::form_title(title = "Additional Information", description = "Optional event settings and external links.") -%}
-
-            <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-              {# Capacity -#}
-              <div class="col-span-full lg:col-span-2">
-                <label for="capacity" class="form-label">Capacity</label>
-                <div class="mt-2">
-                  <input type="number"
-                         name="capacity"
-                         id="capacity"
-                         min="1"
-                         class="input-primary"
-                         placeholder="100">
-                </div>
-                <p class="form-legend">Maximum number of attendees.</p>
-              </div>
-              {# End Capacity -#}
-
-              <div class="col-span-4"></div>
-
-              {# Registration required -#}
-              <div class="col-span-full lg:col-span-3">
-                <label class="inline-flex items-center cursor-pointer">
-                  <input id="toggle_registration_required"
-                         name="toggle_registration_required"
-                         value="required"
-                         type="checkbox"
-                         class="sr-only peer">
-                  <input type="hidden"
-                         id="registration_required"
-                         name="registration_required"
-                         value="false">
-                  <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-                  </div>
-                  <span class="ms-3 text-sm font-medium text-stone-900">Registration Required</span>
-                </label>
-                <p class="form-legend">Whether attendees must register in advance.</p>
-              </div>
-              {# End Registration required -#}
-
-              <div class="col-span-3"></div>
-
-              {# Meetup URL -#}
-              <div class="col-span-full lg:col-span-3">
-                <label for="meetup_url" class="form-label">Meetup.com URL</label>
-                <div class="mt-2">
-                  <input type="url"
-                         name="meetup_url"
-                         id="meetup_url"
-                         class="input-primary"
-                         placeholder="https://meetup.com/group/events/123456">
-                </div>
-                <p class="form-legend">Link to the Meetup.com event page.</p>
-              </div>
-              {# End Meetup URL -#}
-
-              <div class="col-span-3"></div>
-
-              {# Photos URLs -#}
-              <div class="col-span-3">
-                <label for="photos_urls" class="form-label">Photos URLs</label>
-                <div class="mt-2">
-                  <multiple-inputs field-name="photos_urls" input-type="url" label="Photo URL" legend="Optional links to photos related to the event.">
-                  </multiple-inputs>
-                </div>
-              </div>
-              {# End Photos URLs -#}
-
-              <div class="col-span-3"></div>
-
-              {# Tags -#}
-              <div class="col-span-3">
-                <label for="photos_urls" class="form-label">Tags</label>
-                <div class="mt-2">
-                  <multiple-inputs field-name="tags" input-type="text" label="Tag" legend="Optional tags to help categorize and find the event.">
-                  </multiple-inputs>
-                </div>
-              </div>
-              {# End Tags -#}
+          {# Short Description -#}
+          <div class="col-span-full">
+            <label for="description_short" class="form-label">Short Description</label>
+            <div class="mt-2">
+              <textarea id="description_short"
+                        name="description_short"
+                        rows="2"
+                        class="input-primary"
+                        maxlength="200"></textarea>
             </div>
+            <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
           </div>
-          {# End additional information section -#}
-        </form>
+          {# End Short Description -#}
+
+          {# Event Description -#}
+          <div class="col-span-full">
+            <label for="description" class="form-label">
+              Description <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <markdown-editor id="description" name="description" required></markdown-editor>
+            </div>
+            <p class="form-legend">Full description of the event and its purpose.</p>
+          </div>
+          {# End Event Description -#}
+        </div>
       </div>
-      {# End Event Details Tab -#}
 
-      {# Date & Venue Tab -#}
-      <div data-content="date-venue" class="hidden">
-        <form id="date-venue-form">
-          <div class="space-y-12">
-            {# Date and Time section -#}
-            <div class="border-b border-stone-900/10 pb-12">
-              <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
-              <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-                {# Timezone -#}
-                <div class="col-span-full lg:col-span-3">
-                  <label for="timezone" class="form-label">
-                    Timezone <span class="asterisk">*</span>
-                  </label>
-                  <div class="mt-2 grid grid-cols-1">
-                    <select id="timezone" name="timezone" class="select-primary" required>
-                      <option value="">Select a timezone</option>
-                      {% for timezone in timezones %}<option value="{{ timezone }}">{{ timezone }}</option>{% endfor %}
-                    </select>
-                  </div>
-                  <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
-                </div>
-                {# End Timezone -#}
+      {# Additional Information section -#}
+      <div class="border-t border-stone-900/10 pt-12">
+        {% call macros::form_title(title = "Additional Information", description = "Optional event settings and external links.") -%}
 
-                <div class="col-span-4"></div>
-
-                {# Start date/time -#}
-                <div class="col-span-full lg:col-span-3">
-                  <label for="starts_at" class="form-label">Start Date & Time</label>
-                  <div class="mt-2">
-                    <input type="datetime-local"
-                           name="starts_at"
-                           id="starts_at"
-                           class="input-primary">
-                  </div>
-                  <p class="form-legend">When the event starts.</p>
-                </div>
-                {# End Start date/time -#}
-
-                {# End date/time -#}
-                <div class="col-span-full lg:col-span-3">
-                  <label for="ends_at" class="form-label">End Date & Time</label>
-                  <div class="mt-2">
-                    <input type="datetime-local"
-                           name="ends_at"
-                           id="ends_at"
-                           class="input-primary">
-                  </div>
-                  <p class="form-legend">When the event ends.</p>
-                </div>
-                {# End End date/time -#}
-              </div>
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {# Capacity -#}
+          <div class="col-span-full lg:col-span-2">
+            <label for="capacity" class="form-label">Capacity</label>
+            <div class="mt-2">
+              <input type="number"
+                     name="capacity"
+                     id="capacity"
+                     min="1"
+                     class="input-primary"
+                     placeholder="100">
             </div>
-            {# End date and time section -#}
-
-            {# Venue Information section -#}
-            <div class="border-b border-stone-900/10 pb-12">
-              {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
-
-              <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-                {# Venue name -#}
-                <div class="col-span-full lg:col-span-3">
-                  <label for="venue_name" class="form-label">Venue Name</label>
-                  <div class="mt-2">
-                    <input type="text"
-                           name="venue_name"
-                           id="venue_name"
-                           class="input-primary"
-                           placeholder="Conference Center Amsterdam">
-                  </div>
-                  <p class="form-legend">Name of the venue where the event takes place.</p>
-                </div>
-                {# End Venue name -#}
-
-                <div class="col-span-3"></div>
-
-                {# Venue address -#}
-                <div class="col-span-full lg:col-span-4">
-                  <label for="venue_address" class="form-label">Address</label>
-                  <div class="mt-2">
-                    <input type="text"
-                           name="venue_address"
-                           id="venue_address"
-                           class="input-primary"
-                           placeholder="123 Main Street">
-                  </div>
-                  <p class="form-legend">Street address of the venue.</p>
-                </div>
-                {# End Venue address -#}
-
-                <div class="col-span-2"></div>
-
-                {# Venue city -#}
-                <div class="col-span-full lg:col-span-2">
-                  <label for="venue_city" class="form-label">City</label>
-                  <div class="mt-2">
-                    <input type="text"
-                           name="venue_city"
-                           id="venue_city"
-                           class="input-primary"
-                           placeholder="Amsterdam">
-                  </div>
-                  <p class="form-legend">City where the venue is located.</p>
-                </div>
-                {# End Venue city -#}
-
-                {# Venue zip code -#}
-                <div class="col-span-full lg:col-span-2">
-                  <label for="venue_zip_code" class="form-label">Zip Code</label>
-                  <div class="mt-2">
-                    <input type="text"
-                           name="venue_zip_code"
-                           id="venue_zip_code"
-                           class="input-primary"
-                           placeholder="1012 AB">
-                  </div>
-                  <p class="form-legend">Postal/zip code of the venue.</p>
-                </div>
-                {# End Venue zip code -#}
-
-                <div class="col-span-2"></div>
-              </div>
-            </div>
-            {# End venue information section -#}
-
-            {# Online Event Details section -#}
-            <div class="pb-12">
-              {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
-
-              <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-                {# Streaming URL -#}
-                <div class="col-span-full lg:col-span-3">
-                  <label for="streaming_url" class="form-label">Streaming URL</label>
-                  <div class="mt-2">
-                    <input type="url"
-                           name="streaming_url"
-                           id="streaming_url"
-                           class="input-primary"
-                           placeholder="https://zoom.us/j/123456789">
-                  </div>
-                  <p class="form-legend">URL for live streaming or video conference.</p>
-                </div>
-                {# End Streaming URL -#}
-
-                {# Recording URL -#}
-                <div class="col-span-full lg:col-span-3">
-                  <label for="recording_url" class="form-label">Recording URL</label>
-                  <div class="mt-2">
-                    <input type="url"
-                           name="recording_url"
-                           id="recording_url"
-                           class="input-primary"
-                           placeholder="https://youtube.com/watch?v=...">
-                  </div>
-                  <p class="form-legend">URL to the event recording (can be added after the event).</p>
-                </div>
-                {# End Recording URL -#}
-              </div>
-            </div>
-            {# End online event details section -#}
+            <p class="form-legend">Maximum number of attendees.</p>
           </div>
-        </form>
-      </div>
-      {# End Date & Venue Tab -#}
+          {# End Capacity -#}
 
-      {# Sessions Tab -#}
-      <div data-content="sessions" class="hidden">
-        <form id="sessions-form">
-          <div class="pb-12">
-            <div class="mt-10">
-              <sessions-section session-kinds="{{ session_kinds|json }}"></sessions-section>
+          <div class="col-span-4"></div>
+
+          {# Registration required -#}
+          <div class="col-span-full lg:col-span-3">
+            <label class="inline-flex items-center cursor-pointer">
+              <input id="toggle_registration_required"
+                     name="toggle_registration_required"
+                     value="required"
+                     type="checkbox"
+                     class="sr-only peer">
+              <input type="hidden"
+                     id="registration_required"
+                     name="registration_required"
+                     value="false">
+              <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+              </div>
+              <span class="ms-3 text-sm font-medium text-stone-900">Registration Required</span>
+            </label>
+            <p class="form-legend">Whether attendees must register in advance.</p>
+          </div>
+          {# End Registration required -#}
+
+          <div class="col-span-3"></div>
+
+          {# Meetup URL -#}
+          <div class="col-span-full lg:col-span-3">
+            <label for="meetup_url" class="form-label">Meetup.com URL</label>
+            <div class="mt-2">
+              <input type="url"
+                     name="meetup_url"
+                     id="meetup_url"
+                     class="input-primary"
+                     placeholder="https://meetup.com/group/events/123456">
+            </div>
+            <p class="form-legend">Link to the Meetup.com event page.</p>
+          </div>
+          {# End Meetup URL -#}
+
+          <div class="col-span-3"></div>
+
+          {# Photos URLs -#}
+          <div class="col-span-3">
+            <label for="photos_urls" class="form-label">Photos URLs</label>
+            <div class="mt-2">
+              <multiple-inputs field-name="photos_urls" input-type="url" label="Photo URL" legend="Optional links to photos related to the event.">
+              </multiple-inputs>
             </div>
           </div>
-        </form>
-      </div>
-      {# End Sessions Tab -#}
+          {# End Photos URLs -#}
 
-      {# Hosts & Sponsors Tab -#}
-      <div data-content="hosts-sponsors" class="hidden">
-        <form id="hosts-sponsors-form">
-          <div class="space-y-12">
-            {# Hosts Section -#}
-            <div class="border-b border-stone-900/10 pb-12">
-              <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
-              <div class="mt-5">
-                <user-search-selector field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
-              </div>
-            </div>
-            {# End Hosts Section -#}
+          <div class="col-span-3"></div>
 
-            {# Sponsors Section -#}
-            <div class="pb-12">
-              <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
-              <div class="mt-5">
-                <sponsors-section sponsors="{{ sponsors|json }}"></sponsors-section>
-              </div>
+          {# Tags -#}
+          <div class="col-span-3">
+            <label for="photos_urls" class="form-label">Tags</label>
+            <div class="mt-2">
+              <multiple-inputs field-name="tags" input-type="text" label="Tag" legend="Optional tags to help categorize and find the event.">
+              </multiple-inputs>
             </div>
-            {# End Sponsors Section -#}
           </div>
-        </form>
+          {# End Tags -#}
+        </div>
       </div>
-      {# End Hosts & Sponsors Tab -#}
-
-    </div>
+      {# End additional information section -#}
+    </form>
   </div>
+  {# End Event Details Tab -#}
+
+  {# Date & Venue Tab -#}
+  <div data-content="date-venue" class="hidden">
+    <form id="date-venue-form">
+      <div class="space-y-12">
+        {# Date and Time section -#}
+        <div class="border-b border-stone-900/10 pb-12">
+          <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+            {# Timezone -#}
+            <div class="col-span-full lg:col-span-3">
+              <label for="timezone" class="form-label">
+                Timezone <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2 grid grid-cols-1">
+                <select id="timezone" name="timezone" class="select-primary" required>
+                  <option value="">Select a timezone</option>
+                  {% for timezone in timezones %}<option value="{{ timezone }}">{{ timezone }}</option>{% endfor %}
+                </select>
+              </div>
+              <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
+            </div>
+            {# End Timezone -#}
+
+            <div class="col-span-4"></div>
+
+            {# Start date/time -#}
+            <div class="col-span-full lg:col-span-3">
+              <label for="starts_at" class="form-label">Start Date & Time</label>
+              <div class="mt-2">
+                <input type="datetime-local"
+                       name="starts_at"
+                       id="starts_at"
+                       class="input-primary">
+              </div>
+              <p class="form-legend">When the event starts.</p>
+            </div>
+            {# End Start date/time -#}
+
+            {# End date/time -#}
+            <div class="col-span-full lg:col-span-3">
+              <label for="ends_at" class="form-label">End Date & Time</label>
+              <div class="mt-2">
+                <input type="datetime-local"
+                       name="ends_at"
+                       id="ends_at"
+                       class="input-primary">
+              </div>
+              <p class="form-legend">When the event ends.</p>
+            </div>
+            {# End End date/time -#}
+          </div>
+        </div>
+        {# End date and time section -#}
+
+        {# Venue Information section -#}
+        <div class="border-b border-stone-900/10 pb-12">
+          {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
+
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+            {# Venue name -#}
+            <div class="col-span-full lg:col-span-3">
+              <label for="venue_name" class="form-label">Venue Name</label>
+              <div class="mt-2">
+                <input type="text"
+                       name="venue_name"
+                       id="venue_name"
+                       class="input-primary"
+                       placeholder="Conference Center Amsterdam">
+              </div>
+              <p class="form-legend">Name of the venue where the event takes place.</p>
+            </div>
+            {# End Venue name -#}
+
+            <div class="col-span-3"></div>
+
+            {# Venue address -#}
+            <div class="col-span-full lg:col-span-4">
+              <label for="venue_address" class="form-label">Address</label>
+              <div class="mt-2">
+                <input type="text"
+                       name="venue_address"
+                       id="venue_address"
+                       class="input-primary"
+                       placeholder="123 Main Street">
+              </div>
+              <p class="form-legend">Street address of the venue.</p>
+            </div>
+            {# End Venue address -#}
+
+            <div class="col-span-2"></div>
+
+            {# Venue city -#}
+            <div class="col-span-full lg:col-span-2">
+              <label for="venue_city" class="form-label">City</label>
+              <div class="mt-2">
+                <input type="text"
+                       name="venue_city"
+                       id="venue_city"
+                       class="input-primary"
+                       placeholder="Amsterdam">
+              </div>
+              <p class="form-legend">City where the venue is located.</p>
+            </div>
+            {# End Venue city -#}
+
+            {# Venue zip code -#}
+            <div class="col-span-full lg:col-span-2">
+              <label for="venue_zip_code" class="form-label">Zip Code</label>
+              <div class="mt-2">
+                <input type="text"
+                       name="venue_zip_code"
+                       id="venue_zip_code"
+                       class="input-primary"
+                       placeholder="1012 AB">
+              </div>
+              <p class="form-legend">Postal/zip code of the venue.</p>
+            </div>
+            {# End Venue zip code -#}
+
+            <div class="col-span-2"></div>
+          </div>
+        </div>
+        {# End venue information section -#}
+
+        {# Online Event Details section -#}
+        <div class="pb-12">
+          {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
+
+          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+            {# Streaming URL -#}
+            <div class="col-span-full lg:col-span-3">
+              <label for="streaming_url" class="form-label">Streaming URL</label>
+              <div class="mt-2">
+                <input type="url"
+                       name="streaming_url"
+                       id="streaming_url"
+                       class="input-primary"
+                       placeholder="https://zoom.us/j/123456789">
+              </div>
+              <p class="form-legend">URL for live streaming or video conference.</p>
+            </div>
+            {# End Streaming URL -#}
+
+            {# Recording URL -#}
+            <div class="col-span-full lg:col-span-3">
+              <label for="recording_url" class="form-label">Recording URL</label>
+              <div class="mt-2">
+                <input type="url"
+                       name="recording_url"
+                       id="recording_url"
+                       class="input-primary"
+                       placeholder="https://youtube.com/watch?v=...">
+              </div>
+              <p class="form-legend">URL to the event recording (can be added after the event).</p>
+            </div>
+            {# End Recording URL -#}
+          </div>
+        </div>
+        {# End online event details section -#}
+      </div>
+    </form>
+  </div>
+  {# End Date & Venue Tab -#}
+
+  {# Sessions Tab -#}
+  <div data-content="sessions" class="hidden">
+    <form id="sessions-form">
+      <div class="pb-12">
+        <div class="mt-10">
+          <sessions-section session-kinds="{{ session_kinds|json }}"></sessions-section>
+        </div>
+      </div>
+    </form>
+  </div>
+  {# End Sessions Tab -#}
+
+  {# Hosts & Sponsors Tab -#}
+  <div data-content="hosts-sponsors" class="hidden">
+    <form id="hosts-sponsors-form">
+      <div class="space-y-12">
+        {# Hosts Section -#}
+        <div class="border-b border-stone-900/10 pb-12">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
+          <div class="mt-5">
+            <user-search-selector field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
+          </div>
+        </div>
+        {# End Hosts Section -#}
+
+        {# Sponsors Section -#}
+        <div class="pb-12">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
+          <div class="mt-5">
+            <sponsors-section sponsors="{{ sponsors|json }}"></sponsors-section>
+          </div>
+        </div>
+        {# End Sponsors Section -#}
+      </div>
+    </form>
+  </div>
+  {# End Hosts & Sponsors Tab -#}
+
+</div>
+</div>
 </div>
 
 <script type="module">
