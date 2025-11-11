@@ -221,6 +221,7 @@ select is(
         "timezone": "Asia/Tokyo",
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
+        "remaining_capacity": 200,
         "description_short": "Updated short description",
         "starts_at": 1738386000,
         "ends_at": 1738393200,

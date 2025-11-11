@@ -61,6 +61,8 @@ pub struct EventSummary {
     pub group_state: Option<String>,
     /// URL to the event or group's logo image.
     pub logo_url: Option<String>,
+    /// Remaining capacity after subtracting registered attendees.
+    pub remaining_capacity: Option<i32>,
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
@@ -88,6 +90,7 @@ impl From<EventDetailed> for EventSummary {
             group_country_name: event.group_country_name,
             group_state: event.group_state,
             logo_url: event.logo_url,
+            remaining_capacity: event.remaining_capacity,
             starts_at: event.starts_at,
             venue_city: event.venue_city,
         }
@@ -177,6 +180,8 @@ pub struct EventDetailed {
     pub longitude: Option<f64>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
+    /// Remaining capacity after subtracting registered attendees.
+    pub remaining_capacity: Option<i32>,
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
@@ -259,6 +264,8 @@ pub struct EventFull {
     pub banner_url: Option<String>,
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
+    /// Remaining capacity after subtracting registered attendees.
+    pub remaining_capacity: Option<i32>,
     /// Brief event description.
     pub description_short: Option<String>,
     /// Event end time in UTC.

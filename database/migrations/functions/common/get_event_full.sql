@@ -98,6 +98,11 @@ returns json as $$
             and gt.role = 'organizer'
             and gt.accepted = true
         ),
+        'remaining_capacity',
+            case
+                when e.capacity is null then null
+                else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
+            end,
         'sessions', (
             with
             event_sessions as (
@@ -166,6 +171,11 @@ returns json as $$
     from event e
     join "group" g using (group_id)
     join event_category ec using (event_category_id)
+    left join (
+        select event_id, count(*)::int as attendee_count
+        from event_attendee
+        group by event_id
+    ) ea on ea.event_id = e.event_id
     where e.event_id = p_event_id
     and g.group_id = p_group_id
     and g.community_id = p_community_id;

@@ -14,6 +14,8 @@ select plan(4);
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000021'
+\set attendee1ID '00000000-0000-0000-0000-000000000041'
+\set attendee2ID '00000000-0000-0000-0000-000000000042'
 
 -- ============================================================================
 -- SEED DATA
@@ -75,6 +77,33 @@ insert into "group" (
     'https://example.com/group-logo.png'
 );
 
+-- Attendees for remaining capacity verification
+insert into "user" (
+    user_id,
+    email,
+    username,
+    email_verified,
+    auth_hash,
+    community_id,
+    created_at
+) values (
+    :'attendee1ID',
+    'attendee1@example.com',
+    'attendee1',
+    true,
+    'attendee-hash',
+    :'communityID',
+    '2024-01-01 00:00:00+00'
+), (
+    :'attendee2ID',
+    'attendee2@example.com',
+    'attendee2',
+    true,
+    'attendee-hash',
+    :'communityID',
+    '2024-01-01 00:00:00+00'
+);
+
 -- Event
 insert into event (
     event_id,
@@ -88,6 +117,7 @@ insert into event (
     starts_at,
     timezone,
     venue_city,
+    capacity,
     logo_url
 ) values (
     :'eventID',
@@ -101,8 +131,14 @@ insert into event (
     '2024-06-15 09:00:00+00',
     'America/New_York',
     'New York',
+    5,
     'https://example.com/event-logo.png'
 );
+
+insert into event_attendee (event_id, user_id)
+values
+    (:'eventID', :'attendee1ID'),
+    (:'eventID', :'attendee2ID');
 
 -- ============================================================================
 -- TESTS
@@ -132,7 +168,8 @@ select is(
         "group_state": "NY",
         "logo_url": "https://example.com/event-logo.png",
         "starts_at": 1718442000,
-        "venue_city": "New York"
+        "venue_city": "New York",
+        "remaining_capacity": 3
     }'::jsonb,
     'get_event_summary should return correct event summary data as JSON'
 );

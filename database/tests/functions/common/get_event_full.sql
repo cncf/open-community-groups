@@ -173,6 +173,12 @@ insert into event (
 insert into event_host (event_id, user_id)
 values (:'eventID', :'user1ID');
 
+-- Event Attendee
+insert into event_attendee (event_id, user_id, checked_in, created_at)
+values
+    (:'eventID', :'user1ID', true, '2024-01-01 00:00:00'),
+    (:'eventID', :'user2ID', false, '2024-01-01 00:00:00');
+
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
 values (:'groupID', :'user2ID', 'organizer', true, 1);
@@ -394,6 +400,7 @@ select is(
         "venue_city": "New York",
         "venue_name": "Convention Center",
         "venue_zip_code": "10001",
+        "remaining_capacity": 498,
         "group": {
             "active": true,
             "category": {

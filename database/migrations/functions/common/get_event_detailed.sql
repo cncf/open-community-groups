@@ -29,11 +29,22 @@ returns json as $$
         'starts_at', floor(extract(epoch from e.starts_at)),
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
-        'venue_name', e.venue_name
+        'venue_name', e.venue_name,
+
+        'remaining_capacity',
+            case
+                when e.capacity is null then null
+                else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
+            end
     )) as json_data
     from event e
     join "group" g using (group_id)
     join group_category gc on g.group_category_id = gc.group_category_id
+    left join (
+        select event_id, count(*)::int as attendee_count
+        from event_attendee
+        group by event_id
+    ) ea on ea.event_id = e.event_id
     where e.event_id = p_event_id
     and g.group_id = p_group_id
     and g.community_id = p_community_id;
