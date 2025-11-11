@@ -68,14 +68,14 @@ export class ImageField extends LitWrapper {
   _renderPlaceholder(isBanner) {
     if (this._hasImage) {
       return html`
-          <img
-            src="${this.value}"
-            alt="Image preview"
-            class="${isBanner
-              ? "h-full w-full object-contain rounded"
-              : "max-h-[86px] max-w-[86px] object-contain mx-auto"}"
-            loading="lazy"
-          />
+        <img
+          src="${this.value}"
+          alt="Image preview"
+          class="${isBanner
+            ? "h-full w-full object-contain rounded p-1"
+            : "max-h-[86px] max-w-[86px] object-contain mx-auto"}"
+          loading="lazy"
+        />
       `;
     }
 
