@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,12 +15,14 @@ select plan(7);
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
 \set user1ID '00000000-0000-0000-0000-000000000031'
+\set user2ID '00000000-0000-0000-0000-000000000032'
 \set eventOK '00000000-0000-0000-0000-000000000041'
 \set eventUnpublished '00000000-0000-0000-0000-000000000042'
 \set eventCanceled '00000000-0000-0000-0000-000000000043'
 \set eventDeleted '00000000-0000-0000-0000-000000000044'
 \set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
 \set eventPast '00000000-0000-0000-0000-000000000046'
+\set eventFull '00000000-0000-0000-0000-000000000047'
 
 -- ============================================================================
 -- SEED DATA
@@ -40,7 +42,9 @@ values (:'eventCategoryID', 'General', 'general', :'communityID');
 
 -- Users
 insert into "user" (user_id, username, email, community_id, auth_hash)
-values (:'user1ID', 'u1', 'u1@test.com', :'communityID', 'h');
+values
+    (:'user1ID', 'u1', 'u1@test.com', :'communityID', 'h'),
+    (:'user2ID', 'u2', 'u2@test.com', :'communityID', 'h');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
@@ -48,6 +52,7 @@ values
     (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
     (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
 
+-- Events
 insert into event (
     event_id,
     name,
@@ -61,15 +66,17 @@ insert into event (
     canceled,
     deleted,
     starts_at,
-    ends_at
+    ends_at,
+    capacity
 )
 values
-    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null),
-    (:'eventUnpublished', 'Unpub', 'unpub', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null),
-    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, null, null),
-    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null),
-    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null),
-    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour');
+    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null),
+    (:'eventUnpublished', 'Unpub', 'unpub', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null),
+    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, null, null, null),
+    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null, null),
+    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null),
+    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null),
+    (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1);
 
 -- ============================================================================
 -- TESTS
@@ -92,6 +99,26 @@ select ok(
         where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
     ),
     'User should be added to event_attendee table after attending'
+);
+
+-- Test: attend_event should let users join until capacity is reached
+select lives_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventFull', :'user1ID'
+    ),
+    'User should be able to attend a capacity-limited event when space exists'
+);
+
+-- Test: attend_event should error when capacity limit is reached
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventFull', :'user2ID'
+    ),
+    'P0001',
+    'event has reached capacity',
+    'Should reject attendance when event capacity is full'
 );
 
 -- Test: attend_event duplicate should error
