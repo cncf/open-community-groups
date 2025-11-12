@@ -55,6 +55,16 @@ pub(crate) struct EventRescheduled {
     pub event: EventSummary,
 }
 
+/// Template for event welcome notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_welcome.html")]
+pub(crate) struct EventWelcome {
+    /// Link to the event page.
+    pub link: String,
+    /// Event summary data.
+    pub event: EventSummary,
+}
+
 /// Template for group team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/group_team_invitation.html")]

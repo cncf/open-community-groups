@@ -153,9 +153,9 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: get_event should return correct event JSON
+-- Test: get_event_full_by_slug should return correct event JSON
 select is(
-    get_event(:'communityID'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
+    get_event_full_by_slug(:'communityID'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
     '{
         "kind": "hybrid",
         "name": "Tech Conference 2024",
@@ -254,13 +254,13 @@ select is(
         "description_short": "Annual tech conference",
         "registration_required": true
     }'::jsonb,
-    'get_event should return correct event data as JSON'
+    'get_event_full_by_slug should return correct event data as JSON'
 );
 
--- Test: get_event with non-existing event slug should return null
+-- Test: get_event_full_by_slug with non-existing event slug should return null
 select ok(
-    get_event(:'communityID'::uuid, 'test-group', 'non-existing-event') is null,
-    'get_event with non-existing event slug should return null'
+    get_event_full_by_slug(:'communityID'::uuid, 'test-group', 'non-existing-event') is null,
+    'get_event_full_by_slug with non-existing event slug should return null'
 );
 
 -- ============================================================================

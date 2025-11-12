@@ -43,7 +43,7 @@ pub(crate) async fn page(
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
     let (community, group, upcoming_events, past_events) = tokio::try_join!(
         db.get_community(community_id),
-        db.get_group(community_id, &group_slug),
+        db.get_group_full_by_slug(community_id, &group_slug),
         db.get_group_upcoming_events(community_id, &group_slug, event_kinds.clone(), 9),
         db.get_group_past_events(community_id, &group_slug, event_kinds, 9)
     )?;
@@ -184,7 +184,7 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
-        db.expect_get_group()
+        db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
             .returning(move |_, _| Ok(sample_group_full(group_id)));
@@ -252,7 +252,7 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
-        db.expect_get_group()
+        db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
             .returning(move |_, _| Ok(sample_group_full(group_id)));

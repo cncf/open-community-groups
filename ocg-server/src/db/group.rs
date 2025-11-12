@@ -17,7 +17,7 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBGroup {
     /// Retrieves group information.
-    async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull>;
+    async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull>;
 
     /// Retrieves past events for a specific group.
     async fn get_group_past_events(
@@ -49,9 +49,9 @@ pub(crate) trait DBGroup {
 
 #[async_trait]
 impl DBGroup for PgDB {
-    /// [`DB::get_group`]
+    /// [`DBGroup::get_group_full_by_slug`]
     #[instrument(skip(self), err)]
-    async fn get_group(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
+    async fn get_group_full_by_slug(&self, community_id: Uuid, group_slug: &str) -> Result<GroupFull> {
         trace!("db: get group");
 
         let db = self.pool.get().await?;
