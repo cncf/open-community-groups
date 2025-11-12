@@ -99,7 +99,7 @@
 
       {# Footer logo URL -#}
       <div class="col-span-full lg:col-span-3">
-        <image-field label="Footer Logo URL" name="footer_logo_url" image-kind="avatar" instructions="URL to the logo image shown in the page footer." value="{%- if let Some(footer_logo_url) = community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}">
+        <image-field label="Footer Logo URL" name="footer_logo_url" image-kind="avatar" instructions="URL to the logo image shown in the page footer." value="{%- if let Some(footer_logo_url) = community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900">
       </image-field>
     </div>
     {# End footer logo URL -#}

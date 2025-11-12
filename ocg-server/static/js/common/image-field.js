@@ -21,6 +21,7 @@ export class ImageField extends LitWrapper {
    * @property {boolean} required - Whether the hidden input is required.
    * @property {string} inputId - Optional override for the hidden input id attribute.
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
+   * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    */
   static properties = {
     label: { type: String },
@@ -29,6 +30,7 @@ export class ImageField extends LitWrapper {
     required: { type: Boolean },
     inputId: { type: String, attribute: "input-id" },
     imageKind: { type: String, attribute: "image-kind" },
+    previewBgClass: { type: String, attribute: "preview-bg-class" },
   };
 
   constructor() {
@@ -42,6 +44,7 @@ export class ImageField extends LitWrapper {
     this._isUploading = false;
     this._isDragActive = false;
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
+    this.previewBgClass = "";
   }
 
   get _valueInputId() {
@@ -258,7 +261,7 @@ export class ImageField extends LitWrapper {
             : "size-24"} min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${this
             ._isDragActive && !this._isUploading
             ? "ring-2 ring-primary-300"
-            : ""} cursor-pointer"
+            : ""} cursor-pointer${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
           aria-label="Upload image"
