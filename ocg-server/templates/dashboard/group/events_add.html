@@ -145,14 +145,14 @@
 
               {# Logo URL -#}
               <div class="col-span-full lg:col-span-3">
-                <image-field class="w-full block" label="Logo URL" name="logo_url" image-kind="avatar" instructions="URL to the event's logo image.">
+                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" instructions="Event's logo image.">
               </image-field>
             </div>
             {# End Logo URL -#}
 
             {# Banner URL -#}
             <div class="col-span-full">
-              <image-field class="w-full block" label="Banner URL" name="banner_url" image-kind="banner" instructions="URL to the event's banner image.">
+              <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" instructions="Event's banner image.">
             </image-field>
           </div>
           {# End Banner URL -#}
@@ -245,14 +245,11 @@
 
           <div class="col-span-3"></div>
 
-          {# Photos URLs -#}
+          {# Photos -#}
           <div class="col-span-full">
-            <label for="photos_urls" class="form-label">Photos URLs</label>
-            <div class="mt-2">
-              <gallery-field field-name="photos_urls" label="Photos" legend="Optional links to photos related to the event." max-images="0"></gallery-field>
-            </div>
+            <gallery-field field-name="photos_urls" legend="Optional photos related to the event." max-images="0" label="Photos"></gallery-field>
           </div>
-          {# End Photos URLs -#}
+          {# End Photos -#}
 
           {# Tags -#}
           <div class="col-span-3">

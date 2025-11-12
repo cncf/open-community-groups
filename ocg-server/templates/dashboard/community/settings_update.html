@@ -92,14 +92,14 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Header logo URL -#}
         <div class="col-span-full lg:col-span-3">
-          <image-field label="Header Logo URL" name="header_logo_url" value="{{ community.header_logo_url }}" image-kind="avatar" instructions="URL to the logo image shown in the page header." required>
+          <image-field label="Header Logo" name="header_logo_url" value="{{ community.header_logo_url }}" image-kind="avatar" instructions="Logo image shown in the page header." required>
         </image-field>
       </div>
       {# End header logo URL -#}
 
       {# Footer logo URL -#}
       <div class="col-span-full lg:col-span-3">
-        <image-field label="Footer Logo URL" name="footer_logo_url" image-kind="avatar" instructions="URL to the logo image shown in the page footer." value="{%- if let Some(footer_logo_url) = community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900">
+        <image-field label="Footer Logo" name="footer_logo_url" image-kind="avatar" instructions="Logo image shown in the page footer." value="{%- if let Some(footer_logo_url) = community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900">
       </image-field>
     </div>
     {# End footer logo URL -#}
@@ -323,7 +323,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner URL -#}
     <div class="col-span-full">
-      <image-field label="Banner Image URL" name="ad_banner_url" image-kind="banner" instructions="URL to the advertisement banner image." value="{%- if let Some(ad_banner_url) = community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}">
+      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" instructions="Advertisement banner image." value="{%- if let Some(ad_banner_url) = community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}">
     </image-field>
   </div>
   {# End ad banner URL -#}
@@ -369,8 +369,8 @@
 
     {# Photo gallery -#}
     <div class="col-span-full">
-      <gallery-field field-name="photos_urls" images="{{ community.photos_urls|json }}" max-images="0"></gallery-field>
-      <p class="form-legend">URLs of the photos that will be displayed in the community gallery.</p>
+      <gallery-field field-name="photos_urls" images="{{ community.photos_urls|json }}" max-images="0" label="Photos"></gallery-field>
+      <p class="form-legend">Photos that will be displayed in the community gallery.</p>
     </div>
     {# End photo gallery -#}
 

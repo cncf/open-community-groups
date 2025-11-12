@@ -79,14 +79,14 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-4">
-          <image-field label="Logo URL" name="logo_url" instructions="URL to the group's logo image." value="{%- if let Some(logo_url) = group.logo_url -%}{{ logo_url }}{%- endif -%}" image-kind="avatar">
+          <image-field label="Logo" name="logo_url" instructions="Group's logo image." value="{%- if let Some(logo_url) = group.logo_url -%}{{ logo_url }}{%- endif -%}" image-kind="avatar">
         </image-field>
       </div>
       {# End Logo URL -#}
 
       {# Banner URL -#}
       <div class="col-span-full">
-        <image-field label="Banner URL" name="banner_url" instructions="URL to the group's banner image." value="{%- if let Some(banner_url) = group.banner_url -%}{{ banner_url }}{%- endif -%}" image-kind="banner">
+        <image-field label="Banner" name="banner_url" instructions="Group's banner image." value="{%- if let Some(banner_url) = group.banner_url -%}{{ banner_url }}{%- endif -%}" image-kind="banner">
       </image-field>
     </div>
     {# End Banner URL -#}

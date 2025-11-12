@@ -33,7 +33,7 @@ export class GalleryField extends LitWrapper {
    */
   constructor() {
     super();
-    this.label = "Gallery";
+    this.label = "";
     this.legend = "";
     this.fieldName = "";
     this.images = [];
@@ -472,10 +472,12 @@ export class GalleryField extends LitWrapper {
    * Render the instructions, preview grid, and hidden inputs.
    */
   render() {
+    const hasLabel = typeof this.label === "string" && this.label.trim().length > 0;
+
     return html`
       <div class="space-y-4">
         <div class="flex flex-col gap-1">
-          <div class="text-lg font-semibold text-stone-900">${this.label}</div>
+          ${hasLabel ? html`<div class="form-label">${this.label}</div>` : ""}
           <p class="form-legend">${this._instructions}</p>
         </div>
 
