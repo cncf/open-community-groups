@@ -60,7 +60,7 @@ impl DBImages for PgDB {
             values ($1::uuid, $2::text, $3::bytea, $4::text)
             on conflict (file_name) do nothing;
             ",
-            &[&file_name, &user_id, &data, &content_type],
+            &[&user_id, &file_name, &data, &content_type],
         )
         .await?;
 
