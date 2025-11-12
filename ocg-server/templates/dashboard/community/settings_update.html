@@ -367,16 +367,12 @@
     </div>
     {# End new group details -#}
 
-    {# Photo URLs -#}
-    <div class="col-span-4">
-      <label class="form-label">Photos URLs</label>
-      <div class="mt-2">
-        <multiple-inputs field-name="photos_urls" input-type="url" items="{{ community.photos_urls|json }}" placeholder="https://example.com/photo.jpg" label="Photo URL">
-        </multiple-inputs>
-      </div>
+    {# Photo gallery -#}
+    <div class="col-span-full">
+      <gallery-field field-name="photos_urls" images="{{ community.photos_urls|json }}" max-images="0"></gallery-field>
       <p class="form-legend">URLs of the photos that will be displayed in the community gallery.</p>
     </div>
-    {# End photo URLs -#}
+    {# End photo gallery -#}
 
     {# Extra links -#}
     <div class="col-span-full">

@@ -246,11 +246,10 @@
           <div class="col-span-3"></div>
 
           {# Photos URLs -#}
-          <div class="col-span-3">
+          <div class="col-span-full">
             <label for="photos_urls" class="form-label">Photos URLs</label>
             <div class="mt-2">
-              <multiple-inputs field-name="photos_urls" input-type="url" label="Photo URL" legend="Optional links to photos related to the event.">
-              </multiple-inputs>
+              <gallery-field field-name="photos_urls" label="Photos" legend="Optional links to photos related to the event." max-images="0"></gallery-field>
             </div>
           </div>
           {# End Photos URLs -#}
