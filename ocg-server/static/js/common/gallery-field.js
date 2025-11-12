@@ -349,7 +349,7 @@ export class GalleryField extends LitWrapper {
         class="${[
           "relative flex h-32 w-full max-h-32 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 transition duration-150",
           this._isAddDisabled ? "cursor-not-allowed opacity-70" : "hover:border-primary-400",
-          this._isDragActive && !this._isUploading ? "border-primary-500 ring-2 ring-primary-200" : "",
+          this._isDragActive && !this._isUploading ? "ring-2 ring-primary-300" : "",
         ].join(" ")}"
         role="button"
         tabindex="0"
