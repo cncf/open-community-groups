@@ -46,8 +46,16 @@ pub struct GroupSummary {
     pub country_code: Option<String>,
     /// Full country name of the group's location.
     pub country_name: Option<String>,
+    /// Short group description text.
+    pub description_short: Option<String>,
+    /// Latitude for map display.
+    pub latitude: Option<f64>,
     /// URL to the group's logo image.
     pub logo_url: Option<String>,
+    /// Longitude for map display.
+    pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map popovers.
+    pub popover_html: Option<String>,
     /// Geographic region this group belongs to.
     pub region: Option<GroupRegion>,
     /// State or province where the group is located.
@@ -84,94 +92,6 @@ impl GroupSummary {
         let mut group: Self = serde_json::from_str(data)?;
         group.color = color(&group.name).to_string();
         Ok(group)
-    }
-}
-
-/// Detailed group information.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GroupDetailed {
-    /// Whether the group is active.
-    pub active: bool,
-    /// Category this group belongs to.
-    pub category: GroupCategory,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub color: String,
-    /// When the group was created.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
-    /// Unique identifier for the group.
-    pub group_id: Uuid,
-    /// Group name.
-    pub name: String,
-    /// URL slug of the group.
-    pub slug: String,
-
-    /// City where the group is based.
-    pub city: Option<String>,
-    /// ISO country code of the group.
-    pub country_code: Option<String>,
-    /// Full country name of the group.
-    pub country_name: Option<String>,
-    /// Short group description text.
-    pub description_short: Option<String>,
-    /// Latitude for map display.
-    pub latitude: Option<f64>,
-    /// URL to the group logo.
-    pub logo_url: Option<String>,
-    /// Longitude for map display.
-    pub longitude: Option<f64>,
-    /// Pre-rendered HTML for map popovers.
-    pub popover_html: Option<String>,
-    /// Geographic region this group belongs to.
-    pub region: Option<GroupRegion>,
-    /// State/province where the group is based.
-    pub state: Option<String>,
-}
-
-impl GroupDetailed {
-    /// Build a display-friendly location string from available location data.
-    pub fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.city.as_ref())
-            .group_country_code(self.country_code.as_ref())
-            .group_country_name(self.country_name.as_ref())
-            .group_state(self.state.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Try to create a vector of `GroupDetailed` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let mut groups: Vec<Self> = serde_json::from_str(data)?;
-
-        for group in &mut groups {
-            group.color = color(&group.name).to_string();
-        }
-
-        Ok(groups)
-    }
-}
-
-impl From<GroupDetailed> for GroupSummary {
-    fn from(detailed: GroupDetailed) -> Self {
-        Self {
-            active: detailed.active,
-            category: detailed.category,
-            color: detailed.color,
-            created_at: detailed.created_at,
-            group_id: detailed.group_id,
-            name: detailed.name,
-            slug: detailed.slug,
-            city: detailed.city,
-            country_code: detailed.country_code,
-            country_name: detailed.country_name,
-            logo_url: detailed.logo_url,
-            region: detailed.region,
-            state: detailed.state,
-        }
     }
 }
 

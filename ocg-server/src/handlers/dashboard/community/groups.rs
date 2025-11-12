@@ -218,7 +218,7 @@ mod tests {
         let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let ts_query = "rust".to_string();
         let groups_output = SearchCommunityGroupsOutput {
-            groups: vec![sample_group_detailed(group_id)],
+            groups: vec![sample_group_summary(group_id)],
             ..Default::default()
         };
 

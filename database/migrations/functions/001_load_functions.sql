@@ -6,10 +6,8 @@
 {{ template "auth/verify_email.sql" }}
 
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
-{{ template "common/get_event_detailed.sql" }}
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
-{{ template "common/get_group_detailed.sql" }}
 {{ template "common/get_group_full.sql" }}
 {{ template "common/search_community_events.sql" }}
 {{ template "common/search_community_groups.sql" }}

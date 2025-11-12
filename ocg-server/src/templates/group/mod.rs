@@ -7,7 +7,7 @@ use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         community::Community,
-        event::{EventDetailed, EventKind, EventSummary},
+        event::{EventKind, EventSummary},
         group::GroupFull,
     },
 };
@@ -50,5 +50,5 @@ pub(crate) struct PastEventCard {
 #[template(path = "group/upcoming_event_card.html")]
 pub(crate) struct UpcomingEventCard {
     /// Event data
-    pub event: EventDetailed,
+    pub event: EventSummary,
 }

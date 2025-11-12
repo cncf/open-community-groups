@@ -62,6 +62,7 @@ insert into "group" (
     state,
     country_code,
     country_name,
+    location,
     logo_url
 ) values (
     :'groupID',
@@ -74,6 +75,7 @@ insert into "group" (
     'NY',
     'US',
     'United States',
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     'https://example.com/group-logo.png'
 );
 
@@ -110,13 +112,19 @@ insert into event (
     name,
     slug,
     description,
+    description_short,
     event_kind_id,
     event_category_id,
     group_id,
     published,
     starts_at,
+    ends_at,
     timezone,
+    streaming_url,
+    venue_address,
     venue_city,
+    venue_name,
+    venue_zip_code,
     capacity,
     logo_url
 ) values (
@@ -124,13 +132,19 @@ insert into event (
     'KubeCon Seattle 2024',
     'kubecon-seattle-2024',
     'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
+    'Annual Kubernetes conference short summary',
     'in-person',
     :'eventCategoryID',
     :'groupID',
     true,
     '2024-06-15 09:00:00+00',
+    '2024-06-15 17:00:00+00',
     'America/New_York',
+    'https://example.com/live-stream',
+    '123 Main St',
     'New York',
+    'Convention Center',
+    '10001',
     5,
     'https://example.com/event-logo.png'
 );
@@ -162,13 +176,21 @@ select is(
         "published": true,
         "slug": "kubecon-seattle-2024",
         "timezone": "America/New_York",
+        "description_short": "Annual Kubernetes conference short summary",
+        "ends_at": 1718470800,
         "group_city": "New York",
         "group_country_code": "US",
         "group_country_name": "United States",
         "group_state": "NY",
         "logo_url": "https://example.com/event-logo.png",
+        "latitude": 40.7128,
+        "longitude": -74.006,
         "starts_at": 1718442000,
+        "streaming_url": "https://example.com/live-stream",
+        "venue_address": "123 Main St",
         "venue_city": "New York",
+        "venue_name": "Convention Center",
+        "zip_code": "10001",
         "remaining_capacity": 3
     }'::jsonb,
     'get_event_summary should return correct event summary data as JSON'

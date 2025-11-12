@@ -51,6 +51,11 @@ pub struct EventSummary {
     /// Timezone in which the event times should be displayed.
     pub timezone: Tz,
 
+    /// Brief event description for listings.
+    pub description_short: Option<String>,
+    /// Event end time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub ends_at: Option<DateTime<Utc>>,
     /// City where the group is located (may differ from venue city).
     pub group_city: Option<String>,
     /// ISO country code of the group's location.
@@ -59,42 +64,29 @@ pub struct EventSummary {
     pub group_country_name: Option<String>,
     /// State or province where the group is located.
     pub group_state: Option<String>,
+    /// Latitude for map display.
+    pub latitude: Option<f64>,
     /// URL to the event or group's logo image.
     pub logo_url: Option<String>,
+    /// Longitude for map display.
+    pub longitude: Option<f64>,
+    /// Pre-rendered HTML for map/calendar popovers.
+    pub popover_html: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
+    /// Streaming URL for live broadcasts.
+    pub streaming_url: Option<String>,
+    /// Street address of the venue.
+    pub venue_address: Option<String>,
     /// City where the event venue is located (for in-person events).
     pub venue_city: Option<String>,
-}
-
-impl From<EventDetailed> for EventSummary {
-    fn from(event: EventDetailed) -> Self {
-        Self {
-            canceled: event.canceled,
-            event_id: event.event_id,
-            group_category_name: event.group_category_name,
-            group_color: event.group_color,
-            group_name: event.group_name,
-            group_slug: event.group_slug,
-            kind: event.kind,
-            name: event.name,
-            published: event.published,
-            slug: event.slug,
-            timezone: event.timezone,
-
-            group_city: event.group_city,
-            group_country_code: event.group_country_code,
-            group_country_name: event.group_country_name,
-            group_state: event.group_state,
-            logo_url: event.logo_url,
-            remaining_capacity: event.remaining_capacity,
-            starts_at: event.starts_at,
-            venue_city: event.venue_city,
-        }
-    }
+    /// Name of the venue.
+    pub venue_name: Option<String>,
+    /// Venue zip code.
+    pub zip_code: Option<String>,
 }
 
 impl EventSummary {
@@ -105,7 +97,9 @@ impl EventSummary {
             .group_country_code(self.group_country_code.as_ref())
             .group_country_name(self.group_country_name.as_ref())
             .group_state(self.group_state.as_ref())
-            .venue_city(self.venue_city.as_ref());
+            .venue_address(self.venue_address.as_ref())
+            .venue_city(self.venue_city.as_ref())
+            .venue_name(self.venue_name.as_ref());
 
         build_location(&parts, max_len)
     }
@@ -128,96 +122,6 @@ impl EventSummary {
         let mut event: Self = serde_json::from_str(data)?;
         event.group_color = color(&event.group_name).to_string();
         Ok(event)
-    }
-}
-
-/// Detailed event information.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct EventDetailed {
-    /// Whether the event has been canceled.
-    pub canceled: bool,
-    /// Unique identifier for the event.
-    pub event_id: Uuid,
-    /// Category of the hosting group.
-    pub group_category_name: String,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub group_color: String,
-    /// Name of the group hosting the event.
-    pub group_name: String,
-    /// URL slug of the hosting group.
-    pub group_slug: String,
-    /// Type of event (in-person, online, hybrid).
-    pub kind: EventKind,
-    /// Event title.
-    pub name: String,
-    /// Whether the event is published.
-    pub published: bool,
-    /// URL slug of the event.
-    pub slug: String,
-    /// Timezone for event times.
-    pub timezone: Tz,
-
-    /// Brief event description for listings.
-    pub description_short: Option<String>,
-    /// Event end time in UTC.
-    #[serde(default, with = "chrono::serde::ts_seconds_option")]
-    pub ends_at: Option<DateTime<Utc>>,
-    /// City where the group is based.
-    pub group_city: Option<String>,
-    /// ISO country code of the group.
-    pub group_country_code: Option<String>,
-    /// Full country name of the group.
-    pub group_country_name: Option<String>,
-    /// State/province where the group is based.
-    pub group_state: Option<String>,
-    /// Latitude for map display.
-    pub latitude: Option<f64>,
-    /// URL to the event or group logo.
-    pub logo_url: Option<String>,
-    /// Longitude for map display.
-    pub longitude: Option<f64>,
-    /// Pre-rendered HTML for map/calendar popovers.
-    pub popover_html: Option<String>,
-    /// Remaining capacity after subtracting registered attendees.
-    pub remaining_capacity: Option<i32>,
-    /// Event start time in UTC.
-    #[serde(default, with = "chrono::serde::ts_seconds_option")]
-    pub starts_at: Option<DateTime<Utc>>,
-    /// Street address of the venue.
-    pub venue_address: Option<String>,
-    /// City where the event takes place.
-    pub venue_city: Option<String>,
-    /// Name of the venue.
-    pub venue_name: Option<String>,
-}
-
-impl EventDetailed {
-    /// Build a display-friendly location string from available location data.
-    pub fn location(&self, max_len: usize) -> Option<String> {
-        let parts = LocationParts::new()
-            .group_city(self.group_city.as_ref())
-            .group_country_code(self.group_country_code.as_ref())
-            .group_country_name(self.group_country_name.as_ref())
-            .group_state(self.group_state.as_ref())
-            .venue_address(self.venue_address.as_ref())
-            .venue_city(self.venue_city.as_ref())
-            .venue_name(self.venue_name.as_ref());
-
-        build_location(&parts, max_len)
-    }
-
-    /// Try to create a vector of `EventDetailed` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let mut events: Vec<Self> = serde_json::from_str(data)?;
-
-        for event in &mut events {
-            event.group_color = color(&event.group_name).to_string();
-        }
-
-        Ok(events)
     }
 }
 

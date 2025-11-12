@@ -200,7 +200,7 @@ mod tests {
                     && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
                     && *limit == 9
             })
-            .returning(move |_, _, _, _| Ok(vec![sample_event_detailed(event_id)]));
+            .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
         db.expect_get_group_past_events()
             .times(1)
             .withf(move |id, slug, kinds, limit| {
@@ -268,7 +268,7 @@ mod tests {
                     && kinds == &vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid]
                     && *limit == 9
             })
-            .returning(move |_, _, _, _| Ok(vec![sample_event_detailed(event_id)]));
+            .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
         db.expect_get_group_past_events()
             .times(1)
             .withf(move |id, slug, kinds, limit| {

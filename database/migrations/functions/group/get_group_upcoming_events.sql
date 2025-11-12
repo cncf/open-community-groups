@@ -6,7 +6,7 @@ create or replace function get_group_upcoming_events(
     p_limit int
 ) returns json as $$
     select coalesce(json_agg(
-        get_event_detailed(p_community_id, e.group_id, e.event_id)
+        get_event_summary(p_community_id, e.group_id, e.event_id)
     ), '[]')
     from (
         select e.event_id, e.group_id

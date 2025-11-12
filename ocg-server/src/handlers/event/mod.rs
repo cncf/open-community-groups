@@ -19,6 +19,7 @@ use crate::{
     handlers::prepare_headers,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{PageId, auth::User, event::Page, notifications::EventWelcome},
+    util::{build_event_calendar_attachment, build_event_page_link},
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -73,10 +74,11 @@ pub(crate) async fn attend_event(
     // Enqueue welcome to event notification
     let event = db.get_event_summary_by_id(community_id, event_id).await?;
     let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
-    let link = format!("{}/group/{}/event/{}", base_url, &event.group_slug, &event.slug);
+    let link = build_event_page_link(base_url, &event);
+    let calendar_ics = build_event_calendar_attachment(base_url, &event);
     let template_data = EventWelcome { link, event };
     let notification = NewNotification {
-        attachments: vec![],
+        attachments: vec![calendar_ics],
         kind: NotificationKind::EventWelcome,
         recipients: vec![user.user_id],
         template_data: Some(to_value(&template_data)?),

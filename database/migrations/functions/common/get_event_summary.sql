@@ -17,13 +17,21 @@ returns json as $$
         'slug', e.slug,
         'timezone', e.timezone,
 
+        'description_short', e.description_short,
+        'ends_at', floor(extract(epoch from e.ends_at)),
         'group_city', g.city,
         'group_country_code', g.country_code,
         'group_country_name', g.country_name,
         'group_state', g.state,
+        'latitude', st_y(g.location::geometry),
         'logo_url', e.logo_url,
+        'longitude', st_x(g.location::geometry),
         'starts_at', floor(extract(epoch from e.starts_at)),
+        'streaming_url', e.streaming_url,
+        'venue_address', e.venue_address,
         'venue_city', e.venue_city,
+        'venue_name', e.venue_name,
+        'zip_code', e.venue_zip_code,
 
         'remaining_capacity',
             case

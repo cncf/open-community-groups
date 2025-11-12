@@ -382,7 +382,7 @@ mock! {
             group_slug: &str,
             event_kinds: Vec<crate::types::event::EventKind>,
             limit: i32,
-        ) -> Result<Vec<crate::types::event::EventDetailed>>;
+        ) -> Result<Vec<crate::types::event::EventSummary>>;
         async fn is_group_member(
             &self,
             community_id: Uuid,
