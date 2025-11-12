@@ -2,6 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
+import "/static/js/common/svg-spinner.js";
 
 const IMAGE_KIND = {
   AVATAR: "avatar",
@@ -180,6 +181,7 @@ export class ImageField extends LitWrapper {
    */
   async _uploadFile(file, resetCallback) {
     this._isUploading = true;
+    this.requestUpdate();
 
     const formData = new FormData();
     formData.append("file", file, file.name);
@@ -250,6 +252,8 @@ export class ImageField extends LitWrapper {
     const isBanner = kind === IMAGE_KIND.BANNER;
     const removeDisabled = !this._hasImage || this._isUploading;
 
+    console.log(this._isUploading);
+
     return html`
       <label for="${this._fileInputId}" class="form-label">
         ${this.label} ${this.required ? html`<span class="asterisk">*</span>` : ""}
@@ -261,7 +265,7 @@ export class ImageField extends LitWrapper {
             : "size-24"} min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${this
             ._isDragActive && !this._isUploading
             ? "ring-2 ring-primary-300"
-            : ""} cursor-pointer${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
+            : ""} cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
           aria-label="Upload image"
@@ -272,20 +276,15 @@ export class ImageField extends LitWrapper {
           @drop="${this._handleDrop}"
         >
           <div
-            class="absolute inset-0 flex items-center justify-center bg-white/80 ${this._isUploading
+            class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${this._isUploading
               ? "opacity-100"
               : "opacity-0 pointer-events-none"} transition-opacity duration-200"
           >
-            <div role="status" class="flex size-8">
-              <img
-                src="/static/images/spinner/spinner_4.svg"
-                height="auto"
-                width="auto"
-                alt="Loading spinner"
-                class="size-auto animate-spin"
-              />
-              <span class="sr-only">Uploading...</span>
-            </div>
+            <svg-spinner
+              size="size-8"
+              background-color="var(--color-primary-100)"
+              label="Uploading..."
+            ></svg-spinner>
           </div>
           ${this._renderPlaceholder(isBanner)}
         </div>

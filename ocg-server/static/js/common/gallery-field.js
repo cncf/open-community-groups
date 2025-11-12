@@ -2,6 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
+import "/static/js/common/svg-spinner.js";
 
 const DEFAULT_MAX_IMAGES = 8;
 
@@ -456,21 +457,12 @@ export class GalleryField extends LitWrapper {
         </div>
 
         <div
-          class="absolute inset-0 flex items-center justify-center bg-white/80 transition-opacity duration-150 ${this
+          class="absolute inset-0 flex items-center justify-center bg-white/50 transition-opacity duration-150 ${this
             ._isUploading
             ? "opacity-100"
             : "opacity-0 pointer-events-none"}"
         >
-          <div role="status" class="flex size-8">
-            <img
-              src="/static/images/spinner/spinner_4.svg"
-              height="auto"
-              width="auto"
-              alt="Uploading spinner"
-              class="size-6 animate-spin"
-            />
-            <span class="sr-only">Uploading...</span>
-          </div>
+          <svg-spinner size="size-10" label="Uploading..."></svg-spinner>
         </div>
       </div>
     `;
