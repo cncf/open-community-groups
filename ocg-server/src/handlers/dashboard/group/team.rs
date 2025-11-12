@@ -62,13 +62,17 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification
-    let group = db.get_group_summary(community_id, group_id).await?;
+    let (community, group) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_group_summary(community_id, group_id)
+    )?;
     let template_data = GroupTeamInvitation {
         group,
         link: format!(
             "{}/dashboard/user?tab=invitations",
             cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
         ),
+        theme: community.theme,
     };
     let notification = NewNotification {
         attachments: vec![],
@@ -237,6 +241,8 @@ mod tests {
         let body = format!("role={}&user_id={}", form.role, form.user_id);
         let group_summary = sample_group_summary(group_id);
         let group_summary_for_db = group_summary.clone();
+        let community = sample_community(community_id);
+        let community_copy = community.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -262,6 +268,10 @@ mod tests {
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(group_summary_for_db.clone()));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(community_copy.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -275,6 +285,7 @@ mod tests {
                             .map(|template| {
                                 template.group.group_id == group_summary.group_id
                                     && template.link == "/dashboard/user?tab=invitations"
+                                    && template.theme.primary_color == community.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

@@ -61,6 +61,7 @@ pub(crate) async fn add(
             "{}/dashboard/user?tab=invitations",
             cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
         ),
+        theme: community.theme,
     };
     let notification = NewNotification {
         attachments: vec![],
@@ -299,6 +300,7 @@ mod tests {
                             .map(|template| {
                                 template.community_name == community.display_name
                                     && template.link == "/dashboard/user?tab=invitations"
+                                    && template.theme.primary_color == community.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

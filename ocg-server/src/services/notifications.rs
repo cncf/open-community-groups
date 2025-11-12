@@ -426,7 +426,7 @@ mod tests {
             attachments: vec![],
             kind: NotificationKind::EmailVerification,
             recipients: expected_recipients.clone(),
-            template_data: Some(json!({ "link": "https://example.test/verify" })),
+            template_data: Some(sample_email_verification_template_data()),
         };
 
         // Setup database mock
@@ -456,7 +456,7 @@ mod tests {
             email: "notify@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
             notification_id: Uuid::new_v4(),
-            template_data: Some(json!({ "link": "https://example.test/verify" })),
+            template_data: Some(sample_email_verification_template_data()),
         };
         let notification_id = notification.notification_id;
         let recipient = notification.email.clone();
@@ -521,7 +521,7 @@ mod tests {
             email: "notify@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
             notification_id: Uuid::new_v4(),
-            template_data: Some(json!({ "link": "https://example.test/verify" })),
+            template_data: Some(sample_email_verification_template_data()),
         };
         let notification_id = notification.notification_id;
         let recipient = notification.email.clone();
@@ -617,7 +617,7 @@ mod tests {
             email: "notify@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
             notification_id: Uuid::new_v4(),
-            template_data: Some(json!({ "link": "https://example.test/verify" })),
+            template_data: Some(sample_email_verification_template_data()),
         };
         let notification_id = notification.notification_id;
 
@@ -670,7 +670,7 @@ mod tests {
             email: "user@example.test".to_string(),
             kind: NotificationKind::EmailVerification,
             notification_id: Uuid::new_v4(),
-            template_data: Some(json!({ "link": "https://example.test/verify" })),
+            template_data: Some(sample_email_verification_template_data()),
         };
 
         // Prepare content
@@ -779,5 +779,15 @@ mod tests {
             cancellation_token: CancellationToken::new(),
             email_sender,
         }
+    }
+
+    /// Sample template payload for email verification notifications.
+    fn sample_email_verification_template_data() -> serde_json::Value {
+        json!({
+            "link": "https://example.test/verify",
+            "theme": {
+                "primary_color": "#000000"
+            }
+        })
     }
 }
