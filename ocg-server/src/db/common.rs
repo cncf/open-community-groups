@@ -16,8 +16,8 @@ use crate::{
     templates::community::explore,
     types::{
         community::Community,
-        event::{EventDetailed, EventFull, EventSummary},
-        group::{GroupDetailed, GroupFull, GroupSummary},
+        event::{EventFull, EventSummary},
+        group::{GroupFull, GroupSummary},
     },
 };
 
@@ -211,7 +211,7 @@ impl DBCommon for PgDB {
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let output = SearchCommunityEventsOutput {
-            events: EventDetailed::try_from_json_array(&row.get::<_, String>("events"))?,
+            events: EventSummary::try_from_json_array(&row.get::<_, String>("events"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
             } else {
@@ -247,7 +247,7 @@ impl DBCommon for PgDB {
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let output = SearchCommunityGroupsOutput {
-            groups: GroupDetailed::try_from_json_array(&row.get::<_, String>("groups"))?,
+            groups: GroupSummary::try_from_json_array(&row.get::<_, String>("groups"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
             } else {
@@ -263,7 +263,7 @@ impl DBCommon for PgDB {
 /// Output structure for community events search operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityEventsOutput {
-    pub events: Vec<EventDetailed>,
+    pub events: Vec<EventSummary>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }
@@ -271,7 +271,7 @@ pub(crate) struct SearchCommunityEventsOutput {
 /// Output structure for community groups search operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct SearchCommunityGroupsOutput {
-    pub groups: Vec<GroupDetailed>,
+    pub groups: Vec<GroupSummary>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }

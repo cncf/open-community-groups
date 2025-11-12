@@ -46,13 +46,9 @@ use crate::{
     },
     types::{
         community::{Community, Theme},
-        event::{
-            EventCategory, EventDetailed, EventFull, EventKind, EventKindSummary, EventSummary,
-            SessionKindSummary,
-        },
+        event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
-            GroupCategory, GroupDetailed, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor,
-            GroupSummary,
+            GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
         },
     },
 };
@@ -186,39 +182,6 @@ pub(crate) fn sample_event_category() -> EventCategory {
     }
 }
 
-/// Sample detailed event returned from listings.
-pub(crate) fn sample_event_detailed(event_id: Uuid) -> EventDetailed {
-    let starts_at = Utc::now() + chrono::Duration::hours(1);
-    EventDetailed {
-        canceled: false,
-        event_id,
-        group_category_name: "Cloud Native".to_string(),
-        group_color: "#336699".to_string(),
-        group_name: "Test Group".to_string(),
-        group_slug: "test-group".to_string(),
-        kind: EventKind::InPerson,
-        name: "Test Event".to_string(),
-        published: true,
-        slug: "test-event".to_string(),
-        timezone: UTC,
-
-        description_short: Some("A test event".to_string()),
-        ends_at: Some(starts_at + chrono::Duration::hours(1)),
-        group_city: Some("San Francisco".to_string()),
-        group_country_code: Some("US".to_string()),
-        group_country_name: Some("United States".to_string()),
-        group_state: Some("CA".to_string()),
-        latitude: Some(37.0),
-        logo_url: Some("https://example.test/logo.png".to_string()),
-        longitude: Some(-122.0),
-        starts_at: Some(starts_at),
-        venue_address: Some("123 Main St".to_string()),
-        venue_city: Some("San Francisco".to_string()),
-        venue_name: Some("Main Venue".to_string()),
-        ..Default::default()
-    }
-}
-
 /// Sample event form payload submitted from the dashboard.
 pub(crate) fn sample_event_form() -> GroupEventForm {
     GroupEventForm {
@@ -300,14 +263,23 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         slug: "sample-event".to_string(),
         timezone: UTC,
 
+        description_short: Some("A brief summary of the sample event".to_string()),
+        ends_at: Some(starts_at + chrono::Duration::hours(2)),
         group_city: Some("Test City".to_string()),
         group_country_code: Some("US".to_string()),
         group_country_name: Some("United States".to_string()),
         group_state: Some("MA".to_string()),
+        latitude: Some(42.0),
         logo_url: Some("https://example.test/logo.png".to_string()),
+        longitude: Some(-71.0),
+        popover_html: None,
         remaining_capacity: None,
+        streaming_url: Some("https://example.test/stream".to_string()),
         starts_at: Some(starts_at),
         venue_city: Some("Boston".to_string()),
+        venue_address: Some("456 Sample Rd".to_string()),
+        venue_name: Some("Sample Venue".to_string()),
+        zip_code: Some("02101".to_string()),
     }
 }
 
@@ -340,27 +312,6 @@ pub(crate) fn sample_group_category() -> GroupCategory {
         name: "Meetup".to_string(),
         normalized_name: "meetup".to_string(),
         order: Some(1),
-    }
-}
-
-/// Sample detailed group record for explore results.
-pub(crate) fn sample_group_detailed(group_id: Uuid) -> GroupDetailed {
-    GroupDetailed {
-        active: true,
-        category: sample_group_category(),
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
-        group_id,
-        name: "Sample Group".to_string(),
-        slug: "sample-group".to_string(),
-
-        city: Some("City".to_string()),
-        country_code: Some("US".to_string()),
-        country_name: Some("United States".to_string()),
-        latitude: Some(1.0),
-        longitude: Some(2.0),
-        region: Some(sample_group_region()),
-        state: Some("CA".to_string()),
-        ..Default::default()
     }
 }
 
@@ -473,7 +424,11 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         city: Some("San Francisco".to_string()),
         country_code: Some("US".to_string()),
         country_name: Some("United States".to_string()),
+        description_short: Some("An example summary for the sample group".to_string()),
+        latitude: Some(37.0),
         logo_url: Some("https://example.test/logo.png".to_string()),
+        longitude: Some(-122.0),
+        popover_html: None,
         region: Some(sample_group_region()),
         state: Some("CA".to_string()),
     }
@@ -507,7 +462,7 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
 /// Sample search output for community events.
 pub(crate) fn sample_search_community_events_output(event_id: Uuid) -> SearchCommunityEventsOutput {
     SearchCommunityEventsOutput {
-        events: vec![sample_event_detailed(event_id)],
+        events: vec![sample_event_summary(event_id, Uuid::new_v4())],
         bbox: Some(sample_bbox()),
         total: 1,
     }
@@ -516,7 +471,7 @@ pub(crate) fn sample_search_community_events_output(event_id: Uuid) -> SearchCom
 /// Sample search output for community groups.
 pub(crate) fn sample_search_community_groups_output(group_id: Uuid) -> SearchCommunityGroupsOutput {
     SearchCommunityGroupsOutput {
-        groups: vec![sample_group_detailed(group_id)],
+        groups: vec![sample_group_summary(group_id)],
         bbox: Some(sample_bbox()),
         total: 1,
     }

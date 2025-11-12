@@ -63,6 +63,8 @@ insert into "group" (
     country_code,
     country_name,
     logo_url,
+    description_short,
+    location,
     created_at
 ) values (
     :'groupID',
@@ -77,6 +79,8 @@ insert into "group" (
     'US',
     'United States',
     'https://example.com/group-logo.png',
+    'Seattle Kubernetes Meetup is the Seattle chapter for K8s enthusiasts',
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     '2024-01-15 10:00:00+00'
 );
 
@@ -146,7 +150,10 @@ select is(
         "city": "New York",
         "country_code": "US",
         "country_name": "United States",
+        "description_short": "Seattle Kubernetes Meetup is the Seattle chapter for K8s enthusiasts",
         "logo_url": "https://example.com/group-logo.png",
+        "latitude": 40.7128,
+        "longitude": -74.006,
         "region": {
             "region_id": "00000000-0000-0000-0000-000000000012",
             "name": "North America",

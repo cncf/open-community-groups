@@ -101,8 +101,8 @@ insert into event (
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
-        get_event_detailed(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_detailed(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'get_group_upcoming_events should return published future events ordered by date ASC as JSON'
 );

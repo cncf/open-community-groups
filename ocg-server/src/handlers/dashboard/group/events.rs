@@ -24,6 +24,7 @@ use crate::{
         dashboard::group::events::{self, Event},
         notifications::{EventCanceled, EventPublished, EventRescheduled},
     },
+    util::{build_event_calendar_attachment, build_event_page_link},
 };
 
 // Minimum shift required to notify a reschedule.
@@ -153,15 +154,16 @@ pub(crate) async fn cancel(
         if !user_ids.is_empty() {
             event.canceled = true; // Update local event to reflect canceled status
             let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
-            let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
+            let link = build_event_page_link(base_url, &event);
             let community = db.get_community(community_id).await?;
+            let calendar_ics = build_event_calendar_attachment(base_url, &event);
             let template_data = EventCanceled {
                 event,
                 link,
                 theme: community.theme,
             };
             let notification = NewNotification {
-                attachments: vec![],
+                attachments: vec![calendar_ics],
                 kind: NotificationKind::EventCanceled,
                 recipients: user_ids,
                 template_data: Some(serde_json::to_value(&template_data)?),
@@ -212,14 +214,15 @@ pub(crate) async fn publish(
                 db.get_event_summary(community_id, group_id, event_id),
             )?;
             let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
-            let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
+            let link = build_event_page_link(base_url, &event);
+            let calendar_ics = build_event_calendar_attachment(base_url, &event);
             let template_data = EventPublished {
                 event,
                 link,
                 theme: community.theme,
             };
             let notification = NewNotification {
-                attachments: vec![],
+                attachments: vec![calendar_ics],
                 kind: NotificationKind::EventPublished,
                 recipients: user_ids,
                 template_data: Some(serde_json::to_value(&template_data)?),
@@ -303,15 +306,16 @@ pub(crate) async fn update(
         let user_ids = db.list_event_attendees_ids(event_id).await?;
         if !user_ids.is_empty() {
             let base = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
-            let link = format!("{}/group/{}/event/{}", base, after.group_slug, after.slug);
+            let link = build_event_page_link(base, &after);
             let community = db.get_community(community_id).await?;
+            let calendar_ics = build_event_calendar_attachment(base, &after);
             let template_data = EventRescheduled {
                 event: after,
                 link,
                 theme: community.theme,
             };
             let notification = NewNotification {
-                attachments: vec![],
+                attachments: vec![calendar_ics],
                 kind: NotificationKind::EventRescheduled,
                 recipients: user_ids,
                 template_data: Some(serde_json::to_value(&template_data)?),

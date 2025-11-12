@@ -150,7 +150,7 @@ begin
     select
         (
             select coalesce(json_agg(
-                get_event_detailed(p_community_id, group_id, event_id)
+                get_event_summary(p_community_id, group_id, event_id)
             ), '[]')
             from filtered_events_page
         ),

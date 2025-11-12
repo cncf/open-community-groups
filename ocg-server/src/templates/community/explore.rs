@@ -20,8 +20,8 @@ use crate::{
     },
     types::{
         community::Community,
-        event::{EventDetailed, EventKind, EventSummary},
-        group::{GroupDetailed, GroupSummary},
+        event::{EventKind, EventSummary},
+        group::GroupSummary,
     },
 };
 
@@ -107,7 +107,7 @@ impl EventsResultsSection {
 pub(crate) struct EventCard {
     /// Event data
     #[serde(flatten)]
-    pub event: EventDetailed,
+    pub event: EventSummary,
 }
 
 /// Template for the groups section of the explore page.
@@ -162,7 +162,7 @@ impl GroupsResultsSection {
 pub(crate) struct GroupCard {
     /// Group data
     #[serde(flatten)]
-    pub group: GroupDetailed,
+    pub group: GroupSummary,
 }
 
 // Types.
@@ -499,18 +499,16 @@ pub(crate) enum ViewMode {
 
 /// Render popover HTML for map and calendar views for an event.
 #[instrument(skip_all, err)]
-pub(crate) fn render_event_popover(event: &EventDetailed) -> Result<String> {
-    let event_summary = EventSummary::from(event.clone());
-    let home_event = HomeEventCard { event: event_summary };
+pub(crate) fn render_event_popover(event: &EventSummary) -> Result<String> {
+    let home_event = HomeEventCard { event: event.clone() };
     let cfg = MinifyCfg::new();
     Ok(String::from_utf8(minify(home_event.render()?.as_bytes(), &cfg))?)
 }
 
 /// Render popover HTML for map views for a group.
 #[instrument(skip_all, err)]
-pub(crate) fn render_group_popover(group: &GroupDetailed) -> Result<String> {
-    let group_summary: GroupSummary = group.clone().into();
-    let home_group = HomeGroupCard { group: group_summary };
+pub(crate) fn render_group_popover(group: &GroupSummary) -> Result<String> {
+    let home_group = HomeGroupCard { group: group.clone() };
     let cfg = MinifyCfg::new();
     Ok(String::from_utf8(minify(home_group.render()?.as_bytes(), &cfg))?)
 }

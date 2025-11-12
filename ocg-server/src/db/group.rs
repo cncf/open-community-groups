@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     types::{
-        event::{EventDetailed, EventKind, EventSummary},
+        event::{EventKind, EventSummary},
         group::GroupFull,
     },
 };
@@ -35,7 +35,7 @@ pub(crate) trait DBGroup {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<EventDetailed>>;
+    ) -> Result<Vec<EventSummary>>;
 
     /// Checks if a user is a member of a group.
     async fn is_group_member(&self, community_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<bool>;
@@ -98,7 +98,7 @@ impl DBGroup for PgDB {
         group_slug: &str,
         event_kinds: Vec<EventKind>,
         limit: i32,
-    ) -> Result<Vec<EventDetailed>> {
+    ) -> Result<Vec<EventSummary>> {
         trace!("db: get group upcoming events");
 
         let event_kind_ids: Vec<String> = event_kinds.iter().map(ToString::to_string).collect();
@@ -109,7 +109,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events = EventDetailed::try_from_json_array(&row.get::<_, String>(0))?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

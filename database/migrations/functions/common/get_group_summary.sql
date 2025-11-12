@@ -20,7 +20,10 @@ returns json as $$
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,
+        'description_short', g.description_short,
+        'latitude', st_y(g.location::geometry),
         'logo_url', g.logo_url,
+        'longitude', st_x(g.location::geometry),
         'region', case when r.region_id is not null then
             json_build_object(
                 'region_id', r.region_id,

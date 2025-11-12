@@ -72,6 +72,10 @@ insert into "group" (
     group_category_id,
     active,
     created_at,
+    city,
+    state,
+    country_code,
+    country_name,
     location
 ) values (
     :'groupID',
@@ -81,6 +85,10 @@ insert into "group" (
     :'groupCategoryID',
     true,
     '2024-03-01 10:00:00+00',
+    'New York',
+    'NY',
+    'US',
+    'United States',
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326)  -- New York coordinates
 );
 
@@ -402,16 +410,22 @@ select is(
         "venue_zip_code": "10001",
         "remaining_capacity": 498,
         "group": {
+            "city": "New York",
+            "name": "Seattle Kubernetes Meetup",
+            "slug": "seattle-kubernetes-meetup",
+            "state": "NY",
             "active": true,
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
                 "normalized_name": "technology"
             },
-            "created_at": 1709287200,
             "group_id": "00000000-0000-0000-0000-000000000021",
-            "name": "Seattle Kubernetes Meetup",
-            "slug": "seattle-kubernetes-meetup"
+            "latitude": 40.73061,
+            "longitude": -73.935242,
+            "created_at": 1709287200,
+            "country_code": "US",
+            "country_name": "United States"
         },
         "hosts": [
             {

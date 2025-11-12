@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     templates::filters,
-    types::group::{GroupCategory, GroupDetailed, GroupFull, GroupRegion},
+    types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
 };
 
 // Pages templates.
@@ -29,7 +29,7 @@ pub(crate) struct AddPage {
 #[template(path = "dashboard/community/groups_list.html")]
 pub(crate) struct ListPage {
     /// List of groups in the community.
-    pub groups: Vec<GroupDetailed>,
+    pub groups: Vec<GroupSummary>,
 
     /// Text search query used to filter results.
     pub ts_query: Option<String>,
