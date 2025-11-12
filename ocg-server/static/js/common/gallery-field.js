@@ -42,6 +42,8 @@ export class GalleryField extends LitWrapper {
     this._pendingUploads = 0;
     this._uploadErrorShown = false;
     this._uniqueId = `gallery-field-${Math.random().toString(36).slice(2, 9)}`;
+    this._draggedIndex = null;
+    this._dragOverIndex = null;
   }
 
   /**
@@ -103,13 +105,16 @@ export class GalleryField extends LitWrapper {
    * Provide contextual instructions based on legend or maximum count.
    */
   get _instructions() {
+    let tmp_legend;
     if (this.legend && this.legend.trim().length > 0) {
-      return this.legend;
+      tmp_legend = this.legend;
     }
     if (this.maxImages > 0) {
-      return `Upload up to ${this.maxImages} images. Maximum size: 2MB each.`;
+      tmp_legend = `Upload up to ${this.maxImages} images. Maximum size: 2MB each.`;
     }
-    return `Upload as many images as you need. Maximum size: 2MB each.`;
+    tmp_legend = `Upload as many images as you need. Maximum size: 2MB each.`;
+
+    return `${tmp_legend} Drag and drop thumbnails to change their order before submitting.`;
   }
 
   /**
@@ -303,6 +308,90 @@ export class GalleryField extends LitWrapper {
   }
 
   /**
+   * Reorder images when a drag drop completes.
+   */
+  _reorderImages(sourceIndex, targetIndex) {
+    if (this._isUploading || sourceIndex === targetIndex) {
+      return;
+    }
+    const reordered = [...this.images];
+    const [item] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, item);
+    this._setImages(reordered);
+  }
+
+  /**
+   * Clear any drag tracking metadata.
+   */
+  _clearDragState() {
+    this._draggedIndex = null;
+    this._dragOverIndex = null;
+    this.requestUpdate();
+  }
+
+  /**
+   * Mark the tile being dragged and update the drag data transfer.
+   */
+  _handleTileDragStart(event, index) {
+    event.stopPropagation();
+    this._draggedIndex = index;
+    this._dragOverIndex = index;
+    const dataTransfer = event.dataTransfer;
+    if (dataTransfer) {
+      dataTransfer.setData("text/plain", String(index));
+      if (typeof dataTransfer.setDragImage === "function") {
+        dataTransfer.setDragImage(event.currentTarget, 0, 0);
+      }
+      if (typeof dataTransfer.setDropEffect === "function") {
+        dataTransfer.setDropEffect("move");
+      }
+    }
+    this.requestUpdate();
+  }
+
+  /**
+   * Highlight the drop target while dragging over a tile.
+   */
+  _handleTileDragOver(event, index) {
+    event.preventDefault();
+    if (this._draggedIndex === null) {
+      return;
+    }
+    this._dragOverIndex = index;
+    this.requestUpdate();
+  }
+
+  /**
+   * Reset drag highlight when leaving a tile.
+   */
+  _handleTileDragLeave(event, index) {
+    if (this._dragOverIndex === index) {
+      this._dragOverIndex = null;
+      this.requestUpdate();
+    }
+  }
+
+  /**
+   * Reorder images when the tile is dropped.
+   */
+  _handleTileDrop(event, index) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this._draggedIndex === null) {
+      return;
+    }
+    this._reorderImages(this._draggedIndex, index);
+    this._clearDragState();
+  }
+
+  /**
+   * Clear drag state after dragging finishes.
+   */
+  _handleTileDragEnd() {
+    this._clearDragState();
+  }
+
+  /**
    * Stop propagation from the button and remove the provided index.
    */
   _handleRemoveImageButtonClick(event, index) {
@@ -398,11 +487,23 @@ export class GalleryField extends LitWrapper {
           <p class="form-legend">${this._instructions}</p>
         </div>
 
-        <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+        <div class="grid grid-cols-3 gap-6 md:gap-8 sm:grid-cols-4">
           ${this.images.map(
             (imageUrl, index) => html`
               <div
-                class="relative h-32 max-h-32 w-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100"
+                class="${[
+                  "relative h-32 max-h-32 w-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100",
+                  this._dragOverIndex === index && this._draggedIndex !== null && this._draggedIndex !== index
+                    ? "ring-2 ring-primary-300"
+                    : "",
+                  this._draggedIndex === index ? "opacity-80" : "",
+                ].join(" ")}"
+                draggable="true"
+                @dragstart="${(event) => this._handleTileDragStart(event, index)}"
+                @dragover="${(event) => this._handleTileDragOver(event, index)}"
+                @dragleave="${(event) => this._handleTileDragLeave(event, index)}"
+                @drop="${(event) => this._handleTileDrop(event, index)}"
+                @dragend="${this._handleTileDragEnd}"
               >
                 <img
                   src="${imageUrl}"
@@ -412,7 +513,7 @@ export class GalleryField extends LitWrapper {
                 />
                 <button
                   type="button"
-                  class="absolute end-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
+                  class="absolute end-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
                   @click="${(event) => this._handleRemoveImageButtonClick(event, index)}"
                   aria-label="Remove image ${index + 1}"
                 >
