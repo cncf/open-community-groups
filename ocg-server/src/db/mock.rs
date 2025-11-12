@@ -419,6 +419,10 @@ mock! {
             &self,
             notification: &crate::services::notifications::NewNotification,
         ) -> Result<()>;
+        async fn get_notification_attachment(
+            &self,
+            attachment_id: Uuid
+        ) -> Result<crate::services::notifications::Attachment>;
         async fn get_pending_notification(
             &self,
             client_id: Uuid,

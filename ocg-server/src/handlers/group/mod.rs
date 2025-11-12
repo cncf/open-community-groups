@@ -95,6 +95,7 @@ pub(crate) async fn join_group(
         group,
     };
     let notification = NewNotification {
+        attachments: vec![],
         kind: NotificationKind::GroupWelcome,
         recipients: vec![user.user_id],
         template_data: Some(serde_json::to_value(&template_data)?),

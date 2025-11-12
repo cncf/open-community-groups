@@ -436,6 +436,7 @@ pub(crate) async fn sign_up(
             ),
         };
         let notification = NewNotification {
+            attachments: vec![],
             kind: NotificationKind::EmailVerification,
             recipients: vec![user.user_id],
             template_data: Some(serde_json::to_value(&template_data)?),

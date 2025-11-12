@@ -41,6 +41,8 @@ mod services;
 mod templates;
 /// Domain types and data structures.
 mod types;
+/// Utility helpers shared across modules.
+mod util;
 
 /// Command-line arguments for the application.
 #[derive(Debug, Parser)]
