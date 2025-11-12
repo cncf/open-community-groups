@@ -5,7 +5,10 @@ use async_trait::async_trait;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
-use crate::{db::PgDB, types::event::EventFull};
+use crate::{
+    db::PgDB,
+    types::event::{EventFull, EventSummary},
+};
 
 /// Database trait defining all data access operations for event page.
 #[async_trait]
@@ -14,7 +17,15 @@ pub(crate) trait DBEvent {
     async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
 
     /// Retrieves detailed event information.
-    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull>;
+    async fn get_event_full_by_slug(
+        &self,
+        community_id: Uuid,
+        group_slug: &str,
+        event_slug: &str,
+    ) -> Result<EventFull>;
+
+    /// Retrieves summary event information by its identifier.
+    async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary>;
 
     /// Checks if a user is an attendee of an event.
     async fn is_event_attendee(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<bool>;
@@ -40,9 +51,14 @@ impl DBEvent for PgDB {
         Ok(())
     }
 
-    /// [`DB::get_event`]
+    /// [`DBEvent::get_event_full_by_slug`]
     #[instrument(skip(self), err)]
-    async fn get_event(&self, community_id: Uuid, group_slug: &str, event_slug: &str) -> Result<EventFull> {
+    async fn get_event_full_by_slug(
+        &self,
+        community_id: Uuid,
+        group_slug: &str,
+        event_slug: &str,
+    ) -> Result<EventFull> {
         trace!("db: get event");
 
         let db = self.pool.get().await?;
@@ -53,6 +69,23 @@ impl DBEvent for PgDB {
             )
             .await?;
         let event = EventFull::try_from_json(row.get(0))?;
+
+        Ok(event)
+    }
+
+    /// [`DBEvent::get_event_summary_by_id`]
+    #[instrument(skip(self), err)]
+    async fn get_event_summary_by_id(&self, community_id: Uuid, event_id: Uuid) -> Result<EventSummary> {
+        trace!("db: get event summary by id");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_event_summary_by_id($1::uuid, $2::uuid)::text",
+                &[&community_id, &event_id],
+            )
+            .await?;
+        let event = EventSummary::try_from_json(row.get(0))?;
 
         Ok(event)
     }

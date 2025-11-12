@@ -337,12 +337,17 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
-        async fn get_event(
+        async fn get_event_full_by_slug(
             &self,
             community_id: Uuid,
             group_slug: &str,
             event_slug: &str,
         ) -> Result<crate::types::event::EventFull>;
+        async fn get_event_summary_by_id(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<crate::types::event::EventSummary>;
         async fn is_event_attendee(
             &self,
             community_id: Uuid,
@@ -359,7 +364,7 @@ mock! {
 
     #[async_trait]
     impl crate::db::group::DBGroup for DB {
-        async fn get_group(
+        async fn get_group_full_by_slug(
             &self,
             community_id: Uuid,
             group_slug: &str,

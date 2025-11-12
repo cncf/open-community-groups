@@ -119,9 +119,9 @@ values
 -- TESTS
 -- ============================================================================
 
--- get_group function returns correct data
+-- get_group_full_by_slug function returns correct data
 select is(
-    get_group(:'communityID'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
+    get_group_full_by_slug(:'communityID'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
     '{
         "active": true,
         "city": "New York",
@@ -175,13 +175,13 @@ select is(
         },
         "members_count": 3
     }'::jsonb,
-    'get_group should return correct group data as JSON'
+    'get_group_full_by_slug should return correct group data as JSON'
 );
 
--- get_group with non-existing group slug
+-- get_group_full_by_slug with non-existing group slug
 select ok(
-    get_group(:'communityID'::uuid, 'non-existing-group') is null,
-    'get_group with non-existing group slug should return null'
+    get_group_full_by_slug(:'communityID'::uuid, 'non-existing-group') is null,
+    'get_group_full_by_slug with non-existing group slug should return null'
 );
 
 -- ============================================================================

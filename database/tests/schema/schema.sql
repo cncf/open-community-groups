@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(167);
+select plan(168);
 
 -- ============================================================================
 -- TESTS
@@ -529,13 +529,14 @@ select has_function('get_community_filters_options');
 select has_function('get_community_home_stats');
 select has_function('get_community_recently_added_groups');
 select has_function('get_community_upcoming_events');
-select has_function('get_event');
 select has_function('get_event_detailed');
 select has_function('get_event_full');
+select has_function('get_event_full_by_slug');
 select has_function('get_event_summary');
-select has_function('get_group');
+select has_function('get_event_summary_by_id');
 select has_function('get_group_detailed');
 select has_function('get_group_full');
+select has_function('get_group_full_by_slug');
 select has_function('get_group_past_events');
 select has_function('get_group_sponsor');
 select has_function('get_group_summary');

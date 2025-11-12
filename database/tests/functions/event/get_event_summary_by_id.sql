@@ -1,0 +1,138 @@
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(3);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set otherCommunityID '00000000-0000-0000-0000-000000000002'
+\set groupID '00000000-0000-0000-0000-000000000011'
+\set groupCategoryID '00000000-0000-0000-0000-000000000021'
+\set eventID '00000000-0000-0000-0000-000000000031'
+\set eventCategoryID '00000000-0000-0000-0000-000000000041'
+\set userID '00000000-0000-0000-0000-000000000051'
+\set nonExistingEventID '00000000-0000-0000-0000-000000000099'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Communities
+insert into community (
+    community_id,
+    name,
+    display_name,
+    host,
+    title,
+    description,
+    header_logo_url,
+    theme
+) values
+    (:'communityID', 'event-summary-community', 'Event Summary', 'summary.example.test', 'Event Summary', 'Community for summary tests', 'https://example.test/logo.png', '{}'::jsonb),
+    (:'otherCommunityID', 'other-community', 'Other Community', 'other.example.test', 'Other', 'Another community', 'https://example.test/other.png', '{}'::jsonb);
+
+-- Group category
+insert into group_category (group_category_id, community_id, name, created_at)
+values (:'groupCategoryID', :'communityID', 'Event Category', '2025-01-01 00:00:00');
+
+-- Group
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    group_site_layout_id,
+    name,
+    slug
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'default',
+    'Summary Group',
+    'summary-group'
+);
+
+-- Event category
+insert into event_category (event_category_id, community_id, name, slug)
+values (:'eventCategoryID', :'communityID', 'Summary Events', 'summary-events');
+
+-- User
+insert into "user" (user_id, auth_hash, community_id, email, email_verified, username)
+values (
+    :'userID',
+    'test_hash',
+    :'communityID',
+    'summary-user@example.test',
+    true,
+    'summary-user'
+);
+
+-- Event
+insert into event (
+    event_id,
+    description,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    timezone,
+    venue_city,
+    starts_at,
+    capacity,
+    published_at
+) values (
+    :'eventID',
+    'Event summary test',
+    :'eventCategoryID',
+    'hybrid',
+    :'groupID',
+    'Summary Event',
+    true,
+    'summary-event',
+    'America/New_York',
+    'Metropolis',
+    '2025-07-01 10:00:00+00',
+    50,
+    '2025-06-01 00:00:00+00'
+);
+
+-- Event attendee
+insert into event_attendee (event_id, user_id, checked_in, created_at)
+values (:'eventID', :'userID', true, '2025-06-02 00:00:00');
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Test: get_event_summary_by_id should match get_event_summary output
+select is(
+    get_event_summary_by_id(:'communityID'::uuid, :'eventID'::uuid)::jsonb,
+    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    'get_event_summary_by_id should return the same payload as get_event_summary'
+);
+
+-- Test: get_event_summary_by_id should return null for missing event
+select ok(
+    get_event_summary_by_id(:'communityID'::uuid, :'nonExistingEventID'::uuid) is null,
+    'get_event_summary_by_id returns null when the event does not exist'
+);
+
+-- Test: get_event_summary_by_id should return null when community mismatches
+select ok(
+    get_event_summary_by_id(:'otherCommunityID'::uuid, :'eventID'::uuid) is null,
+    'get_event_summary_by_id returns null when the event belongs to another community'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

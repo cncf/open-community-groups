@@ -8,15 +8,17 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
-use serde_json::json;
+use serde_json::{json, to_value};
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
+    config::HttpServerConfig,
     db::DynDB,
     handlers::prepare_headers,
-    templates::{PageId, auth::User, event::Page},
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    templates::{PageId, auth::User, event::Page, notifications::EventWelcome},
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -34,7 +36,7 @@ pub(crate) async fn page(
     // Prepare template
     let (community, event) = tokio::try_join!(
         db.get_community(community_id),
-        db.get_event(community_id, &group_slug, &event_slug)
+        db.get_event_full_by_slug(community_id, &group_slug, &event_slug)
     )?;
     let template = Page {
         community,
@@ -56,7 +58,9 @@ pub(crate) async fn page(
 #[instrument(skip_all)]
 pub(crate) async fn attend_event(
     auth_session: AuthSession,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     CommunityId(community_id): CommunityId,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -65,6 +69,19 @@ pub(crate) async fn attend_event(
 
     // Attend event
     db.attend_event(community_id, event_id, user.user_id).await?;
+
+    // Enqueue welcome to event notification
+    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let link = format!("{}/group/{}/event/{}", base_url, &event.group_slug, &event.slug);
+    let template_data = EventWelcome { link, event };
+    let notification = NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::EventWelcome,
+        recipients: vec![user.user_id],
+        template_data: Some(to_value(&template_data)?),
+    };
+    notifications_manager.enqueue(&notification).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -118,13 +135,16 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use serde_json::{from_slice, json};
+    use serde_json::{from_slice, from_value, json};
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        db::mock::MockDB,
+        handlers::tests::*,
+        router::CACHE_CONTROL_NO_CACHE,
+        services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::notifications::EventWelcome,
     };
 
     #[tokio::test]
@@ -144,7 +164,7 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
-        db.expect_get_event()
+        db.expect_get_event_full_by_slug()
             .times(1)
             .withf(move |id, group_slug, event_slug| {
                 *id == community_id && group_slug == "test-group" && event_slug == "test-event"
@@ -194,7 +214,7 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
-        db.expect_get_event()
+        db.expect_get_event_full_by_slug()
             .times(1)
             .withf(move |id, group_slug, event_slug| {
                 *id == community_id && group_slug == "test-group" && event_slug == "test-event"
@@ -226,6 +246,8 @@ mod tests {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let event_summary = sample_event_summary(event_id, group_id);
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -249,9 +271,25 @@ mod tests {
             .times(1)
             .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
             .returning(|_, _, _| Ok(()));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
 
         // Setup notifications manager mock
-        let nm = MockNotificationsManager::new();
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue()
+            .times(1)
+            .withf(move |notification| {
+                matches!(notification.kind, NotificationKind::EventWelcome)
+                    && notification.recipients == vec![user_id]
+                    && notification.template_data.as_ref().is_some_and(|value| {
+                        from_value::<EventWelcome>(value.clone())
+                            .map(|template| template.link == "/group/test-group/event/sample-event")
+                            .unwrap_or(false)
+                    })
+            })
+            .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
         let router = setup_test_router(db, nm).await;

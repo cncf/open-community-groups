@@ -26,7 +26,7 @@ use crate::{
     db::DynDB,
     templates::notifications::{
         CommunityTeamInvitation, EmailVerification, EventCanceled, EventPublished, EventRescheduled,
-        GroupTeamInvitation, GroupWelcome,
+        EventWelcome, GroupTeamInvitation, GroupWelcome,
     },
 };
 
@@ -227,6 +227,12 @@ impl Worker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventWelcome => {
+                let subject = "Welcome to the event";
+                let template: EventWelcome = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::GroupTeamInvitation => {
                 let subject = "You have been invited to join a group team";
                 let template: GroupTeamInvitation = serde_json::from_value(template_data)?;
@@ -384,6 +390,8 @@ pub(crate) enum NotificationKind {
     EventPublished,
     /// Notification for an event rescheduled.
     EventRescheduled,
+    /// Notification welcoming a new event attendee.
+    EventWelcome,
     /// Notification for a group team invitation.
     GroupTeamInvitation,
     /// Notification welcoming a new group member.
