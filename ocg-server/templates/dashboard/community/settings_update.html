@@ -123,6 +123,23 @@
         </div>
         {# End footer logo URL -#}
 
+        {# Jumbotron image URL -#}
+        <div class="col-span-full">
+          <label for="jumbotron_image_url" class="form-label">Jumbotron Background Image URL</label>
+          <div class="mt-2">
+            <input type="url"
+                   name="jumbotron_image_url"
+                   id="jumbotron_image_url"
+                   class="input-primary"
+                   placeholder="https://example.com/jumbotron-image.png"
+                   {% if let Some(jumbotron_image_url) = community.jumbotron_image_url %}
+                     value="{{ jumbotron_image_url }}"
+                   {% endif %}>
+          </div>
+          <p class="form-legend">URL to the background image shown in the community home page jumbotron.</p>
+        </div>
+        {# End jumbotron image URL -#}
+
         {# Copyright notice -#}
         <div class="col-span-full">
           <label for="copyright_notice" class="form-label">Copyright Notice</label>

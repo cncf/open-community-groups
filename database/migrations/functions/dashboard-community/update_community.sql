@@ -23,6 +23,7 @@ begin
         footer_logo_url = case when p_data ? 'footer_logo_url' then nullif(p_data->>'footer_logo_url', '') else footer_logo_url end,
         github_url = case when p_data ? 'github_url' then nullif(p_data->>'github_url', '') else github_url end,
         instagram_url = case when p_data ? 'instagram_url' then nullif(p_data->>'instagram_url', '') else instagram_url end,
+        jumbotron_image_url = case when p_data ? 'jumbotron_image_url' then nullif(p_data->>'jumbotron_image_url', '') else jumbotron_image_url end,
         linkedin_url = case when p_data ? 'linkedin_url' then nullif(p_data->>'linkedin_url', '') else linkedin_url end,
         new_group_details = case when p_data ? 'new_group_details' then nullif(p_data->>'new_group_details', '') else new_group_details end,
         og_image_url = case when p_data ? 'og_image_url' then nullif(p_data->>'og_image_url', '') else og_image_url end,
