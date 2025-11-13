@@ -72,11 +72,18 @@ pub(crate) async fn attend_event(
     db.attend_event(community_id, event_id, user.user_id).await?;
 
     // Enqueue welcome to event notification
-    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let (community, event) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_event_summary_by_id(community_id, event_id),
+    )?;
     let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
     let link = build_event_page_link(base_url, &event);
     let calendar_ics = build_event_calendar_attachment(base_url, &event);
-    let template_data = EventWelcome { link, event };
+    let template_data = EventWelcome {
+        link,
+        event,
+        theme: community.theme,
+    };
     let notification = NewNotification {
         attachments: vec![calendar_ics],
         kind: NotificationKind::EventWelcome,
@@ -273,6 +280,10 @@ mod tests {
             .times(1)
             .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
             .returning(|_, _, _| Ok(()));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_event_summary_by_id()
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)
