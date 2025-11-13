@@ -90,7 +90,7 @@
 
         {# Photo URL -#}
         <div class="col-span-full">
-          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar" instructions="Your profile picture.">
+          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar">
         </image-field>
       </div>
       {# End photo URL -#}
@@ -315,6 +315,8 @@
   </form>
   {# End update user password form -#}
 {% endif -%}
+
+<script type="module" src="/static/js/common/image-field.js"></script>
 
 <script type="module">
   import {

@@ -106,14 +106,16 @@ export class GalleryField extends LitWrapper {
    * Provide contextual instructions based on legend or maximum count.
    */
   get _instructions() {
-    let tmp_legend;
-    if (this.legend && this.legend.trim().length > 0) {
+    const hasLegend = typeof this.legend === "string" && this.legend.trim().length > 0;
+    let tmp_legend = "";
+
+    if (hasLegend) {
       tmp_legend = this.legend;
-    }
-    if (this.maxImages > 0) {
+    } else if (this.maxImages > 0) {
       tmp_legend = `Upload up to ${this.maxImages} images. Maximum size: 2MB each.`;
+    } else {
+      tmp_legend = "Upload as many images as you need. Maximum size: 2MB each.";
     }
-    tmp_legend = `Upload as many images as you need. Maximum size: 2MB each.`;
 
     return `${tmp_legend} Drag and drop thumbnails to change their order before submitting.`;
   }

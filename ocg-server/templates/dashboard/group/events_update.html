@@ -152,14 +152,14 @@
 
               {# Logo URL -#}
               <div class="col-span-full lg:col-span-3">
-                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" instructions="Event's logo image." value="{%- if let Some(logo_url) = event.logo_url -%}{{ logo_url }}{%- endif -%}">
+                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" value="{%- if let Some(logo_url) = event.logo_url -%}{{ logo_url }}{%- endif -%}">
               </image-field>
             </div>
             {# End Logo URL -#}
 
             {# Banner URL -#}
             <div class="col-span-full">
-              <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" instructions="Event's banner image." value="{%- if let Some(banner_url) = event.banner_url -%}{{ banner_url }}{%- endif -%}">
+              <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = event.banner_url -%}{{ banner_url }}{%- endif -%}">
             </image-field>
           </div>
           {# End Banner URL -#}
