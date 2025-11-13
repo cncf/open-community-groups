@@ -57,6 +57,8 @@ pub(crate) struct CommunityUpdate {
     pub github_url: Option<String>,
     /// Link to the community's Instagram profile.
     pub instagram_url: Option<String>,
+    /// URL to the jumbotron background image for the community home page.
+    pub jumbotron_image_url: Option<String>,
     /// Link to the community's `LinkedIn` page.
     pub linkedin_url: Option<String>,
     /// Instructions for creating new groups.

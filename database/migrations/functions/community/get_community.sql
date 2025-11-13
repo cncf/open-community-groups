@@ -20,6 +20,7 @@ returns json as $$
         'header_logo_url', header_logo_url,
         'host', host,
         'instagram_url', instagram_url,
+        'jumbotron_image_url', jumbotron_image_url,
         'linkedin_url', linkedin_url,
         'name', name,
         'new_group_details', new_group_details,

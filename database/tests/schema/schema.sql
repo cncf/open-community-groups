@@ -75,6 +75,7 @@ select columns_are('community', array[
     'footer_logo_url',
     'github_url',
     'instagram_url',
+    'jumbotron_image_url',
     'linkedin_url',
     'new_group_details',
     'og_image_url',

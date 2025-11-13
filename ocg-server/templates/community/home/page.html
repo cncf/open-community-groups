@@ -59,8 +59,10 @@
       </div>
 
       {# Jumbotron background image -#}
-      <div class="absolute bottom-[-82px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain bg-[url('/static/images/phippy_family.png')] sm:w-[520px] md:w-[600px] lg:w-[710px] xl:w-[760px] sm:bottom-[-105px] md:bottom-[-120px] lg:bottom-[-145px] xl:bottom-[-155px]">
-      </div>
+      {% if let Some(jumbotron_image_url) = community.jumbotron_image_url -%}
+        <div class="absolute bottom-[-82px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain sm:w-[520px] md:w-[600px] lg:w-[710px] xl:w-[760px] sm:bottom-[-105px] md:bottom-[-120px] lg:bottom-[-145px] xl:bottom-[-155px]"
+             style="background-image: url('{{ jumbotron_image_url }}')"></div>
+      {% endif -%}
       {# End jumbotron background image -#}
     </section>
   </div>

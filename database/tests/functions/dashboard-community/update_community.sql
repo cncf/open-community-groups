@@ -37,6 +37,7 @@ insert into community (
     footer_logo_url,
     github_url,
     instagram_url,
+    jumbotron_image_url,
     linkedin_url,
     new_group_details,
     og_image_url,
@@ -67,6 +68,7 @@ insert into community (
     'https://original.com/footer-logo.png',
     'https://github.com/original',
     'https://instagram.com/original',
+    'https://original.com/jumbotron.png',
     'https://linkedin.com/original',
     'Contact team members to create groups',
     'https://original.com/og.png',
@@ -117,6 +119,7 @@ select is(
         "header_logo_url": "https://updated.com/header-logo.png",
         "host": "seattle.cloudnative.org",
         "instagram_url": "https://instagram.com/original",
+        "jumbotron_image_url": "https://original.com/jumbotron.png",
         "linkedin_url": "https://linkedin.com/original",
         "name": "cloud-native-seattle-updated",
         "new_group_details": "Contact team members to create groups",
@@ -156,6 +159,7 @@ select update_community(
         "footer_logo_url": "https://new.com/footer.png",
         "github_url": "https://github.com/new",
         "instagram_url": "https://instagram.com/new",
+        "jumbotron_image_url": "https://new.com/jumbotron.png",
         "linkedin_url": "https://linkedin.com/new",
         "new_group_details": "New groups welcome!",
         "og_image_url": "https://new.com/og.png",
@@ -164,7 +168,8 @@ select update_community(
         "twitter_url": "https://twitter.com/new",
         "website_url": "https://new.com",
         "wechat_url": "https://wechat.com/new",
-        "youtube_url": "https://youtube.com/new"
+        "youtube_url": "https://youtube.com/new",
+        "jumbotron_image_url": "https://new.com/jumbotron.png"
     }'::jsonb
 );
 
@@ -198,7 +203,8 @@ select is(
         "twitter_url": "https://twitter.com/new",
         "website_url": "https://new.com",
         "wechat_url": "https://wechat.com/new",
-        "youtube_url": "https://youtube.com/new"
+        "youtube_url": "https://youtube.com/new",
+        "jumbotron_image_url": "https://new.com/jumbotron.png"
     }'::jsonb,
     'update_community should update all fields correctly including optional ones'
 );
@@ -216,6 +222,7 @@ select update_community(
         "footer_logo_url": "",
         "github_url": "",
         "instagram_url": "",
+        "jumbotron_image_url": "",
         "linkedin_url": "",
         "new_group_details": "",
         "og_image_url": "",
@@ -223,7 +230,8 @@ select update_community(
         "twitter_url": "",
         "website_url": "",
         "wechat_url": "",
-        "youtube_url": ""
+        "youtube_url": "",
+        "jumbotron_image_url": ""
     }'::jsonb
 );
 
@@ -242,6 +250,7 @@ select is(
         "footer_logo_url": null,
         "github_url": null,
         "instagram_url": null,
+        "jumbotron_image_url": null,
         "linkedin_url": null,
         "new_group_details": null,
         "og_image_url": null,
