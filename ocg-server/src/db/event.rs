@@ -64,7 +64,7 @@ impl DBEvent for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_event($1::uuid, $2::text, $3::text)::text",
+                "select get_event_full_by_slug($1::uuid, $2::text, $3::text)::text",
                 &[&community_id, &group_slug, &event_slug],
             )
             .await?;
