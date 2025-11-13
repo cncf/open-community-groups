@@ -1,0 +1,46 @@
+{% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
+
+{% block subject -%}
+  You are registered: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  You are registered for a new event from {{ event.group_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Thanks for registering for <strong>{{ event.name }}</strong> with
+    <strong>{{ event.group_name }}</strong> on
+    <strong>Open Community Groups</strong>.
+    <br />
+    <br />
+    You're all set and we'll keep you posted if anything changes.
+    <br />
+    <br />
+    {% if let Some(starts_at) = event.starts_at -%}
+      Date &amp; time:
+      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+      <br />
+    {% endif -%}
+    {% if let Some(location) = self.event.location(90) -%}
+      Location: {{ location }}
+      <br />
+    {% endif -%}
+  </p>
+
+  {% call macros::email_button(link = link, text = "View event") %}
+
+  <p class="default mt-30 mb-15">
+    Please find attached an .ics file containing the event details.
+    <br />
+    <br />
+    Thanks for registering!
+  </p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you registered for {{ event.name }}.
+  If this wasn't you, feel free to ignore this message.
+{% endblock footer -%}
