@@ -89,7 +89,7 @@ export class ImageField extends LitWrapper {
           ? "gap-3 px-4"
           : "gap-2 px-3"}"
       >
-        <div class="svg-icon ${isBanner ? "size-16" : "size-8"} icon-image bg-stone-400"></div>
+        <div class="svg-icon ${isBanner ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
         <p class="text-xs text-stone-500 leading-snug">
           ${isBanner ? "Click to upload or drag and drop" : "Click or drop image"}
         </p>
