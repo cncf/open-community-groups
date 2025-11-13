@@ -114,11 +114,14 @@ pub(crate) fn compute_hash(bytes: &[u8]) -> String {
 
 /// Quote parameter value for ICS output according to RFC 5545 section 3.2.
 fn quote_ics_parameter_value(input: &str) -> String {
-    let input = input.replace('"', "");
-    if input.contains(',') || input.contains(';') || input.contains(':') {
-        format!("\"{input}\"")
+    // Remove characters not allowed
+    let sanitized = input.replace('"', "");
+
+    // Quote if it contains special characters
+    if sanitized.contains(',') || sanitized.contains(';') || sanitized.contains(':') {
+        format!("\"{sanitized}\"")
     } else {
-        input
+        sanitized
     }
 }
 
