@@ -73,6 +73,8 @@ pub(crate) struct EventWelcome {
     pub link: String,
     /// Event summary data.
     pub event: EventSummary,
+    /// Theme configuration for the community.
+    pub theme: Theme,
 }
 
 /// Template for group team invitation notification.
