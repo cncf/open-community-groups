@@ -104,37 +104,28 @@
     </div>
     {# End footer logo URL -#}
 
-    {# Jumbotron image URL -#}
+    {# Jumbotron image -#}
     <div class="col-span-full">
-      <label for="jumbotron_image_url" class="form-label">Jumbotron Background Image URL</label>
-      <div class="mt-2">
-        <input type="url"
-               name="jumbotron_image_url"
-               id="jumbotron_image_url"
-               class="input-primary"
-               placeholder="https://example.com/jumbotron-image.png"
-               {% if let Some(jumbotron_image_url) = community.jumbotron_image_url %}
-                 value="{{ jumbotron_image_url }}"
-               {% endif %}>
-      </div>
-      <p class="form-legend">URL to the background image shown in the community home page jumbotron.</p>
-    </div>
-    {# End jumbotron image URL -#}
-
-    {# Copyright notice -#}
-    <div class="col-span-full">
-      <label for="copyright_notice" class="form-label">Copyright Notice</label>
-      <div class="mt-2">
-        <markdown-editor id="copyright_notice" name="copyright_notice" mini
-        {% if let Some(copyright_notice) = community.copyright_notice -%}
-          content="{{ copyright_notice }}"
-        {% endif -%}
-        ></markdown-editor>
-      </div>
-      <p class="form-legend">Copyright text displayed in the footer.</p>
-    </div>
-    {# End copyright notice -#}
+      <image-field label="Jumbotron Background Image" name="jumbotron_image_url" image-kind="banner" value="{%- if let Some(jumbotron_image_url) = community.jumbotron_image_url -%}{{ jumbotron_image_url }}{%- endif -%}">
+    </image-field>
+    <p class="form-legend">URL to the background image shown in the community home page jumbotron.</p>
   </div>
+  {# End jumbotron image -#}
+
+  {# Copyright notice -#}
+  <div class="col-span-full">
+    <label for="copyright_notice" class="form-label">Copyright Notice</label>
+    <div class="mt-2">
+      <markdown-editor id="copyright_notice" name="copyright_notice" mini
+      {% if let Some(copyright_notice) = community.copyright_notice -%}
+        content="{{ copyright_notice }}"
+      {% endif -%}
+      ></markdown-editor>
+    </div>
+    <p class="form-legend">Copyright text displayed in the footer.</p>
+  </div>
+  {# End copyright notice -#}
+</div>
 </div>
 {# End branding section -#}
 
