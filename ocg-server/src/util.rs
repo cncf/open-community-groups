@@ -9,9 +9,8 @@ use crate::{services::notifications::Attachment, types::event::EventSummary};
 /// Build an iCalendar (ICS) attachment for the specified event.
 pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSummary) -> Attachment {
     // Prepare some event data
-    let event_page_link = build_event_page_link(base_url, event);
+    let description = build_event_calendar_description(event);
     let location = event.location(512);
-    let description = build_event_calendar_description(event, location.as_deref(), &event_page_link);
     let uid = format!("{}", event.event_id);
 
     // Setup ical event
@@ -21,12 +20,14 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
         .uid(&uid)
         .timestamp(Utc::now())
         .created(Utc::now())
-        .append_property(Property::new("URL", event_page_link.clone()));
+        .append_property(Property::new("URL", build_event_page_link(base_url, event)));
     if !description.is_empty() {
         ical_event.description(&description);
     }
     if event.canceled {
         ical_event.status(EventStatus::Cancelled);
+    } else {
+        ical_event.status(EventStatus::Confirmed);
     }
     if let Some(start) = event.starts_at {
         ical_event.starts(start);
@@ -39,6 +40,21 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     }
     if let (Some(lat), Some(lon)) = (event.latitude, event.longitude) {
         ical_event.append_property(Property::new("GEO", format!("{lat:.6};{lon:.6}")));
+
+        // Apple structured location
+        let mut apple_loc = Property::new("X-APPLE-STRUCTURED-LOCATION", format!("geo:{lat:.6},{lon:.6}"));
+        apple_loc
+            .append_parameter(("VALUE", "URI"))
+            .append_parameter(("X-APPLE-RADIUS", "100"))
+            .append_parameter((
+                "X-APPLE-TITLE",
+                quote_ics_parameter_value(location.as_deref().unwrap_or(&event.name)).as_str(),
+            ));
+        if let Some(address) = &location {
+            let escaped_address = quote_ics_parameter_value(address);
+            apple_loc.append_parameter(("X-ADDRESS", escaped_address.as_str()));
+        }
+        ical_event.append_property(apple_loc);
     }
 
     // Setup calendar and add ical event
@@ -58,25 +74,13 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
 }
 
 /// Build the event description for the calendar entry.
-fn build_event_calendar_description(
-    event: &EventSummary,
-    location: Option<&str>,
-    event_page_link: &str,
-) -> String {
+fn build_event_calendar_description(event: &EventSummary) -> String {
     let mut description = Vec::new();
 
     // Add cancellation notice on top if applicable
     if event.canceled {
         description.push("** This event has been canceled **".to_string());
     }
-
-    // Group and event details
-    description.push(format!(
-        "Group: {} ({})",
-        event.group_name, event.group_category_name
-    ));
-    description.push(format!("Event page: {event_page_link}"));
-    description.push(format!("Kind: {}", event.kind));
 
     // Add short description if available
     if let Some(description_short) = event
@@ -87,20 +91,12 @@ fn build_event_calendar_description(
         description.push(description_short.trim().to_string());
     }
 
-    // Location details
-    if let Some(location) = location {
-        description.push(format!("Location: {location}"));
-    }
-    if let (Some(lat), Some(lon)) = (event.latitude, event.longitude) {
-        description.push(format!("Coordinates: {lat:.6}, {lon:.6}"));
-    }
-
     // Streaming URL if available
     if let Some(streaming_url) = event.streaming_url.as_deref().filter(|url| !url.trim().is_empty()) {
         description.push(format!("Streaming link: {streaming_url}"));
     }
 
-    description.join("\n")
+    description.join("\n\n")
 }
 
 /// Build the event page link based on the base URL and event and group slugs.
@@ -116,6 +112,16 @@ pub(crate) fn compute_hash(bytes: &[u8]) -> String {
     format!("{:x}", hasher.finalize())
 }
 
+/// Quote parameter value for ICS output according to RFC 5545 section 3.2.
+fn quote_ics_parameter_value(input: &str) -> String {
+    let input = input.replace('"', "");
+    if input.contains(',') || input.contains(';') || input.contains(':') {
+        format!("\"{input}\"")
+    } else {
+        input
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::{TimeZone, Utc};
@@ -129,44 +135,90 @@ mod tests {
     const BASE_URL: &str = "https://example.test";
 
     #[test]
-    fn test_build_event_calendar_attachment() {
+    fn test_build_event_calendar_attachment_confirmed() {
         let event = sample_event(false);
         let attachment = build_event_calendar_attachment(BASE_URL, &event);
         let data = String::from_utf8(attachment.data).unwrap();
+        let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
+        assert_eq!(attachment.content_type, "text/calendar; charset=utf-8");
         assert_eq!(attachment.file_name, "event-test-event.ics");
-        assert!(data.contains("DTSTART:20260112T190000Z"));
-        assert!(data.contains("DTEND:20260112T210000Z"));
-        assert!(data.contains("GEO:37.780000;-122.420000"));
-        assert!(data.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States"));
-        assert!(data.contains("NAME:Test Group - Test Event"));
-        assert!(data.contains("SUMMARY:Test Event"));
-        assert!(data.contains("UID:00000000-0000-0000-0000-000000000001"));
-        assert!(data.contains("URL:https://example.test/group/test-group/event/test-event"));
-        assert!(data.contains("Group: Test Group (Community)"));
-        assert!(data.contains("Short description"));
-        assert!(data.contains("https://example.test/live"));
+        assert!(unfolded.contains("CREATED:"));
+        assert!(unfolded.contains("DESCRIPTION:"));
+        assert!(unfolded.contains("Short description"));
+        assert!(unfolded.contains("Streaming link: https://example.test/live"));
+        assert!(unfolded.contains("DTEND:20260112T210000Z"));
+        assert!(unfolded.contains("DTSTAMP:"));
+        assert!(unfolded.contains("DTSTART:20260112T190000Z"));
+        assert!(unfolded.contains("GEO:37.780000;-122.420000"));
+        assert!(
+            unfolded.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States")
+        );
+        assert!(unfolded.contains("NAME:Test Group - Test Event"));
+        assert!(unfolded.contains("STATUS:CONFIRMED"));
+        assert!(unfolded.contains("SUMMARY:Test Event"));
+        assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
+        assert!(unfolded.contains("URL:https://example.test/group/test-group/event/test-event"));
+        assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
+        assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
+        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
+        assert!(
+            unfolded.contains("X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\"")
+        );
     }
 
     #[test]
-    fn test_build_event_calendar_attachment_marks_canceled_events() {
+    fn test_build_event_calendar_attachment_canceled() {
         let event = sample_event(true);
         let attachment = build_event_calendar_attachment(BASE_URL, &event);
         let data = String::from_utf8(attachment.data).unwrap();
+        let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
+        assert_eq!(attachment.content_type, "text/calendar; charset=utf-8");
         assert_eq!(attachment.file_name, "event-test-event.ics");
-        assert!(data.contains("DESCRIPTION:** This event has been canceled **"));
-        assert!(data.contains("DTSTART:20260112T190000Z"));
-        assert!(data.contains("DTEND:20260112T210000Z"));
-        assert!(data.contains("GEO:37.780000;-122.420000"));
-        assert!(data.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States"));
-        assert!(data.contains("NAME:Test Group - Test Event"));
-        assert!(data.contains("SUMMARY:Test Event"));
-        assert!(data.contains("URL:https://example.test/group/test-group/event/test-event"));
-        assert!(data.contains("STATUS:CANCELLED"));
-        assert!(data.contains("UID:00000000-0000-0000-0000-000000000001"));
-        assert!(data.contains("Short description"));
-        assert!(data.contains("https://example.test/live"));
+        assert!(unfolded.contains("CREATED:"));
+        assert!(unfolded.contains("DESCRIPTION:** This event has been canceled **"));
+        assert!(unfolded.contains("Short description"));
+        assert!(unfolded.contains("Streaming link: https://example.test/live"));
+        assert!(unfolded.contains("DTEND:20260112T210000Z"));
+        assert!(unfolded.contains("DTSTAMP:"));
+        assert!(unfolded.contains("DTSTART:20260112T190000Z"));
+        assert!(unfolded.contains("GEO:37.780000;-122.420000"));
+        assert!(
+            unfolded.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States")
+        );
+        assert!(unfolded.contains("NAME:Test Group - Test Event"));
+        assert!(unfolded.contains("STATUS:CANCELLED"));
+        assert!(unfolded.contains("SUMMARY:Test Event"));
+        assert!(unfolded.contains("URL:https://example.test/group/test-group/event/test-event"));
+        assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
+        assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
+        assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
+        assert!(unfolded.contains("X-APPLE-RADIUS=100"));
+        assert!(
+            unfolded.contains("X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\"")
+        );
+    }
+
+    #[test]
+    fn test_quote_ics_parameter_value_removes_double_quotes() {
+        let input = r#"Joe's "Best" Venue, 123 Main St"#;
+        let result = quote_ics_parameter_value(input);
+        assert_eq!(result, r#""Joe's Best Venue, 123 Main St""#);
+    }
+
+    #[test]
+    fn test_quote_ics_parameter_value_without_special_chars() {
+        let input = "Simple Venue";
+        let result = quote_ics_parameter_value(input);
+        assert_eq!(result, "Simple Venue");
+    }
+
+    #[test]
+    fn test_quote_ics_parameter_value_with_comma_no_quotes() {
+        let input = "Venue, With Comma";
+        let result = quote_ics_parameter_value(input);
+        assert_eq!(result, "\"Venue, With Comma\"");
     }
 
     // Helpers
