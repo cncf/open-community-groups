@@ -57,7 +57,7 @@ impl DBGroup for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select get_group($1::uuid, $2::text)::text",
+                "select get_group_full_by_slug($1::uuid, $2::text)::text",
                 &[&community_id, &group_slug],
             )
             .await?;
