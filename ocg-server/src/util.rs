@@ -1,6 +1,6 @@
 //! Utility functions shared across modules.
 
-use chrono::Utc;
+use chrono::{DateTime, Datelike, Timelike, Utc};
 use icalendar::{Calendar, Component as _, Event, EventLike as _, EventStatus, Property};
 use sha2::{Digest, Sha256};
 
@@ -12,6 +12,7 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     let description = build_event_calendar_description(event);
     let location = event.location(512);
     let uid = format!("{}", event.event_id);
+    let tz_string = event.timezone.to_string();
 
     // Setup ical event
     let mut ical_event = Event::new();
@@ -29,12 +30,24 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     } else {
         ical_event.status(EventStatus::Confirmed);
     }
+
+    // Add start time with timezone
     if let Some(start) = event.starts_at {
-        ical_event.starts(start);
+        let tz_start = start.with_timezone(&event.timezone);
+        let mut dtstart_prop = Property::new("DTSTART", format_datetime_for_ics(&tz_start));
+        dtstart_prop.add_parameter("TZID", &tz_string);
+        ical_event.append_property(dtstart_prop);
     }
+
+    // Add end time with timezone
     if let Some(end) = event.ends_at {
-        ical_event.ends(end);
+        let tz_end = end.with_timezone(&event.timezone);
+        let mut dtend_prop = Property::new("DTEND", format_datetime_for_ics(&tz_end));
+        dtend_prop.add_parameter("TZID", &tz_string);
+        ical_event.append_property(dtend_prop);
     }
+
+    // Add location and geo coordinates
     if let Some(location) = &location {
         ical_event.location(location);
     }
@@ -63,6 +76,7 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     calendar
         .name(&calendar_name)
         .description(&description)
+        .append_property(Property::new("X-WR-TIMEZONE", event.timezone.to_string()))
         .push(ical_event.done());
 
     // Setup attachment and return it
@@ -71,6 +85,19 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
         file_name: format!("event-{}.ics", event.slug),
         content_type: "text/calendar; charset=utf-8".to_string(),
     }
+}
+
+/// Build the event page link based on the base URL and event and group slugs.
+pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
+    let base = base_url.strip_suffix('/').unwrap_or(base_url);
+    format!("{}/group/{}/event/{}", base, event.group_slug, event.slug)
+}
+
+/// Computes the SHA-256 hash of the provided bytes and returns a hex string.
+pub(crate) fn compute_hash(bytes: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(bytes);
+    format!("{:x}", hasher.finalize())
 }
 
 /// Build the event description for the calendar entry.
@@ -99,17 +126,17 @@ fn build_event_calendar_description(event: &EventSummary) -> String {
     description.join("\n\n")
 }
 
-/// Build the event page link based on the base URL and event and group slugs.
-pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
-    let base = base_url.strip_suffix('/').unwrap_or(base_url);
-    format!("{}/group/{}/event/{}", base, event.group_slug, event.slug)
-}
-
-/// Computes the SHA-256 hash of the provided bytes and returns a hex string.
-pub(crate) fn compute_hash(bytes: &[u8]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
+/// Helper function to format `DateTime` with timezone for ICS format (YYYYMMDDTHHMMSS)
+fn format_datetime_for_ics<Tz: chrono::TimeZone>(dt: &DateTime<Tz>) -> String {
+    format!(
+        "{:04}{:02}{:02}T{:02}{:02}{:02}",
+        dt.year(),
+        dt.month(),
+        dt.day(),
+        dt.hour(),
+        dt.minute(),
+        dt.second()
+    )
 }
 
 /// Quote parameter value for ICS output according to RFC 5545 section 3.2.
@@ -128,7 +155,7 @@ fn quote_ics_parameter_value(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use chrono::{TimeZone, Utc};
-    use chrono_tz::UTC;
+    use chrono_tz::America::Los_Angeles;
     use uuid::Uuid;
 
     use crate::types::event::EventKind;
@@ -150,9 +177,9 @@ mod tests {
         assert!(unfolded.contains("DESCRIPTION:"));
         assert!(unfolded.contains("Short description"));
         assert!(unfolded.contains("Streaming link: https://example.test/live"));
-        assert!(unfolded.contains("DTEND:20260112T210000Z"));
+        assert!(unfolded.contains("DTEND;TZID=America/Los_Angeles:20260112T130000"));
         assert!(unfolded.contains("DTSTAMP:"));
-        assert!(unfolded.contains("DTSTART:20260112T190000Z"));
+        assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
         assert!(unfolded.contains("GEO:37.780000;-122.420000"));
         assert!(
             unfolded.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States")
@@ -183,9 +210,9 @@ mod tests {
         assert!(unfolded.contains("DESCRIPTION:** This event has been canceled **"));
         assert!(unfolded.contains("Short description"));
         assert!(unfolded.contains("Streaming link: https://example.test/live"));
-        assert!(unfolded.contains("DTEND:20260112T210000Z"));
+        assert!(unfolded.contains("DTEND;TZID=America/Los_Angeles:20260112T130000"));
         assert!(unfolded.contains("DTSTAMP:"));
-        assert!(unfolded.contains("DTSTART:20260112T190000Z"));
+        assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
         assert!(unfolded.contains("GEO:37.780000;-122.420000"));
         assert!(
             unfolded.contains("LOCATION:Test Venue\\, 123 Main St\\, San Francisco\\, CA\\, United States")
@@ -201,6 +228,17 @@ mod tests {
         assert!(
             unfolded.contains("X-APPLE-TITLE=\"Test Venue, 123 Main St, San Francisco, CA, United States\"")
         );
+    }
+
+    #[test]
+    fn test_format_datetime_for_ics() {
+        let dt = Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap();
+        let formatted = format_datetime_for_ics(&dt);
+        assert_eq!(formatted, "20260112T190000");
+
+        let dt_la = dt.with_timezone(&Los_Angeles);
+        let formatted_la = format_datetime_for_ics(&dt_la);
+        assert_eq!(formatted_la, "20260112T110000");
     }
 
     #[test]
@@ -238,10 +276,10 @@ mod tests {
             name: "Test Event".to_string(),
             published: true,
             slug: "test-event".to_string(),
-            timezone: UTC,
+            timezone: Los_Angeles,
             description_short: Some("Short description".to_string()),
             ends_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 21, 0, 0).unwrap()),
-            group_city: Some("Test City".to_string()),
+            group_city: Some("San Francisco".to_string()),
             group_country_code: Some("US".to_string()),
             group_country_name: Some("United States".to_string()),
             group_state: Some("CA".to_string()),
