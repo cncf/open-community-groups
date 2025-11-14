@@ -24,6 +24,7 @@ export class ImageField extends LitWrapper {
    * @property {string} inputId - Optional override for the hidden input id attribute.
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
+   * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
    */
   static properties = {
     label: { type: String },
@@ -33,6 +34,7 @@ export class ImageField extends LitWrapper {
     inputId: { type: String, attribute: "input-id" },
     imageKind: { type: String, attribute: "image-kind" },
     previewBgClass: { type: String, attribute: "preview-bg-class" },
+    helpPrefixText: { type: String, attribute: "help-prefix-text" },
   };
 
   constructor() {
@@ -47,6 +49,7 @@ export class ImageField extends LitWrapper {
     this._isDragActive = false;
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
     this.previewBgClass = "";
+    this.helpPrefixText = "";
   }
 
   get _valueInputId() {
@@ -209,7 +212,7 @@ export class ImageField extends LitWrapper {
       showSuccessAlert("Image added successfully.");
     } catch (error) {
       const ERROR_MESSAGE =
-        'Something went wrong adding the image, please try again later.<br /><br /><div class="text-sm text-stone-500">Images must be at least 400x400, preferably in square format. Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+        'Something went wrong adding the image, please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
       showErrorAlert(ERROR_MESSAGE, true);
     } finally {
       this._isUploading = false;
@@ -250,9 +253,11 @@ export class ImageField extends LitWrapper {
     const bannerLikeKinds = [IMAGE_KIND.BANNER, IMAGE_KIND.LOGO];
     const isWide = bannerLikeKinds.includes(this.imageKind);
     const removeDisabled = !this._hasImage || this._isUploading;
+    const helpPrefixText = (this.helpPrefixText || "").trim();
     const helpText = isWide
       ? "Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
       : "Images must be at least 380x380 (square). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+    const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
 
     return html`
       <label for="${this._fileInputId}" class="form-label">
@@ -290,8 +295,8 @@ export class ImageField extends LitWrapper {
         </div>
 
         <div class="flex flex-1 flex-col justify-between gap-3">
-          <p class="form-legend hidden xl:block">${helpText}</p>
-          <div class="flex flex-wrap gap-3 mt-auto">
+          <p class="form-legend hidden xl:block">${combinedHelpText}</p>
+          <div class="flex flex-wrap gap-3 mb-1">
             <label
               class="btn-primary btn-mini inline-flex items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${this
                 ._isUploading
