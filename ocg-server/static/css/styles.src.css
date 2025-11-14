@@ -186,6 +186,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 /* End generic styles */
 
+@supports (font-size: 1cap) {
+  .caps {
+    /* Cut descenders “air” */
+    padding-block: calc((1em - 1cap) / 2);
+  }
+}
+
 /* Footer */
 .copyright a {
   color: white;
