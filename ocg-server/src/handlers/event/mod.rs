@@ -18,7 +18,12 @@ use crate::{
     db::DynDB,
     handlers::prepare_headers,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{PageId, auth::User, event::Page, notifications::EventWelcome},
+    templates::{
+        PageId,
+        auth::User,
+        event::{CheckInPage, Page},
+        notifications::EventWelcome,
+    },
     util::{build_event_calendar_attachment, build_event_page_link},
 };
 
@@ -51,6 +56,40 @@ pub(crate) async fn page(
     let headers = prepare_headers(Duration::hours(1), &[])?;
 
     Ok((headers, Html(template.render()?)))
+}
+
+/// Handler that renders the check-in page.
+#[instrument(skip_all, err)]
+pub(crate) async fn check_in_page(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path(event_id): Path<Uuid>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
+
+    // Get community and event details
+    let (community, event, (user_is_attendee, user_is_checked_in), check_in_window_open) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_event_summary_by_id(community_id, event_id),
+        db.is_event_attendee(community_id, event_id, user.user_id),
+        db.is_event_check_in_window_open(community_id, event_id),
+    )?;
+
+    let template = CheckInPage {
+        check_in_window_open,
+        community,
+        event,
+        page_id: PageId::CheckIn,
+        path: uri.path().to_string(),
+        user: User::from_session(auth_session).await?,
+        user_is_attendee,
+        user_is_checked_in,
+    };
+
+    Ok(Html(template.render()?))
 }
 
 // Actions handlers.
@@ -106,12 +145,30 @@ pub(crate) async fn attendance_status(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Check attendance
-    let is_attendee = db.is_event_attendee(community_id, event_id, user.user_id).await?;
+    // Check attendance and check-in status
+    let (is_attendee, is_checked_in) = db.is_event_attendee(community_id, event_id, user.user_id).await?;
 
     Ok(Json(json!({
-        "is_attendee": is_attendee
+        "is_attendee": is_attendee,
+        "is_checked_in": is_checked_in
     })))
+}
+
+/// Handler that marks the authenticated attendee as checked in.
+#[instrument(skip_all)]
+pub(crate) async fn check_in(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
+    // Check in event
+    db.check_in_event(community_id, event_id, user.user_id).await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Handler for leaving an event.
@@ -251,6 +308,75 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_check_in_page_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let event_summary = sample_event_summary(event_id, group_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_is_event_attendee()
+            .times(1)
+            .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+            .returning(|_, _, _| Ok((true, false)));
+        db.expect_is_event_check_in_window_open()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(|_, _| Ok(true));
+
+        // Setup router and send request
+        let router = setup_test_router(db, MockNotificationsManager::new()).await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/check-in/{event_id}"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE),
+            Some(&HeaderValue::from_static("text/html; charset=utf-8"))
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_attend_event_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
@@ -349,7 +475,7 @@ mod tests {
         db.expect_is_event_attendee()
             .times(1)
             .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
+            .returning(|_, _, _| Ok((true, false)));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -378,7 +504,54 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE)
         );
         let body: serde_json::Value = from_slice(&bytes).unwrap();
-        assert_eq!(body, json!({ "is_attendee": true }));
+        assert_eq!(body, json!({ "is_attendee": true, "is_checked_in": false }));
+    }
+
+    #[tokio::test]
+    async fn test_check_in_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_check_in_event()
+            .times(1)
+            .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+            .returning(|_, _, _| Ok(()));
+
+        // Setup router and send request
+        let router = setup_test_router(db, MockNotificationsManager::new()).await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/check-in/{event_id}"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert!(bytes.is_empty());
     }
 
     #[tokio::test]

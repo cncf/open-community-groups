@@ -64,9 +64,11 @@
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 
 {{ template "event/attend_event.sql" }}
+{{ template "event/check_in_event.sql" }}
 {{ template "event/get_event_full_by_slug.sql" }}
 {{ template "event/get_event_summary_by_id.sql" }}
 {{ template "event/is_event_attendee.sql" }}
+{{ template "event/is_event_check_in_window_open.sql" }}
 {{ template "event/leave_event.sql" }}
 
 {{ template "group/get_group_full_by_slug.sql" }}

@@ -45,6 +45,7 @@ password-auth = "1.0.0"
 percent-encoding = "2.3.2"
 postgres-openssl = "0.5.2"
 quick-xml = "0.38.3"
+qrcode = { version = "0.14.1", features = ["svg"] }
 reqwest = { version = "0.12.24", features = ["json"] }
 rust-embed = "8.9.0"
 serde = { version = "1.0.228", features = ["derive"] }

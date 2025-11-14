@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(170);
+select plan(171);
 
 -- ============================================================================
 -- TESTS
@@ -541,6 +541,7 @@ select has_function('add_group_sponsor');
 select has_function('add_group_team_member');
 select has_function('attend_event');
 select has_function('cancel_event');
+select has_function('check_in_event');
 select has_function('delete_community_team_member');
 select has_function('delete_event');
 select has_function('delete_group');

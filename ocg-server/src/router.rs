@@ -89,6 +89,10 @@ pub(crate) async fn setup(
     // Setup router
     let mut router = Router::new()
         .route(
+            "/check-in/{event_id}",
+            get(event::check_in_page).post(event::check_in),
+        )
+        .route(
             "/dashboard/account/update/details",
             put(auth::update_user_details),
         )
@@ -218,6 +222,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
     Router::new()
         .route("/", get(dashboard::group::home::page))
         .route("/attendees", get(dashboard::group::attendees::list_page))
+        .route(
+            "/check-in/{event_id}/qr-code",
+            get(dashboard::group::attendees::generate_check_in_qr_code),
+        )
         .route("/events", get(dashboard::group::events::list_page))
         .route(
             "/events/add",
@@ -243,11 +251,11 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         .route("/members", get(dashboard::group::members::list_page))
         .route(
             "/notifications",
-            post(dashboard::group::notifications::send_group_custom_notification),
+            post(dashboard::group::members::send_group_custom_notification),
         )
         .route(
             "/notifications/{event_id}",
-            post(dashboard::group::notifications::send_event_custom_notification),
+            post(dashboard::group::attendees::send_event_custom_notification),
         )
         .route(
             "/settings/update",

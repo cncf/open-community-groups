@@ -338,6 +338,12 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn check_in_event(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn get_event_full_by_slug(
             &self,
             community_id: Uuid,
@@ -354,6 +360,11 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+        ) -> Result<(bool, bool)>;
+        async fn is_event_check_in_window_open(
+            &self,
+            community_id: Uuid,
+            event_id: Uuid,
         ) -> Result<bool>;
         async fn leave_event(
             &self,
