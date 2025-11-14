@@ -509,7 +509,7 @@ export class GalleryField extends LitWrapper {
                 />
                 <button
                   type="button"
-                  class="absolute end-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
+                  class="absolute end-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
                   @click="${(event) => this._handleRemoveImageButtonClick(event, index)}"
                   aria-label="Remove image ${index + 1}"
                 >
