@@ -7,9 +7,9 @@
       <div class="flex flex-col justify-between md:flex-row">
         {# Footer logo -#}
         {% if let Some(footer_logo_url) = self.community.footer_logo_url -%}
-          <div>
-            <img class="h-12 w-50 mx-auto md:mx-0"
-                 width="251"
+          <div class="inline-flex">
+            <img class="w-auto max-w-[518px] h-[48px]"
+                 width="auto"
                  height="48"
                  src="{{ footer_logo_url }}"
                  alt="{{ community.display_name }} footer logo" />

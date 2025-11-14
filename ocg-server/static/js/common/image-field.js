@@ -7,6 +7,7 @@ import "/static/js/common/svg-spinner.js";
 const IMAGE_KIND = {
   AVATAR: "avatar",
   BANNER: "banner",
+  LOGO: "logo",
 };
 
 /**
@@ -69,13 +70,13 @@ export class ImageField extends LitWrapper {
   /**
    * Render either the selected image or the placeholder markup for the kind.
    */
-  _renderPlaceholder(isBanner) {
+  _renderPlaceholder(isWide) {
     if (this._hasImage) {
       return html`
         <img
           src="${this.value}"
           alt="Image preview"
-          class="${isBanner
+          class="${isWide
             ? "h-full w-full object-contain rounded p-1"
             : "max-h-[86px] max-w-[86px] object-contain mx-auto"}"
           loading="lazy"
@@ -85,13 +86,11 @@ export class ImageField extends LitWrapper {
 
     return html`
       <div
-        class="flex flex-col items-center justify-center text-center ${isBanner
-          ? "gap-3 px-4"
-          : "gap-2 px-3"}"
+        class="flex flex-col items-center justify-center text-center ${isWide ? "gap-3 px-4" : "gap-2 px-3"}"
       >
-        <div class="svg-icon ${isBanner ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
+        <div class="svg-icon ${isWide ? "size-12" : "size-8"} icon-image bg-stone-400"></div>
         <p class="text-xs text-stone-500 leading-snug">
-          ${isBanner ? "Click to upload or drag and drop" : "Click or drop image"}
+          ${isWide ? "Click to upload or drag and drop" : "Click or drop image"}
         </p>
       </div>
     `;
@@ -248,11 +247,12 @@ export class ImageField extends LitWrapper {
    */
   render() {
     const valueInputId = this._valueInputId;
-    const kind = this.imageKind === IMAGE_KIND.BANNER ? IMAGE_KIND.BANNER : IMAGE_KIND.AVATAR;
-    const isBanner = kind === IMAGE_KIND.BANNER;
+    const bannerLikeKinds = [IMAGE_KIND.BANNER, IMAGE_KIND.LOGO];
+    const isWide = bannerLikeKinds.includes(this.imageKind);
     const removeDisabled = !this._hasImage || this._isUploading;
-
-    console.log(this._isUploading);
+    const helpText = isWide
+      ? "Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
+      : "Images must be at least 380x380 (square). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
 
     return html`
       <label for="${this._fileInputId}" class="form-label">
@@ -260,7 +260,7 @@ export class ImageField extends LitWrapper {
       </label>
       <div class="mt-3 flex flex-col gap-4 items-stretch sm:flex-row">
         <div
-          class="relative ${isBanner
+          class="relative ${isWide
             ? "w-full sm:max-w-md h-24"
             : "size-24"} min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${this
             ._isDragActive && !this._isUploading
@@ -286,15 +286,11 @@ export class ImageField extends LitWrapper {
               label="Uploading..."
             ></svg-spinner>
           </div>
-          ${this._renderPlaceholder(isBanner)}
+          ${this._renderPlaceholder(isWide)}
         </div>
 
         <div class="flex flex-1 flex-col justify-between gap-3">
-          <p class="form-legend hidden xl:block">
-            ${isBanner
-              ? "Images must be at least 1200x600 in a wide ratio (16:9 or 3:1). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
-              : "Images must be at least 400x400 (square). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."}
-          </p>
+          <p class="form-legend hidden xl:block">${helpText}</p>
           <div class="flex flex-wrap gap-3 mt-auto">
             <label
               class="btn-primary btn-mini inline-flex items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${this
