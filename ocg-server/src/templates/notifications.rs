@@ -41,6 +41,18 @@ pub(crate) struct EventCanceled {
     pub theme: Theme,
 }
 
+/// Template for event custom notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_custom.html")]
+pub(crate) struct EventCustom {
+    /// Body text provided for the event notification.
+    pub body: String,
+    /// Subject line provided for the event notification.
+    pub subject: String,
+    /// Theme configuration for the notification.
+    pub theme: Theme,
+}
+
 /// Template for event published notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_published.html")]
@@ -74,6 +86,18 @@ pub(crate) struct EventWelcome {
     /// Event summary data.
     pub event: EventSummary,
     /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
+/// Template for group custom notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/group_custom.html")]
+pub(crate) struct GroupCustom {
+    /// Body text provided for the group notification.
+    pub body: String,
+    /// Subject line provided for the group notification.
+    pub subject: String,
+    /// Theme configuration for the notification.
     pub theme: Theme,
 }
 

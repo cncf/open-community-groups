@@ -29,6 +29,16 @@ pub(crate) trait DBNotifications {
     /// Retrieves a pending notification for delivery.
     async fn get_pending_notification(&self, client_id: Uuid) -> Result<Option<Notification>>;
 
+    /// Tracks a custom notification after it's been successfully enqueued.
+    async fn track_custom_notification(
+        &self,
+        created_by: Uuid,
+        event_id: Option<Uuid>,
+        group_id: Option<Uuid>,
+        subject: &str,
+        body: &str,
+    ) -> Result<()>;
+
     /// Updates a notification after a delivery attempt.
     async fn update_notification(
         &self,
@@ -242,6 +252,30 @@ impl DBNotifications for PgDB {
             where notification_id = $1::uuid;
             ",
             &[&notification.notification_id, &error],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err)]
+    async fn track_custom_notification(
+        &self,
+        created_by: Uuid,
+        event_id: Option<Uuid>,
+        group_id: Option<Uuid>,
+        subject: &str,
+        body: &str,
+    ) -> Result<()> {
+        trace!("db: track custom notification");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "
+            insert into custom_notification (created_by, event_id, group_id, subject, body)
+            values ($1, $2, $3, $4, $5);
+            ",
+            &[&created_by, &event_id, &group_id, &subject, &body],
         )
         .await?;
 

@@ -232,6 +232,7 @@ mock! {
         ) -> Result<crate::types::group::GroupSponsor>;
         async fn list_event_attendees_ids(
             &self,
+            group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
         async fn list_event_categories(
@@ -432,6 +433,14 @@ mock! {
             &self,
             client_id: Uuid,
         ) -> Result<Option<crate::services::notifications::Notification>>;
+        async fn track_custom_notification(
+            &self,
+            created_by: Uuid,
+            event_id: Option<Uuid>,
+            group_id: Option<Uuid>,
+            subject: &str,
+            body: &str,
+        ) -> Result<()>;
         async fn update_notification(
             &self,
             client_id: Uuid,

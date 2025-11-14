@@ -25,8 +25,8 @@ use crate::{
     config::EmailConfig,
     db::DynDB,
     templates::notifications::{
-        CommunityTeamInvitation, EmailVerification, EventCanceled, EventPublished, EventRescheduled,
-        EventWelcome, GroupTeamInvitation, GroupWelcome,
+        CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom, EventPublished,
+        EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
     },
 };
 
@@ -198,56 +198,68 @@ impl Worker {
 
         let (subject, body) = match notification.kind {
             NotificationKind::CommunityTeamInvitation => {
-                let subject = "You have been invited to join a community team";
+                let subject = "You have been invited to join a community team".to_string();
                 let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EmailVerification => {
-                let subject = "Verify your email address";
+                let subject = "Verify your email address".to_string();
                 let template: EmailVerification = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventCanceled => {
-                let subject = "Event canceled";
+                let subject = "Event canceled".to_string();
                 let template: EventCanceled = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::EventCustom => {
+                let template: EventCustom = serde_json::from_value(template_data)?;
+                let subject = template.subject.clone();
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::EventPublished => {
-                let subject = "New event published";
+                let subject = "New event published".to_string();
                 let template: EventPublished = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventRescheduled => {
-                let subject = "Event rescheduled";
+                let subject = "Event rescheduled".to_string();
                 let template: EventRescheduled = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::EventWelcome => {
-                let subject = "Welcome to the event";
+                let subject = "Welcome to the event".to_string();
                 let template: EventWelcome = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::GroupCustom => {
+                let template: GroupCustom = serde_json::from_value(template_data)?;
+                let subject = template.subject.clone();
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::GroupTeamInvitation => {
-                let subject = "You have been invited to join a group team";
+                let subject = "You have been invited to join a group team".to_string();
                 let template: GroupTeamInvitation = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
             NotificationKind::GroupWelcome => {
-                let subject = "Welcome to the group";
+                let subject = "Welcome to the group".to_string();
                 let template: GroupWelcome = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
         };
 
-        Ok((subject.to_string(), body))
+        Ok((subject, body))
     }
 
     /// Send an email to the specified address with the given subject and body.
@@ -386,12 +398,16 @@ pub(crate) enum NotificationKind {
     EmailVerification,
     /// Notification for an event canceled.
     EventCanceled,
+    /// Notification for a custom event message.
+    EventCustom,
     /// Notification for an event published.
     EventPublished,
     /// Notification for an event rescheduled.
     EventRescheduled,
     /// Notification welcoming a new event attendee.
     EventWelcome,
+    /// Notification for a custom group message.
+    GroupCustom,
     /// Notification for a group team invitation.
     GroupTeamInvitation,
     /// Notification welcoming a new group member.
@@ -683,6 +699,44 @@ mod tests {
     }
 
     #[test]
+    fn test_worker_prepare_content_event_custom() {
+        // Setup notification
+        let notification = Notification {
+            attachments: vec![],
+            email: "user@example.test".to_string(),
+            kind: NotificationKind::EventCustom,
+            notification_id: Uuid::new_v4(),
+            template_data: Some(sample_event_custom_template_data()),
+        };
+
+        // Prepare content
+        let (subject, body) = Worker::prepare_content(&notification).unwrap();
+
+        // Check content matches expectations
+        assert_eq!(subject, "Custom event subject");
+        assert!(body.contains("Custom event body"));
+    }
+
+    #[test]
+    fn test_worker_prepare_content_group_custom() {
+        // Setup notification
+        let notification = Notification {
+            attachments: vec![],
+            email: "user@example.test".to_string(),
+            kind: NotificationKind::GroupCustom,
+            notification_id: Uuid::new_v4(),
+            template_data: Some(sample_group_custom_template_data()),
+        };
+
+        // Prepare content
+        let (subject, body) = Worker::prepare_content(&notification).unwrap();
+
+        // Check content matches expectations
+        assert_eq!(subject, "Custom group subject");
+        assert!(body.contains("Custom group body"));
+    }
+
+    #[test]
     fn test_worker_prepare_content_missing_data() {
         // Setup notification
         let notification = Notification {
@@ -785,6 +839,28 @@ mod tests {
     fn sample_email_verification_template_data() -> serde_json::Value {
         json!({
             "link": "https://example.test/verify",
+            "theme": {
+                "primary_color": "#000000"
+            }
+        })
+    }
+
+    /// Sample template payload for custom event notifications.
+    fn sample_event_custom_template_data() -> serde_json::Value {
+        json!({
+            "subject": "Custom event subject",
+            "body": "Custom event body",
+            "theme": {
+                "primary_color": "#000000"
+            }
+        })
+    }
+
+    /// Sample template payload for custom group notifications.
+    fn sample_group_custom_template_data() -> serde_json::Value {
+        json!({
+            "subject": "Custom group subject",
+            "body": "Custom group body",
             "theme": {
                 "primary_color": "#000000"
             }

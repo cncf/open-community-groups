@@ -1,0 +1,13 @@
+{% extends "notifications/base.html" -%}
+
+{% block subject -%}
+  {{ subject }}
+{% endblock subject -%}
+
+{% block content -%}
+  <p class="default mb-30">{{ body }}</p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this message from Open Community Groups.
+{% endblock footer -%}

@@ -242,6 +242,14 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         )
         .route("/members", get(dashboard::group::members::list_page))
         .route(
+            "/notifications",
+            post(dashboard::group::notifications::send_group_custom_notification),
+        )
+        .route(
+            "/notifications/{event_id}",
+            post(dashboard::group::notifications::send_event_custom_notification),
+        )
+        .route(
             "/settings/update",
             get(dashboard::group::settings::update_page).put(dashboard::group::settings::update),
         )

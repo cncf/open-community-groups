@@ -3,7 +3,7 @@
 -- =============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- =============================================================================
 -- VARIABLES
@@ -87,7 +87,7 @@ values (:'eventID', :'user1ID'), (:'eventID', :'user2ID');
 
 -- Test: list_event_attendees_ids should return only verified users
 select is(
-    list_event_attendees_ids(:'eventID'::uuid)::jsonb,
+    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
     json_build_array(:'user1ID'::uuid)::jsonb,
     'Returns verified attendees only'
 );
@@ -105,16 +105,28 @@ insert into "user" (
 ) values (:'user0ID', gen_random_bytes(32), :'communityID', 'u0@example.com', 'u0', true);
 insert into event_attendee (event_id, user_id) values (:'eventID', :'user0ID');
 select is(
-    list_event_attendees_ids(:'eventID'::uuid)::jsonb,
+    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,
     json_build_array(:'user0ID'::uuid, :'user1ID'::uuid)::jsonb,
     'Returns attendees ordered by user id asc'
 );
 
 -- Test: empty event should return empty array
 select is(
-    list_event_attendees_ids('00000000-0000-0000-0000-000000000099'::uuid)::text,
+    list_event_attendees_ids('00000000-0000-0000-0000-000000000030'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',
     'Returns empty list for event without attendees'
+);
+
+-- Test: wrong group_id should return empty array
+-- Create another group and verify attendees are not returned when queried with wrong group_id
+\set anotherGroupID '00000000-0000-0000-0000-000000000031'
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'anotherGroupID', :'communityID', :'categoryID', 'G2', 'g2');
+
+select is(
+    list_event_attendees_ids(:'anotherGroupID'::uuid, :'eventID'::uuid)::text,
+    '[]',
+    'Returns empty list when wrong group_id is provided'
 );
 
 -- =============================================================================
