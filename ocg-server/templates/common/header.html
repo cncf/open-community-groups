@@ -8,27 +8,21 @@
        aria-label="Main navigation">
     <div class="flex items-center gap-x-6">
       {# Logo -#}
-      <div class="me-5">
-        {% if path != "/" %}<a href="/" aria-label="Go to homepage">{% endif %}
-          <div class="-m-1.5 p-1.5">
-            <div class="flex items-top gap-x-3">
-              <div>
-                <img class="h-10 w-50"
-                     width="208"
-                     height="40"
-                     src="{{ self.community.header_logo_url }}"
-                     alt="{{ community.display_name }} logo" />
-              </div>
-              {# Beta badge -#}
-              <div>
-                <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 font-semibold">
-                  BETA
-                </div>
-              </div>
+      {% if path != "/" %}<a href="/" aria-label="Go to homepage">{% endif %}
+        <div class="inline-flex items-top gap-x-3 me-5">
+          <img class="w-auto max-w-[208px] h-10"
+               height="40"
+               width="auto"
+               src="{{ self.community.header_logo_url }}"
+               alt="{{ community.display_name }} logo" />
+          {# Beta badge -#}
+          <div>
+            <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 font-semibold">
+              BETA
             </div>
           </div>
-          {% if path != "/" %}</a>{% endif %}
-      </div>
+        </div>
+        {% if path != "/" %}</a>{% endif %}
       {# End logo -#}
 
       {# Desktop links -#}

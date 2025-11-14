@@ -353,6 +353,7 @@ input:placeholder-shown {
 .icon-groups { --icon-url: url('/static/images/icons/groups.svg'); }
 .icon-groups-add { --icon-url: url('/static/images/icons/groups_add.svg'); }
 .icon-home { --icon-url: url('/static/images/icons/home.svg'); }
+.icon-image { --icon-url: url('/static/images/icons/image.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }

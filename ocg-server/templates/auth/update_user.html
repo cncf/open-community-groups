@@ -90,171 +90,159 @@
 
         {# Photo URL -#}
         <div class="col-span-full">
-          <label for="photo_url" class="form-label">Photo URL</label>
-          <div class="mt-2">
-            <input type="url"
-                   name="photo_url"
-                   id="photo_url"
-                   value="{%- if let Some(photo_url) = user.photo_url -%}{{ photo_url }}{%- endif -%}"
-                   class="input-primary"
-                   placeholder="https://example.com/photo.jpg"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false">
-          </div>
-          <p class="form-legend">URL to your profile picture (JPEG, PNG, or WebP format recommended).</p>
-        </div>
-        {# End photo URL -#}
-
-        {# Bio -#}
-        <div class="col-span-full">
-          <label for="bio" class="form-label">Bio</label>
-          <div class="mt-2">
-            <textarea id="bio" name="bio" rows="2" class="input-primary" maxlength="200">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
-          </div>
-          <p class="form-legend">A brief description about yourself and your background.</p>
-        </div>
-        {# End bio -#}
-
-        {# Interests -#}
-        <div class="col-span-3">
-          <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
-          <div class="mt-2">
-            <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = user.interests -%}{{ interests|json }}{%- endif -%}">
-            </multiple-inputs>
-          </div>
-        </div>
-        {# End interests -#}
+          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar">
+        </image-field>
       </div>
-    </div>
-    {# End Personal Details section -#}
+      {# End photo URL -#}
 
-    {# Location section -#}
-    <div class="border-b border-stone-900/10 pb-12">
-      {% call dashboard_macros::form_title(title = "Location", description = "Optional location information.") -%}
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# City -#}
-        <div class="col-span-3">
-          <label for="city" class="form-label">City</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="city"
-                   id="city"
-                   value="{%- if let Some(city) = user.city -%}{{ city }}{%- endif -%}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false">
-          </div>
-          <p class="form-legend">The city where you're based.</p>
+      {# Bio -#}
+      <div class="col-span-full">
+        <label for="bio" class="form-label">Bio</label>
+        <div class="mt-2">
+          <textarea id="bio" name="bio" rows="2" class="input-primary" maxlength="200">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
-        {# End city -#}
-
-        {# Country -#}
-        <div class="col-span-3">
-          <label for="country" class="form-label">Country</label>
-          <div class="mt-2">
-            <input type="text"
-                   name="country"
-                   id="country"
-                   value="{%- if let Some(country) = user.country -%}{{ country }}{%- endif -%}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false">
-          </div>
-          <p class="form-legend">Your country of residence.</p>
-        </div>
-        {# End country -#}
+        <p class="form-legend">A brief description about yourself and your background.</p>
       </div>
-    </div>
-    {# End Location section -#}
+      {# End bio -#}
 
-    {# Social links section -#}
-    <div class="border-b border-stone-900/10 pb-12">
-      {% call dashboard_macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Website URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="website_url" class="form-label">Website</label>
-          <div class="mt-2 relative">
-            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-              <div class="svg-icon size-4 icon-link bg-stone-300"></div>
-            </div>
-            <input type="url"
-                   name="website_url"
-                   id="website_url"
-                   value="{%- if let Some(website_url) = user.website_url -%}{{ website_url }}{%- endif -%}"
-                   class="input-primary ps-10"
-                   placeholder="https://example.com">
-          </div>
+      {# Interests -#}
+      <div class="col-span-3">
+        <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
+        <div class="mt-2">
+          <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = user.interests -%}{{ interests|json }}{%- endif -%}">
+          </multiple-inputs>
         </div>
-        {# End Website URL -#}
-
-        {# LinkedIn URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="linkedin_url" class="form-label">LinkedIn</label>
-          <div class="mt-2 relative">
-            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-              <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
-            </div>
-            <input type="url"
-                   name="linkedin_url"
-                   id="linkedin_url"
-                   value="{%- if let Some(linkedin_url) = user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"
-                   class="input-primary ps-10"
-                   placeholder="https://linkedin.com/in/username">
-          </div>
-        </div>
-        {# End LinkedIn URL -#}
-
-        {# Twitter URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-          <div class="mt-2 relative">
-            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-              <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-            </div>
-            <input type="url"
-                   name="twitter_url"
-                   id="twitter_url"
-                   value="{%- if let Some(twitter_url) = user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
-                   class="input-primary ps-10"
-                   placeholder="https://x.com/username">
-          </div>
-        </div>
-        {# End Twitter URL -#}
-
-        {# Facebook URL -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="facebook_url" class="form-label">Facebook</label>
-          <div class="mt-2 relative">
-            <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-              <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
-            </div>
-            <input type="url"
-                   name="facebook_url"
-                   id="facebook_url"
-                   value="{%- if let Some(facebook_url) = user.facebook_url -%}{{ facebook_url }}{%- endif -%}"
-                   class="input-primary ps-10"
-                   placeholder="https://facebook.com/username">
-          </div>
-        </div>
-        {# End Facebook URL -#}
       </div>
-    </div>
-    {# End social links section -#}
-
-    <div class="mt-6">
-      <button type="submit" class="btn-primary relative">
-        {% call common::btn_spinner(id = "user-details-spinner", spinner_type = "2") -%}
-        Save
-      </button>
+      {# End interests -#}
     </div>
   </div>
+  {# End Personal Details section -#}
+
+  {# Location section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {% call dashboard_macros::form_title(title = "Location", description = "Optional location information.") -%}
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {# City -#}
+      <div class="col-span-3">
+        <label for="city" class="form-label">City</label>
+        <div class="mt-2">
+          <input type="text"
+                 name="city"
+                 id="city"
+                 value="{%- if let Some(city) = user.city -%}{{ city }}{%- endif -%}"
+                 class="input-primary"
+                 autocomplete="off"
+                 autocorrect="off"
+                 autocapitalize="off"
+                 spellcheck="false">
+        </div>
+        <p class="form-legend">The city where you're based.</p>
+      </div>
+      {# End city -#}
+
+      {# Country -#}
+      <div class="col-span-3">
+        <label for="country" class="form-label">Country</label>
+        <div class="mt-2">
+          <input type="text"
+                 name="country"
+                 id="country"
+                 value="{%- if let Some(country) = user.country -%}{{ country }}{%- endif -%}"
+                 class="input-primary"
+                 autocomplete="off"
+                 autocorrect="off"
+                 autocapitalize="off"
+                 spellcheck="false">
+        </div>
+        <p class="form-legend">Your country of residence.</p>
+      </div>
+      {# End country -#}
+    </div>
+  </div>
+  {# End Location section -#}
+
+  {# Social links section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {% call dashboard_macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {# Website URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="website_url" class="form-label">Website</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-link bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="website_url"
+                 id="website_url"
+                 value="{%- if let Some(website_url) = user.website_url -%}{{ website_url }}{%- endif -%}"
+                 class="input-primary ps-10"
+                 placeholder="https://example.com">
+        </div>
+      </div>
+      {# End Website URL -#}
+
+      {# LinkedIn URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="linkedin_url" class="form-label">LinkedIn</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="linkedin_url"
+                 id="linkedin_url"
+                 value="{%- if let Some(linkedin_url) = user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"
+                 class="input-primary ps-10"
+                 placeholder="https://linkedin.com/in/username">
+        </div>
+      </div>
+      {# End LinkedIn URL -#}
+
+      {# Twitter URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="twitter_url"
+                 id="twitter_url"
+                 value="{%- if let Some(twitter_url) = user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
+                 class="input-primary ps-10"
+                 placeholder="https://x.com/username">
+        </div>
+      </div>
+      {# End Twitter URL -#}
+
+      {# Facebook URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="facebook_url" class="form-label">Facebook</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="facebook_url"
+                 id="facebook_url"
+                 value="{%- if let Some(facebook_url) = user.facebook_url -%}{{ facebook_url }}{%- endif -%}"
+                 class="input-primary ps-10"
+                 placeholder="https://facebook.com/username">
+        </div>
+      </div>
+      {# End Facebook URL -#}
+    </div>
+  </div>
+  {# End social links section -#}
+
+  <div class="mt-6">
+    <button type="submit" class="btn-primary relative">
+      {% call common::btn_spinner(id = "user-details-spinner", spinner_type = "2") -%}
+      Save
+    </button>
+  </div>
+</div>
 </form>
 {# End update user details -#}
 
@@ -327,6 +315,8 @@
   </form>
   {# End update user password form -#}
 {% endif -%}
+
+<script type="module" src="/static/js/common/image-field.js"></script>
 
 <script type="module">
   import {

@@ -6,10 +6,11 @@
 {% endblock scripts -%}
 
 {% block jumbotron -%}
+  {% set has_jumbotron_image = community.jumbotron_image_url.is_some() %}
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">
     <section>
-      <div class="relative z-10 max-w-screen-xl pb-10 lg:pb-20">
+      <div class="relative z-10 max-w-screen-xl {%- if has_jumbotron_image %} pb-10 lg:pb-20 {%- else %} pb-7 lg:pb-14 {%- endif -%}">
         {# Community title -#}
         <h1 class="text-center mb-8 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ community.title }}
@@ -60,7 +61,7 @@
 
       {# Jumbotron background image -#}
       {% if let Some(jumbotron_image_url) = community.jumbotron_image_url -%}
-        <div class="absolute bottom-[-82px] right-0 h-full max-w-[90%] w-[380px] bg-right-bottom bg-no-repeat bg-contain sm:w-[520px] md:w-[600px] lg:w-[710px] xl:w-[760px] sm:bottom-[-105px] md:bottom-[-120px] lg:bottom-[-145px] xl:bottom-[-155px]"
+        <div class="absolute bottom-[-16px] right-[20px] sm:right-[30px] max-w-[calc(100%_-_40px)] max-h-[75%] w-[300px] h-[80px] bg-right-bottom bg-no-repeat bg-contain sm:w-[350px] md:w-[480px] lg:w-[620px] xl:w-[700px] sm:h-[95px] md:h-[130px] lg:h-[165px] xl:h-[186px] sm:bottom-[-18px] md:bottom-[-26px] lg:bottom-[-33px] xl:bottom-[-37px]"
              style="background-image: url('{{ jumbotron_image_url }}')"></div>
       {% endif -%}
       {# End jumbotron background image -#}
@@ -70,8 +71,9 @@
 {% endblock jumbotron -%}
 
 {% block content -%}
+  {% set has_jumbotron_image = community.jumbotron_image_url.is_some() %}
   {# Main content -#}
-  <div class="container mx-auto max-w-7xl px-4 pt-12 pb-6 lg:pb-12 sm:px-6 lg:px-8">
+  <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 {%- if has_jumbotron_image %} pt-12 {%- else %} pt-10 {%- endif -%}">
     {# Stats -#}
     {{ stats|safe }}
     {# End stats -#}
