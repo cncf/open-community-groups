@@ -276,6 +276,30 @@
 {% endmacro badge -%}
 {# End common badge -#}
 
+{# Sold out overlay badge -#}
+{% macro sold_out_overlay(remaining_capacity, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
+  {% let outer_classes_ = outer_classes.unwrap_or("") -%}
+  {% let inner_classes_ = inner_classes.unwrap_or("") -%}
+  {% let orientation_ = orientation.to_string() -%}
+
+  {% if let Some(remaining_capacity_) = remaining_capacity -%}
+    {% if *remaining_capacity_ == 0 -%}
+      <div class="absolute overflow-hidden inset-0 {{ outer_classes_ }}">
+        <div class="pointer-events-none absolute z-10 w-[80px] md:w-[100px] {{ inner_classes_ }}">
+          <span class="block bg-red-500/90 text-white text-shadow-xs text-[0.45rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-[0.1em] text-center text-nowrap shadow-sm transform
+                       {% if orientation_ == "top-right" -%}
+                         rotate-45 origin-top-right
+                       {% else -%}
+                         -rotate-45 origin-top-left
+                       {% endif -%}
+                       caps">{{ label }}</span>
+        </div>
+      </div>
+    {% endif -%}
+  {% endif -%}
+{% endmacro sold_out_overlay -%}
+{# End sold out overlay badge -#}
+
 {# Social network link -#}
 {% macro social_link(url, icon_name, platform_name) -%}
   <a href="{{ url }}"

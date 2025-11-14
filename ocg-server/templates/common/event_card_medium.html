@@ -7,9 +7,12 @@
    class="group select-none">
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
-    <div class="card-logo group-hover:opacity-75 transition-opacity">
+    <div class="card-logo group-hover:opacity-75 transition-opacity relative">
       {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = event.group_color, name = Some(event.group_name)) -%}
       {% call common::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -%}
+      {# Sold out badge -#}
+      {% call common::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[42px] md:top-[55px] right-[-10px] md:right-[56px]")) -%}
+      {# End sold out badge -#}
     </div>
     {# End event icon -#}
 
