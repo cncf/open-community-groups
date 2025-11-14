@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(166);
+select plan(170);
 
 -- ============================================================================
 -- TESTS
@@ -18,6 +18,7 @@ select has_table('attachment');
 select has_table('community');
 select has_table('community_site_layout');
 select has_table('community_team');
+select has_table('custom_notification');
 select has_table('event');
 select has_table('event_attendee');
 select has_table('event_category');
@@ -98,6 +99,17 @@ select columns_are('community_team', array[
     'accepted',
     'created_at',
     'user_id'
+]);
+
+-- Test: custom_notification columns should match expected
+select columns_are('custom_notification', array[
+    'custom_notification_id',
+    'created_at',
+    'created_by',
+    'event_id',
+    'group_id',
+    'subject',
+    'body'
 ]);
 
 -- Test: event columns should match expected
@@ -379,6 +391,7 @@ select has_pk('attachment');
 select has_pk('community');
 select has_pk('community_site_layout');
 select has_pk('community_team');
+select has_pk('custom_notification');
 select has_pk('event');
 select has_pk('event_attendee');
 select has_pk('event_category');
@@ -416,6 +429,14 @@ select indexes_are('community', array[
     'community_host_key',
     'community_name_key',
     'community_community_site_layout_id_idx'
+]);
+
+-- Test: custom_notification indexes should match expected
+select indexes_are('custom_notification', array[
+    'custom_notification_created_by_idx',
+    'custom_notification_event_id_idx',
+    'custom_notification_group_id_idx',
+    'custom_notification_pkey'
 ]);
 
 -- Test: event indexes should match expected

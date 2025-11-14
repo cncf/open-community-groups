@@ -150,7 +150,7 @@ pub(crate) async fn cancel(
         (true, false, Some(starts_at)) if starts_at > Utc::now()
     );
     if should_notify {
-        let user_ids = db.list_event_attendees_ids(event_id).await?;
+        let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
         if !user_ids.is_empty() {
             event.canceled = true; // Update local event to reflect canceled status
             let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
@@ -303,7 +303,7 @@ pub(crate) async fn update(
         _ => false,
     };
     if should_notify {
-        let user_ids = db.list_event_attendees_ids(event_id).await?;
+        let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
         if !user_ids.is_empty() {
             let base = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
             let link = build_event_page_link(base, &after);
@@ -706,8 +706,8 @@ mod tests {
             .returning(move |_, _| Ok(()));
         db.expect_list_event_attendees_ids()
             .times(1)
-            .withf(move |eid| *eid == event_id)
-            .returning(move |_| Ok(vec![recipient_id]));
+            .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+            .returning(move |_, _| Ok(vec![recipient_id]));
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -1012,8 +1012,8 @@ mod tests {
             .returning(move |_, _, _| Ok(()));
         db.expect_list_event_attendees_ids()
             .times(1)
-            .withf(move |eid| *eid == event_id)
-            .returning(move |_| Ok(vec![recipient_id]));
+            .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+            .returning(move |_, _| Ok(vec![recipient_id]));
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
