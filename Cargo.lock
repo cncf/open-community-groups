@@ -3152,6 +3152,7 @@ dependencies = [
  "password-auth",
  "percent-encoding",
  "postgres-openssl",
+ "qrcode",
  "quick-xml",
  "reqwest",
  "rust-embed",
@@ -4177,6 +4178,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3cbdf373972bf78df4d3b518d07003938e2c7d1fb5891e55f9cb6df57009d84"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "qrcode"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d68782463e408eb1e668cf6152704bd856c78c5b6417adaee3203d8f4c1fc9ec"
+dependencies = [
+ "image",
 ]
 
 [[package]]

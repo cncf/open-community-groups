@@ -6,7 +6,7 @@ use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         community::Community,
-        event::{EventFull, EventKind},
+        event::{EventFull, EventKind, EventSummary},
     },
 };
 
@@ -27,4 +27,27 @@ pub(crate) struct Page {
     pub path: String,
     /// Authenticated user information.
     pub user: User,
+}
+
+/// Event check-in page template.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Template)]
+#[template(path = "event/check_in_page.html")]
+pub(crate) struct CheckInPage {
+    /// Whether the check-in window is open.
+    pub check_in_window_open: bool,
+    /// Community information.
+    pub community: Community,
+    /// Event summary being checked into.
+    pub event: EventSummary,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Authenticated user information.
+    pub user: User,
+    /// Whether the user is an attendee of the event.
+    pub user_is_attendee: bool,
+    /// Whether the user is already checked in to the event.
+    pub user_is_checked_in: bool,
 }

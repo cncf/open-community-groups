@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -43,7 +43,8 @@ values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', '
 insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name)
 values
     (:'user1ID', 'att1@example.com', 'att1', false, 'h1', :'communityID', 'Att One'),
-    (:'user2ID', 'att2@example.com', 'att2', false, 'h2', :'communityID', 'Att Two');
+    (:'user2ID', 'att2@example.com', 'att2', false, 'h2', :'communityID', 'Att Two'),
+    ('00000000-0000-0000-0000-000000000053', 'att3@example.com', 'att3', false, 'h3', :'communityID', 'Att Three');
 
 -- Event
 insert into event (
@@ -68,29 +69,54 @@ insert into event (
     true
 );
 
--- Event Attendee
-insert into event_attendee (event_id, user_id) values (:'eventID', :'user1ID');
+-- Event Attendee - user1 is checked in
+insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :'user1ID', true);
+
+-- Event Attendee - user2 is not checked in
+insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :'user2ID', false);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- User1 is attendee
-select ok(
-    is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid),
-    'is_event_attendee returns true for an attendee'
+-- User1 is attendee and checked in
+select is(
+    (
+        select row(is_attendee, is_checked_in)::text
+        from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
+    ),
+    '(t,t)',
+    'is_event_attendee returns (true, true) for a checked-in attendee'
 );
 
--- User2 is not attendee
-select ok(
-    not is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid),
-    'is_event_attendee returns false for a non-attendee'
+-- User2 is attendee but not checked in
+select is(
+    (
+        select row(is_attendee, is_checked_in)::text
+        from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)
+    ),
+    '(t,f)',
+    'is_event_attendee returns (true, false) for an attendee not checked in'
 );
 
--- Different community should return false
-select ok(
-    not is_event_attendee(:'otherCommunityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid),
-    'is_event_attendee is scoped by community'
+-- Different community should return (false, false)
+select is(
+    (
+        select row(is_attendee, is_checked_in)::text
+        from is_event_attendee(:'otherCommunityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
+    ),
+    '(f,f)',
+    'is_event_attendee returns (false, false) when scoped by wrong community'
+);
+
+-- Non-attendee should return (false, false)
+select is(
+    (
+        select row(is_attendee, is_checked_in)::text
+        from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, '00000000-0000-0000-0000-000000000053'::uuid)
+    ),
+    '(f,f)',
+    'is_event_attendee returns (false, false) for a non-attendee'
 );
 
 -- ============================================================================
