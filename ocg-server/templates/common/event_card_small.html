@@ -54,7 +54,7 @@
       {# Event date -#}
       {% if let Some(starts_at) = event.starts_at -%}
         <div class="card-meta">
-          {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z")) -%}
+          {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z"), icon_extra_styles = Some("-top-px")) -%}
         </div>
       {% endif -%}
       {# End event date -#}

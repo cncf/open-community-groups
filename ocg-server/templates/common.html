@@ -231,11 +231,12 @@
 {# End main loading -#}
 
 {# Icon text -#}
-{% macro icon_text(icon_name, text, extra_styles = None) -%}
+{% macro icon_text(icon_name, text, extra_styles = None, icon_extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+  {% let icon_extra_styles_ = icon_extra_styles.unwrap_or("") -%}
 
   <div class="icon-text min-w-0 {{ extra_styles_ }}">
-    <div class="svg-icon w-3 h-3 mr-2 bg-stone-700 icon-{{ icon_name }}"></div>
+    <div class="relative svg-icon w-3 h-3 mr-2 bg-stone-700 icon-{{ icon_name }} {{ icon_extra_styles_ }}"></div>
     <span class="truncate">{{ text }}</span>
   </div>
 {% endmacro icon_text -%}
