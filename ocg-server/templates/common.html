@@ -107,6 +107,16 @@
 {% endmacro alert -%}
 {# End alert -#}
 
+{# Placeholder -#}
+{% macro placeholder(title, content) -%}
+  <div class="border-2 border-dashed border-stone-300 p-10 text-sm text-stone-800 rounded-lg bg-stone-50 text-center"
+       role="alert">
+    <div class="text-xl mb-6 text-stone-600">{{ title }}</div>
+    <p class="text-stone-600">{{ content }}</p>
+  </div>
+{% endmacro placeholder -%}
+{# End placeholder -#}
+
 {# Current page -#}
 {% macro current_page(total, items_number, offset_value) -%}
   {%- if items_number + 0 > 0 -%}
