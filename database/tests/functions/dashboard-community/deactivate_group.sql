@@ -142,7 +142,7 @@ select lives_ok(
 select throws_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'deactivate_group should throw error when trying to deactivate already deleted group'
 );
 
@@ -150,7 +150,7 @@ select throws_ok(
 select throws_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'deactivate_group should throw error when community_id does not match'
 );
 
@@ -158,7 +158,7 @@ select throws_ok(
 select throws_ok(
     $$select deactivate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'deactivate_group should throw error for non-existent group'
 );
 

@@ -39,7 +39,9 @@ begin
 
     -- Update check-in status
     update event_attendee
-    set checked_in = true
+    set
+        checked_in = true,
+        checked_in_at = coalesce(checked_in_at, now())
     where event_id = p_event_id
     and user_id = p_user_id;
     if not found then

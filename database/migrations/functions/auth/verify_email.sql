@@ -14,7 +14,7 @@ begin
 
     -- Check if we found a valid code
     if v_user_id is null then
-        raise exception 'invalid email verification code';
+        raise exception 'email verification failed: invalid code';
     end if;
 
     -- Mark the user's email as verified

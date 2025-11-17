@@ -309,7 +309,8 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
         let community = sample_community(community_id);
-        let community_copy = community.clone();
+        let community_for_notifications = community.clone();
+        let community_for_db = community;
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -336,7 +337,10 @@ mod tests {
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(community_copy.clone()));
+            .returning({
+                let community = community_for_db;
+                move |_| Ok(community.clone())
+            });
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -350,7 +354,8 @@ mod tests {
                             .map(|welcome| {
                                 welcome.group.group_id == group_id
                                     && welcome.link == "/group/test-group"
-                                    && welcome.theme.primary_color == community.theme.primary_color
+                                    && welcome.theme.primary_color
+                                        == community_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

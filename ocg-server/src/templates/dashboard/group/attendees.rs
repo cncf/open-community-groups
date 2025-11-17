@@ -40,6 +40,9 @@ pub struct Attendee {
     /// Username.
     pub username: String,
 
+    /// Timestamp when the attendee checked in.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub checked_in_at: Option<DateTime<Utc>>,
     /// Company the user represents.
     pub company: Option<String>,
     /// Full name.

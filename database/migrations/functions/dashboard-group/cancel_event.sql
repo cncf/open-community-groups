@@ -15,7 +15,7 @@ begin
     and deleted = false;
 
     if not found then
-        raise exception 'event not found';
+        raise exception 'event not found or inactive';
     end if;
 end;
 $$ language plpgsql;

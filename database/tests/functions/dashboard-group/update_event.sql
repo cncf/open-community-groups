@@ -278,7 +278,7 @@ select throws_ok(
         '{"name": "Won''t Work", "slug": "wont-work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
     'P0001',
-    'event not found',
+    'event not found or inactive',
     'update_event should throw error when group_id does not match'
 );
 
@@ -313,7 +313,7 @@ select throws_ok(
         '{"name": "Try to Update Canceled", "slug": "try-update-canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
     'P0001',
-    'event not found',
+    'event not found or inactive',
     'update_event should throw error when event is canceled'
 );
 

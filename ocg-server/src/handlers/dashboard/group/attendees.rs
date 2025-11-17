@@ -7,6 +7,7 @@ use axum::{
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
+use chrono::Duration;
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
@@ -19,6 +20,7 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{CommunityId, SelectedGroupId},
+        prepare_headers,
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{dashboard::group::attendees, notifications::EventCustom},
@@ -55,11 +57,15 @@ pub(crate) async fn list_page(
 /// Generates a QR code for event check-in.
 #[instrument(skip_all, err)]
 pub(crate) async fn generate_check_in_qr_code(
-    CommunityId(_community_id): CommunityId,
-    SelectedGroupId(_group_id): SelectedGroupId,
+    CommunityId(community_id): CommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
     State(cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Ensure the event belongs to the selected group before generating the QR code
+    db.get_event_summary(community_id, group_id, event_id).await?;
+
     // Get base URL from configuration
     let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
 
@@ -76,8 +82,11 @@ pub(crate) async fn generate_check_in_qr_code(
         .light_color(svg::Color("#ffffff"))
         .build();
 
+    // Prepare response headers
+    let headers = prepare_headers(Duration::hours(1), &[(CONTENT_TYPE.as_str(), "image/svg+xml")])?;
+
     // Return SVG response
-    Ok((StatusCode::OK, [(CONTENT_TYPE, "image/svg+xml")], svg))
+    Ok((StatusCode::OK, headers, svg))
 }
 
 /// Sends a custom notification to event attendees.
@@ -178,8 +187,9 @@ mod tests {
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let event = sample_event_summary(event_id, group_id);
 
-        // Setup database mock (no DB calls expected)
+        // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
             .times(1)
@@ -193,6 +203,10 @@ mod tests {
             .times(1)
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event.clone()));
 
         // Setup notifications manager mock (not used by this handler)
         let nm = MockNotificationsManager::new();
@@ -221,6 +235,14 @@ mod tests {
         assert_eq!(
             parts.headers.get(CONTENT_TYPE).unwrap(),
             &HeaderValue::from_static("image/svg+xml")
+        );
+        #[cfg(debug_assertions)]
+        let expected_cache_header = "max-age=0";
+        #[cfg(not(debug_assertions))]
+        let expected_cache_header = "max-age=3600";
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap().to_str().unwrap(),
+            expected_cache_header
         );
         assert!(svg_body.contains("<svg"));
         assert!(svg_body.contains("</svg>"));
@@ -356,7 +378,8 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let community = sample_community(community_id);
-        let community_copy = community.clone();
+        let community_for_notifications = community.clone();
+        let community_for_db = community;
         let notification_body = "Hello, event attendees!";
         let notification_subject = "Event Update";
         let form_data = serde_qs::to_string(&EventCustomNotification {
@@ -392,7 +415,10 @@ mod tests {
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(community_copy.clone()));
+            .returning({
+                let community = community_for_db;
+                move |_| Ok(community.clone())
+            });
         db.expect_track_custom_notification()
             .times(1)
             .withf(move |created_by, event_id, group_id, subject, body| {
@@ -416,7 +442,8 @@ mod tests {
                             .map(|template| {
                                 template.subject == notification_subject
                                     && template.body == notification_body
-                                    && template.theme.primary_color == community.theme.primary_color
+                                    && template.theme.primary_color
+                                        == community_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

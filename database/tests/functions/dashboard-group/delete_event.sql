@@ -126,7 +126,7 @@ select is(
 select throws_ok(
     $$select delete_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
     'P0001',
-    'event not found',
+    'event not found or inactive',
     'delete_event should throw error when group_id does not match'
 );
 

@@ -29,29 +29,29 @@ begin
         event_category_id = (p_event->>'category_id')::uuid,
         event_kind_id = p_event->>'kind_id',
 
-        banner_url = p_event->>'banner_url',
+        banner_url = nullif(p_event->>'banner_url', ''),
         capacity = (p_event->>'capacity')::int,
-        description_short = p_event->>'description_short',
+        description_short = nullif(p_event->>'description_short', ''),
         ends_at = (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-        logo_url = p_event->>'logo_url',
-        meetup_url = p_event->>'meetup_url',
+        logo_url = nullif(p_event->>'logo_url', ''),
+        meetup_url = nullif(p_event->>'meetup_url', ''),
         photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-        recording_url = p_event->>'recording_url',
+        recording_url = nullif(p_event->>'recording_url', ''),
         registration_required = (p_event->>'registration_required')::boolean,
         starts_at = (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-        streaming_url = p_event->>'streaming_url',
+        streaming_url = nullif(p_event->>'streaming_url', ''),
         tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
-        venue_address = p_event->>'venue_address',
-        venue_city = p_event->>'venue_city',
-        venue_name = p_event->>'venue_name',
-        venue_zip_code = p_event->>'venue_zip_code'
+        venue_address = nullif(p_event->>'venue_address', ''),
+        venue_city = nullif(p_event->>'venue_city', ''),
+        venue_name = nullif(p_event->>'venue_name', ''),
+        venue_zip_code = nullif(p_event->>'venue_zip_code', '')
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false
     and canceled = false;
 
     if not found then
-        raise exception 'event not found';
+        raise exception 'event not found or inactive';
     end if;
 
     -- Delete existing hosts, sponsors, sessions and speakers

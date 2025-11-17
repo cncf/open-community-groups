@@ -39,7 +39,7 @@ begin
 
         -- If still exists after trying all suffixes, raise error
         if v_username_exists then
-            raise exception 'Unable to generate unique username. All variants from % to %99 are taken', v_base_username, v_base_username;
+            raise exception 'unable to generate unique username: all variants from % to %99 are taken', v_base_username, v_base_username;
         end if;
     end if;
 

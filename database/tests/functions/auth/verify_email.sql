@@ -94,7 +94,7 @@ where email_verification_code_id = (select verification_code from verification_r
 select throws_ok(
     'select verify_email(''00000000-0000-0000-0000-000000000099''::uuid)',
     'P0001',
-    'invalid email verification code',
+    'email verification failed: invalid code',
     'Non-existent verification code should raise exception'
 );
 
@@ -121,7 +121,7 @@ expired_code_update as (
 select throws_ok(
     'select verify_email(''' || coalesce((select email_verification_code_id::text from expired_code_update), '00000000-0000-0000-0000-000000000098') || '''::uuid)',
     'P0001',
-    'invalid email verification code',
+    'email verification failed: invalid code',
     'Expired verification code should raise exception'
 );
 
@@ -146,7 +146,7 @@ first_use as (
 select throws_ok(
     format('select verify_email(''%s''::uuid)', (select verification_code from first_use)),
     'P0001',
-    'invalid email verification code',
+    'email verification failed: invalid code',
     'Already used verification code should raise exception'
 );
 

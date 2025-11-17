@@ -1576,9 +1576,11 @@ mod tests {
         let session_record = empty_session_record(session_id);
         let email_verification_code = Uuid::new_v4();
         let user = sample_auth_user(Uuid::new_v4(), "hash");
-        let user_copy = user.clone();
+        let user_for_notifications = user.clone();
+        let user_for_db = user;
         let community = sample_community(community_id);
-        let community_copy = community.clone();
+        let community_for_notifications = community.clone();
+        let community_for_db = community;
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1597,11 +1599,17 @@ mod tests {
                     && !matches!(summary.password.as_deref(), Some("secret-password"))
                     && !verify
             })
-            .returning(move |_, _, _| Ok((user_copy.clone(), Some(email_verification_code))));
+            .returning({
+                let user = user_for_db;
+                move |_, _, _| Ok((user.clone(), Some(email_verification_code)))
+            });
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(community_copy.clone()));
+            .returning({
+                let community = community_for_db;
+                move |_| Ok(community.clone())
+            });
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
@@ -1618,13 +1626,14 @@ mod tests {
             .times(1)
             .withf(move |notification| {
                 matches!(&notification.kind, NotificationKind::EmailVerification)
-                    && notification.recipients == vec![user.user_id]
+                    && notification.recipients == vec![user_for_notifications.user_id]
                     && notification.template_data.as_ref().is_some_and(|value| {
                         serde_json::from_value::<EmailVerificationTemplate>(value.clone())
                             .map(|template| {
                                 template.link
                                     == format!("https://app.example/verify-email/{email_verification_code}")
-                                    && template.theme.primary_color == community.theme.primary_color
+                                    && template.theme.primary_color
+                                        == community_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

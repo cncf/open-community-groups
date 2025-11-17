@@ -235,7 +235,8 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let community = sample_community(community_id);
-        let community_copy = community.clone();
+        let community_for_notifications = community.clone();
+        let community_for_db = community;
         let notification_body = "Hello, group members!";
         let notification_subject = "Important Update";
         let form_data = serde_qs::to_string(&GroupCustomNotification {
@@ -271,7 +272,10 @@ mod tests {
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(community_copy.clone()));
+            .returning({
+                let community = community_for_db;
+                move |_| Ok(community.clone())
+            });
         db.expect_track_custom_notification()
             .times(1)
             .withf(move |created_by, event_id, group_id, subject, body| {
@@ -295,7 +299,8 @@ mod tests {
                             .map(|template| {
                                 template.subject == notification_subject
                                     && template.body == notification_body
-                                    && template.theme.primary_color == community.theme.primary_color
+                                    && template.theme.primary_color
+                                        == community_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })

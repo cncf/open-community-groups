@@ -242,7 +242,8 @@ mod tests {
         let group_summary = sample_group_summary(group_id);
         let group_summary_for_db = group_summary.clone();
         let community = sample_community(community_id);
-        let community_copy = community.clone();
+        let community_for_notifications = community.clone();
+        let community_for_db = community;
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -271,7 +272,10 @@ mod tests {
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(community_copy.clone()));
+            .returning({
+                let community = community_for_db;
+                move |_| Ok(community.clone())
+            });
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -285,7 +289,8 @@ mod tests {
                             .map(|template| {
                                 template.group.group_id == group_summary.group_id
                                     && template.link == "/dashboard/user?tab=invitations"
-                                    && template.theme.primary_color == community.theme.primary_color
+                                    && template.theme.primary_color
+                                        == community_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
