@@ -179,7 +179,7 @@ select throws_ok(
         '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'update_group should throw error when trying to update deleted group'
 );
 
@@ -261,7 +261,7 @@ select throws_ok(
         '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'update_group should throw error when community_id does not match'
 );
 

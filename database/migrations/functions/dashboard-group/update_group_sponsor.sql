@@ -8,7 +8,7 @@ returns void as $$
     update group_sponsor set
         logo_url = p_sponsor->>'logo_url',
         name = p_sponsor->>'name',
-        website_url = p_sponsor->>'website_url'
+        website_url = nullif(p_sponsor->>'website_url', '')
     where group_sponsor_id = p_group_sponsor_id
     and group_id = p_group_id;
 $$ language sql;

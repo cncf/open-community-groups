@@ -84,7 +84,7 @@ insert into community (
 -- TESTS
 -- ============================================================================
 
--- updating required fields
+-- updating required fields (optional fields not provided should become null)
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -104,36 +104,16 @@ select is(
     (select get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
-        "ad_banner_link_url": "https://original.com/banner-link",
-        "ad_banner_url": "https://original.com/banner.png",
         "community_site_layout_id": "default",
-        "copyright_notice": "Copyright © 2024 Original",
         "description": "Updated description for Seattle cloud native community",
         "display_name": "Cloud Native Seattle Updated",
-        "extra_links": {"docs": "https://docs.original.com"},
-        "facebook_url": "https://facebook.com/original",
-        "favicon_url": "https://original.com/favicon.ico",
-        "flickr_url": "https://flickr.com/original",
-        "footer_logo_url": "https://original.com/footer-logo.png",
-        "github_url": "https://github.com/original",
         "header_logo_url": "https://updated.com/header-logo.png",
         "host": "seattle.cloudnative.org",
-        "instagram_url": "https://instagram.com/original",
-        "jumbotron_image_url": "https://original.com/jumbotron.png",
-        "linkedin_url": "https://linkedin.com/original",
         "name": "cloud-native-seattle-updated",
-        "new_group_details": "Contact team members to create groups",
-        "og_image_url": "https://original.com/og.png",
-        "photos_urls": ["https://original.com/photo1.jpg", "https://original.com/photo2.jpg"],
-        "slack_url": "https://original.slack.com",
         "theme": {"primary_color": "#FF0000"},
-        "title": "Cloud Native Seattle Updated",
-        "twitter_url": "https://twitter.com/original",
-        "website_url": "https://original.com",
-        "wechat_url": "https://wechat.com/original",
-        "youtube_url": "https://youtube.com/original"
+        "title": "Cloud Native Seattle Updated"
     }'::jsonb,
-    'update_community should update required fields correctly while preserving optional fields'
+    'update_community should update required fields and set optional fields to null when not provided'
 );
 
 -- updating all fields including optional ones

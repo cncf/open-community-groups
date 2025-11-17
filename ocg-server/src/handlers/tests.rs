@@ -73,6 +73,7 @@ pub(crate) fn sample_attendee() -> Attendee {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         username: "attendee".to_string(),
 
+        checked_in_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
         company: Some("Example".to_string()),
         name: Some("Event Attendee".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),

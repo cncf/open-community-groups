@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -69,6 +69,22 @@ select results_eq(
     $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
     $$values ('Iota Updated'::text, 'https://ex.com/iota2.png'::text, 'https://iota.io'::text)$$,
     'update_group_sponsor should update fields'
+);
+
+-- Test: update_group_sponsor sets website_url to null when field not provided
+select update_group_sponsor(
+    '30000000-0000-0000-0000-000000000002'::uuid,
+    '30000000-0000-0000-0000-000000000003'::uuid,
+    '{
+        "name": "Iota Final",
+        "logo_url": "https://ex.com/iota3.png"
+    }'::jsonb
+);
+
+select results_eq(
+    $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
+    $$values ('Iota Final'::text, 'https://ex.com/iota3.png'::text, null::text)$$,
+    'update_group_sponsor should set website_url to null when field not provided'
 );
 
 -- ============================================================================

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -301,6 +301,27 @@ select is(
     'check_in_event marks attendee as checked in'
 );
 
+-- Test: check_in_event should set the checked_in_at timestamp
+select ok(
+    (
+        select checked_in_at is not null
+        from event_attendee
+        where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
+    ),
+    'check_in_event sets checked_in_at timestamp'
+);
+
+-- Test: check_in_event should set checked_in_at to a recent timestamp
+select ok(
+    (
+        select checked_in_at >= now() - interval '10 seconds'
+        and checked_in_at <= now() + interval '10 seconds'
+        from event_attendee
+        where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
+    ),
+    'check_in_event sets checked_in_at to current time'
+);
+
 -- Test: check_in_event should error when user is not attending
 select throws_ok(
     format(
@@ -370,6 +391,21 @@ select is(
     (select count(*)::int from event_attendee where event_id = :'checkInWindowEventID' and user_id = :'userID' and checked_in = true),
     1,
     'check_in_event should be idempotent'
+);
+
+-- Test: check_in_event should not update checked_in_at on subsequent check-ins
+select checked_in_at
+from event_attendee
+where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid \gset previous_
+select check_in_event(:'communityID'::uuid, :'checkInWindowEventID'::uuid, :'userID'::uuid);
+select is(
+    (
+        select checked_in_at
+        from event_attendee
+        where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
+    ),
+    :'previous_checked_in_at'::timestamptz,
+    'check_in_event should not update checked_in_at on subsequent check-ins'
 );
 
 -- ============================================================================

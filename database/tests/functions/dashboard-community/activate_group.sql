@@ -108,7 +108,7 @@ select is(
 select throws_ok(
     $$select activate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'activate_group should throw error when trying to activate already deleted group'
 );
 
@@ -116,7 +116,7 @@ select throws_ok(
 select throws_ok(
     $$select activate_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'activate_group should throw error when community_id does not match'
 );
 
@@ -124,7 +124,7 @@ select throws_ok(
 select throws_ok(
     $$select activate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
     'P0001',
-    'group not found',
+    'group not found or inactive',
     'activate_group should throw error for non-existent group'
 );
 

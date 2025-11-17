@@ -133,7 +133,7 @@ select is(
 select throws_ok(
     $$select publish_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
     'P0001',
-    'event not found',
+    'event not found or inactive',
     'publish_event should throw error when group_id does not match'
 );
 

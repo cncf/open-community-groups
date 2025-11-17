@@ -11,6 +11,7 @@ returns json as $$
                 extract(epoch from ea.created_at)::bigint as created_at,
                 u.username,
 
+                extract(epoch from ea.checked_in_at)::bigint as checked_in_at,
                 u.company,
                 u.name,
                 u.photo_url,

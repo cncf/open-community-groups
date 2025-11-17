@@ -14,7 +14,7 @@ begin
     and deleted = false;
 
     if not found then
-        raise exception 'group not found';
+        raise exception 'group not found or inactive';
     end if;
 end;
 $$ language plpgsql;

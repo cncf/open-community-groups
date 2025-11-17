@@ -7,7 +7,7 @@ create or replace function is_event_attendee(
     is_attendee boolean,
     is_checked_in boolean
 ) as $$
-    select 
+    select
         count(*) > 0 as is_attendee,
         coalesce(bool_and(ea.checked_in), false) as is_checked_in
     from event_attendee ea
