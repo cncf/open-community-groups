@@ -217,7 +217,7 @@ impl Worker {
             }
             NotificationKind::EventCustom => {
                 let template: EventCustom = serde_json::from_value(template_data)?;
-                let subject = template.subject.clone();
+                let subject = format!("{}: {}", template.event.group_name, template.event.name);
                 let body = template.render()?;
                 (subject, body)
             }
@@ -241,7 +241,7 @@ impl Worker {
             }
             NotificationKind::GroupCustom => {
                 let template: GroupCustom = serde_json::from_value(template_data)?;
-                let subject = template.subject.clone();
+                let subject = template.group.name.clone();
                 let body = template.render()?;
                 (subject, body)
             }
@@ -713,7 +713,7 @@ mod tests {
         let (subject, body) = Worker::prepare_content(&notification).unwrap();
 
         // Check content matches expectations
-        assert_eq!(subject, "Custom event subject");
+        assert_eq!(subject, "Notification Group: Custom Event");
         assert!(body.contains("Custom event body"));
     }
 
@@ -732,7 +732,7 @@ mod tests {
         let (subject, body) = Worker::prepare_content(&notification).unwrap();
 
         // Check content matches expectations
-        assert_eq!(subject, "Custom group subject");
+        assert_eq!(subject, "Hello Group");
         assert!(body.contains("Custom group body"));
     }
 
@@ -848,8 +848,22 @@ mod tests {
     /// Sample template payload for custom event notifications.
     fn sample_event_custom_template_data() -> serde_json::Value {
         json!({
-            "subject": "Custom event subject",
+            "title": "Custom event title",
             "body": "Custom event body",
+            "event": {
+                "canceled": false,
+                "event_id": "11111111-1111-1111-1111-111111111111",
+                "group_category_name": "Community",
+                "group_color": "#ff7700",
+                "group_name": "Notification Group",
+                "group_slug": "notification-group",
+                "kind": "virtual",
+                "name": "Custom Event",
+                "published": true,
+                "slug": "custom-event",
+                "timezone": "UTC"
+            },
+            "link": "https://example.test/group/notification-group/event/custom-event",
             "theme": {
                 "primary_color": "#000000"
             }
@@ -859,8 +873,22 @@ mod tests {
     /// Sample template payload for custom group notifications.
     fn sample_group_custom_template_data() -> serde_json::Value {
         json!({
-            "subject": "Custom group subject",
+            "title": "Custom group title",
             "body": "Custom group body",
+            "group": {
+                "active": true,
+                "category": {
+                    "group_category_id": "22222222-2222-2222-2222-222222222222",
+                    "name": "Sample Category",
+                    "normalized_name": "sample-category"
+                },
+                "color": "#123456",
+                "created_at": 1,
+                "group_id": "33333333-3333-3333-3333-333333333333",
+                "name": "Hello Group",
+                "slug": "hello-group"
+            },
+            "link": "https://example.test/group/hello-group",
             "theme": {
                 "primary_color": "#000000"
             }
