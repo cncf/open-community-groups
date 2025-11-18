@@ -6,36 +6,17 @@
 {% endblock subject -%}
 
 {% block preheader -%}
-  Notification from {{ event.name }} of {{ event.group_name }}.
+  Notification from {{ event.name }} in {{ event.group_name }}.
 {% endblock preheader -%}
 
 {% block content -%}
-  <table border="0"
-         cellpadding="0"
-         cellspacing="0"
-         width="100%"
-         style="margin-bottom: 24px;
-                border-collapse: collapse">
-    <tr>
-      <td align="left" style="padding: 0">
-        <table border="0"
-               cellpadding="0"
-               cellspacing="0"
-               width="100%"
-               style="border: 1px solid #e0e0e0;
-                      background-color: #f9f9f9;
-                      border-radius: 3px">
-          <tr>
-            <td style="padding: 20px; border-radius: 3px">
-              <p class="default" style="margin: 0">
-                This custom notification comes from event {{ event.name }} in group {{ event.group_name }}.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+  <p class="default group">
+    <strong>{{ event.group_name }}</strong>
+  </p>
+  <p class="default event mb-15">
+    <strong>{{ event.name }}</strong>
+  </p>
+  <p class="default big mb-15 mt-5">{{ title }}</p>
   <p class="default mb-30">{{ body }}</p>
   {% call macros::email_button(link = link, text = "View event") %}
 {% endblock content -%}
