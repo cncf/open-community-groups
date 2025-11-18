@@ -197,7 +197,12 @@
             <button id="cancel-attendee-notification"
                     type="button"
                     class="btn-primary-outline">Cancel</button>
-            <button id="submit-attendee-notification" type="submit" class="btn-primary">Send Notification</button>
+            <button id="submit-attendee-notification"
+                    type="submit"
+                    class="btn-primary relative">
+              {% call common::btn_spinner(id = "attendee-notification-spinner", spinner_type = "2") -%}
+              Send Notification
+            </button>
           </div>
         </form>
       </div>

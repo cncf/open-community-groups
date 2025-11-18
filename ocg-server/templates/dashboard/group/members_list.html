@@ -161,7 +161,10 @@
           </div>
           <div class="flex justify-end gap-3 pt-4 border-t border-stone-200">
             <button id="cancel-notification" type="button" class="btn-primary-outline">Cancel</button>
-            <button id="submit-notification" type="submit" class="btn-primary">Send Notification</button>
+            <button id="submit-notification" type="submit" class="btn-primary relative">
+              {% call common::btn_spinner(id = "notification-spinner", spinner_type = "2") -%}
+              Send Notification
+            </button>
           </div>
         </form>
       </div>
