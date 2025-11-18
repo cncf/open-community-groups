@@ -1,11 +1,21 @@
 {% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
 
 {% block subject -%}
   {{ title }}
 {% endblock subject -%}
 
+{% block preheader -%}
+  Notification from {{ group.name }}.
+{% endblock preheader -%}
+
 {% block content -%}
+  <p class="default group mb-15">
+    <strong>{{ group.name }}</strong>
+  </p>
+  <p class="default big mb-15">{{ title }}</p>
   <p class="default mb-30">{{ body }}</p>
+  {% call macros::email_button(link = link, text = "Visit group page") %}
 {% endblock content -%}
 
 {% block footer -%}

@@ -180,6 +180,10 @@ button:enabled {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.5;
+}
+
 /* Generic styles */
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 0;

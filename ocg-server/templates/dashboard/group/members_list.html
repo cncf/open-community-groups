@@ -4,14 +4,24 @@
 {# Members header -#}
 {% call macros::form_title(title = "Members") -%}
 
-<div class="flex text-sm text-stone-600 mb-5">
-  <div>Total members:</div>
-  <div class="font-semibold ms-1 text-end">
-    {% if members.is_empty() -%}
-      -
-    {% else %}
-      {{ members.len() }}
-    {% endif -%}
+<div class="flex justify-between items-end my-5">
+  <div class="flex text-sm text-stone-600">
+    <div>Total members:</div>
+    <div class="font-semibold ms-1 text-end">
+      {% if members.is_empty() -%}
+        -
+      {% else %}
+        {{ members.len() }}
+      {% endif -%}
+    </div>
+  </div>
+  <div>
+    <button id="open-notification-modal"
+            type="button"
+            class="btn-primary"
+            {% if members.is_empty() -%}
+              disabled title="Add members to enable sending notifications."
+            {% endif -%}>Send email</button>
   </div>
 </div>
 
@@ -86,4 +96,78 @@
     </tbody>
   </table>
   {# End table -#}
+</div>
+
+{# Notification modal -#}
+<div id="notification-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="notification-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
+  <div id="overlay-notification-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="relative p-4 w-full max-w-2xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      {# Modal header -#}
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="notification-modal-title"
+            class="text-xl font-semibold text-stone-900">Send email</h3>
+        <button id="close-notification-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      {# Modal body -#}
+      <div class="p-4 md:p-8">
+        <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
+          <p class="font-medium">
+            This email will be sent to <span class="font-semibold">all group members</span>.
+          </p>
+        </div>
+        <form id="notification-form"
+              hx-post="/dashboard/group/notifications"
+              hx-indicator="#notification-spinner"
+              hx-disabled-elt="#submit-notification">
+          <div class="mb-4">
+            <label for="title" class="form-label">
+              Title <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="text"
+                     id="title"
+                     name="title"
+                     required
+                     maxlength="200"
+                     class="input-primary"
+                     placeholder="Enter notification title">
+            </div>
+          </div>
+          <div class="mb-6">
+            <label for="body" class="form-label">
+              Body <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <textarea id="body"
+                        name="body"
+                        required
+                        rows="6"
+                        maxlength="5000"
+                        class="input-primary"
+                        placeholder="Enter notification body (plain text only)"></textarea>
+              <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
+            <button id="cancel-notification" type="button" class="btn-primary-outline">Cancel</button>
+            <button id="submit-notification" type="submit" class="btn-primary relative">
+              {% call common::btn_spinner(id = "notification-spinner", spinner_type = "2") -%}
+              Send email
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>

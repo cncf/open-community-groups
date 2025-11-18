@@ -4,23 +4,38 @@
 {# Attendees header -#}
 {% call macros::form_title(title = "Attendees") -%}
 
-<div class="flex flex-col mt-10 mb-6 w-3/4 max-w-[90vw] relative">
-  <label for="group-event-selector-button" class="form-label mb-2">Event</label>
-  <event-selector button-id="group-event-selector-button" group-id="{{ group_id }}"
-  {% if let Some(selected_event) = event -%}
-    selected-event-id="{{ selected_event.event_id }}" selected-event="{{ selected_event|json }}"
-  {% endif -%}
-  ></event-selector>
+<div class="mt-10 mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div class="flex-1 min-w-0">
+    <label for="group-event-selector-button" class="form-label mb-2">Event</label>
+    <event-selector button-id="group-event-selector-button" group-id="{{ group_id }}"
+    {% if let Some(selected_event) = event -%}
+      selected-event-id="{{ selected_event.event_id }}" selected-event="{{ selected_event|json }}"
+    {% endif -%}
+    ></event-selector>
+  </div>
 </div>
 
-<div class="flex text-sm text-stone-600 mb-5">
-  <div>Total attendees:</div>
-  <div class="font-semibold ms-1 text-end">
-    {% if attendees.is_empty() -%}
-      -
-    {% else %}
-      {{ attendees.len() }}
-    {% endif -%}
+<div class="flex items-end justify-between mb-5">
+  <div class="flex text-sm text-stone-600">
+    <div>Total attendees:</div>
+    <div class="font-semibold ms-1 text-end">
+      {% if attendees.is_empty() -%}
+        -
+      {% else %}
+        {{ attendees.len() }}
+      {% endif -%}
+    </div>
+  </div>
+  <div class="flex-shrink-0 w-full lg:w-auto mb-1.5">
+    <button id="open-attendee-notification-modal"
+            type="button"
+            class="btn-primary w-full lg:w-auto"
+            {% if event.is_none() || attendees.is_empty() -%}
+              disabled title="Select an event with attendees to send emails."
+            {% endif -%}
+            {% if let Some(selected_event) = event -%}
+              data-event-id="{{ selected_event.event_id }}"
+            {% endif -%}>Send email</button>
   </div>
 </div>
 
@@ -121,3 +136,80 @@
   </table>
 </div>
 {# End attendees table -#}
+
+{# Notification modal -#}
+<div id="attendee-notification-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="attendee-notification-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
+  <div id="overlay-attendee-notification-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="relative p-4 w-full max-w-2xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      {# Modal header -#}
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="attendee-notification-modal-title"
+            class="text-xl font-semibold text-stone-900">Send email</h3>
+        <button id="close-attendee-notification-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      {# Modal body -#}
+      <div class="p-4 md:p-8">
+        <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
+          <p class="font-medium">
+            This email will be sent to <span class="font-semibold">all event attendees</span>.
+          </p>
+        </div>
+        <form id="attendee-notification-form"
+              hx-indicator="#attendee-notification-spinner"
+              hx-disabled-elt="#submit-attendee-notification">
+          <div class="mb-4">
+            <label for="attendee-title" class="form-label">
+              Title <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="text"
+                     id="attendee-title"
+                     name="title"
+                     required
+                     maxlength="200"
+                     class="input-primary"
+                     placeholder="Enter notification title">
+            </div>
+          </div>
+          <div class="mb-6">
+            <label for="attendee-body" class="form-label">
+              Body <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <textarea id="attendee-body"
+                        name="body"
+                        required
+                        rows="6"
+                        maxlength="5000"
+                        class="input-primary"
+                        placeholder="Enter notification body (plain text only)"></textarea>
+              <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
+            <button id="cancel-attendee-notification"
+                    type="button"
+                    class="btn-primary-outline">Cancel</button>
+            <button id="submit-attendee-notification"
+                    type="submit"
+                    class="btn-primary relative">
+              {% call common::btn_spinner(id = "attendee-notification-spinner", spinner_type = "2") -%}
+              Send email
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
