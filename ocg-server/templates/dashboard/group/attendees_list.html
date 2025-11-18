@@ -29,7 +29,7 @@
   <div class="flex-shrink-0 w-full lg:w-auto mb-1.5">
     <button id="open-attendee-notification-modal"
             type="button"
-            class="btn-secondary w-full lg:w-auto"
+            class="btn-primary w-full lg:w-auto"
             {% if event.is_none() || attendees.is_empty() -%}
               disabled title="Select an event with attendees to send emails."
             {% endif -%}
@@ -169,17 +169,17 @@
               hx-indicator="#attendee-notification-spinner"
               hx-disabled-elt="#submit-attendee-notification">
           <div class="mb-4">
-            <label for="attendee-subject" class="form-label">
-              Subject <span class="asterisk">*</span>
+            <label for="attendee-title" class="form-label">
+              Title <span class="asterisk">*</span>
             </label>
             <div class="mt-2">
               <input type="text"
-                     id="attendee-subject"
-                     name="subject"
+                     id="attendee-title"
+                     name="title"
                      required
                      maxlength="200"
                      class="input-primary"
-                     placeholder="Enter notification subject">
+                     placeholder="Enter notification title">
             </div>
           </div>
           <div class="mb-6">
