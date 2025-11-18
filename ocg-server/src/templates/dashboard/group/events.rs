@@ -108,6 +108,8 @@ pub(crate) struct Event {
     pub registration_required: Option<bool>,
     /// Event sessions with speakers.
     pub sessions: Option<Vec<Session>>,
+    /// Event-level speakers.
+    pub speakers: Option<Vec<Speaker>>,
     /// Event sponsors.
     pub sponsors: Option<Vec<EventSponsor>>,
     /// Event start time.
@@ -178,8 +180,18 @@ pub(crate) struct Session {
     pub location: Option<String>,
     /// Recording URL for the session.
     pub recording_url: Option<String>,
-    /// User IDs of session speakers.
-    pub speakers: Option<Vec<Uuid>>,
+    /// Session speakers.
+    pub speakers: Option<Vec<Speaker>>,
     /// Streaming URL for the session.
     pub streaming_url: Option<String>,
+}
+
+/// Speaker selection with optional featured flag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct Speaker {
+    /// Whether the speaker is featured.
+    #[serde(default)]
+    pub featured: bool,
+    /// Unique identifier for the speaker.
+    pub user_id: Uuid,
 }

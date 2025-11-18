@@ -159,6 +159,8 @@ pub struct EventFull {
     pub sessions: BTreeMap<NaiveDate, Vec<Session>>,
     /// URL slug of the event.
     pub slug: String,
+    /// Event speakers (at the event level).
+    pub speakers: Vec<Speaker>,
     /// Event sponsors.
     pub sponsors: Vec<EventSponsor>,
     /// Timezone for event times.
@@ -315,7 +317,7 @@ pub struct Session {
     /// Unique identifier for the session.
     pub session_id: Uuid,
     /// Session speakers.
-    pub speakers: Vec<User>,
+    pub speakers: Vec<Speaker>,
     /// Session start time in UTC.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub starts_at: DateTime<Utc>,
@@ -351,4 +353,16 @@ pub struct SessionKindSummary {
     pub session_kind_id: String,
     /// Display name.
     pub display_name: String,
+}
+
+/// Event/session speaker details.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Speaker {
+    /// Whether the speaker is highlighted.
+    #[serde(default)]
+    pub featured: bool,
+    /// Embedded user profile information.
+    #[serde(flatten)]
+    pub user: User,
 }

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -104,6 +104,7 @@ select is(
         "category_name": "Conference",
         "description": "Learn the basics of Kubernetes deployment and management",
         "hosts": [],
+        "speakers": [],
         "kind": "in-person",
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
@@ -143,6 +144,10 @@ with new_event as (
             "venue_name": "Tech Center",
             "venue_zip_code": "94105",
             "hosts": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"],
+            "speakers": [
+                {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true},
+                {"user_id": "00000000-0000-0000-0000-000000000022", "featured": false}
+            ],
             "sessions": [
                 {
                     "name": "Opening Keynote",
@@ -151,7 +156,7 @@ with new_event as (
                     "ends_at": "2025-01-01T10:45:00",
                     "kind": "in-person",
                     "location": "Main Hall",
-                    "speakers": ["00000000-0000-0000-0000-000000000022"]
+                    "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}]
                 },
                 {
                     "name": "Kubernetes Best Practices",
@@ -160,7 +165,10 @@ with new_event as (
                     "ends_at": "2025-01-01T11:45:00",
                     "kind": "virtual",
                     "streaming_url": "https://youtube.com/live/session2",
-                    "speakers": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"]
+                    "speakers": [
+                        {"user_id": "00000000-0000-0000-0000-000000000020", "featured": false},
+                        {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}
+                    ]
                 }
             ],
             "sponsors": [
@@ -186,6 +194,10 @@ select is(
         "hosts": [
             {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1"},
             {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
+        ],
+        "speakers": [
+            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true},
+            {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
         ],
         "kind": "hybrid",
         "name": "CloudNativeCon Seattle 2025",
@@ -236,8 +248,8 @@ select ok(
                 "kind": "virtual",
                 "streaming_url": "https://youtube.com/live/session2",
                 "speakers": [
-                    {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1"},
-                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
+                    {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1", "featured": false},
+                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
                 ]
             },
             {
@@ -248,7 +260,7 @@ select ok(
                 "kind": "in-person",
                 "location": "Main Hall",
                 "speakers": [
-                    {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1"}
+                    {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": true}
                 ]
             }
         ]'::jsonb
@@ -265,6 +277,17 @@ select throws_ok(
     'P0001',
     'host user 99999999-9999-9999-9999-999999999999 not found in community',
     'add_event should throw error when host user_id does not exist in community'
+);
+
+-- add_event throws error for invalid speaker user_id
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Test Event", "slug": "test-event-speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
+    )$$,
+    'P0001',
+    'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
+    'add_event should throw error when speaker user_id does not exist in community'
 );
 
 -- ============================================================================

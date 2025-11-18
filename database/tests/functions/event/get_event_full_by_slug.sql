@@ -125,6 +125,13 @@ values
     (:'eventID', :'user1ID', '2024-01-01 00:00:00'),
     (:'eventID', :'user2ID', '2024-01-01 00:00:00');
 
+-- Event Speakers
+insert into event_speaker (event_id, user_id, featured, created_at)
+values
+    (:'eventID', :'user1ID', false, '2024-01-01 00:00:00'),
+    (:'eventID', :'user2ID', true, '2024-01-01 00:00:00'),
+    (:'eventID', :'user3ID', false, '2024-01-01 00:00:00');
+
 -- Event Attendee
 insert into event_attendee (event_id, user_id, checked_in, created_at)
 values
@@ -191,6 +198,38 @@ select is(
                 "username": "host1",
                 "bio": "Conference opening speaker",
                 "name": "John Doe",
+                "photo_url": "https://example.com/john.png"
+            }
+        ],
+        "speakers": [
+            {
+                "title": "Lead Dev",
+                "company": "Dev Inc",
+                "user_id": "00000000-0000-0000-0000-000000000052",
+                "username": "host2",
+                "bio": "Community host and emcee",
+                "name": "Jane Smith",
+                "featured": true,
+                "photo_url": "https://example.com/jane.png"
+            },
+            {
+                "title": "Manager",
+                "company": "Cloud Co",
+                "user_id": "00000000-0000-0000-0000-000000000053",
+                "username": "organizer1",
+                "bio": "Community programs lead",
+                "name": "Alice Johnson",
+                "featured": false,
+                "photo_url": "https://example.com/alice.png"
+            },
+            {
+                "title": "CTO",
+                "company": "Tech Corp",
+                "user_id": "00000000-0000-0000-0000-000000000051",
+                "username": "host1",
+                "bio": "Conference opening speaker",
+                "name": "John Doe",
+                "featured": false,
                 "photo_url": "https://example.com/john.png"
             }
         ],

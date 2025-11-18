@@ -129,6 +129,7 @@ returns json as $$
                                 'bio', u.bio,
                                 'company', u.company,
                                 'facebook_url', u.facebook_url,
+                                'featured', ss.featured,
                                 'linkedin_url', u.linkedin_url,
                                 'name', u.name,
                                 'photo_url', u.photo_url,
@@ -153,6 +154,26 @@ returns json as $$
                 (select jsonb_object_agg(day, sessions order by day) from event_sessions_grouped),
                 '{}'::jsonb
             )::json
+        ),
+        'speakers', (
+            select coalesce(json_agg(json_strip_nulls(json_build_object(
+                'user_id', u.user_id,
+                'username', u.username,
+
+                'bio', u.bio,
+                'company', u.company,
+                'facebook_url', u.facebook_url,
+                'featured', es.featured,
+                'linkedin_url', u.linkedin_url,
+                'name', u.name,
+                'photo_url', u.photo_url,
+                'title', u.title,
+                'twitter_url', u.twitter_url,
+                'website_url', u.website_url
+            )) order by es.featured desc, u.name), '[]')
+            from event_speaker es
+            join "user" u using (user_id)
+            where es.event_id = e.event_id
         ),
         'sponsors', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
