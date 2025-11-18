@@ -13,12 +13,12 @@
   <p class="default group">
     <strong>{{ event.group_name }}</strong>
   </p>
-  <p class="default event mb-15">
+  <p class="default event mb-15 mt-5">
     <strong>{{ event.name }}</strong>
   </p>
-  <p class="default big mb-15 mt-5">{{ title }}</p>
+  <p class="default big mb-15">{{ title }}</p>
   <p class="default mb-30">{{ body }}</p>
-  {% call macros::email_button(link = link, text = "View event") %}
+  {% call macros::email_button(link = link, text = "View event page") %}
 {% endblock content -%}
 
 {% block footer -%}
