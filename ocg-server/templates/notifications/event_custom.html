@@ -1,11 +1,43 @@
 {% extends "notifications/base.html" -%}
+{% import "notifications/email_macros.html" as macros %}
 
 {% block subject -%}
   {{ title }}
 {% endblock subject -%}
 
+{% block preheader -%}
+  Notification from {{ event.name }} of {{ event.group_name }}.
+{% endblock preheader -%}
+
 {% block content -%}
+  <table border="0"
+         cellpadding="0"
+         cellspacing="0"
+         width="100%"
+         style="margin-bottom: 24px;
+                border-collapse: collapse">
+    <tr>
+      <td align="left" style="padding: 0">
+        <table border="0"
+               cellpadding="0"
+               cellspacing="0"
+               width="100%"
+               style="border: 1px solid #e0e0e0;
+                      background-color: #f9f9f9;
+                      border-radius: 3px">
+          <tr>
+            <td style="padding: 20px; border-radius: 3px">
+              <p class="default" style="margin: 0">
+                This custom notification comes from event {{ event.name }} in group {{ event.group_name }}.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
   <p class="default mb-30">{{ body }}</p>
+  {% call macros::email_button(link = link, text = "View event") %}
 {% endblock content -%}
 
 {% block footer -%}
