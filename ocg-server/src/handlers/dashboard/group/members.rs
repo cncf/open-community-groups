@@ -73,7 +73,7 @@ pub(crate) async fn send_group_custom_notification(
         group,
         link,
         theme: community.theme,
-        title: notification.subject.clone(),
+        title: notification.title.clone(),
     };
     let new_notification = NewNotification {
         attachments: vec![],
@@ -88,7 +88,7 @@ pub(crate) async fn send_group_custom_notification(
         user.user_id,
         None, // event_id is None for group notifications
         Some(group_id),
-        &notification.subject,
+        &notification.title,
         &notification.body,
     )
     .await?;
@@ -101,8 +101,8 @@ pub(crate) async fn send_group_custom_notification(
 /// Form data for custom group notifications.
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct GroupCustomNotification {
-    /// Subject line for the notification email.
-    pub subject: String,
+    /// Title line for the notification email.
+    pub title: String,
     /// Body text for the notification.
     pub body: String,
 }
@@ -251,7 +251,7 @@ mod tests {
         let notification_body = "Hello, group members!";
         let notification_subject = "Important Update";
         let form_data = serde_qs::to_string(&GroupCustomNotification {
-            subject: notification_subject.to_string(),
+            title: notification_subject.to_string(),
             body: notification_body.to_string(),
         })
         .unwrap();
@@ -355,7 +355,7 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let form_data = serde_qs::to_string(&GroupCustomNotification {
-            subject: "Subject".to_string(),
+            title: "Subject".to_string(),
             body: "Body".to_string(),
         })
         .unwrap();

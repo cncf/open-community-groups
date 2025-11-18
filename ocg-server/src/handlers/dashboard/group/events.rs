@@ -3,6 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
@@ -100,6 +101,21 @@ pub(crate) async fn update_page(
     };
 
     Ok(Html(template.render()?))
+}
+
+// JSON handlers.
+
+/// Returns full event details in JSON format.
+#[instrument(skip_all, err)]
+pub(crate) async fn details(
+    CommunityId(community_id): CommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let event = db.get_event_full(community_id, group_id, event_id).await?;
+
+    Ok(Json(event).into_response())
 }
 
 // Actions handlers.
@@ -343,7 +359,7 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
-    use serde_json::from_value;
+    use serde_json::{from_slice, from_value, to_value};
     use tower::ServiceExt;
     use uuid::Uuid;
 
@@ -353,7 +369,7 @@ mod tests {
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
         templates::notifications::{EventCanceled, EventPublished, EventRescheduled},
-        types::event::EventSummary,
+        types::event::{EventFull, EventSummary},
     };
 
     #[tokio::test]
@@ -500,6 +516,7 @@ mod tests {
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let event_full = sample_event_full(event_id, group_id);
+        let event_full_db = event_full.clone();
         let category = sample_event_category();
         let kind = sample_event_kind_summary();
         let session_kind = sample_session_kind_summary();
@@ -523,7 +540,7 @@ mod tests {
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-            .returning(move |_, _, _| Ok(event_full.clone()));
+            .returning(move |_, _, _| Ok(event_full_db.clone()));
         db.expect_list_event_categories()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -569,6 +586,64 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_details_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let event_full = sample_event_full(event_id, group_id);
+        let event_full_db = event_full.clone();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_full()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event_full_db.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = setup_test_router(db, nm).await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/dashboard/group/events/{event_id}/details"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+        let payload: EventFull = from_slice(&bytes).unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("application/json"),
+        );
+        assert_eq!(to_value(payload).unwrap(), to_value(event_full).unwrap());
     }
 
     #[tokio::test]
