@@ -13,27 +13,29 @@
     {% endif -%}
     ></event-selector>
   </div>
+</div>
+
+<div class="flex items-end justify-between mb-5">
+  <div class="flex text-sm text-stone-600">
+    <div>Total attendees:</div>
+    <div class="font-semibold ms-1 text-end">
+      {% if attendees.is_empty() -%}
+        -
+      {% else %}
+        {{ attendees.len() }}
+      {% endif -%}
+    </div>
+  </div>
   <div class="flex-shrink-0 w-full lg:w-auto mb-1.5">
     <button id="open-attendee-notification-modal"
             type="button"
             class="btn-secondary w-full lg:w-auto"
             {% if event.is_none() || attendees.is_empty() -%}
-              disabled title="Select an event with attendees to send notifications."
+              disabled title="Select an event with attendees to send emails."
             {% endif -%}
             {% if let Some(selected_event) = event -%}
               data-event-id="{{ selected_event.event_id }}"
-            {% endif -%}>Send Notification</button>
-  </div>
-</div>
-
-<div class="flex text-sm text-stone-600 mb-5">
-  <div>Total attendees:</div>
-  <div class="font-semibold ms-1 text-end">
-    {% if attendees.is_empty() -%}
-      -
-    {% else %}
-      {{ attendees.len() }}
-    {% endif -%}
+            {% endif -%}>Send email</button>
   </div>
 </div>
 
@@ -148,7 +150,7 @@
       {# Modal header -#}
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
         <h3 id="attendee-notification-modal-title"
-            class="text-xl font-semibold text-stone-900">Send Notification</h3>
+            class="text-xl font-semibold text-stone-900">Send email</h3>
         <button id="close-attendee-notification-modal"
                 type="button"
                 class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
@@ -157,10 +159,10 @@
         </button>
       </div>
       {# Modal body -#}
-      <div class="p-4 md:p-5">
+      <div class="p-4 md:p-8">
         <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
           <p class="font-medium">
-            This notification will be sent to <span class="font-semibold">all event attendees</span>.
+            This email will be sent to <span class="font-semibold">all event attendees</span>.
           </p>
         </div>
         <form id="attendee-notification-form"
@@ -180,7 +182,7 @@
                      placeholder="Enter notification subject">
             </div>
           </div>
-          <div class="mb-4">
+          <div class="mb-6">
             <label for="attendee-body" class="form-label">
               Body <span class="asterisk">*</span>
             </label>
@@ -195,7 +197,7 @@
               <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>
             </div>
           </div>
-          <div class="flex justify-end gap-3 pt-4 border-t border-stone-200">
+          <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
             <button id="cancel-attendee-notification"
                     type="button"
                     class="btn-primary-outline">Cancel</button>
@@ -203,7 +205,7 @@
                     type="submit"
                     class="btn-primary relative">
               {% call common::btn_spinner(id = "attendee-notification-spinner", spinner_type = "2") -%}
-              Send Notification
+              Send email
             </button>
           </div>
         </form>

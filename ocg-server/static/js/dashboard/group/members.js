@@ -14,7 +14,7 @@ const initializeMembersNotification = () => {
     closeButtonId: "close-notification-modal",
     cancelButtonId: "cancel-notification",
     overlayId: "overlay-notification-modal",
-    successMessage: "Notification sent successfully to all group members.",
+    successMessage: "Email sent successfully to all group members.",
   });
 };
 

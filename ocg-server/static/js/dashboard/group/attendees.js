@@ -14,7 +14,7 @@ const initializeAttendeeNotification = () => {
     closeButtonId: "close-attendee-notification-modal",
     cancelButtonId: "cancel-attendee-notification",
     overlayId: "overlay-attendee-notification-modal",
-    successMessage: "Notification sent successfully to all event attendees!",
+    successMessage: "Email sent successfully to all event attendees!",
     // Apply the event-specific endpoint before the modal opens.
     updateEndpoint: ({ form, openButton }) => {
       if (!form) {
