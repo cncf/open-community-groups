@@ -237,6 +237,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             delete(dashboard::group::events::delete),
         )
         .route(
+            "/events/{event_id}/details",
+            get(dashboard::group::events::details),
+        )
+        .route(
             "/events/{event_id}/publish",
             put(dashboard::group::events::publish),
         )
