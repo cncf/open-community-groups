@@ -80,11 +80,11 @@
 
     <div class="pt-3 xl:pt-8">
       {# Events in-person -#}
-      {% call events_list(title = "Upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -%}
+      {% call events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -%}
       {# End events in-person -#}
 
       {# Events online -#}
-      {% call events_list(title = "Upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -%}
+      {% call events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -%}
       {# End events online -#}
 
       {# Banner -#}
@@ -111,9 +111,9 @@
       {% endif -%}
       {# End banner -#}
 
-      {# Recently added groups -#}
+      {# Latest groups added -#}
       <div class="flex items-center justify-between mb-2 md:mb-6">
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Recently added groups</div>
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
         {# See all groups on desktop -#}
         <div class="hidden justify-self-end md:flex">
           <a href="/explore?entity=groups" class="btn-secondary-anchor ms-4">See all groups</a>
@@ -122,11 +122,18 @@
       </div>
       <div class="mt-5 mb-3 lg:mt-10 lg:mb-10">
         {# Groups cards -#}
-        <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
-          {% for group in recently_added_groups -%}
-            {{ group|safe }}
-          {% endfor -%}
-        </div>
+        {% if recently_added_groups.len() > 0 -%}
+          <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
+            {% for group in recently_added_groups -%}
+              {{ group|safe }}
+            {% endfor -%}
+          </div>
+        {% else -%}
+          {% call common::placeholder(
+          title = "Groups coming soon",
+          content = "Community organizers are still setting this up, check back soon for new groups."
+          ) -%}
+        {% endif -%}
         {# End groups cards -#}
         {# See all groups mobile button -#}
         <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
@@ -134,7 +141,7 @@
         </div>
         {# End see all groups mobile button -#}
       </div>
-      {# End recently added groups -#}
+      {# End latest groups added -#}
     </div>
   </div>
   {# End main content -#}
@@ -174,11 +181,19 @@
     </div>
     <div class="my-5 xl:my-10">
       {# Cards list -#}
-      <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
-        {% for event in events -%}
-          {{ event|safe }}
-        {% endfor -%}
-      </div>
+      {% if events.len() > 0 -%}
+        <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
+          {% for event in events -%}
+            {{ event|safe }}
+          {% endfor -%}
+        </div>
+      {% else -%}
+        {% let base_title = title -%}
+        {% call common::placeholder(
+        title = "No " ~ base_title,
+        content = "We don't have any " ~ base_title ~ " yet, check back soon for fresh listings."
+        ) -%}
+      {% endif -%}
       {# End cards list -#}
 
       {# See all events on mobile -#}
