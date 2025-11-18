@@ -102,6 +102,9 @@
 
 {# Notification modal -#}
 <div id="notification-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="notification-modal-title"
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
   <div id="overlay-notification-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
@@ -109,7 +112,8 @@
     <div class="relative bg-white rounded-lg shadow">
       {# Modal header -#}
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 class="text-xl font-semibold text-stone-900">Send Notification</h3>
+        <h3 id="notification-modal-title"
+            class="text-xl font-semibold text-stone-900">Send Notification</h3>
         <button id="close-notification-modal"
                 type="button"
                 class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
