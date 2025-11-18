@@ -47,10 +47,14 @@ pub(crate) struct EventCanceled {
 pub(crate) struct EventCustom {
     /// Body text provided for the event notification.
     pub body: String,
-    /// Subject line provided for the event notification.
-    pub subject: String,
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
     /// Theme configuration for the notification.
     pub theme: Theme,
+    /// Display title provided for the event notification.
+    pub title: String,
 }
 
 /// Template for event published notification.
@@ -95,10 +99,14 @@ pub(crate) struct EventWelcome {
 pub(crate) struct GroupCustom {
     /// Body text provided for the group notification.
     pub body: String,
-    /// Subject line provided for the group notification.
-    pub subject: String,
+    /// Group summary data.
+    pub group: GroupSummary,
+    /// Link to the group page.
+    pub link: String,
     /// Theme configuration for the notification.
     pub theme: Theme,
+    /// Display title provided for the group notification.
+    pub title: String,
 }
 
 /// Template for group team invitation notification.

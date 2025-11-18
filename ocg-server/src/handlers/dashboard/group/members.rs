@@ -12,6 +12,7 @@ use tracing::instrument;
 
 use crate::{
     auth::AuthSession,
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -44,6 +45,7 @@ pub(crate) async fn send_group_custom_notification(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     Form(notification): Form<GroupCustomNotification>,
@@ -51,26 +53,32 @@ pub(crate) async fn send_group_custom_notification(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Get group members
-    let user_ids = db.list_group_members_ids(group_id).await?;
-    if user_ids.is_empty() {
-        // Group has no members, nothing to do
+    // Get community and group data
+    let (community, group, group_members_ids) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_group_summary(community_id, group_id),
+        db.list_group_members_ids(group_id),
+    )?;
+
+    // If there are no members, nothing to do
+    if group_members_ids.is_empty() {
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
-    // Get community (to get theme)
-    let community = db.get_community(community_id).await?;
-
     // Enqueue notification
+    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let link = format!("{}/group/{}", base_url, group.slug);
     let template_data = GroupCustom {
-        subject: notification.subject.clone(),
         body: notification.body.clone(),
+        group,
+        link,
         theme: community.theme,
+        title: notification.subject.clone(),
     };
     let new_notification = NewNotification {
         attachments: vec![],
         kind: NotificationKind::GroupCustom,
-        recipients: user_ids,
+        recipients: group_members_ids,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
     notifications_manager.enqueue(&new_notification).await?;
@@ -186,7 +194,6 @@ mod tests {
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
-
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
@@ -237,6 +244,10 @@ mod tests {
         let community = sample_community(community_id);
         let community_for_notifications = community.clone();
         let community_for_db = community;
+        let group_summary = sample_group_summary(group_id);
+        let expected_link = format!("/group/{}", group_summary.slug);
+        let group_for_notifications = group_summary.clone();
+        let group_for_db = group_summary.clone();
         let notification_body = "Hello, group members!";
         let notification_subject = "Important Update";
         let form_data = serde_qs::to_string(&GroupCustomNotification {
@@ -276,6 +287,10 @@ mod tests {
                 let community = community_for_db;
                 move |_| Ok(community.clone())
             });
+        db.expect_get_group_summary()
+            .times(1)
+            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+            .returning(move |_, _| Ok(group_for_db.clone()));
         db.expect_track_custom_notification()
             .times(1)
             .withf(move |created_by, event_id, group_id, subject, body| {
@@ -297,8 +312,10 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         serde_json::from_value::<GroupCustom>(value.clone())
                             .map(|template| {
-                                template.subject == notification_subject
+                                template.title == notification_subject
                                     && template.body == notification_body
+                                    && template.group.name == group_for_notifications.name
+                                    && template.link == expected_link
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
@@ -330,6 +347,9 @@ mod tests {
     async fn test_send_group_custom_notification_no_members() {
         // Setup identifiers and data structures
         let group_id = Uuid::new_v4();
+        let group_for_db = sample_group_summary(group_id);
+        let community_id = Uuid::new_v4();
+        let community_for_db = sample_community(community_id);
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -353,7 +373,18 @@ mod tests {
         db.expect_get_community_id()
             .times(1)
             .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(Uuid::new_v4())));
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning({
+                let community = community_for_db.clone();
+                move |_| Ok(community.clone())
+            });
+        db.expect_get_group_summary()
+            .times(1)
+            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+            .returning(move |_, _| Ok(group_for_db.clone()));
         db.expect_list_group_members_ids()
             .times(1)
             .withf(move |gid| *gid == group_id)

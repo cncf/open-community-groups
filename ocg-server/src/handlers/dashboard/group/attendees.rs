@@ -91,10 +91,12 @@ pub(crate) async fn generate_check_in_qr_code(
 
 /// Sends a custom notification to event attendees.
 #[instrument(skip_all, err)]
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn send_event_custom_notification(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
+    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     Path(event_id): Path<Uuid>,
@@ -103,26 +105,32 @@ pub(crate) async fn send_event_custom_notification(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Get event attendees
-    let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
-    if user_ids.is_empty() {
-        // Event has no attendees, nothing to do
+    // Get community and event data
+    let (community, event, event_attendees_ids) = tokio::try_join!(
+        db.get_community(community_id),
+        db.get_event_summary_by_id(community_id, event_id),
+        db.list_event_attendees_ids(group_id, event_id),
+    )?;
+
+    // If there are no attendees, nothing to do
+    if event_attendees_ids.is_empty() {
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
-    // Get community (to get theme)
-    let community = db.get_community(community_id).await?;
-
     // Enqueue notification
+    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
     let template_data = EventCustom {
-        subject: notification.subject.clone(),
         body: notification.body.clone(),
+        event,
+        link,
         theme: community.theme,
+        title: notification.subject.clone(),
     };
     let new_notification = NewNotification {
         attachments: vec![],
         kind: NotificationKind::EventCustom,
-        recipients: user_ids,
+        recipients: event_attendees_ids,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
     notifications_manager.enqueue(&new_notification).await?;
@@ -380,6 +388,10 @@ mod tests {
         let community = sample_community(community_id);
         let community_for_notifications = community.clone();
         let community_for_db = community;
+        let event = sample_event_summary(event_id, group_id);
+        let expected_link = format!("/group/{}/event/{}", event.group_slug, event.slug);
+        let event_for_notifications = event.clone();
+        let event_for_db = event.clone();
         let notification_body = "Hello, event attendees!";
         let notification_subject = "Event Update";
         let form_data = serde_qs::to_string(&EventCustomNotification {
@@ -412,6 +424,10 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id1, attendee_id2]));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_for_db.clone()));
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -440,8 +456,11 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         serde_json::from_value::<EventCustom>(value.clone())
                             .map(|template| {
-                                template.subject == notification_subject
+                                template.title == notification_subject
                                     && template.body == notification_body
+                                    && template.event.name == event_for_notifications.name
+                                    && template.event.group_name == event_for_notifications.group_name
+                                    && template.link == expected_link
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
@@ -474,6 +493,8 @@ mod tests {
         // Setup identifiers and data structures
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
+        let community_id = Uuid::new_v4();
+        let community = sample_community(community_id);
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -497,7 +518,18 @@ mod tests {
         db.expect_get_community_id()
             .times(1)
             .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(Uuid::new_v4())));
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning({
+                let community = community.clone();
+                move |_| Ok(community.clone())
+            });
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(sample_event_summary(event_id, group_id)));
         db.expect_list_event_attendees_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
