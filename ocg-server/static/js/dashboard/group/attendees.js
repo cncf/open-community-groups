@@ -1,4 +1,5 @@
 import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
+import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -31,8 +32,13 @@ const initializeAttendeeNotification = () => {
   });
 };
 
-initializeAttendeeNotification();
+const initializeAttendeesFeatures = () => {
+  initializeAttendeeNotification();
+  initializeQrCodeModal();
+};
+
+initializeAttendeesFeatures();
 
 if (document.body) {
-  document.body.addEventListener("htmx:load", initializeAttendeeNotification);
+  document.body.addEventListener("htmx:load", initializeAttendeesFeatures);
 }
