@@ -41,7 +41,7 @@ const setLinkContent = (link, url) => {
   }
 };
 
-const updateModalContent = (modal, trigger, elements) => {
+const updateModalContent = (modal, trigger, elements, printButton) => {
   if (!modal || !trigger) {
     showErrorAlert(DEFAULT_ERROR_MESSAGE, false);
     return false;
@@ -59,10 +59,40 @@ const updateModalContent = (modal, trigger, elements) => {
     return false;
   }
 
+  if (printButton) {
+    printButton.disabled = true;
+  }
+
   if (elements.image) {
     const cacheBuster = Date.now();
     elements.image.setAttribute("src", `${qrUrl}?cb=${cacheBuster}`);
     elements.image.setAttribute("alt", `${eventName} check-in QR code`);
+
+    const handleImageLoad = () => {
+      elements.image.removeEventListener("load", handleImageLoad);
+      elements.image.removeEventListener("error", handleImageError);
+      if (printButton) {
+        printButton.disabled = false;
+      }
+    };
+
+    const handleImageError = () => {
+      elements.image.removeEventListener("load", handleImageLoad);
+      elements.image.removeEventListener("error", handleImageError);
+      showErrorAlert("Failed to load QR code. Please try again.", false);
+      if (printButton) {
+        printButton.disabled = true;
+      }
+    };
+
+    elements.image.removeEventListener("load", handleImageLoad);
+    elements.image.removeEventListener("error", handleImageError);
+    elements.image.addEventListener("load", handleImageLoad);
+    elements.image.addEventListener("error", handleImageError);
+
+    if (elements.image.complete && elements.image.naturalWidth > 0) {
+      handleImageLoad();
+    }
   }
 
   if (elements.name) {
@@ -272,7 +302,7 @@ export const initializeQrCodeModal = () => {
 
   if (openButton) {
     openButton.addEventListener("click", () => {
-      if (updateModalContent(modal, openButton, elements)) {
+      if (updateModalContent(modal, openButton, elements, printButton)) {
         toggleModal();
       }
     });
