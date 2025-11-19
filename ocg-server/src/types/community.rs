@@ -123,9 +123,13 @@ fn generate_palette(color: &str) -> Result<Palette> {
     let palette = BTreeMap::from([
         (50, lighten(0.95)),
         (100, lighten(0.9)),
+        (200, lighten(0.75)),
         (300, lighten(0.5)),
+        (400, lighten(0.25)),
         (500, to_hex(color)),
+        (600, darken(0.1)),
         (700, darken(0.2)),
+        (800, darken(0.35)),
         (900, darken(0.5)),
     ]);
 
@@ -145,9 +149,13 @@ mod tests {
 
         assert_eq!(palette[&50], "#FDF4FA");
         assert_eq!(palette[&100], "#FBE9F4");
+        assert_eq!(palette[&200], "#F5C8E4");
         assert_eq!(palette[&300], "#EB90C9");
+        assert_eq!(palette[&400], "#E059AE");
         assert_eq!(palette[&500], "#D62293");
+        assert_eq!(palette[&600], "#C11F84");
         assert_eq!(palette[&700], "#AB1B76");
+        assert_eq!(palette[&800], "#8B1660");
         assert_eq!(palette[&900], "#6B114A");
     }
 

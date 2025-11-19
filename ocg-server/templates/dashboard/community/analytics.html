@@ -1,0 +1,316 @@
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Page title #}
+{% call macros::form_title(title = "Analytics",
+description = "Community statistics and growth trends.") %}
+{# End page title #}
+
+{# Summary stat cards #}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
+  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+    <div class="text-sm text-stone-500">Groups</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900"
+         data-humanize="{{ stats.groups.total }}">{{ stats.groups.total }}</div>
+    <div class="mt-1 text-xs text-stone-400">Active, non-deleted groups</div>
+  </div>
+  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+    <div class="text-sm text-stone-500">Members</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900"
+         data-humanize="{{ stats.members.total }}">{{ stats.members.total }}</div>
+    <div class="mt-1 text-xs text-stone-400">Members across all groups</div>
+  </div>
+  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+    <div class="text-sm text-stone-500">Events</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900"
+         data-humanize="{{ stats.events.total }}">{{ stats.events.total }}</div>
+    <div class="mt-1 text-xs text-stone-400">Published, upcoming or past</div>
+  </div>
+  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+    <div class="text-sm text-stone-500">Attendees</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900"
+         data-humanize="{{ stats.attendees.total }}">{{ stats.attendees.total }}</div>
+    <div class="mt-1 text-xs text-stone-400">RSVPs across all events</div>
+  </div>
+</div>
+{# End summary stat cards #}
+
+{# Charts sections #}
+<div class="space-y-14 mt-12">
+  {# Groups section #}
+  <div>
+    {% call macros::form_title(title = "Groups") %}
+    <div class="mt-8 space-y-8">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Total</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-category-chart" class="h-[300px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-region-chart" class="h-[300px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-running-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-running-category-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-running-region-chart" class="h-[340px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-monthly-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-monthly-category-chart" class="h-[360px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="groups-monthly-region-chart" class="h-[360px]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End groups section #}
+
+  {# Members section #}
+  <div>
+    {% call macros::form_title(title = "Members") %}
+    <div class="mt-8 space-y-8">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Total</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-category-chart" class="h-[300px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-region-chart" class="h-[300px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-running-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-running-category-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-running-region-chart" class="h-[340px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-monthly-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-monthly-category-chart" class="h-[360px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="members-monthly-region-chart" class="h-[360px]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End members section #}
+
+  {# Events section #}
+  <div>
+    {% call macros::form_title(title = "Events") %}
+    <div class="mt-8 space-y-8">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Total</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-group-category-chart" class="h-[300px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-region-chart" class="h-[300px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6 xl:col-span-2">
+            <div id="events-category-chart" class="h-[300px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-running-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-running-group-category-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-running-group-region-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-running-event-category-chart" class="h-[340px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-monthly-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-monthly-group-category-chart" class="h-[360px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-monthly-group-region-chart" class="h-[360px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="events-monthly-event-category-chart" class="h-[360px]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End events section #}
+
+  {# Attendees section #}
+  <div>
+    {% call macros::form_title(title = "Attendees") %}
+    <div class="mt-8 space-y-8">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Total</div>
+        <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-category-chart" class="h-[300px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-region-chart" class="h-[300px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-running-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-running-group-category-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-running-group-region-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-running-event-category-chart" class="h-[340px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="mt-4 space-y-6">
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-monthly-chart" class="h-[340px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-monthly-group-category-chart" class="h-[360px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-monthly-group-region-chart" class="h-[360px]"></div>
+          </div>
+          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+            <div id="attendees-monthly-event-category-chart" class="h-[360px]"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {# End attendees section #}
+</div>
+{# End charts sections #}
+
+{# Initialize charts with server data #}
+{# djlint:off #}
+<script type="module">
+  import {
+    initAnalyticsCharts
+  } from '/static/js/dashboard/community/analytics.js';
+
+  // Humanize large numbers
+  function humanizeNumber(num) {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return num.toLocaleString();
+  }
+
+  document.querySelectorAll('[data-humanize]').forEach(el => {
+    const value = parseInt(el.dataset.humanize, 10);
+    el.textContent = humanizeNumber(value);
+  });
+
+  // Add loading indicators to chart containers
+  const chartIds = [
+    'groups-running-chart', 'groups-monthly-chart', 'groups-category-chart', 'groups-region-chart',
+    'groups-running-category-chart', 'groups-running-region-chart',
+    'groups-monthly-category-chart', 'groups-monthly-region-chart',
+    'members-running-chart', 'members-monthly-chart', 'members-category-chart', 'members-region-chart',
+    'members-running-category-chart', 'members-running-region-chart',
+    'members-monthly-category-chart', 'members-monthly-region-chart',
+    'events-running-chart', 'events-monthly-chart', 'events-group-category-chart', 'events-region-chart', 'events-category-chart',
+    'events-running-group-category-chart', 'events-running-group-region-chart', 'events-running-event-category-chart',
+    'events-monthly-group-category-chart', 'events-monthly-group-region-chart', 'events-monthly-event-category-chart',
+    'attendees-running-chart', 'attendees-monthly-chart', 'attendees-category-chart', 'attendees-region-chart',
+    'attendees-running-group-category-chart', 'attendees-running-group-region-chart', 'attendees-running-event-category-chart',
+    'attendees-monthly-group-category-chart', 'attendees-monthly-group-region-chart', 'attendees-monthly-event-category-chart'
+  ];
+
+  chartIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = '<div class="flex items-center justify-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div></div>';
+    }
+  });
+
+  // Wait for ECharts to be available
+  function waitForEcharts(callback, maxAttempts = 50) {
+    let attempts = 0;
+    const check = () => {
+      if (typeof echarts !== 'undefined') {
+        callback();
+      } else if (attempts < maxAttempts) {
+        attempts++;
+        setTimeout(check, 100);
+      }
+    };
+    check();
+  }
+
+  const stats = {{ stats | json | safe }};
+  waitForEcharts(() => initAnalyticsCharts(stats));
+</script>
+{# djlint:on #}
+{# End initialize charts with server data #}

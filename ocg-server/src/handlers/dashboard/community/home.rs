@@ -22,7 +22,7 @@ use crate::{
         auth::User,
         community::explore::GroupsFilters,
         dashboard::community::{
-            groups,
+            analytics, groups,
             home::{Content, Page, Tab},
             settings, team,
         },
@@ -49,6 +49,10 @@ pub(crate) async fn page(
 
     // Prepare content for the selected tab
     let content = match tab {
+        Tab::Analytics => {
+            let stats = db.get_community_stats(community_id).await?;
+            Content::Analytics(Box::new(analytics::Page { stats }))
+        }
         Tab::Groups => {
             let ts_query = query.get("ts_query").cloned();
             let filters = GroupsFilters {

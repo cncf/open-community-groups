@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(175);
+select plan(178);
 
 -- ============================================================================
 -- TESTS
@@ -460,7 +460,16 @@ select indexes_are('event', array[
     'event_event_kind_id_idx',
     'event_published_by_idx',
     'event_tsdoc_idx',
-    'event_search_idx'
+    'event_search_idx',
+    'event_starts_at_idx'
+]);
+
+-- Test: event_attendee indexes should match expected
+select indexes_are('event_attendee', array[
+    'event_attendee_pkey',
+    'event_attendee_event_id_idx',
+    'event_attendee_user_id_idx',
+    'event_attendee_event_id_created_at_idx'
 ]);
 
 -- Test: group indexes should match expected
@@ -475,6 +484,14 @@ select indexes_are('group', array[
     'group_tsdoc_idx',
     'group_location_idx',
     'group_search_idx'
+]);
+
+-- Test: group_member indexes should match expected
+select indexes_are('group_member', array[
+    'group_member_pkey',
+    'group_member_group_id_idx',
+    'group_member_user_id_idx',
+    'group_member_group_id_created_at_idx'
 ]);
 
 -- Test: event_speaker indexes should match expected
@@ -569,6 +586,7 @@ select has_function('get_community');
 select has_function('get_community_filters_options');
 select has_function('get_community_home_stats');
 select has_function('get_community_recently_added_groups');
+select has_function('get_community_stats');
 select has_function('get_community_upcoming_events');
 select has_function('get_event_full');
 select has_function('get_event_full_by_slug');

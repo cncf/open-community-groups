@@ -177,6 +177,7 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
     // Setup router
     Router::new()
         .route("/", get(dashboard::community::home::page))
+        .route("/analytics", get(dashboard::community::analytics::page))
         .route("/groups", get(dashboard::community::groups::list_page))
         .route(
             "/groups/add",

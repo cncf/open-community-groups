@@ -176,6 +176,10 @@ mock! {
             user_id: Uuid,
         ) -> Result<()>;
         async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn get_community_stats(
+            &self,
+            community_id: Uuid,
+        ) -> Result<crate::templates::dashboard::community::analytics::CommunityStats>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
