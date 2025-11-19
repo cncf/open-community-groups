@@ -117,7 +117,7 @@ const ensurePrintStyles = () => {
     }
     @media print {
       @page {
-        size: 11in 8.5in;
+        size: A4 landscape;
         margin: 0;
       }
       body > *:not(#${PRINT_CONTAINER_ID}) {
