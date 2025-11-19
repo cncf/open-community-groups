@@ -30,20 +30,19 @@
                  class="rounded-2xl border border-stone-200 bg-stone-50 p-6 flex flex-col gap-4 h-full
                         {% if !user_is_checked_in %}hidden{% endif %}"
                  data-event-id="{{ event.event_id }}">
-              <div>
-                <div class="flex flex-row items-center gap-3">
-                  <div class="svg-icon size-5 bg-green-700 icon-check"></div>
-                  <div class="text-lg font-semibold text-stone-900">You're checked in</div>
-                </div>
-                <p class="text-sm text-stone-800 mt-1">
-                  Thanks for confirming your arrival. We'll keep you updated with any event
-                  announcements.
-                </p>
+              <div class="flex flex-row items-center gap-3">
+                <div class="svg-icon size-5 bg-green-700 icon-check"></div>
+                <div class="text-lg font-semibold text-stone-900">You're checked in</div>
               </div>
-              <div class="rounded-xl bg-white/70 p-4">
-                <p class="text-xs font-semibold uppercase tracking-widest text-stone-700">Confirmed at</p>
-                <p class="text-base font-semibold text-stone-900 mt-1"
-                   data-check-in-timestamp>—</p>
+              <p class="text-sm text-stone-800 mt-2">
+                Thanks for confirming your arrival. We'll keep you updated with any event
+                announcements.
+              </p>
+              <div class="mt-auto">
+                <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                   class="btn-primary-outline"
+                   hx-boost="true"
+                   hx-target="body">View event details</a>
               </div>
             </div>
 
@@ -58,10 +57,12 @@
                     Only registered attendees can check in. Reserve a spot on the event page
                     and come back once you're confirmed.
                   </p>
-                  <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-                     class="btn-primary-outline mt-4 inline-flex"
-                     hx-boost="true"
-                     hx-target="body">View event details</a>
+                  <div class="mt-auto">
+                    <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                       class="btn-primary-outline"
+                       hx-boost="true"
+                       hx-target="body">View event details</a>
+                  </div>
                 </div>
               </div>
             {% elif !check_in_window_open %}
@@ -75,7 +76,7 @@
                     Check-in becomes available two hours before the event begins and closes
                     when the program ends.
                   </p>
-                  <ul class="mt-4 space-y-2 text-sm text-stone-900">
+                  <ul class="mt-4 space-y-2 text-sm text-stone-900 mt-2">
                     <li class="flex gap-3">
                       <span class="font-semibold text-stone-900 min-w-[60px]">Opens:</span>
                       {% if let Some(starts_at) = event.starts_at -%}
@@ -114,20 +115,15 @@
                       data-event-id="{{ event.event_id }}">
                   <input type="hidden" name="event_id" value="{{ event.event_id }}">
                   <div class="rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
-                    <div class="">
+                    <div>
                       <div class="min-w-0">
-                        <p class="font-medium text-stone-900 mb-1">You'll check in as</p>
-                        <p class="text-base text-stone-900">
-                          {% if let Some(name) = user.name.as_ref() -%}
-                            {{ name|demoji }}
-                          {% elif let Some(username) = user.username.as_ref() -%}
-                            {{ username|demoji }}
-                          {% else -%}
-                            Unknown attendee
-                          {% endif -%}
-                        </p>
+                        <p class="text-stone-700 mb-1">You'll check in as</p>
+                        {% if let Some(name) = user.name.as_ref() -%}
+                          <p class="text-base text-stone-900">{{ name|demoji }}</p>
+                        {% endif -%}
+
                         {% if let Some(username) = user.username.as_ref() -%}
-                          <p class="text-xs text-stone-600 mt-1">@{{ username|demoji }}</p>
+                          <p class="font-medium text-xs text-stone-900 mt-1">{{ username|demoji }}</p>
                         {% endif -%}
                       </div>
                     </div>
@@ -136,7 +132,7 @@
                           type="submit"
                           class="btn-primary w-full justify-center relative">
                     {% call common::btn_spinner(id = "check-in-submit-spinner", spinner_type = "2") -%}
-                    Check In Now
+                    Check in now
                   </button>
                 </form>
               </div>
@@ -157,7 +153,7 @@
             <div class="pt-4 border-t border-stone-200">
               <p class="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">Location</p>
               {% if event.kind == EventKind::Virtual -%}
-                <p class="text-base text-stone-700 min-h-[4.5rem]">Online event · Join link shared after check-in.</p>
+                <p class="text-base text-stone-700 min-h-[4.5rem]">Virtual event</p>
               {% else -%}
                 <div class="min-h-[4.5rem]">
                   {% if let Some(location) = self.event.location(90) -%}
@@ -186,55 +182,6 @@
     const successCard = document.getElementById("check-in-success-card");
     const formContainer = document.getElementById("check-in-form-container");
     const form = document.getElementById("event-check-in-form");
-    const timestampTargets = document.querySelectorAll("[data-check-in-timestamp]");
-    const eventId = form?.dataset.eventId || successCard?.dataset.eventId;
-    const storageKey = eventId ? `event-check-in-${eventId}` : null;
-
-    const safeStorage = (() => {
-      try {
-        return window.localStorage;
-      } catch (_) {
-        return null;
-      }
-    })();
-
-    const timestampDateFormatter = new Intl.DateTimeFormat(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-
-    const timestampTimeFormatter = new Intl.DateTimeFormat(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    });
-
-    const renderTimestamp = (isoString) => {
-      if (!timestampTargets.length) {
-        return;
-      }
-
-      let formatted = "";
-      if (isoString) {
-        const date = new Date(isoString);
-        if (!Number.isNaN(date.getTime())) {
-          formatted = `${timestampDateFormatter.format(date)} · ${timestampTimeFormatter.format(date)}`;
-        }
-      }
-
-      timestampTargets.forEach((el) => {
-        el.textContent = formatted || "Unknown time";
-      });
-    };
-
-    if (storageKey && safeStorage && successCard) {
-      const storedTimestamp = safeStorage.getItem(storageKey);
-      if (storedTimestamp) {
-        renderTimestamp(storedTimestamp);
-      }
-    }
 
     if (form) {
       form.addEventListener("htmx:afterRequest", (event) => {
@@ -245,11 +192,6 @@
         }
 
         if (xhr.status >= 200 && xhr.status < 300) {
-          const timestamp = new Date().toISOString();
-          if (storageKey && safeStorage) {
-            safeStorage.setItem(storageKey, timestamp);
-          }
-          renderTimestamp(timestamp);
           showSuccessAlert("You're all checked in! Enjoy the event.");
           if (successCard) {
             successCard.classList.remove("hidden");
