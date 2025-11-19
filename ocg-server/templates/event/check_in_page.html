@@ -23,110 +23,86 @@
           </div>
         </div>
 
-        <div class="mt-10 grid gap-6 lg:grid-cols-2">
-          <div class="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">Date & time</p>
-              {% if let Some(starts_at) = event.starts_at -%}
-                <p class="text-base font-medium text-stone-900">
-                  {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
-                </p>
-              {% else -%}
-                <p class="text-base text-stone-600">Start time will be announced soon.</p>
-              {% endif -%}
-              {% if let Some(ends_at) = event.ends_at -%}
-                <p class="text-sm text-stone-600 mt-2">
-                  Ends {{ ends_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
-                </p>
-              {% endif -%}
-            </div>
-            <div class="pt-4 border-t border-stone-200">
-              <p class="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">Location</p>
-              {% if event.kind == EventKind::Virtual -%}
-                <p class="text-base text-stone-700">Online event · Join link shared after check-in.</p>
-              {% else -%}
-                {% if let Some(location) = self.event.location(90) -%}
-                  <p class="text-base text-stone-700">{{ location }}</p>
-                {% else -%}
-                  <p class="text-base text-stone-600">Venue details will be shared soon.</p>
-                {% endif -%}
-              {% endif -%}
-            </div>
-          </div>
+        <div class="mt-10 grid gap-6 items-stretch lg:grid-cols-2">
 
-          <div class="space-y-5" id="check-in-actions">
+          <div class="space-y-5 flex flex-col h-full" id="check-in-actions">
             <div id="check-in-success-card"
-                 class="rounded-2xl border border-green-200 bg-green-50 p-6
+                 class="rounded-2xl border border-stone-200 bg-stone-50 p-6 flex flex-col gap-4 h-full
                         {% if !user_is_checked_in %}hidden{% endif %}"
                  data-event-id="{{ event.event_id }}">
-              <div class="flex items-start gap-4">
-                <div class="svg-icon size-10 bg-green-500 icon-check"></div>
-                <div>
-                  <p class="text-base font-semibold text-green-800">You're already checked in</p>
-                  <p class="text-sm text-green-700 mt-2">
-                    We'll see you at the event. Confirmation recorded
-                    <span class="font-semibold" data-check-in-timestamp>—</span>.
-                  </p>
+              <div>
+                <div class="flex flex-row items-center gap-3">
+                  <div class="svg-icon size-5 bg-green-700 icon-check"></div>
+                  <div class="text-lg font-semibold text-stone-900">You're checked in</div>
                 </div>
+                <p class="text-sm text-stone-800 mt-1">
+                  Thanks for confirming your arrival. We'll keep you updated with any event
+                  announcements.
+                </p>
+              </div>
+              <div class="rounded-xl bg-white/70 p-4">
+                <p class="text-xs font-semibold uppercase tracking-widest text-stone-700">Confirmed at</p>
+                <p class="text-base font-semibold text-stone-900 mt-1"
+                   data-check-in-timestamp>—</p>
               </div>
             </div>
 
             {% if !user_is_attendee %}
-              <div class="rounded-2xl border border-orange-200 bg-orange-50 p-6">
-                <div class="flex items-start gap-4">
-                  <div class="svg-icon size-10 bg-orange-500 icon-question-mark"></div>
-                  <div>
-                    <p class="text-base font-semibold text-orange-800">You're not registered for this event</p>
-                    <p class="text-sm text-orange-700 mt-2">
-                      Only registered attendees can check in. Reserve a spot on the event page
-                      and come back once you're confirmed.
-                    </p>
-                    <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-                       class="btn-primary-outline mt-4 inline-flex"
-                       hx-boost="true"
-                       hx-target="body">View event details</a>
+              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-6 h-full flex flex-col">
+                <div>
+                  <div class="flex flex-row items-center gap-3">
+                    <div class="svg-icon size-5 bg-stone-700 icon-question-mark"></div>
+                    <div class="text-lg font-semibold text-stone-900">You're not registered for this event</div>
                   </div>
+                  <p class="text-sm text-stone-700 mt-2">
+                    Only registered attendees can check in. Reserve a spot on the event page
+                    and come back once you're confirmed.
+                  </p>
+                  <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                     class="btn-primary-outline mt-4 inline-flex"
+                     hx-boost="true"
+                     hx-target="body">View event details</a>
                 </div>
               </div>
             {% elif !check_in_window_open %}
-              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-6">
-                <div class="flex items-start gap-4">
-                  <div class="svg-icon size-10 bg-stone-400 icon-clock"></div>
-                  <div>
-                    <p class="text-base font-semibold text-stone-900">Check-in opens closer to the event</p>
-                    <p class="text-sm text-stone-600 mt-2">
-                      Check-in becomes available two hours before the event begins and closes
-                      when the program ends.
-                    </p>
-                    <ul class="mt-4 space-y-2 text-sm text-stone-700">
-                      <li class="flex gap-3">
-                        <span class="font-semibold text-stone-900 min-w-[60px]">Opens:</span>
-                        {% if let Some(starts_at) = event.starts_at -%}
-                          <span>
-                            2 hours before
-                            {{ starts_at.with_timezone(event.timezone).format("%A, %B %e at %I:%M %p %Z") }}
-                          </span>
-                        {% else -%}
-                          <span>2 hours before the published start time.</span>
-                        {% endif -%}
-                      </li>
-                      <li class="flex gap-3">
-                        <span class="font-semibold text-stone-900 min-w-[60px]">Closes:</span>
-                        {% if let Some(ends_at) = event.ends_at -%}
-                          <span>{{ ends_at.with_timezone(event.timezone).format("%A, %B %e at %I:%M %p %Z") }}</span>
-                        {% else -%}
-                          <span>When the event wraps up.</span>
-                        {% endif -%}
-                      </li>
-                    </ul>
+              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-6 h-full flex flex-col">
+                <div>
+                  <div class="flex flex-row items-center gap-3">
+                    <div class="svg-icon size-5 bg-stone-700 icon-clock"></div>
+                    <div class="text-lg font-semibold text-stone-900">Check-in opens closer to the event</div>
                   </div>
+                  <p class="text-sm text-stone-800 mt-2">
+                    Check-in becomes available two hours before the event begins and closes
+                    when the program ends.
+                  </p>
+                  <ul class="mt-4 space-y-2 text-sm text-stone-900">
+                    <li class="flex gap-3">
+                      <span class="font-semibold text-stone-900 min-w-[60px]">Opens:</span>
+                      {% if let Some(starts_at) = event.starts_at -%}
+                        <span>
+                          2 hours before
+                          {{ starts_at.with_timezone(event.timezone).format("%A, %B %e at %I:%M %p %Z") }}
+                        </span>
+                      {% else -%}
+                        <span>2 hours before the published start time.</span>
+                      {% endif -%}
+                    </li>
+                    <li class="flex gap-3">
+                      <span class="font-semibold text-stone-900 min-w-[60px]">Closes:</span>
+                      {% if let Some(ends_at) = event.ends_at -%}
+                        <span>{{ ends_at.with_timezone(event.timezone).format("%A, %B %e at %I:%M %p %Z") }}</span>
+                      {% else -%}
+                        <span>When the event wraps up.</span>
+                      {% endif -%}
+                    </li>
+                  </ul>
                 </div>
               </div>
             {% elif user_is_checked_in %}
               {# Success card already visible #}
             {% else %}
               <div id="check-in-form-container"
-                   class="rounded-2xl border border-primary-200 bg-white p-6 shadow-sm">
+                   class="rounded-2xl border border-stone-200 bg-white p-6 h-full flex flex-col">
                 <h2 class="text-lg font-semibold text-stone-900">Check in now</h2>
                 <p class="text-sm text-stone-600 mt-2">Confirm your attendance so organizers know you're here.</p>
                 <form id="event-check-in-form"
@@ -138,16 +114,23 @@
                       data-event-id="{{ event.event_id }}">
                   <input type="hidden" name="event_id" value="{{ event.event_id }}">
                   <div class="rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
-                    <p class="font-medium text-stone-900 mb-1">You'll check in as</p>
-                    <p>
-                      {% if let Some(name) = user.name.as_ref() -%}
-                        {{ name|demoji }}
-                      {% elif let Some(username) = user.username.as_ref() -%}
-                        {{ username|demoji }}
-                      {% else -%}
-                        Unknown attendee
-                      {% endif -%}
-                    </p>
+                    <div class="">
+                      <div class="min-w-0">
+                        <p class="font-medium text-stone-900 mb-1">You'll check in as</p>
+                        <p class="text-base text-stone-900">
+                          {% if let Some(name) = user.name.as_ref() -%}
+                            {{ name|demoji }}
+                          {% elif let Some(username) = user.username.as_ref() -%}
+                            {{ username|demoji }}
+                          {% else -%}
+                            Unknown attendee
+                          {% endif -%}
+                        </p>
+                        {% if let Some(username) = user.username.as_ref() -%}
+                          <p class="text-xs text-stone-600 mt-1">@{{ username|demoji }}</p>
+                        {% endif -%}
+                      </div>
+                    </div>
                   </div>
                   <button id="event-check-in-submit"
                           type="submit"
@@ -159,6 +142,34 @@
               </div>
             {% endif %}
           </div>
+
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 p-6 space-y-6 h-full flex flex-col">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">Date & time</p>
+              {% if let Some(starts_at) = event.starts_at -%}
+                <p class="text-base font-semibold text-stone-900">
+                  {{ starts_at.with_timezone(event.timezone).format("%a, %b %-d, %Y · %-I:%M %p %Z") }}
+                </p>
+              {% else -%}
+                <p class="text-base text-stone-600">Start time will be announced soon.</p>
+              {% endif -%}
+            </div>
+            <div class="pt-4 border-t border-stone-200">
+              <p class="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">Location</p>
+              {% if event.kind == EventKind::Virtual -%}
+                <p class="text-base text-stone-700 min-h-[4.5rem]">Online event · Join link shared after check-in.</p>
+              {% else -%}
+                <div class="min-h-[4.5rem]">
+                  {% if let Some(location) = self.event.location(90) -%}
+                    <p class="text-base text-stone-700">{{ location }}</p>
+                  {% else -%}
+                    <p class="text-base text-stone-600">Venue details will be shared soon.</p>
+                  {% endif -%}
+                </div>
+              {% endif -%}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -187,6 +198,19 @@
       }
     })();
 
+    const timestampDateFormatter = new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const timestampTimeFormatter = new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
+
     const renderTimestamp = (isoString) => {
       if (!timestampTargets.length) {
         return;
@@ -196,10 +220,7 @@
       if (isoString) {
         const date = new Date(isoString);
         if (!Number.isNaN(date.getTime())) {
-          formatted = date.toLocaleString(undefined, {
-            dateStyle: "full",
-            timeStyle: "short",
-          });
+          formatted = `${timestampDateFormatter.format(date)} · ${timestampTimeFormatter.format(date)}`;
         }
       }
 
