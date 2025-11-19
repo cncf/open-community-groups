@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(171);
+select plan(175);
 
 -- ============================================================================
 -- TESTS
@@ -24,6 +24,7 @@ select has_table('event_attendee');
 select has_table('event_category');
 select has_table('event_host');
 select has_table('event_kind');
+select has_table('event_speaker');
 select has_table('event_sponsor');
 select has_table('group');
 select has_table('group_category');
@@ -181,6 +182,14 @@ select columns_are('event_host', array[
 select columns_are('event_kind', array[
     'event_kind_id',
     'display_name'
+]);
+
+-- Test: event_speaker columns should match expected
+select columns_are('event_speaker', array[
+    'created_at',
+    'event_id',
+    'featured',
+    'user_id'
 ]);
 
 -- Test: event_sponsor columns should match expected
@@ -398,6 +407,7 @@ select has_pk('event_attendee');
 select has_pk('event_category');
 select has_pk('event_host');
 select has_pk('event_kind');
+select has_pk('event_speaker');
 select has_pk('event_sponsor');
 select has_pk('group');
 select has_pk('group_category');
@@ -465,6 +475,13 @@ select indexes_are('group', array[
     'group_tsdoc_idx',
     'group_location_idx',
     'group_search_idx'
+]);
+
+-- Test: event_speaker indexes should match expected
+select indexes_are('event_speaker', array[
+    'event_speaker_pkey',
+    'event_speaker_event_id_idx',
+    'event_speaker_user_id_idx'
 ]);
 
 -- Test: event_sponsor indexes should match expected

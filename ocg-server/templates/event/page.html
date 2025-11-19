@@ -418,8 +418,8 @@
         <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
         <div class="flex flex-grap gap-4">
           {% for speaker in session.speakers -%}
-            {% if speaker.name.is_some() -%}
-              <user-chip name="{{ speaker.name|display_some }}" username="{{ speaker.username }}" image-url="{{ speaker.photo_url|display_some }}" title="{{ speaker.title|display_some }}" small>
+            {% if speaker.user.name.is_some() -%}
+              <user-chip name="{{ speaker.user.name|display_some }}" username="{{ speaker.user.username }}" image-url="{{ speaker.user.photo_url|display_some }}" title="{{ speaker.user.title|display_some }}" small>
               </user-chip>
             {% endif -%}
           {% endfor -%}

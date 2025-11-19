@@ -7,10 +7,13 @@ returns uuid as $$
 declare
     v_event_id uuid;
     v_community_id uuid;
+    v_event_speaker jsonb;
     v_host_id uuid;
     v_session jsonb;
     v_session_id uuid;
+    v_session_speaker jsonb;
     v_speaker_id uuid;
+    v_speaker_featured boolean;
     v_sponsor jsonb;
     v_sponsor_id uuid;
     v_sponsor_level text;
@@ -92,6 +95,28 @@ begin
         end loop;
     end if;
 
+    -- Insert event speakers
+    if p_event->'speakers' is not null then
+        for v_event_speaker in select jsonb_array_elements(p_event->'speakers')
+        loop
+            -- Extract speaker details
+            v_speaker_id := (v_event_speaker->>'user_id')::uuid;
+            v_speaker_featured := (v_event_speaker->>'featured')::boolean;
+
+            -- Validate speaker exists in same community
+            if not exists (
+                select 1 from "user"
+                where user_id = v_speaker_id
+                and community_id = v_community_id
+            ) then
+                raise exception 'speaker user % not found in community', v_speaker_id;
+            end if;
+
+            insert into event_speaker (event_id, user_id, featured)
+            values (v_event_id, v_speaker_id, v_speaker_featured);
+        end loop;
+    end if;
+
     -- Insert event sponsors with per-event level
     if p_event->'sponsors' is not null then
         for v_sponsor in select jsonb_array_elements(p_event->'sponsors')
@@ -99,9 +124,6 @@ begin
             -- Extract sponsor details
             v_sponsor_id := (v_sponsor->>'group_sponsor_id')::uuid;
             v_sponsor_level := v_sponsor->>'level';
-            if v_sponsor_id is null or v_sponsor_level is null then
-                raise exception 'invalid sponsor payload: each sponsor must include group_sponsor_id and level';
-            end if;
 
             -- Validate sponsor belongs to the group
             if not exists (
@@ -147,8 +169,12 @@ begin
 
             -- Insert speakers for this session
             if v_session->'speakers' is not null then
-                for v_speaker_id in select (jsonb_array_elements_text(v_session->'speakers'))::uuid
+                for v_session_speaker in select jsonb_array_elements(v_session->'speakers')
                 loop
+                    -- Extract speaker details
+                    v_speaker_id := (v_session_speaker->>'user_id')::uuid;
+                    v_speaker_featured := (v_session_speaker->>'featured')::boolean;
+
                     -- Validate speaker exists in same community
                     if not exists (
                         select 1 from "user"
@@ -158,8 +184,8 @@ begin
                         raise exception 'speaker user % not found in community', v_speaker_id;
                     end if;
 
-                    insert into session_speaker (session_id, user_id)
-                    values (v_session_id, v_speaker_id);
+                    insert into session_speaker (session_id, user_id, featured)
+                    values (v_session_id, v_speaker_id, v_speaker_featured);
                 end loop;
             end if;
         end loop;

@@ -181,6 +181,13 @@ insert into event (
 insert into event_host (event_id, user_id)
 values (:'eventID', :'user1ID');
 
+-- Event Speakers
+insert into event_speaker (event_id, user_id, featured)
+values
+    (:'eventID', :'user1ID', false),
+    (:'eventID', :'user3ID', true),
+    (:'eventID', :'user2ID', false);
+
 -- Event Attendee
 insert into event_attendee (event_id, user_id, checked_in, created_at)
 values
@@ -253,9 +260,11 @@ insert into session (
     null
 );
 
--- Session Speaker
+-- Session Speakers
 insert into session_speaker (session_id, user_id, featured)
-values (:'session1ID', :'user3ID', true);
+values
+    (:'session1ID', :'user1ID', false),
+    (:'session1ID', :'user3ID', true);
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
@@ -514,9 +523,24 @@ select is(
                             "bio": "Kubernetes expert and speaker",
                             "name": "Alex Thompson",
                             "company": "Google",
+                            "featured": true,
                             "linkedin_url": "https://linkedin.com/in/alexthompson",
                             "photo_url": "https://example.com/alex.png",
                             "title": "Staff Engineer"
+                        },
+                        {
+                            "user_id": "00000000-0000-0000-0000-000000000041",
+                            "username": "sarah-host",
+                            "bio": "Cloud native community leader",
+                            "name": "Sarah Chen",
+                            "company": "Microsoft",
+                            "facebook_url": "https://facebook.com/sarahchen",
+                            "featured": false,
+                            "linkedin_url": "https://linkedin.com/in/sarahchen",
+                            "photo_url": "https://example.com/sarah.png",
+                            "title": "Principal Engineer",
+                            "twitter_url": "https://twitter.com/sarahchen",
+                            "website_url": "https://sarahchen.dev"
                         }
                     ]
                 }
@@ -534,6 +558,47 @@ select is(
                 }
             ]
         },
+        "speakers": [
+            {
+                "user_id": "00000000-0000-0000-0000-000000000043",
+                "username": "alex-speaker",
+                "bio": "Kubernetes expert and speaker",
+                "name": "Alex Thompson",
+                "company": "Google",
+                "featured": true,
+                "linkedin_url": "https://linkedin.com/in/alexthompson",
+                "photo_url": "https://example.com/alex.png",
+                "title": "Staff Engineer"
+            },
+            {
+                "user_id": "00000000-0000-0000-0000-000000000042",
+                "username": "mike-organizer",
+                "bio": "Event organizer and speaker",
+                "name": "Mike Rodriguez",
+                "company": "AWS",
+                "facebook_url": "https://facebook.com/mikerod",
+                "featured": false,
+                "linkedin_url": "https://linkedin.com/in/mikerod",
+                "photo_url": "https://example.com/mike.png",
+                "title": "Solutions Architect",
+                "twitter_url": "https://twitter.com/mikerod",
+                "website_url": "https://mikerodriguez.io"
+            },
+            {
+                "user_id": "00000000-0000-0000-0000-000000000041",
+                "username": "sarah-host",
+                "bio": "Cloud native community leader",
+                "name": "Sarah Chen",
+                "company": "Microsoft",
+                "facebook_url": "https://facebook.com/sarahchen",
+                "featured": false,
+                "linkedin_url": "https://linkedin.com/in/sarahchen",
+                "photo_url": "https://example.com/sarah.png",
+                "title": "Principal Engineer",
+                "twitter_url": "https://twitter.com/sarahchen",
+                "website_url": "https://sarahchen.dev"
+            }
+        ],
         "sponsors": [
             {
                 "group_sponsor_id": "00000000-0000-0000-0000-000000000061",

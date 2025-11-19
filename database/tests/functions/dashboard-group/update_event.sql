@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -107,6 +107,7 @@ insert into event (
 
 -- Add initial host and sponsor to the event
 insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
+insert into event_speaker (event_id, user_id, featured) values (:'event1ID', :'user1ID', true);
 insert into event_sponsor (event_id, group_sponsor_id, level)
 values (:'event1ID', :'sponsorOrigID', 'Bronze');
 
@@ -143,6 +144,7 @@ select is(
         "category_name": "Workshop",
         "description": "Updated description",
         "hosts": [],
+        "speakers": [],
         "kind": "virtual",
         "name": "Updated Event Name",
         "published": false,
@@ -182,6 +184,10 @@ select update_event(
         "venue_name": "New Venue",
         "venue_zip_code": "100-0001",
         "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
+        "speakers": [
+            {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true},
+            {"user_id": "00000000-0000-0000-0000-000000000022", "featured": false}
+        ],
         "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum"}],
         "sessions": [
             {
@@ -191,7 +197,7 @@ select update_event(
                 "ends_at": "2025-02-01T15:30:00",
                 "kind": "virtual",
                 "streaming_url": "https://youtube.com/live/updated",
-                "speakers": ["00000000-0000-0000-0000-000000000021"]
+                "speakers": [{"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}]
             }
         ]
     }'::jsonb
@@ -213,6 +219,10 @@ select is(
         "hosts": [
             {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"},
             {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1"}
+        ],
+        "speakers": [
+            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true},
+            {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
         ],
         "kind": "hybrid",
         "name": "Fully Updated Event",
@@ -262,7 +272,7 @@ select ok(
                 "kind": "virtual",
                 "streaming_url": "https://youtube.com/live/updated",
                 "speakers": [
-                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
+                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
                 ]
             }
         ]'::jsonb
@@ -327,6 +337,18 @@ select throws_ok(
     'P0001',
     'host user 99999999-9999-9999-9999-999999999999 not found in community',
     'update_event should throw error when host user_id does not exist in community'
+);
+
+-- update_event throws error for invalid speaker user_id
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000003'::uuid,
+        '{"name": "Event with Invalid Speaker", "slug": "invalid-speaker-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
+    )$$,
+    'P0001',
+    'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
+    'update_event should throw error when speaker user_id does not exist in community'
 );
 
 -- ============================================================================

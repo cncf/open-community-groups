@@ -3,9 +3,11 @@ import {
   isObjectEmpty,
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
+  computeUserInitials,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/user-search-selector.js";
+import "/static/js/common/avatar-image.js";
+import "/static/js/dashboard/event/session-speaker-modal.js";
 
 /**
  * Component for managing session entries in events.
@@ -283,6 +285,10 @@ class SessionItem extends LitWrapper {
 
   connectedCallback() {
     super.connectedCallback();
+    if (!this.data) {
+      this.data = {};
+    }
+    this.data.speakers = this._normalizeSpeakers(this.data.speakers);
     this.isObjectEmpty = isObjectEmpty(this.data);
   }
 
@@ -311,7 +317,131 @@ class SessionItem extends LitWrapper {
     this.onDataChange(this.data, this.index);
   };
 
+  _normalizeSpeakers(value) {
+    let list = value;
+    if (typeof list === "string") {
+      try {
+        list = JSON.parse(list || "[]");
+      } catch (_) {
+        list = [];
+      }
+    }
+    if (!Array.isArray(list)) {
+      return [];
+    }
+    return list.map((speaker) => ({
+      ...speaker,
+      featured: !!speaker.featured,
+    }));
+  }
+
+  _getSpeakers() {
+    return Array.isArray(this.data?.speakers) ? this.data.speakers : [];
+  }
+
+  _updateSpeakers(nextSpeakers) {
+    const normalized = nextSpeakers.map((speaker) => ({
+      ...speaker,
+      featured: !!speaker.featured,
+    }));
+    this.data = { ...this.data, speakers: normalized };
+    this.isObjectEmpty = isObjectEmpty(this.data);
+    this.onDataChange(this.data, this.index);
+    this.requestUpdate();
+  }
+
+  _openSpeakerModal = () => {
+    const modal = this.querySelector("session-speaker-modal");
+    if (!modal) return;
+    modal.disabledUserIds = this._getSpeakers().map((speaker) => speaker.user_id);
+    if (typeof modal.open === "function") {
+      modal.open();
+    }
+  };
+
+  _handleSpeakerSelected = (event) => {
+    const user = event.detail?.user;
+    if (!user) return;
+    const speakers = this._getSpeakers();
+    const userKey = String(user.user_id ?? user.username);
+    if (speakers.some((speaker) => String(speaker.user_id ?? speaker.username) === userKey)) {
+      return;
+    }
+    const featured = !!event.detail?.featured;
+    const nextSpeakers = [...speakers, { ...user, featured }];
+    this._updateSpeakers(nextSpeakers);
+  };
+
+  _removeSpeaker = (speaker) => {
+    if (!speaker) return;
+    const target = String(speaker.user_id ?? speaker.username);
+    const nextSpeakers = this._getSpeakers().filter(
+      (existing) => String(existing.user_id ?? existing.username) !== target,
+    );
+    this._updateSpeakers(nextSpeakers);
+  };
+
+  _renderSpeakerChip(speaker) {
+    const initials = computeUserInitials(speaker.name, speaker.username, 2);
+    return html`
+      <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
+        <avatar-image
+          image-url="${speaker.photo_url || ""}"
+          placeholder="${initials}"
+          size="size-[24px]"
+          hide-border
+        ></avatar-image>
+        ${speaker.featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
+        <span class="text-sm text-stone-700">${speaker.name || speaker.username}</span>
+        <button
+          type="button"
+          class="p-1 hover:bg-stone-200 rounded-full transition-colors"
+          title="Remove speaker"
+          @click=${() => this._removeSpeaker(speaker)}
+        >
+          <div class="svg-icon size-3 icon-close bg-stone-600"></div>
+        </button>
+      </div>
+    `;
+  }
+
+  _renderSpeakerChips(speakers) {
+    if (!speakers.length) {
+      return html`<div class="mt-3 text-sm text-stone-500">No speakers added yet.</div>`;
+    }
+    return html`
+      <div class="mt-3 flex flex-wrap gap-2">
+        ${repeat(
+          speakers,
+          (speaker, index) => `${speaker.user_id ?? speaker.username ?? index}`,
+          (speaker) => this._renderSpeakerChip(speaker),
+        )}
+      </div>
+    `;
+  }
+
+  _renderSpeakerHiddenInputs(speakers) {
+    if (!speakers.length) return html``;
+    return html`
+      ${speakers.map(
+        (speaker, index) => html`
+          <input
+            type="hidden"
+            name="sessions[${this.index}][speakers][${index}][user_id]"
+            value="${speaker.user_id}"
+          />
+          <input
+            type="hidden"
+            name="sessions[${this.index}][speakers][${index}][featured]"
+            value="${speaker.featured ? "true" : "false"}"
+          />
+        `,
+      )}
+    `;
+  }
+
   render() {
+    const speakers = this._getSpeakers();
     return html` <div
       class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 border-2 border-stone-200 border-dashed p-8 rounded-lg bg-stone-50/25 w-full"
     >
@@ -398,16 +528,17 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-full">
-        <label class="form-label">Speakers</label>
-        <div class="mt-2">
-          <user-search-selector
-            field-name="sessions[${this.index}][speakers]"
-            dashboard-type="group"
-            label="speaker"
-            .selectedUsers=${this.data.speakers || []}
-            legend="Add speakers or presenters for this session."
-          ></user-search-selector>
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <label class="form-label m-0">Speakers</label>
+          <button type="button" class="btn-secondary" @click=${this._openSpeakerModal}>Add speaker</button>
         </div>
+        <p class="text-sm text-stone-500 mt-1">Add speakers or presenters for this session.</p>
+        ${this._renderSpeakerChips(speakers)} ${this._renderSpeakerHiddenInputs(speakers)}
+        <session-speaker-modal
+          dashboard-type="group"
+          .disabledUserIds=${speakers.map((speaker) => speaker.user_id)}
+          @speaker-selected=${this._handleSpeakerSelected}
+        ></session-speaker-modal>
       </div>
 
       <div class="col-span-full">
