@@ -393,6 +393,7 @@ input:placeholder-shown {
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
+.icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }
