@@ -7,28 +7,24 @@ description = "Community statistics and growth trends.") %}
 
 {# Summary stat cards #}
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10">
-  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+  <div class="bg-white border border-stone-200 rounded-lg p-5">
     <div class="text-sm text-stone-500">Groups</div>
-    <div class="mt-2 text-3xl font-semibold text-stone-900"
-         data-humanize="{{ stats.groups.total }}">{{ stats.groups.total }}</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.groups.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-400">Active, non-deleted groups</div>
   </div>
-  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+  <div class="bg-white border border-stone-200 rounded-lg p-5">
     <div class="text-sm text-stone-500">Members</div>
-    <div class="mt-2 text-3xl font-semibold text-stone-900"
-         data-humanize="{{ stats.members.total }}">{{ stats.members.total }}</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.members.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-400">Members across all groups</div>
   </div>
-  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+  <div class="bg-white border border-stone-200 rounded-lg p-5">
     <div class="text-sm text-stone-500">Events</div>
-    <div class="mt-2 text-3xl font-semibold text-stone-900"
-         data-humanize="{{ stats.events.total }}">{{ stats.events.total }}</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.events.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-400">Published, upcoming or past</div>
   </div>
-  <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-5">
+  <div class="bg-white border border-stone-200 rounded-lg p-5">
     <div class="text-sm text-stone-500">Attendees</div>
-    <div class="mt-2 text-3xl font-semibold text-stone-900"
-         data-humanize="{{ stats.attendees.total }}">{{ stats.attendees.total }}</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.attendees.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-400">RSVPs across all events</div>
   </div>
 </div>
@@ -43,10 +39,10 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-category-chart" class="h-[300px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-region-chart" class="h-[300px]"></div>
           </div>
         </div>
@@ -55,13 +51,13 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-running-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-running-category-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-running-region-chart" class="h-[340px]"></div>
           </div>
         </div>
@@ -70,13 +66,13 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-monthly-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-monthly-category-chart" class="h-[360px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="groups-monthly-region-chart" class="h-[360px]"></div>
           </div>
         </div>
@@ -92,10 +88,10 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-category-chart" class="h-[300px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-region-chart" class="h-[300px]"></div>
           </div>
         </div>
@@ -104,13 +100,13 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-running-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-running-category-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-running-region-chart" class="h-[340px]"></div>
           </div>
         </div>
@@ -119,13 +115,13 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-monthly-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-monthly-category-chart" class="h-[360px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="members-monthly-region-chart" class="h-[360px]"></div>
           </div>
         </div>
@@ -141,13 +137,13 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-group-category-chart" class="h-[300px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-region-chart" class="h-[300px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6 xl:col-span-2">
+          <div class="bg-white border border-stone-200 rounded-lg p-6 xl:col-span-2">
             <div id="events-category-chart" class="h-[300px]"></div>
           </div>
         </div>
@@ -156,16 +152,16 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-running-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-running-group-category-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-running-group-region-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-running-event-category-chart" class="h-[340px]"></div>
           </div>
         </div>
@@ -174,16 +170,16 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-monthly-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-monthly-group-category-chart" class="h-[360px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-monthly-group-region-chart" class="h-[360px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="events-monthly-event-category-chart" class="h-[360px]"></div>
           </div>
         </div>
@@ -199,10 +195,10 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-category-chart" class="h-[300px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-region-chart" class="h-[300px]"></div>
           </div>
         </div>
@@ -211,16 +207,16 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-running-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-running-group-category-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-running-group-region-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-running-event-category-chart" class="h-[340px]"></div>
           </div>
         </div>
@@ -229,16 +225,16 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-monthly-chart" class="h-[340px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-monthly-group-category-chart" class="h-[360px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-monthly-group-region-chart" class="h-[360px]"></div>
           </div>
-          <div class="bg-white border border-stone-200 rounded-xl shadow-sm p-6">
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
             <div id="attendees-monthly-event-category-chart" class="h-[360px]"></div>
           </div>
         </div>

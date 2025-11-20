@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::templates::filters;
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
