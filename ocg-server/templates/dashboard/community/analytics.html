@@ -30,10 +30,49 @@ description = "Community statistics and growth trends.") %}
 </div>
 {# End summary stat cards #}
 
+{# Tabs navigation #}
+<div class="my-10">
+  <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
+    <li>
+      <button type="button"
+              data-analytics-tab="groups"
+              data-active="true"
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-28 sm:w-36">
+        Groups
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="members"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-28 sm:w-36">
+        Members
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="events"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-28 sm:w-36">
+        Events
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-analytics-tab="attendees"
+              data-active="false"
+              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-28 sm:w-36">
+        Attendees
+      </button>
+    </li>
+  </ul>
+</div>
+{# End tabs navigation #}
+
 {# Charts sections #}
 <div class="space-y-14 mt-12">
   {# Groups section #}
-  <div>
+  <div data-analytics-content="groups">
     {% call macros::form_title(title = "Groups") %}
     <div class="mt-8 space-y-8">
       <div>
@@ -82,7 +121,7 @@ description = "Community statistics and growth trends.") %}
   {# End groups section #}
 
   {# Members section #}
-  <div>
+  <div class="hidden" data-analytics-content="members">
     {% call macros::form_title(title = "Members") %}
     <div class="mt-8 space-y-8">
       <div>
@@ -131,7 +170,7 @@ description = "Community statistics and growth trends.") %}
   {# End members section #}
 
   {# Events section #}
-  <div>
+  <div class="hidden" data-analytics-content="events">
     {% call macros::form_title(title = "Events") %}
     <div class="mt-8 space-y-8">
       <div>
@@ -189,7 +228,7 @@ description = "Community statistics and growth trends.") %}
   {# End events section #}
 
   {# Attendees section #}
-  <div>
+  <div class="hidden" data-analytics-content="attendees">
     {% call macros::form_title(title = "Attendees") %}
     <div class="mt-8 space-y-8">
       <div>

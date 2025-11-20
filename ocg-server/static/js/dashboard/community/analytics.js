@@ -564,7 +564,459 @@ function createPieChart(title, name, data, palette) {
 }
 
 /**
- * Render all analytics charts for the community dashboard.
+ * Render groups charts.
+ * @param {Object} groups - Group stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+function initGroupsCharts(groups = {}, palette) {
+  const charts = [];
+
+  const runningChart = initChart(
+    "groups-running-chart",
+    createAreaChart("Groups over time", "Groups", groups.running_total || [], palette),
+  );
+  if (runningChart) charts.push(runningChart);
+
+  const monthlyChart = initChart(
+    "groups-monthly-chart",
+    createMonthlyBarChart("New Groups per Month", "Groups", groups.per_month, palette),
+  );
+  if (monthlyChart) charts.push(monthlyChart);
+
+  const categoryChart = initChart(
+    "groups-category-chart",
+    createHorizontalBarChart("Groups by Category", toCategorySeries(groups.total_by_category || []), palette),
+  );
+  if (categoryChart) charts.push(categoryChart);
+
+  const regionChart = initChart(
+    "groups-region-chart",
+    createPieChart("Groups by Region", "Groups", toCategorySeries(groups.total_by_region || []), palette),
+  );
+  if (regionChart) charts.push(regionChart);
+
+  const runningCategoryChart = initChart(
+    "groups-running-category-chart",
+    createStackedAreaChart(
+      "Groups over time by category",
+      buildStackedTimeSeries(groups.running_total_by_category || {}).series,
+      palette,
+    ),
+  );
+  if (runningCategoryChart) charts.push(runningCategoryChart);
+
+  const runningRegionChart = initChart(
+    "groups-running-region-chart",
+    createStackedAreaChart(
+      "Groups over time by region",
+      buildStackedTimeSeries(groups.running_total_by_region || {}).series,
+      palette,
+    ),
+  );
+  if (runningRegionChart) charts.push(runningRegionChart);
+
+  const monthlyByCategory = buildStackedMonthlySeries(groups.per_month_by_category || {});
+  const monthlyCategoryChart = initChart(
+    "groups-monthly-category-chart",
+    createStackedMonthlyChart(
+      "New Groups per Month by category",
+      monthlyByCategory.months,
+      monthlyByCategory.series,
+      palette,
+    ),
+  );
+  if (monthlyCategoryChart) charts.push(monthlyCategoryChart);
+
+  const monthlyByRegion = buildStackedMonthlySeries(groups.per_month_by_region || {});
+  const monthlyRegionChart = initChart(
+    "groups-monthly-region-chart",
+    createStackedMonthlyChart(
+      "New Groups per Month by region",
+      monthlyByRegion.months,
+      monthlyByRegion.series,
+      palette,
+    ),
+  );
+  if (monthlyRegionChart) charts.push(monthlyRegionChart);
+
+  return charts;
+}
+
+/**
+ * Render members charts.
+ * @param {Object} members - Member stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+function initMembersCharts(members = {}, palette) {
+  const charts = [];
+
+  const monthlyByCategory = buildStackedMonthlySeries(members.per_month_by_category || {});
+  const monthlyCategoryChart = initChart(
+    "members-monthly-category-chart",
+    createStackedMonthlyChart(
+      "New Members per Month by category",
+      monthlyByCategory.months,
+      monthlyByCategory.series,
+      palette,
+    ),
+  );
+  if (monthlyCategoryChart) charts.push(monthlyCategoryChart);
+
+  const monthlyByRegion = buildStackedMonthlySeries(members.per_month_by_region || {});
+  const monthlyRegionChart = initChart(
+    "members-monthly-region-chart",
+    createStackedMonthlyChart(
+      "New Members per Month by region",
+      monthlyByRegion.months,
+      monthlyByRegion.series,
+      palette,
+    ),
+  );
+  if (monthlyRegionChart) charts.push(monthlyRegionChart);
+
+  const runningChart = initChart(
+    "members-running-chart",
+    createAreaChart("Members over time", "Members", members.running_total || [], palette),
+  );
+  if (runningChart) charts.push(runningChart);
+
+  const monthlyChart = initChart(
+    "members-monthly-chart",
+    createMonthlyBarChart("New Members per Month", "Members", members.per_month, palette),
+  );
+  if (monthlyChart) charts.push(monthlyChart);
+
+  const categoryChart = initChart(
+    "members-category-chart",
+    createHorizontalBarChart(
+      "Members by Group Category",
+      toCategorySeries(members.total_by_category || []),
+      palette,
+    ),
+  );
+  if (categoryChart) charts.push(categoryChart);
+
+  const regionChart = initChart(
+    "members-region-chart",
+    createPieChart("Members by Region", "Members", toCategorySeries(members.total_by_region || []), palette),
+  );
+  if (regionChart) charts.push(regionChart);
+
+  const runningCategoryChart = initChart(
+    "members-running-category-chart",
+    createStackedAreaChart(
+      "Members over time by category",
+      buildStackedTimeSeries(members.running_total_by_category || {}).series,
+      palette,
+    ),
+  );
+  if (runningCategoryChart) charts.push(runningCategoryChart);
+
+  const runningRegionChart = initChart(
+    "members-running-region-chart",
+    createStackedAreaChart(
+      "Members over time by region",
+      buildStackedTimeSeries(members.running_total_by_region || {}).series,
+      palette,
+    ),
+  );
+  if (runningRegionChart) charts.push(runningRegionChart);
+
+  return charts;
+}
+
+/**
+ * Render events charts.
+ * @param {Object} events - Event stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+function initEventsCharts(events = {}, palette) {
+  const charts = [];
+
+  const runningChart = initChart(
+    "events-running-chart",
+    createAreaChart("Events over time", "Events", events.running_total || [], palette),
+  );
+  if (runningChart) charts.push(runningChart);
+
+  const monthlyChart = initChart(
+    "events-monthly-chart",
+    createMonthlyBarChart("New Events per Month", "Events", events.per_month, palette),
+  );
+  if (monthlyChart) charts.push(monthlyChart);
+
+  const groupCategoryChart = initChart(
+    "events-group-category-chart",
+    createHorizontalBarChart(
+      "Events by Group Category",
+      toCategorySeries(events.total_by_group_category || []),
+      palette,
+    ),
+  );
+  if (groupCategoryChart) charts.push(groupCategoryChart);
+
+  const regionChart = initChart(
+    "events-region-chart",
+    createPieChart(
+      "Events by Region",
+      "Events",
+      toCategorySeries(events.total_by_group_region || []),
+      palette,
+    ),
+  );
+  if (regionChart) charts.push(regionChart);
+
+  const categoryChart = initChart(
+    "events-category-chart",
+    createHorizontalBarChart("Events by Type", toCategorySeries(events.total_by_event_category || []), palette),
+  );
+  if (categoryChart) charts.push(categoryChart);
+
+  const runningByGroupCategory = buildStackedTimeSeries(events.running_total_by_group_category || {});
+  const runningGroupCategoryChart = initChart(
+    "events-running-group-category-chart",
+    createStackedAreaChart("Events over time by group category", runningByGroupCategory.series, palette),
+  );
+  if (runningGroupCategoryChart) charts.push(runningGroupCategoryChart);
+
+  const runningByGroupRegion = buildStackedTimeSeries(events.running_total_by_group_region || {});
+  const runningGroupRegionChart = initChart(
+    "events-running-group-region-chart",
+    createStackedAreaChart("Events over time by group region", runningByGroupRegion.series, palette),
+  );
+  if (runningGroupRegionChart) charts.push(runningGroupRegionChart);
+
+  const runningByEventCategory = buildStackedTimeSeries(events.running_total_by_event_category || {});
+  const runningEventCategoryChart = initChart(
+    "events-running-event-category-chart",
+    createStackedAreaChart(
+      "Events over time by event category",
+      runningByEventCategory.series,
+      palette,
+    ),
+  );
+  if (runningEventCategoryChart) charts.push(runningEventCategoryChart);
+
+  const monthlyByGroupCategory = buildStackedMonthlySeries(events.per_month_by_group_category || {});
+  const monthlyGroupCategoryChart = initChart(
+    "events-monthly-group-category-chart",
+    createStackedMonthlyChart(
+      "New Events per Month by group category",
+      monthlyByGroupCategory.months,
+      monthlyByGroupCategory.series,
+      palette,
+    ),
+  );
+  if (monthlyGroupCategoryChart) charts.push(monthlyGroupCategoryChart);
+
+  const monthlyByGroupRegion = buildStackedMonthlySeries(events.per_month_by_group_region || {});
+  const monthlyGroupRegionChart = initChart(
+    "events-monthly-group-region-chart",
+    createStackedMonthlyChart(
+      "New Events per Month by group region",
+      monthlyByGroupRegion.months,
+      monthlyByGroupRegion.series,
+      palette,
+    ),
+  );
+  if (monthlyGroupRegionChart) charts.push(monthlyGroupRegionChart);
+
+  const monthlyByEventCategory = buildStackedMonthlySeries(events.per_month_by_event_category || {});
+  const monthlyEventCategoryChart = initChart(
+    "events-monthly-event-category-chart",
+    createStackedMonthlyChart(
+      "New Events per Month by event category",
+      monthlyByEventCategory.months,
+      monthlyByEventCategory.series,
+      palette,
+    ),
+  );
+  if (monthlyEventCategoryChart) charts.push(monthlyEventCategoryChart);
+
+  return charts;
+}
+
+/**
+ * Render attendees charts.
+ * @param {Object} attendees - Attendee stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+function initAttendeesCharts(attendees = {}, palette) {
+  const charts = [];
+
+  const runningChart = initChart(
+    "attendees-running-chart",
+    createAreaChart("Attendees over time", "Attendees", attendees.running_total || [], palette),
+  );
+  if (runningChart) charts.push(runningChart);
+
+  const monthlyChart = initChart(
+    "attendees-monthly-chart",
+    createMonthlyBarChart("New Attendees per Month", "Attendees", attendees.per_month, palette),
+  );
+  if (monthlyChart) charts.push(monthlyChart);
+
+  const categoryChart = initChart(
+    "attendees-category-chart",
+    createHorizontalBarChart(
+      "Attendees by Event Type",
+      toCategorySeries(attendees.total_by_event_category || []),
+      palette,
+    ),
+  );
+  if (categoryChart) charts.push(categoryChart);
+
+  const regionChart = initChart(
+    "attendees-region-chart",
+    createPieChart(
+      "Attendees by Region",
+      "Attendees",
+      toCategorySeries(attendees.total_by_group_region || []),
+      palette,
+    ),
+  );
+  if (regionChart) charts.push(regionChart);
+
+  const runningByGroupCategory = buildStackedTimeSeries(attendees.running_total_by_group_category || {});
+  const runningGroupCategoryChart = initChart(
+    "attendees-running-group-category-chart",
+    createStackedAreaChart(
+      "Attendees over time by group category",
+      runningByGroupCategory.series,
+      palette,
+    ),
+  );
+  if (runningGroupCategoryChart) charts.push(runningGroupCategoryChart);
+
+  const runningByGroupRegion = buildStackedTimeSeries(attendees.running_total_by_group_region || {});
+  const runningGroupRegionChart = initChart(
+    "attendees-running-group-region-chart",
+    createStackedAreaChart(
+      "Attendees over time by group region",
+      runningByGroupRegion.series,
+      palette,
+    ),
+  );
+  if (runningGroupRegionChart) charts.push(runningGroupRegionChart);
+
+  const runningByEventCategory = buildStackedTimeSeries(attendees.running_total_by_event_category || {});
+  const runningEventCategoryChart = initChart(
+    "attendees-running-event-category-chart",
+    createStackedAreaChart(
+      "Attendees over time by event category",
+      runningByEventCategory.series,
+      palette,
+    ),
+  );
+  if (runningEventCategoryChart) charts.push(runningEventCategoryChart);
+
+  const monthlyByGroupCategory = buildStackedMonthlySeries(attendees.per_month_by_group_category || {});
+  const monthlyGroupCategoryChart = initChart(
+    "attendees-monthly-group-category-chart",
+    createStackedMonthlyChart(
+      "New Attendees per Month by group category",
+      monthlyByGroupCategory.months,
+      monthlyByGroupCategory.series,
+      palette,
+    ),
+  );
+  if (monthlyGroupCategoryChart) charts.push(monthlyGroupCategoryChart);
+
+  const monthlyByGroupRegion = buildStackedMonthlySeries(attendees.per_month_by_group_region || {});
+  const monthlyGroupRegionChart = initChart(
+    "attendees-monthly-group-region-chart",
+    createStackedMonthlyChart(
+      "New Attendees per Month by group region",
+      monthlyByGroupRegion.months,
+      monthlyByGroupRegion.series,
+      palette,
+    ),
+  );
+  if (monthlyGroupRegionChart) charts.push(monthlyGroupRegionChart);
+
+  const monthlyByEventCategory = buildStackedMonthlySeries(attendees.per_month_by_event_category || {});
+  const monthlyEventCategoryChart = initChart(
+    "attendees-monthly-event-category-chart",
+    createStackedMonthlyChart(
+      "New Attendees per Month by event category",
+      monthlyByEventCategory.months,
+      monthlyByEventCategory.series,
+      palette,
+    ),
+  );
+  if (monthlyEventCategoryChart) charts.push(monthlyEventCategoryChart);
+
+  return charts;
+}
+
+function setupAnalyticsTabs(stats, palette) {
+  const tabButtons = document.querySelectorAll("[data-analytics-tab]");
+  const tabContents = document.querySelectorAll("[data-analytics-content]");
+  if (!tabButtons.length || !tabContents.length) {
+    return;
+  }
+
+  const initializedTabs = new Set();
+  const chartsByTab = new Map();
+  const allCharts = new Set();
+
+  const initTabCharts = (tab) => {
+    if (initializedTabs.has(tab) || typeof echarts === "undefined") {
+      return;
+    }
+
+    let charts = [];
+    if (tab === "groups") {
+      charts = initGroupsCharts(stats.groups, palette);
+    } else if (tab === "members") {
+      charts = initMembersCharts(stats.members, palette);
+    } else if (tab === "events") {
+      charts = initEventsCharts(stats.events, palette);
+    } else if (tab === "attendees") {
+      charts = initAttendeesCharts(stats.attendees, palette);
+    }
+
+    const hydratedCharts = charts.filter(Boolean);
+    hydratedCharts.forEach((chart) => allCharts.add(chart));
+    chartsByTab.set(tab, hydratedCharts);
+    initializedTabs.add(tab);
+  };
+
+  const showTab = (tab) => {
+    tabButtons.forEach((btn) => {
+      btn.dataset.active = btn.dataset.analyticsTab === tab ? "true" : "false";
+    });
+
+    tabContents.forEach((content) => {
+      const visible = content.dataset.analyticsContent === tab;
+      content.classList.toggle("hidden", !visible);
+    });
+
+    initTabCharts(tab);
+    (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
+  };
+
+  initTabCharts("groups");
+  showTab("groups");
+
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = button.dataset.analyticsTab;
+      showTab(tab);
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    allCharts.forEach((chart) => chart.resize());
+  });
+}
+
+/**
+ * Render analytics charts with lazy tab initialization.
  * @param {Object} stats - Community statistics payload from the server.
  */
 export function initAnalyticsCharts(stats) {
@@ -573,379 +1025,5 @@ export function initAnalyticsCharts(stats) {
   }
 
   const palette = getThemePalette();
-  const activeCharts = [];
-  const groups = stats.groups || {};
-  const members = stats.members || {};
-  const events = stats.events || {};
-  const attendees = stats.attendees || {};
-
-  // Groups: cumulative trend (area chart)
-  const groupsRunningChart = initChart(
-    "groups-running-chart",
-    createAreaChart("Groups over time", "Groups", groups.running_total || [], palette),
-  );
-  if (groupsRunningChart) activeCharts.push(groupsRunningChart);
-
-  // Groups: monthly additions (bar chart)
-  const groupsMonthlyChart = initChart(
-    "groups-monthly-chart",
-    createMonthlyBarChart("New Groups per Month", "Groups", groups.per_month, palette),
-  );
-  if (groupsMonthlyChart) activeCharts.push(groupsMonthlyChart);
-
-  // Groups: by category (horizontal bar chart)
-  const groupsCategory = toCategorySeries(groups.total_by_category || []);
-  const groupsCategoryChart = initChart(
-    "groups-category-chart",
-    createHorizontalBarChart("Groups by Category", groupsCategory, palette),
-  );
-  if (groupsCategoryChart) activeCharts.push(groupsCategoryChart);
-
-  // Groups: by region (pie chart)
-  const groupsRegion = toCategorySeries(groups.total_by_region || []);
-  const groupsRegionChart = initChart(
-    "groups-region-chart",
-    createPieChart("Groups by Region", "Groups", groupsRegion, palette),
-  );
-  if (groupsRegionChart) activeCharts.push(groupsRegionChart);
-
-  // Groups: running total by category (stacked area chart)
-  const groupsRunningByCategory = buildStackedTimeSeries(groups.running_total_by_category || {});
-  const groupsRunningCategoryChart = initChart(
-    "groups-running-category-chart",
-    createStackedAreaChart("Groups over time by category", groupsRunningByCategory.series, palette),
-  );
-  if (groupsRunningCategoryChart) activeCharts.push(groupsRunningCategoryChart);
-
-  // Groups: running total by region (stacked area chart)
-  const groupsRunningByRegion = buildStackedTimeSeries(groups.running_total_by_region || {});
-  const groupsRunningRegionChart = initChart(
-    "groups-running-region-chart",
-    createStackedAreaChart("Groups over time by region", groupsRunningByRegion.series, palette),
-  );
-  if (groupsRunningRegionChart) activeCharts.push(groupsRunningRegionChart);
-
-  // Groups: per-month by category (stacked bar chart)
-  const groupsMonthlyByCategory = buildStackedMonthlySeries(groups.per_month_by_category || {});
-  const groupsMonthlyCategoryChart = initChart(
-    "groups-monthly-category-chart",
-    createStackedMonthlyChart(
-      "New Groups per Month by category",
-      groupsMonthlyByCategory.months,
-      groupsMonthlyByCategory.series,
-      palette,
-    ),
-  );
-  if (groupsMonthlyCategoryChart) activeCharts.push(groupsMonthlyCategoryChart);
-
-  // Groups: per-month by region (stacked bar chart)
-  const groupsMonthlyByRegion = buildStackedMonthlySeries(groups.per_month_by_region || {});
-  const groupsMonthlyRegionChart = initChart(
-    "groups-monthly-region-chart",
-    createStackedMonthlyChart(
-      "New Groups per Month by region",
-      groupsMonthlyByRegion.months,
-      groupsMonthlyByRegion.series,
-      palette,
-    ),
-  );
-  if (groupsMonthlyRegionChart) activeCharts.push(groupsMonthlyRegionChart);
-
-  // Members: per-month by category (stacked bar chart)
-  const membersMonthlyByCategory = buildStackedMonthlySeries(members.per_month_by_category || {});
-  const membersMonthlyCategoryChart = initChart(
-    "members-monthly-category-chart",
-    createStackedMonthlyChart(
-      "New Members per Month by category",
-      membersMonthlyByCategory.months,
-      membersMonthlyByCategory.series,
-      palette,
-    ),
-  );
-  if (membersMonthlyCategoryChart) activeCharts.push(membersMonthlyCategoryChart);
-
-  // Members: per-month by region (stacked bar chart)
-  const membersMonthlyByRegion = buildStackedMonthlySeries(members.per_month_by_region || {});
-  const membersMonthlyRegionChart = initChart(
-    "members-monthly-region-chart",
-    createStackedMonthlyChart(
-      "New Members per Month by region",
-      membersMonthlyByRegion.months,
-      membersMonthlyByRegion.series,
-      palette,
-    ),
-  );
-  if (membersMonthlyRegionChart) activeCharts.push(membersMonthlyRegionChart);
-
-  // Members: cumulative trend (area chart)
-  const membersRunningChart = initChart(
-    "members-running-chart",
-    createAreaChart("Members over time", "Members", members.running_total || [], palette),
-  );
-  if (membersRunningChart) activeCharts.push(membersRunningChart);
-
-  // Members: monthly (bar chart)
-  const membersMonthlyChart = initChart(
-    "members-monthly-chart",
-    createMonthlyBarChart("New Members per Month", "Members", members.per_month, palette),
-  );
-  if (membersMonthlyChart) activeCharts.push(membersMonthlyChart);
-
-  // Members: by category (horizontal bar chart)
-  const membersCategory = toCategorySeries(members.total_by_category || []);
-  const membersCategoryChart = initChart(
-    "members-category-chart",
-    createHorizontalBarChart("Members by Group Category", membersCategory, palette),
-  );
-  if (membersCategoryChart) activeCharts.push(membersCategoryChart);
-
-  // Members: by region (pie chart)
-  const membersRegion = toCategorySeries(members.total_by_region || []);
-  const membersRegionChart = initChart(
-    "members-region-chart",
-    createPieChart("Members by Region", "Members", membersRegion, palette),
-  );
-  if (membersRegionChart) activeCharts.push(membersRegionChart);
-
-  // Members: running total by category (stacked area chart)
-  const membersRunningByCategory = buildStackedTimeSeries(members.running_total_by_category || {});
-  const membersRunningCategoryChart = initChart(
-    "members-running-category-chart",
-    createStackedAreaChart("Members over time by category", membersRunningByCategory.series, palette),
-  );
-  if (membersRunningCategoryChart) activeCharts.push(membersRunningCategoryChart);
-
-  // Members: running total by region (stacked area chart)
-  const membersRunningByRegion = buildStackedTimeSeries(members.running_total_by_region || {});
-  const membersRunningRegionChart = initChart(
-    "members-running-region-chart",
-    createStackedAreaChart("Members over time by region", membersRunningByRegion.series, palette),
-  );
-  if (membersRunningRegionChart) activeCharts.push(membersRunningRegionChart);
-
-  // Events: cumulative trend (area chart)
-  const eventsRunningChart = initChart(
-    "events-running-chart",
-    createAreaChart("Events over time", "Events", events.running_total || [], palette),
-  );
-  if (eventsRunningChart) activeCharts.push(eventsRunningChart);
-
-  // Events: monthly (bar chart)
-  const eventsMonthlyChart = initChart(
-    "events-monthly-chart",
-    createMonthlyBarChart("New Events per Month", "Events", events.per_month, palette),
-  );
-  if (eventsMonthlyChart) activeCharts.push(eventsMonthlyChart);
-
-  // Events: by group category (horizontal bar chart)
-  const eventsGroupCategory = toCategorySeries(events.total_by_group_category || []);
-  const eventsGroupCategoryChart = initChart(
-    "events-group-category-chart",
-    createHorizontalBarChart("Events by Group Category", eventsGroupCategory, palette),
-  );
-  if (eventsGroupCategoryChart) activeCharts.push(eventsGroupCategoryChart);
-
-  // Events: by region (pie chart)
-  const eventsRegion = toCategorySeries(events.total_by_group_region || []);
-  const eventsRegionChart = initChart(
-    "events-region-chart",
-    createPieChart("Events by Region", "Events", eventsRegion, palette),
-  );
-  if (eventsRegionChart) activeCharts.push(eventsRegionChart);
-
-  // Events: by event category (horizontal bar chart)
-  const eventsCategory = toCategorySeries(events.total_by_event_category || []);
-  const eventsCategoryChart = initChart(
-    "events-category-chart",
-    createHorizontalBarChart("Events by Type", eventsCategory, palette),
-  );
-  if (eventsCategoryChart) activeCharts.push(eventsCategoryChart);
-
-  // Events: running total by group category (stacked area chart)
-  const eventsRunningByGroupCategory = buildStackedTimeSeries(events.running_total_by_group_category || {});
-  const eventsRunningGroupCategoryChart = initChart(
-    "events-running-group-category-chart",
-    createStackedAreaChart(
-      "Events over time by group category",
-      eventsRunningByGroupCategory.series,
-      palette,
-    ),
-  );
-  if (eventsRunningGroupCategoryChart) activeCharts.push(eventsRunningGroupCategoryChart);
-
-  // Events: running total by group region (stacked area chart)
-  const eventsRunningByGroupRegion = buildStackedTimeSeries(events.running_total_by_group_region || {});
-  const eventsRunningGroupRegionChart = initChart(
-    "events-running-group-region-chart",
-    createStackedAreaChart("Events over time by group region", eventsRunningByGroupRegion.series, palette),
-  );
-  if (eventsRunningGroupRegionChart) activeCharts.push(eventsRunningGroupRegionChart);
-
-  // Events: running total by event category (stacked area chart)
-  const eventsRunningByEventCategory = buildStackedTimeSeries(events.running_total_by_event_category || {});
-  const eventsRunningEventCategoryChart = initChart(
-    "events-running-event-category-chart",
-    createStackedAreaChart(
-      "Events over time by event category",
-      eventsRunningByEventCategory.series,
-      palette,
-    ),
-  );
-  if (eventsRunningEventCategoryChart) activeCharts.push(eventsRunningEventCategoryChart);
-
-  // Events: per-month by group category (stacked bar chart)
-  const eventsMonthlyByGroupCategory = buildStackedMonthlySeries(events.per_month_by_group_category || {});
-  const eventsMonthlyGroupCategoryChart = initChart(
-    "events-monthly-group-category-chart",
-    createStackedMonthlyChart(
-      "New Events per Month by group category",
-      eventsMonthlyByGroupCategory.months,
-      eventsMonthlyByGroupCategory.series,
-      palette,
-    ),
-  );
-  if (eventsMonthlyGroupCategoryChart) activeCharts.push(eventsMonthlyGroupCategoryChart);
-
-  // Events: per-month by group region (stacked bar chart)
-  const eventsMonthlyByGroupRegion = buildStackedMonthlySeries(events.per_month_by_group_region || {});
-  const eventsMonthlyGroupRegionChart = initChart(
-    "events-monthly-group-region-chart",
-    createStackedMonthlyChart(
-      "New Events per Month by group region",
-      eventsMonthlyByGroupRegion.months,
-      eventsMonthlyByGroupRegion.series,
-      palette,
-    ),
-  );
-  if (eventsMonthlyGroupRegionChart) activeCharts.push(eventsMonthlyGroupRegionChart);
-
-  // Events: per-month by event category (stacked bar chart)
-  const eventsMonthlyByEventCategory = buildStackedMonthlySeries(events.per_month_by_event_category || {});
-  const eventsMonthlyEventCategoryChart = initChart(
-    "events-monthly-event-category-chart",
-    createStackedMonthlyChart(
-      "New Events per Month by event category",
-      eventsMonthlyByEventCategory.months,
-      eventsMonthlyByEventCategory.series,
-      palette,
-    ),
-  );
-  if (eventsMonthlyEventCategoryChart) activeCharts.push(eventsMonthlyEventCategoryChart);
-
-  // Attendees: cumulative (area chart)
-  const attendeesRunningChart = initChart(
-    "attendees-running-chart",
-    createAreaChart("Attendees over time", "Attendees", attendees.running_total || [], palette),
-  );
-  if (attendeesRunningChart) activeCharts.push(attendeesRunningChart);
-
-  // Attendees: monthly (bar chart)
-  const attendeesMonthlyChart = initChart(
-    "attendees-monthly-chart",
-    createMonthlyBarChart("New Attendees per Month", "Attendees", attendees.per_month, palette),
-  );
-  if (attendeesMonthlyChart) activeCharts.push(attendeesMonthlyChart);
-
-  // Attendees: by event category (horizontal bar chart)
-  const attendeesCategory = toCategorySeries(attendees.total_by_event_category || []);
-  const attendeesCategoryChart = initChart(
-    "attendees-category-chart",
-    createHorizontalBarChart("Attendees by Event Type", attendeesCategory, palette),
-  );
-  if (attendeesCategoryChart) activeCharts.push(attendeesCategoryChart);
-
-  // Attendees: by region (pie chart)
-  const attendeesRegion = toCategorySeries(attendees.total_by_group_region || []);
-  const attendeesRegionChart = initChart(
-    "attendees-region-chart",
-    createPieChart("Attendees by Region", "Attendees", attendeesRegion, palette),
-  );
-  if (attendeesRegionChart) activeCharts.push(attendeesRegionChart);
-
-  // Attendees: running total by group category (stacked area chart)
-  const attendeesRunningByGroupCategory = buildStackedTimeSeries(
-    attendees.running_total_by_group_category || {},
-  );
-  const attendeesRunningGroupCategoryChart = initChart(
-    "attendees-running-group-category-chart",
-    createStackedAreaChart(
-      "Attendees over time by group category",
-      attendeesRunningByGroupCategory.series,
-      palette,
-    ),
-  );
-  if (attendeesRunningGroupCategoryChart) activeCharts.push(attendeesRunningGroupCategoryChart);
-
-  // Attendees: running total by group region (stacked area chart)
-  const attendeesRunningByGroupRegion = buildStackedTimeSeries(attendees.running_total_by_group_region || {});
-  const attendeesRunningGroupRegionChart = initChart(
-    "attendees-running-group-region-chart",
-    createStackedAreaChart(
-      "Attendees over time by group region",
-      attendeesRunningByGroupRegion.series,
-      palette,
-    ),
-  );
-  if (attendeesRunningGroupRegionChart) activeCharts.push(attendeesRunningGroupRegionChart);
-
-  // Attendees: running total by event category (stacked area chart)
-  const attendeesRunningByEventCategory = buildStackedTimeSeries(
-    attendees.running_total_by_event_category || {},
-  );
-  const attendeesRunningEventCategoryChart = initChart(
-    "attendees-running-event-category-chart",
-    createStackedAreaChart(
-      "Attendees over time by event category",
-      attendeesRunningByEventCategory.series,
-      palette,
-    ),
-  );
-  if (attendeesRunningEventCategoryChart) activeCharts.push(attendeesRunningEventCategoryChart);
-
-  // Attendees: per-month by group category (stacked bar chart)
-  const attendeesMonthlyByGroupCategory = buildStackedMonthlySeries(
-    attendees.per_month_by_group_category || {},
-  );
-  const attendeesMonthlyGroupCategoryChart = initChart(
-    "attendees-monthly-group-category-chart",
-    createStackedMonthlyChart(
-      "New Attendees per Month by group category",
-      attendeesMonthlyByGroupCategory.months,
-      attendeesMonthlyByGroupCategory.series,
-      palette,
-    ),
-  );
-  if (attendeesMonthlyGroupCategoryChart) activeCharts.push(attendeesMonthlyGroupCategoryChart);
-
-  // Attendees: per-month by group region (stacked bar chart)
-  const attendeesMonthlyByGroupRegion = buildStackedMonthlySeries(attendees.per_month_by_group_region || {});
-  const attendeesMonthlyGroupRegionChart = initChart(
-    "attendees-monthly-group-region-chart",
-    createStackedMonthlyChart(
-      "New Attendees per Month by group region",
-      attendeesMonthlyByGroupRegion.months,
-      attendeesMonthlyByGroupRegion.series,
-      palette,
-    ),
-  );
-  if (attendeesMonthlyGroupRegionChart) activeCharts.push(attendeesMonthlyGroupRegionChart);
-
-  // Attendees: per-month by event category (stacked bar chart)
-  const attendeesMonthlyByEventCategory = buildStackedMonthlySeries(
-    attendees.per_month_by_event_category || {},
-  );
-  const attendeesMonthlyEventCategoryChart = initChart(
-    "attendees-monthly-event-category-chart",
-    createStackedMonthlyChart(
-      "New Attendees per Month by event category",
-      attendeesMonthlyByEventCategory.months,
-      attendeesMonthlyByEventCategory.series,
-      palette,
-    ),
-  );
-  if (attendeesMonthlyEventCategoryChart) activeCharts.push(attendeesMonthlyEventCategoryChart);
-
-  window.addEventListener("resize", () => {
-    activeCharts.forEach((chart) => chart.resize());
-  });
+  setupAnalyticsTabs(stats, palette);
 }
