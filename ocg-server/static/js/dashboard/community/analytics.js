@@ -2,16 +2,16 @@
 function getThemePalette() {
   const styles = getComputedStyle(document.documentElement);
   const palette = {
-    50: styles.getPropertyValue('--color-primary-50').trim(),
-    100: styles.getPropertyValue('--color-primary-100').trim(),
-    200: styles.getPropertyValue('--color-primary-200').trim(),
-    300: styles.getPropertyValue('--color-primary-300').trim(),
-    400: styles.getPropertyValue('--color-primary-400').trim(),
-    500: styles.getPropertyValue('--color-primary-500').trim(),
-    600: styles.getPropertyValue('--color-primary-600').trim(),
-    700: styles.getPropertyValue('--color-primary-700').trim(),
-    800: styles.getPropertyValue('--color-primary-800').trim(),
-    900: styles.getPropertyValue('--color-primary-900').trim(),
+    50: styles.getPropertyValue("--color-primary-50").trim(),
+    100: styles.getPropertyValue("--color-primary-100").trim(),
+    200: styles.getPropertyValue("--color-primary-200").trim(),
+    300: styles.getPropertyValue("--color-primary-300").trim(),
+    400: styles.getPropertyValue("--color-primary-400").trim(),
+    500: styles.getPropertyValue("--color-primary-500").trim(),
+    600: styles.getPropertyValue("--color-primary-600").trim(),
+    700: styles.getPropertyValue("--color-primary-700").trim(),
+    800: styles.getPropertyValue("--color-primary-800").trim(),
+    900: styles.getPropertyValue("--color-primary-900").trim(),
   };
 
   const fallback = palette[700] || palette[500];
@@ -54,7 +54,7 @@ function toCategorySeries(pairs = []) {
  */
 function initChart(elementId, option) {
   const el = document.getElementById(elementId);
-  if (!el || typeof echarts === 'undefined') {
+  if (!el || typeof echarts === "undefined") {
     return null;
   }
 
@@ -87,52 +87,52 @@ function createAreaChart(title, name, data, palette) {
   return Object.assign(baseText(), {
     title: {
       text: title,
-      left: 'center',
+      left: "center",
       top: 12,
-      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
     },
     color: [palette[700]],
     tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#fff',
+      trigger: "axis",
+      backgroundColor: "#fff",
       borderColor: palette[100],
       borderWidth: 1,
-      textStyle: { color: '#334155' },
+      textStyle: { color: "#334155" },
     },
     grid: { left: 70, right: 40, bottom: 70, top: 80 },
     xAxis: {
-      type: 'time',
+      type: "time",
       boundaryGap: false,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
       splitLine: { show: false },
     },
     yAxis: {
-      type: 'value',
+      type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
     },
     series: [
       {
         name,
-        type: 'line',
+        type: "line",
         smooth: true,
-        symbol: 'none',
+        symbol: "none",
         showSymbol: false,
         lineStyle: { width: 2, color: palette[700] },
         areaStyle: {
           color: {
-            type: 'linear',
+            type: "linear",
             x: 0,
             y: 0,
             x2: 0,
             y2: 1,
             colorStops: [
               { offset: 0, color: palette[500] },
-              { offset: 1, color: 'rgba(255, 255, 255, 0)' },
+              { offset: 1, color: "rgba(255, 255, 255, 0)" },
             ],
           },
         },
@@ -154,39 +154,39 @@ function createMonthlyBarChart(title, name, data, palette) {
   return Object.assign(baseText(), {
     title: {
       text: title,
-      left: 'center',
+      left: "center",
       top: 12,
-      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
     },
     color: [palette[700]],
     tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#fff',
+      trigger: "axis",
+      backgroundColor: "#fff",
       borderColor: palette[100],
       borderWidth: 1,
-      textStyle: { color: '#334155' },
+      textStyle: { color: "#334155" },
     },
     grid: { left: 70, right: 40, bottom: 90, top: 80 },
     xAxis: {
-      type: 'category',
+      type: "category",
       data: (data || []).map((d) => d[0]),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { rotate: 45, color: '#94a3b8', fontSize: 10 },
+      axisLabel: { rotate: 45, color: "#94a3b8", fontSize: 10 },
     },
     yAxis: {
-      type: 'value',
+      type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
     },
     series: [
       {
         name,
-        type: 'bar',
+        type: "bar",
         data: (data || []).map((d) => Number(d[1])),
-        barCategoryGap: '30%',
+        barCategoryGap: "30%",
       },
     ],
   });
@@ -240,9 +240,7 @@ function buildStackedMonthlySeries(seriesMap = {}) {
   return {
     months,
     series: seriesNames.map((name) => {
-      const valuesByMonth = new Map(
-        (seriesMap[name] || []).map(([month, value]) => [month, Number(value)])
-      );
+      const valuesByMonth = new Map((seriesMap[name] || []).map(([month, value]) => [month, Number(value)]));
       return { name, data: months.map((month) => valuesByMonth.get(month) ?? 0) };
     }),
   };
@@ -265,15 +263,13 @@ function buildStackedTimeSeries(seriesMap = {}) {
   return {
     timestamps: sortedTs,
     series: seriesNames.map((name) => {
-      const valuesByTs = new Map(
-        (seriesMap[name] || []).map(([ts, value]) => [Number(ts), Number(value)])
-      );
+      const valuesByTs = new Map((seriesMap[name] || []).map(([ts, value]) => [Number(ts), Number(value)]));
       let last = 0;
       return {
         name,
         data: sortedTs.map((ts) => {
           const value = valuesByTs.get(ts);
-          if (typeof value === 'number') {
+          if (typeof value === "number") {
             last = value;
           }
           return [ts, last];
@@ -297,47 +293,47 @@ function createStackedMonthlyChart(title, months, seriesData, palette) {
   return Object.assign(baseText(), {
     title: {
       text: title,
-      left: 'center',
+      left: "center",
       top: 12,
-      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
     },
     color: colors,
     tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      backgroundColor: '#fff',
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      backgroundColor: "#fff",
       borderColor: palette[100],
       borderWidth: 1,
-      textStyle: { color: '#334155' },
+      textStyle: { color: "#334155" },
     },
     legend: {
-      type: seriesData.length > 5 ? 'scroll' : 'plain',
+      type: seriesData.length > 5 ? "scroll" : "plain",
       bottom: 10,
-      left: 'center',
-      textStyle: { fontFamily, fontSize: 12, color: '#475569' },
+      left: "center",
+      textStyle: { fontFamily, fontSize: 12, color: "#475569" },
     },
     grid: { left: 70, right: 40, bottom: 140, top: 80 },
     xAxis: {
-      type: 'category',
+      type: "category",
       data: months,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { rotate: 45, color: '#94a3b8', fontSize: 10 },
+      axisLabel: { rotate: 45, color: "#94a3b8", fontSize: 10 },
     },
     yAxis: {
-      type: 'value',
+      type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
     },
     series: seriesData.map((series) => ({
       name: series.name,
-      type: 'bar',
-      stack: 'total',
-      emphasis: { focus: 'series' },
+      type: "bar",
+      stack: "total",
+      emphasis: { focus: "series" },
       data: series.data,
-      barCategoryGap: '35%',
+      barCategoryGap: "35%",
     })),
   });
 }
@@ -355,50 +351,50 @@ function createStackedAreaChart(title, seriesData, palette) {
   return Object.assign(baseText(), {
     title: {
       text: title,
-      left: 'center',
+      left: "center",
       top: 12,
-      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
     },
     color: colors,
     tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#fff',
+      trigger: "axis",
+      backgroundColor: "#fff",
       borderColor: palette[100],
       borderWidth: 1,
-      textStyle: { color: '#334155' },
+      textStyle: { color: "#334155" },
     },
     legend: {
-      type: seriesData.length > 5 ? 'scroll' : 'plain',
+      type: seriesData.length > 5 ? "scroll" : "plain",
       bottom: 10,
-      left: 'center',
-      textStyle: { fontFamily, fontSize: 12, color: '#475569' },
+      left: "center",
+      textStyle: { fontFamily, fontSize: 12, color: "#475569" },
     },
     grid: { left: 70, right: 40, bottom: 120, top: 60 },
     xAxis: {
-      type: 'time',
+      type: "time",
       boundaryGap: false,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
       splitLine: { show: false },
     },
     yAxis: {
-      type: 'value',
+      type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
     },
     series: seriesData.map((series) => ({
       name: series.name,
-      type: 'line',
-      stack: 'total',
+      type: "line",
+      stack: "total",
       smooth: true,
-      symbol: 'none',
+      symbol: "none",
       showSymbol: false,
       areaStyle: { opacity: 0.35 },
       lineStyle: { width: 2 },
-      emphasis: { focus: 'series' },
+      emphasis: { focus: "series" },
       data: series.data,
     })),
   });
@@ -419,17 +415,17 @@ function createHorizontalBarChart(title, categoryData, palette, leftMargin = 140
   return Object.assign(baseText(), {
     title: {
       text: title,
-      left: 'center',
+      left: "center",
       top: 12,
-      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
     },
     color: [palette[700]],
     tooltip: {
-      trigger: 'item',
-      backgroundColor: '#fff',
+      trigger: "item",
+      backgroundColor: "#fff",
       borderColor: palette[100],
       borderWidth: 1,
-      textStyle: { color: '#334155' },
+      textStyle: { color: "#334155" },
       formatter: (params) => {
         const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
         return `${params.name}: ${params.value} (${percent}%)`;
@@ -437,33 +433,33 @@ function createHorizontalBarChart(title, categoryData, palette, leftMargin = 140
     },
     grid: { left: leftMargin, right: 80, bottom: 40, top: 80 },
     xAxis: {
-      type: 'value',
+      type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#94a3b8', fontSize: 11 },
-      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+      axisLabel: { color: "#94a3b8", fontSize: 11 },
+      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
     },
     yAxis: {
-      type: 'category',
+      type: "category",
       data: categoryData.map((d) => d.name),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: '#334155', fontSize: 12 },
+      axisLabel: { color: "#334155", fontSize: 12 },
     },
     series: [
       {
-        type: 'bar',
+        type: "bar",
         data: categoryData.map((d) => d.value),
-        barCategoryGap: '30%',
+        barCategoryGap: "30%",
         label: {
           show: true,
-          position: 'right',
+          position: "right",
           formatter: (params) => {
             const percent = total > 0 ? ((params.value / total) * 100).toFixed(1) : 0;
             return `${percent}%`;
           },
           fontSize: 11,
-          color: '#64748b',
+          color: "#64748b",
         },
       },
     ],
@@ -500,7 +496,7 @@ function createPieChart(title, name, data, palette) {
     const top6 = sorted.slice(0, 6);
     const otherValue = sorted.slice(6).reduce((sum, item) => sum + item.value, 0);
     if (otherValue > 0) {
-      top6.push({ name: 'Other', value: otherValue });
+      top6.push({ name: "Other", value: otherValue });
     }
     chartData = top6;
   }
@@ -508,31 +504,31 @@ function createPieChart(title, name, data, palette) {
   return Object.assign(baseText(), {
     title: {
       text: title,
-      left: 'center',
+      left: "center",
       top: 12,
-      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
     },
     color: pieColors,
     tooltip: {
-      trigger: 'item',
-      backgroundColor: '#fff',
+      trigger: "item",
+      backgroundColor: "#fff",
       borderColor: palette[100],
       borderWidth: 1,
-      textStyle: { color: '#334155' },
-      formatter: '{b}: {c} ({d}%)',
+      textStyle: { color: "#334155" },
+      formatter: "{b}: {c} ({d}%)",
     },
     legend: {
-      orient: 'vertical',
-      left: '55%',
-      top: '30%',
-      icon: 'circle',
+      orient: "vertical",
+      left: "55%",
+      top: "30%",
+      icon: "circle",
       itemWidth: 10,
       itemHeight: 10,
       itemGap: 12,
-      textStyle: { fontFamily, fontSize: 14, color: '#334155' },
+      textStyle: { fontFamily, fontSize: 14, color: "#334155" },
       formatter: (name) => {
         if (name.length > 25) {
-          return name.substring(0, 25) + '...';
+          return name.substring(0, 25) + "...";
         }
         return name;
       },
@@ -540,26 +536,26 @@ function createPieChart(title, name, data, palette) {
     series: [
       {
         name,
-        type: 'pie',
-        radius: ['30%', '55%'],
-        center: ['28%', '58%'],
+        type: "pie",
+        radius: ["30%", "55%"],
+        center: ["28%", "58%"],
         avoidLabelOverlap: true,
-        itemStyle: { borderColor: '#fff', borderWidth: 2 },
+        itemStyle: { borderColor: "#fff", borderWidth: 2 },
         label: {
           show: true,
-          position: 'outside',
-          formatter: '{d}%',
+          position: "outside",
+          formatter: "{d}%",
           fontSize: 11,
-          color: '#64748b',
+          color: "#64748b",
         },
         labelLine: {
           show: true,
           length: 8,
           length2: 6,
-          lineStyle: { color: '#cbd5e1' },
+          lineStyle: { color: "#cbd5e1" },
         },
         emphasis: {
-          label: { fontWeight: 'bold' },
+          label: { fontWeight: "bold" },
         },
         data: chartData,
       },
@@ -572,7 +568,7 @@ function createPieChart(title, name, data, palette) {
  * @param {Object} stats - Community statistics payload from the server.
  */
 export function initAnalyticsCharts(stats) {
-  if (!stats || typeof echarts === 'undefined') {
+  if (!stats || typeof echarts === "undefined") {
     return;
   }
 
@@ -585,393 +581,371 @@ export function initAnalyticsCharts(stats) {
 
   // Groups: cumulative trend (area chart)
   const groupsRunningChart = initChart(
-    'groups-running-chart',
-    createAreaChart('Groups over time', 'Groups', groups.running_total || [], palette)
+    "groups-running-chart",
+    createAreaChart("Groups over time", "Groups", groups.running_total || [], palette),
   );
   if (groupsRunningChart) activeCharts.push(groupsRunningChart);
 
   // Groups: monthly additions (bar chart)
   const groupsMonthlyChart = initChart(
-    'groups-monthly-chart',
-    createMonthlyBarChart('New Groups per Month', 'Groups', groups.per_month, palette)
+    "groups-monthly-chart",
+    createMonthlyBarChart("New Groups per Month", "Groups", groups.per_month, palette),
   );
   if (groupsMonthlyChart) activeCharts.push(groupsMonthlyChart);
 
   // Groups: by category (horizontal bar chart)
   const groupsCategory = toCategorySeries(groups.total_by_category || []);
   const groupsCategoryChart = initChart(
-    'groups-category-chart',
-    createHorizontalBarChart('Groups by Category', groupsCategory, palette)
+    "groups-category-chart",
+    createHorizontalBarChart("Groups by Category", groupsCategory, palette),
   );
   if (groupsCategoryChart) activeCharts.push(groupsCategoryChart);
 
   // Groups: by region (pie chart)
   const groupsRegion = toCategorySeries(groups.total_by_region || []);
   const groupsRegionChart = initChart(
-    'groups-region-chart',
-    createPieChart('Groups by Region', 'Groups', groupsRegion, palette)
+    "groups-region-chart",
+    createPieChart("Groups by Region", "Groups", groupsRegion, palette),
   );
   if (groupsRegionChart) activeCharts.push(groupsRegionChart);
 
   // Groups: running total by category (stacked area chart)
   const groupsRunningByCategory = buildStackedTimeSeries(groups.running_total_by_category || {});
   const groupsRunningCategoryChart = initChart(
-    'groups-running-category-chart',
-    createStackedAreaChart(
-      'Groups over time by category',
-      groupsRunningByCategory.series,
-      palette
-    )
+    "groups-running-category-chart",
+    createStackedAreaChart("Groups over time by category", groupsRunningByCategory.series, palette),
   );
   if (groupsRunningCategoryChart) activeCharts.push(groupsRunningCategoryChart);
 
   // Groups: running total by region (stacked area chart)
   const groupsRunningByRegion = buildStackedTimeSeries(groups.running_total_by_region || {});
   const groupsRunningRegionChart = initChart(
-    'groups-running-region-chart',
-    createStackedAreaChart('Groups over time by region', groupsRunningByRegion.series, palette)
+    "groups-running-region-chart",
+    createStackedAreaChart("Groups over time by region", groupsRunningByRegion.series, palette),
   );
   if (groupsRunningRegionChart) activeCharts.push(groupsRunningRegionChart);
 
   // Groups: per-month by category (stacked bar chart)
   const groupsMonthlyByCategory = buildStackedMonthlySeries(groups.per_month_by_category || {});
   const groupsMonthlyCategoryChart = initChart(
-    'groups-monthly-category-chart',
+    "groups-monthly-category-chart",
     createStackedMonthlyChart(
-      'New Groups per Month by category',
+      "New Groups per Month by category",
       groupsMonthlyByCategory.months,
       groupsMonthlyByCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (groupsMonthlyCategoryChart) activeCharts.push(groupsMonthlyCategoryChart);
 
   // Groups: per-month by region (stacked bar chart)
   const groupsMonthlyByRegion = buildStackedMonthlySeries(groups.per_month_by_region || {});
   const groupsMonthlyRegionChart = initChart(
-    'groups-monthly-region-chart',
+    "groups-monthly-region-chart",
     createStackedMonthlyChart(
-      'New Groups per Month by region',
+      "New Groups per Month by region",
       groupsMonthlyByRegion.months,
       groupsMonthlyByRegion.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (groupsMonthlyRegionChart) activeCharts.push(groupsMonthlyRegionChart);
 
   // Members: per-month by category (stacked bar chart)
   const membersMonthlyByCategory = buildStackedMonthlySeries(members.per_month_by_category || {});
   const membersMonthlyCategoryChart = initChart(
-    'members-monthly-category-chart',
+    "members-monthly-category-chart",
     createStackedMonthlyChart(
-      'New Members per Month by category',
+      "New Members per Month by category",
       membersMonthlyByCategory.months,
       membersMonthlyByCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (membersMonthlyCategoryChart) activeCharts.push(membersMonthlyCategoryChart);
 
   // Members: per-month by region (stacked bar chart)
   const membersMonthlyByRegion = buildStackedMonthlySeries(members.per_month_by_region || {});
   const membersMonthlyRegionChart = initChart(
-    'members-monthly-region-chart',
+    "members-monthly-region-chart",
     createStackedMonthlyChart(
-      'New Members per Month by region',
+      "New Members per Month by region",
       membersMonthlyByRegion.months,
       membersMonthlyByRegion.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (membersMonthlyRegionChart) activeCharts.push(membersMonthlyRegionChart);
 
   // Members: cumulative trend (area chart)
   const membersRunningChart = initChart(
-    'members-running-chart',
-    createAreaChart('Members over time', 'Members', members.running_total || [], palette)
+    "members-running-chart",
+    createAreaChart("Members over time", "Members", members.running_total || [], palette),
   );
   if (membersRunningChart) activeCharts.push(membersRunningChart);
 
   // Members: monthly (bar chart)
   const membersMonthlyChart = initChart(
-    'members-monthly-chart',
-    createMonthlyBarChart('New Members per Month', 'Members', members.per_month, palette)
+    "members-monthly-chart",
+    createMonthlyBarChart("New Members per Month", "Members", members.per_month, palette),
   );
   if (membersMonthlyChart) activeCharts.push(membersMonthlyChart);
 
   // Members: by category (horizontal bar chart)
   const membersCategory = toCategorySeries(members.total_by_category || []);
   const membersCategoryChart = initChart(
-    'members-category-chart',
-    createHorizontalBarChart('Members by Group Category', membersCategory, palette)
+    "members-category-chart",
+    createHorizontalBarChart("Members by Group Category", membersCategory, palette),
   );
   if (membersCategoryChart) activeCharts.push(membersCategoryChart);
 
   // Members: by region (pie chart)
   const membersRegion = toCategorySeries(members.total_by_region || []);
   const membersRegionChart = initChart(
-    'members-region-chart',
-    createPieChart('Members by Region', 'Members', membersRegion, palette)
+    "members-region-chart",
+    createPieChart("Members by Region", "Members", membersRegion, palette),
   );
   if (membersRegionChart) activeCharts.push(membersRegionChart);
 
   // Members: running total by category (stacked area chart)
   const membersRunningByCategory = buildStackedTimeSeries(members.running_total_by_category || {});
   const membersRunningCategoryChart = initChart(
-    'members-running-category-chart',
-    createStackedAreaChart(
-      'Members over time by category',
-      membersRunningByCategory.series,
-      palette
-    )
+    "members-running-category-chart",
+    createStackedAreaChart("Members over time by category", membersRunningByCategory.series, palette),
   );
   if (membersRunningCategoryChart) activeCharts.push(membersRunningCategoryChart);
 
   // Members: running total by region (stacked area chart)
   const membersRunningByRegion = buildStackedTimeSeries(members.running_total_by_region || {});
   const membersRunningRegionChart = initChart(
-    'members-running-region-chart',
-    createStackedAreaChart('Members over time by region', membersRunningByRegion.series, palette)
+    "members-running-region-chart",
+    createStackedAreaChart("Members over time by region", membersRunningByRegion.series, palette),
   );
   if (membersRunningRegionChart) activeCharts.push(membersRunningRegionChart);
 
   // Events: cumulative trend (area chart)
   const eventsRunningChart = initChart(
-    'events-running-chart',
-    createAreaChart('Events over time', 'Events', events.running_total || [], palette)
+    "events-running-chart",
+    createAreaChart("Events over time", "Events", events.running_total || [], palette),
   );
   if (eventsRunningChart) activeCharts.push(eventsRunningChart);
 
   // Events: monthly (bar chart)
   const eventsMonthlyChart = initChart(
-    'events-monthly-chart',
-    createMonthlyBarChart('New Events per Month', 'Events', events.per_month, palette)
+    "events-monthly-chart",
+    createMonthlyBarChart("New Events per Month", "Events", events.per_month, palette),
   );
   if (eventsMonthlyChart) activeCharts.push(eventsMonthlyChart);
 
   // Events: by group category (horizontal bar chart)
   const eventsGroupCategory = toCategorySeries(events.total_by_group_category || []);
   const eventsGroupCategoryChart = initChart(
-    'events-group-category-chart',
-    createHorizontalBarChart('Events by Group Category', eventsGroupCategory, palette)
+    "events-group-category-chart",
+    createHorizontalBarChart("Events by Group Category", eventsGroupCategory, palette),
   );
   if (eventsGroupCategoryChart) activeCharts.push(eventsGroupCategoryChart);
 
   // Events: by region (pie chart)
   const eventsRegion = toCategorySeries(events.total_by_group_region || []);
   const eventsRegionChart = initChart(
-    'events-region-chart',
-    createPieChart('Events by Region', 'Events', eventsRegion, palette)
+    "events-region-chart",
+    createPieChart("Events by Region", "Events", eventsRegion, palette),
   );
   if (eventsRegionChart) activeCharts.push(eventsRegionChart);
 
   // Events: by event category (horizontal bar chart)
   const eventsCategory = toCategorySeries(events.total_by_event_category || []);
   const eventsCategoryChart = initChart(
-    'events-category-chart',
-    createHorizontalBarChart('Events by Type', eventsCategory, palette)
+    "events-category-chart",
+    createHorizontalBarChart("Events by Type", eventsCategory, palette),
   );
   if (eventsCategoryChart) activeCharts.push(eventsCategoryChart);
 
   // Events: running total by group category (stacked area chart)
-  const eventsRunningByGroupCategory = buildStackedTimeSeries(
-    events.running_total_by_group_category || {}
-  );
+  const eventsRunningByGroupCategory = buildStackedTimeSeries(events.running_total_by_group_category || {});
   const eventsRunningGroupCategoryChart = initChart(
-    'events-running-group-category-chart',
+    "events-running-group-category-chart",
     createStackedAreaChart(
-      'Events over time by group category',
+      "Events over time by group category",
       eventsRunningByGroupCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (eventsRunningGroupCategoryChart) activeCharts.push(eventsRunningGroupCategoryChart);
 
   // Events: running total by group region (stacked area chart)
   const eventsRunningByGroupRegion = buildStackedTimeSeries(events.running_total_by_group_region || {});
   const eventsRunningGroupRegionChart = initChart(
-    'events-running-group-region-chart',
-    createStackedAreaChart(
-      'Events over time by group region',
-      eventsRunningByGroupRegion.series,
-      palette
-    )
+    "events-running-group-region-chart",
+    createStackedAreaChart("Events over time by group region", eventsRunningByGroupRegion.series, palette),
   );
   if (eventsRunningGroupRegionChart) activeCharts.push(eventsRunningGroupRegionChart);
 
   // Events: running total by event category (stacked area chart)
-  const eventsRunningByEventCategory = buildStackedTimeSeries(
-    events.running_total_by_event_category || {}
-  );
+  const eventsRunningByEventCategory = buildStackedTimeSeries(events.running_total_by_event_category || {});
   const eventsRunningEventCategoryChart = initChart(
-    'events-running-event-category-chart',
+    "events-running-event-category-chart",
     createStackedAreaChart(
-      'Events over time by event category',
+      "Events over time by event category",
       eventsRunningByEventCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (eventsRunningEventCategoryChart) activeCharts.push(eventsRunningEventCategoryChart);
 
   // Events: per-month by group category (stacked bar chart)
-  const eventsMonthlyByGroupCategory = buildStackedMonthlySeries(
-    events.per_month_by_group_category || {}
-  );
+  const eventsMonthlyByGroupCategory = buildStackedMonthlySeries(events.per_month_by_group_category || {});
   const eventsMonthlyGroupCategoryChart = initChart(
-    'events-monthly-group-category-chart',
+    "events-monthly-group-category-chart",
     createStackedMonthlyChart(
-      'New Events per Month by group category',
+      "New Events per Month by group category",
       eventsMonthlyByGroupCategory.months,
       eventsMonthlyByGroupCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (eventsMonthlyGroupCategoryChart) activeCharts.push(eventsMonthlyGroupCategoryChart);
 
   // Events: per-month by group region (stacked bar chart)
   const eventsMonthlyByGroupRegion = buildStackedMonthlySeries(events.per_month_by_group_region || {});
   const eventsMonthlyGroupRegionChart = initChart(
-    'events-monthly-group-region-chart',
+    "events-monthly-group-region-chart",
     createStackedMonthlyChart(
-      'New Events per Month by group region',
+      "New Events per Month by group region",
       eventsMonthlyByGroupRegion.months,
       eventsMonthlyByGroupRegion.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (eventsMonthlyGroupRegionChart) activeCharts.push(eventsMonthlyGroupRegionChart);
 
   // Events: per-month by event category (stacked bar chart)
   const eventsMonthlyByEventCategory = buildStackedMonthlySeries(events.per_month_by_event_category || {});
   const eventsMonthlyEventCategoryChart = initChart(
-    'events-monthly-event-category-chart',
+    "events-monthly-event-category-chart",
     createStackedMonthlyChart(
-      'New Events per Month by event category',
+      "New Events per Month by event category",
       eventsMonthlyByEventCategory.months,
       eventsMonthlyByEventCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (eventsMonthlyEventCategoryChart) activeCharts.push(eventsMonthlyEventCategoryChart);
 
   // Attendees: cumulative (area chart)
   const attendeesRunningChart = initChart(
-    'attendees-running-chart',
-    createAreaChart('Attendees over time', 'Attendees', attendees.running_total || [], palette)
+    "attendees-running-chart",
+    createAreaChart("Attendees over time", "Attendees", attendees.running_total || [], palette),
   );
   if (attendeesRunningChart) activeCharts.push(attendeesRunningChart);
 
   // Attendees: monthly (bar chart)
   const attendeesMonthlyChart = initChart(
-    'attendees-monthly-chart',
-    createMonthlyBarChart('New Attendees per Month', 'Attendees', attendees.per_month, palette)
+    "attendees-monthly-chart",
+    createMonthlyBarChart("New Attendees per Month", "Attendees", attendees.per_month, palette),
   );
   if (attendeesMonthlyChart) activeCharts.push(attendeesMonthlyChart);
 
   // Attendees: by event category (horizontal bar chart)
   const attendeesCategory = toCategorySeries(attendees.total_by_event_category || []);
   const attendeesCategoryChart = initChart(
-    'attendees-category-chart',
-    createHorizontalBarChart('Attendees by Event Type', attendeesCategory, palette)
+    "attendees-category-chart",
+    createHorizontalBarChart("Attendees by Event Type", attendeesCategory, palette),
   );
   if (attendeesCategoryChart) activeCharts.push(attendeesCategoryChart);
 
   // Attendees: by region (pie chart)
   const attendeesRegion = toCategorySeries(attendees.total_by_group_region || []);
   const attendeesRegionChart = initChart(
-    'attendees-region-chart',
-    createPieChart('Attendees by Region', 'Attendees', attendeesRegion, palette)
+    "attendees-region-chart",
+    createPieChart("Attendees by Region", "Attendees", attendeesRegion, palette),
   );
   if (attendeesRegionChart) activeCharts.push(attendeesRegionChart);
 
   // Attendees: running total by group category (stacked area chart)
   const attendeesRunningByGroupCategory = buildStackedTimeSeries(
-    attendees.running_total_by_group_category || {}
+    attendees.running_total_by_group_category || {},
   );
   const attendeesRunningGroupCategoryChart = initChart(
-    'attendees-running-group-category-chart',
+    "attendees-running-group-category-chart",
     createStackedAreaChart(
-      'Attendees over time by group category',
+      "Attendees over time by group category",
       attendeesRunningByGroupCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (attendeesRunningGroupCategoryChart) activeCharts.push(attendeesRunningGroupCategoryChart);
 
   // Attendees: running total by group region (stacked area chart)
-  const attendeesRunningByGroupRegion = buildStackedTimeSeries(
-    attendees.running_total_by_group_region || {}
-  );
+  const attendeesRunningByGroupRegion = buildStackedTimeSeries(attendees.running_total_by_group_region || {});
   const attendeesRunningGroupRegionChart = initChart(
-    'attendees-running-group-region-chart',
+    "attendees-running-group-region-chart",
     createStackedAreaChart(
-      'Attendees over time by group region',
+      "Attendees over time by group region",
       attendeesRunningByGroupRegion.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (attendeesRunningGroupRegionChart) activeCharts.push(attendeesRunningGroupRegionChart);
 
   // Attendees: running total by event category (stacked area chart)
   const attendeesRunningByEventCategory = buildStackedTimeSeries(
-    attendees.running_total_by_event_category || {}
+    attendees.running_total_by_event_category || {},
   );
   const attendeesRunningEventCategoryChart = initChart(
-    'attendees-running-event-category-chart',
+    "attendees-running-event-category-chart",
     createStackedAreaChart(
-      'Attendees over time by event category',
+      "Attendees over time by event category",
       attendeesRunningByEventCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (attendeesRunningEventCategoryChart) activeCharts.push(attendeesRunningEventCategoryChart);
 
   // Attendees: per-month by group category (stacked bar chart)
   const attendeesMonthlyByGroupCategory = buildStackedMonthlySeries(
-    attendees.per_month_by_group_category || {}
+    attendees.per_month_by_group_category || {},
   );
   const attendeesMonthlyGroupCategoryChart = initChart(
-    'attendees-monthly-group-category-chart',
+    "attendees-monthly-group-category-chart",
     createStackedMonthlyChart(
-      'New Attendees per Month by group category',
+      "New Attendees per Month by group category",
       attendeesMonthlyByGroupCategory.months,
       attendeesMonthlyByGroupCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (attendeesMonthlyGroupCategoryChart) activeCharts.push(attendeesMonthlyGroupCategoryChart);
 
   // Attendees: per-month by group region (stacked bar chart)
-  const attendeesMonthlyByGroupRegion = buildStackedMonthlySeries(
-    attendees.per_month_by_group_region || {}
-  );
+  const attendeesMonthlyByGroupRegion = buildStackedMonthlySeries(attendees.per_month_by_group_region || {});
   const attendeesMonthlyGroupRegionChart = initChart(
-    'attendees-monthly-group-region-chart',
+    "attendees-monthly-group-region-chart",
     createStackedMonthlyChart(
-      'New Attendees per Month by group region',
+      "New Attendees per Month by group region",
       attendeesMonthlyByGroupRegion.months,
       attendeesMonthlyByGroupRegion.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (attendeesMonthlyGroupRegionChart) activeCharts.push(attendeesMonthlyGroupRegionChart);
 
   // Attendees: per-month by event category (stacked bar chart)
   const attendeesMonthlyByEventCategory = buildStackedMonthlySeries(
-    attendees.per_month_by_event_category || {}
+    attendees.per_month_by_event_category || {},
   );
   const attendeesMonthlyEventCategoryChart = initChart(
-    'attendees-monthly-event-category-chart',
+    "attendees-monthly-event-category-chart",
     createStackedMonthlyChart(
-      'New Attendees per Month by event category',
+      "New Attendees per Month by event category",
       attendeesMonthlyByEventCategory.months,
       attendeesMonthlyByEventCategory.series,
-      palette
-    )
+      palette,
+    ),
   );
   if (attendeesMonthlyEventCategoryChart) activeCharts.push(attendeesMonthlyEventCategoryChart);
 
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     activeCharts.forEach((chart) => chart.resize());
   });
 }
