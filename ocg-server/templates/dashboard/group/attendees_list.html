@@ -36,12 +36,12 @@
             {% if let Some(selected_event) = event -%}
               data-event-id="{{ selected_event.event_id }}" data-event-name="{{ selected_event.name }}" data-group-name="{{ selected_event.group_name }}" data-event-slug="{{ selected_event.slug }}" data-check-in-url="/check-in/{{ selected_event.event_id }}" data-qr-code-url="/dashboard/group/check-in/{{ selected_event.event_id }}/qr-code"
               {% if let Some(start_time) = selected_event.starts_at -%}
-                data-event-start="{{ start_time.with_timezone(selected_event.timezone).format("%b %e · %-I:%M%p %Z") }}"
+                data-event-start="{{ start_time.with_timezone(selected_event.timezone).format("%b %e · %I:%M %p %Z") }}"
               {% endif -%}
             {% endif -%}>Show QR Code</button>
     <button id="open-attendee-notification-modal"
             type="button"
-            class="btn-primary w-full lg:w-auto"
+            class="btn-primary-outline w-full lg:w-auto"
             {% if event.is_none() || attendees.is_empty() -%}
               disabled title="Select an event with attendees to send emails."
             {% endif -%}
@@ -234,7 +234,7 @@
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
   <div id="overlay-event-qr-code-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-  <div class="relative p-4 w-full max-w-2xl max-h-full">
+  <div class="relative p-4 w-full max-w-4xl max-h-full">
     <div class="relative bg-white rounded-lg shadow" data-qr-print-root="true">
       <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
         <h3 id="event-qr-code-modal-title"
@@ -247,19 +247,22 @@
         </button>
       </div>
       <div class="px-4 py-6 md:px-8 md:py-10">
-        <div id="event-qr-code-print-area" class="flex flex-col lg:flex-row gap-6">
+        <div id="event-qr-code-print-area"
+             class="flex flex-col lg:flex-row gap-6 bg-white border border-stone-200 rounded-lg p-4 md:p-6">
           <div class="flex-1 flex flex-col items-center text-center">
             <div id="event-qr-code-container"
-                 class="relative bg-white border border-stone-200 rounded-lg p-4 shadow-sm w-full flex items-center justify-center">
+                 class="relative w-full flex items-center justify-center">
               <img id="event-qr-code-image"
                    src=""
+                   height="auto"
+                   width="auto"
                    alt="Event check-in QR code"
                    class="max-w-[320px] w-full h-auto" />
             </div>
-            <p class="text-xs text-stone-500 mt-3">Scan to open the attendee check-in page.</p>
+            <p class="text-xs text-stone-500">Scan to open the attendee check-in page.</p>
           </div>
           <div class="flex-1 space-y-4">
-            <div>
+            <div class="mt-7">
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Group</p>
               <p id="event-qr-code-group-name"
                  class="text-base font-semibold text-stone-900 break-words line-clamp-2"></p>
@@ -270,7 +273,7 @@
                  class="text-base font-semibold text-stone-900 break-words line-clamp-3"></p>
             </div>
             <div>
-              <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Starts</p>
+              <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Date</p>
               <p id="event-qr-code-start"
                  class="text-base font-medium text-stone-700 break-words"></p>
             </div>
