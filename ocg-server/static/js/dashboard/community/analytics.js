@@ -11,6 +11,94 @@ import {
   createStackedMonthlyChart,
   createStackedAreaChart,
 } from "/static/js/dashboard/common.js";
+import "/static/js/common/svg-spinner.js";
+
+const chartIdsByTab = {
+  groups: [
+    "groups-running-chart",
+    "groups-monthly-chart",
+    "groups-category-chart",
+    "groups-region-chart",
+    "groups-running-category-chart",
+    "groups-running-region-chart",
+    "groups-monthly-category-chart",
+    "groups-monthly-region-chart",
+  ],
+  members: [
+    "members-running-chart",
+    "members-monthly-chart",
+    "members-category-chart",
+    "members-region-chart",
+    "members-running-category-chart",
+    "members-running-region-chart",
+    "members-monthly-category-chart",
+    "members-monthly-region-chart",
+  ],
+  events: [
+    "events-running-chart",
+    "events-monthly-chart",
+    "events-group-category-chart",
+    "events-region-chart",
+    "events-category-chart",
+    "events-running-group-category-chart",
+    "events-running-group-region-chart",
+    "events-running-event-category-chart",
+    "events-monthly-group-category-chart",
+    "events-monthly-group-region-chart",
+    "events-monthly-event-category-chart",
+  ],
+  attendees: [
+    "attendees-running-chart",
+    "attendees-monthly-chart",
+    "attendees-category-chart",
+    "attendees-region-chart",
+    "attendees-running-group-category-chart",
+    "attendees-running-group-region-chart",
+    "attendees-running-event-category-chart",
+    "attendees-monthly-group-category-chart",
+    "attendees-monthly-group-region-chart",
+    "attendees-monthly-event-category-chart",
+  ],
+};
+
+const readyCharts = new Set();
+
+function ensureSpinner(el) {
+  if (!el || readyCharts.has(el.id)) {
+    return;
+  }
+
+  const hasSpinner = el.querySelector(".chart-spinner");
+  if (!hasSpinner) {
+    el.classList.add("relative");
+    const spinner = document.createElement("div");
+    spinner.className =
+      "chart-spinner absolute inset-0 flex items-center justify-center " +
+      "bg-white/80 backdrop-blur-[1px]";
+    spinner.innerHTML = '<svg-spinner size="size-8"></svg-spinner>';
+    el.appendChild(spinner);
+  } else {
+    hasSpinner.classList.remove("hidden");
+  }
+}
+
+function showTabSpinners(tab) {
+  (chartIdsByTab[tab] || []).forEach((id) => {
+    const el = document.getElementById(id);
+    ensureSpinner(el);
+  });
+}
+
+function markTabChartsReady(tab) {
+  (chartIdsByTab[tab] || []).forEach((id) => {
+    readyCharts.add(id);
+    const el = document.getElementById(id);
+    const spinner = el?.querySelector(".chart-spinner");
+    if (spinner) {
+      spinner.remove();
+    }
+  });
+}
 
 /**
  * Render groups charts.
@@ -403,7 +491,7 @@ function setupAnalyticsTabs(stats, palette) {
 
   const initTabCharts = (tab) => {
     if (initializedTabs.has(tab) || typeof echarts === "undefined") {
-      return;
+      return false;
     }
 
     let charts = [];
@@ -421,6 +509,8 @@ function setupAnalyticsTabs(stats, palette) {
     hydratedCharts.forEach((chart) => allCharts.add(chart));
     chartsByTab.set(tab, hydratedCharts);
     initializedTabs.add(tab);
+    markTabChartsReady(tab);
+    return true;
   };
 
   const showTab = (tab) => {
@@ -433,11 +523,11 @@ function setupAnalyticsTabs(stats, palette) {
       content.classList.toggle("hidden", !visible);
     });
 
+    showTabSpinners(tab);
     initTabCharts(tab);
     (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
   };
 
-  initTabCharts("groups");
   showTab("groups");
 
   tabButtons.forEach((button) => {
@@ -450,6 +540,17 @@ function setupAnalyticsTabs(stats, palette) {
   window.addEventListener("resize", () => {
     allCharts.forEach((chart) => chart.resize());
   });
+}
+
+/**
+ * Render spinner overlays for the active analytics tab before charts are ready.
+ */
+export function showActiveAnalyticsSpinners() {
+  const activeButton = document.querySelector('[data-analytics-tab][data-active="true"]');
+  const tab = activeButton?.dataset.analyticsTab;
+  if (tab) {
+    showTabSpinners(tab);
+  }
 }
 
 /**

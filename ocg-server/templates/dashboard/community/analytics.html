@@ -267,31 +267,9 @@ description = "Community statistics and growth trends.") %}
 {# djlint:off #}
 <script type="module">
   import {
-    initAnalyticsCharts
+    initAnalyticsCharts,
+    showActiveAnalyticsSpinners
   } from '/static/js/dashboard/community/analytics.js';
-
-  // Add loading indicators to chart containers
-  const chartIds = [
-    'groups-running-chart', 'groups-monthly-chart', 'groups-category-chart', 'groups-region-chart',
-    'groups-running-category-chart', 'groups-running-region-chart',
-    'groups-monthly-category-chart', 'groups-monthly-region-chart',
-    'members-running-chart', 'members-monthly-chart', 'members-category-chart', 'members-region-chart',
-    'members-running-category-chart', 'members-running-region-chart',
-    'members-monthly-category-chart', 'members-monthly-region-chart',
-    'events-running-chart', 'events-monthly-chart', 'events-group-category-chart', 'events-region-chart', 'events-category-chart',
-    'events-running-group-category-chart', 'events-running-group-region-chart', 'events-running-event-category-chart',
-    'events-monthly-group-category-chart', 'events-monthly-group-region-chart', 'events-monthly-event-category-chart',
-    'attendees-running-chart', 'attendees-monthly-chart', 'attendees-category-chart', 'attendees-region-chart',
-    'attendees-running-group-category-chart', 'attendees-running-group-region-chart', 'attendees-running-event-category-chart',
-    'attendees-monthly-group-category-chart', 'attendees-monthly-group-region-chart', 'attendees-monthly-event-category-chart'
-  ];
-
-  chartIds.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.innerHTML = '<div class="flex items-center justify-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div></div>';
-    }
-  });
 
   // Wait for ECharts to be available
   function waitForEcharts(callback, maxAttempts = 50) {
@@ -308,6 +286,7 @@ description = "Community statistics and growth trends.") %}
   }
 
   const stats = {{ stats | json | safe }};
+  showActiveAnalyticsSpinners();
   waitForEcharts(() => initAnalyticsCharts(stats));
 </script>
 {# djlint:on #}
