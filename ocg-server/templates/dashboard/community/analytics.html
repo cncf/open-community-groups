@@ -270,22 +270,6 @@ description = "Community statistics and growth trends.") %}
     initAnalyticsCharts
   } from '/static/js/dashboard/community/analytics.js';
 
-  // Humanize large numbers
-  function humanizeNumber(num) {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-    }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-    }
-    return num.toLocaleString();
-  }
-
-  document.querySelectorAll('[data-humanize]').forEach(el => {
-    const value = parseInt(el.dataset.humanize, 10);
-    el.textContent = humanizeNumber(value);
-  });
-
   // Add loading indicators to chart containers
   const chartIds = [
     'groups-running-chart', 'groups-monthly-chart', 'groups-category-chart', 'groups-region-chart',
