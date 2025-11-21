@@ -131,6 +131,7 @@ fn generate_palette(color: &str) -> Result<Palette> {
         (700, darken(0.2)),
         (800, darken(0.35)),
         (900, darken(0.5)),
+        (950, darken(0.65)),
     ]);
 
     Ok(palette)
@@ -157,6 +158,7 @@ mod tests {
         assert_eq!(palette[&700], "#AB1B76");
         assert_eq!(palette[&800], "#8B1660");
         assert_eq!(palette[&900], "#6B114A");
+        assert_eq!(palette[&950], "#4B0C33");
     }
 
     #[test]
