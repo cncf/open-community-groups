@@ -15,90 +15,28 @@ import {
 import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/debounce.js";
 
-const chartIdsByTab = {
-  groups: [
-    "groups-running-chart",
-    "groups-monthly-chart",
-    "groups-category-chart",
-    "groups-region-chart",
-    "groups-running-category-chart",
-    "groups-running-region-chart",
-    "groups-monthly-category-chart",
-    "groups-monthly-region-chart",
-  ],
-  members: [
-    "members-running-chart",
-    "members-monthly-chart",
-    "members-category-chart",
-    "members-region-chart",
-    "members-running-category-chart",
-    "members-running-region-chart",
-    "members-monthly-category-chart",
-    "members-monthly-region-chart",
-  ],
-  events: [
-    "events-running-chart",
-    "events-monthly-chart",
-    "events-group-category-chart",
-    "events-region-chart",
-    "events-category-chart",
-    "events-running-group-category-chart",
-    "events-running-group-region-chart",
-    "events-running-event-category-chart",
-    "events-monthly-group-category-chart",
-    "events-monthly-group-region-chart",
-    "events-monthly-event-category-chart",
-  ],
-  attendees: [
-    "attendees-running-chart",
-    "attendees-monthly-chart",
-    "attendees-category-chart",
-    "attendees-region-chart",
-    "attendees-running-group-category-chart",
-    "attendees-running-group-region-chart",
-    "attendees-running-event-category-chart",
-    "attendees-monthly-group-category-chart",
-    "attendees-monthly-group-region-chart",
-    "attendees-monthly-event-category-chart",
-  ],
-};
+function showTabSpinner(tab) {
+  const content = document.querySelector(`[data-analytics-content="${tab}"]`);
+  if (!content) return;
 
-const readyCharts = new Set();
-
-function ensureSpinner(el) {
-  if (!el || readyCharts.has(el.id)) {
-    return;
-  }
-
-  const hasSpinner = el.querySelector(".chart-spinner");
-  if (!hasSpinner) {
-    el.classList.add("relative");
+  const existingSpinner = content.querySelector(".tab-spinner");
+  if (!existingSpinner) {
     const spinner = document.createElement("div");
     spinner.className =
-      "chart-spinner absolute inset-0 flex items-center justify-center " + "bg-white/80 backdrop-blur-[1px]";
-    spinner.innerHTML = '<svg-spinner size="size-8"></svg-spinner>';
-    el.appendChild(spinner);
-  } else {
-    hasSpinner.classList.remove("hidden");
+      "tab-spinner absolute inset-0 flex items-center justify-center " +
+      "bg-white/80 backdrop-blur-[1px] z-10";
+    spinner.innerHTML = '<svg-spinner size="size-10"></svg-spinner>';
+    content.style.position = "relative";
+    content.appendChild(spinner);
   }
 }
 
-function showTabSpinners(tab) {
-  (chartIdsByTab[tab] || []).forEach((id) => {
-    const el = document.getElementById(id);
-    ensureSpinner(el);
-  });
-}
-
-function markTabChartsReady(tab) {
-  (chartIdsByTab[tab] || []).forEach((id) => {
-    readyCharts.add(id);
-    const el = document.getElementById(id);
-    const spinner = el?.querySelector(".chart-spinner");
-    if (spinner) {
-      spinner.remove();
-    }
-  });
+function hideTabSpinner(tab) {
+  const content = document.querySelector(`[data-analytics-content="${tab}"]`);
+  const spinner = content?.querySelector(".tab-spinner");
+  if (spinner) {
+    spinner.remove();
+  }
 }
 
 /**
