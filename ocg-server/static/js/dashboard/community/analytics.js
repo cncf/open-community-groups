@@ -456,7 +456,7 @@ function setupAnalyticsTabs(stats, palette) {
     hydratedCharts.forEach((chart) => allCharts.add(chart));
     chartsByTab.set(tab, hydratedCharts);
     initializedTabs.add(tab);
-    markTabChartsReady(tab);
+    hideTabSpinner(tab);
     return true;
   };
 
@@ -470,7 +470,7 @@ function setupAnalyticsTabs(stats, palette) {
       content.classList.toggle("hidden", !visible);
     });
 
-    showTabSpinners(tab);
+    showTabSpinner(tab);
     initTabCharts(tab)
       .then(() => {
         (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
