@@ -48,13 +48,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::tests::*,
-        router::CACHE_CONTROL_NO_CACHE,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::group::analytics::{
-            GroupAttendeesStats, GroupEventsStats, GroupMembersStats, GroupStats,
-        },
     };
 
     #[tokio::test]
@@ -164,27 +159,5 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
-    }
-
-    // Helpers.
-
-    fn sample_group_stats() -> GroupStats {
-        GroupStats {
-            attendees: GroupAttendeesStats {
-                per_month: vec![("2024-01".to_string(), 5)],
-                running_total: vec![(1, 5)],
-                total: 5,
-            },
-            events: GroupEventsStats {
-                per_month: vec![("2024-01".to_string(), 3)],
-                running_total: vec![(1, 3)],
-                total: 3,
-            },
-            members: GroupMembersStats {
-                per_month: vec![("2024-01".to_string(), 2)],
-                running_total: vec![(1, 2)],
-                total: 2,
-            },
-        }
     }
 }

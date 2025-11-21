@@ -31,8 +31,6 @@ pub(crate) async fn page(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use anyhow::anyhow;
     use axum::{
         body::{Body, to_bytes},
@@ -46,13 +44,8 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::mock::MockDB,
-        handlers::tests::*,
-        router::CACHE_CONTROL_NO_CACHE,
+        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::community::analytics::{
-            AttendeesStats, CommunityStats, EventsStats, GroupsStats, MembersStats,
-        },
     };
 
     #[tokio::test]
@@ -168,68 +161,5 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
-    }
-
-    // Helpers.
-
-    fn sample_community_stats() -> CommunityStats {
-        CommunityStats {
-            attendees: AttendeesStats {
-                per_month: vec![("2024-01".to_string(), 5)],
-                per_month_by_event_category: HashMap::from([(
-                    "meetup".to_string(),
-                    vec![("2024-01".to_string(), 5)],
-                )]),
-                per_month_by_group_category: HashMap::new(),
-                per_month_by_group_region: HashMap::new(),
-                running_total: vec![(1, 5)],
-                running_total_by_event_category: HashMap::new(),
-                running_total_by_group_category: HashMap::new(),
-                running_total_by_group_region: HashMap::new(),
-                total: 5,
-                total_by_event_category: vec![("meetup".to_string(), 5)],
-                total_by_group_category: vec![],
-                total_by_group_region: vec![],
-            },
-            events: EventsStats {
-                per_month: vec![("2024-01".to_string(), 3)],
-                per_month_by_event_category: HashMap::from([(
-                    "webinar".to_string(),
-                    vec![("2024-01".to_string(), 3)],
-                )]),
-                per_month_by_group_category: HashMap::new(),
-                per_month_by_group_region: HashMap::new(),
-                running_total: vec![(1, 3)],
-                running_total_by_event_category: HashMap::new(),
-                running_total_by_group_category: HashMap::new(),
-                running_total_by_group_region: HashMap::new(),
-                total: 3,
-                total_by_event_category: vec![("webinar".to_string(), 3)],
-                total_by_group_category: vec![],
-                total_by_group_region: vec![],
-            },
-            groups: GroupsStats {
-                per_month: vec![("2024-01".to_string(), 2)],
-                per_month_by_category: HashMap::from([("dev".to_string(), vec![("2024-01".to_string(), 2)])]),
-                per_month_by_region: HashMap::new(),
-                running_total: vec![(1, 2)],
-                running_total_by_category: HashMap::new(),
-                running_total_by_region: HashMap::new(),
-                total: 2,
-                total_by_category: vec![("dev".to_string(), 2)],
-                total_by_region: vec![],
-            },
-            members: MembersStats {
-                per_month: vec![("2024-01".to_string(), 8)],
-                per_month_by_category: HashMap::new(),
-                per_month_by_region: HashMap::new(),
-                running_total: vec![(1, 8)],
-                running_total_by_category: HashMap::new(),
-                running_total_by_region: HashMap::new(),
-                total: 8,
-                total_by_category: vec![],
-                total_by_region: vec![],
-            },
-        }
     }
 }

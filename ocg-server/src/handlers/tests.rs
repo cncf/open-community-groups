@@ -32,8 +32,14 @@ use crate::{
         common::User as TemplateUser,
         community::explore::{self, FilterOption},
         dashboard::{
-            community::{groups::Group, settings::CommunityUpdate, team::CommunityTeamMember},
+            community::{
+                analytics::{AttendeesStats, CommunityStats, EventsStats, GroupsStats, MembersStats},
+                groups::Group,
+                settings::CommunityUpdate,
+                team::CommunityTeamMember,
+            },
             group::{
+                analytics::{GroupAttendeesStats, GroupEventsStats, GroupMembersStats, GroupStats},
                 attendees::Attendee,
                 events::{Event as GroupEventForm, GroupEvents},
                 members::GroupMember,
@@ -160,6 +166,68 @@ pub(crate) fn sample_community_update() -> CommunityUpdate {
         primary_color: "#000000".to_string(),
         title: "Test Community".to_string(),
         ..Default::default()
+    }
+}
+
+/// Sample community stats used in analytics tests.
+pub(crate) fn sample_community_stats() -> CommunityStats {
+    CommunityStats {
+        attendees: AttendeesStats {
+            per_month: vec![("2024-01".to_string(), 5)],
+            per_month_by_event_category: HashMap::from([(
+                "meetup".to_string(),
+                vec![("2024-01".to_string(), 5)],
+            )]),
+            per_month_by_group_category: HashMap::new(),
+            per_month_by_group_region: HashMap::new(),
+            running_total: vec![(1, 5)],
+            running_total_by_event_category: HashMap::new(),
+            running_total_by_group_category: HashMap::new(),
+            running_total_by_group_region: HashMap::new(),
+            total: 5,
+            total_by_event_category: vec![("meetup".to_string(), 5)],
+            total_by_group_category: vec![],
+            total_by_group_region: vec![],
+        },
+        events: EventsStats {
+            per_month: vec![("2024-01".to_string(), 3)],
+            per_month_by_event_category: HashMap::from([(
+                "webinar".to_string(),
+                vec![("2024-01".to_string(), 3)],
+            )]),
+            per_month_by_group_category: HashMap::new(),
+            per_month_by_group_region: HashMap::new(),
+            running_total: vec![(1, 3)],
+            running_total_by_event_category: HashMap::new(),
+            running_total_by_group_category: HashMap::new(),
+            running_total_by_group_region: HashMap::new(),
+            total: 3,
+            total_by_event_category: vec![("webinar".to_string(), 3)],
+            total_by_group_category: vec![],
+            total_by_group_region: vec![],
+        },
+        groups: GroupsStats {
+            per_month: vec![("2024-01".to_string(), 2)],
+            per_month_by_category: HashMap::from([("dev".to_string(), vec![("2024-01".to_string(), 2)])]),
+            per_month_by_region: HashMap::new(),
+            running_total: vec![(1, 2)],
+            running_total_by_category: HashMap::new(),
+            running_total_by_region: HashMap::new(),
+            total: 2,
+            total_by_category: vec![("dev".to_string(), 2)],
+            total_by_region: vec![],
+        },
+        members: MembersStats {
+            per_month: vec![("2024-01".to_string(), 8)],
+            per_month_by_category: HashMap::new(),
+            per_month_by_region: HashMap::new(),
+            running_total: vec![(1, 8)],
+            running_total_by_category: HashMap::new(),
+            running_total_by_region: HashMap::new(),
+            total: 8,
+            total_by_category: vec![],
+            total_by_region: vec![],
+        },
     }
 }
 
@@ -389,6 +457,27 @@ pub(crate) fn sample_group_region() -> GroupRegion {
         normalized_name: "north-america".to_string(),
         order: Some(1),
         region_id: Uuid::new_v4(),
+    }
+}
+
+/// Sample group stats used in analytics tests.
+pub(crate) fn sample_group_stats() -> GroupStats {
+    GroupStats {
+        attendees: GroupAttendeesStats {
+            per_month: vec![("2024-01".to_string(), 5)],
+            running_total: vec![(1, 5)],
+            total: 5,
+        },
+        events: GroupEventsStats {
+            per_month: vec![("2024-01".to_string(), 3)],
+            running_total: vec![(1, 3)],
+            total: 3,
+        },
+        members: GroupMembersStats {
+            per_month: vec![("2024-01".to_string(), 2)],
+            running_total: vec![(1, 2)],
+            total: 2,
+        },
     }
 }
 
