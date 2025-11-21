@@ -33,6 +33,36 @@ export function triggerChangeOnForm(formId) {
 }
 
 /**
+ * Dynamically loads the ECharts library if not already present.
+ * @returns {Promise<void>} Promise that resolves when ECharts is loaded
+ */
+export function loadEChartsScript() {
+  return new Promise((resolve, reject) => {
+    // Check if ECharts is already loaded
+    if (typeof window.echarts !== "undefined") {
+      resolve();
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src*="echarts"]');
+    if (existingScript) {
+      // Wait for existing script to load
+      existingScript.addEventListener("load", () => resolve());
+      existingScript.addEventListener("error", () => reject(new Error("Failed to load ECharts")));
+      return;
+    }
+
+    // Create and inject script tag
+    const script = document.createElement("script");
+    script.src = "/static/vendor/js/echarts.v6.0.0.min.js";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load ECharts"));
+    document.head.appendChild(script);
+  });
+}
+
+/**
  * Read theme colors from CSS variables to keep charts aligned with the dashboard palette.
  * @returns {Object} Primary color scale keyed by shade.
  */

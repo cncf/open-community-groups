@@ -10,6 +10,7 @@ import {
   buildStackedTimeSeries,
   createStackedMonthlyChart,
   createStackedAreaChart,
+  loadEChartsScript,
 } from "/static/js/dashboard/common.js";
 import "/static/js/common/svg-spinner.js";
 
@@ -106,7 +107,9 @@ function markTabChartsReady(tab) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-function initGroupsCharts(groups = {}, palette) {
+async function initGroupsCharts(groups = {}, palette) {
+  await loadEChartsScript();
+
   const charts = [];
 
   const runningChart = initChart(
@@ -186,7 +189,9 @@ function initGroupsCharts(groups = {}, palette) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-function initMembersCharts(members = {}, palette) {
+async function initMembersCharts(members = {}, palette) {
+  await loadEChartsScript();
+
   const charts = [];
 
   const monthlyByCategory = buildStackedMonthlySeries(members.per_month_by_category || {});
@@ -270,7 +275,9 @@ function initMembersCharts(members = {}, palette) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-function initEventsCharts(events = {}, palette) {
+async function initEventsCharts(events = {}, palette) {
+  await loadEChartsScript();
+
   const charts = [];
 
   const runningChart = initChart(
@@ -382,7 +389,9 @@ function initEventsCharts(events = {}, palette) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-function initAttendeesCharts(attendees = {}, palette) {
+async function initAttendeesCharts(attendees = {}, palette) {
+  await loadEChartsScript();
+
   const charts = [];
 
   const runningChart = initChart(
@@ -489,20 +498,20 @@ function setupAnalyticsTabs(stats, palette) {
   const chartsByTab = new Map();
   const allCharts = new Set();
 
-  const initTabCharts = (tab) => {
-    if (initializedTabs.has(tab) || typeof echarts === "undefined") {
+  const initTabCharts = async (tab) => {
+    if (initializedTabs.has(tab)) {
       return false;
     }
 
     let charts = [];
     if (tab === "groups") {
-      charts = initGroupsCharts(stats.groups, palette);
+      charts = await initGroupsCharts(stats.groups, palette);
     } else if (tab === "members") {
-      charts = initMembersCharts(stats.members, palette);
+      charts = await initMembersCharts(stats.members, palette);
     } else if (tab === "events") {
-      charts = initEventsCharts(stats.events, palette);
+      charts = await initEventsCharts(stats.events, palette);
     } else if (tab === "attendees") {
-      charts = initAttendeesCharts(stats.attendees, palette);
+      charts = await initAttendeesCharts(stats.attendees, palette);
     }
 
     const hydratedCharts = charts.filter(Boolean);
@@ -524,8 +533,11 @@ function setupAnalyticsTabs(stats, palette) {
     });
 
     showTabSpinners(tab);
-    initTabCharts(tab);
-    (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
+    initTabCharts(tab)
+      .then(() => {
+        (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
+      })
+      .catch((error) => console.error("Failed to initialize analytics charts", error));
   };
 
   showTab("groups");
@@ -557,11 +569,12 @@ export function showActiveAnalyticsSpinners() {
  * Render analytics charts with lazy tab initialization.
  * @param {Object} stats - Community statistics payload from the server.
  */
-export function initAnalyticsCharts(stats) {
-  if (!stats || typeof echarts === "undefined") {
+export async function initAnalyticsCharts(stats) {
+  if (!stats) {
     return;
   }
 
+  await loadEChartsScript();
   const palette = getThemePalette();
   setupAnalyticsTabs(stats, palette);
 }
