@@ -15,15 +15,11 @@
 -- names as keys.
 create or replace function get_community_stats(p_community_id uuid)
 returns json as $$
--- ========================================================================
--- COMMON TABLE EXPRESSIONS (shared filtered datasets)
--- ========================================================================
 with params as (
     select
         p_community_id as community_id,
         current_date - interval '2 years' as period_start
 ),
--- Lookup tables
 event_categories as (
     select
         ec.event_category_id,
@@ -45,7 +41,6 @@ regions as (
     from region r
     join params p on r.community_id = p.community_id
 ),
--- Community groups that are active and not deleted
 filtered_groups as (
     select
         g.group_id,
@@ -59,7 +54,6 @@ filtered_groups as (
         and g.active = true
         and g.deleted = false
 ),
--- Members that belong to any of the filtered groups
 members as (
     select
         gm.group_id,
@@ -70,8 +64,7 @@ members as (
     from group_member gm
     join filtered_groups fg on fg.group_id = gm.group_id
 ),
--- Events in the community groups that are published, not canceled, and not deleted
-filtered_events as (
+events as (
     select
         e.event_id,
         e.event_category_id,
@@ -86,23 +79,21 @@ filtered_events as (
         and e.canceled = false
         and e.deleted = false
 ),
--- Filtered events that have a start date
-filtered_events_with_start as (
+events_with_start as (
     select *
-    from filtered_events
+    from events
     where starts_at is not null
 ),
--- Attendees to any of the filtered events
 attendees as (
     select
         ea.event_id,
         ea.created_at,
-        fe.event_category_id,
-        fe.group_category_id,
-        fe.region_id,
+        e.event_category_id,
+        e.group_category_id,
+        e.region_id,
         timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
     from event_attendee ea
-    join filtered_events fe on fe.event_id = ea.event_id
+    join events e on e.event_id = ea.event_id
 )
 select json_strip_nulls(json_build_object(
     -- ========================================================================
@@ -389,15 +380,15 @@ select json_strip_nulls(json_build_object(
     -- EVENTS STATISTICS
     -- ========================================================================
     'events', json_build_object(
-        'total', (select count(*)::int from filtered_events),
+        'total', (select count(*)::int from events),
         'total_by_event_category', coalesce((
             select json_agg(json_build_array(ec.name, stats.count) order by ec.name)
             from (
                 select
-                    fe.event_category_id,
+                    e.event_category_id,
                     count(*)::int as count
-                from filtered_events fe
-                group by fe.event_category_id
+                from events e
+                group by e.event_category_id
             ) stats
             join event_categories ec on ec.event_category_id = stats.event_category_id
         ), '[]'::json),
@@ -405,10 +396,10 @@ select json_strip_nulls(json_build_object(
             select json_agg(json_build_array(gc.name, stats.count) order by gc.name)
             from (
                 select
-                    fe.group_category_id,
+                    e.group_category_id,
                     count(*)::int as count
-                from filtered_events fe
-                group by fe.group_category_id
+                from events e
+                group by e.group_category_id
             ) stats
             join group_categories gc on gc.group_category_id = stats.group_category_id
         ), '[]'::json),
@@ -416,10 +407,10 @@ select json_strip_nulls(json_build_object(
             select json_agg(json_build_array(r.name, stats.count) order by r.name)
             from (
                 select
-                    fe.region_id,
+                    e.region_id,
                     count(*)::int as count
-                from filtered_events fe
-                group by fe.region_id
+                from events e
+                group by e.region_id
             ) stats
             join regions r on r.region_id = stats.region_id
         ), '[]'::json),
@@ -431,10 +422,10 @@ select json_strip_nulls(json_build_object(
                     sum(month_count) over (order by month) ::int as cumulative_total
                 from (
                     select
-                        fes.starts_month as month,
+                        ews.starts_month as month,
                         count(*)::int as month_count
-                    from filtered_events_with_start fes
-                    group by fes.starts_month
+                    from events_with_start ews
+                    group by ews.starts_month
                 ) monthly
             ) totals
         ), '[]'::json),
@@ -451,11 +442,11 @@ select json_strip_nulls(json_build_object(
                         sum(month_count) over (partition by ec.name order by month) ::int as cumulative_total
                     from (
                         select
-                            fes.event_category_id,
-                            fes.starts_month as month,
+                            ews.event_category_id,
+                            ews.starts_month as month,
                             count(*)::int as month_count
-                        from filtered_events_with_start fes
-                        group by fes.event_category_id, fes.starts_month
+                        from events_with_start ews
+                        group by ews.event_category_id, ews.starts_month
                     ) monthly
                     join event_categories ec on ec.event_category_id = monthly.event_category_id
                 ) categorized
@@ -475,11 +466,11 @@ select json_strip_nulls(json_build_object(
                         sum(month_count) over (partition by gc.name order by month) ::int as cumulative_total
                     from (
                         select
-                            fes.group_category_id,
-                            fes.starts_month as month,
+                            ews.group_category_id,
+                            ews.starts_month as month,
                             count(*)::int as month_count
-                        from filtered_events_with_start fes
-                        group by fes.group_category_id, fes.starts_month
+                        from events_with_start ews
+                        group by ews.group_category_id, ews.starts_month
                     ) monthly
                     join group_categories gc on gc.group_category_id = monthly.group_category_id
                 ) categorized
@@ -499,11 +490,11 @@ select json_strip_nulls(json_build_object(
                         sum(month_count) over (partition by r.name order by month) ::int as cumulative_total
                     from (
                         select
-                            fes.region_id,
-                            fes.starts_month as month,
+                            ews.region_id,
+                            ews.starts_month as month,
                             count(*)::int as month_count
-                        from filtered_events_with_start fes
-                        group by fes.region_id, fes.starts_month
+                        from events_with_start ews
+                        group by ews.region_id, ews.starts_month
                     ) monthly
                     join regions r on r.region_id = monthly.region_id
                 ) categorized
@@ -514,11 +505,11 @@ select json_strip_nulls(json_build_object(
             select json_agg(json_build_array(month_label, month_count) order by month_label)
             from (
                 select
-                    to_char(fes.starts_month, 'YYYY-MM') as month_label,
+                    to_char(ews.starts_month, 'YYYY-MM') as month_label,
                     count(*)::int as month_count
-                from filtered_events_with_start fes
-                join params p on fes.starts_at >= p.period_start
-                group by to_char(fes.starts_month, 'YYYY-MM')
+                from events_with_start ews
+                join params p on ews.starts_at >= p.period_start
+                group by to_char(ews.starts_month, 'YYYY-MM')
             ) monthly
         ), '[]'::json),
         'per_month_by_event_category', coalesce((
@@ -530,12 +521,12 @@ select json_strip_nulls(json_build_object(
                 from (
                     select
                         ec.name as category_name,
-                        to_char(fes.starts_month, 'YYYY-MM') as month_label,
+                        to_char(ews.starts_month, 'YYYY-MM') as month_label,
                         count(*)::int as month_count
-                    from filtered_events_with_start fes
-                    join params p on fes.starts_at >= p.period_start
-                    join event_categories ec on ec.event_category_id = fes.event_category_id
-                    group by ec.name, to_char(fes.starts_month, 'YYYY-MM')
+                    from events_with_start ews
+                    join params p on ews.starts_at >= p.period_start
+                    join event_categories ec on ec.event_category_id = ews.event_category_id
+                    group by ec.name, to_char(ews.starts_month, 'YYYY-MM')
                 ) categorized
                 group by category_name
             ) grouped
@@ -549,12 +540,12 @@ select json_strip_nulls(json_build_object(
                 from (
                     select
                         gc.name as category_name,
-                        to_char(fes.starts_month, 'YYYY-MM') as month_label,
+                        to_char(ews.starts_month, 'YYYY-MM') as month_label,
                         count(*)::int as month_count
-                    from filtered_events_with_start fes
-                    join params p on fes.starts_at >= p.period_start
-                    join group_categories gc on gc.group_category_id = fes.group_category_id
-                    group by gc.name, to_char(fes.starts_month, 'YYYY-MM')
+                    from events_with_start ews
+                    join params p on ews.starts_at >= p.period_start
+                    join group_categories gc on gc.group_category_id = ews.group_category_id
+                    group by gc.name, to_char(ews.starts_month, 'YYYY-MM')
                 ) categorized
                 group by category_name
             ) grouped
@@ -568,12 +559,12 @@ select json_strip_nulls(json_build_object(
                 from (
                     select
                         r.name as region_name,
-                        to_char(fes.starts_month, 'YYYY-MM') as month_label,
+                        to_char(ews.starts_month, 'YYYY-MM') as month_label,
                         count(*)::int as month_count
-                    from filtered_events_with_start fes
-                    join params p on fes.starts_at >= p.period_start
-                    join regions r on r.region_id = fes.region_id
-                    group by r.name, to_char(fes.starts_month, 'YYYY-MM')
+                    from events_with_start ews
+                    join params p on ews.starts_at >= p.period_start
+                    join regions r on r.region_id = ews.region_id
+                    group by r.name, to_char(ews.starts_month, 'YYYY-MM')
                 ) categorized
                 group by region_name
             ) grouped

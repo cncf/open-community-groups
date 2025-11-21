@@ -41,6 +41,7 @@
 {{ template "dashboard-group/delete_group_sponsor.sql" }}
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/get_group_sponsor.sql" }}
+{{ template "dashboard-group/get_group_stats.sql" }}
 {{ template "dashboard-group/list_event_attendees_ids.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}

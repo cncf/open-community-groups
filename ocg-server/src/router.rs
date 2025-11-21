@@ -222,6 +222,7 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
     // Setup router
     Router::new()
         .route("/", get(dashboard::group::home::page))
+        .route("/analytics", get(dashboard::group::analytics::page))
         .route("/attendees", get(dashboard::group::attendees::list_page))
         .route(
             "/check-in/{event_id}/qr-code",
