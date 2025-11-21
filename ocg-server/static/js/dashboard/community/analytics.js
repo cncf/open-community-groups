@@ -13,6 +13,7 @@ import {
   loadEChartsScript,
 } from "/static/js/dashboard/common.js";
 import "/static/js/common/svg-spinner.js";
+import { debounce } from "/static/js/common/debounce.js";
 
 const chartIdsByTab = {
   groups: [
@@ -63,13 +64,6 @@ const chartIdsByTab = {
 };
 
 const readyCharts = new Set();
-const debounce = (fn, delay = 150) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
-};
 
 function ensureSpinner(el) {
   if (!el || readyCharts.has(el.id)) {
@@ -81,8 +75,7 @@ function ensureSpinner(el) {
     el.classList.add("relative");
     const spinner = document.createElement("div");
     spinner.className =
-      "chart-spinner absolute inset-0 flex items-center justify-center " +
-      "bg-white/80 backdrop-blur-[1px]";
+      "chart-spinner absolute inset-0 flex items-center justify-center " + "bg-white/80 backdrop-blur-[1px]";
     spinner.innerHTML = '<svg-spinner size="size-8"></svg-spinner>';
     el.appendChild(spinner);
   } else {
