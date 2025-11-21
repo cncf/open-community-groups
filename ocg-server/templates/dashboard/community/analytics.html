@@ -46,7 +46,7 @@ description = "Community statistics and growth trends.") %}
 </div>
 {# End summary stat cards #}
 
-<div class="hidden md:block mt-9 border-t border-primary-500"></div>
+<div class="hidden md:block mt-9 border-t border-2 border-primary-500"></div>
 
 {# Charts sections #}
 <div class="space-y-14 mt-7">
@@ -270,24 +270,13 @@ description = "Community statistics and growth trends.") %}
     initAnalyticsCharts,
     showActiveAnalyticsSpinners
   } from '/static/js/dashboard/community/analytics.js';
-
-  // Wait for ECharts to be available
-  function waitForEcharts(callback, maxAttempts = 50) {
-    let attempts = 0;
-    const check = () => {
-      if (typeof echarts !== 'undefined') {
-        callback();
-      } else if (attempts < maxAttempts) {
-        attempts++;
-        setTimeout(check, 100);
-      }
-    };
-    check();
-  }
+  import { loadEChartsScript } from '/static/js/dashboard/common.js';
 
   const stats = {{ stats | json | safe }};
   showActiveAnalyticsSpinners();
-  waitForEcharts(() => initAnalyticsCharts(stats));
+  loadEChartsScript()
+    .then(() => initAnalyticsCharts(stats))
+    .catch((error) => console.error('Failed to load ECharts:', error));
 </script>
 {# djlint:on #}
 {# End initialize charts with server data #}
