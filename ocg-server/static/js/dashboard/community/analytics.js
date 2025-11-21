@@ -501,7 +501,7 @@ export function showActiveAnalyticsSpinners() {
   const activeButton = document.querySelector('[data-analytics-tab][data-active="true"]');
   const tab = activeButton?.dataset.analyticsTab;
   if (tab) {
-    showTabSpinners(tab);
+    showTabSpinner(tab);
   }
 }
 
