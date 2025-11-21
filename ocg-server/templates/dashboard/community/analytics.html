@@ -6,7 +6,7 @@ description = "Community statistics and growth trends.") %}
 {# End page title #}
 
 {# Summary stat cards #}
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10">
+<div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mt-10">
   <button type="button"
           data-analytics-tab="groups"
           data-active="true"
@@ -14,7 +14,7 @@ description = "Community statistics and growth trends.") %}
     <div class="text-sm text-stone-600">Groups</div>
     <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.groups.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-500">Active, non-deleted groups</div>
-    <span class="tab-peak absolute left-1/2 top-[calc(100%+2rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[7px] border-r-[7px] border-t-0 border-b-[7px] border-l-transparent border-r-transparent border-b-primary-500"></span>
+    <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
           data-analytics-tab="members"
@@ -23,7 +23,7 @@ description = "Community statistics and growth trends.") %}
     <div class="text-sm text-stone-600">Members</div>
     <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.members.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-500">Members across all groups</div>
-    <span class="tab-peak absolute left-1/2 top-[calc(100%+2rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[7px] border-r-[7px] border-t-0 border-b-[7px] border-l-transparent border-r-transparent border-b-primary-500"></span>
+    <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
           data-analytics-tab="events"
@@ -32,7 +32,7 @@ description = "Community statistics and growth trends.") %}
     <div class="text-sm text-stone-600">Events</div>
     <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.events.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-500">Published, upcoming or past</div>
-    <span class="tab-peak absolute left-1/2 top-[calc(100%+2rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[7px] border-r-[7px] border-t-0 border-b-[7px] border-l-transparent border-r-transparent border-b-primary-500"></span>
+    <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
   <button type="button"
           data-analytics-tab="attendees"
@@ -41,15 +41,15 @@ description = "Community statistics and growth trends.") %}
     <div class="text-sm text-stone-600">Attendees</div>
     <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.attendees.total|num_fmt }}</div>
     <div class="mt-1 text-xs text-stone-500">RSVPs across all events</div>
-    <span class="tab-peak absolute left-1/2 top-[calc(100%+2rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[7px] border-r-[7px] border-t-0 border-b-[7px] border-l-transparent border-r-transparent border-b-primary-500"></span>
+    <span class="tab-peak absolute left-1/2 top-[calc(100%+2.25rem-1px)] -translate-x-1/2 w-0 h-0 border-l-[14px] border-r-[14px] border-t-0 border-b-[14px] border-l-transparent border-r-transparent border-b-stone-200"></span>
   </button>
 </div>
 {# End summary stat cards #}
 
-<div class="hidden md:block mt-9 border-t border-2 border-primary-500"></div>
+<div class="hidden xl:block mt-12 border-t border-stone-200"></div>
 
 {# Charts sections #}
-<div class="space-y-14 mt-7">
+<div class="space-y-14 mt-10">
   {# Groups section #}
   <div data-analytics-content="groups">
     {% call macros::form_title(title = "Groups") %}

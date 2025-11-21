@@ -13,7 +13,7 @@ import {
   loadEChartsScript,
 } from "/static/js/dashboard/common.js";
 import "/static/js/common/svg-spinner.js";
-import { debounce } from "/static/js/common/debounce.js";
+import { debounce } from "/static/js/common/common.js";
 
 function showTabSpinner(tab) {
   const content = document.querySelector(`[data-analytics-content="${tab}"]`);
