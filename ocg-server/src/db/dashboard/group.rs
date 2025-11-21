@@ -1,7 +1,11 @@
 //! Database interface for group dashboard operations.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
+use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
@@ -9,6 +13,7 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::group::{
+        analytics::GroupStats,
         attendees::{Attendee, AttendeesFilters},
         events::{Event, GroupEvents},
         members::GroupMember,
@@ -47,6 +52,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
+
+    /// Retrieves analytics statistics for a group.
+    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupStats>;
 
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
@@ -232,6 +240,34 @@ impl DBDashboardGroup for PgDB {
         let sponsor: GroupSponsor = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(sponsor)
+    }
+
+    /// [`DBDashboardGroup::get_group_stats`]
+    #[instrument(skip(self), err)]
+    async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupStats> {
+        #[cached(
+            time = 21600,
+            key = "(Uuid, Uuid)",
+            convert = "{ (community_id, group_id) }",
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client, community_id: Uuid, group_id: Uuid) -> Result<GroupStats> {
+            trace!(community_id = ?community_id, group_id = ?group_id, "db: get group stats");
+
+            let row = db
+                .query_one(
+                    "select get_group_stats($1::uuid, $2::uuid)::text",
+                    &[&community_id, &group_id],
+                )
+                .await?;
+            let stats: GroupStats = serde_json::from_str(&row.get::<_, String>(0))?;
+
+            Ok(stats)
+        }
+
+        let db = self.pool.get().await?;
+        inner(db, community_id, group_id).await
     }
 
     /// [`DBDashboardGroup::list_event_categories`]

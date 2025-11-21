@@ -281,7 +281,7 @@ export class GroupSelector extends LitWrapper {
           aria-expanded="${this._isOpen ? "true" : "false"}"
           @click="${() => this._toggleDropdown()}"
         >
-          <div class="flex flex-col justify-center min-h-[40px]">
+          <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
               ${selectedGroup ? selectedGroup.name : "Select a group"}
             </div>
@@ -342,7 +342,7 @@ export class GroupSelector extends LitWrapper {
                           <button
                             id="group-option-${group.group_id}"
                             type="button"
-                            class="group-button w-full px-4 py-2 whitespace-normal min-h-[40px] flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                            class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
                             role="option"
                             data-group-id="${group.group_id}"
                             ?disabled="${isDisabled}"

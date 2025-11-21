@@ -1,14 +1,20 @@
 //! Database interface for community dashboard operations.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
+use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::dashboard::community::{groups::Group, settings::CommunityUpdate, team::CommunityTeamMember},
+    templates::dashboard::community::{
+        analytics::CommunityStats, groups::Group, settings::CommunityUpdate, team::CommunityTeamMember,
+    },
     types::group::{GroupCategory, GroupRegion},
 };
 
@@ -32,6 +38,9 @@ pub(crate) trait DBDashboardCommunity {
 
     /// Deletes a group (soft delete by setting active=false).
     async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+
+    /// Retrieves analytics statistics for a community.
+    async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
 
     /// Lists all community team members.
     async fn list_community_team_members(&self, community_id: Uuid) -> Result<Vec<CommunityTeamMember>>;
@@ -138,6 +147,31 @@ impl DBDashboardCommunity for PgDB {
         .await?;
 
         Ok(())
+    }
+
+    /// [`DBDashboardCommunity::get_community_stats`]
+    #[instrument(skip(self), err)]
+    async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats> {
+        #[cached(
+            time = 21600,
+            key = "Uuid",
+            convert = "{ community_id }",
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client, community_id: Uuid) -> Result<CommunityStats> {
+            trace!(community_id = ?community_id, "db: get community stats");
+
+            let row = db
+                .query_one("select get_community_stats($1::uuid)::text", &[&community_id])
+                .await?;
+            let stats: CommunityStats = serde_json::from_str(&row.get::<_, String>(0))?;
+
+            Ok(stats)
+        }
+
+        let db = self.pool.get().await?;
+        inner(db, community_id).await
     }
 
     /// [`DBDashboardCommunity::list_community_team_members`]
