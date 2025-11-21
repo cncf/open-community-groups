@@ -21,6 +21,7 @@
   --color-primary-700: #AB1B76;
   --color-primary-800: #8B1660;
   --color-primary-900: #6B114A;
+  --color-primary-950: #4C0D34;
 }
 
 @layer components {

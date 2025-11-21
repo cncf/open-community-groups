@@ -79,6 +79,7 @@ export function getThemePalette() {
     700: styles.getPropertyValue("--color-primary-700").trim(),
     800: styles.getPropertyValue("--color-primary-800").trim(),
     900: styles.getPropertyValue("--color-primary-900").trim(),
+    950: styles.getPropertyValue("--color-primary-950").trim(),
   };
 
   const fallback = palette[700] || palette[500];
@@ -266,7 +267,16 @@ export function createMonthlyBarChart(title, name, data, palette) {
  * @returns {Array<string>} Color list sized to the series count.
  */
 export function buildSeriesColors(palette, count) {
-  const baseColors = [
+  const highContrastPalette = [
+    palette[950],
+    palette[800],
+    palette[600],
+    palette[400],
+    palette[200],
+    palette[50],
+  ];
+  const fullPalette = [
+    palette[950],
     palette[900],
     palette[800],
     palette[700],
@@ -278,14 +288,15 @@ export function buildSeriesColors(palette, count) {
     palette[100],
     palette[50],
   ];
+  const paletteToUse = count <= 6 ? highContrastPalette : fullPalette;
 
-  if (count <= baseColors.length) {
-    return baseColors.slice(0, count);
+  if (count <= paletteToUse.length) {
+    return paletteToUse.slice(0, count);
   }
 
   const colors = [];
   for (let i = 0; i < count; i += 1) {
-    colors.push(baseColors[i % baseColors.length]);
+    colors.push(paletteToUse[i % paletteToUse.length]);
   }
   return colors;
 }
@@ -541,18 +552,22 @@ export function createHorizontalBarChart(title, categoryData, palette, leftMargi
  * @returns {Object} ECharts option.
  */
 export function createPieChart(title, name, data, palette) {
-  const pieColors = [
-    palette[900],
-    palette[800],
-    palette[700],
-    palette[600],
-    palette[500],
-    palette[400],
-    palette[300],
-    palette[200],
-    palette[100],
-    palette[50],
-  ];
+  const pieColors =
+    data.length <= 6
+      ? [palette[950], palette[800], palette[600], palette[400], palette[200], palette[50]]
+      : [
+          palette[950],
+          palette[900],
+          palette[800],
+          palette[700],
+          palette[600],
+          palette[500],
+          palette[400],
+          palette[300],
+          palette[200],
+          palette[100],
+          palette[50],
+        ];
 
   let chartData = data;
   if (data.length > 6) {
