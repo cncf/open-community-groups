@@ -225,9 +225,9 @@ export class SessionsSection extends LitWrapper {
     return html` <div class="text-sm/6 text-stone-500">
         Add sessions for your event. You can add additional sessions by clicking on the
         <span class="font-semibold">+</span> buttons on the left of the card (
-        <div class="inline-block svg-icon size-4 icon-plus-top bg-stone-600 relative -bottom-[2px]"></div>
+        <div class="inline-block svg-icon size-4 icon-plus-top bg-stone-600 relative -bottom-0.5"></div>
         to add the new session above,
-        <div class="inline-block svg-icon size-4 icon-plus-bottom bg-stone-600 relative -bottom-[2px]"></div>
+        <div class="inline-block svg-icon size-4 icon-plus-bottom bg-stone-600 relative -bottom-0.5"></div>
         to add it below). Sessions will be displayed in the order provided.
       </div>
       <div id="sessions-section">
