@@ -63,6 +63,13 @@ const chartIdsByTab = {
 };
 
 const readyCharts = new Set();
+const debounce = (fn, delay = 150) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
 
 function ensureSpinner(el) {
   if (!el || readyCharts.has(el.id)) {
@@ -549,9 +556,11 @@ function setupAnalyticsTabs(stats, palette) {
     });
   });
 
-  window.addEventListener("resize", () => {
+  const resizeCharts = debounce(() => {
     allCharts.forEach((chart) => chart.resize());
-  });
+  }, 200);
+
+  window.addEventListener("resize", resizeCharts);
 }
 
 /**
