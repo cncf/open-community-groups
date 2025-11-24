@@ -414,16 +414,16 @@
 
         {# Online Event Details section -#}
         <div class="pb-12">
-          {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
+          {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
             {# Streaming URL -#}
             <div class="col-span-full lg:col-span-3">
-              <label for="streaming_url" class="form-label">Streaming URL</label>
+              <label for="meeting_url" class="form-label">Meeting URL</label>
               <div class="mt-2">
                 <input type="url"
-                       name="streaming_url"
-                       id="streaming_url"
+                       name="meeting_url"
+                       id="meeting_url"
                        class="input-primary"
                        placeholder="https://zoom.us/j/123456789">
               </div>

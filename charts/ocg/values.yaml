@@ -68,6 +68,17 @@ log:
   # Output format [json|pretty]
   format: json
 
+# Meetings provider configuration
+meetings:
+  # Meetings provider [null|zoom]
+  provider: null
+
+  # Zoom provider configuration (used when provider is set to zoom)
+  zoom:
+    accountId: ""
+    clientId: ""
+    clientSecret: ""
+
 # Database migrator configuration
 dbmigrator:
   job:

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -111,13 +111,11 @@ insert into event_speaker (event_id, user_id, featured) values (:'event1ID', :'u
 insert into event_sponsor (event_id, group_sponsor_id, level)
 values (:'event1ID', :'sponsorOrigID', 'Bronze');
 
--- (no helper functions)
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- update_event function updates individual fields (now verifies empty hosts/sessions)
+-- update_event returns expected payload when optional collections are omitted
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -127,10 +125,12 @@ select update_event(
         "description": "Updated description",
         "timezone": "America/Los_Angeles",
         "category_id": "00000000-0000-0000-0000-000000000012",
-        "kind_id": "virtual"
+        "kind_id": "virtual",
+        "starts_at": "2025-02-01T14:00:00",
+        "ends_at": "2025-02-01T16:00:00",
+        "meeting_requested": true
     }'::jsonb
 );
-
 select is(
     (select (
         get_event_full(
@@ -146,17 +146,40 @@ select is(
         "hosts": [],
         "speakers": [],
         "kind": "virtual",
+        "meeting_requested": true,
         "name": "Updated Event Name",
         "published": false,
+        "starts_at": 1738447200,
+        "ends_at": 1738454400,
         "sponsors": [],
         "sessions": {},
         "slug": "updated-event-slug",
-        "timezone": "America/Los_Angeles"
+        "timezone": "America/Los_Angeles",
+        "meeting_in_sync": false
     }'::jsonb,
     'update_event should update basic fields and clear hosts/sponsors/sessions when not provided'
 );
 
--- update_event function updates all fields including hosts, sponsors, and sessions
+-- update_event sets meeting flags when meeting support is requested (no sessions)
+select is(
+    (
+        select jsonb_build_object(
+            'meeting_requested', meeting_requested,
+            'meeting_in_sync', meeting_in_sync,
+            'meeting_requires_password', meeting_requires_password
+        )
+        from event
+        where event_id = :'event1ID'::uuid
+    ),
+    '{
+        "meeting_requested": true,
+        "meeting_in_sync": false,
+        "meeting_requires_password": null
+    }'::jsonb,
+    'meeting flags are initialized for requested event without sessions'
+);
+
+-- update_event updates event, nested relations, and meeting flags with full payload
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -167,6 +190,8 @@ select update_event(
         "timezone": "Asia/Tokyo",
         "category_id": "00000000-0000-0000-0000-000000000011",
         "kind_id": "hybrid",
+        "meeting_requested": false,
+        "meeting_requires_password": true,
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
         "description_short": "Updated short description",
@@ -177,7 +202,8 @@ select update_event(
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
         "recording_url": "https://youtube.com/new-recording",
         "registration_required": false,
-        "streaming_url": "https://youtube.com/new-live",
+        "meeting_url": "https://youtube.com/new-live",
+        "meeting_requires_password": true,
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
@@ -196,7 +222,8 @@ select update_event(
                 "starts_at": "2025-02-01T14:30:00",
                 "ends_at": "2025-02-01T15:30:00",
                 "kind": "virtual",
-                "streaming_url": "https://youtube.com/live/updated",
+                "meeting_requested": true,
+                "meeting_requires_password": true,
                 "speakers": [{"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}]
             }
         ]
@@ -225,6 +252,9 @@ select is(
             {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
         ],
         "kind": "hybrid",
+        "meeting_in_sync": false,
+        "meeting_requested": false,
+        "meeting_requires_password": true,
         "name": "Fully Updated Event",
         "published": false,
         "slug": "fully-updated-event",
@@ -240,7 +270,7 @@ select is(
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
         "recording_url": "https://youtube.com/new-recording",
         "registration_required": false,
-        "streaming_url": "https://youtube.com/new-live",
+        "meeting_url": "https://youtube.com/new-live",
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
@@ -252,7 +282,6 @@ select is(
     }'::jsonb,
     'update_event should update all fields (excluding sessions)'
 );
-
 
 -- Sessions assertions: contents ignoring session_id (order-insensitive)
 select ok(
@@ -270,7 +299,7 @@ select ok(
                 "starts_at": 1738387800,
                 "ends_at": 1738391400,
                 "kind": "virtual",
-                "streaming_url": "https://youtube.com/live/updated",
+                "meeting_requested": true,
                 "speakers": [
                     {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
                 ]
@@ -280,6 +309,43 @@ select ok(
     'sessions contain expected rows (ignoring session_id)'
 );
 
+-- Check meeting flags for event and session
+select is(
+    (
+        select jsonb_build_object(
+            'event', jsonb_build_object(
+                'meeting_requested', meeting_requested,
+                'meeting_in_sync', meeting_in_sync,
+                'meeting_requires_password', meeting_requires_password
+            ),
+            'session', (
+                select jsonb_build_object(
+                    'meeting_requested', meeting_requested,
+                    'meeting_in_sync', meeting_in_sync,
+                    'meeting_requires_password', meeting_requires_password
+                )
+                from session
+                where event_id = :'event1ID'::uuid
+            )
+        )
+        from event
+        where event_id = :'event1ID'::uuid
+    ),
+    '{
+        "event": {
+            "meeting_requested": false,
+            "meeting_in_sync": false,
+            "meeting_requires_password": true
+        },
+        "session": {
+            "meeting_requested": true,
+            "meeting_in_sync": false,
+            "meeting_requires_password": true
+        }
+    }'::jsonb,
+    'update_event sets meeting_in_sync=false when meeting disabled to trigger deletion'
+);
+
 -- update_event throws error for wrong group_id
 select throws_ok(
     $$select update_event(
@@ -287,7 +353,6 @@ select throws_ok(
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Won''t Work", "slug": "wont-work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
-    'P0001',
     'event not found or inactive',
     'update_event should throw error when group_id does not match'
 );
@@ -322,7 +387,6 @@ select throws_ok(
         '00000000-0000-0000-0000-000000000004'::uuid,
         '{"name": "Try to Update Canceled", "slug": "try-update-canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
-    'P0001',
     'event not found or inactive',
     'update_event should throw error when event is canceled'
 );

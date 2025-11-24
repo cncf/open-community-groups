@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -91,6 +91,10 @@ insert into event (
     timezone,
     event_category_id,
     event_kind_id,
+    starts_at,
+    ends_at,
+    meeting_requested,
+    meeting_in_sync,
     published,
     published_at,
     published_by,
@@ -103,7 +107,11 @@ insert into event (
     'A test event',
     'UTC',
     :'eventCategoryID',
-    'in-person',
+    'virtual',
+    now(),
+    now() + interval '1 hour',
+    true,
+    true,
     true,
     now(),
     :'userID',
@@ -139,6 +147,12 @@ select is(
     (select published_by from event where event_id = :'eventID'),
     null,
     'cancel_event should set published_by to null'
+);
+
+select is(
+    (select meeting_in_sync from event where event_id = :'eventID'),
+    false,
+    'cancel_event should mark meeting_in_sync false when meeting was requested'
 );
 
 -- Test: cancel_event should throw error when group_id does not match

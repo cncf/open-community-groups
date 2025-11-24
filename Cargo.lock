@@ -3129,6 +3129,7 @@ dependencies = [
  "axum-extra",
  "axum-login",
  "axum-messages",
+ "base64 0.22.1",
  "bytes",
  "cached",
  "chrono",

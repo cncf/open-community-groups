@@ -8,7 +8,11 @@ begin
     update event set
         deleted = true,
         deleted_at = current_timestamp,
-        published = false
+        published = false,
+        meeting_in_sync = case
+            when meeting_requested = true then false
+            else meeting_in_sync
+        end
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false;

@@ -440,6 +440,35 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::meetings::DBMeetings for DB {
+        async fn add_meeting(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+        async fn delete_meeting(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+        async fn get_meeting_out_of_sync(
+            &self,
+            client_id: Uuid,
+        ) -> Result<Option<crate::services::meetings::Meeting>>;
+        async fn set_meeting_error(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+            error: &str,
+        ) -> Result<()>;
+        async fn update_meeting(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
     impl crate::db::notifications::DBNotifications for DB {
         async fn enqueue_notification(
             &self,

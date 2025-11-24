@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -75,6 +75,10 @@ insert into event (
     timezone,
     event_category_id,
     event_kind_id,
+    starts_at,
+    ends_at,
+    meeting_requested,
+    meeting_in_sync,
     published
 ) values (
     :'eventID',
@@ -84,7 +88,11 @@ insert into event (
     'Deep dive into container security best practices and threat mitigation',
     'America/New_York',
     :'categoryID',
-    'in-person',
+    'virtual',
+    now(),
+    now() + interval '1 hour',
+    true,
+    true,
     true
 );
 
@@ -94,7 +102,6 @@ insert into event (
 
 -- Test: delete_event should set deleted=true
 select delete_event(:'groupID'::uuid, :'eventID'::uuid);
-
 select is(
     (select deleted from event where event_id = :'eventID'),
     true,
@@ -113,6 +120,13 @@ select is(
     (select published from event where event_id = :'eventID'),
     false,
     'delete_event should set published=false'
+);
+
+-- Test: delete_event should set meeting_in_sync=false
+select is(
+    (select meeting_in_sync from event where event_id = :'eventID'),
+    false,
+    'delete_event should mark meeting_in_sync false when meeting was requested'
 );
 
 -- Test: event should still exist in database (soft delete)
