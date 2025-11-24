@@ -98,15 +98,19 @@ pub(crate) struct Event {
     pub hosts: Option<Vec<Uuid>>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Recording URL for meeting.
+    pub meeting_recording_url: Option<String>,
+    /// Whether a meeting has been requested for the event.
+    pub meeting_requested: Option<bool>,
     /// Meetup.com URL.
     pub meetup_url: Option<String>,
     /// Gallery of photo URLs.
     pub photos_urls: Option<Vec<String>>,
-    /// Recording URL.
-    pub recording_url: Option<String>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
-    /// Event sessions with speakers.
+    /// Event sessions.
     pub sessions: Option<Vec<Session>>,
     /// Event-level speakers.
     pub speakers: Option<Vec<Speaker>>,
@@ -114,8 +118,6 @@ pub(crate) struct Event {
     pub sponsors: Option<Vec<EventSponsor>>,
     /// Event start time.
     pub starts_at: Option<NaiveDateTime>,
-    /// Streaming URL.
-    pub streaming_url: Option<String>,
     /// Tags associated with the event.
     pub tags: Option<Vec<String>>,
     /// Venue address.
@@ -169,6 +171,8 @@ pub(crate) struct Session {
     pub kind: SessionKind,
     /// Session name.
     pub name: String,
+    /// Unique identifier for the session.
+    pub session_id: Option<Uuid>,
     /// Session start time.
     pub starts_at: NaiveDateTime,
 
@@ -178,12 +182,14 @@ pub(crate) struct Session {
     pub ends_at: Option<NaiveDateTime>,
     /// Location for the session.
     pub location: Option<String>,
-    /// Recording URL for the session.
-    pub recording_url: Option<String>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Recording URL for meeting.
+    pub meeting_recording_url: Option<String>,
+    /// Whether a meeting has been requested for the session.
+    pub meeting_requested: Option<bool>,
     /// Session speakers.
     pub speakers: Option<Vec<Speaker>>,
-    /// Streaming URL for the session.
-    pub streaming_url: Option<String>,
 }
 
 /// Speaker selection with optional featured flag.

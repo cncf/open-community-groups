@@ -42,6 +42,8 @@
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
+{{ template "dashboard-group/is_event_meeting_in_sync.sql" }}
+{{ template "dashboard-group/is_session_meeting_in_sync.sql" }}
 {{ template "dashboard-group/list_event_attendees_ids.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
@@ -79,6 +81,11 @@
 {{ template "group/is_group_member.sql" }}
 {{ template "group/join_group.sql" }}
 {{ template "group/leave_group.sql" }}
+
+{{ template "meetings/add_meeting.sql" }}
+{{ template "meetings/delete_meeting.sql" }}
+{{ template "meetings/get_meeting_out_of_sync.sql" }}
+{{ template "meetings/update_meeting.sql" }}
 
 ---- create above / drop below ----
 

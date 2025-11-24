@@ -70,6 +70,10 @@ pub struct EventSummary {
     pub logo_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Password required to join the meeting.
+    pub meeting_password: Option<String>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
@@ -77,8 +81,6 @@ pub struct EventSummary {
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// Streaming URL for live broadcasts.
-    pub streaming_url: Option<String>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
     /// City where the event venue is located (for in-person events).
@@ -187,6 +189,20 @@ pub struct EventFull {
     pub logo_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// Error message if meeting sync failed.
+    pub meeting_error: Option<String>,
+    /// Whether the event meeting is in sync.
+    pub meeting_in_sync: Option<bool>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Password required to join the event meeting.
+    pub meeting_password: Option<String>,
+    /// URL for meeting recording.
+    pub meeting_recording_url: Option<String>,
+    /// Whether the event requests a meeting.
+    pub meeting_requested: Option<bool>,
+    /// Whether the event meeting requires a password.
+    pub meeting_requires_password: Option<bool>,
     /// Meetup.com URL for the event.
     pub meetup_url: Option<String>,
     /// URLs to event photos.
@@ -194,15 +210,11 @@ pub struct EventFull {
     /// When the event was published.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub published_at: Option<DateTime<Utc>>,
-    /// URL for event recording.
-    pub recording_url: Option<String>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// URL for live streaming.
-    pub streaming_url: Option<String>,
     /// Event tags for categorization.
     pub tags: Option<Vec<String>>,
     /// Street address of the venue.
@@ -329,10 +341,20 @@ pub struct Session {
     pub ends_at: Option<DateTime<Utc>>,
     /// Location details for the session.
     pub location: Option<String>,
-    /// URL for session recording.
-    pub recording_url: Option<String>,
-    /// URL for session live stream.
-    pub streaming_url: Option<String>,
+    /// Error message if meeting sync failed.
+    pub meeting_error: Option<String>,
+    /// Whether the meeting data is in sync with the provider.
+    pub meeting_in_sync: Option<bool>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Password required to join the session meeting.
+    pub meeting_password: Option<String>,
+    /// URL for meeting recording.
+    pub meeting_recording_url: Option<String>,
+    /// Whether the session requests a meeting.
+    pub meeting_requested: Option<bool>,
+    /// Whether the meeting requires a password.
+    pub meeting_requires_password: Option<bool>,
 }
 
 /// Categorization of session attendance modes.

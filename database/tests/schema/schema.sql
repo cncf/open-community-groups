@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(178);
+select plan(225);
 
 -- ============================================================================
 -- TESTS
@@ -36,6 +36,7 @@ select has_table('group_team');
 select has_table('images');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
+select has_table('meeting');
 select has_table('notification_attachment');
 select has_table('region');
 select has_table('session');
@@ -136,14 +137,18 @@ select columns_are('event', array[
     'ends_at',
     'legacy_id',
     'logo_url',
+    'meeting_error',
+    'meeting_in_sync',
+    'meeting_join_url',
+    'meeting_recording_url',
+    'meeting_requested',
+    'meeting_requires_password',
     'meetup_url',
     'photos_urls',
     'published_at',
     'published_by',
-    'recording_url',
     'registration_required',
     'starts_at',
-    'streaming_url',
     'tags',
     'venue_address',
     'venue_city',
@@ -198,6 +203,20 @@ select columns_are('event_sponsor', array[
     'event_id',
     'group_sponsor_id',
     'level'
+]);
+
+-- Test: meeting columns should match expected
+select columns_are('meeting', array[
+    'meeting_id',
+    'created_at',
+    'join_url',
+    'provider_meeting_id',
+
+    'event_id',
+    'password',
+    'recording_url',
+    'session_id',
+    'updated_at'
 ]);
 
 -- Test: group columns should match expected
@@ -312,8 +331,12 @@ select columns_are('session', array[
     'description',
     'ends_at',
     'location',
-    'recording_url',
-    'streaming_url'
+    'meeting_error',
+    'meeting_in_sync',
+    'meeting_join_url',
+    'meeting_recording_url',
+    'meeting_requested',
+    'meeting_requires_password'
 ]);
 
 -- Test: session_kind columns should match expected
@@ -419,12 +442,58 @@ select has_pk('group_team');
 select has_pk('images');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
+select has_pk('meeting');
 select has_pk('notification_attachment');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
 select has_pk('session_speaker');
 select has_pk('user');
+
+-- Test: check tables have expected foreign keys
+select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
+select col_is_fk('community_team', 'community_id', 'community');
+select col_is_fk('community_team', 'user_id', 'user');
+select col_is_fk('custom_notification', 'created_by', 'user');
+select col_is_fk('custom_notification', 'event_id', 'event');
+select col_is_fk('custom_notification', 'group_id', 'group');
+select col_is_fk('event', 'event_category_id', 'event_category');
+select col_is_fk('event', 'event_kind_id', 'event_kind');
+select col_is_fk('event', 'group_id', 'group');
+select col_is_fk('event', 'published_by', 'user');
+select col_is_fk('event_attendee', 'event_id', 'event');
+select col_is_fk('event_attendee', 'user_id', 'user');
+select col_is_fk('event_category', 'community_id', 'community');
+select col_is_fk('event_host', 'event_id', 'event');
+select col_is_fk('event_host', 'user_id', 'user');
+select col_is_fk('event_speaker', 'event_id', 'event');
+select col_is_fk('event_speaker', 'user_id', 'user');
+select col_is_fk('event_sponsor', 'event_id', 'event');
+select col_is_fk('event_sponsor', 'group_sponsor_id', 'group_sponsor');
+select col_is_fk('group', 'community_id', 'community');
+select col_is_fk('group', 'group_category_id', 'group_category');
+select col_is_fk('group', 'group_site_layout_id', 'group_site_layout');
+select col_is_fk('group', 'region_id', 'region');
+select col_is_fk('group_category', 'community_id', 'community');
+select col_is_fk('group_member', 'group_id', 'group');
+select col_is_fk('group_member', 'user_id', 'user');
+select col_is_fk('group_sponsor', 'group_id', 'group');
+select col_is_fk('group_team', 'group_id', 'group');
+select col_is_fk('group_team', 'role', 'group_role');
+select col_is_fk('group_team', 'user_id', 'user');
+select col_is_fk('images', 'created_by', 'user');
+select col_is_fk('legacy_event_host', 'event_id', 'event');
+select col_is_fk('legacy_event_speaker', 'event_id', 'event');
+select col_is_fk('meeting', 'event_id', 'event');
+select col_is_fk('meeting', 'session_id', 'session');
+select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
+select col_is_fk('notification_attachment', 'notification_id', 'notification');
+select col_is_fk('region', 'community_id', 'community');
+select col_is_fk('session', 'event_id', 'event');
+select col_is_fk('session', 'session_kind_id', 'session_kind');
+select col_is_fk('session_speaker', 'session_id', 'session');
+select col_is_fk('session_speaker', 'user_id', 'user');
+select col_is_fk('user', 'community_id', 'community');
 
 -- Check tables have expected indexes
 -- Test: attachment indexes should match expected
@@ -455,13 +524,14 @@ select indexes_are('event', array[
     'event_pkey',
     'event_legacy_id_key',
     'event_slug_group_id_key',
-    'event_group_id_idx',
     'event_event_category_id_idx',
     'event_event_kind_id_idx',
+    'event_group_id_idx',
+    'event_meeting_sync_idx',
     'event_published_by_idx',
-    'event_tsdoc_idx',
     'event_search_idx',
-    'event_starts_at_idx'
+    'event_starts_at_idx',
+    'event_tsdoc_idx'
 ]);
 
 -- Test: event_attendee indexes should match expected
@@ -533,6 +603,14 @@ select indexes_are('legacy_event_speaker', array[
     'legacy_event_speaker_event_id_idx'
 ]);
 
+-- Test: meeting indexes should match expected
+select indexes_are('meeting', array[
+    'meeting_event_id_idx',
+    'meeting_pkey',
+    'meeting_provider_meeting_id_idx',
+    'meeting_session_id_idx'
+]);
+
 -- Test: notification_attachment indexes should match expected
 select indexes_are('notification_attachment', array[
     'notification_attachment_pkey',
@@ -543,6 +621,7 @@ select indexes_are('notification_attachment', array[
 select indexes_are('session', array[
     'session_pkey',
     'session_event_id_idx',
+    'session_meeting_sync_idx',
     'session_session_kind_id_idx'
 ]);
 

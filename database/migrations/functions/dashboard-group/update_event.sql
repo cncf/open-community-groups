@@ -7,9 +7,12 @@ create or replace function update_event(
 returns void as $$
 declare
     v_community_id uuid;
+    v_event_before jsonb;
     v_event_speaker jsonb;
     v_host_id uuid;
+    v_processed_session_ids uuid[] := '{}';
     v_session jsonb;
+    v_session_before jsonb;
     v_session_id uuid;
     v_session_speaker jsonb;
     v_speaker_id uuid;
@@ -22,6 +25,19 @@ begin
     select community_id into v_community_id
     from "group"
     where group_id = p_group_id;
+
+    -- Load current event state for sync calculation and existence check
+    select get_event_full(v_community_id, p_group_id, p_event_id)::jsonb
+    into v_event_before
+    from event e
+    where e.event_id = p_event_id
+    and e.group_id = p_group_id
+    and e.deleted = false
+    and e.canceled = false;
+
+    if v_event_before is null then
+        raise exception 'event not found or inactive';
+    end if;
 
     -- Update event
     update event set
@@ -37,12 +53,20 @@ begin
         description_short = nullif(p_event->>'description_short', ''),
         ends_at = (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
         logo_url = nullif(p_event->>'logo_url', ''),
+        meeting_in_sync = case
+            when (v_event_before->>'meeting_in_sync')::boolean = false
+                 and (p_event->>'meeting_requested')::boolean is distinct from false
+            then false
+            else is_event_meeting_in_sync(v_event_before, p_event)
+        end,
+        meeting_join_url = nullif(p_event->>'meeting_join_url', ''),
+        meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
+        meeting_requested = (p_event->>'meeting_requested')::boolean,
+        meeting_requires_password = (p_event->>'meeting_requires_password')::boolean,
         meetup_url = nullif(p_event->>'meetup_url', ''),
         photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-        recording_url = nullif(p_event->>'recording_url', ''),
         registration_required = (p_event->>'registration_required')::boolean,
         starts_at = (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-        streaming_url = nullif(p_event->>'streaming_url', ''),
         tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
         venue_address = nullif(p_event->>'venue_address', ''),
         venue_city = nullif(p_event->>'venue_city', ''),
@@ -53,18 +77,10 @@ begin
     and deleted = false
     and canceled = false;
 
-    if not found then
-        raise exception 'event not found or inactive';
-    end if;
-
     -- Delete existing hosts, sponsors, sessions and speakers
     delete from event_host where event_id = p_event_id;
     delete from event_speaker where event_id = p_event_id;
     delete from event_sponsor where event_id = p_event_id;
-    delete from session_speaker where session_id in (
-        select session_id from session where event_id = p_event_id
-    );
-    delete from session where event_id = p_event_id;
 
     -- Insert event hosts
     if p_event->'hosts' is not null then
@@ -128,33 +144,82 @@ begin
         end loop;
     end if;
 
-    -- Insert sessions and speakers
+    -- Insert/update sessions and speakers
     if p_event->'sessions' is not null then
         for v_session in select jsonb_array_elements(p_event->'sessions')
         loop
-            -- Insert session
-            insert into session (
-                event_id,
-                name,
-                description,
-                starts_at,
-                ends_at,
-                session_kind_id,
-                location,
-                recording_url,
-                streaming_url
-            ) values (
-                p_event_id,
-                v_session->>'name',
-                v_session->>'description',
-                (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-                (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-                v_session->>'kind',
-                v_session->>'location',
-                v_session->>'recording_url',
-                v_session->>'streaming_url'
-            )
-            returning session_id into v_session_id;
+            -- Update existing session when session_id is provided, otherwise insert new
+            if v_session->>'session_id' is not null then
+                v_session_id := (v_session->>'session_id')::uuid;
+
+                -- Extract previous session state from event snapshot for sync calculation
+                select sess
+                into v_session_before
+                from jsonb_each(v_event_before->'sessions') as day(day, sessions)
+                cross join lateral jsonb_array_elements(sessions) as sess
+                where sess->>'session_id' = v_session_id::text
+                limit 1;
+
+                update session set
+                    name = v_session->>'name',
+                    description = v_session->>'description',
+                    starts_at = (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
+                    ends_at = (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
+                    session_kind_id = v_session->>'kind',
+                    location = v_session->>'location',
+                    meeting_in_sync = case
+                        when (v_session_before->>'meeting_in_sync')::boolean = false
+                             and (v_session->>'meeting_requested')::boolean is distinct from false
+                        then false
+                        else (select is_session_meeting_in_sync(v_session_before, v_session, v_event_before->>'timezone', p_event->>'timezone'))
+                    end,
+                    meeting_join_url = v_session->>'meeting_join_url',
+                    meeting_recording_url = v_session->>'meeting_recording_url',
+                    meeting_requested = (v_session->>'meeting_requested')::boolean,
+                    meeting_requires_password = (v_session->>'meeting_requires_password')::boolean
+                where session_id = v_session_id
+                and event_id = p_event_id;
+
+                if not found then
+                    raise exception 'session % not found for event %', v_session_id, p_event_id;
+                end if;
+
+                delete from session_speaker where session_id = v_session_id;
+            else
+                insert into session (
+                    event_id,
+                    name,
+                    description,
+                    starts_at,
+                    ends_at,
+                    session_kind_id,
+                    location,
+                    meeting_in_sync,
+                    meeting_join_url,
+                    meeting_recording_url,
+                    meeting_requested,
+                    meeting_requires_password
+                ) values (
+                    p_event_id,
+                    v_session->>'name',
+                    v_session->>'description',
+                    (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
+                    (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
+                    v_session->>'kind',
+                    v_session->>'location',
+                    case
+                        when (v_session->>'meeting_requested')::boolean = true then false
+                        else null
+                    end,
+                    v_session->>'meeting_join_url',
+                    v_session->>'meeting_recording_url',
+                    (v_session->>'meeting_requested')::boolean,
+                    (v_session->>'meeting_requires_password')::boolean
+                )
+                returning session_id into v_session_id;
+            end if;
+
+            v_processed_session_ids := array_append(v_processed_session_ids, v_session_id);
 
             -- Insert speakers for this session
             if v_session->'speakers' is not null then
@@ -178,6 +243,25 @@ begin
                 end loop;
             end if;
         end loop;
+
+        -- Delete sessions (and speakers) no longer present in payload
+        delete from session_speaker
+        where session_id in (
+            select s.session_id
+            from session s
+            where s.event_id = p_event_id
+            and not (s.session_id = any(v_processed_session_ids))
+        );
+
+        delete from session
+        where event_id = p_event_id
+        and not (session_id = any(v_processed_session_ids));
+    else
+        -- No sessions in payload - delete all existing sessions
+        delete from session_speaker
+        where session_id in (select session_id from session where event_id = p_event_id);
+
+        delete from session where event_id = p_event_id;
     end if;
 end;
 $$ language plpgsql;

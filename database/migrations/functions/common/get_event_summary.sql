@@ -26,8 +26,9 @@ returns json as $$
         'latitude', st_y(g.location::geometry),
         'logo_url', e.logo_url,
         'longitude', st_x(g.location::geometry),
+        'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
+        'meeting_password', m_event.password,
         'starts_at', floor(extract(epoch from e.starts_at)),
-        'streaming_url', e.streaming_url,
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
         'venue_name', e.venue_name,
@@ -42,6 +43,7 @@ returns json as $$
     from event e
     join "group" g using (group_id)
     join group_category gc on g.group_category_id = gc.group_category_id
+    left join meeting m_event on m_event.event_id = e.event_id
     left join (
         select event_id, count(*)::int as attendee_count
         from event_attendee

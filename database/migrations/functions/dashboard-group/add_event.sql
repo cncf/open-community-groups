@@ -38,12 +38,15 @@ begin
         description_short,
         ends_at,
         logo_url,
+        meeting_in_sync,
+        meeting_join_url,
+        meeting_recording_url,
+        meeting_requested,
+        meeting_requires_password,
         meetup_url,
         photos_urls,
-        recording_url,
         registration_required,
         starts_at,
-        streaming_url,
         tags,
         venue_address,
         venue_city,
@@ -63,12 +66,18 @@ begin
         p_event->>'description_short',
         (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
         p_event->>'logo_url',
+        case
+            when (p_event->>'meeting_requested')::boolean = true then false
+            else null
+        end,
+        p_event->>'meeting_join_url',
+        p_event->>'meeting_recording_url',
+        (p_event->>'meeting_requested')::boolean,
+        (p_event->>'meeting_requires_password')::boolean,
         p_event->>'meetup_url',
         case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-        p_event->>'recording_url',
         (p_event->>'registration_required')::boolean,
         (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-        p_event->>'streaming_url',
         case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
         p_event->>'venue_address',
         p_event->>'venue_city',
@@ -152,8 +161,11 @@ begin
                 ends_at,
                 session_kind_id,
                 location,
-                recording_url,
-                streaming_url
+                meeting_in_sync,
+                meeting_join_url,
+                meeting_recording_url,
+                meeting_requested,
+                meeting_requires_password
             ) values (
                 v_event_id,
                 v_session->>'name',
@@ -162,8 +174,14 @@ begin
                 (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                 v_session->>'kind',
                 v_session->>'location',
-                v_session->>'recording_url',
-                v_session->>'streaming_url'
+                case
+                    when (v_session->>'meeting_requested')::boolean = true then false
+                    else null
+                end,
+                v_session->>'meeting_join_url',
+                v_session->>'meeting_recording_url',
+                (v_session->>'meeting_requested')::boolean,
+                (v_session->>'meeting_requires_password')::boolean
             )
             returning session_id into v_session_id;
 

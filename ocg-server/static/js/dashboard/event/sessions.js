@@ -26,8 +26,8 @@ export class SessionsSection extends LitWrapper {
    *  - starts_at: Session start time (datetime-local format)
    *  - ends_at: Session end time (datetime-local format, optional)
    *  - location: Location details (optional)
-   *  - recording_url: URL for session recording (optional)
-   *  - streaming_url: URL for session live stream (optional)
+   *  - meeting_join_url: URL for session meeting (optional)
+   *  - meeting_recording_url: URL for session meeting recording (optional)
    *  - speakers: Session speakers (array, handled separately)
    */
   static properties = {
@@ -122,8 +122,8 @@ export class SessionsSection extends LitWrapper {
       starts_at: "",
       ends_at: "",
       location: "",
-      recording_url: "",
-      streaming_url: "",
+      meeting_join_url: "",
+      meeting_recording_url: "",
       speakers: [],
     };
 
@@ -273,8 +273,8 @@ class SessionItem extends LitWrapper {
       starts_at: "",
       ends_at: "",
       location: "",
-      recording_url: "",
-      streaming_url: "",
+      meeting_join_url: "",
+      meeting_recording_url: "",
       speakers: [],
     };
     this.index = 0;
@@ -451,16 +451,16 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-3">
-        <label class="form-label"> Recording URL </label>
+        <label class="form-label"> Meeting URL </label>
         <div class="mt-2">
           <input
             @input=${(e) => this._onInputChange(e)}
-            data-name="recording_url"
+            data-name="meeting_join_url"
             type="url"
-            name="sessions[${this.index}][recording_url]"
+            name="sessions[${this.index}][meeting_join_url]"
             class="input-primary"
-            value=${this.data.recording_url}
-            placeholder="Optional - link to recorded session"
+            value=${this.data.meeting_join_url}
+            placeholder="Optional - link to live stream"
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
@@ -470,16 +470,16 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-3">
-        <label class="form-label"> Streaming URL </label>
+        <label class="form-label"> Meeting Recording URL </label>
         <div class="mt-2">
           <input
             @input=${(e) => this._onInputChange(e)}
-            data-name="streaming_url"
+            data-name="meeting_recording_url"
             type="url"
-            name="sessions[${this.index}][streaming_url]"
+            name="sessions[${this.index}][meeting_recording_url]"
             class="input-primary"
-            value=${this.data.streaming_url}
-            placeholder="Optional - link to live stream"
+            value=${this.data.meeting_recording_url}
+            placeholder="Optional - link to recorded session"
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"

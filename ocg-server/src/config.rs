@@ -30,6 +30,9 @@ pub(crate) struct Config {
     pub log: LogConfig,
     /// HTTP server configuration.
     pub server: HttpServerConfig,
+
+    /// Meetings configuration.
+    pub meetings: Option<MeetingsConfig>,
 }
 
 impl Config {
@@ -100,6 +103,25 @@ pub(crate) struct ImageStorageConfigS3 {
     pub endpoint: Option<String>,
     /// Use path-style requests for compatibility with certain providers.
     pub force_path_style: Option<bool>,
+}
+
+/// Meetings provider configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "provider", rename_all = "snake_case")]
+pub(crate) enum MeetingsConfig {
+    /// Use Zoom as meetings provider.
+    Zoom(MeetingsZoomConfig),
+}
+
+/// Zoom meetings configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct MeetingsZoomConfig {
+    /// Zoom account identifier.
+    pub account_id: String,
+    /// OAuth client identifier.
+    pub client_id: String,
+    /// OAuth client secret.
+    pub client_secret: String,
 }
 
 /// SMTP server configuration.

@@ -143,9 +143,9 @@
                     </div>
                   </div>
 
-                  {% if let Some(streaming_url) = event.streaming_url -%}
+                  {% if let Some(meeting_join_url) = event.meeting_join_url -%}
                     <div class="mt-4">
-                      <a href="{{ streaming_url }}"
+                      <a href="{{ meeting_join_url }}"
                          target="_blank"
                          rel="noopener noreferrer"
                          class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>

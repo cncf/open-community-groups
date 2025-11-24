@@ -371,8 +371,8 @@ class EventSelector extends LitWrapper {
     setTextValue("venue_address", details.venue_address);
     setTextValue("venue_city", details.venue_city);
     setTextValue("venue_zip_code", details.venue_zip_code);
-    setTextValue("streaming_url", details.streaming_url);
-    setTextValue("recording_url", details.recording_url);
+    setTextValue("meeting_join_url", details.meeting_join_url);
+    setTextValue("meeting_recording_url", details.meeting_recording_url);
     setHosts(details.hosts);
     setSponsors(details.sponsors);
     setSessions(details.sessions);

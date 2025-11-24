@@ -415,38 +415,40 @@
 
         {# Online Event Details section -#}
         <div class="pb-12">
-          {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
+          {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-            {# Streaming URL -#}
+            {# Meeting URL -#}
             <div class="col-span-full lg:col-span-3">
-              <label for="streaming_url" class="form-label">Streaming URL</label>
+              <label for="meeting_join_url" class="form-label">Meeting URL</label>
               <div class="mt-2">
                 <input type="url"
-                       name="streaming_url"
-                       id="streaming_url"
+                       name="meeting_join_url"
+                       id="meeting_join_url"
                        class="input-primary"
                        placeholder="https://zoom.us/j/123456789"
-                       {% if let Some(streaming_url) = event.streaming_url %}value="{{ streaming_url }}"{% endif %}>
+                       {% if let Some(meeting_join_url) = event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}>
               </div>
-              <p class="form-legend">URL for live streaming or video conference.</p>
+              <p class="form-legend">URL to join the meeting.</p>
             </div>
-            {# End Streaming URL -#}
+            {# End Meeting URL -#}
 
-            {# Recording URL -#}
+            {# Meeting recording URL -#}
             <div class="col-span-full lg:col-span-3">
-              <label for="recording_url" class="form-label">Recording URL</label>
+              <label for="meeting_recording_url" class="form-label">Meeting recording URL</label>
               <div class="mt-2">
                 <input type="url"
-                       name="recording_url"
-                       id="recording_url"
+                       name="meeting_recording_url"
+                       id="meeting_recording_url"
                        class="input-primary"
                        placeholder="https://youtube.com/watch?v=..."
-                       {% if let Some(recording_url) = event.recording_url %}value="{{ recording_url }}"{% endif %}>
+                       {% if let Some(meeting_recording_url) = event.meeting_recording_url %}
+                         value="{{ meeting_recording_url }}"
+                       {% endif %}>
               </div>
-              <p class="form-legend">URL to the event recording (can be added after the event).</p>
+              <p class="form-legend">URL of the meeting recording (can be added after the event).</p>
             </div>
-            {# End Recording URL -#}
+            {# End Meeting recording URL -#}
           </div>
         </div>
         {# End online event details section -#}

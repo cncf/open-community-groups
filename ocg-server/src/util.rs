@@ -118,9 +118,14 @@ fn build_event_calendar_description(event: &EventSummary) -> String {
         description.push(description_short.trim().to_string());
     }
 
-    // Streaming URL if available
-    if let Some(streaming_url) = event.streaming_url.as_deref().filter(|url| !url.trim().is_empty()) {
-        description.push(format!("Streaming link: {streaming_url}"));
+    // Meeting URL if available
+    if let Some(meeting_join_url) = event.meeting_join_url.as_deref().filter(|url| !url.trim().is_empty()) {
+        description.push(format!("Meeting link: {meeting_join_url}"));
+    }
+
+    // Meeting password if available
+    if let Some(password) = event.meeting_password.as_deref().filter(|p| !p.trim().is_empty()) {
+        description.push(format!("Meeting password: {password}"));
     }
 
     description.join("\n\n")
@@ -176,7 +181,8 @@ mod tests {
         assert!(unfolded.contains("CREATED:"));
         assert!(unfolded.contains("DESCRIPTION:"));
         assert!(unfolded.contains("Short description"));
-        assert!(unfolded.contains("Streaming link: https://example.test/live"));
+        assert!(unfolded.contains("Meeting link: https://example.test/live"));
+        assert!(unfolded.contains("Meeting password: secret123"));
         assert!(unfolded.contains("DTEND;TZID=America/Los_Angeles:20260112T130000"));
         assert!(unfolded.contains("DTSTAMP:"));
         assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
@@ -209,7 +215,8 @@ mod tests {
         assert!(unfolded.contains("CREATED:"));
         assert!(unfolded.contains("DESCRIPTION:** This event has been canceled **"));
         assert!(unfolded.contains("Short description"));
-        assert!(unfolded.contains("Streaming link: https://example.test/live"));
+        assert!(unfolded.contains("Meeting link: https://example.test/live"));
+        assert!(unfolded.contains("Meeting password: secret123"));
         assert!(unfolded.contains("DTEND;TZID=America/Los_Angeles:20260112T130000"));
         assert!(unfolded.contains("DTSTAMP:"));
         assert!(unfolded.contains("DTSTART;TZID=America/Los_Angeles:20260112T110000"));
@@ -286,10 +293,11 @@ mod tests {
             latitude: Some(37.78),
             logo_url: None,
             longitude: Some(-122.42),
+            meeting_join_url: Some("https://example.test/live".to_string()),
+            meeting_password: Some("secret123".to_string()),
             popover_html: None,
             remaining_capacity: Some(15),
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
-            streaming_url: Some("https://example.test/live".to_string()),
             venue_address: Some("123 Main St".to_string()),
             venue_city: Some("San Francisco".to_string()),
             venue_name: Some("Test Venue".to_string()),

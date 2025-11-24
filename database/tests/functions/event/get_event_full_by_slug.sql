@@ -87,11 +87,15 @@ insert into event (
     venue_zip_code,
     logo_url,
     banner_url,
+    photos_urls,
     capacity,
     registration_required,
-    meetup_url,
-    streaming_url,
-    recording_url
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_recording_url,
+    meeting_requested,
+    meeting_requires_password,
+    meetup_url
 ) values (
     :'eventID',
     'Tech Conference 2024',
@@ -112,11 +116,15 @@ insert into event (
     '10001',
     'https://example.com/event-logo.png',
     'https://example.com/event-banner.png',
+    array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     500,
     true,
-    'https://meetup.com/event123',
+    true,
     'https://stream.example.com/live',
-    'https://youtube.com/watch?v=123'
+    'https://youtube.com/watch?v=123',
+    false,
+    true,
+    'https://meetup.com/event123'
 );
 
 -- Event Host
@@ -241,6 +249,8 @@ select is(
         "remaining_capacity": 498,
         "event_id": "00000000-0000-0000-0000-000000000041",
         "logo_url": "https://example.com/event-logo.png",
+        "meeting_in_sync": true,
+        "meeting_requires_password": true,
         "sessions": {},
         "timezone": "America/New_York",
         "published": true,
@@ -286,8 +296,13 @@ select is(
         "venue_name": "Convention Center",
         "description": "Annual technology conference with workshops and talks",
         "category_name": "Tech Talks",
-        "recording_url": "https://youtube.com/watch?v=123",
-        "streaming_url": "https://stream.example.com/live",
+        "meeting_join_url": "https://stream.example.com/live",
+        "meeting_recording_url": "https://youtube.com/watch?v=123",
+        "meeting_requested": false,
+        "photos_urls": [
+            "https://example.com/photo1.jpg",
+            "https://example.com/photo2.jpg"
+        ],
         "venue_address": "123 Main St",
         "venue_zip_code": "10001",
         "description_short": "Annual tech conference",

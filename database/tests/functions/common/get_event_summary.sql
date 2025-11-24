@@ -120,7 +120,7 @@ insert into event (
     starts_at,
     ends_at,
     timezone,
-    streaming_url,
+    meeting_join_url,
     venue_address,
     venue_city,
     venue_name,
@@ -140,7 +140,7 @@ insert into event (
     '2024-06-15 09:00:00+00',
     '2024-06-15 17:00:00+00',
     'America/New_York',
-    'https://example.com/live-stream',
+    null,
     '123 Main St',
     'New York',
     'Convention Center',
@@ -149,6 +149,16 @@ insert into event (
     'https://example.com/event-logo.png'
 );
 
+-- Link meeting to event
+insert into meeting (event_id, password, provider_meeting_id, join_url)
+values (
+    :'eventID',
+    'secret123',
+    'summary-meeting-001',
+    'https://meeting.example.com/summary'
+);
+
+-- Event Attendees
 insert into event_attendee (event_id, user_id)
 values
     (:'eventID', :'attendee1ID'),
@@ -185,8 +195,9 @@ select is(
         "logo_url": "https://example.com/event-logo.png",
         "latitude": 40.7128,
         "longitude": -74.006,
+        "meeting_join_url": "https://meeting.example.com/summary",
+        "meeting_password": "secret123",
         "starts_at": 1718442000,
-        "streaming_url": "https://example.com/live-stream",
         "venue_address": "123 Main St",
         "venue_city": "New York",
         "venue_name": "Convention Center",

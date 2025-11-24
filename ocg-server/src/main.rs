@@ -19,10 +19,13 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, ImageStorageConfig, LogFormat},
+    config::{Config, ImageStorageConfig, LogFormat, MeetingsConfig},
     db::PgDB,
-    services::images::{DbImageStorage, DynImageStorage, S3ImageStorage},
-    services::notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
+    services::{
+        images::{DbImageStorage, DynImageStorage, S3ImageStorage},
+        meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
+        notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
+    },
 };
 
 /// Authentication and authorization functionality.
@@ -91,6 +94,23 @@ async fn main() -> Result<()> {
         });
     }
 
+    // Setup image storage provider.
+    let image_storage: DynImageStorage = match &cfg.images {
+        ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db.clone())),
+        ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
+    };
+
+    // Setup meetings manager (if configured).
+    if let Some(MeetingsConfig::Zoom(ref zoom_cfg)) = cfg.meetings {
+        let provider: DynMeetingsProvider = Arc::new(ZoomMeetingsProvider::new(zoom_cfg));
+        let _meetings_manager = Arc::new(MeetingsManager::new(
+            provider,
+            db.clone(),
+            &task_tracker,
+            &cancellation_token,
+        ));
+    }
+
     // Setup notifications manager.
     let email_sender: DynEmailSender = Arc::new(LettreEmailSender::new(&cfg.email)?);
     let notifications_manager = Arc::new(PgNotificationsManager::new(
@@ -100,12 +120,6 @@ async fn main() -> Result<()> {
         &task_tracker,
         &cancellation_token,
     ));
-
-    // Setup image storage provider.
-    let image_storage: DynImageStorage = match &cfg.images {
-        ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db.clone())),
-        ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
-    };
 
     // Setup and launch the HTTP server.
     let router = router::setup(&cfg.server, db, notifications_manager, image_storage).await?;
