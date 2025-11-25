@@ -1,5 +1,6 @@
 //! Templates and data types for the analytics page in the group dashboard.
 
+use crate::templates::filters;
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
