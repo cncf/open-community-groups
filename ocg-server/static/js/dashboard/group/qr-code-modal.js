@@ -42,8 +42,7 @@ const updateModalContent = (modal, trigger, elements, printButton) => {
   }
 
   if (elements.image) {
-    const cacheBuster = Date.now();
-    elements.image.setAttribute("src", `${qrUrl}?cb=${cacheBuster}`);
+    elements.image.setAttribute("src", qrUrl);
     elements.image.setAttribute("alt", `${eventName} check-in QR code`);
 
     const handleImageLoad = () => {
