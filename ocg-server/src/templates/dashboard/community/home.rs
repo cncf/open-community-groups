@@ -8,7 +8,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        dashboard::community::{groups, settings, team},
+        dashboard::community::{analytics, groups, settings, team},
         filters,
         helpers::user_initials,
     },
@@ -37,6 +37,8 @@ pub(crate) struct Page {
 /// Content section for the community dashboard home page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
+    /// Analytics page.
+    Analytics(Box<analytics::Page>),
     /// Groups management page.
     Groups(groups::ListPage),
     /// Settings page.
@@ -46,6 +48,12 @@ pub(crate) enum Content {
 }
 
 impl Content {
+    /// Check if the content is the analytics page.
+    #[allow(dead_code)]
+    fn is_analytics(&self) -> bool {
+        matches!(self, Content::Analytics(_))
+    }
+
     /// Check if the content is the groups page.
     #[allow(dead_code)]
     fn is_groups(&self) -> bool {
@@ -68,6 +76,7 @@ impl Content {
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Content::Analytics(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
@@ -79,8 +88,10 @@ impl std::fmt::Display for Content {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
-    /// Groups management tab (default).
+    /// Analytics tab (default).
     #[default]
+    Analytics,
+    /// Groups management tab.
     Groups,
     /// Settings tab.
     Settings,

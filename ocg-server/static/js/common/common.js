@@ -21,6 +21,20 @@ export const hideLoadingSpinner = (id) => {
 };
 
 /**
+ * Returns a debounced version of the provided function.
+ * @param {Function} fn - Function to debounce
+ * @param {number} delay - Debounce delay in milliseconds
+ * @returns {Function} Debounced function
+ */
+export const debounce = (fn, delay = 150) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
+
+/**
  * Toggles the visibility of the mobile navigation bar and its backdrop.
  * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
  */

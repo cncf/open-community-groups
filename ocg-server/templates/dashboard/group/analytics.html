@@ -1,0 +1,106 @@
+{% import "dashboard/dashboard_macros.html" as macros -%}
+
+{# Page title #}
+{% call macros::form_title(title = "Analytics",
+description = "Group statistics and growth trends.") %}
+{# End page title #}
+
+{# Summary stat cards #}
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-10">
+  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
+    <div class="text-sm text-stone-600">Members</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.members.total|num_fmt }}</div>
+    <div class="mt-1 text-xs text-stone-500">People in this group</div>
+  </div>
+  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
+    <div class="text-sm text-stone-600">Events</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.events.total|num_fmt }}</div>
+    <div class="mt-1 text-xs text-stone-500">Published and past events</div>
+  </div>
+  <div class="bg-white border border-stone-200 text-start rounded-lg p-5">
+    <div class="text-sm text-stone-600">Attendees</div>
+    <div class="mt-2 text-3xl font-semibold text-stone-900">{{ stats.attendees.total|num_fmt }}</div>
+    <div class="mt-1 text-xs text-stone-500">Total RSVPs</div>
+  </div>
+</div>
+{# End summary stat cards #}
+
+{# Charts sections #}
+<div class="space-y-12 mt-10">
+  <div>
+    {% call macros::form_title(title = "Members") %}
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="members-running-chart" class="h-[320px]"></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="members-monthly-chart" class="h-[320px]"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% call macros::form_title(title = "Events") %}
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="events-running-chart" class="h-[320px]"></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="events-monthly-chart" class="h-[320px]"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% call macros::form_title(title = "Attendees") %}
+    <div class="mt-6 grid grid-cols-1 gap-6">
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Running total</div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="attendees-running-chart" class="h-[320px]"></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-sm font-semibold text-stone-500">Per month</div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="attendees-monthly-chart" class="h-[320px]"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{# End charts sections #}
+
+{# Initialize charts with server data #}
+{# djlint:off #}
+<script type="module">
+  import {
+    initAnalyticsCharts,
+    showAnalyticsSpinners
+  } from '/static/js/dashboard/group/analytics.js';
+
+  const stats = {{ stats | json | safe }};
+  showAnalyticsSpinners();
+  initAnalyticsCharts(stats)
+    .catch((error) => console.error('Failed to initialize analytics charts:', error));
+</script>
+{# djlint:on #}
+{# End initialize charts with server data #}

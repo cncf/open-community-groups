@@ -176,6 +176,10 @@ mock! {
             user_id: Uuid,
         ) -> Result<()>;
         async fn delete_group(&self, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn get_community_stats(
+            &self,
+            community_id: Uuid,
+        ) -> Result<crate::templates::dashboard::community::analytics::CommunityStats>;
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
@@ -230,6 +234,11 @@ mock! {
             group_id: Uuid,
             group_sponsor_id: Uuid,
         ) -> Result<crate::types::group::GroupSponsor>;
+        async fn get_group_stats(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<crate::templates::dashboard::group::analytics::GroupStats>;
         async fn list_event_attendees_ids(
             &self,
             group_id: Uuid,

@@ -48,6 +48,13 @@
     </div>
     {# End groups -#}
 
+    {# Analytics -#}
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {% call dashboard_macros::menu_title(text = "Analytics", extra_styles = "py-1.5") -%}
+      {% call dashboard_macros::menu_item(name = "Analytics", icon = "charts", is_active = content.is_analytics(), href = "/dashboard/group?tab=analytics") -%}
+    </div>
+    {# End analytics -#}
+
     {# Events -#}
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
       {% call dashboard_macros::menu_title(text = "Events", extra_styles = "py-1.5") -%}
@@ -63,13 +70,6 @@
       {% call dashboard_macros::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors(), href = "/dashboard/group?tab=sponsors") -%}
     </div>
     {# End members and sponsors -#}
-
-    {# Analytics -#}
-    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {% call dashboard_macros::menu_title(text = "Analytics", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(name = "Analytics", icon = "charts", is_active = false, href = "#", disabled = true) -%}
-    </div>
-    {# End analytics -#}
   </div>
 {% endblock menu -%}
 

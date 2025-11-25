@@ -9,7 +9,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        dashboard::group::{attendees, events, members, settings, sponsors, team},
+        dashboard::group::{analytics, attendees, events, members, settings, sponsors, team},
         filters,
         helpers::user_initials,
     },
@@ -42,6 +42,8 @@ pub(crate) struct Page {
 /// Content section for the group dashboard home page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
+    /// Analytics page.
+    Analytics(Box<analytics::Page>),
     /// Attendees list page.
     Attendees(Box<attendees::ListPage>),
     /// Events management page.
@@ -57,6 +59,12 @@ pub(crate) enum Content {
 }
 
 impl Content {
+    /// Check if the content is the analytics page.
+    #[allow(dead_code)]
+    fn is_analytics(&self) -> bool {
+        matches!(self, Content::Analytics(_))
+    }
+
     /// Check if the content is the attendees page.
     #[allow(dead_code)]
     fn is_attendees(&self) -> bool {
@@ -97,6 +105,7 @@ impl Content {
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Content::Analytics(template) => write!(f, "{}", template.render()?),
             Content::Attendees(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
@@ -111,10 +120,12 @@ impl std::fmt::Display for Content {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
+    /// Analytics tab (default).
+    #[default]
+    Analytics,
     /// Attendees list tab.
     Attendees,
-    /// Events management tab (default).
-    #[default]
+    /// Events management tab.
     Events,
     /// Members list tab.
     Members,
