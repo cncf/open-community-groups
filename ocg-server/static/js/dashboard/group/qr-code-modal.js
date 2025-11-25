@@ -1,7 +1,7 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { setLinkContent } from "/static/js/common/url-utils.js";
-import { printQrCode } from "/static/js/common/qr-code-print.js";
+import { printQrCode } from "/static/js/dashboard/group/qr-code-print.js";
 
 const MODAL_ID = "event-qr-code-modal";
 const OPEN_BUTTON_ID = "open-event-qr-code-modal";
@@ -29,7 +29,6 @@ const updateModalContent = (modal, trigger, elements, printButton) => {
   const qrUrl = trigger.getAttribute("data-qr-code-url");
   const checkInUrl = trigger.getAttribute("data-check-in-url");
   const eventName = trigger.getAttribute("data-event-name") || "Event";
-  const eventSlug = trigger.getAttribute("data-event-slug") || "event";
   const groupName = trigger.getAttribute("data-group-name") || "Group";
   const eventStart = trigger.getAttribute("data-event-start") || "";
 
@@ -64,8 +63,6 @@ const updateModalContent = (modal, trigger, elements, printButton) => {
       }
     };
 
-    elements.image.removeEventListener("load", handleImageLoad);
-    elements.image.removeEventListener("error", handleImageError);
     elements.image.addEventListener("load", handleImageLoad);
     elements.image.addEventListener("error", handleImageError);
 
@@ -90,7 +87,6 @@ const updateModalContent = (modal, trigger, elements, printButton) => {
 
   modal.dataset.qrUrl = qrUrl;
   modal.dataset.checkInUrl = checkInUrl;
-  modal.dataset.eventSlug = eventSlug;
   modal.dataset.eventName = eventName;
   modal.dataset.groupName = groupName;
   modal.dataset.eventStart = eventStart;

@@ -57,7 +57,8 @@
                     <div class="text-lg font-semibold text-stone-900">Check-in opens closer to the event</div>
                   </div>
                   <p class="text-sm text-stone-800 mt-2">
-                    Check-in becomes available two hours before the event starts and remains open until the end of the day on which the event finishes.
+                    Check-in becomes available two hours before the event starts and
+                    remains open until the end of the day on which the event finishes.
                   </p>
                   <div class="flex-1 space-y-4 mt-4">
                     <div>
@@ -98,10 +99,8 @@
                     <p class="text-base font-semibold text-stone-900 break-words">
                       {% if let Some(name) = user.name.as_ref() -%}
                         {{ name|demoji }}
-                      {% else -%}
-                        {% if let Some(username) = user.username.as_ref() -%}
-                          {{ username|demoji }}
-                        {% endif -%}
+                      {% elif let Some(username) = user.username.as_ref() -%}
+                        {{ username|demoji }}
                       {% endif -%}
                     </p>
                   </div>

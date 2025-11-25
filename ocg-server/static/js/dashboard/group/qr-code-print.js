@@ -33,12 +33,8 @@ const ensurePrintStyles = () => {
       z-index: 10000;
       background: #f5f5f4;
       padding: 32px 24px;
-      display: none;
       align-items: center;
       justify-content: center;
-    }
-    #${PRINT_CONTAINER_ID}.is-visible {
-      display: flex;
     }
     #${PRINT_CONTAINER_ID} .qr-print-sheet {
       width: min(960px, 100vw);
@@ -119,13 +115,12 @@ export const printQrCode = (modal, imageId, qrUrl) => {
 
   const container = document.createElement("div");
   container.id = PRINT_CONTAINER_ID;
-  container.classList.add("is-visible");
+  container.style.display = "none";
 
   const sheet = document.createElement("div");
   sheet.classList.add("qr-print-sheet");
   sheet.appendChild(clone);
   container.appendChild(sheet);
-  container.style.display = "none";
   document.body.appendChild(container);
 
   const qrImage = container.querySelector(`#${imageId}`);
