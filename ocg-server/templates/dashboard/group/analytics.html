@@ -25,22 +25,24 @@ description = "Group statistics and growth trends.") %}
 </div>
 {# End summary stat cards #}
 
-<div class="hidden xl:block mt-12 border-t border-stone-200"></div>
-
 {# Charts sections #}
 <div class="space-y-12 mt-10">
   <div>
     {% call macros::form_title(title = "Members") %}
     <div class="mt-6 grid grid-cols-1 gap-6">
-      <div class="bg-white border border-stone-200 rounded-lg p-6"
-           data-analytics-chart>
+      <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
-        <div id="members-running-chart" class="h-[320px] mt-4"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="members-running-chart" class="h-[320px]"></div>
+        </div>
       </div>
-      <div class="bg-white border border-stone-200 rounded-lg p-6"
-           data-analytics-chart>
+      <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
-        <div id="members-monthly-chart" class="h-[320px] mt-4"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="members-monthly-chart" class="h-[320px]"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -48,15 +50,19 @@ description = "Group statistics and growth trends.") %}
   <div>
     {% call macros::form_title(title = "Events") %}
     <div class="mt-6 grid grid-cols-1 gap-6">
-      <div class="bg-white border border-stone-200 rounded-lg p-6"
-           data-analytics-chart>
+      <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
-        <div id="events-running-chart" class="h-[320px] mt-4"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="events-running-chart" class="h-[320px]"></div>
+        </div>
       </div>
-      <div class="bg-white border border-stone-200 rounded-lg p-6"
-           data-analytics-chart>
+      <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
-        <div id="events-monthly-chart" class="h-[320px] mt-4"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="events-monthly-chart" class="h-[320px]"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -64,15 +70,19 @@ description = "Group statistics and growth trends.") %}
   <div>
     {% call macros::form_title(title = "Attendees") %}
     <div class="mt-6 grid grid-cols-1 gap-6">
-      <div class="bg-white border border-stone-200 rounded-lg p-6"
-           data-analytics-chart>
+      <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
-        <div id="attendees-running-chart" class="h-[320px] mt-4"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="attendees-running-chart" class="h-[320px]"></div>
+        </div>
       </div>
-      <div class="bg-white border border-stone-200 rounded-lg p-6"
-           data-analytics-chart>
+      <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
-        <div id="attendees-monthly-chart" class="h-[320px] mt-4"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
+             data-analytics-chart>
+          <div id="attendees-monthly-chart" class="h-[320px]"></div>
+        </div>
       </div>
     </div>
   </div>

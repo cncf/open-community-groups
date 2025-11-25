@@ -167,7 +167,7 @@ export const createAreaChart = (title, name, data, palette) => {
       borderWidth: 1,
       textStyle: { color: "#334155" },
     },
-    grid: { left: 70, right: 40, bottom: 70, top: 80 },
+    grid: { left: 70, right: 40, bottom: 90, top: 80 },
     xAxis: {
       type: "time",
       boundaryGap: false,
@@ -234,7 +234,7 @@ export const createMonthlyBarChart = (title, name, data, palette) => {
       borderWidth: 1,
       textStyle: { color: "#334155" },
     },
-    grid: { left: 70, right: 40, bottom: 90, top: 80 },
+    grid: { left: 70, right: 40, bottom: 110, top: 80 },
     xAxis: {
       type: "category",
       data: (data || []).map((d) => d[0]),
@@ -390,7 +390,7 @@ export const createStackedMonthlyChart = (title, months, seriesData, palette) =>
       left: "center",
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 12, color: "#475569" },
     },
-    grid: { left: 70, right: 40, bottom: 140, top: 80 },
+    grid: { left: 70, right: 40, bottom: 100, top: 80 },
     xAxis: {
       type: "category",
       data: months,
@@ -447,7 +447,7 @@ export const createStackedAreaChart = (title, seriesData, palette) => {
       left: "center",
       textStyle: { fontFamily: dashboardFontFamily, fontSize: 12, color: "#475569" },
     },
-    grid: { left: 70, right: 40, bottom: 120, top: 60 },
+    grid: { left: 70, right: 40, bottom: 90, top: 60 },
     xAxis: {
       type: "time",
       boundaryGap: false,
