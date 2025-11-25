@@ -8,7 +8,7 @@
  * @param {string} name - The name to convert to a slug
  * @returns {string} - A URL-safe slug
  */
-export function generateSlug(name) {
+export const generateSlug = (name) => {
   if (!name || !name.trim()) return "";
 
   return name
@@ -18,25 +18,25 @@ export function generateSlug(name) {
     .replace(/[\u0300-\u036f]/g, "") // Remove accents/diacritics
     .replace(/[^\w]+/g, "-") // Replace sequences of non-word chars with single hyphen (matches database regex)
     .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
-}
+};
 
 /**
  * Triggers a change event on the specified form using htmx.
  * @param {string} formId - The ID of the form to trigger change on
  */
-export function triggerChangeOnForm(formId) {
+export const triggerChangeOnForm = (formId) => {
   const form = document.getElementById(formId);
   if (form) {
     // Trigger change event using htmx
     htmx.trigger(form, "change");
   }
-}
+};
 
 /**
  * Dynamically loads the ECharts library if not already present.
  * @returns {Promise<void>} Promise that resolves when ECharts is loaded
  */
-export function loadEChartsScript() {
+export const loadEChartsScript = () => {
   return new Promise((resolve, reject) => {
     // Check if ECharts is already loaded
     if (typeof window.echarts !== "undefined") {
@@ -60,13 +60,13 @@ export function loadEChartsScript() {
     script.onerror = () => reject(new Error("Failed to load ECharts"));
     document.head.appendChild(script);
   });
-}
+};
 
 /**
  * Read theme colors from CSS variables to keep charts aligned with the dashboard palette.
  * @returns {Object} Primary color scale keyed by shade.
  */
-export function getThemePalette() {
+export const getThemePalette = () => {
   const styles = getComputedStyle(document.documentElement);
   const palette = {
     50: styles.getPropertyValue("--color-primary-50").trim(),
@@ -90,7 +90,7 @@ export function getThemePalette() {
   });
 
   return palette;
-}
+};
 
 /** Typography family shared across dashboard charts. */
 export const dashboardFontFamily =
@@ -101,18 +101,18 @@ export const dashboardFontFamily =
  * @param {Array<[number|string, number|string]>} points - Timestamp/value pairs.
  * @returns {Array<[number, number]>} Normalized series.
  */
-export function toTimeSeries(points = []) {
+export const toTimeSeries = (points = []) => {
   return points.map(([ts, value]) => [Number(ts), Number(value)]);
-}
+};
 
 /**
  * Normalize category/value tuples for charts.
  * @param {Array<[string, number|string]>} pairs - Category/value pairs.
  * @returns {Array<{name: string, value: number}>} Labeled series.
  */
-export function toCategorySeries(pairs = []) {
+export const toCategorySeries = (pairs = []) => {
   return pairs.map(([label, value]) => ({ name: label, value: Number(value) }));
-}
+};
 
 /**
  * Initialize an ECharts instance if the element and library are available.
@@ -120,7 +120,7 @@ export function toCategorySeries(pairs = []) {
  * @param {Object} option - ECharts option object.
  * @returns {echarts.ECharts | null} Chart instance or null when unavailable.
  */
-export function initChart(elementId, option) {
+export const initChart = (elementId, option) => {
   const el = document.getElementById(elementId);
   if (!el || typeof echarts === "undefined") {
     return null;
@@ -129,19 +129,19 @@ export function initChart(elementId, option) {
   const chart = echarts.init(el);
   chart.setOption(option);
   return chart;
-}
+};
 
 /**
  * Shared typography configuration for charts.
  * @returns {Object} Text styling options.
  */
-export function baseText() {
+export const baseText = () => {
   return {
     textStyle: { fontFamily: dashboardFontFamily },
     legend: { textStyle: { fontFamily: dashboardFontFamily } },
     tooltip: { textStyle: { fontFamily: dashboardFontFamily } },
   };
-}
+};
 
 /**
  * Create area chart configuration for running totals.
@@ -151,7 +151,7 @@ export function baseText() {
  * @param {Object} palette - Theme color palette.
  * @returns {Object} ECharts option.
  */
-export function createAreaChart(title, name, data, palette) {
+export const createAreaChart = (title, name, data, palette) => {
   return Object.assign(baseText(), {
     title: {
       text: title,
@@ -208,7 +208,7 @@ export function createAreaChart(title, name, data, palette) {
       },
     ],
   });
-}
+};
 
 /**
  * Create vertical bar chart configuration for monthly data.
@@ -218,7 +218,7 @@ export function createAreaChart(title, name, data, palette) {
  * @param {Object} palette - Theme color palette.
  * @returns {Object} ECharts option.
  */
-export function createMonthlyBarChart(title, name, data, palette) {
+export const createMonthlyBarChart = (title, name, data, palette) => {
   return Object.assign(baseText(), {
     title: {
       text: title,
@@ -258,7 +258,7 @@ export function createMonthlyBarChart(title, name, data, palette) {
       },
     ],
   });
-}
+};
 
 /**
  * Build a palette for multi-series charts.
@@ -266,7 +266,7 @@ export function createMonthlyBarChart(title, name, data, palette) {
  * @param {number} count - Number of series.
  * @returns {Array<string>} Color list sized to the series count.
  */
-export function buildSeriesColors(palette, count) {
+export const buildSeriesColors = (palette, count) => {
   const highContrastPalette = [
     palette[950],
     palette[800],
@@ -299,14 +299,14 @@ export function buildSeriesColors(palette, count) {
     colors.push(paletteToUse[i % paletteToUse.length]);
   }
   return colors;
-}
+};
 
 /**
  * Normalize monthly series maps into aligned stacks.
  * @param {Object<string, Array<[string, number|string]>>} seriesMap - Named series.
  * @returns {{months: Array<string>, series: Array<{name: string, data: Array<number>}>}} Aligned data.
  */
-export function buildStackedMonthlySeries(seriesMap = {}) {
+export const buildStackedMonthlySeries = (seriesMap = {}) => {
   const monthsSet = new Set();
   Object.values(seriesMap).forEach((points) => {
     (points || []).forEach(([month]) => monthsSet.add(month));
@@ -322,14 +322,14 @@ export function buildStackedMonthlySeries(seriesMap = {}) {
       return { name, data: months.map((month) => valuesByMonth.get(month) ?? 0) };
     }),
   };
-}
+};
 
 /**
  * Normalize time-based series maps into aligned stacks.
  * @param {Object<string, Array<[number|string, number|string]>>} seriesMap - Named series.
  * @returns {{timestamps: Array<number>, series: Array<{name: string, data: Array<[number, number]>}>}} Aligned series.
  */
-export function buildStackedTimeSeries(seriesMap = {}) {
+export const buildStackedTimeSeries = (seriesMap = {}) => {
   const timestamps = new Set();
   Object.values(seriesMap).forEach((points) => {
     (points || []).forEach(([ts]) => timestamps.add(Number(ts)));
@@ -355,7 +355,7 @@ export function buildStackedTimeSeries(seriesMap = {}) {
       };
     }),
   };
-}
+};
 
 /**
  * Create stacked monthly bar chart configuration for grouped series.
@@ -365,7 +365,7 @@ export function buildStackedTimeSeries(seriesMap = {}) {
  * @param {Object} palette - Theme color palette.
  * @returns {Object} ECharts option.
  */
-export function createStackedMonthlyChart(title, months, seriesData, palette) {
+export const createStackedMonthlyChart = (title, months, seriesData, palette) => {
   const colors = buildSeriesColors(palette, seriesData.length || 1);
 
   return Object.assign(baseText(), {
@@ -414,7 +414,7 @@ export function createStackedMonthlyChart(title, months, seriesData, palette) {
       barCategoryGap: "35%",
     })),
   });
-}
+};
 
 /**
  * Create stacked area chart configuration for grouped running totals.
@@ -423,7 +423,7 @@ export function createStackedMonthlyChart(title, months, seriesData, palette) {
  * @param {Object} palette - Theme color palette.
  * @returns {Object} ECharts option.
  */
-export function createStackedAreaChart(title, seriesData, palette) {
+export const createStackedAreaChart = (title, seriesData, palette) => {
   const colors = buildSeriesColors(palette, seriesData.length || 1);
 
   return Object.assign(baseText(), {
@@ -476,7 +476,7 @@ export function createStackedAreaChart(title, seriesData, palette) {
       data: series.data,
     })),
   });
-}
+};
 
 /**
  * Create horizontal bar chart configuration for category data.
@@ -486,7 +486,7 @@ export function createStackedAreaChart(title, seriesData, palette) {
  * @param {number} leftMargin - Left margin for labels.
  * @returns {Object} ECharts option.
  */
-export function createHorizontalBarChart(title, categoryData, palette, leftMargin = 140) {
+export const createHorizontalBarChart = (title, categoryData, palette, leftMargin = 140) => {
   const total = categoryData.reduce((sum, d) => sum + d.value, 0);
 
   return Object.assign(baseText(), {
@@ -541,7 +541,7 @@ export function createHorizontalBarChart(title, categoryData, palette, leftMargi
       },
     ],
   });
-}
+};
 
 /**
  * Create pie chart configuration for distribution data.
@@ -551,7 +551,7 @@ export function createHorizontalBarChart(title, categoryData, palette, leftMargi
  * @param {Object} palette - Theme color palette.
  * @returns {Object} ECharts option.
  */
-export function createPieChart(title, name, data, palette) {
+export const createPieChart = (title, name, data, palette) => {
   const pieColors =
     data.length <= 6
       ? [palette[950], palette[800], palette[600], palette[400], palette[200], palette[50]]
@@ -640,4 +640,4 @@ export function createPieChart(title, name, data, palette) {
       },
     ],
   });
-}
+};

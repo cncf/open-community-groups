@@ -15,7 +15,11 @@ import {
 import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/common.js";
 
-function showTabSpinner(tab) {
+/**
+ * Display a tab-level spinner overlay while charts hydrate.
+ * @param {string} tab - Tab key to show the spinner on.
+ */
+const showTabSpinner = (tab) => {
   const content = document.querySelector(`[data-analytics-content="${tab}"]`);
   if (!content) return;
 
@@ -29,15 +33,19 @@ function showTabSpinner(tab) {
     content.style.position = "relative";
     content.appendChild(spinner);
   }
-}
+};
 
-function hideTabSpinner(tab) {
+/**
+ * Remove the spinner overlay from a tab content area.
+ * @param {string} tab - Tab key to clear the spinner from.
+ */
+const hideTabSpinner = (tab) => {
   const content = document.querySelector(`[data-analytics-content="${tab}"]`);
   const spinner = content?.querySelector(".tab-spinner");
   if (spinner) {
     spinner.remove();
   }
-}
+};
 
 /**
  * Render groups charts.
@@ -45,7 +53,7 @@ function hideTabSpinner(tab) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-async function initGroupsCharts(groups = {}, palette) {
+const initGroupsCharts = async (groups = {}, palette) => {
   await loadEChartsScript();
 
   const charts = [];
@@ -119,7 +127,7 @@ async function initGroupsCharts(groups = {}, palette) {
   if (monthlyRegionChart) charts.push(monthlyRegionChart);
 
   return charts;
-}
+};
 
 /**
  * Render members charts.
@@ -127,7 +135,7 @@ async function initGroupsCharts(groups = {}, palette) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-async function initMembersCharts(members = {}, palette) {
+const initMembersCharts = async (members = {}, palette) => {
   await loadEChartsScript();
 
   const charts = [];
@@ -205,7 +213,7 @@ async function initMembersCharts(members = {}, palette) {
   if (runningRegionChart) charts.push(runningRegionChart);
 
   return charts;
-}
+};
 
 /**
  * Render events charts.
@@ -213,7 +221,7 @@ async function initMembersCharts(members = {}, palette) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-async function initEventsCharts(events = {}, palette) {
+const initEventsCharts = async (events = {}, palette) => {
   await loadEChartsScript();
 
   const charts = [];
@@ -319,7 +327,7 @@ async function initEventsCharts(events = {}, palette) {
   if (monthlyEventCategoryChart) charts.push(monthlyEventCategoryChart);
 
   return charts;
-}
+};
 
 /**
  * Render attendees charts.
@@ -327,7 +335,7 @@ async function initEventsCharts(events = {}, palette) {
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-async function initAttendeesCharts(attendees = {}, palette) {
+const initAttendeesCharts = async (attendees = {}, palette) => {
   await loadEChartsScript();
 
   const charts = [];
@@ -423,9 +431,14 @@ async function initAttendeesCharts(attendees = {}, palette) {
   if (monthlyEventCategoryChart) charts.push(monthlyEventCategoryChart);
 
   return charts;
-}
+};
 
-function setupAnalyticsTabs(stats, palette) {
+/**
+ * Wire tab switching and lazy chart initialization for analytics sections.
+ * @param {Object} stats - Community analytics payload.
+ * @param {Object} palette - Theme palette.
+ */
+const setupAnalyticsTabs = (stats, palette) => {
   const tabButtons = document.querySelectorAll("[data-analytics-tab]");
   const tabContents = document.querySelectorAll("[data-analytics-content]");
   if (!tabButtons.length || !tabContents.length) {
@@ -492,24 +505,24 @@ function setupAnalyticsTabs(stats, palette) {
   }, 200);
 
   window.addEventListener("resize", resizeCharts);
-}
+};
 
 /**
  * Render spinner overlays for the active analytics tab before charts are ready.
  */
-export function showActiveAnalyticsSpinners() {
+export const showActiveAnalyticsSpinners = () => {
   const activeButton = document.querySelector('[data-analytics-tab][data-active="true"]');
   const tab = activeButton?.dataset.analyticsTab;
   if (tab) {
     showTabSpinner(tab);
   }
-}
+};
 
 /**
  * Render analytics charts with lazy tab initialization.
  * @param {Object} stats - Community statistics payload from the server.
  */
-export async function initAnalyticsCharts(stats) {
+export const initAnalyticsCharts = async (stats) => {
   if (!stats) {
     return;
   }
@@ -517,4 +530,4 @@ export async function initAnalyticsCharts(stats) {
   await loadEChartsScript();
   const palette = getThemePalette();
   setupAnalyticsTabs(stats, palette);
-}
+};

@@ -8,7 +8,11 @@ import {
 import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/common.js";
 
-function addSpinner(container) {
+/**
+ * Add a loading spinner overlay to a chart container.
+ * @param {HTMLElement} container - Chart wrapper element.
+ */
+const addSpinner = (container) => {
   if (!container || container.querySelector(".chart-spinner")) {
     return;
   }
@@ -19,17 +23,30 @@ function addSpinner(container) {
   spinner.innerHTML =
     '<svg-spinner size="size-10" class="chart-spinner absolute inset-0 flex items-center justify-center text-gray-500 bg-white/80 backdrop-blur-[1px] z-10"></svg-spinner>';
   container.appendChild(spinner);
-}
+};
 
-function removeSpinner(container) {
+/**
+ * Remove any spinner overlay from a chart container.
+ * @param {HTMLElement} container - Chart wrapper element.
+ */
+const removeSpinner = (container) => {
   container?.querySelector(".chart-spinner")?.remove();
-}
+};
 
-function hasData(data) {
+/**
+ * Check whether a dataset contains points for rendering.
+ * @param {Array} data - Chart data points.
+ * @returns {boolean} True when the chart has data.
+ */
+const hasData = (data) => {
   return Array.isArray(data) && data.length > 0;
-}
+};
 
-function showEmptyState(elementId) {
+/**
+ * Render a friendly empty state when no data is available.
+ * @param {string} elementId - Target chart element id.
+ */
+const showEmptyState = (elementId) => {
   const chartElement = document.getElementById(elementId);
   if (!chartElement) {
     return;
@@ -59,9 +76,16 @@ function showEmptyState(elementId) {
     "bg-stone-50/80",
   );
   chartElement.textContent = "No data available yet";
-}
+};
 
-function renderChart(elementId, option, hasChartData) {
+/**
+ * Create or dispose a chart depending on data availability.
+ * @param {string} elementId - Target chart element id.
+ * @param {Object} option - ECharts option to render.
+ * @param {boolean} hasChartData - Whether the chart has data.
+ * @returns {echarts.ECharts|null} Chart instance or null.
+ */
+const renderChart = (elementId, option, hasChartData) => {
   const chartElement = document.getElementById(elementId);
   const container = chartElement?.closest("[data-analytics-chart]");
 
@@ -94,9 +118,15 @@ function renderChart(elementId, option, hasChartData) {
 
   const chart = initChart(elementId, option);
   return chart;
-}
+};
 
-function initMembersCharts(stats = {}, palette) {
+/**
+ * Build charts for members metrics.
+ * @param {Object} stats - Members stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const initMembersCharts = (stats = {}, palette) => {
   const charts = [];
 
   const runningData = stats.running_total || [];
@@ -118,9 +148,15 @@ function initMembersCharts(stats = {}, palette) {
   );
 
   return charts.filter(Boolean);
-}
+};
 
-function initEventsCharts(stats = {}, palette) {
+/**
+ * Build charts for events metrics.
+ * @param {Object} stats - Events stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const initEventsCharts = (stats = {}, palette) => {
   const charts = [];
 
   const runningData = stats.running_total || [];
@@ -142,9 +178,15 @@ function initEventsCharts(stats = {}, palette) {
   );
 
   return charts.filter(Boolean);
-}
+};
 
-function initAttendeesCharts(stats = {}, palette) {
+/**
+ * Build charts for attendees metrics.
+ * @param {Object} stats - Attendees stats payload.
+ * @param {Object} palette - Theme palette.
+ * @returns {Array<echarts.ECharts>} Initialized charts.
+ */
+const initAttendeesCharts = (stats = {}, palette) => {
   const charts = [];
 
   const runningData = stats.running_total || [];
@@ -166,15 +208,22 @@ function initAttendeesCharts(stats = {}, palette) {
   );
 
   return charts.filter(Boolean);
-}
+};
 
-export function showAnalyticsSpinners() {
+/**
+ * Show spinners on all analytics chart containers.
+ */
+export const showAnalyticsSpinners = () => {
   document.querySelectorAll("[data-analytics-chart]").forEach((container) => {
     addSpinner(container);
   });
-}
+};
 
-export async function initAnalyticsCharts(stats) {
+/**
+ * Initialize all analytics charts for the group dashboard.
+ * @param {Object} stats - Group analytics payload from the server.
+ */
+export const initAnalyticsCharts = async (stats) => {
   if (!stats) {
     return;
   }
@@ -195,4 +244,4 @@ export async function initAnalyticsCharts(stats) {
   }, 200);
 
   window.addEventListener("resize", resizeCharts);
-}
+};
