@@ -15,7 +15,13 @@ import "/static/js/common/avatar-image.js";
  * - bio: string (optional)
  * - bio-is-html: boolean (optional). When true, bio is rendered as HTML.
  * - delay: number (optional). Show delay in ms (default: 300).
+ * - small: boolean (optional). When true, renders a compact version.
  * - tooltip-visible: boolean (optional). When true, tooltip is shown.
+ * - company: string (optional)
+ * - facebook-url: string (optional)
+ * - linkedin-url: string (optional)
+ * - twitter-url: string (optional)
+ * - website-url: string (optional)
  */
 export class UserChip extends LitWrapper {
   static get properties() {
@@ -28,8 +34,12 @@ export class UserChip extends LitWrapper {
       bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
       tooltipVisible: { type: Boolean, attribute: "tooltip-visible" },
       delay: { type: Number },
-      // When true, renders a compact badge-like chip
       small: { type: Boolean },
+      company: { type: String },
+      facebookUrl: { type: String, attribute: "facebook-url" },
+      linkedinUrl: { type: String, attribute: "linkedin-url" },
+      twitterUrl: { type: String, attribute: "twitter-url" },
+      websiteUrl: { type: String, attribute: "website-url" },
       _hasBio: { type: Boolean, state: true },
     };
   }
@@ -45,12 +55,18 @@ export class UserChip extends LitWrapper {
     this.tooltipVisible = false;
     this.delay = 300;
     this.small = false;
+    this.company = "";
+    this.facebookUrl = "";
+    this.linkedinUrl = "";
+    this.twitterUrl = "";
+    this.websiteUrl = "";
     this._hasBio = false;
     this._timer = null;
   }
 
   firstUpdated() {
     this._hasBio = typeof this.bio === "string" && this.bio.trim().length > 0;
+    console.log("UserChip _hasBio:", this._hasBio, this.bio);
   }
 
   _showTooltip = () => {
@@ -80,6 +96,39 @@ export class UserChip extends LitWrapper {
       e.preventDefault();
       this.tooltipVisible = false;
       clearTimeout(this._timer);
+    }
+  };
+
+  _handleClick = (e) => {
+    if (this._hasBio && !this.small) {
+      e.preventDefault();
+
+      this.dispatchEvent(
+        new CustomEvent("open-user-modal", {
+          detail: {
+            name: this.name,
+            username: this.username,
+            imageUrl: this.imageUrl,
+            title: this.title,
+            company: this.company,
+            bio: this.bio,
+            bioIsHtml: this.bioIsHtml,
+            facebookUrl: this.facebookUrl,
+            linkedinUrl: this.linkedinUrl,
+            twitterUrl: this.twitterUrl,
+            websiteUrl: this.websiteUrl,
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+  };
+
+  _handleKeydown = (e) => {
+    if (this._hasBio && !this.small && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      this._handleClick(e);
     }
   };
 
@@ -118,11 +167,20 @@ export class UserChip extends LitWrapper {
   }
 
   render() {
+    const isClickable = this._hasBio && !this.small;
+
     return html`
       <div
         class="relative ${this.small
           ? "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1"
-          : "flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full"}"
+          : "flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full"} ${isClickable
+          ? "cursor-pointer hover:border-primary-300 hover:shadow-sm transition-all"
+          : ""}"
+        @click="${isClickable ? this._handleClick : null}"
+        role="${isClickable ? "button" : ""}"
+        tabindex="${isClickable ? "0" : "-1"}"
+        @keydown="${isClickable ? this._handleKeydown : null}"
+        aria-label="${isClickable ? `View ${this.name || this.username}'s profile` : ""}"
       >
         ${this._renderHeader(false, this.small)}
       </div>
