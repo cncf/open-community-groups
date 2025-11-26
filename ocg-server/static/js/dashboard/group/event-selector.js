@@ -1,6 +1,7 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
 import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
 import "/static/js/common/svg-spinner.js";
 
@@ -342,10 +343,7 @@ class EventSelector extends LitWrapper {
     }
     const {
       appendCopySuffix,
-      setTextValue,
       setCategoryValue,
-      setSelectValue,
-      setImageFieldValue,
       setGalleryImages,
       setTags,
       setRegistrationRequired,
