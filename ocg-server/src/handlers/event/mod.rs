@@ -373,7 +373,7 @@ mod tests {
             parts.headers.get(CACHE_CONTROL),
             Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
         );
-        assert!(bytes.is_empty());
+        assert!(!bytes.is_empty());
     }
 
     #[tokio::test]
