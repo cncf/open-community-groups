@@ -1,9 +1,15 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
+import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
 import "/static/js/common/svg-spinner.js";
 
 /**
- * Lightweight dropdown that loads group events on demand for attendee filtering.
+ * Lightweight dropdown that loads group events on demand and supports multiple modes:
+ * - attendees: renders event buttons with htmx attributes to load attendee lists
+ * - copy: fetches full event details and populates the event form for copying
+ * - custom: renders event buttons with htmx attributes for custom endpoints
  */
 class EventSelector extends LitWrapper {
   dateFrom = "2000-01-01";
@@ -14,10 +20,14 @@ class EventSelector extends LitWrapper {
    * - selectedEvent: preloaded event payload to render selected label
    * - groupId: optional override group uuid
    * - buttonId: optional button id to control focus interactions
+   * - mode: "attendees" | "copy" | "custom" (default "attendees").
+   * - targetSelector: CSS selector for htmx swaps (attendees/custom).
+   * - endpoint: URL base for custom mode (required when mode="custom").
    * - _isOpen: dropdown visibility flag
    * - _query: current search term
    * - _results: fetched events list
    * - _loading: remote fetch in progress indicator
+   * - _copyLoading: copy mode fetch in progress indicator
    * - _error: remote fetch error message
    * - _activeIndex: highlighted result index for keyboard navigation
    */
@@ -39,10 +49,14 @@ class EventSelector extends LitWrapper {
     },
     groupId: { type: String, attribute: "group-id" },
     buttonId: { type: String, attribute: "button-id" },
+    mode: { type: String, attribute: "mode" },
+    targetSelector: { type: String, attribute: "target-selector" },
+    endpoint: { type: String, attribute: "endpoint" },
     _isOpen: { state: true },
     _query: { state: true },
     _results: { state: true },
     _loading: { state: true },
+    _copyLoading: { state: true },
     _error: { state: true },
     _activeIndex: { state: true },
   };
@@ -53,10 +67,14 @@ class EventSelector extends LitWrapper {
     this.selectedEvent = null;
     this.groupId = "";
     this.buttonId = "";
+    this.mode = "attendees";
+    this.targetSelector = "#dashboard-content";
+    this.endpoint = "";
     this._isOpen = false;
     this._query = "";
     this._results = [];
     this._loading = false;
+    this._copyLoading = false;
     this._error = "";
     this._hasFetched = false;
     this._activeIndex = -1;
@@ -78,6 +96,13 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Validates inputs once the component is mounted.
+   */
+  firstUpdated() {
+    this._validateMode();
+  }
+
+  /**
    * Re-processes HTMX bindings whenever results change.
    * @param {Map<string, unknown>} changed Changed reactive props
    */
@@ -93,7 +118,9 @@ class EventSelector extends LitWrapper {
       this._hasFetched = false;
       this._primaryResults = [];
     }
+    const usesHtmx = this.mode === "attendees" || this.mode === "custom";
     if (
+      usesHtmx &&
       (changed.has("_results") || changed.has("_isOpen")) &&
       typeof window !== "undefined" &&
       window.htmx &&
@@ -154,6 +181,23 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Handles selection click according to the current mode.
+   * @param {MouseEvent} event Triggering click
+   * @param {object} eventData Selected event
+   */
+  async _handleEventClick(event, eventData) {
+    if (this.mode === "copy") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      await this._handleCopyMode(eventData);
+      return;
+    }
+    if (this.mode === "attendees" || this.mode === "custom") {
+      this._closeDropdown();
+    }
+  }
+
+  /**
    * Toggles dropdown visibility.
    * @param {MouseEvent} event Triggering click
    */
@@ -207,6 +251,192 @@ class EventSelector extends LitWrapper {
    */
   _removeOutsideListener() {
     document.removeEventListener("click", this._outsideHandler);
+  }
+
+  /**
+   * Ensures provided mode is supported to avoid silent failures.
+   */
+  _validateMode() {
+    const allowedModes = ["attendees", "copy", "custom"];
+    if (!allowedModes.includes(this.mode)) {
+      console.warn(`event-selector: invalid mode "${this.mode}", defaulting to "attendees".`);
+      this.mode = "attendees";
+      return;
+    }
+    if (this.mode === "custom" && !this.endpoint) {
+      console.error(
+        'event-selector: mode "custom" requires an "endpoint" attribute; falling back to "attendees".',
+      );
+      this.mode = "attendees";
+    }
+  }
+
+  /**
+   * Executes copy mode flow: fetch details and populate the form.
+   * @param {object} eventData Selected event data
+   */
+  async _handleCopyMode(eventData) {
+    const eventId = eventData?.event_id;
+    if (!eventId || this._copyLoading) {
+      return;
+    }
+    this._setCopyLoading(true);
+    try {
+      const details = await this._fetchEventDetails(eventId);
+      this._applyEventDetails(details);
+      this._updateSelectorAfterCopy(details);
+      this._closeDropdown();
+      this._scrollToTop();
+      this._showCopySuccess();
+    } catch (error) {
+      console.error("Failed to copy event", error);
+      this._showCopyError();
+    } finally {
+      this._setCopyLoading(false);
+    }
+  }
+
+  /**
+   * Shows or hides the copy loading indicator.
+   * @param {boolean} loading Loading state
+   */
+  _setCopyLoading(loading) {
+    this._copyLoading = loading;
+    const indicator = document.querySelector("[data-copy-indicator]");
+    if (indicator) {
+      indicator.classList.toggle("hidden", !loading);
+    }
+    const triggerButton = document.getElementById(this.buttonId);
+    if (triggerButton) {
+      if (loading) {
+        triggerButton.setAttribute("aria-busy", "true");
+      } else {
+        triggerButton.removeAttribute("aria-busy");
+      }
+    }
+  }
+
+  /**
+   * Fetches full event details for copying.
+   * @param {string} eventId Event identifier
+   * @returns {Promise<object>}
+   */
+  async _fetchEventDetails(eventId) {
+    const url = `/dashboard/group/events/${encodeURIComponent(eventId)}/details`;
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch event ${eventId}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Applies copied event details into the form.
+   * @param {object} details Event details payload
+   */
+  _applyEventDetails(details) {
+    if (!details || typeof details !== "object") {
+      return;
+    }
+    const {
+      appendCopySuffix,
+      setCategoryValue,
+      setGalleryImages,
+      setTags,
+      setRegistrationRequired,
+      updateMarkdownContent,
+      updateTimezone,
+      setHosts,
+      setSponsors,
+      setSessions,
+    } = this._getFormHelpers();
+
+    setTextValue("name", appendCopySuffix(details.name));
+    setCategoryValue(details);
+    setSelectValue("kind_id", details.kind);
+    setImageFieldValue("logo_url", details.logo_url);
+    setImageFieldValue("banner_url", details.banner_url);
+    setTextValue("description_short", details.description_short);
+    updateMarkdownContent(details.description);
+    setTextValue("capacity", details.capacity);
+    setRegistrationRequired(details.registration_required === true);
+    setTextValue("meetup_url", details.meetup_url);
+    setGalleryImages(details.photos_urls);
+    setTags(details.tags);
+    updateTimezone(details.timezone);
+    setTextValue("venue_name", details.venue_name);
+    setTextValue("venue_address", details.venue_address);
+    setTextValue("venue_city", details.venue_city);
+    setTextValue("venue_zip_code", details.venue_zip_code);
+    setTextValue("streaming_url", details.streaming_url);
+    setTextValue("recording_url", details.recording_url);
+    setHosts(details.hosts);
+    setSponsors(details.sponsors);
+    setSessions(details.sessions);
+  }
+
+  /**
+   * Provides form helper utilities.
+   * @returns {typeof formHelpers}
+   */
+  _getFormHelpers() {
+    return formHelpers;
+  }
+
+  /**
+   * Updates selector state after copying.
+   * @param {object} details Copied event details
+   */
+  _updateSelectorAfterCopy(details) {
+    if (!details) {
+      return;
+    }
+    this.selectedEventId = String(details.event_id ?? "");
+    this.selectedEvent = {
+      event_id: String(details.event_id ?? ""),
+      name: details.name || "",
+      starts_at: this._parseEventTimestamp(details.starts_at),
+      timezone: String(details.timezone || ""),
+    };
+  }
+
+  /**
+   * Parses a timestamp value safely.
+   * @param {*} value Timestamp value
+   * @returns {number|null}
+   */
+  _parseEventTimestamp(value) {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const timestamp = Number(value);
+    return Number.isFinite(timestamp) ? timestamp : null;
+  }
+
+  /**
+   * Scrolls to top after copying.
+   */
+  _scrollToTop() {
+    if (typeof window !== "undefined" && typeof window.scrollTo === "function") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  /**
+   * Displays a success alert after copying.
+   */
+  _showCopySuccess() {
+    showInfoAlert("Event details copied. Update the schedule before publishing.");
+  }
+
+  /**
+   * Displays an error alert if copying fails.
+   */
+  _showCopyError() {
+    showErrorAlert("Unable to copy that event right now. Please try again.");
   }
 
   /**
@@ -517,6 +747,34 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Builds HTMX config for attendees/custom modes.
+   * @param {object} event Event payload
+   * @returns {{hxGet?: string, hxTarget?: string, hxIndicator?: string, hxSwap?: string, hxDisabled?: string}}
+   */
+  _getHtmxConfig(event) {
+    const target = this.targetSelector || "#dashboard-content";
+    if (this.mode === "attendees") {
+      return {
+        hxGet: `/dashboard/group/attendees?event_id=${event.event_id}`,
+        hxTarget: target,
+        hxIndicator: "#dashboard-spinner",
+        hxSwap: "innerHTML show:body:top",
+        hxDisabled: ".event-button",
+      };
+    }
+    if (this.mode === "custom" && this.endpoint) {
+      return {
+        hxGet: `${this.endpoint}?event_id=${event.event_id}`,
+        hxTarget: target,
+        hxIndicator: "#dashboard-spinner",
+        hxSwap: "innerHTML show:body:top",
+        hxDisabled: ".event-button",
+      };
+    }
+    return {};
+  }
+
+  /**
    * Renders a single event option button.
    * @param {object} event Event payload
    * @returns {import("lit").TemplateResult}
@@ -524,6 +782,7 @@ class EventSelector extends LitWrapper {
   _renderEventOption(event, index) {
     const isSelected = this.selectedEventId && String(this.selectedEventId) === String(event.event_id);
     const isActive = index === this._activeIndex;
+    const htmxConfig = this._getHtmxConfig(event);
     let status = "";
     if (isActive && !isSelected) {
       status = "bg-stone-50";
@@ -539,11 +798,12 @@ class EventSelector extends LitWrapper {
           type="button"
           class="event-button cursor-pointer w-full flex items-center justify-between px-4 py-2 text-sm/6 text-left hover:bg-stone-100 ${status}"
           ?disabled="${isSelected}"
-          hx-get="/dashboard/group/attendees?event_id=${event.event_id}"
-          hx-target="#dashboard-content"
-          hx-indicator="#dashboard-spinner"
-          hx-swap="innerHTML show:body:top"
-          hx-disabled-elt=".event-button"
+          hx-get="${htmxConfig.hxGet ?? nothing}"
+          hx-target="${htmxConfig.hxTarget ?? nothing}"
+          hx-indicator="${htmxConfig.hxIndicator ?? nothing}"
+          hx-swap="${htmxConfig.hxSwap ?? nothing}"
+          hx-disabled-elt="${htmxConfig.hxDisabled ?? nothing}"
+          @click="${(clickEvent) => this._handleEventClick(clickEvent, event)}"
           @mouseenter="${() => {
             this._activeIndex = index;
           }}"
@@ -569,6 +829,23 @@ class EventSelector extends LitWrapper {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Returns the placeholder text according to mode.
+   * @returns {string}
+   */
+  _getPlaceholderText() {
+    switch (this.mode) {
+      case "attendees":
+        return "Choose an event to view attendees";
+      case "copy":
+        return "Choose an event to copy";
+      case "custom":
+        return "Choose an event";
+      default:
+        return "Choose an event";
+    }
   }
 
   /**
@@ -618,64 +895,66 @@ class EventSelector extends LitWrapper {
     const selectedEvent = this._findSelectedEvent();
 
     return html`
-      <button
-        id="${buttonId}"
-        class="relative cursor-pointer select select-primary w-full
+      <div class="relative inline-block w-full">
+        <button
+          id="${buttonId}"
+          class="relative cursor-pointer select select-primary w-full
                text-left pe-9"
-        aria-label="Select event"
-        @click="${(event) => this._toggleDropdown(event)}"
-      >
-        ${selectedEvent
-          ? this._renderEventPreview(selectedEvent)
-          : html`<div class="flex flex-col min-w-0">
-              <div class="max-w-full truncate">Select event</div>
-              <div class="text-xs text-stone-500 truncate">Choose an event to view attendees</div>
-            </div>`}
-        <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none gap-2">
-          ${this._loading ? html`<svg-spinner label="Loading events"></svg-spinner>` : ""}
-          <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
-        </div>
-      </button>
-      <div
-        id="dropdown-events"
-        class="${this._isOpen
-          ? ""
-          : "hidden"} absolute top-22 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200"
-      >
-        <div class="p-3 border-b border-stone-200">
-          <div class="relative">
-            <div
-              class="absolute inset-y-0 start-0 flex items-center ps-3
-                     pointer-events-none"
-            >
-              <div class="svg-icon size-4 icon-search bg-stone-300"></div>
-            </div>
-            <input
-              id="event-search-input"
-              type="text"
-              class="input-primary w-full ps-9 pe-9"
-              placeholder="Search events"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              spellcheck="false"
-              value="${this._query}"
-              @input="${(event) => this._handleSearchInput(event)}"
-              @keydown="${(event) => this._handleInputKeydown(event)}"
-            />
-            ${this._query.trim().length > 0
-              ? html`<button
-                  type="button"
-                  class="absolute inset-y-0 end-2 flex items-center"
-                  @click="${() => this._clearSearch()}"
-                >
-                  <div class="svg-icon size-4 icon-close bg-stone-400 hover:bg-stone-600"></div>
-                  <span class="sr-only">Clear search</span>
-                </button>`
-              : null}
+          aria-label="Select event"
+          @click="${(event) => this._toggleDropdown(event)}"
+        >
+          ${selectedEvent
+            ? this._renderEventPreview(selectedEvent)
+            : html`<div class="flex flex-col min-w-0">
+                <div class="max-w-full truncate">Select event</div>
+                <div class="text-xs text-stone-500 truncate">${this._getPlaceholderText()}</div>
+              </div>`}
+          <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none gap-2">
+            ${this._loading ? html`<svg-spinner label="Loading events"></svg-spinner>` : ""}
+            <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
           </div>
+        </button>
+        <div
+          id="dropdown-events"
+          class="${this._isOpen
+            ? ""
+            : "hidden"} absolute top-14 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200"
+        >
+          <div class="p-3 border-b border-stone-200">
+            <div class="relative">
+              <div
+                class="absolute inset-y-0 start-0 flex items-center ps-3
+                     pointer-events-none"
+              >
+                <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+              </div>
+              <input
+                id="event-search-input"
+                type="text"
+                class="input-primary w-full ps-9 pe-9"
+                placeholder="Search events"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                value="${this._query}"
+                @input="${(event) => this._handleSearchInput(event)}"
+                @keydown="${(event) => this._handleInputKeydown(event)}"
+              />
+              ${this._query.trim().length > 0
+                ? html`<button
+                    type="button"
+                    class="absolute inset-y-0 end-2 flex items-center"
+                    @click="${() => this._clearSearch()}"
+                  >
+                    <div class="svg-icon size-4 icon-close bg-stone-400 hover:bg-stone-600"></div>
+                    <span class="sr-only">Clear search</span>
+                  </button>`
+                : null}
+            </div>
+          </div>
+          ${this._renderDropdownContent()}
         </div>
-        ${this._renderDropdownContent()}
       </div>
     `;
   }
