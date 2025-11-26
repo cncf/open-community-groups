@@ -94,13 +94,13 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    {% if event.canceled -%}
-                      <div class="block max-w-full truncate">{{ event.name }}</div>
-                    {% else -%}
+                    {% if event.published && !event.canceled -%}
                       <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
                          class="block max-w-full truncate hover:underline">{{ event.name }}</a>
+                    {% else -%}
+                      <div class="block max-w-full truncate">{{ event.name }}</div>
                     {% endif -%}
                     {# End event name -#}
 
@@ -291,10 +291,14 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="block max-w-full truncate hover:underline">{{ event.name }}</a>
+                    {% if event.published && !event.canceled -%}
+                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="block max-w-full truncate hover:underline">{{ event.name }}</a>
+                    {% else -%}
+                      <div class="block max-w-full truncate">{{ event.name }}</div>
+                    {% endif -%}
                     {# End event name -#}
 
                     {# Mobile type and date -#}
