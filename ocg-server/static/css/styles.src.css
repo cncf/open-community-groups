@@ -355,6 +355,7 @@ input:placeholder-shown {
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
 .icon-check { --icon-url: url('/static/images/icons/check.svg'); }
+.icon-check-in { --icon-url: url('/static/images/icons/check_in.svg'); }
 .icon-clock { --icon-url: url('/static/images/icons/clock.svg'); }
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
@@ -527,6 +528,13 @@ input:placeholder-shown {
 
 .markdown code {
   text-wrap: auto;
+}
+
+.markdown * {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 /* End markdown */

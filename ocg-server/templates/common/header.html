@@ -8,9 +8,9 @@
        aria-label="Main navigation">
     <div class="flex items-center gap-x-6">
       {# Logo -#}
-      {% if path != "/" %}<a href="/" aria-label="Go to homepage">{% endif %}
+      {% if path != "/" %}<a href="/" aria-label="Go to homepage" class="inline-flex">{% endif %}
         <div class="inline-flex items-top gap-x-3 me-5">
-          <img class="w-auto max-w-[208px] h-10"
+          <img class="w-auto max-w-[208px] h-10 mt-[5px]"
                height="40"
                width="auto"
                src="{{ self.community.header_logo_url }}"
