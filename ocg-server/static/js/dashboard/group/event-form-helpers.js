@@ -1,5 +1,3 @@
-const COPY_SUFFIX = " Copy";
-
 /**
  * Checks if the provided value is a string.
  * @param {*} value Incoming value
@@ -23,16 +21,16 @@ const toOptionalString = (value) =>
   value === null || value === undefined ? "" : typeof value === "string" ? value : String(value);
 
 /**
- * Adds the copy suffix only when needed to avoid duplicated labels.
+ * Adds the copy suffix to a given event name.
  * @param {*} name Event name
- * @returns {string} Name with copy suffix when applicable
+ * @returns {string} Name with copy suffix
  */
 const appendCopySuffix = (name) => {
   const trimmed = toTrimmedString(name);
   if (!trimmed) {
     return "";
   }
-  return trimmed.toLowerCase().endsWith(COPY_SUFFIX.toLowerCase()) ? trimmed : `${trimmed}${COPY_SUFFIX}`;
+  return `${trimmed} (copy)`;
 };
 
 /**
