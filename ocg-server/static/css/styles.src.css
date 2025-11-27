@@ -64,7 +64,7 @@
 
   .btn-primary-outline .svg-icon,
   .btn-primary-outline-anchor .svg-icon {
-    @apply bg-primary-500;
+    @apply bg-current;
   }
 
   .btn-mini {

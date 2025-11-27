@@ -14,7 +14,7 @@
   <button id="signin-btn"
           data-path="{{ path }}"
           class="hidden group btn-primary-outline-anchor w-40 h-10 md:h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
+    <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Join group</span>
   </button>
 
@@ -23,7 +23,7 @@
           hx-post="/group/{{ group.group_id }}/join"
           hx-swap="none"
           class="hidden group btn-primary-outline w-40 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-user-plus group-hover:bg-white transition-colors"></div>
+    <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Join group</span>
   </button>
 
@@ -33,7 +33,7 @@
           hx-trigger="confirmed"
           hx-swap="none"
           class="hidden group btn-primary-outline w-40 h-10 md:h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-logout group-hover:bg-white transition-colors"></div>
+    <div class="svg-icon size-3 icon-logout"></div>
     <span>Leave group</span>
   </button>
 

@@ -18,7 +18,7 @@
   <button id="signin-btn"
           data-path="{{ path }}"
           class="hidden group btn-primary-outline-anchor w-52 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-user-plus group-hover:enabled:bg-white transition-colors"></div>
+    <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Attend event</span>
   </button>
 
@@ -27,7 +27,7 @@
           hx-post="/event/{{ event.event_id }}/attend"
           hx-swap="none"
           class="hidden group btn-primary-outline w-52 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-user-plus group-hover:enabled:bg-white transition-colors"></div>
+    <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Attend event</span>
   </button>
 
@@ -37,7 +37,7 @@
           hx-trigger="confirmed"
           hx-swap="none"
           class="hidden group btn-primary-outline w-52 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
-    <div class="svg-icon size-3 icon-logout group-hover:enabled:bg-white transition-colors"></div>
+    <div class="svg-icon size-3 icon-logout"></div>
     <span>Cancel attendance</span>
   </button>
 
