@@ -276,10 +276,10 @@ export class GroupSelector extends LitWrapper {
           class="select select-primary relative text-left pe-9 ${isDisabled
             ? "opacity-60 cursor-not-allowed"
             : "cursor-pointer"}"
-          ?disabled="${isDisabled}"
+          ?disabled=${isDisabled}
           aria-haspopup="listbox"
-          aria-expanded="${this._isOpen ? "true" : "false"}"
-          @click="${() => this._toggleDropdown()}"
+          aria-expanded=${this._isOpen ? "true" : "false"}
+          @click=${() => this._toggleDropdown()}
         >
           <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
@@ -311,8 +311,8 @@ export class GroupSelector extends LitWrapper {
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
-                .value="${this._query}"
-                @input="${(event) => this._handleSearchInput(event)}"
+                .value=${this._query}
+                @input=${(event) => this._handleSearchInput(event)}
               />
             </div>
           </div>
@@ -338,16 +338,16 @@ export class GroupSelector extends LitWrapper {
                       }
 
                       return html`
-                        <li role="presentation" data-index="${index}">
+                        <li role="presentation" data-index=${index}>
                           <button
                             id="group-option-${group.group_id}"
                             type="button"
                             class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
                             role="option"
-                            data-group-id="${group.group_id}"
-                            ?disabled="${isDisabled}"
-                            @click="${(event) => this._handleGroupClick(event, group)}"
-                            @mouseover="${() => (this._activeIndex = index)}"
+                            data-group-id=${group.group_id}
+                            ?disabled=${isDisabled}
+                            @click=${(event) => this._handleGroupClick(event, group)}
+                            @mouseover=${() => (this._activeIndex = index)}
                           >
                             <div class="text-xs/4 text-stone-900 line-clamp-2">${group.name}</div>
                           </button>

@@ -239,10 +239,10 @@ export class SponsorsSection extends LitWrapper {
     const rowClass = `flex items-center gap-3 px-4 py-2 ${
       isSelected ? "opacity-50 cursor-not-allowed bg-stone-50" : "hover:bg-stone-50 cursor-pointer"
     } ${isActive ? "bg-stone-50" : ""}`;
-    return html`<li data-index="${index}">
+    return html`<li data-index=${index}>
       <div
-        class="${rowClass}"
-        aria-disabled="${isSelected ? "true" : "false"}"
+        class=${rowClass}
+        aria-disabled=${isSelected ? "true" : "false"}
         @click=${() => {
           if (!isSelected) this._onSelect(option);
         }}
@@ -252,7 +252,7 @@ export class SponsorsSection extends LitWrapper {
           class="relative flex items-center justify-center h-9 w-9 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
         >
           <img
-            src="${option.logo_url}"
+            src=${option.logo_url}
             alt="${option.name} logo"
             class="h-6 w-6 object-contain"
             loading="lazy"
@@ -367,7 +367,7 @@ export class SponsorsSection extends LitWrapper {
                         class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
                       >
                         <img
-                          src="${s.logo_url}"
+                          src=${s.logo_url}
                           alt="${s.name} logo"
                           class="size-13 md:size-16 object-contain"
                           loading="lazy"
@@ -397,9 +397,9 @@ export class SponsorsSection extends LitWrapper {
                     <input
                       type="hidden"
                       name="sponsors[${i}][group_sponsor_id]"
-                      value="${s.group_sponsor_id}"
+                      value=${s.group_sponsor_id}
                     />
-                    <input type="hidden" name="sponsors[${i}][level]" value="${s.level || ""}" />`,
+                    <input type="hidden" name="sponsors[${i}][level]" value=${s.level || ""} />`,
               )}
             </div>`
           : ""}
@@ -416,7 +416,7 @@ export class SponsorsSection extends LitWrapper {
                       class="relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
                     >
                       <img
-                        src="${this.pendingSponsor?.logo_url || ""}"
+                        src=${this.pendingSponsor?.logo_url || ""}
                         alt="${this.pendingSponsor?.name || ""} logo"
                         class="size-8 object-contain"
                         loading="lazy"

@@ -97,10 +97,10 @@ export class BannerImage extends LitWrapper {
           ></svg-spinner>
         </div>
         <img
-          src="${this.imageUrl}"
-          alt="${this.alt}"
-          @load="${this._handleImageLoad}"
-          @error="${this._handleImageError}"
+          src=${this.imageUrl}
+          alt=${this.alt}
+          @load=${this._handleImageLoad}
+          @error=${this._handleImageError}
           class="w-auto max-w-full object-contain bg-white border-[5px] border-white outline outline-1 outline-stone-200 rounded-lg overflow-hidden h-full ${imageVisibility} transition-opacity duration-300"
           loading="lazy"
         />

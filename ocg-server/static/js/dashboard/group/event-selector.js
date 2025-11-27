@@ -797,16 +797,16 @@ class EventSelector extends LitWrapper {
           id="select-event-${event.event_id}"
           type="button"
           class="event-button cursor-pointer w-full flex items-center justify-between px-4 py-2 text-sm/6 text-left hover:bg-stone-100 ${status}"
-          ?disabled="${isSelected}"
-          hx-get="${htmxConfig.hxGet ?? nothing}"
-          hx-target="${htmxConfig.hxTarget ?? nothing}"
-          hx-indicator="${htmxConfig.hxIndicator ?? nothing}"
-          hx-swap="${htmxConfig.hxSwap ?? nothing}"
-          hx-disabled-elt="${htmxConfig.hxDisabled ?? nothing}"
-          @click="${(clickEvent) => this._handleEventClick(clickEvent, event)}"
-          @mouseenter="${() => {
+          ?disabled=${isSelected}
+          hx-get=${htmxConfig.hxGet ?? nothing}
+          hx-target=${htmxConfig.hxTarget ?? nothing}
+          hx-indicator=${htmxConfig.hxIndicator ?? nothing}
+          hx-swap=${htmxConfig.hxSwap ?? nothing}
+          hx-disabled-elt=${htmxConfig.hxDisabled ?? nothing}
+          @click=${(clickEvent) => this._handleEventClick(clickEvent, event)}
+          @mouseenter=${() => {
             this._activeIndex = index;
-          }}"
+          }}
         >
           ${this._renderEventPreview(event)}
         </button>
@@ -897,11 +897,11 @@ class EventSelector extends LitWrapper {
     return html`
       <div class="relative inline-block w-full">
         <button
-          id="${buttonId}"
+          id=${buttonId}
           class="relative cursor-pointer select select-primary w-full
                text-left pe-9"
           aria-label="Select event"
-          @click="${(event) => this._toggleDropdown(event)}"
+          @click=${(event) => this._toggleDropdown(event)}
         >
           ${selectedEvent
             ? this._renderEventPreview(selectedEvent)
@@ -937,15 +937,15 @@ class EventSelector extends LitWrapper {
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
-                value="${this._query}"
-                @input="${(event) => this._handleSearchInput(event)}"
-                @keydown="${(event) => this._handleInputKeydown(event)}"
+                value=${this._query}
+                @input=${(event) => this._handleSearchInput(event)}
+                @keydown=${(event) => this._handleInputKeydown(event)}
               />
               ${this._query.trim().length > 0
                 ? html`<button
                     type="button"
                     class="absolute inset-y-0 end-2 flex items-center"
-                    @click="${() => this._clearSearch()}"
+                    @click=${() => this._clearSearch()}
                   >
                     <div class="svg-icon size-4 icon-close bg-stone-400 hover:bg-stone-600"></div>
                     <span class="sr-only">Clear search</span>

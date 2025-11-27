@@ -109,8 +109,8 @@ export class UserSearchSelector extends LitWrapper {
     if (small) {
       return html`
         <avatar-image
-          image-url="${user.photo_url || ""}"
-          placeholder="${initials}"
+          image-url=${user.photo_url || ""}
+          placeholder=${initials}
           size="size-[24px]"
           font-size="text-xs"
           hide-border="true"
@@ -118,9 +118,7 @@ export class UserSearchSelector extends LitWrapper {
         </avatar-image>
       `;
     }
-    return html`
-      <avatar-image image-url="${user.photo_url || ""}" placeholder="${initials}"></avatar-image>
-    `;
+    return html` <avatar-image image-url=${user.photo_url || ""} placeholder=${initials}></avatar-image> `;
   }
 
   /**
@@ -138,7 +136,7 @@ export class UserSearchSelector extends LitWrapper {
           type="button"
           class="p-1 hover:bg-stone-200 rounded-full transition-colors"
           title="Remove user"
-          @click="${() => this._removeUser(user.username)}"
+          @click=${() => this._removeUser(user.username)}
         >
           <div class="svg-icon size-3 icon-close bg-stone-600"></div>
         </button>
@@ -161,13 +159,13 @@ export class UserSearchSelector extends LitWrapper {
     return html`
       <div class="mb-3">
         <user-search-field
-          .excludeUsernames="${this.selectedUsers.map((u) => u.username)}"
-          dashboard-type="${this.dashboardType}"
-          label="${this.label || "user"}"
-          legend="${this.legend || ""}"
+          .excludeUsernames=${this.selectedUsers.map((u) => u.username)}
+          dashboard-type=${this.dashboardType}
+          label=${this.label || "user"}
+          legend=${this.legend || ""}
           input-class="input-primary"
           wrapper-class="w-full xl:w-1/2"
-          @user-selected="${(e) => this._handleUserSelected(e)}"
+          @user-selected=${(e) => this._handleUserSelected(e)}
         ></user-search-field>
       </div>
     `;
@@ -199,7 +197,7 @@ export class UserSearchSelector extends LitWrapper {
         <!-- Hidden inputs for form submission -->
         ${this.fieldName
           ? this.selectedUsers.map(
-              (user) => html` <input type="hidden" name="${this.fieldName}[]" value="${user.user_id}" /> `,
+              (user) => html` <input type="hidden" name="${this.fieldName}[]" value=${user.user_id} /> `,
             )
           : ""}
       </div>

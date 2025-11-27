@@ -5,6 +5,7 @@
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
+  <script type="module" src="/static/js/common/user-info-modal.js"></script>
   <script type="module" src="/static/js/common/banner-image.js"></script>
 {% endblock scripts -%}
 
@@ -280,8 +281,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in group.organizers -%}
                 {% if organizer.name.is_some() -%}
-                  <user-chip name="{{ organizer.name|display_some }}" username="{{ organizer.username }}" image-url="{{ organizer.photo_url|display_some }}" title="{{ organizer.title|display_some }}">
-                  </user-chip>
+                  <user-chip user='{{ organizer|json }}'></user-chip>
                 {% endif -%}
               {% endfor -%}
             </div>
@@ -316,4 +316,7 @@
       </div>
     </div>
   </div>
+
+  {# User info modal -#}
+  <user-info-modal></user-info-modal>
 {% endblock content -%}

@@ -5,6 +5,7 @@
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
+  <script type="module" src="/static/js/common/user-info-modal.js"></script>
   <script type="module" src="/static/js/common/banner-image.js"></script>
 {% endblock scripts -%}
 
@@ -294,8 +295,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for host in legacy_hosts -%}
                   {% if host.name.is_some() -%}
-                    <user-chip name="{{ host.name|display_some }}" username="" image-url="{{ host.photo_url|display_some }}" title="{{ host.title|display_some }}" bio-is-html bio="{{ host.bio.as_deref().unwrap_or("")|md_to_html }}">
-                    </user-chip>
+                    <user-chip user='{{ host|json }}'></user-chip>
                   {% endif -%}
                 {% endfor -%}
               </div>
@@ -311,8 +311,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for host in event.hosts -%}
                 {% if host.name.is_some() -%}
-                  <user-chip name="{{ host.name|display_some }}" username="{{ host.username }}" image-url="{{ host.photo_url|display_some }}" title="{{ host.title|display_some }}">
-                  </user-chip>
+                  <user-chip user='{{ host|json }}'></user-chip>
                 {% endif -%}
               {% endfor -%}
             </div>
@@ -328,8 +327,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for speaker in legacy_speakers -%}
                   {% if speaker.name.is_some() -%}
-                    <user-chip name="{{ speaker.name|display_some }}" username="" image-url="{{ speaker.photo_url|display_some }}" title="{{ speaker.title|display_some }}" bio-is-html bio="{{ speaker.bio.as_deref().unwrap_or("")|md_to_html }}">
-                    </user-chip>
+                    <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
                   {% endif -%}
                 {% endfor -%}
               </div>
@@ -345,8 +343,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in event.organizers -%}
                 {% if organizer.name.is_some() -%}
-                  <user-chip name="{{ organizer.name|display_some }}" username="{{ organizer.username }}" image-url="{{ organizer.photo_url|display_some }}" title="{{ organizer.title|display_some }}">
-                  </user-chip>
+                  <user-chip user='{{ organizer|json }}'></user-chip>
                 {% endif -%}
               {% endfor -%}
             </div>
@@ -380,6 +377,9 @@
       </div>
     </div>
   </div>
+
+  {# User info modal -#}
+  <user-info-modal></user-info-modal>
 {% endblock content -%}
 
 {# Macro for rendering a single host social link -#}
@@ -421,8 +421,7 @@
         <div class="flex flex-grap gap-4">
           {% for speaker in session.speakers -%}
             {% if speaker.user.name.is_some() -%}
-              <user-chip name="{{ speaker.user.name|display_some }}" username="{{ speaker.user.username }}" image-url="{{ speaker.user.photo_url|display_some }}" title="{{ speaker.user.title|display_some }}" small>
-              </user-chip>
+              <user-chip user='{{ speaker.user|json }}' small></user-chip>
             {% endif -%}
           {% endfor -%}
         </div>

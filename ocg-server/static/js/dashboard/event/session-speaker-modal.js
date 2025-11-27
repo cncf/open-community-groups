@@ -2,7 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/avatar-image.js";
-import { computeUserInitials } from "/static/js/common/common.js";
+import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 
 /**
  * Modal component for selecting session speakers with featured flag support.
@@ -43,12 +43,16 @@ export class SessionSpeakerModal extends LitWrapper {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    if (this._isOpen) {
+      unlockBodyScroll();
+    }
     document.removeEventListener("keydown", this._onKeydown);
   }
 
   open() {
     this._resetState();
     this._isOpen = true;
+    lockBodyScroll();
     this.updateComplete.then(() => {
       const field = this.querySelector("user-search-field");
       if (field && typeof field.focusInput === "function") field.focusInput();
@@ -57,6 +61,7 @@ export class SessionSpeakerModal extends LitWrapper {
 
   close() {
     this._isOpen = false;
+    unlockBodyScroll();
     this._resetState();
   }
 
@@ -102,8 +107,8 @@ export class SessionSpeakerModal extends LitWrapper {
     return html`
       <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
         <avatar-image
-          image-url="${user.photo_url || ""}"
-          placeholder="${initials}"
+          image-url=${user.photo_url || ""}
+          placeholder=${initials}
           size="size-[24px]"
           hide-border
         ></avatar-image>
@@ -122,7 +127,7 @@ export class SessionSpeakerModal extends LitWrapper {
       >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"
-          @click="${() => this.close()}"
+          @click=${() => this.close()}
         ></div>
         <div class="relative px-4 py-8 w-full max-w-2xl overflow-visible">
           <div class="relative bg-white rounded-lg shadow overflow-visible">
@@ -131,7 +136,7 @@ export class SessionSpeakerModal extends LitWrapper {
               <button
                 type="button"
                 class="group bg-transparent hover:bg-stone-200 rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center cursor-pointer"
-                @click="${() => this.close()}"
+                @click=${() => this.close()}
               >
                 <div class="svg-icon size-5 bg-stone-400 group-hover:bg-stone-700 icon-close"></div>
                 <span class="sr-only">Close modal</span>
@@ -140,11 +145,11 @@ export class SessionSpeakerModal extends LitWrapper {
             <div class="p-4 md:p-8 space-y-6">
               <div>
                 <user-search-field
-                  dashboard-type="${this.dashboardType}"
+                  dashboard-type=${this.dashboardType}
                   label="speaker"
                   legend="Search by name or username to add a speaker to this session."
-                  .disabledUserIds="${this.disabledUserIds || []}"
-                  @user-selected="${(event) => this._handleUserSelected(event)}"
+                  .disabledUserIds=${this.disabledUserIds || []}
+                  @user-selected=${(event) => this._handleUserSelected(event)}
                 ></user-search-field>
               </div>
 
@@ -156,7 +161,7 @@ export class SessionSpeakerModal extends LitWrapper {
                     class="sr-only peer"
                     ?disabled=${!this._selectedUser}
                     .checked=${this._featured}
-                    @change="${(event) => this._toggleFeatured(event)}"
+                    @change=${(event) => this._toggleFeatured(event)}
                   />
                   <div
                     class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
@@ -166,12 +171,12 @@ export class SessionSpeakerModal extends LitWrapper {
               </div>
 
               <div class="flex justify-end gap-3">
-                <button type="button" class="btn-secondary" @click="${() => this.close()}">Cancel</button>
+                <button type="button" class="btn-secondary" @click=${() => this.close()}>Cancel</button>
                 <button
                   type="button"
                   class="btn-primary"
                   ?disabled=${!this._selectedUser}
-                  @click="${() => this._confirmSelection()}"
+                  @click=${() => this._confirmSelection()}
                 >
                   Add speaker
                 </button>

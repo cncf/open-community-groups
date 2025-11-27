@@ -99,9 +99,9 @@
       <div class="col-span-full">
         <label for="bio" class="form-label">Bio</label>
         <div class="mt-2">
-          <textarea id="bio" name="bio" rows="2" class="input-primary" maxlength="200">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
+          <textarea id="bio" name="bio" rows="6" class="input-primary">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
-        <p class="form-legend">A brief description about yourself and your background.</p>
+        <p class="form-legend">A description about yourself and your background.</p>
       </div>
       {# End bio -#}
 

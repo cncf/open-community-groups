@@ -35,6 +35,32 @@ export const debounce = (fn, delay = 150) => {
 };
 
 /**
+ * Locks body scroll by setting overflow to hidden. Uses a counter to handle
+ * multiple modals. Only locks scroll when the first modal opens.
+ */
+export const lockBodyScroll = () => {
+  const current = Number.parseInt(document.body.dataset.modalOpenCount || "0", 10);
+  const next = Number.isNaN(current) ? 1 : current + 1;
+  document.body.dataset.modalOpenCount = String(next);
+  if (next === 1) {
+    document.body.style.overflow = "hidden";
+  }
+};
+
+/**
+ * Unlocks body scroll by restoring overflow. Uses a counter to handle multiple
+ * modals. Only unlocks scroll when all modals are closed (counter reaches 0).
+ */
+export const unlockBodyScroll = () => {
+  const current = Number.parseInt(document.body.dataset.modalOpenCount || "0", 10);
+  const next = Number.isNaN(current) ? 0 : Math.max(0, current - 1);
+  document.body.dataset.modalOpenCount = String(next);
+  if (next === 0) {
+    document.body.style.overflow = "";
+  }
+};
+
+/**
  * Toggles the visibility of the mobile navigation bar and its backdrop.
  * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
  */
@@ -56,7 +82,13 @@ export const toggleMobileNavbarVisibility = () => {
 export const toggleModalVisibility = (modalId) => {
   const modal = document.getElementById(modalId);
   if (modal) {
+    const willOpen = modal.classList.contains("hidden");
     modal.classList.toggle("hidden");
+    if (willOpen) {
+      lockBodyScroll();
+    } else {
+      unlockBodyScroll();
+    }
   }
 };
 

@@ -1,5 +1,6 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 
 /**
  * ImagesGallery component for displaying images with modal carousel.
@@ -33,18 +34,23 @@ export class ImagesGallery extends LitWrapper {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    if (this._isModalOpen) {
+      unlockBodyScroll();
+    }
     this._removeModalEventListeners();
   }
 
   _openModal(index) {
     this._currentIndex = index;
     this._isModalOpen = true;
+    lockBodyScroll();
     document.addEventListener("keydown", this._handleKeydown);
     document.addEventListener("mousedown", this._handleModalBackgroundClick);
   }
 
   _closeModal() {
     this._isModalOpen = false;
+    unlockBodyScroll();
     this._removeModalEventListeners();
   }
 
@@ -92,12 +98,12 @@ export class ImagesGallery extends LitWrapper {
         ${this.images.map(
           (image, index) => html`
             <div class="hidden md:block">
-              <button @click="${() => this._openModal(index)}">
+              <button @click=${() => this._openModal(index)}>
                 <img
                   height="160"
                   width="auto"
                   class="bg-white w-full h-40 object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
-                  src="${image}"
+                  src=${image}
                   alt="${this.altImage} image ${index + 1}"
                 />
               </button>
@@ -107,7 +113,7 @@ export class ImagesGallery extends LitWrapper {
                 height="160"
                 width="auto"
                 class="bg-white w-full h-40 object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
-                src="${image}"
+                src=${image}
                 alt="${this.altImage} image ${index + 1}"
               />
             </div>
@@ -130,7 +136,7 @@ export class ImagesGallery extends LitWrapper {
           <!-- Close button -->
           <button
             class="modal-close absolute top-0 right-0 cursor-pointer mt-10 mr-10 z-50 p-2 rounded-full bg-stone-200/75 hover:bg-stone-200/90"
-            @click="${this._closeModal}"
+            @click=${this._closeModal}
           >
             <div class="svg-icon size-8 bg-stone-800 icon-close"></div>
           </button>
@@ -158,7 +164,7 @@ export class ImagesGallery extends LitWrapper {
                         : "hidden z-10 translate-x-full"}"
                     >
                       <img
-                        src="${image}"
+                        src=${image}
                         height="auto"
                         width="auto"
                         class="bg-white rounded-lg border border-5 border-white absolute block w-auto max-w-full max-h-full h-auto -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"
@@ -178,7 +184,7 @@ export class ImagesGallery extends LitWrapper {
                 <!-- Prev button -->
                 <button
                   class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 focus:ring-0 focus:outline-none"
-                  @click="${() => this._navigateCarousel("prev")}"
+                  @click=${() => this._navigateCarousel("prev")}
                 >
                   <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-prev"></div>
                   <span class="sr-only">Previous</span>
@@ -189,7 +195,7 @@ export class ImagesGallery extends LitWrapper {
                 <!-- Next button -->
                 <button
                   class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-stone-200/75 hover:bg-stone-200/90 focus:ring-0 focus:outline-none"
-                  @click="${() => this._navigateCarousel("next")}"
+                  @click=${() => this._navigateCarousel("next")}
                 >
                   <div class="svg-icon h-4 w-2.5 bg-stone-950 icon-next"></div>
                   <span class="sr-only">Next</span>

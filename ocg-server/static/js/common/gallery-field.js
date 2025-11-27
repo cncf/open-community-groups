@@ -438,20 +438,20 @@ export class GalleryField extends LitWrapper {
 
     return html`
       <div
-        class="${[
+        class=${[
           "relative flex h-32 w-full max-h-32 flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-stone-300 bg-stone-50 transition duration-150",
           this._isAddDisabled ? "cursor-not-allowed opacity-70" : "hover:border-primary-400",
           this._isDragActive && !this._isUploading ? "ring-2 ring-primary-300" : "",
-        ].join(" ")}"
+        ].join(" ")}
         role="button"
         tabindex="0"
         aria-label="Add gallery images"
-        aria-disabled="${this._isAddDisabled}"
-        @click="${this._triggerFilePicker}"
-        @keydown="${this._handlePlaceholderKeyDown}"
-        @dragover="${this._handleDragOver}"
-        @dragleave="${this._handleDragLeave}"
-        @drop="${this._handleDrop}"
+        aria-disabled=${this._isAddDisabled}
+        @click=${this._triggerFilePicker}
+        @keydown=${this._handlePlaceholderKeyDown}
+        @dragover=${this._handleDragOver}
+        @dragleave=${this._handleDragLeave}
+        @drop=${this._handleDrop}
       >
         <div class="flex flex-col items-center gap-1 text-center text-stone-500">
           <div class="text-4xl font-bold leading-none">+</div>
@@ -487,22 +487,22 @@ export class GalleryField extends LitWrapper {
           ${this.images.map(
             (imageUrl, index) => html`
               <div
-                class="${[
+                class=${[
                   "relative h-32 max-h-32 w-full overflow-hidden rounded-lg border border-stone-200 bg-stone-100",
                   this._dragOverIndex === index && this._draggedIndex !== null && this._draggedIndex !== index
                     ? "ring-2 ring-primary-300"
                     : "",
                   this._draggedIndex === index ? "opacity-80" : "",
-                ].join(" ")}"
+                ].join(" ")}
                 draggable="true"
-                @dragstart="${(event) => this._handleTileDragStart(event, index)}"
-                @dragover="${(event) => this._handleTileDragOver(event, index)}"
-                @dragleave="${(event) => this._handleTileDragLeave(event, index)}"
-                @drop="${(event) => this._handleTileDrop(event, index)}"
-                @dragend="${this._handleTileDragEnd}"
+                @dragstart=${(event) => this._handleTileDragStart(event, index)}
+                @dragover=${(event) => this._handleTileDragOver(event, index)}
+                @dragleave=${(event) => this._handleTileDragLeave(event, index)}
+                @drop=${(event) => this._handleTileDrop(event, index)}
+                @dragend=${this._handleTileDragEnd}
               >
                 <img
-                  src="${imageUrl}"
+                  src=${imageUrl}
                   alt="Gallery image ${index + 1}"
                   class="absolute inset-0 h-full w-full object-cover pointer-events-none"
                   loading="lazy"
@@ -510,7 +510,7 @@ export class GalleryField extends LitWrapper {
                 <button
                   type="button"
                   class="absolute end-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-stone-600 border border-stone-200 transition hover:bg-stone-100"
-                  @click="${(event) => this._handleRemoveImageButtonClick(event, index)}"
+                  @click=${(event) => this._handleRemoveImageButtonClick(event, index)}
                   aria-label="Remove image ${index + 1}"
                 >
                   <div class="svg-icon size-6 bg-stone-700 hover:bg-stone-900 icon-close"></div>
@@ -523,17 +523,17 @@ export class GalleryField extends LitWrapper {
 
         <input
           type="file"
-          id="${this._fileInputId}"
+          id=${this._fileInputId}
           class="hidden"
           accept=".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff"
           multiple
           ?disabled=${this._isUploading}
-          @change="${this._handleFileChange}"
+          @change=${this._handleFileChange}
         />
 
         ${this.fieldName
           ? this.images.map(
-              (imageUrl) => html`<input type="hidden" name="${this.fieldName}[]" value="${imageUrl}" />`,
+              (imageUrl) => html`<input type="hidden" name="${this.fieldName}[]" value=${imageUrl} />`,
             )
           : ""}
       </div>

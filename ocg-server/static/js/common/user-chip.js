@@ -4,127 +4,136 @@ import { computeUserInitials } from "/static/js/common/common.js";
 import "/static/js/common/avatar-image.js";
 
 /**
- * UserChip shows a small user card with avatar, name, title,
- * and an optional tooltip with a bio.
+ * UserChip shows a small user card with avatar, name, and title.
+ * When clicked, it opens a modal with full user information.
  *
  * Attributes/props:
- * - name: string (required)
- * - username: string (optional, used for initials)
- * - image-url: string (optional)
- * - title: string (optional)
- * - bio: string (optional)
- * - bio-is-html: boolean (optional). When true, bio is rendered as HTML.
- * - delay: number (optional). Show delay in ms (default: 300).
- * - tooltip-visible: boolean (optional). When true, tooltip is shown.
+ * - user: object (required) - User object with all user information
+ * - bio-is-html: boolean (optional) - When true, bio is rendered as HTML
+ * - small: boolean (optional) - When true, renders a compact version
  */
 export class UserChip extends LitWrapper {
   static get properties() {
     return {
-      name: { type: String },
-      username: { type: String },
-      imageUrl: { type: String, attribute: "image-url" },
-      title: { type: String },
-      bio: { type: String },
+      user: { type: Object },
       bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
-      tooltipVisible: { type: Boolean, attribute: "tooltip-visible" },
-      delay: { type: Number },
-      // When true, renders a compact badge-like chip
       small: { type: Boolean },
-      _hasBio: { type: Boolean, state: true },
     };
   }
 
   constructor() {
     super();
-    this.name = "";
-    this.username = "";
-    this.imageUrl = "";
-    this.title = "";
-    this.bio = "";
+    this.user = null;
     this.bioIsHtml = false;
-    this.tooltipVisible = false;
-    this.delay = 300;
     this.small = false;
-    this._hasBio = false;
-    this._timer = null;
   }
 
-  firstUpdated() {
-    this._hasBio = typeof this.bio === "string" && this.bio.trim().length > 0;
+  connectedCallback() {
+    super.connectedCallback();
+
+    // Parse user if it's a JSON string from template
+    if (typeof this.user === "string") {
+      try {
+        this.user = JSON.parse(this.user);
+      } catch (_) {
+        this.user = null;
+      }
+    }
   }
 
-  _showTooltip = () => {
-    this._timer = setTimeout(() => {
-      this.tooltipVisible = true;
-    }, this.delay);
-  };
+  _handleClick = (e) => {
+    const bio = this.user?.bio || "";
+    const hasBio = bio.trim().length > 0;
 
-  _hideTooltip = () => {
-    clearTimeout(this._timer);
-    this._timer = setTimeout(() => {
-      this.tooltipVisible = false;
-    }, 120);
-  };
-
-  _onTooltipEnter = () => {
-    clearTimeout(this._timer);
-    this.tooltipVisible = true;
-  };
-
-  _onTooltipLeave = () => {
-    this._hideTooltip();
-  };
-
-  _onKeydown = (e) => {
-    if (e.key === "Escape" && this._hasBio) {
+    if (hasBio && !this.small) {
       e.preventDefault();
-      this.tooltipVisible = false;
-      clearTimeout(this._timer);
+
+      this.dispatchEvent(
+        new CustomEvent("open-user-modal", {
+          detail: {
+            name: this.user.name,
+            username: this.user.username,
+            imageUrl: this.user.photo_url,
+            jobTitle: this.user.title,
+            company: this.user.company,
+            bio: this.user.bio,
+            bioIsHtml: this.bioIsHtml,
+            facebookUrl: this.user.facebook_url,
+            linkedinUrl: this.user.linkedin_url,
+            twitterUrl: this.user.twitter_url,
+            websiteUrl: this.user.website_url,
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
     }
   };
 
-  _renderHeader(isTooltip = false, isSmall = false) {
-    const initials = computeUserInitials(this.name, this.username, 2);
-    if (isSmall) {
-      return html`
-        <avatar-image
-          image-url="${this.imageUrl || ""}"
-          placeholder="${initials}"
-          size="size-[24px]"
-          font-size="text-[0.65rem]"
-          hide-border="true"
-        >
-        </avatar-image>
-        <span class="text-sm text-stone-700 pe-2">${this.name || ""}</span>
-      `;
+  _handleKeydown = (e) => {
+    const bio = this.user?.bio || "";
+    const hasBio = bio.trim().length > 0;
+
+    if (hasBio && !this.small && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      this._handleClick(e);
     }
-    return html`
-      <avatar-image
-        image-url="${this.imageUrl || ""}"
-        size="size-15 md:size-18"
-        placeholder="${initials}"
-        font-size="text-lg"
-      >
-      </avatar-image>
-      <div class="leading-tight min-w-0">
-        <div class="font-semibold text-stone-900 ${!isTooltip ? "truncate" : ""}">${this.name || ""}</div>
-        ${this.title
-          ? html`<div class="text-[0.8rem] text-stone-600 mt-1.5 ${!isTooltip ? "line-clamp-2" : ""}">
-              ${this.title}
-            </div>`
-          : ""}
-      </div>
-    `;
-  }
+  };
 
   render() {
+    if (!this.user) {
+      return html``;
+    }
+
+    const name = this.user.name || "";
+    const username = this.user.username || "";
+    const imageUrl = this.user.photo_url || "";
+    const jobTitle = this.user.title || "";
+    const bio = this.user.bio || "";
+    const hasBio = bio.trim().length > 0;
+    const isClickable = hasBio && !this.small;
+    const initials = computeUserInitials(name, username, 2);
+
+    if (this.small) {
+      return html`
+        <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1">
+          <avatar-image
+            image-url=${imageUrl}
+            placeholder=${initials}
+            size="size-[24px]"
+            font-size="text-[0.65rem]"
+            hide-border="true"
+          >
+          </avatar-image>
+          <span class="text-sm text-stone-700 pe-2">${name}</span>
+        </div>
+      `;
+    }
+
     return html`
       <div
-        class="relative ${this.small
-          ? "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1"
-          : "flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full"}"
+        class="relative flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full ${isClickable
+          ? "cursor-pointer hover:border-primary-300 hover:shadow-sm transition-all"
+          : ""}"
+        @click=${isClickable ? this._handleClick : null}
+        role=${isClickable ? "button" : ""}
+        tabindex=${isClickable ? "0" : "-1"}
+        @keydown=${isClickable ? this._handleKeydown : null}
+        aria-label=${isClickable ? `View ${name || username}'s profile` : ""}
       >
-        ${this._renderHeader(false, this.small)}
+        <avatar-image
+          image-url=${imageUrl}
+          size="size-15 md:size-18"
+          placeholder=${initials}
+          font-size="text-lg"
+        >
+        </avatar-image>
+        <div class="leading-tight min-w-0">
+          <div class="font-semibold text-stone-900 truncate">${name}</div>
+          ${jobTitle
+            ? html`<div class="text-[0.8rem] text-stone-600 mt-1.5 line-clamp-2">${jobTitle}</div>`
+            : ""}
+        </div>
       </div>
     `;
   }

@@ -120,10 +120,10 @@ export class AvatarImage extends LitWrapper {
         ${this.imageUrl
           ? html`
               <img
-                src="${this.imageUrl}"
+                src=${this.imageUrl}
                 alt="Avatar"
-                @load="${this._handleImageLoad}"
-                @error="${this._handleImageError}"
+                @load=${this._handleImageLoad}
+                @error=${this._handleImageError}
                 class="${showImage
                   ? ""
                   : "opacity-0 pointer-events-none"} absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
