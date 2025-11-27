@@ -40,15 +40,15 @@ export class UserChip extends LitWrapper {
           detail: {
             name: this.user.name,
             username: this.user.username,
-            imageUrl: this.user.photo_url || this.user.imageUrl,
-            jobTitle: this.user.title || this.user.jobTitle,
+            imageUrl: this.user.photo_url,
+            jobTitle: this.user.title,
             company: this.user.company,
             bio: this.user.bio,
             bioIsHtml: this.bioIsHtml,
-            facebookUrl: this.user.facebook_url || this.user.facebookUrl,
-            linkedinUrl: this.user.linkedin_url || this.user.linkedinUrl,
-            twitterUrl: this.user.twitter_url || this.user.twitterUrl,
-            websiteUrl: this.user.website_url || this.user.websiteUrl,
+            facebookUrl: this.user.facebook_url,
+            linkedinUrl: this.user.linkedin_url,
+            twitterUrl: this.user.twitter_url,
+            websiteUrl: this.user.website_url,
           },
           bubbles: true,
           composed: true,
@@ -74,8 +74,8 @@ export class UserChip extends LitWrapper {
 
     const name = this.user.name || "";
     const username = this.user.username || "";
-    const imageUrl = this.user.photo_url || this.user.imageUrl || "";
-    const jobTitle = this.user.title || this.user.jobTitle || "";
+    const imageUrl = this.user.photo_url || "";
+    const jobTitle = this.user.title || "";
     const bio = this.user.bio || "";
     const hasBio = bio.trim().length > 0;
     const isClickable = hasBio && !this.small;
