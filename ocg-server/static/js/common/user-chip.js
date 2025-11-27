@@ -4,8 +4,8 @@ import { computeUserInitials } from "/static/js/common/common.js";
 import "/static/js/common/avatar-image.js";
 
 /**
- * UserChip shows a small user card with avatar, name, title,
- * and an optional tooltip with a bio.
+ * UserChip shows a small user card with avatar, name, and title.
+ * When clicked, it opens a modal with full user information.
  *
  * Attributes/props:
  * - name: string (required)
@@ -14,9 +14,7 @@ import "/static/js/common/avatar-image.js";
  * - job-title: string (optional)
  * - bio: string (optional)
  * - bio-is-html: boolean (optional). When true, bio is rendered as HTML.
- * - delay: number (optional). Show delay in ms (default: 300).
  * - small: boolean (optional). When true, renders a compact version.
- * - tooltip-visible: boolean (optional). When true, tooltip is shown.
  * - company: string (optional)
  * - facebook-url: string (optional)
  * - linkedin-url: string (optional)
@@ -32,8 +30,6 @@ export class UserChip extends LitWrapper {
       jobTitle: { type: String, attribute: "job-title" },
       bio: { type: String },
       bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
-      tooltipVisible: { type: Boolean, attribute: "tooltip-visible" },
-      delay: { type: Number },
       small: { type: Boolean },
       company: { type: String },
       facebookUrl: { type: String, attribute: "facebook-url" },
@@ -52,8 +48,6 @@ export class UserChip extends LitWrapper {
     this.jobTitle = "";
     this.bio = "";
     this.bioIsHtml = false;
-    this.tooltipVisible = false;
-    this.delay = 300;
     this.small = false;
     this.company = "";
     this.facebookUrl = "";
@@ -61,43 +55,11 @@ export class UserChip extends LitWrapper {
     this.twitterUrl = "";
     this.websiteUrl = "";
     this._hasBio = false;
-    this._timer = null;
   }
 
   firstUpdated() {
     this._hasBio = typeof this.bio === "string" && this.bio.trim().length > 0;
-    console.log("UserChip _hasBio:", this._hasBio, this.bio);
   }
-
-  _showTooltip = () => {
-    this._timer = setTimeout(() => {
-      this.tooltipVisible = true;
-    }, this.delay);
-  };
-
-  _hideTooltip = () => {
-    clearTimeout(this._timer);
-    this._timer = setTimeout(() => {
-      this.tooltipVisible = false;
-    }, 120);
-  };
-
-  _onTooltipEnter = () => {
-    clearTimeout(this._timer);
-    this.tooltipVisible = true;
-  };
-
-  _onTooltipLeave = () => {
-    this._hideTooltip();
-  };
-
-  _onKeydown = (e) => {
-    if (e.key === "Escape" && this._hasBio) {
-      e.preventDefault();
-      this.tooltipVisible = false;
-      clearTimeout(this._timer);
-    }
-  };
 
   _handleClick = (e) => {
     if (this._hasBio && !this.small) {

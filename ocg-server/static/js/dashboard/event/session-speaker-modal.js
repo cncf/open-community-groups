@@ -2,11 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/avatar-image.js";
-import {
-  computeUserInitials,
-  lockBodyScroll,
-  unlockBodyScroll,
-} from "/static/js/common/common.js";
+import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 
 /**
  * Modal component for selecting session speakers with featured flag support.

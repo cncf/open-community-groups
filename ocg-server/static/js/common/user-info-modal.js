@@ -206,12 +206,15 @@ export class UserInfoModal extends LitWrapper {
                 </div>
               </div>
 
-              <div class="text-stone-700 text-sm leading-relaxed">
-                ${this._userData.bioIsHtml
-                  ? html`<div class="markdown">${unsafeHTML(this._userData.bio)}</div>`
-                  : html`<div>${this._userData.bio}</div>`}
-              </div>
-
+              ${this._userData.bio
+                ? html`
+                    <div class="text-stone-700 text-sm leading-relaxed">
+                      ${this._userData.bioIsHtml
+                        ? html`<div class="markdown">${unsafeHTML(this._userData.bio)}</div>`
+                        : html`<div>${this._userData.bio}</div>`}
+                    </div>
+                  `
+                : ""}
               ${this._renderSocialLinks()}
             </div>
           </div>
