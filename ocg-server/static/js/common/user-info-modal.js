@@ -117,21 +117,21 @@ export class UserInfoModal extends LitWrapper {
     if (links.length === 0) return "";
 
     return html`
-      <div class="border-t border-stone-200 pt-5 mt-5">
-        <div class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-3">Connect</div>
-        <div class="flex flex-wrap gap-2">
+      <div class="border-t border-stone-200 pt-6 mt-6">
+        <div class="text-sm font-semibold text-stone-500 uppercase tracking-wide mb-4">Connect</div>
+        <div class="flex flex-wrap gap-3">
           ${links.map(
             (link) => html`
               <a
                 href="${link.url}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="group btn-secondary-anchor p-2 flex items-center justify-center"
+                class="group btn-secondary-anchor p-3 flex items-center justify-center"
                 title="${link.label}"
                 aria-label="${link.label}"
               >
                 <div
-                  class="svg-icon size-4 bg-primary-500 group-hover:bg-white transition-colors icon-${link.icon}"
+                  class="svg-icon size-6 bg-primary-500 group-hover:bg-white transition-colors icon-${link.icon}"
                 ></div>
               </a>
             `,
@@ -150,7 +150,7 @@ export class UserInfoModal extends LitWrapper {
 
     if (parts.length === 0) return "";
 
-    return html` <div class="text-stone-600 text-sm mt-2">${parts.join(" at ")}</div> `;
+    return html` <div class="text-stone-600 text-base mt-2">${parts.join(" at ")}</div> `;
   }
 
   render() {
@@ -172,34 +172,34 @@ export class UserInfoModal extends LitWrapper {
           @click="${this._closeModal}"
         ></div>
 
-        <div class="relative p-4 w-full max-w-lg max-h-full">
+        <div class="relative p-4 w-full max-w-2xl max-h-full">
           <div class="relative bg-white rounded-lg shadow-lg">
-            <div class="flex items-center justify-between p-5 border-b border-stone-200 rounded-t">
-              <h3 id="user-info-modal-title" class="text-xl font-semibold text-stone-900">
+            <div class="flex items-center justify-between p-6 border-b border-stone-200 rounded-t">
+              <h3 id="user-info-modal-title" class="text-2xl font-semibold text-stone-900">
                 User Information
               </h3>
               <button
                 type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
                 @click="${this._closeModal}"
                 aria-label="Close modal"
               >
                 <div
-                  class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"
+                  class="svg-icon w-6 h-6 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"
                 ></div>
               </button>
             </div>
 
-            <div class="p-6">
-              <div class="flex items-start gap-4 mb-5">
+            <div class="p-8">
+              <div class="flex items-center gap-6 mb-6">
                 <avatar-image
                   image-url="${this._userData.imageUrl || ""}"
                   placeholder="${initials}"
-                  size="size-16"
-                  font-size="text-xl"
+                  size="size-24"
+                  font-size="text-3xl"
                 ></avatar-image>
                 <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-lg text-stone-900">
+                  <div class="font-semibold text-2xl text-stone-900">
                     ${this._userData.name || this._userData.username}
                   </div>
                   ${this._renderTitleCompany()}
@@ -208,7 +208,7 @@ export class UserInfoModal extends LitWrapper {
 
               ${this._userData.bio
                 ? html`
-                    <div class="text-stone-700 text-sm leading-relaxed">
+                    <div class="text-stone-700 text-base leading-relaxed">
                       ${this._userData.bioIsHtml
                         ? html`<div class="markdown">${unsafeHTML(this._userData.bio)}</div>`
                         : html`<div>${this._userData.bio}</div>`}
