@@ -209,13 +209,13 @@ export class UserSearchField extends LitWrapper {
     }`;
     return html`
       <div
-        class="${rowClass}"
-        aria-disabled="${disabled ? "true" : "false"}"
-        @click="${() => {
+        class=${rowClass}
+        aria-disabled=${disabled ? "true" : "false"}
+        @click=${() => {
           if (!disabled) this._selectUser(user);
-        }}"
+        }}
       >
-        <avatar-image image-url="${user.photo_url || ""}" placeholder="${initials}"></avatar-image>
+        <avatar-image image-url=${user.photo_url || ""} placeholder=${initials}></avatar-image>
         <div class="flex-1 min-w-0">
           <h3 class="text-sm font-medium text-stone-900 truncate">${user.name || user.username}</h3>
           ${user.name ? html`<p class="text-xs text-stone-600 truncate">@${user.username}</p>` : ""}
@@ -241,8 +241,8 @@ export class UserSearchField extends LitWrapper {
           type="text"
           class="input-primary peer ps-9 ${this.inputClass || ""}"
           placeholder="Search ${this.label || ""} by username"
-          .value="${this._searchQuery}"
-          @input="${this._handleSearchInput}"
+          .value=${this._searchQuery}
+          @input=${this._handleSearchInput}
           autocomplete="off"
           autocorrect="off"
           autocapitalize="off"
@@ -251,7 +251,7 @@ export class UserSearchField extends LitWrapper {
 
         <!-- Clear button -->
         <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-          <button type="button" class="cursor-pointer mt-[2px]" @click="${this._clearSearch}">
+          <button type="button" class="cursor-pointer mt-[2px]" @click=${this._clearSearch}>
             <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
           </button>
         </div>

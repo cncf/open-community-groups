@@ -182,11 +182,11 @@ export class MultipleInputs extends LitWrapper {
             <div class="flex items-center gap-2">
               <div class="flex-1">
                 <input
-                  type="${validInputType}"
+                  type=${validInputType}
                   class="input-primary w-full"
-                  placeholder="${this.placeholder}"
-                  value="${item.value}"
-                  @input="${(e) => this._handleInputChange(item.id, e)}"
+                  placeholder=${this.placeholder}
+                  value=${item.value}
+                  @input=${(e) => this._handleInputChange(item.id, e)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -197,8 +197,8 @@ export class MultipleInputs extends LitWrapper {
                 type="button"
                 class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
                 title="Remove item"
-                @click="${() => this._removeItem(item.id)}"
-                ?disabled="${this.items.length <= 1 && this.required}"
+                @click=${() => this._removeItem(item.id)}
+                ?disabled=${this.items.length <= 1 && this.required}
               >
                 <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
               </button>
@@ -212,8 +212,8 @@ export class MultipleInputs extends LitWrapper {
         <button
           type="button"
           class="btn-primary-outline btn-mini"
-          @click="${this._addItem}"
-          ?disabled="${this._isAddButtonDisabled()}"
+          @click=${this._addItem}
+          ?disabled=${this._isAddButtonDisabled()}
         >
           Add ${this.label || "Item"}
         </button>
@@ -222,7 +222,7 @@ export class MultipleInputs extends LitWrapper {
         ${this.fieldName
           ? this.items.map((item) =>
               item.value.trim() !== ""
-                ? html` <input type="hidden" name="${this.fieldName}[]" value="${item.value}" /> `
+                ? html` <input type="hidden" name="${this.fieldName}[]" value=${item.value} /> `
                 : "",
             )
           : ""}

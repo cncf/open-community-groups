@@ -98,8 +98,8 @@ export class UserChip extends LitWrapper {
       return html`
         <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1">
           <avatar-image
-            image-url="${imageUrl}"
-            placeholder="${initials}"
+            image-url=${imageUrl}
+            placeholder=${initials}
             size="size-[24px]"
             font-size="text-[0.65rem]"
             hide-border="true"
@@ -115,16 +115,16 @@ export class UserChip extends LitWrapper {
         class="relative flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full ${isClickable
           ? "cursor-pointer hover:border-primary-300 hover:shadow-sm transition-all"
           : ""}"
-        @click="${isClickable ? this._handleClick : null}"
-        role="${isClickable ? "button" : ""}"
-        tabindex="${isClickable ? "0" : "-1"}"
-        @keydown="${isClickable ? this._handleKeydown : null}"
-        aria-label="${isClickable ? `View ${name || username}'s profile` : ""}"
+        @click=${isClickable ? this._handleClick : null}
+        role=${isClickable ? "button" : ""}
+        tabindex=${isClickable ? "0" : "-1"}
+        @keydown=${isClickable ? this._handleKeydown : null}
+        aria-label=${isClickable ? `View ${name || username}'s profile` : ""}
       >
         <avatar-image
-          image-url="${imageUrl}"
+          image-url=${imageUrl}
           size="size-15 md:size-18"
-          placeholder="${initials}"
+          placeholder=${initials}
           font-size="text-lg"
         >
         </avatar-image>

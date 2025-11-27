@@ -182,9 +182,9 @@ export class KeyValueInputs extends LitWrapper {
                 <input
                   type="text"
                   class="input-primary"
-                  placeholder="${this.keyPlaceholder}"
-                  value="${item.key}"
-                  @input="${(e) => this._handleInputChange(index, "key", e)}"
+                  placeholder=${this.keyPlaceholder}
+                  value=${item.key}
+                  @input=${(e) => this._handleInputChange(index, "key", e)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -193,9 +193,9 @@ export class KeyValueInputs extends LitWrapper {
                 <input
                   type="text"
                   class="input-primary col-span-2"
-                  placeholder="${this.valuePlaceholder}"
-                  value="${item.value}"
-                  @input="${(e) => this._handleInputChange(index, "value", e)}"
+                  placeholder=${this.valuePlaceholder}
+                  value=${item.value}
+                  @input=${(e) => this._handleInputChange(index, "value", e)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -206,7 +206,7 @@ export class KeyValueInputs extends LitWrapper {
                 type="button"
                 class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
                 title="Remove item"
-                @click="${() => this._removeItem(index)}"
+                @click=${() => this._removeItem(index)}
               >
                 <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
               </button>
@@ -217,8 +217,8 @@ export class KeyValueInputs extends LitWrapper {
         <button
           type="button"
           class="btn-primary-outline btn-mini"
-          @click="${this._addItem}"
-          ?disabled="${this._isAddButtonDisabled()}"
+          @click=${this._addItem}
+          ?disabled=${this._isAddButtonDisabled()}
         >
           Add ${this.label || "Link"}
         </button>
@@ -231,7 +231,7 @@ export class KeyValueInputs extends LitWrapper {
                     <input
                       type="hidden"
                       name="${this.fieldName}[${item.key.trim()}]"
-                      value="${item.value.trim()}"
+                      value=${item.value.trim()}
                     />
                   `
                 : "",

@@ -77,11 +77,11 @@ export class ImageField extends LitWrapper {
     if (this._hasImage) {
       return html`
         <img
-          src="${this.value}"
+          src=${this.value}
           alt="Image preview"
-          class="${isWide
+          class=${isWide
             ? "h-full w-full object-contain rounded p-1"
-            : "max-h-[86px] max-w-[86px] object-contain mx-auto"}"
+            : "max-h-[86px] max-w-[86px] object-contain mx-auto"}
           loading="lazy"
         />
       `;
@@ -260,7 +260,7 @@ export class ImageField extends LitWrapper {
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
 
     return html`
-      <label for="${this._fileInputId}" class="form-label">
+      <label for=${this._fileInputId} class="form-label">
         ${this.label} ${this.required ? html`<span class="asterisk">*</span>` : ""}
       </label>
       <div class="mt-3 flex flex-col gap-4 items-stretch sm:flex-row">
@@ -274,11 +274,11 @@ export class ImageField extends LitWrapper {
           role="button"
           tabindex="0"
           aria-label="Upload image"
-          @click="${this._triggerFilePicker}"
-          @keydown="${this._handlePreviewKeyDown}"
-          @dragover="${this._handleDragOver}"
-          @dragleave="${this._handleDragLeave}"
-          @drop="${this._handleDrop}"
+          @click=${this._triggerFilePicker}
+          @keydown=${this._handlePreviewKeyDown}
+          @dragover=${this._handleDragOver}
+          @dragleave=${this._handleDragLeave}
+          @drop=${this._handleDrop}
         >
           <div
             class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${this._isUploading
@@ -305,10 +305,10 @@ export class ImageField extends LitWrapper {
             >
               <input
                 type="file"
-                id="${this._fileInputId}"
+                id=${this._fileInputId}
                 class="hidden"
                 accept=".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff"
-                @change="${this._handleFileChange}"
+                @change=${this._handleFileChange}
                 ?disabled=${this._isUploading}
               />
               Upload image
@@ -319,7 +319,7 @@ export class ImageField extends LitWrapper {
                 ? "cursor-not-allowed opacity-60"
                 : "enabled:cursor-pointer"}"
               ?disabled=${removeDisabled}
-              @click="${this._handleRemove}"
+              @click=${this._handleRemove}
             >
               Remove image
             </button>
@@ -328,9 +328,9 @@ export class ImageField extends LitWrapper {
       </div>
       <input
         type="hidden"
-        id="${valueInputId}"
-        name="${this.name || valueInputId}"
-        .value="${this.value}"
+        id=${valueInputId}
+        name=${this.name || valueInputId}
+        .value=${this.value}
         ?required=${this.required}
         readonly
       />

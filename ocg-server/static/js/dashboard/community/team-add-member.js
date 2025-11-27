@@ -194,8 +194,8 @@ export class TeamAddMember extends LitWrapper {
     return html`
       <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
         <avatar-image
-          image-url="${u.photo_url || ""}"
-          placeholder="${initials}"
+          image-url=${u.photo_url || ""}
+          placeholder=${initials}
           size="size-[24px]"
           hide-border
         ></avatar-image>
@@ -212,7 +212,7 @@ export class TeamAddMember extends LitWrapper {
       >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"
-          @click="${() => this._close()}"
+          @click=${() => this._close()}
         ></div>
         <div class="relative px-4 py-8 w-full max-w-3xl overflow-visible">
           <div class="relative bg-white rounded-lg shadow overflow-visible">
@@ -221,7 +221,7 @@ export class TeamAddMember extends LitWrapper {
               <button
                 type="button"
                 class="group bg-transparent hover:bg-stone-200 rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center cursor-pointer"
-                @click="${() => this._close()}"
+                @click=${() => this._close()}
               >
                 <div class="svg-icon size-5 bg-stone-400 group-hover:bg-stone-700 icon-close"></div>
                 <span class="sr-only">Close modal</span>
@@ -237,11 +237,11 @@ export class TeamAddMember extends LitWrapper {
               >
                 <div class="mb-6">
                   <user-search-field
-                    dashboard-type="${this.dashboardType}"
+                    dashboard-type=${this.dashboardType}
                     label="team member"
                     legend="Search for users by their name or username"
-                    .disabledUserIds="${this.disabledUserIds || []}"
-                    @user-selected="${(e) => this._onUserSelected(e)}"
+                    .disabledUserIds=${this.disabledUserIds || []}
+                    @user-selected=${(e) => this._onUserSelected(e)}
                   ></user-search-field>
                   <input type="hidden" name="user_id" id="team-add-user-id" />
                 </div>
@@ -257,7 +257,7 @@ export class TeamAddMember extends LitWrapper {
                         class="input-primary"
                         ?required=${this.dashboardType === "group"}
                       >
-                        ${opts.map((o) => html`<option value="${o.value}">${o.label}</option>`)}
+                        ${opts.map((o) => html`<option value=${o.value}>${o.label}</option>`)}
                       </select>
                     </div>
                   `;
@@ -284,7 +284,7 @@ export class TeamAddMember extends LitWrapper {
   render() {
     return html`
       <div class="inline-flex items-center gap-3">
-        <button class="btn-primary" @click="${() => this._open()}">Add member</button>
+        <button class="btn-primary" @click=${() => this._open()}>Add member</button>
       </div>
       ${this._renderModal()}
     `;

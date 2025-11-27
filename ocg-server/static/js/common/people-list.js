@@ -70,9 +70,7 @@ export class PeopleList extends LitWrapper {
   _renderAvatar(person) {
     const initials = computeUserInitials(person.name, "", 2);
 
-    return html`
-      <avatar-image image-url="${person.photo_url || ""}" placeholder="${initials}"></avatar-image>
-    `;
+    return html` <avatar-image image-url=${person.photo_url || ""} placeholder=${initials}></avatar-image> `;
   }
 
   /**
@@ -127,7 +125,7 @@ export class PeopleList extends LitWrapper {
             ? html`
                 <div class="p-3">
                   <button
-                    @click="${this._toggleShowAll}"
+                    @click=${this._toggleShowAll}
                     class="group inline-flex items-center gap-1.5 text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
                   >
                     <span

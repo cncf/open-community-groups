@@ -202,7 +202,7 @@ export class SessionsSection extends LitWrapper {
               @click=${() => this._removeSessionItem(index)}
               type="button"
               class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
-              title="${hasSingleSessionItem ? "Clean" : "Delete"}"
+              title=${hasSingleSessionItem ? "Clean" : "Delete"}
             >
               <div
                 class="svg-icon size-4 icon-${hasSingleSessionItem ? "eraser" : "trash"} bg-stone-600"
@@ -386,8 +386,8 @@ class SessionItem extends LitWrapper {
     return html`
       <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
         <avatar-image
-          image-url="${speaker.photo_url || ""}"
-          placeholder="${initials}"
+          image-url=${speaker.photo_url || ""}
+          placeholder=${initials}
           size="size-[24px]"
           hide-border
         ></avatar-image>
@@ -428,12 +428,12 @@ class SessionItem extends LitWrapper {
           <input
             type="hidden"
             name="sessions[${this.index}][speakers][${index}][user_id]"
-            value="${speaker.user_id}"
+            value=${speaker.user_id}
           />
           <input
             type="hidden"
             name="sessions[${this.index}][speakers][${index}][featured]"
-            value="${speaker.featured ? "true" : "false"}"
+            value=${speaker.featured ? "true" : "false"}
           />
         `,
       )}
@@ -454,7 +454,7 @@ class SessionItem extends LitWrapper {
             type="text"
             name="sessions[${this.index}][name]"
             class="input-primary"
-            value="${this.data.name}"
+            value=${this.data.name}
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
@@ -477,7 +477,7 @@ class SessionItem extends LitWrapper {
             <option value="" ?selected=${!this.data.kind}>Select type</option>
             ${this.sessionKinds.map(
               (k) =>
-                html`<option value="${k.session_kind_id}" ?selected=${this.data.kind === k.session_kind_id}>
+                html`<option value=${k.session_kind_id} ?selected=${this.data.kind === k.session_kind_id}>
                   ${k.display_name}
                 </option>`,
             )}
@@ -494,7 +494,7 @@ class SessionItem extends LitWrapper {
             data-name="starts_at"
             name="sessions[${this.index}][starts_at]"
             class="input-primary"
-            value="${this.data.starts_at || ""}"
+            value=${this.data.starts_at || ""}
             ?required=${!this.isObjectEmpty}
           />
         </div>
@@ -509,7 +509,7 @@ class SessionItem extends LitWrapper {
             data-name="ends_at"
             name="sessions[${this.index}][ends_at]"
             class="input-primary"
-            value="${this.data.ends_at || ""}"
+            value=${this.data.ends_at || ""}
           />
         </div>
       </div>
@@ -520,8 +520,8 @@ class SessionItem extends LitWrapper {
           <markdown-editor
             id="sessions[${this.index}][description]"
             name="sessions[${this.index}][description]"
-            content="${this.data.description}"
-            .onChange="${(value) => this._onTextareaChange(value)}"
+            content=${this.data.description}
+            .onChange=${(value) => this._onTextareaChange(value)}
             mini
           ></markdown-editor>
         </div>
@@ -550,7 +550,7 @@ class SessionItem extends LitWrapper {
             type="text"
             name="sessions[${this.index}][location]"
             class="input-primary"
-            value="${this.data.location}"
+            value=${this.data.location}
             placeholder="Optional - physical location or meeting room"
             autocomplete="off"
             autocorrect="off"
@@ -569,7 +569,7 @@ class SessionItem extends LitWrapper {
             type="url"
             name="sessions[${this.index}][recording_url]"
             class="input-primary"
-            value="${this.data.recording_url}"
+            value=${this.data.recording_url}
             placeholder="Optional - link to recorded session"
             autocomplete="off"
             autocorrect="off"
@@ -588,7 +588,7 @@ class SessionItem extends LitWrapper {
             type="url"
             name="sessions[${this.index}][streaming_url]"
             class="input-primary"
-            value="${this.data.streaming_url}"
+            value=${this.data.streaming_url}
             placeholder="Optional - link to live stream"
             autocomplete="off"
             autocorrect="off"

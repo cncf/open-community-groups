@@ -123,12 +123,12 @@ export class UserInfoModal extends LitWrapper {
           ${links.map(
             (link) => html`
               <a
-                href="${link.url}"
+                href=${link.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="group btn-secondary-anchor p-3 flex items-center justify-center"
-                title="${link.label}"
-                aria-label="${link.label}"
+                title=${link.label}
+                aria-label=${link.label}
               >
                 <div
                   class="svg-icon size-6 bg-primary-500 group-hover:bg-white transition-colors icon-${link.icon}"
@@ -169,7 +169,7 @@ export class UserInfoModal extends LitWrapper {
       >
         <div
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
-          @click="${this._closeModal}"
+          @click=${this._closeModal}
         ></div>
 
         <div class="relative p-4 w-full max-w-2xl max-h-full">
@@ -181,7 +181,7 @@ export class UserInfoModal extends LitWrapper {
               <button
                 type="button"
                 class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
-                @click="${this._closeModal}"
+                @click=${this._closeModal}
                 aria-label="Close modal"
               >
                 <div
@@ -193,8 +193,8 @@ export class UserInfoModal extends LitWrapper {
             <div class="p-8">
               <div class="flex items-center gap-6 mb-6">
                 <avatar-image
-                  image-url="${this._userData.imageUrl || ""}"
-                  placeholder="${initials}"
+                  image-url=${this._userData.imageUrl || ""}
+                  placeholder=${initials}
                   size="size-24"
                   font-size="text-3xl"
                 ></avatar-image>
