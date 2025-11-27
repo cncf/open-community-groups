@@ -295,8 +295,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for host in legacy_hosts -%}
                   {% if host.name.is_some() -%}
-                    <user-chip name="{{ host.name|display_some }}" username="" image-url="{{ host.photo_url|display_some }}" job-title="{{ host.title|display_some }}" bio-is-html bio="{{ host.bio.as_deref().unwrap_or("")|md_to_html }}">
-                    </user-chip>
+                    <user-chip user='{{ host|json }}'></user-chip>
                   {% endif -%}
                 {% endfor -%}
               </div>
@@ -312,8 +311,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for host in event.hosts -%}
                 {% if host.name.is_some() -%}
-                  <user-chip name="{{ host.name|display_some }}" username="{{ host.username }}" image-url="{{ host.photo_url|display_some }}" job-title="{{ host.title|display_some }}" company="{{ host.company|display_some }}" bio="{{ host.bio|display_some }}" facebook-url="{{ host.facebook_url|display_some }}" linkedin-url="{{ host.linkedin_url|display_some }}" twitter-url="{{ host.twitter_url|display_some }}" website-url="{{ host.website_url|display_some }}">
-                  </user-chip>
+                  <user-chip user='{{ host|json }}'></user-chip>
                 {% endif -%}
               {% endfor -%}
             </div>
@@ -329,8 +327,7 @@
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for speaker in legacy_speakers -%}
                   {% if speaker.name.is_some() -%}
-                    <user-chip name="{{ speaker.name|display_some }}" username="" image-url="{{ speaker.photo_url|display_some }}" job-title="{{ speaker.title|display_some }}" bio-is-html bio="{{ speaker.bio.as_deref().unwrap_or("")|md_to_html }}">
-                    </user-chip>
+                    <user-chip user='{{ speaker|json }}' bio-is-html></user-chip>
                   {% endif -%}
                 {% endfor -%}
               </div>
@@ -346,8 +343,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in event.organizers -%}
                 {% if organizer.name.is_some() -%}
-                  <user-chip name="{{ organizer.name|display_some }}" username="{{ organizer.username }}" image-url="{{ organizer.photo_url|display_some }}" job-title="{{ organizer.title|display_some }}" company="{{ organizer.company|display_some }}" bio="{{ organizer.bio|display_some }}" facebook-url="{{ organizer.facebook_url|display_some }}" linkedin-url="{{ organizer.linkedin_url|display_some }}" twitter-url="{{ organizer.twitter_url|display_some }}" website-url="{{ organizer.website_url|display_some }}">
-                  </user-chip>
+                  <user-chip user='{{ organizer|json }}'></user-chip>
                 {% endif -%}
               {% endfor -%}
             </div>
@@ -425,8 +421,7 @@
         <div class="flex flex-grap gap-4">
           {% for speaker in session.speakers -%}
             {% if speaker.user.name.is_some() -%}
-              <user-chip name="{{ speaker.user.name|display_some }}" username="{{ speaker.user.username }}" image-url="{{ speaker.user.photo_url|display_some }}" job-title="{{ speaker.user.title|display_some }}" company="{{ speaker.user.company|display_some }}" bio="{{ speaker.user.bio|display_some }}" facebook-url="{{ speaker.user.facebook_url|display_some }}" linkedin-url="{{ speaker.user.linkedin_url|display_some }}" twitter-url="{{ speaker.user.twitter_url|display_some }}" website-url="{{ speaker.user.website_url|display_some }}" small>
-              </user-chip>
+              <user-chip user='{{ speaker.user|json }}' small></user-chip>
             {% endif -%}
           {% endfor -%}
         </div>

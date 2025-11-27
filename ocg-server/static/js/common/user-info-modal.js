@@ -162,7 +162,7 @@ export class UserInfoModal extends LitWrapper {
 
     return html`
       <div
-        class="fixed inset-0 z-[1300] flex items-center justify-center overflow-y-auto overflow-x-hidden"
+        class="fixed inset-0 z-1300 flex items-center justify-center overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="user-info-modal-title"
