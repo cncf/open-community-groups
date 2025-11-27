@@ -18,6 +18,7 @@ export class UserChip extends LitWrapper {
       user: { type: Object },
       bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
       small: { type: Boolean },
+      featured: { type: Boolean },
     };
   }
 
@@ -26,6 +27,7 @@ export class UserChip extends LitWrapper {
     this.user = null;
     this.bioIsHtml = false;
     this.small = false;
+    this.featured = false;
   }
 
   connectedCallback() {
@@ -93,10 +95,29 @@ export class UserChip extends LitWrapper {
     const hasBio = bio.trim().length > 0;
     const isClickable = hasBio && !this.small;
     const initials = computeUserInitials(name, username, 2);
+    const cardSize = this.featured ? "px-5 py-4 md:py-5" : "px-4 py-3";
+    const borderState = this.featured
+      ? "border-amber-200 bg-amber-50/50 shadow-sm"
+      : "border-stone-200 bg-white";
+    const avatarSize = this.featured ? "size-18 md:size-22" : "size-15 md:size-18";
+    const nameSize = this.featured ? "text-lg md:text-xl" : "text-base";
+    const jobSize = this.featured ? "text-sm md:text-base" : "text-[0.8rem]";
+    const badge = this.featured
+      ? html`<div
+          class="absolute -top-2 -right-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 border border-amber-200"
+        >
+          <div class="svg-icon size-3 icon-star bg-amber-500"></div>
+          <span class="text-xs font-semibold text-amber-700">Featured</span>
+        </div>`
+      : "";
 
     if (this.small) {
       return html`
-        <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1">
+        <div
+          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${this.featured
+            ? "bg-amber-50/50 border border-amber-200 text-amber-800"
+            : "bg-stone-100 text-stone-700"}"
+        >
           <avatar-image
             image-url=${imageUrl}
             placeholder=${initials}
@@ -105,15 +126,16 @@ export class UserChip extends LitWrapper {
             hide-border="true"
           >
           </avatar-image>
-          <span class="text-sm text-stone-700 pe-2">${name}</span>
+          ${this.featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
+          <span class="text-sm pe-1">${name}</span>
         </div>
       `;
     }
 
     return html`
       <div
-        class="relative flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3 w-full ${isClickable
-          ? "cursor-pointer hover:border-primary-300 hover:shadow-sm transition-all"
+        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full ${isClickable
+          ? `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} hover:shadow-sm transition-all`
           : ""}"
         @click=${isClickable ? this._handleClick : null}
         role=${isClickable ? "button" : ""}
@@ -121,18 +143,12 @@ export class UserChip extends LitWrapper {
         @keydown=${isClickable ? this._handleKeydown : null}
         aria-label=${isClickable ? `View ${name || username}'s profile` : ""}
       >
-        <avatar-image
-          image-url=${imageUrl}
-          size="size-15 md:size-18"
-          placeholder=${initials}
-          font-size="text-lg"
-        >
+        ${badge}
+        <avatar-image image-url=${imageUrl} size=${avatarSize} placeholder=${initials} font-size="text-lg">
         </avatar-image>
         <div class="leading-tight min-w-0">
-          <div class="font-semibold text-stone-900 truncate">${name}</div>
-          ${jobTitle
-            ? html`<div class="text-[0.8rem] text-stone-600 mt-1.5 line-clamp-2">${jobTitle}</div>`
-            : ""}
+          <div class="font-semibold text-stone-900 truncate ${nameSize}">${name}</div>
+          ${jobTitle ? html`<div class="text-stone-600 mt-1 line-clamp-2 ${jobSize}">${jobTitle}</div>` : ""}
         </div>
       </div>
     `;

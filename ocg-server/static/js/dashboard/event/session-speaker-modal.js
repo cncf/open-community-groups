@@ -118,9 +118,7 @@ export class SessionSpeakerModal extends LitWrapper {
   _isDisabled(user) {
     const key = speakerKey(user);
     if (!key.length) return false;
-    return (this.disabledUserIds || []).some(
-      (id) => speakerKey({ user_id: id }) === key,
-    );
+    return (this.disabledUserIds || []).some((id) => speakerKey({ user_id: id }) === key);
   }
 
   /**
@@ -214,8 +212,7 @@ export class SessionSpeakerModal extends LitWrapper {
               </div>
 
               <div class="flex items-center justify-between gap-4 flex-wrap">
-                <div>${this._renderSelectedBadge()}</div>
-                <label class="inline-flex items-center cursor-pointer ms-auto">
+                <label class="inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     class="sr-only peer"
@@ -228,6 +225,7 @@ export class SessionSpeakerModal extends LitWrapper {
                   ></div>
                   <span class="ms-3 text-sm font-medium text-stone-900">Featured speaker</span>
                 </label>
+                <div>${this._renderSelectedBadge()}</div>
               </div>
 
               <div class="flex justify-end gap-3">
