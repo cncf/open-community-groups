@@ -34,19 +34,30 @@ export const debounce = (fn, delay = 150) => {
   };
 };
 
-const hasOpenModal = () => {
-  const candidates = document.querySelectorAll(".modal, .modal-overlay");
-  return Array.from(candidates).some(
-    (el) => !el.classList.contains("hidden") && !el.classList.contains("pointer-events-none"),
-  );
-};
-
+/**
+ * Locks body scroll by setting overflow to hidden. Uses a counter to handle
+ * multiple modals. Only locks scroll when the first modal opens.
+ */
 export const lockBodyScroll = () => {
-  document.body.style.overflow = "hidden";
+  const current = Number.parseInt(document.body.dataset.modalOpenCount || "0", 10);
+  const next = Number.isNaN(current) ? 1 : current + 1;
+  document.body.dataset.modalOpenCount = String(next);
+  if (next === 1) {
+    document.body.style.overflow = "hidden";
+  }
 };
 
+/**
+ * Unlocks body scroll by restoring overflow. Uses a counter to handle multiple
+ * modals. Only unlocks scroll when all modals are closed (counter reaches 0).
+ */
 export const unlockBodyScroll = () => {
-  document.body.style.overflow = hasOpenModal() ? "hidden" : "";
+  const current = Number.parseInt(document.body.dataset.modalOpenCount || "0", 10);
+  const next = Number.isNaN(current) ? 0 : Math.max(0, current - 1);
+  document.body.dataset.modalOpenCount = String(next);
+  if (next === 0) {
+    document.body.style.overflow = "";
+  }
 };
 
 /**
