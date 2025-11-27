@@ -28,6 +28,19 @@ export class UserChip extends LitWrapper {
     this.small = false;
   }
 
+  connectedCallback() {
+    super.connectedCallback();
+
+    // Parse user if it's a JSON string from template
+    if (typeof this.user === "string") {
+      try {
+        this.user = JSON.parse(this.user);
+      } catch (_) {
+        this.user = null;
+      }
+    }
+  }
+
   _handleClick = (e) => {
     const bio = this.user?.bio || "";
     const hasBio = bio.trim().length > 0;
