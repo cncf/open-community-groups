@@ -63,7 +63,7 @@
                 class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
-          <span class="hidden lg:inline">Hosts & Sponsors</span>
+          <span class="hidden lg:inline">People & Sponsors</span>
           <span class="lg:hidden">People</span>
         </button>
       </li>
@@ -464,7 +464,7 @@
   </div>
   {# End Sessions Tab -#}
 
-  {# Hosts & Sponsors Tab -#}
+  {# People & Sponsors Tab -#}
   <div data-content="hosts-sponsors" class="hidden">
     <form id="hosts-sponsors-form">
       <div class="space-y-12">
@@ -477,6 +477,15 @@
         </div>
         {# End Hosts Section -#}
 
+        {# Event Speakers Section -#}
+        <div class="border-b border-stone-900/10 pb-12">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Speakers</div>
+          <div class="mt-5">
+            <speakers-selector dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
+          </div>
+        </div>
+        {# End Event Speakers Section -#}
+
         {# Sponsors Section -#}
         <div class="pb-12">
           <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
@@ -488,7 +497,7 @@
       </div>
     </form>
   </div>
-  {# End Hosts & Sponsors Tab -#}
+  {# End People & Sponsors Tab -#}
 
 </div>
 </div>
@@ -507,6 +516,7 @@
     generateSlug
   } from '/static/js/dashboard/common.js';
   import '/static/js/common/user-search-selector.js';
+  import '/static/js/common/speakers-selector.js';
 
   const addEventButton = document.getElementById('add-event-button');
   const cancelButton = document.getElementById('cancel-button');

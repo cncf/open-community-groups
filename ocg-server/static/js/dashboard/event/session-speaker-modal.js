@@ -3,6 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/avatar-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { speakerKey } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
  * Modal component for selecting session speakers with featured flag support.
@@ -35,12 +36,18 @@ export class SessionSpeakerModal extends LitWrapper {
     this._featured = false;
   }
 
+  /**
+   * Registers keyboard listener for escape handling.
+   */
   connectedCallback() {
     super.connectedCallback();
     this._onKeydown = this._onKeydown.bind(this);
     document.addEventListener("keydown", this._onKeydown);
   }
 
+  /**
+   * Cleans listeners and restores body scroll when detached.
+   */
   disconnectedCallback() {
     super.disconnectedCallback();
     if (this._isOpen) {
@@ -49,6 +56,9 @@ export class SessionSpeakerModal extends LitWrapper {
     document.removeEventListener("keydown", this._onKeydown);
   }
 
+  /**
+   * Opens modal, resets state, and focuses search field.
+   */
   open() {
     this._resetState();
     this._isOpen = true;
@@ -59,35 +69,75 @@ export class SessionSpeakerModal extends LitWrapper {
     });
   }
 
+  /**
+   * Closes modal and clears selection state.
+   */
   close() {
     this._isOpen = false;
     unlockBodyScroll();
     this._resetState();
   }
 
+  /**
+   * Resets selected user and featured toggle.
+   * @private
+   */
   _resetState() {
     this._selectedUser = null;
     this._featured = false;
   }
 
+  /**
+   * Handles escape key to close the modal.
+   * @param {KeyboardEvent} event
+   * @private
+   */
   _onKeydown(event) {
     if (event.key === "Escape" && this._isOpen) {
       this.close();
     }
   }
 
+  /**
+   * Sets selected user when emitted by search component.
+   * @param {CustomEvent} event
+   * @private
+   */
   _handleUserSelected(event) {
     const user = event.detail?.user;
-    if (!user) return;
+    if (!user || this._isDisabled(user)) return;
     this._selectedUser = user;
   }
 
+  /**
+   * Checks if user is already disabled/selected.
+   * @param {Object} user
+   * @returns {boolean}
+   * @private
+   */
+  _isDisabled(user) {
+    const key = speakerKey(user);
+    if (!key.length) return false;
+    return (this.disabledUserIds || []).some(
+      (id) => speakerKey({ user_id: id }) === key,
+    );
+  }
+
+  /**
+   * Toggles featured flag for current selection.
+   * @param {Event} event
+   * @private
+   */
   _toggleFeatured(event) {
     this._featured = !!event.target?.checked;
   }
 
+  /**
+   * Confirms selection and emits speaker-selected event.
+   * @private
+   */
   _confirmSelection() {
-    if (!this._selectedUser) return;
+    if (!this._selectedUser || this._isDisabled(this._selectedUser)) return;
     this.dispatchEvent(
       new CustomEvent("speaker-selected", {
         detail: {
@@ -100,6 +150,11 @@ export class SessionSpeakerModal extends LitWrapper {
     this.close();
   }
 
+  /**
+   * Renders badge for the currently selected user.
+   * @returns {import("lit").TemplateResult}
+   * @private
+   */
   _renderSelectedBadge() {
     const user = this._selectedUser;
     if (!user) return html``;
@@ -118,6 +173,11 @@ export class SessionSpeakerModal extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders modal markup when open.
+   * @returns {import("lit").TemplateResult}
+   * @private
+   */
   _renderModal() {
     if (!this._isOpen) return html``;
 
@@ -188,6 +248,10 @@ export class SessionSpeakerModal extends LitWrapper {
     `;
   }
 
+  /**
+   * Main render method required by Lit.
+   * @returns {import("lit").TemplateResult}
+   */
   render() {
     return html`${this._renderModal()}`;
   }

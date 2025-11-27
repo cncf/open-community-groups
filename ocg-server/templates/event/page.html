@@ -319,6 +319,21 @@
         {% endif -%}
         {# End hosts section -#}
 
+        {# Event speakers section - Full width -#}
+        {% if !event.speakers.is_empty() -%}
+          <div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {% for speaker in event.speakers -%}
+                {% if speaker.user.name.is_some() -%}
+                  <user-chip user='{{ speaker.user|json }}'></user-chip>
+                {% endif -%}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End event speakers section -#}
+
         {# Speakers section (legacy data) - Full width -#}
         {% if let Some(legacy_speakers) = event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
