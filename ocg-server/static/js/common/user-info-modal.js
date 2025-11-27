@@ -1,6 +1,6 @@
 import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { computeUserInitials } from "/static/js/common/common.js";
+import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import "/static/js/common/avatar-image.js";
 
 /**
@@ -8,7 +8,7 @@ import "/static/js/common/avatar-image.js";
  * Opens when user-chip components dispatch 'open-user-modal' events.
  *
  * Features:
- * - Shows user avatar, name, title, company, bio
+ * - Shows user avatar, name, jobTitle, company, bio
  * - Displays social media links if available
  * - Keyboard navigation (Escape to close)
  * - Click outside to close
@@ -39,24 +39,24 @@ export class UserInfoModal extends LitWrapper {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._isOpen) {
-      document.body.style.overflow = "";
-    }
     this._removeEventListeners();
+    if (this._isOpen) {
+      unlockBodyScroll();
+    }
     document.removeEventListener("open-user-modal", this._handleOpenModal);
   }
 
   _handleOpenModal(e) {
     this._userData = e.detail;
     this._isOpen = true;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
     document.addEventListener("keydown", this._handleKeydown);
     document.addEventListener("mousedown", this._handleOutsideClick);
   }
 
   _closeModal() {
     this._isOpen = false;
-    document.body.style.overflow = "";
+    unlockBodyScroll();
     this._removeEventListeners();
   }
 
@@ -145,7 +145,7 @@ export class UserInfoModal extends LitWrapper {
     if (!this._userData) return "";
 
     const parts = [];
-    if (this._userData.title) parts.push(this._userData.title);
+    if (this._userData.jobTitle) parts.push(this._userData.jobTitle);
     if (this._userData.company) parts.push(this._userData.company);
 
     if (parts.length === 0) return "";

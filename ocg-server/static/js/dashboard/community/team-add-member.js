@@ -2,7 +2,12 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/avatar-image.js";
-import { computeUserInitials, isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import {
+  computeUserInitials,
+  isSuccessfulXHRStatus,
+  lockBodyScroll,
+  unlockBodyScroll,
+} from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 
 // TODO - Hardcoded role options for add endpoint
@@ -71,6 +76,9 @@ export class TeamAddMember extends LitWrapper {
   disconnectedCallback() {
     // Clean up ESC key listener
     super.disconnectedCallback();
+    if (this._isOpen) {
+      unlockBodyScroll();
+    }
     document.removeEventListener("keydown", this._onKeydown);
   }
 
@@ -91,6 +99,7 @@ export class TeamAddMember extends LitWrapper {
    */
   _open() {
     this._isOpen = true;
+    lockBodyScroll();
     this.updateComplete.then(() => {
       const field = this.querySelector("user-search-field");
       if (field && typeof field.focusInput === "function") field.focusInput();
@@ -103,6 +112,7 @@ export class TeamAddMember extends LitWrapper {
    */
   _close() {
     this._isOpen = false;
+    unlockBodyScroll();
   }
 
   /**

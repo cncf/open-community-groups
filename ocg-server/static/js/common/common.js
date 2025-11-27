@@ -34,6 +34,21 @@ export const debounce = (fn, delay = 150) => {
   };
 };
 
+const hasOpenModal = () => {
+  const candidates = document.querySelectorAll(".modal, .modal-overlay");
+  return Array.from(candidates).some(
+    (el) => !el.classList.contains("hidden") && !el.classList.contains("pointer-events-none"),
+  );
+};
+
+export const lockBodyScroll = () => {
+  document.body.style.overflow = "hidden";
+};
+
+export const unlockBodyScroll = () => {
+  document.body.style.overflow = hasOpenModal() ? "hidden" : "";
+};
+
 /**
  * Toggles the visibility of the mobile navigation bar and its backdrop.
  * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
@@ -56,7 +71,13 @@ export const toggleMobileNavbarVisibility = () => {
 export const toggleModalVisibility = (modalId) => {
   const modal = document.getElementById(modalId);
   if (modal) {
+    const willOpen = modal.classList.contains("hidden");
     modal.classList.toggle("hidden");
+    if (willOpen) {
+      lockBodyScroll();
+    } else {
+      unlockBodyScroll();
+    }
   }
 };
 

@@ -1,5 +1,9 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import {
+  lockBodyScroll,
+  unlockBodyScroll,
+} from "/static/js/common/common.js";
 
 /**
  * ImagesGallery component for displaying images with modal carousel.
@@ -33,18 +37,23 @@ export class ImagesGallery extends LitWrapper {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    if (this._isModalOpen) {
+      unlockBodyScroll();
+    }
     this._removeModalEventListeners();
   }
 
   _openModal(index) {
     this._currentIndex = index;
     this._isModalOpen = true;
+    lockBodyScroll();
     document.addEventListener("keydown", this._handleKeydown);
     document.addEventListener("mousedown", this._handleModalBackgroundClick);
   }
 
   _closeModal() {
     this._isModalOpen = false;
+    unlockBodyScroll();
     this._removeModalEventListeners();
   }
 

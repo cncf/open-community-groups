@@ -11,7 +11,7 @@ import "/static/js/common/avatar-image.js";
  * - name: string (required)
  * - username: string (optional, used for initials)
  * - image-url: string (optional)
- * - title: string (optional)
+ * - job-title: string (optional)
  * - bio: string (optional)
  * - bio-is-html: boolean (optional). When true, bio is rendered as HTML.
  * - delay: number (optional). Show delay in ms (default: 300).
@@ -29,7 +29,7 @@ export class UserChip extends LitWrapper {
       name: { type: String },
       username: { type: String },
       imageUrl: { type: String, attribute: "image-url" },
-      title: { type: String },
+      jobTitle: { type: String, attribute: "job-title" },
       bio: { type: String },
       bioIsHtml: { type: Boolean, attribute: "bio-is-html" },
       tooltipVisible: { type: Boolean, attribute: "tooltip-visible" },
@@ -49,7 +49,7 @@ export class UserChip extends LitWrapper {
     this.name = "";
     this.username = "";
     this.imageUrl = "";
-    this.title = "";
+    this.jobTitle = "";
     this.bio = "";
     this.bioIsHtml = false;
     this.tooltipVisible = false;
@@ -109,7 +109,7 @@ export class UserChip extends LitWrapper {
             name: this.name,
             username: this.username,
             imageUrl: this.imageUrl,
-            title: this.title,
+            jobTitle: this.jobTitle,
             company: this.company,
             bio: this.bio,
             bioIsHtml: this.bioIsHtml,
@@ -157,9 +157,9 @@ export class UserChip extends LitWrapper {
       </avatar-image>
       <div class="leading-tight min-w-0">
         <div class="font-semibold text-stone-900 ${!isTooltip ? "truncate" : ""}">${this.name || ""}</div>
-        ${this.title
+        ${this.jobTitle
           ? html`<div class="text-[0.8rem] text-stone-600 mt-1.5 ${!isTooltip ? "line-clamp-2" : ""}">
-              ${this.title}
+              ${this.jobTitle}
             </div>`
           : ""}
       </div>
