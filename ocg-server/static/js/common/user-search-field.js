@@ -23,6 +23,7 @@ export class UserSearchField extends LitWrapper {
    *   "community")
    * @property {string} label - Label text used in placeholders and messages
    * @property {string} legend - Helper text displayed under the input
+    * @property {string} placeholderText - Custom placeholder for search input
    * @property {number} searchDelay - Debounce delay for search (milliseconds)
    * @property {Array} excludeUsernames - Usernames to filter out from results
    * @property {boolean} _isSearching - Internal loading indicator state
@@ -36,6 +37,7 @@ export class UserSearchField extends LitWrapper {
     label: { type: String },
     legend: { type: String },
     inputClass: { type: String, attribute: "input-class" },
+    placeholderText: { type: String, attribute: "placeholder-text" },
     searchDelay: { type: Number, attribute: "search-delay" },
     disabledUserIds: { type: Array, attribute: false },
     excludeUsernames: { type: Array, attribute: false },
@@ -52,6 +54,7 @@ export class UserSearchField extends LitWrapper {
     this.label = "";
     this.legend = "";
     this.inputClass = "";
+    this.placeholderText = "";
     this.searchDelay = 300;
     this.disabledUserIds = [];
     this.excludeUsernames = [];
@@ -240,7 +243,8 @@ export class UserSearchField extends LitWrapper {
           id="search-input"
           type="text"
           class="input-primary peer ps-9 ${this.inputClass || ""}"
-          placeholder="Search ${this.label || ""} by username"
+          placeholder=${this.placeholderText ||
+          (this.label ? `Search ${this.label} by username` : "Search by username")}
           .value=${this._searchQuery}
           @input=${this._handleSearchInput}
           autocomplete="off"

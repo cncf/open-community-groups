@@ -225,11 +225,11 @@ export class SessionSpeakerModal extends LitWrapper {
                   ></div>
                   <span class="ms-3 text-sm font-medium text-stone-900">Featured speaker</span>
                 </label>
-                <div>${this._renderSelectedBadge()}</div>
               </div>
 
-              <div class="flex justify-end gap-3">
-                <button type="button" class="btn-secondary" @click=${() => this.close()}>Cancel</button>
+              <div class="flex justify-between items-center gap-3">
+                <div>${this._renderSelectedBadge()}</div>
+
                 <button
                   type="button"
                   class="btn-primary"
