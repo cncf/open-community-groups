@@ -634,3 +634,15 @@ input:placeholder-shown {
 }
 
 /* End spinner */
+/* Shared empty state for dashboard charts */
+.chart-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8fafc;
+  border-radius: 0.5rem;
+  color: #a8a29e;
+  font-size: 0.95rem;
+  padding: 1rem;
+  min-height: 220px;
+}
