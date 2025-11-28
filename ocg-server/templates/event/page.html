@@ -322,14 +322,20 @@
         {# Event speakers section - Full width -#}
         {% if !event.speakers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
-            <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">
+              Featured speakers
+            </div>
+            <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4">
               {% for speaker in event.speakers -%}
                 {% if speaker.featured && speaker.user.name.is_some() -%}
                   <user-chip user='{{ speaker.user|json }}' featured></user-chip>
                 {% endif -%}
               {% endfor -%}
             </div>
+          </div>
+
+          <div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
             <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for speaker in event.speakers -%}
                 {% if !speaker.featured && speaker.user.name.is_some() -%}
@@ -341,7 +347,7 @@
         {% endif -%}
         {# End event speakers section -#}
 
-        {# Speakers section (legacy data) - Full width -#}
+        {# Speakers section (legacy data) - Full width - no featured on LegacyUser -#}
         {% if let Some(legacy_speakers) = event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
             <div>

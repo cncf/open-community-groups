@@ -102,14 +102,6 @@ export class UserChip extends LitWrapper {
     const avatarSize = this.featured ? "size-18 md:size-22" : "size-15 md:size-18";
     const nameSize = this.featured ? "text-lg md:text-xl" : "text-base";
     const jobSize = this.featured ? "text-sm md:text-base" : "text-[0.8rem]";
-    const badge = this.featured
-      ? html`<div
-          class="absolute -top-2 -right-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 border border-amber-200"
-        >
-          <div class="svg-icon size-3 icon-star bg-amber-500"></div>
-          <span class="text-xs font-semibold text-amber-700">Featured</span>
-        </div>`
-      : "";
 
     if (this.small) {
       return html`
@@ -143,7 +135,6 @@ export class UserChip extends LitWrapper {
         @keydown=${isClickable ? this._handleKeydown : null}
         aria-label=${isClickable ? `View ${name || username}'s profile` : ""}
       >
-        ${badge}
         <avatar-image image-url=${imageUrl} size=${avatarSize} placeholder=${initials} font-size="text-lg">
         </avatar-image>
         <div class="leading-tight min-w-0">
