@@ -21,6 +21,85 @@ export const generateSlug = (name) => {
 };
 
 /**
+ * Dispose of any existing ECharts instance on the given element.
+ * @param {HTMLElement} element - Target element.
+ */
+const disposeChartInstance = (element) => {
+  if (!element || typeof echarts === "undefined") {
+    return;
+  }
+
+  const existingChart = echarts.getInstanceByDom(element);
+  if (existingChart) {
+    existingChart.dispose();
+  }
+};
+
+/**
+ * Remove empty state styling, text, and chart instances from a target element.
+ * @param {string} elementId - Target element id.
+ * @returns {HTMLElement|null} Cleared element or null when missing.
+ */
+export const clearChartElement = (elementId) => {
+  const el = document.getElementById(elementId);
+  if (!el) {
+    return null;
+  }
+
+  disposeChartInstance(el);
+  el.classList.remove("chart-empty-state");
+  el.textContent = "";
+  return el;
+};
+
+/**
+ * Render a standard empty state for charts lacking data.
+ * @param {string} elementId - Target element id.
+ * @param {string} message - Empty state message.
+ */
+export const showChartEmptyState = (elementId, message = "No data available yet") => {
+  const el = document.getElementById(elementId);
+  if (!el) {
+    return;
+  }
+
+  el.classList.add("chart-empty-state");
+  el.textContent = message;
+};
+
+/**
+ * Basic data availability check for non-time-series charts.
+ * @param {Array} data - Chart data array.
+ * @returns {boolean} True when data has at least one point.
+ */
+export const hasChartData = (data = []) => {
+  return Array.isArray(data) && data.length > 0;
+};
+
+/**
+ * Data availability check for time-series charts that need a trend line.
+ * @param {Array} data - Time-series data array.
+ * @returns {boolean} True when data has at least two points.
+ */
+export const hasTimeSeriesData = (data = []) => {
+  return Array.isArray(data) && data.length >= 2;
+};
+
+/**
+ * Data availability check for stacked time-series charts.
+ * @param {Array} series - Series collection with data arrays.
+ * @param {number} minPoints - Minimum points required per series.
+ * @returns {boolean} True when any series satisfies the threshold.
+ */
+export const hasStackedTimeSeriesData = (series = [], minPoints = 2) => {
+  if (!Array.isArray(series) || series.length === 0) {
+    return false;
+  }
+
+  return series.some((item) => Array.isArray(item.data) && item.data.length >= minPoints);
+};
+
+/**
  * Triggers a change event on the specified form using htmx.
  * @param {string} formId - The ID of the form to trigger change on
  */

@@ -4,6 +4,10 @@ import {
   createAreaChart,
   createMonthlyBarChart,
   initChart,
+  hasChartData,
+  hasTimeSeriesData,
+  showChartEmptyState,
+  clearChartElement,
 } from "/static/js/dashboard/common.js";
 import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/common.js";
@@ -34,51 +38,6 @@ const removeSpinner = (container) => {
 };
 
 /**
- * Check whether a dataset contains points for rendering.
- * @param {Array} data - Chart data points.
- * @returns {boolean} True when the chart has data.
- */
-const hasData = (data) => {
-  return Array.isArray(data) && data.length > 0;
-};
-
-/**
- * Render a friendly empty state when no data is available.
- * @param {string} elementId - Target chart element id.
- */
-const showEmptyState = (elementId) => {
-  const chartElement = document.getElementById(elementId);
-  if (!chartElement) {
-    return;
-  }
-
-  const container = chartElement.closest("[data-analytics-chart]");
-  if (container) {
-    removeSpinner(container);
-  }
-
-  if (typeof echarts !== "undefined") {
-    const existingChart = echarts.getInstanceByDom(chartElement);
-    if (existingChart) {
-      existingChart.dispose();
-    }
-  }
-
-  chartElement.classList.add(
-    "flex",
-    "items-center",
-    "justify-center",
-    "bg-gray-100",
-    "rounded-lg",
-    "text-stone-400",
-    "text-md",
-    "p-4",
-    "bg-stone-50/80",
-  );
-  chartElement.textContent = "No data available yet";
-};
-
-/**
  * Create or dispose a chart depending on data availability.
  * @param {string} elementId - Target chart element id.
  * @param {Object} option - ECharts option to render.
@@ -89,32 +48,26 @@ const renderChart = (elementId, option, hasChartData) => {
   const chartElement = document.getElementById(elementId);
   const container = chartElement?.closest("[data-analytics-chart]");
 
-  if (!hasChartData) {
-    showEmptyState(elementId);
+  const seriesData = option?.series?.[0]?.data || [];
+  const needsTrendLine = option?.xAxis?.type === "time" && option?.series?.[0]?.type === "line";
+  const canRender = hasChartData && (!needsTrendLine || seriesData.length >= 2);
+
+  if (!canRender) {
+    if (container) {
+      removeSpinner(container);
+    }
+    showChartEmptyState(elementId);
     return null;
   }
 
-  if (!chartElement) {
+  const element = clearChartElement(elementId);
+  if (!element) {
     return null;
   }
 
   if (container) {
     removeSpinner(container);
   }
-
-  if (typeof echarts !== "undefined") {
-    const existingChart = echarts.getInstanceByDom(chartElement);
-    if (existingChart) {
-      existingChart.dispose();
-    }
-  }
-
-  chartElement.textContent = "";
-  chartElement.style.display = "";
-  chartElement.style.alignItems = "";
-  chartElement.style.justifyContent = "";
-  chartElement.style.color = "";
-  chartElement.style.fontSize = "";
 
   const chart = initChart(elementId, option);
   return chart;
@@ -134,7 +87,7 @@ const initMembersCharts = (stats = {}, palette) => {
     renderChart(
       "members-running-chart",
       createAreaChart("Members over time", "Members", runningData, palette),
-      hasData(runningData),
+      hasTimeSeriesData(runningData),
     ),
   );
 
@@ -143,7 +96,7 @@ const initMembersCharts = (stats = {}, palette) => {
     renderChart(
       "members-monthly-chart",
       createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette),
-      hasData(monthlyData),
+      hasChartData(monthlyData),
     ),
   );
 
@@ -164,7 +117,7 @@ const initEventsCharts = (stats = {}, palette) => {
     renderChart(
       "events-running-chart",
       createAreaChart("Events over time", "Events", runningData, palette),
-      hasData(runningData),
+      hasTimeSeriesData(runningData),
     ),
   );
 
@@ -173,7 +126,7 @@ const initEventsCharts = (stats = {}, palette) => {
     renderChart(
       "events-monthly-chart",
       createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette),
-      hasData(monthlyData),
+      hasChartData(monthlyData),
     ),
   );
 
@@ -194,7 +147,7 @@ const initAttendeesCharts = (stats = {}, palette) => {
     renderChart(
       "attendees-running-chart",
       createAreaChart("Attendees over time", "Attendees", runningData, palette),
-      hasData(runningData),
+      hasTimeSeriesData(runningData),
     ),
   );
 
@@ -203,7 +156,7 @@ const initAttendeesCharts = (stats = {}, palette) => {
     renderChart(
       "attendees-monthly-chart",
       createMonthlyBarChart("New Attendees per Month", "Attendees", monthlyData, palette),
-      hasData(monthlyData),
+      hasChartData(monthlyData),
     ),
   );
 
