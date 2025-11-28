@@ -259,7 +259,7 @@
 
           {# Photos -#}
           <div class="col-span-full">
-            <gallery-field field-name="photos_urls" legend="Optional photos related to the event." max-images="0" label="Photos"></gallery-field>
+            <gallery-field field-name="photos_urls" images="{%- if let Some(photos_urls) = event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}" legend="Optional photos related to the event." max-images="0" label="Photos"></gallery-field>
           </div>
           {# End Photos -#}
 
