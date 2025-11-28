@@ -3,11 +3,7 @@ import { computeUserInitials } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/avatar-image.js";
 import "/static/js/dashboard/event/session-speaker-modal.js";
-import {
-  normalizeSpeakers,
-  speakerKey,
-  hasSpeaker,
-} from "/static/js/dashboard/event/speaker-utils.js";
+import { normalizeSpeakers, speakerKey, hasSpeaker } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
  * Shared speakers selector with featured flag support.
@@ -108,9 +104,7 @@ export class SpeakersSelector extends LitWrapper {
   _removeSpeaker = (speaker) => {
     if (!speaker) return;
     const target = speakerKey(speaker);
-    const nextSpeakers = this._getSpeakers().filter(
-      (item) => speakerKey(item) !== target,
-    );
+    const nextSpeakers = this._getSpeakers().filter((item) => speakerKey(item) !== target);
     this._setSpeakers(nextSpeakers);
   };
 
@@ -123,18 +117,14 @@ export class SpeakersSelector extends LitWrapper {
   _renderSpeakerChip(speaker) {
     const initials = computeUserInitials(speaker.name, speaker.username, 2);
     return html`
-      <div
-        class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1"
-      >
+      <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
         <avatar-image
           image-url=${speaker.photo_url || ""}
           placeholder=${initials}
           size="size-[24px]"
           hide-border
         ></avatar-image>
-        ${speaker.featured
-          ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>`
-          : ""}
+        ${speaker.featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
         <span class="text-sm text-stone-700">${speaker.name || speaker.username}</span>
         <button
           type="button"
@@ -180,11 +170,7 @@ export class SpeakersSelector extends LitWrapper {
     return html`
       ${speakers.map(
         (speaker, index) => html`
-          <input
-            type="hidden"
-            name="${this.fieldNamePrefix}[${index}][user_id]"
-            value=${speaker.user_id}
-          />
+          <input type="hidden" name="${this.fieldNamePrefix}[${index}][user_id]" value=${speaker.user_id} />
           <input
             type="hidden"
             name="${this.fieldNamePrefix}[${index}][featured]"
@@ -202,22 +188,14 @@ export class SpeakersSelector extends LitWrapper {
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
           <label class="form-label m-0">${this.label}</label>
           ${this.showAddButton
-            ? html`<button
-                type="button"
-                class="btn-secondary"
-                @click=${this._openSpeakerModal}
-              >
+            ? html`<button type="button" class="btn-secondary" @click=${this._openSpeakerModal}>
                 Add speaker
               </button>`
             : ""}
         </div>
 
-        ${this.helpText
-          ? html`<p class="text-sm text-stone-500 mt-1">${this.helpText}</p>`
-          : ""}
-
-        ${this._renderSpeakerChips(speakers)}
-        ${this._renderHiddenInputs(speakers)}
+        ${this.helpText ? html`<p class="text-sm text-stone-500 mt-1">${this.helpText}</p>` : ""}
+        ${this._renderSpeakerChips(speakers)} ${this._renderHiddenInputs(speakers)}
 
         <session-speaker-modal
           dashboard-type=${this.dashboardType}

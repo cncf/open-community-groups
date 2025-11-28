@@ -23,7 +23,7 @@ export class UserSearchField extends LitWrapper {
    *   "community")
    * @property {string} label - Label text used in placeholders and messages
    * @property {string} legend - Helper text displayed under the input
-    * @property {string} placeholderText - Custom placeholder for search input
+   * @property {string} placeholderText - Custom placeholder for search input
    * @property {number} searchDelay - Debounce delay for search (milliseconds)
    * @property {Array} excludeUsernames - Usernames to filter out from results
    * @property {boolean} _isSearching - Internal loading indicator state
