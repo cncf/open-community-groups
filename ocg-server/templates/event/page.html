@@ -319,7 +319,35 @@
         {% endif -%}
         {# End hosts section -#}
 
-        {# Speakers section (legacy data) - Full width -#}
+        {# Event speakers section - Full width -#}
+        {% if !event.speakers.is_empty() -%}
+          <div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">
+              Featured speakers
+            </div>
+            <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4">
+              {% for speaker in event.speakers -%}
+                {% if speaker.featured && speaker.user.name.is_some() -%}
+                  <user-chip user='{{ speaker.user|json }}' featured></user-chip>
+                {% endif -%}
+              {% endfor -%}
+            </div>
+          </div>
+
+          <div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
+            <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {% for speaker in event.speakers -%}
+                {% if !speaker.featured && speaker.user.name.is_some() -%}
+                  <user-chip user='{{ speaker.user|json }}'></user-chip>
+                {% endif -%}
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
+        {# End event speakers section -#}
+
+        {# Speakers section (legacy data) - Full width - no featured on LegacyUser -#}
         {% if let Some(legacy_speakers) = event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
             <div>
@@ -418,9 +446,16 @@
     {% if !session.speakers.is_empty() -%}
       <div class="mt-4">
         <div class="text-xs font-semibold text-stone-500 mb-2">SPEAKERS</div>
-        <div class="flex flex-grap gap-4">
+        <div class="featured-sessions-grid grid gap-3">
           {% for speaker in session.speakers -%}
-            {% if speaker.user.name.is_some() -%}
+            {% if speaker.featured && speaker.user.name.is_some() -%}
+              <user-chip user='{{ speaker.user|json }}' featured small></user-chip>
+            {% endif -%}
+          {% endfor -%}
+        </div>
+        <div class="regular-sessions-speakers flex flex-wrap gap-3">
+          {% for speaker in session.speakers -%}
+            {% if !speaker.featured && speaker.user.name.is_some() -%}
               <user-chip user='{{ speaker.user|json }}' small></user-chip>
             {% endif -%}
           {% endfor -%}

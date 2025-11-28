@@ -64,7 +64,7 @@
 
   .btn-primary-outline .svg-icon,
   .btn-primary-outline-anchor .svg-icon {
-    @apply bg-primary-500;
+    @apply bg-current;
   }
 
   .btn-mini {
@@ -153,6 +153,24 @@
 
   .form-legend {
     @apply mt-1 text-xs/6 text-stone-600;
+  }
+
+  .featured-speakers-grid:empty {
+    display: none;
+    margin: 0;
+  }
+
+  .featured-speakers-grid:not(:empty) + .regular-speakers-grid {
+    margin-top: 1.5rem;
+  }
+
+  .featured-sessions-grid:empty {
+    display: none;
+    margin: 0;
+  }
+
+  .featured-sessions-grid:not(:empty) + .regular-sessions-speakers {
+    margin-top: 0.75rem;
   }
 }
 
