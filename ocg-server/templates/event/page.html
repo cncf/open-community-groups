@@ -93,6 +93,18 @@
                 </div>
                 {# End event details and date -#}
 
+                {# Social networks (mobile only) -#}
+                {% if has_social_links -%}
+                  <div class="md:hidden mt-4 md:mb-0">
+                    <div class="flex flex-wrap gap-2">
+                      {% if let Some(meetup_url) = event.meetup_url -%}
+                        {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
+                      {% endif -%}
+                    </div>
+                  </div>
+                {% endif -%}
+                {# End social networks (mobile) -#}
+
                 <div class="mt-4 md:mt-0 flex flex:row md:flex-col items-end md:ml-auto">
                   {# Attend button section -#}
                   {% include "event/attend_button.html" %}
@@ -103,18 +115,6 @@
 
           </div>
           {# End main flex container -#}
-
-          {# Social networks (mobile only) -#}
-          <div class="inline md:hidden mt-4">
-            {% if has_social_links -%}
-              <div class="flex flex-wrap gap-2">
-                {% if let Some(meetup_url) = event.meetup_url -%}
-                  {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
-                {% endif -%}
-              </div>
-            {% endif -%}
-          </div>
-          {# End social networks (mobile) -#}
 
         </div>
         {# End event header -#}
