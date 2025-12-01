@@ -21,35 +21,40 @@ import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/common.js";
 
 /**
- * Display a tab-level spinner overlay while charts hydrate.
- * @param {string} tab - Tab key to show the spinner on.
+ * Add a loading spinner overlay to a chart container.
+ * @param {HTMLElement} container - Chart wrapper element.
  */
-const showTabSpinner = (tab) => {
-  const content = document.querySelector(`[data-analytics-content="${tab}"]`);
-  if (!content) return;
-
-  const existingSpinner = content.querySelector(".tab-spinner");
-  if (!existingSpinner) {
-    const spinner = document.createElement("div");
-    spinner.className =
-      "tab-spinner absolute inset-0 flex items-center justify-center " +
-      "bg-white/80 backdrop-blur-[1px] z-10";
-    spinner.innerHTML = '<svg-spinner size="size-10"></svg-spinner>';
-    content.style.position = "relative";
-    content.appendChild(spinner);
+const addSpinner = (container) => {
+  if (!container || container.querySelector(".chart-spinner")) {
+    return;
   }
+
+  container.classList.add("relative");
+
+  const spinner = document.createElement("div");
+  spinner.innerHTML =
+    '<svg-spinner size="size-10" class="chart-spinner absolute inset-0 flex items-center justify-center text-gray-500 bg-white/80 backdrop-blur-[1px] z-10"></svg-spinner>';
+  container.appendChild(spinner);
 };
 
 /**
- * Remove the spinner overlay from a tab content area.
- * @param {string} tab - Tab key to clear the spinner from.
+ * Remove any spinner overlay from a chart container.
+ * @param {HTMLElement} container - Chart wrapper element.
  */
-const hideTabSpinner = (tab) => {
-  const content = document.querySelector(`[data-analytics-content="${tab}"]`);
-  const spinner = content?.querySelector(".tab-spinner");
-  if (spinner) {
-    spinner.remove();
-  }
+const removeSpinner = (container) => {
+  container?.querySelector(".chart-spinner")?.remove();
+};
+
+/**
+ * Display spinners on all chart containers within a tab.
+ * @param {string} tab - Tab key to show spinners on.
+ */
+const showChartSpinners = (tab) => {
+  const tabContent = document.querySelector(`[data-analytics-content="${tab}"]`);
+  if (!tabContent) return;
+
+  const chartContainers = tabContent.querySelectorAll("[data-analytics-chart]");
+  chartContainers.forEach((container) => addSpinner(container));
 };
 
 /**
@@ -60,11 +65,17 @@ const hideTabSpinner = (tab) => {
  * @returns {echarts.ECharts|null} Chart instance or null.
  */
 const renderChart = (elementId, option, hasData) => {
+  const chartElement = document.getElementById(elementId);
+  const container = chartElement?.closest("[data-analytics-chart]");
+
   const seriesData = option?.series?.[0]?.data || [];
   const needsTrendLine = option?.xAxis?.type === "time" && option?.series?.[0]?.type === "line";
   const canRender = hasData && (!needsTrendLine || seriesData.length >= 2);
 
   if (!canRender) {
+    if (container) {
+      removeSpinner(container);
+    }
     showChartEmptyState(elementId);
     return null;
   }
@@ -72,6 +83,10 @@ const renderChart = (elementId, option, hasData) => {
   const element = clearChartElement(elementId);
   if (!element) {
     return null;
+  }
+
+  if (container) {
+    removeSpinner(container);
   }
 
   return initChart(elementId, option);
@@ -496,6 +511,8 @@ const setupAnalyticsTabs = (stats, palette) => {
       return false;
     }
 
+    showChartSpinners(tab);
+
     let charts = [];
     if (tab === "groups") {
       charts = await initGroupsCharts(stats.groups, palette);
@@ -511,7 +528,6 @@ const setupAnalyticsTabs = (stats, palette) => {
     hydratedCharts.forEach((chart) => allCharts.add(chart));
     chartsByTab.set(tab, hydratedCharts);
     initializedTabs.add(tab);
-    hideTabSpinner(tab);
     return true;
   };
 
@@ -525,7 +541,6 @@ const setupAnalyticsTabs = (stats, palette) => {
       content.classList.toggle("hidden", !visible);
     });
 
-    showTabSpinner(tab);
     initTabCharts(tab)
       .then(() => {
         (chartsByTab.get(tab) || []).forEach((chart) => chart.resize());
@@ -547,17 +562,6 @@ const setupAnalyticsTabs = (stats, palette) => {
   }, 200);
 
   window.addEventListener("resize", resizeCharts);
-};
-
-/**
- * Render spinner overlays for the active analytics tab before charts are ready.
- */
-export const showActiveAnalyticsSpinners = () => {
-  const activeButton = document.querySelector('[data-analytics-tab][data-active="true"]');
-  const tab = activeButton?.dataset.analyticsTab;
-  if (tab) {
-    showTabSpinner(tab);
-  }
 };
 
 /**
