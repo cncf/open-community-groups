@@ -32,16 +32,14 @@ description = "Group statistics and growth trends.") %}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
-        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
-             data-analytics-chart>
-          <div id="members-running-chart" class="h-[320px]"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
+          {% call macros::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, min_points = 1) -%}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
-        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
-             data-analytics-chart>
-          <div id="members-monthly-chart" class="h-[320px]"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
+          {% call macros::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month) -%}
         </div>
       </div>
     </div>
@@ -52,16 +50,14 @@ description = "Group statistics and growth trends.") %}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
-        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
-             data-analytics-chart>
-          <div id="events-running-chart" class="h-[320px]"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
+          {% call macros::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, min_points = 1) -%}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
-        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
-             data-analytics-chart>
-          <div id="events-monthly-chart" class="h-[320px]"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
+          {% call macros::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month) -%}
         </div>
       </div>
     </div>
@@ -72,16 +68,14 @@ description = "Group statistics and growth trends.") %}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
-        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
-             data-analytics-chart>
-          <div id="attendees-running-chart" class="h-[320px]"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
+          {% call macros::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, min_points = 1) -%}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
-        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3"
-             data-analytics-chart>
-          <div id="attendees-monthly-chart" class="h-[320px]"></div>
+        <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
+          {% call macros::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month) -%}
         </div>
       </div>
     </div>
@@ -92,13 +86,9 @@ description = "Group statistics and growth trends.") %}
 {# Initialize charts with server data #}
 {# djlint:off #}
 <script type="module">
-  import {
-    initAnalyticsCharts,
-    showAnalyticsSpinners
-  } from '/static/js/dashboard/group/analytics.js';
+  import { initAnalyticsCharts } from '/static/js/dashboard/group/analytics.js';
 
   const stats = {{ stats | json | safe }};
-  showAnalyticsSpinners();
   initAnalyticsCharts(stats)
     .catch((error) => console.error('Failed to initialize analytics charts:', error));
 </script>

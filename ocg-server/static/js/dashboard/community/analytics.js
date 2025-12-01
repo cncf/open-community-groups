@@ -17,45 +17,7 @@ import {
   showChartEmptyState,
   clearChartElement,
 } from "/static/js/dashboard/common.js";
-import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/common.js";
-
-/**
- * Add a loading spinner overlay to a chart container.
- * @param {HTMLElement} container - Chart wrapper element.
- */
-const addSpinner = (container) => {
-  if (!container || container.querySelector(".chart-spinner")) {
-    return;
-  }
-
-  container.classList.add("relative");
-
-  const spinner = document.createElement("div");
-  spinner.innerHTML =
-    '<svg-spinner size="size-10" class="chart-spinner absolute inset-0 flex items-center justify-center text-gray-500 bg-white/80 backdrop-blur-[1px] z-10"></svg-spinner>';
-  container.appendChild(spinner);
-};
-
-/**
- * Remove any spinner overlay from a chart container.
- * @param {HTMLElement} container - Chart wrapper element.
- */
-const removeSpinner = (container) => {
-  container?.querySelector(".chart-spinner")?.remove();
-};
-
-/**
- * Display spinners on all chart containers within a tab.
- * @param {string} tab - Tab key to show spinners on.
- */
-const showChartSpinners = (tab) => {
-  const tabContent = document.querySelector(`[data-analytics-content="${tab}"]`);
-  if (!tabContent) return;
-
-  const chartContainers = tabContent.querySelectorAll("[data-analytics-chart]");
-  chartContainers.forEach((container) => addSpinner(container));
-};
 
 /**
  * Render a chart or show an empty state based on data availability.
@@ -65,17 +27,11 @@ const showChartSpinners = (tab) => {
  * @returns {echarts.ECharts|null} Chart instance or null.
  */
 const renderChart = (elementId, option, hasData) => {
-  const chartElement = document.getElementById(elementId);
-  const container = chartElement?.closest("[data-analytics-chart]");
-
   const seriesData = option?.series?.[0]?.data || [];
   const needsTrendLine = option?.xAxis?.type === "time" && option?.series?.[0]?.type === "line";
   const canRender = hasData && (!needsTrendLine || seriesData.length >= 2);
 
   if (!canRender) {
-    if (container) {
-      removeSpinner(container);
-    }
     showChartEmptyState(elementId);
     return null;
   }
@@ -83,10 +39,6 @@ const renderChart = (elementId, option, hasData) => {
   const element = clearChartElement(elementId);
   if (!element) {
     return null;
-  }
-
-  if (container) {
-    removeSpinner(container);
   }
 
   return initChart(elementId, option);
@@ -510,8 +462,6 @@ const setupAnalyticsTabs = (stats, palette) => {
     if (initializedTabs.has(tab)) {
       return false;
     }
-
-    showChartSpinners(tab);
 
     let charts = [];
     if (tab === "groups") {

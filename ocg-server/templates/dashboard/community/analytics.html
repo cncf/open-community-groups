@@ -57,13 +57,11 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-category-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-category-chart", class = "h-[300px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-region-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-region-chart", class = "h-[300px]") -%}
           </div>
         </div>
       </div>
@@ -71,17 +69,14 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-running-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-running-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-running-category-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-running-category-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-running-region-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-running-region-chart", class = "h-[340px]") -%}
           </div>
         </div>
       </div>
@@ -89,17 +84,14 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-monthly-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-monthly-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-monthly-category-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-monthly-category-chart", class = "h-[360px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="groups-monthly-region-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "groups-monthly-region-chart", class = "h-[360px]") -%}
           </div>
         </div>
       </div>
@@ -114,13 +106,11 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-category-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-category-chart", class = "h-[300px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-region-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-region-chart", class = "h-[300px]") -%}
           </div>
         </div>
       </div>
@@ -128,17 +118,14 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-running-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-running-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-running-category-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-running-category-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-running-region-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-running-region-chart", class = "h-[340px]") -%}
           </div>
         </div>
       </div>
@@ -146,17 +133,14 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-monthly-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-monthly-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-monthly-category-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-monthly-category-chart", class = "h-[360px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="members-monthly-region-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "members-monthly-region-chart", class = "h-[360px]") -%}
           </div>
         </div>
       </div>
@@ -171,17 +155,14 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-group-category-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-group-category-chart", class = "h-[300px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-region-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-region-chart", class = "h-[300px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6 xl:col-span-2"
-               data-analytics-chart>
-            <div id="events-category-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6 xl:col-span-2">
+            {% call macros::chart_container(chart_id = "events-category-chart", class = "h-[300px]") -%}
           </div>
         </div>
       </div>
@@ -189,21 +170,17 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-running-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-running-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-running-group-category-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-running-group-category-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-running-group-region-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-running-group-region-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-running-event-category-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-running-event-category-chart", class = "h-[340px]") -%}
           </div>
         </div>
       </div>
@@ -211,21 +188,17 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-monthly-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-monthly-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-monthly-group-category-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-monthly-group-category-chart", class = "h-[360px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-monthly-group-region-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-monthly-group-region-chart", class = "h-[360px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="events-monthly-event-category-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "events-monthly-event-category-chart", class = "h-[360px]") -%}
           </div>
         </div>
       </div>
@@ -240,13 +213,11 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Total</div>
         <div class="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-category-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-category-chart", class = "h-[300px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-region-chart" class="h-[300px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-region-chart", class = "h-[300px]") -%}
           </div>
         </div>
       </div>
@@ -254,21 +225,17 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-running-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-running-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-running-group-category-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-running-group-category-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-running-group-region-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-running-group-region-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-running-event-category-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-running-event-category-chart", class = "h-[340px]") -%}
           </div>
         </div>
       </div>
@@ -276,21 +243,17 @@ description = "Community statistics and growth trends.") %}
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="mt-4 space-y-6">
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-monthly-chart" class="h-[340px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-monthly-chart", class = "h-[340px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-monthly-group-category-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-monthly-group-category-chart", class = "h-[360px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-monthly-group-region-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-monthly-group-region-chart", class = "h-[360px]") -%}
           </div>
-          <div class="bg-white border border-stone-200 rounded-lg p-6"
-               data-analytics-chart>
-            <div id="attendees-monthly-event-category-chart" class="h-[360px]"></div>
+          <div class="bg-white border border-stone-200 rounded-lg p-6">
+            {% call macros::chart_container(chart_id = "attendees-monthly-event-category-chart", class = "h-[360px]") -%}
           </div>
         </div>
       </div>
