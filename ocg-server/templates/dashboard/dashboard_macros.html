@@ -70,8 +70,8 @@
 {% endmacro form_title -%}
 {# End form title #}
 
-{# Analytics chart container #}
-{% macro analytics_chart(chart_id, data, min_points = 0) -%}
+{# Group analytics chart container #}
+{% macro group_analytics_chart(chart_id, data, min_points = 0) -%}
   {% if data.len() > min_points + 0 -%}
     <div id="{{ chart_id }}" class="h-[320px]">
       <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
@@ -80,14 +80,14 @@
   {%- else -%}
     <div class="chart-empty-state">No data available yet</div>
   {%- endif %}
-{% endmacro analytics_chart -%}
-{# End analytics chart container #}
+{% endmacro group_analytics_chart -%}
+{# End group analytics chart container #}
 
-{# Chart container with spinner (no data validation) #}
-{% macro chart_container(chart_id, class = "h-[320px]") -%}
+{# Community analytics chart container #}
+{% macro community_analytics_chart(chart_id, class = "h-[320px]") -%}
   <div id="{{ chart_id }}" class="{{ class }}">
     <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
     </svg-spinner>
   </div>
-{% endmacro chart_container -%}
-{# End chart container #}
+{% endmacro community_analytics_chart -%}
+{# End community analytics chart container #}
