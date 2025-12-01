@@ -155,6 +155,11 @@
     @apply mt-1 text-xs/6 text-stone-600;
   }
 
+  /* Shared empty state for dashboard charts */
+  .chart-empty-state {
+    @apply flex items-center justify-center bg-stone-50 rounded-lg text-stone-500 text-sm p-4 min-h-[220px];
+  }
+
   .featured-speakers-grid:empty {
     display: none;
     margin: 0;
@@ -634,15 +639,4 @@ input:placeholder-shown {
 }
 
 /* End spinner */
-/* Shared empty state for dashboard charts */
-.chart-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f8fafc;
-  border-radius: 0.5rem;
-  color: #a8a29e;
-  font-size: 0.95rem;
-  padding: 1rem;
-  min-height: 220px;
-}
+

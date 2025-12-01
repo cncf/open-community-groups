@@ -109,6 +109,9 @@
         {# Header -#}
         {% if !path.starts_with("/dashboard") -%}
           <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
+          {# New group modal -#}
+          {% include "common/new_group_modal.html" -%}
+          {# End new group modal -#}
         {% endif -%}
         {# End header -#}
 

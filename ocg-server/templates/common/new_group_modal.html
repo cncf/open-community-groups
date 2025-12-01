@@ -1,0 +1,53 @@
+{# New group modal -#}
+{% if let Some(new_group_details) = self.community.new_group_details -%}
+  <div id="new-group-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       aria-modal="true"
+       role="dialog"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+    <div id="backdrop-new-group-modal"
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
+    <div class="relative p-4 w-full max-w-2xl max-h-full">
+      <div class="relative bg-white rounded-lg shadow">
+        {# Modal header -#}
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          {# Title -#}
+          <h3 id="new-group-modal-title"
+              class="text-xl font-semibold text-stone-900">New group</h3>
+          {# End title -#}
+
+          {# Close button -#}
+          <button id="close-new-group-modal"
+                  type="button"
+                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+            <span class="sr-only">Close modal</span>
+          </button>
+          {# End close button -#}
+        </div>
+        {# End modal header -#}
+
+        {# Modal content -#}
+        <div class="new-group-content p-4 md:p-8">{{ new_group_details|md_to_html|safe }}</div>
+        {# End modal content -#}
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import {
+      toggleModalVisibility
+    } from '/static/js/common/common.js';
+
+    const backdropNewGroupModal = document.getElementById('backdrop-new-group-modal');
+    if (backdropNewGroupModal) {
+      backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    }
+
+    const closeNewGroupModal = document.getElementById('close-new-group-modal');
+    if (closeNewGroupModal) {
+      closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+    }
+  </script>
+{% endif -%}
+{# End new group modal -#}

@@ -205,6 +205,7 @@ export const initChart = (elementId, option) => {
     return null;
   }
 
+  el.innerHTML = "";
   const chart = echarts.init(el);
   chart.setOption(option);
   return chart;
