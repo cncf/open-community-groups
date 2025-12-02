@@ -67,8 +67,8 @@ pub(crate) async fn log_in_page(
     auth_session: AuthSession,
     messages: Messages,
     CommunityId(community_id): CommunityId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the user is already logged in
@@ -86,7 +86,7 @@ pub(crate) async fn log_in_page(
     // Prepare template
     let template = templates::auth::LogInPage {
         community,
-        login: cfg.login.clone(),
+        login: server_cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::LogIn,
         path: LOG_IN_URL.to_string(),
@@ -104,8 +104,8 @@ pub(crate) async fn sign_up_page(
     auth_session: AuthSession,
     messages: Messages,
     CommunityId(community_id): CommunityId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the user is already logged in
@@ -123,7 +123,7 @@ pub(crate) async fn sign_up_page(
     // Prepare template
     let template = templates::auth::SignUpPage {
         community,
-        login: cfg.login.clone(),
+        login: server_cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::SignUp,
         path: SIGN_UP_URL.to_string(),
@@ -405,9 +405,9 @@ pub(crate) async fn oidc_redirect(
 pub(crate) async fn sign_up(
     messages: Messages,
     CommunityId(community_id): CommunityId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -433,7 +433,7 @@ pub(crate) async fn sign_up(
         let template_data = EmailVerification {
             link: format!(
                 "{}/verify-email/{code}",
-                cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
+                server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
             ),
             theme: community.theme,
         };
@@ -980,9 +980,9 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.email = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1042,9 +1042,9 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.email = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1182,9 +1182,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.github = true;
-        cfg.oauth2.insert(
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.github = true;
+        server_cfg.oauth2.insert(
             OAuth2Provider::GitHub,
             OAuth2ProviderConfig {
                 auth_url: "https://oauth.example/authorize".to_string(),
@@ -1195,7 +1195,7 @@ mod tests {
                 token_url: "https://oauth.example/token".to_string(),
             },
         );
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1248,9 +1248,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.github = true;
-        cfg.oauth2.insert(
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.github = true;
+        server_cfg.oauth2.insert(
             OAuth2Provider::GitHub,
             OAuth2ProviderConfig {
                 auth_url: "https://oauth.example/authorize".to_string(),
@@ -1261,7 +1261,7 @@ mod tests {
                 token_url: "https://oauth.example/token".to_string(),
             },
         );
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1364,9 +1364,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.linuxfoundation = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.linuxfoundation = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1416,9 +1416,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.linuxfoundation = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.linuxfoundation = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1474,9 +1474,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.linuxfoundation = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.linuxfoundation = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let request = Request::builder()
@@ -1641,7 +1641,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router
-        let cfg = HttpServerConfig {
+        let server_cfg = HttpServerConfig {
             base_url: "https://app.example".to_string(),
             login: LoginOptions {
                 email: true,
@@ -1649,7 +1649,7 @@ mod tests {
             },
             ..Default::default()
         };
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret-password";
@@ -1698,9 +1698,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.email = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request (password not provided)
         let form = "email=test%40example.test&name=Test+User&username=test-user";
@@ -1756,9 +1756,9 @@ mod tests {
         nm.expect_enqueue().times(0);
 
         // Setup router
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.email = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
 
         // Setup request
         let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret";
@@ -2011,9 +2011,9 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.email = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/verify-email/{verification_code}"))
@@ -2065,9 +2065,9 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.email = true;
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = setup_test_router_with_config(db, nm, server_cfg).await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/verify-email/{verification_code}"))
@@ -2145,17 +2145,18 @@ mod tests {
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn(user_belongs_to_any_group_team))
@@ -2203,17 +2204,18 @@ mod tests {
             });
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn(user_belongs_to_any_group_team))
@@ -2252,17 +2254,18 @@ mod tests {
         db.expect_get_user_by_id().times(0);
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn(user_belongs_to_any_group_team))
@@ -2315,17 +2318,18 @@ mod tests {
             .returning(|_, _| Ok(true));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(state.clone(), user_owns_community))
@@ -2378,17 +2382,18 @@ mod tests {
             .returning(|_, _| Ok(false));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(state.clone(), user_owns_community))
@@ -2441,17 +2446,18 @@ mod tests {
             .returning(|_, _| Err(anyhow!("db error")));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(state.clone(), user_owns_community))
@@ -2505,17 +2511,18 @@ mod tests {
             .returning(|_, _, _| Ok(true));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(state.clone(), user_owns_group))
@@ -2569,17 +2576,18 @@ mod tests {
             .returning(|_, _, _| Ok(false));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(state.clone(), user_owns_group))
@@ -2633,17 +2641,18 @@ mod tests {
             .returning(|_, _, _| Err(anyhow!("db error")));
 
         // Setup router
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let db = Arc::new(db);
         let nm = Arc::new(MockNotificationsManager::new());
         let state = State {
-            cfg: cfg.clone(),
+            server_cfg: server_cfg.clone(),
             db: db.clone(),
             image_storage: Arc::new(MockImageStorage::new()),
+            meetings_cfg: None,
             notifications_manager: nm.clone(),
             serde_qs_de: serde_qs::Config::new(3, false),
         };
-        let auth_layer = crate::auth::setup_layer(&cfg, db.clone()).await.unwrap();
+        let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(state.clone(), user_owns_group))

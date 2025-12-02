@@ -149,9 +149,9 @@ pub(crate) async fn add(
 pub(crate) async fn cancel(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load event summary before canceling
@@ -169,7 +169,7 @@ pub(crate) async fn cancel(
         let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
         if !user_ids.is_empty() {
             event.canceled = true; // Update local event to reflect canceled status
-            let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let link = build_event_page_link(base_url, &event);
             let community = db.get_community(community_id).await?;
             let calendar_ics = build_event_calendar_attachment(base_url, &event);
@@ -203,9 +203,9 @@ pub(crate) async fn publish(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -229,7 +229,7 @@ pub(crate) async fn publish(
                 db.get_community(community_id),
                 db.get_event_summary(community_id, group_id, event_id),
             )?;
-            let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let link = build_event_page_link(base_url, &event);
             let calendar_ics = build_event_calendar_attachment(base_url, &event);
             let template_data = EventPublished {
@@ -291,10 +291,10 @@ pub(crate) async fn unpublish(
 pub(crate) async fn update(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(serde_qs_de): State<serde_qs::Config>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -321,7 +321,7 @@ pub(crate) async fn update(
     if should_notify {
         let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
         if !user_ids.is_empty() {
-            let base = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let link = build_event_page_link(base, &after);
             let community = db.get_community(community_id).await?;
             let calendar_ics = build_event_calendar_attachment(base, &after);

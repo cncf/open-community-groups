@@ -640,30 +640,30 @@ pub(crate) fn sample_template_user() -> TemplateUser {
 
 /// Builds the application router with the default configuration for handler tests.
 pub(crate) async fn setup_test_router(db: MockDB, nm: MockNotificationsManager) -> Router {
-    setup_test_router_with_image_storage(HttpServerConfig::default(), db, nm, MockImageStorage::new()).await
+    setup_test_router_with_image_storage(db, MockImageStorage::new(), nm, HttpServerConfig::default()).await
 }
 
 /// Builds the application router with a custom configuration for handler tests.
 pub(crate) async fn setup_test_router_with_config(
-    cfg: HttpServerConfig,
     db: MockDB,
     nm: MockNotificationsManager,
+    server_cfg: HttpServerConfig,
 ) -> Router {
-    setup_test_router_with_image_storage(cfg, db, nm, MockImageStorage::new()).await
+    setup_test_router_with_image_storage(db, MockImageStorage::new(), nm, server_cfg).await
 }
 
 /// Builds the application router with a custom image storage for handler tests.
 pub(crate) async fn setup_test_router_with_image_storage(
-    cfg: HttpServerConfig,
     db: MockDB,
+    is: MockImageStorage,
     nm: MockNotificationsManager,
-    image_storage: MockImageStorage,
+    server_cfg: HttpServerConfig,
 ) -> Router {
     let db: DynDB = Arc::new(db);
+    let is: DynImageStorage = Arc::new(is);
     let nm: DynNotificationsManager = Arc::new(nm);
-    let is: DynImageStorage = Arc::new(image_storage);
 
-    router::setup(&cfg, db, nm, is)
+    router::setup(db, is, None, nm, &server_cfg)
         .await
         .expect("router setup should succeed")
 }

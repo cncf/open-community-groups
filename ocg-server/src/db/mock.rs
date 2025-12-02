@@ -466,6 +466,11 @@ mock! {
             client_id: Uuid,
             meeting: &crate::services::meetings::Meeting,
         ) -> Result<()>;
+        async fn update_meeting_recording_url(
+            &self,
+            provider_meeting_id: &str,
+            recording_url: &str,
+        ) -> Result<()>;
     }
 
     #[async_trait]

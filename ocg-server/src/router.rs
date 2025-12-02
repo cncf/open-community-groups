@@ -24,11 +24,11 @@ use tracing::instrument;
 
 use crate::{
     auth::AuthnBackend,
-    config::HttpServerConfig,
+    config::{HttpServerConfig, MeetingsConfig},
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        community, dashboard, event, group, images,
+        community, dashboard, event, group, images, meetings,
     },
     services::{images::DynImageStorage, notifications::DynNotificationsManager},
 };
@@ -46,16 +46,18 @@ struct StaticFile;
 /// Shared state for the router.
 #[derive(Clone, FromRef)]
 pub(crate) struct State {
-    /// HTTP server configuration.
-    pub cfg: HttpServerConfig,
     /// Database handle.
     pub db: DynDB,
     /// Image storage provider handle.
     pub image_storage: DynImageStorage,
+    /// Meetings configuration.
+    pub meetings_cfg: Option<MeetingsConfig>,
     /// Notifications manager handle.
     pub notifications_manager: DynNotificationsManager,
     /// `serde_qs` config for query string parsing.
     pub serde_qs_de: serde_qs::Config,
+    /// HTTP server configuration.
+    pub server_cfg: HttpServerConfig,
 }
 
 /// Configures and returns the application router.
@@ -64,22 +66,24 @@ pub(crate) struct State {
 /// authentication if configured.
 #[instrument(skip_all)]
 pub(crate) async fn setup(
-    cfg: &HttpServerConfig,
     db: DynDB,
-    notifications_manager: DynNotificationsManager,
     image_storage: DynImageStorage,
+    meetings_cfg: Option<MeetingsConfig>,
+    notifications_manager: DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
 ) -> Result<Router> {
     // Setup router state
     let state = State {
-        cfg: cfg.clone(),
         db: db.clone(),
         image_storage,
+        meetings_cfg,
         notifications_manager,
         serde_qs_de: serde_qs::Config::new(3, false),
+        server_cfg: server_cfg.clone(),
     };
 
     // Setup authentication layer
-    let auth_layer = crate::auth::setup_layer(cfg, db).await?;
+    let auth_layer = crate::auth::setup_layer(server_cfg, db).await?;
 
     // Setup sub-routers
     let community_dashboard_router = setup_community_dashboard_router(state.clone());
@@ -136,18 +140,18 @@ pub(crate) async fn setup(
         .route("/log-in", get(auth::log_in_page));
 
     // Setup some routes based on the login options enabled
-    if cfg.login.email {
+    if server_cfg.login.email {
         router = router
             .route("/log-in", post(auth::log_in))
             .route("/sign-up", post(auth::sign_up))
             .route("/verify-email/{code}", get(auth::verify_email));
     }
-    if cfg.login.github {
+    if server_cfg.login.github {
         router = router
             .route("/log-in/oauth2/{provider}", get(auth::oauth2_redirect))
             .route("/log-in/oauth2/{provider}/callback", get(auth::oauth2_callback));
     }
-    if cfg.login.linuxfoundation {
+    if server_cfg.login.linuxfoundation {
         router = router
             .route("/log-in/oidc/{provider}", get(auth::oidc_redirect))
             .route("/log-in/oidc/{provider}/callback", get(auth::oidc_callback));
@@ -157,6 +161,7 @@ pub(crate) async fn setup(
         .route("/log-out", get(auth::log_out))
         .route("/section/user-menu", get(auth::user_menu_section))
         .route("/sign-up", get(auth::sign_up_page))
+        .route("/webhooks/zoom", post(meetings::zoom_event))
         .layer(MessagesManagerLayer)
         .layer(auth_layer)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

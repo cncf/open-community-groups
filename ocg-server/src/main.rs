@@ -122,7 +122,14 @@ async fn main() -> Result<()> {
     ));
 
     // Setup and launch the HTTP server.
-    let router = router::setup(&cfg.server, db, notifications_manager, image_storage).await?;
+    let router = router::setup(
+        db,
+        image_storage,
+        cfg.meetings.clone(),
+        notifications_manager,
+        &cfg.server,
+    )
+    .await?;
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");

@@ -86,6 +86,7 @@
 {{ template "meetings/delete_meeting.sql" }}
 {{ template "meetings/get_meeting_out_of_sync.sql" }}
 {{ template "meetings/update_meeting.sql" }}
+{{ template "meetings/update_meeting_recording_url.sql" }}
 
 ---- create above / drop below ----
 

@@ -75,9 +75,9 @@ pub(crate) async fn page(
 #[instrument(skip_all)]
 pub(crate) async fn join_group(
     auth_session: AuthSession,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -92,7 +92,7 @@ pub(crate) async fn join_group(
         db.get_community(community_id),
         db.get_group_summary(community_id, group_id)
     )?;
-    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let template_data = GroupWelcome {
         link: format!("{}/group/{}", base_url, group.slug),
         group,

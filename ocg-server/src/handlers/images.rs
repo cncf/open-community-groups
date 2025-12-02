@@ -47,13 +47,13 @@ enum SupportedImageFormat {
 /// Serves previously uploaded images.
 #[instrument(skip_all, err)]
 pub(crate) async fn serve(
-    State(cfg): State<HttpServerConfig>,
-    State(image_storage): State<DynImageStorage>,
     headers: HeaderMap,
+    State(image_storage): State<DynImageStorage>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate referer header matches configured hostname.
-    if !referer_matches_site(&cfg, &headers)? {
+    if !referer_matches_site(&server_cfg, &headers)? {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
@@ -78,13 +78,13 @@ pub(crate) async fn serve(
 #[instrument(skip_all, err)]
 pub(crate) async fn upload(
     auth_session: AuthSession,
-    State(cfg): State<HttpServerConfig>,
+    State(server_cfg): State<HttpServerConfig>,
     State(image_storage): State<DynImageStorage>,
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate referer header matches configured hostname.
-    if !referer_matches_site(&cfg, &headers)? {
+    if !referer_matches_site(&server_cfg, &headers)? {
         return Ok((StatusCode::FORBIDDEN).into_response());
     }
 
@@ -293,9 +293,9 @@ fn mime_type(format: &SupportedImageFormat) -> &'static str {
 }
 
 /// Checks whether the referer header matches the configured site hostname.
-fn referer_matches_site(cfg: &HttpServerConfig, headers: &HeaderMap) -> Result<bool> {
+fn referer_matches_site(server_cfg: &HttpServerConfig, headers: &HeaderMap) -> Result<bool> {
     // Check if referer checks are disabled
-    if cfg.disable_referer_checks {
+    if server_cfg.disable_referer_checks {
         return Ok(true);
     }
 
@@ -311,7 +311,7 @@ fn referer_matches_site(cfg: &HttpServerConfig, headers: &HeaderMap) -> Result<b
     let referer_host = Uri::from_str(referer)
         .ok()
         .and_then(|uri| uri.host().map(str::to_ascii_lowercase));
-    let site_host = Uri::from_str(&cfg.base_url)
+    let site_host = Uri::from_str(&server_cfg.base_url)
         .expect("valid base_url in config")
         .host()
         .map(str::to_ascii_lowercase)
@@ -465,7 +465,7 @@ mod tests {
 
         // Setup router and send request without referer
         let mut state = build_state(Arc::clone(&image_storage));
-        state.cfg.disable_referer_checks = true;
+        state.server_cfg.disable_referer_checks = true;
         let router = Router::new()
             .route("/images/{file_name}", get(serve))
             .with_state(state);
@@ -621,13 +621,14 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router with referer checks disabled
-        let cfg = HttpServerConfig {
+        let server_cfg = HttpServerConfig {
             base_url: "https://example.test".to_string(),
             disable_referer_checks: true,
             ..HttpServerConfig::default()
         };
         let router =
-            setup_test_router_with_image_storage(cfg, db, MockNotificationsManager::new(), storage).await;
+            setup_test_router_with_image_storage(db, storage, MockNotificationsManager::new(), server_cfg)
+                .await;
 
         // Send request without referer
         let request = Request::builder()
@@ -677,12 +678,13 @@ mod tests {
         storage.expect_save().never();
 
         // Setup router with referer checks enabled
-        let cfg = HttpServerConfig {
+        let server_cfg = HttpServerConfig {
             base_url: "https://example.test".to_string(),
             ..HttpServerConfig::default()
         };
         let router =
-            setup_test_router_with_image_storage(cfg, db, MockNotificationsManager::new(), storage).await;
+            setup_test_router_with_image_storage(db, storage, MockNotificationsManager::new(), server_cfg)
+                .await;
 
         // Send request without referer
         let request = Request::builder()
@@ -737,12 +739,13 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let cfg = HttpServerConfig {
+        let server_cfg = HttpServerConfig {
             base_url: "https://example.test".to_string(),
             ..HttpServerConfig::default()
         };
         let router =
-            setup_test_router_with_image_storage(cfg, db, MockNotificationsManager::new(), storage).await;
+            setup_test_router_with_image_storage(db, storage, MockNotificationsManager::new(), server_cfg)
+                .await;
         let request = Request::builder()
             .method("POST")
             .uri("/images")
@@ -785,14 +788,15 @@ mod tests {
         let notifications_manager: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         RouterState {
-            cfg: HttpServerConfig {
+            db,
+            image_storage,
+            meetings_cfg: None,
+            notifications_manager,
+            serde_qs_de: serde_qs::Config::new(3, false),
+            server_cfg: HttpServerConfig {
                 base_url: "https://example.test".to_string(),
                 ..HttpServerConfig::default()
             },
-            db,
-            image_storage,
-            notifications_manager,
-            serde_qs_de: serde_qs::Config::new(3, false),
         }
     }
 }

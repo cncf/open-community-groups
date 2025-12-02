@@ -45,9 +45,9 @@ pub(crate) async fn send_group_custom_notification(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Form(notification): Form<GroupCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -66,7 +66,7 @@ pub(crate) async fn send_group_custom_notification(
     }
 
     // Enqueue notification
-    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = format!("{}/group/{}", base_url, group.slug);
     let template_data = GroupCustom {
         body: notification.body.clone(),

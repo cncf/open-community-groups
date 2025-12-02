@@ -52,9 +52,9 @@ pub(crate) async fn list_page(
 pub(crate) async fn add(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Form(member): Form<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add team member to database using provided role
@@ -70,7 +70,7 @@ pub(crate) async fn add(
         group,
         link: format!(
             "{}/dashboard/user?tab=invitations",
-            cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url)
+            server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
         ),
         theme: community.theme,
     };

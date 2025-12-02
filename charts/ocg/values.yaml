@@ -78,6 +78,7 @@ meetings:
     accountId: ""
     clientId: ""
     clientSecret: ""
+    webhookSecretToken: ""
 
 # Database migrator configuration
 dbmigrator:

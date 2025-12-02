@@ -122,6 +122,8 @@ pub(crate) struct MeetingsZoomConfig {
     pub client_id: String,
     /// OAuth client secret.
     pub client_secret: String,
+    /// Webhook secret token for signature verification.
+    pub webhook_secret_token: String,
 }
 
 /// SMTP server configuration.

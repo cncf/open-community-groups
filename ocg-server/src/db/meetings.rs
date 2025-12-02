@@ -27,6 +27,13 @@ pub(crate) trait DBMeetings {
 
     /// Updates meeting details and marks it as synced.
     async fn update_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()>;
+
+    /// Updates the recording URL for a meeting by its provider meeting ID.
+    async fn update_meeting_recording_url(
+        &self,
+        provider_meeting_id: &str,
+        recording_url: &str,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -189,6 +196,24 @@ impl DBMeetings for PgDB {
                 &meeting.event_id,
                 &meeting.session_id,
             ],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip(self), err)]
+    async fn update_meeting_recording_url(
+        &self,
+        provider_meeting_id: &str,
+        recording_url: &str,
+    ) -> Result<()> {
+        trace!("db: update meeting recording url");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_meeting_recording_url($1, $2)",
+            &[&provider_meeting_id, &recording_url],
         )
         .await?;
 
