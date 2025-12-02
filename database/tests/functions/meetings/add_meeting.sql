@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,7 +15,9 @@ select plan(6);
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 
 \set eventID '00000000-0000-0000-0000-000000000101'
+\set eventWithErrorID '00000000-0000-0000-0000-000000000102'
 \set sessionID '00000000-0000-0000-0000-000000000201'
+\set sessionWithErrorID '00000000-0000-0000-0000-000000000202'
 
 -- ============================================================================
 -- SEED DATA
@@ -117,6 +119,64 @@ insert into session (
     false
 );
 
+-- Event with previous error: needs meeting
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+
+    meeting_error,
+    meeting_in_sync,
+    meeting_requested
+) values (
+    :'eventWithErrorID',
+    :'groupID',
+    'Event With Error',
+    'event-with-error',
+    'Test event with previous error',
+    'America/New_York',
+    :'categoryID',
+    'virtual',
+    '2025-06-02 10:00:00-04',
+    '2025-06-02 11:00:00-04',
+
+    'Previous sync error',
+    false,
+    true
+);
+
+-- Session with previous error: needs meeting
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+
+    meeting_error,
+    meeting_in_sync,
+    meeting_requested
+) values (
+    :'sessionWithErrorID',
+    :'eventWithErrorID',
+    'Session With Error',
+    '2025-06-02 10:00:00-04',
+    '2025-06-02 10:30:00-04',
+    'virtual',
+
+    'Previous sync error',
+    false,
+    true
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -165,6 +225,22 @@ select throws_ok(
     '23505',
     null,
     'Adding duplicate meeting for same session fails with unique constraint violation'
+);
+
+-- Test 7: Add meeting to event with previous error - verify error cleared
+select add_meeting('111111111', 'https://zoom.us/j/111111111', 'pass111', :'eventWithErrorID', null);
+select is(
+    (select meeting_error from event where event_id = :'eventWithErrorID'),
+    null,
+    'Event meeting_error cleared after successful add_meeting'
+);
+
+-- Test 8: Add meeting to session with previous error - verify error cleared
+select add_meeting('222222222', 'https://zoom.us/j/222222222', 'pass222', null, :'sessionWithErrorID');
+select is(
+    (select meeting_error from session where session_id = :'sessionWithErrorID'),
+    null,
+    'Session meeting_error cleared after successful add_meeting'
 );
 
 -- ============================================================================

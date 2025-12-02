@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -70,7 +70,7 @@ insert into "group" (
     :'groupCategoryID'
 );
 
--- Event: has meeting to update
+-- Event: has meeting to update (with previous error)
 insert into event (
     event_id,
     group_id,
@@ -82,8 +82,10 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
-    meeting_in_sync
+
+    meeting_error,
+    meeting_in_sync,
+    meeting_requested
 ) values (
     :'eventID',
     :'groupID',
@@ -95,15 +97,17 @@ insert into event (
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
-    true,
-    false
+
+    'Previous sync error',
+    false,
+    true
 );
 
 -- Meeting linked to event
 insert into meeting (meeting_id, event_id, provider_meeting_id, join_url, password)
 values (:'meetingEventID', :'eventID', '123456789', 'https://zoom.us/j/123456789', 'pass123');
 
--- Session: has meeting to update
+-- Session: has meeting to update (with previous error)
 insert into session (
     session_id,
     event_id,
@@ -111,8 +115,10 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+
+    meeting_error,
+    meeting_in_sync,
+    meeting_requested
 ) values (
     :'sessionID',
     :'eventID',
@@ -120,8 +126,10 @@ insert into session (
     '2025-06-01 10:00:00-04',
     '2025-06-01 10:30:00-04',
     'virtual',
-    true,
-    false
+
+    'Previous sync error',
+    false,
+    true
 );
 
 -- Meeting linked to session
@@ -163,6 +171,20 @@ select is(
     (select meeting_in_sync from session where session_id = :'sessionID'),
     true,
     'Session marked as synced after updating meeting'
+);
+
+-- Test 5: Update meeting linked to event - verify previous error cleared
+select is(
+    (select meeting_error from event where event_id = :'eventID'),
+    null,
+    'Event meeting_error cleared after successful update_meeting'
+);
+
+-- Test 6: Update meeting linked to session - verify previous error cleared
+select is(
+    (select meeting_error from session where session_id = :'sessionID'),
+    null,
+    'Session meeting_error cleared after successful update_meeting'
 );
 
 -- ============================================================================

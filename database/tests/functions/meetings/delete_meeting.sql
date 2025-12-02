@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -71,7 +71,7 @@ insert into "group" (
     :'groupCategoryID'
 );
 
--- Event: has meeting to delete
+-- Event: has meeting to delete (with previous error)
 insert into event (
     event_id,
     group_id,
@@ -83,9 +83,11 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
+
+    canceled,
+    meeting_error,
     meeting_in_sync,
-    canceled
+    meeting_requested
 ) values (
     :'eventID',
     :'groupID',
@@ -97,7 +99,9 @@ insert into event (
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
+
     true,
+    'Previous sync error',
     false,
     true
 );
@@ -106,7 +110,7 @@ insert into event (
 insert into meeting (meeting_id, event_id, provider_meeting_id, join_url, password)
 values (:'meetingEventID', :'eventID', '123456789', 'https://zoom.us/j/123456789', 'pass123');
 
--- Session: has meeting to delete
+-- Session: has meeting to delete (with previous error)
 insert into session (
     session_id,
     event_id,
@@ -114,8 +118,10 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+
+    meeting_error,
+    meeting_in_sync,
+    meeting_requested
 ) values (
     :'sessionID',
     :'eventID',
@@ -123,8 +129,10 @@ insert into session (
     '2025-06-01 10:00:00-04',
     '2025-06-01 10:30:00-04',
     'virtual',
-    true,
-    false
+
+    'Previous sync error',
+    false,
+    true
 );
 
 -- Meeting linked to session
@@ -175,6 +183,20 @@ select is(
     (select count(*) from meeting where meeting_id = :'meetingOrphanID'),
     0::bigint,
     'Orphan meeting record deleted'
+);
+
+-- Test 6: Delete meeting linked to event - verify previous error cleared
+select is(
+    (select meeting_error from event where event_id = :'eventID'),
+    null,
+    'Event meeting_error cleared after successful delete_meeting'
+);
+
+-- Test 7: Delete meeting linked to session - verify previous error cleared
+select is(
+    (select meeting_error from session where session_id = :'sessionID'),
+    null,
+    'Session meeting_error cleared after successful delete_meeting'
 );
 
 -- ============================================================================
