@@ -10,12 +10,14 @@ declare
     v_before_name text := p_before_session->>'name';
     v_before_starts_at timestamptz := to_timestamp((p_before_session->>'starts_at')::double precision);
     v_before_ends_at timestamptz := to_timestamp((p_before_session->>'ends_at')::double precision);
+    v_before_meeting_provider_id text := p_before_session->>'meeting_provider_id';
     v_before_meeting_requested boolean := coalesce((p_before_session->>'meeting_requested')::boolean, false);
     v_before_meeting_requires_password boolean := coalesce((p_before_session->>'meeting_requires_password')::boolean, false);
 
     v_after_name text := p_after_session->>'name';
     v_after_starts_at timestamptz := (p_after_session->>'starts_at')::timestamp at time zone p_after_timezone;
     v_after_ends_at timestamptz := (p_after_session->>'ends_at')::timestamp at time zone p_after_timezone;
+    v_after_meeting_provider_id text := p_after_session->>'meeting_provider_id';
     v_after_meeting_requested boolean := (p_after_session->>'meeting_requested')::boolean;
     v_after_meeting_requires_password boolean := coalesce((p_after_session->>'meeting_requires_password')::boolean, false);
     v_after_session_kind_id text := p_after_session->>'kind';
@@ -40,6 +42,7 @@ begin
         and v_before_starts_at is not distinct from v_after_starts_at
         and v_before_ends_at is not distinct from v_after_ends_at
         and p_before_timezone = p_after_timezone
+        and v_before_meeting_provider_id is not distinct from v_after_meeting_provider_id
         and v_before_meeting_requires_password is not distinct from v_after_meeting_requires_password;
 
     return v_in_sync;

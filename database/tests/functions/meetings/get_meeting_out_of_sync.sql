@@ -120,8 +120,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventCreateID',
@@ -134,8 +135,9 @@ insert into event (
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
-    true,
     false,
+    'zoom',
+    true,
     true
 );
 
@@ -151,8 +153,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventUpdateID',
@@ -165,12 +168,13 @@ insert into event (
     'virtual',
     '2025-06-02 10:00:00-05',
     '2025-06-02 12:00:00-05',
-    true,
     false,
+    'zoom',
+    true,
     true
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url, password)
-values (:'meetingEventUpdateID', :'eventUpdateID', '123456789', 'https://zoom.us/j/123456789', 'pass123');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url, password)
+values (:'meetingEventUpdateID', :'eventUpdateID', 'zoom', '123456789', 'https://zoom.us/j/123456789', 'pass123');
 
 -- Event: needs meeting delete (canceled)
 insert into event (
@@ -184,9 +188,11 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
+
+    canceled,
     meeting_in_sync,
-    canceled
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'eventDeleteCanceledID',
     :'groupID',
@@ -198,12 +204,14 @@ insert into event (
     'virtual',
     '2025-06-03 10:00:00-07',
     '2025-06-03 11:00:00-07',
+
     true,
     false,
+    'zoom',
     true
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingEventDeleteCanceledID', :'eventDeleteCanceledID', '987654321', 'https://zoom.us/j/987654321');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingEventDeleteCanceledID', :'eventDeleteCanceledID', 'zoom', '987654321', 'https://zoom.us/j/987654321');
 
 -- Event: needs meeting delete (soft deleted)
 insert into event (
@@ -217,9 +225,11 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
+
+    deleted,
     meeting_in_sync,
-    deleted
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'eventDeleteSoftID',
     :'groupID',
@@ -231,12 +241,14 @@ insert into event (
     'virtual',
     '2025-06-04 10:00:00+01',
     '2025-06-04 11:00:00+01',
+
     true,
     false,
+    'zoom',
     true
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingEventDeleteSoftID', :'eventDeleteSoftID', '111222333', 'https://zoom.us/j/111222333');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingEventDeleteSoftID', :'eventDeleteSoftID', 'zoom', '111222333', 'https://zoom.us/j/111222333');
 
 -- Event: in sync (should NOT be returned, but has sessions that need sync)
 insert into event (
@@ -250,8 +262,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventInSyncID',
@@ -265,6 +278,7 @@ insert into event (
     '2025-06-05 10:00:00-04',
     '2025-06-05 11:00:00-04',
     true,
+    'zoom',
     true,
     true
 );
@@ -306,8 +320,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionCreateID',
     :'eventInSyncID',
@@ -315,8 +330,9 @@ insert into session (
     '2025-06-05 10:00:00-04',
     '2025-06-05 10:30:00-04',
     'virtual',
-    true,
-    false
+    false,
+    'zoom',
+    true
 );
 
 -- Session: needs meeting update (on eventInSyncID which is active)
@@ -327,8 +343,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionUpdateID',
     :'eventInSyncID',
@@ -336,11 +353,12 @@ insert into session (
     '2025-06-05 10:30:00-04',
     '2025-06-05 11:00:00-04',
     'virtual',
-    true,
-    false
+    false,
+    'zoom',
+    true
 );
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url, password)
-values (:'meetingSessionUpdateID', :'sessionUpdateID', '444555666', 'https://zoom.us/j/444555666', 'sesspass');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url, password)
+values (:'meetingSessionUpdateID', :'sessionUpdateID', 'zoom', '444555666', 'https://zoom.us/j/444555666', 'sesspass');
 
 -- Session: needs meeting delete (parent event canceled)
 -- meeting_in_sync=false to be picked up for deletion
@@ -351,8 +369,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionDeleteParentCanceledID',
     :'eventDeleteCanceledID',
@@ -360,11 +379,12 @@ insert into session (
     '2025-06-03 10:00:00-07',
     '2025-06-03 10:30:00-07',
     'virtual',
-    true,
-    false
+    false,
+    'zoom',
+    true
 );
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meetingSessionDeleteParentCanceledID', :'sessionDeleteParentCanceledID', '777888999', 'https://zoom.us/j/777888999');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingSessionDeleteParentCanceledID', :'sessionDeleteParentCanceledID', 'zoom', '777888999', 'https://zoom.us/j/777888999');
 
 -- Session: needs meeting delete (parent event deleted)
 -- meeting_in_sync=false to be picked up for deletion
@@ -375,8 +395,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionDeleteParentDeletedID',
     :'eventDeleteSoftID',
@@ -384,11 +405,12 @@ insert into session (
     '2025-06-04 10:00:00+01',
     '2025-06-04 10:30:00+01',
     'virtual',
-    true,
-    false
+    false,
+    'zoom',
+    true
 );
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meetingSessionDeleteParentDeletedID', :'sessionDeleteParentDeletedID', '000111222', 'https://zoom.us/j/000111222');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingSessionDeleteParentDeletedID', :'sessionDeleteParentDeletedID', 'zoom', '000111222', 'https://zoom.us/j/000111222');
 
 -- Session: in sync (should NOT be returned)
 insert into session (
@@ -398,8 +420,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionInSyncID',
     :'eventInSyncID',
@@ -408,6 +431,7 @@ insert into session (
     '2025-06-05 11:30:00-04',
     'virtual',
     true,
+    'zoom',
     true
 );
 
@@ -423,8 +447,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventOrphanID',
@@ -438,11 +463,12 @@ insert into event (
     '2025-06-07 10:00:00-04',
     '2025-06-07 11:00:00-04',
     true,
+    'zoom',
     true,
     true
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingOrphanEventID', :'eventOrphanID', '333444555', 'https://zoom.us/j/333444555');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingOrphanEventID', :'eventOrphanID', 'zoom', '333444555', 'https://zoom.us/j/333444555');
 
 -- Event: for orphan test B (session meeting becomes orphan when session is hard deleted)
 insert into event (
@@ -481,8 +507,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionOrphanID',
     :'eventSessionOrphanID',
@@ -491,10 +518,11 @@ insert into session (
     '2025-06-08 10:30:00-04',
     'virtual',
     true,
+    'zoom',
     true
 );
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meetingOrphanSessionID', :'sessionOrphanID', '666777888', 'https://zoom.us/j/666777888');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingOrphanSessionID', :'sessionOrphanID', 'zoom', '666777888', 'https://zoom.us/j/666777888');
 
 -- Event: for orphan test C (both event and session meetings become orphans via cascade)
 insert into event (
@@ -508,8 +536,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventOrphanWithSessionID',
@@ -523,11 +552,12 @@ insert into event (
     '2025-06-09 10:00:00-04',
     '2025-06-09 11:00:00-04',
     true,
+    'zoom',
     true,
     true
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingOrphanEventCascadeID', :'eventOrphanWithSessionID', '999000111', 'https://zoom.us/j/999000111');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingOrphanEventCascadeID', :'eventOrphanWithSessionID', 'zoom', '999000111', 'https://zoom.us/j/999000111');
 insert into session (
     session_id,
     event_id,
@@ -535,8 +565,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionOrphanCascadeID',
     :'eventOrphanWithSessionID',
@@ -545,10 +576,11 @@ insert into session (
     '2025-06-09 10:30:00-04',
     'virtual',
     true,
+    'zoom',
     true
 );
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meetingOrphanSessionCascadeID', :'sessionOrphanCascadeID', '222333444', 'https://zoom.us/j/222333444');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingOrphanSessionCascadeID', :'sessionOrphanCascadeID', 'zoom', '222333444', 'https://zoom.us/j/222333444');
 
 -- Event: needs meeting create with password required (published, meeting_requires_password=true)
 -- Initially set meeting_in_sync=true to not interfere with other tests
@@ -563,8 +595,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     meeting_requires_password,
     published
 ) values (
@@ -579,6 +612,7 @@ insert into event (
     '2025-06-10 10:00:00-04',
     '2025-06-10 11:00:00-04',
     true,
+    'zoom',
     true,
     true,
     true
@@ -597,8 +631,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventUnpublishedCreateID',
@@ -612,6 +647,7 @@ insert into event (
     '2025-06-11 10:00:00-04',
     '2025-06-11 11:00:00-04',
     true,
+    'zoom',
     true,
     false
 );
@@ -629,8 +665,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventUnpublishedDeleteID',
@@ -644,11 +681,12 @@ insert into event (
     '2025-06-12 10:00:00-04',
     '2025-06-12 11:00:00-04',
     true,
+    'zoom',
     true,
     false
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingEventUnpublishedDeleteID', :'eventUnpublishedDeleteID', '555666777', 'https://zoom.us/j/555666777');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingEventUnpublishedDeleteID', :'eventUnpublishedDeleteID', 'zoom', '555666777', 'https://zoom.us/j/555666777');
 
 -- Event: unpublished event with sessions for testing session sync
 -- Initially set meeting_in_sync=true to not interfere with other tests
@@ -690,8 +728,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionUnpublishedCreateID',
     :'eventUnpublishedSessionID',
@@ -700,6 +739,7 @@ insert into session (
     '2025-06-13 10:30:00-04',
     'virtual',
     true,
+    'zoom',
     true
 );
 
@@ -713,8 +753,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionUnpublishedDeleteID',
     :'eventUnpublishedSessionID',
@@ -723,6 +764,7 @@ insert into session (
     '2025-06-13 11:00:00-04',
     'virtual',
     true,
+    'zoom',
     true
 );
 
@@ -757,8 +799,8 @@ insert into event (
     true,
     true
 );
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingEventMeetingDisabledID', :'eventMeetingDisabledID', '321321321', 'https://zoom.us/j/321321321');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingEventMeetingDisabledID', :'eventMeetingDisabledID', 'zoom', '321321321', 'https://zoom.us/j/321321321');
 
 -- Session: meeting disabled on active session (parent event is active)
 -- Initially set meeting_in_sync=true to not interfere with other tests
@@ -781,8 +823,8 @@ insert into session (
     false,
     true
 );
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meetingSessionMeetingDisabledID', :'sessionMeetingDisabledID', '654654654', 'https://zoom.us/j/654654654');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingSessionMeetingDisabledID', :'sessionMeetingDisabledID', 'zoom', '654654654', 'https://zoom.us/j/654654654');
 
 -- Event: canceled before meeting created (no meeting row)
 -- Initially set meeting_in_sync=true to not interfere with other tests
@@ -797,9 +839,11 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
+
+    canceled,
     meeting_in_sync,
-    canceled
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'eventCanceledNoMeetingID',
     :'groupID',
@@ -811,8 +855,10 @@ insert into event (
     'virtual',
     '2025-06-15 10:00:00-04',
     '2025-06-15 11:00:00-04',
+
     true,
     true,
+    'zoom',
     true
 );
 
@@ -825,8 +871,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionCanceledNoMeetingID',
     :'eventCanceledNoMeetingID',
@@ -835,6 +882,7 @@ insert into session (
     '2025-06-15 10:30:00-04',
     'virtual',
     true,
+    'zoom',
     true
 );
 
@@ -847,8 +895,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     meeting_requires_password
 ) values (
     :'sessionRequiresPasswordID',
@@ -858,6 +907,7 @@ insert into session (
     '2025-06-05 12:30:00-04',
     'virtual',
     true,
+    'zoom',
     true,
     true
 );
@@ -875,6 +925,7 @@ select is(
         "duration_secs": 3600,
         "event_id": "00000000-0000-0000-0000-000000000101",
         "meeting_id": null,
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -897,6 +948,7 @@ select is(
         "duration_secs": 7200,
         "event_id": "00000000-0000-0000-0000-000000000102",
         "meeting_id": "00000000-0000-0000-0000-000000000301",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": "pass123",
         "provider_meeting_id": "123456789",
@@ -920,6 +972,7 @@ select is(
         "duration_secs": 1800,
         "event_id": null,
         "meeting_id": null,
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -942,6 +995,7 @@ select is(
         "duration_secs": 1800,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000304",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": "sesspass",
         "provider_meeting_id": "444555666",
@@ -965,6 +1019,7 @@ select is(
         "duration_secs": null,
         "event_id": "00000000-0000-0000-0000-000000000103",
         "meeting_id": "00000000-0000-0000-0000-000000000302",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "987654321",
@@ -988,6 +1043,7 @@ select is(
         "duration_secs": null,
         "event_id": "00000000-0000-0000-0000-000000000104",
         "meeting_id": "00000000-0000-0000-0000-000000000303",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "111222333",
@@ -1011,6 +1067,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000305",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "777888999",
@@ -1035,6 +1092,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000306",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "000111222",
@@ -1060,6 +1118,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000307",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "333444555",
@@ -1082,6 +1141,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000308",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "666777888",
@@ -1153,6 +1213,7 @@ select is(
         "duration_secs": 3600,
         "event_id": "00000000-0000-0000-0000-000000000110",
         "meeting_id": null,
+        "meeting_provider_id": "zoom",
         "requires_password": true,
         "password": null,
         "provider_meeting_id": null,
@@ -1175,6 +1236,7 @@ select is(
         "duration_secs": null,
         "event_id": "00000000-0000-0000-0000-000000000111",
         "meeting_id": null,
+        "meeting_provider_id": null,
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -1197,6 +1259,7 @@ select is(
         "duration_secs": null,
         "event_id": "00000000-0000-0000-0000-000000000112",
         "meeting_id": "00000000-0000-0000-0000-000000000311",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "555666777",
@@ -1219,6 +1282,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": null,
+        "meeting_provider_id": null,
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -1234,8 +1298,8 @@ update session set meeting_in_sync = true where session_id = :'sessionUnpublishe
 
 -- Test 21: Session on unpublished event with meeting triggers delete
 -- Insert meeting and set meeting_in_sync=false now to avoid interfering with earlier delete tests
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meetingSessionUnpublishedDeleteID', :'sessionUnpublishedDeleteID', '888999000', 'https://zoom.us/j/888999000');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingSessionUnpublishedDeleteID', :'sessionUnpublishedDeleteID', 'zoom', '888999000', 'https://zoom.us/j/888999000');
 update session set meeting_in_sync = false where session_id = :'sessionUnpublishedDeleteID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1244,6 +1308,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000312",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "888999000",
@@ -1267,6 +1332,7 @@ select is(
         "duration_secs": 3600,
         "event_id": "00000000-0000-0000-0000-000000000111",
         "meeting_id": null,
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -1295,6 +1361,7 @@ select is(
         "duration_secs": null,
         "event_id": "00000000-0000-0000-0000-000000000114",
         "meeting_id": "00000000-0000-0000-0000-000000000313",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "321321321",
@@ -1318,6 +1385,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": "00000000-0000-0000-0000-000000000314",
+        "meeting_provider_id": "zoom",
         "requires_password": null,
         "password": null,
         "provider_meeting_id": "654654654",
@@ -1341,6 +1409,7 @@ select is(
         "duration_secs": null,
         "event_id": "00000000-0000-0000-0000-000000000115",
         "meeting_id": null,
+        "meeting_provider_id": null,
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -1363,6 +1432,7 @@ select is(
         "duration_secs": null,
         "event_id": null,
         "meeting_id": null,
+        "meeting_provider_id": null,
         "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
@@ -1385,6 +1455,7 @@ select is(
         "duration_secs": 1800,
         "event_id": null,
         "meeting_id": null,
+        "meeting_provider_id": "zoom",
         "requires_password": true,
         "password": null,
         "provider_meeting_id": null,

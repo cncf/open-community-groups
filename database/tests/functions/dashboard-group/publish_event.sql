@@ -97,6 +97,7 @@ insert into event (
     starts_at,
     ends_at,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested,
     published
 ) values (
@@ -111,6 +112,7 @@ insert into event (
     '2025-06-01 10:00:00+00',
     '2025-06-01 11:00:00+00',
     true,
+    'zoom',
     true,
     false
 );
@@ -155,6 +157,7 @@ insert into session (
     ends_at,
     session_kind_id,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'sessionMeetingID',
@@ -164,6 +167,7 @@ insert into session (
     '2025-06-01 10:30:00+00',
     'virtual',
     true,
+    'zoom',
     true
 );
 

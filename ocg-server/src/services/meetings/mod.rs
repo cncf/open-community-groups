@@ -1,14 +1,15 @@
 //! This module defines types and logic to manage meeting synchronization with providers.
 
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 #[cfg(test)]
 use mockall::automock;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use strum::{AsRefStr, Display, EnumString};
 use tokio::time::sleep;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument};
@@ -54,6 +55,9 @@ pub(crate) trait MeetingsProvider {
 
 /// Shared trait object for a meetings provider.
 pub(crate) type DynMeetingsProvider = Arc<dyn MeetingsProvider + Send + Sync>;
+
+/// Shared map of meetings providers keyed by provider type.
+pub(crate) type DynMeetingsProviders = Arc<HashMap<MeetingProvider, DynMeetingsProvider>>;
 
 /// Meeting details returned by the provider.
 #[derive(Clone, Debug)]
@@ -122,7 +126,7 @@ impl MeetingsManager {
     /// Create a new `MeetingsManager`.
     #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn new(
-        provider: DynMeetingsProvider,
+        providers: DynMeetingsProviders,
         db: DynDB,
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
@@ -132,7 +136,7 @@ impl MeetingsManager {
             let mut worker = MeetingsManagerWorker {
                 cancellation_token: cancellation_token.clone(),
                 db: db.clone(),
-                provider: provider.clone(),
+                providers: providers.clone(),
             };
             task_tracker.spawn(async move {
                 worker.run().await;
@@ -149,8 +153,8 @@ struct MeetingsManagerWorker {
     cancellation_token: CancellationToken,
     /// Database handle for meeting queries.
     db: DynDB,
-    /// Provider for meeting operations.
-    provider: DynMeetingsProvider,
+    /// Providers map for meeting operations.
+    providers: DynMeetingsProviders,
 }
 
 impl MeetingsManagerWorker {
@@ -204,23 +208,23 @@ impl MeetingsManagerWorker {
 
         // Process meeting if found
         if let Some(meeting) = meeting {
+            // Look up the provider for this meeting
+            let provider = self.providers.get(&meeting.provider);
+
             // Determine action and sync with provider
-            let result = match meeting.sync_action() {
-                SyncAction::Create => self.create_meeting(client_id, &meeting).await,
-                SyncAction::Delete => self.delete_meeting(client_id, &meeting).await,
-                SyncAction::Update => self.update_meeting(client_id, &meeting).await,
+            let result = match provider {
+                Some(provider) => match meeting.sync_action() {
+                    SyncAction::Create => self.create_meeting(client_id, &meeting, provider).await,
+                    SyncAction::Delete => self.delete_meeting(client_id, &meeting, provider).await,
+                    SyncAction::Update => self.update_meeting(client_id, &meeting, provider).await,
+                },
+                None => Err(SyncError::ProviderNotConfigured(meeting.provider)),
             };
 
             // Handle errors based on type
             if let Err(err) = result {
-                // Check if this is a non-retryable provider error
-                let non_retryable = match &err {
-                    SyncError::Provider(provider_err) => !provider_err.is_retryable(),
-                    SyncError::Other(_) => false,
-                };
-
                 // Non-retryable: record error and mark as synced
-                if non_retryable {
+                if err.is_non_retryable() {
                     if let Err(db_err) =
                         self.db.set_meeting_error(client_id, &meeting, &err.to_string()).await
                     {
@@ -250,10 +254,15 @@ impl MeetingsManagerWorker {
     }
 
     /// Create a meeting on the provider and update local database.
-    #[instrument(skip(self, meeting), err)]
-    async fn create_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<(), SyncError> {
+    #[instrument(skip(self, meeting, provider), err)]
+    async fn create_meeting(
+        &self,
+        client_id: Uuid,
+        meeting: &Meeting,
+        provider: &DynMeetingsProvider,
+    ) -> Result<(), SyncError> {
         // Call provider to create meeting
-        let provider_meeting = self.provider.create_meeting(meeting).await?;
+        let provider_meeting = provider.create_meeting(meeting).await?;
 
         // Update meeting with provider details
         let meeting = Meeting {
@@ -273,12 +282,17 @@ impl MeetingsManagerWorker {
     }
 
     /// Delete a meeting from the provider and local database.
-    #[instrument(skip(self, meeting), err)]
-    async fn delete_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<(), SyncError> {
+    #[instrument(skip(self, meeting, provider), err)]
+    async fn delete_meeting(
+        &self,
+        client_id: Uuid,
+        meeting: &Meeting,
+        provider: &DynMeetingsProvider,
+    ) -> Result<(), SyncError> {
         // Call provider to delete meeting
         if let Some(provider_meeting_id) = &meeting.provider_meeting_id {
             // Attempt to delete; treat "meeting not found" as success (already gone)
-            match self.provider.delete_meeting(provider_meeting_id).await {
+            match provider.delete_meeting(provider_meeting_id).await {
                 Ok(()) | Err(MeetingProviderError::NotFound) => {
                     // NotFound means meeting already deleted externally
                 }
@@ -296,8 +310,13 @@ impl MeetingsManagerWorker {
     }
 
     /// Update a meeting on the provider and mark as synced in database.
-    #[instrument(skip(self, meeting), err)]
-    async fn update_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<(), SyncError> {
+    #[instrument(skip(self, meeting, provider), err)]
+    async fn update_meeting(
+        &self,
+        client_id: Uuid,
+        meeting: &Meeting,
+        provider: &DynMeetingsProvider,
+    ) -> Result<(), SyncError> {
         // Get provider meeting ID
         let provider_meeting_id = meeting
             .provider_meeting_id
@@ -305,10 +324,10 @@ impl MeetingsManagerWorker {
             .ok_or_else(|| SyncError::Other(anyhow::anyhow!("missing provider_meeting_id for update")))?;
 
         // Call provider to update meeting
-        self.provider.update_meeting(provider_meeting_id, meeting).await?;
+        provider.update_meeting(provider_meeting_id, meeting).await?;
 
         // Fetch updated meeting details from provider (captures auto-generated password)
-        let provider_meeting = self.provider.get_meeting(provider_meeting_id).await?;
+        let provider_meeting = provider.get_meeting(provider_meeting_id).await?;
 
         // Update meeting with current details from provider
         let meeting = Meeting {
@@ -331,6 +350,8 @@ impl MeetingsManagerWorker {
 #[skip_serializing_none]
 #[derive(Clone, Default, Serialize)]
 pub(crate) struct Meeting {
+    pub provider: MeetingProvider,
+
     pub delete: Option<bool>,
     pub duration: Option<Duration>,
     pub event_id: Option<Uuid>,
@@ -358,6 +379,17 @@ impl Meeting {
     }
 }
 
+/// Meeting provider options.
+#[derive(
+    AsRefStr, Clone, Copy, Debug, Default, Deserialize, Display, EnumString, Eq, Hash, PartialEq, Serialize,
+)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub(crate) enum MeetingProvider {
+    #[default]
+    Zoom,
+}
+
 /// Action to take to sync a meeting with the provider.
 pub(crate) enum SyncAction {
     Create,
@@ -370,6 +402,8 @@ pub(crate) enum SyncAction {
 enum SyncError {
     /// Provider error.
     Provider(MeetingProviderError),
+    /// Provider not configured.
+    ProviderNotConfigured(MeetingProvider),
     /// Other errors (DB, parsing, etc).
     Other(anyhow::Error),
 }
@@ -378,6 +412,7 @@ impl std::fmt::Display for SyncError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Provider(e) => write!(f, "{e}"),
+            Self::ProviderNotConfigured(p) => write!(f, "provider not configured: {p}"),
             Self::Other(e) => write!(f, "{e}"),
         }
     }
@@ -396,18 +431,27 @@ impl From<anyhow::Error> for SyncError {
 }
 
 impl SyncError {
+    /// Returns true if this error should not be retried.
+    fn is_non_retryable(&self) -> bool {
+        match self {
+            Self::Provider(provider_err) => !provider_err.is_retryable(),
+            Self::ProviderNotConfigured(_) => true,
+            Self::Other(_) => false,
+        }
+    }
+
     /// Returns the retry delay if this is a rate-limited provider error.
     fn retry_after(&self) -> Option<Duration> {
         match self {
             Self::Provider(provider_err) => provider_err.retry_after(),
-            Self::Other(_) => None,
+            Self::ProviderNotConfigured(_) | Self::Other(_) => None,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, time::Duration};
+    use std::{collections::HashMap, sync::Arc, time::Duration};
 
     use anyhow::anyhow;
     use tokio_util::sync::CancellationToken;
@@ -416,8 +460,8 @@ mod tests {
     use crate::db::{DynDB, mock::MockDB};
 
     use super::{
-        DynMeetingsProvider, Meeting, MeetingProviderError, MeetingProviderMeeting, MeetingsManagerWorker,
-        MockMeetingsProvider, SyncAction, SyncError,
+        DynMeetingsProvider, Meeting, MeetingProvider, MeetingProviderError, MeetingProviderMeeting,
+        MeetingsManagerWorker, MockMeetingsProvider, SyncAction, SyncError,
     };
 
     // MeetingProviderError tests.
@@ -938,14 +982,65 @@ mod tests {
         assert!(synced);
     }
 
+    #[tokio::test]
+    async fn test_worker_sync_meeting_provider_not_configured() {
+        // Setup identifiers and data structures
+        let client_id = Uuid::new_v4();
+        let meeting_id = Uuid::new_v4();
+        let meeting = Meeting {
+            meeting_id: Some(meeting_id),
+            provider_meeting_id: None,
+            ..Default::default()
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_tx_begin().times(1).returning(move || Ok(client_id));
+        db.expect_get_meeting_out_of_sync()
+            .times(1)
+            .withf(move |cid| *cid == client_id)
+            .returning(move |_| Ok(Some(meeting.clone())));
+        db.expect_set_meeting_error()
+            .times(1)
+            .withf(move |cid, m, err| {
+                *cid == client_id
+                    && m.meeting_id == Some(meeting_id)
+                    && err.contains("provider not configured")
+            })
+            .returning(|_, _, _| Ok(()));
+        db.expect_tx_commit()
+            .times(1)
+            .withf(move |cid| *cid == client_id)
+            .returning(|_| Ok(()));
+        let db: DynDB = Arc::new(db);
+
+        // Setup worker with no providers configured
+        let mut worker = sample_worker_no_providers(db);
+        let synced = worker.sync_meeting().await.unwrap();
+
+        // Check result matches expectations (error recorded, meeting marked as synced)
+        assert!(synced);
+    }
+
     // Helpers.
 
     /// Create a sample worker with mock dependencies.
     fn sample_worker(db: DynDB, mp: DynMeetingsProvider) -> MeetingsManagerWorker {
+        let mut providers = HashMap::new();
+        providers.insert(MeetingProvider::Zoom, mp);
         MeetingsManagerWorker {
             cancellation_token: CancellationToken::new(),
             db,
-            provider: mp,
+            providers: Arc::new(providers),
+        }
+    }
+
+    /// Create a sample worker with no providers configured.
+    fn sample_worker_no_providers(db: DynDB) -> MeetingsManagerWorker {
+        MeetingsManagerWorker {
+            cancellation_token: CancellationToken::new(),
+            db,
+            providers: Arc::new(HashMap::new()),
         }
     }
 }

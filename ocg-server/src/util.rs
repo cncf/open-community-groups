@@ -295,6 +295,7 @@ mod tests {
             longitude: Some(-122.42),
             meeting_join_url: Some("https://example.test/live".to_string()),
             meeting_password: Some("secret123".to_string()),
+            meeting_provider: None,
             popover_html: None,
             remaining_capacity: Some(15),
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),

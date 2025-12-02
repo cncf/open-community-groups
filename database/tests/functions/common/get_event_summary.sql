@@ -150,12 +150,13 @@ insert into event (
 );
 
 -- Link meeting to event
-insert into meeting (event_id, password, provider_meeting_id, join_url)
+insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id)
 values (
     :'eventID',
+    'https://meeting.example.com/summary',
+    'zoom',
     'secret123',
-    'summary-meeting-001',
-    'https://meeting.example.com/summary'
+    'summary-meeting-001'
 );
 
 -- Event Attendees

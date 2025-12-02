@@ -8,7 +8,11 @@ use chrono::DateTime;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
-use crate::{PgDB, db::TX_CLIENT_NOT_FOUND, services::meetings::Meeting};
+use crate::{
+    PgDB,
+    db::TX_CLIENT_NOT_FOUND,
+    services::meetings::{Meeting, MeetingProvider},
+};
 
 /// Trait that defines database operations used to manage meetings.
 #[async_trait]
@@ -28,9 +32,10 @@ pub(crate) trait DBMeetings {
     /// Updates meeting details and marks it as synced.
     async fn update_meeting(&self, client_id: Uuid, meeting: &Meeting) -> Result<()>;
 
-    /// Updates the recording URL for a meeting by its provider meeting ID.
+    /// Updates the recording URL for a meeting by its provider and provider meeting ID.
     async fn update_meeting_recording_url(
         &self,
+        provider: MeetingProvider,
         provider_meeting_id: &str,
         recording_url: &str,
     ) -> Result<()>;
@@ -53,8 +58,9 @@ impl DBMeetings for PgDB {
 
         // Add meeting
         tx.execute(
-            "select add_meeting($1, $2, $3, $4, $5)",
+            "select add_meeting($1, $2, $3, $4, $5, $6)",
             &[
+                &meeting.provider.as_ref(),
                 &meeting.provider_meeting_id,
                 &meeting.join_url,
                 &meeting.password,
@@ -126,6 +132,10 @@ impl DBMeetings for PgDB {
             join_url: row.get("join_url"),
             meeting_id: row.get("meeting_id"),
             password: row.get("password"),
+            provider: row
+                .get::<_, String>("meeting_provider_id")
+                .parse()
+                .unwrap_or_default(),
             provider_meeting_id: row.get("provider_meeting_id"),
             requires_password: row.get("requires_password"),
             session_id: row.get("session_id"),
@@ -205,6 +215,7 @@ impl DBMeetings for PgDB {
     #[instrument(skip(self), err)]
     async fn update_meeting_recording_url(
         &self,
+        provider: MeetingProvider,
         provider_meeting_id: &str,
         recording_url: &str,
     ) -> Result<()> {
@@ -212,8 +223,8 @@ impl DBMeetings for PgDB {
 
         let db = self.pool.get().await?;
         db.execute(
-            "select update_meeting_recording_url($1, $2)",
-            &[&provider_meeting_id, &recording_url],
+            "select update_meeting_recording_url($1, $2, $3)",
+            &[&provider.as_ref(), &provider_meeting_id, &recording_url],
         )
         .await?;
 

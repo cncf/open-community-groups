@@ -11,6 +11,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    services::meetings::MeetingProvider,
     templates::{
         common::User,
         helpers::{
@@ -74,6 +75,8 @@ pub struct EventSummary {
     pub meeting_join_url: Option<String>,
     /// Password required to join the meeting.
     pub meeting_password: Option<String>,
+    /// Desired meeting provider for this event.
+    pub meeting_provider: Option<MeetingProvider>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
@@ -197,6 +200,8 @@ pub struct EventFull {
     pub meeting_join_url: Option<String>,
     /// Password required to join the event meeting.
     pub meeting_password: Option<String>,
+    /// Desired meeting provider for this event.
+    pub meeting_provider: Option<MeetingProvider>,
     /// URL for meeting recording.
     pub meeting_recording_url: Option<String>,
     /// Whether the event requests a meeting.
@@ -349,6 +354,8 @@ pub struct Session {
     pub meeting_join_url: Option<String>,
     /// Password required to join the session meeting.
     pub meeting_password: Option<String>,
+    /// Desired meeting provider for this session.
+    pub meeting_provider: Option<MeetingProvider>,
     /// URL for meeting recording.
     pub meeting_recording_url: Option<String>,
     /// Whether the session requests a meeting.

@@ -40,6 +40,7 @@ begin
         logo_url,
         meeting_in_sync,
         meeting_join_url,
+        meeting_provider_id,
         meeting_recording_url,
         meeting_requested,
         meeting_requires_password,
@@ -71,6 +72,7 @@ begin
             else null
         end,
         p_event->>'meeting_join_url',
+        p_event->>'meeting_provider_id',
         p_event->>'meeting_recording_url',
         (p_event->>'meeting_requested')::boolean,
         (p_event->>'meeting_requires_password')::boolean,
@@ -163,6 +165,7 @@ begin
                 location,
                 meeting_in_sync,
                 meeting_join_url,
+                meeting_provider_id,
                 meeting_recording_url,
                 meeting_requested,
                 meeting_requires_password
@@ -179,6 +182,7 @@ begin
                     else null
                 end,
                 v_session->>'meeting_join_url',
+                v_session->>'meeting_provider_id',
                 v_session->>'meeting_recording_url',
                 (v_session->>'meeting_requested')::boolean,
                 (v_session->>'meeting_requires_password')::boolean

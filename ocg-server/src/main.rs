@@ -6,7 +6,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]
 
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -19,11 +19,11 @@ use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 use crate::{
-    config::{Config, ImageStorageConfig, LogFormat, MeetingsConfig},
+    config::{Config, ImageStorageConfig, LogFormat},
     db::PgDB,
     services::{
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
-        meetings::{DynMeetingsProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
+        meetings::{DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
     },
 };
@@ -100,11 +100,19 @@ async fn main() -> Result<()> {
         ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
     };
 
-    // Setup meetings manager (if configured).
-    if let Some(MeetingsConfig::Zoom(ref zoom_cfg)) = cfg.meetings {
-        let provider: DynMeetingsProvider = Arc::new(ZoomMeetingsProvider::new(zoom_cfg));
+    // Setup meetings manager (if any provider is configured).
+    let mut meetings_providers = HashMap::new();
+    if let Some(ref meetings_cfg) = cfg.meetings
+        && let Some(ref zoom_cfg) = meetings_cfg.zoom
+    {
+        meetings_providers.insert(
+            MeetingProvider::Zoom,
+            Arc::new(ZoomMeetingsProvider::new(zoom_cfg)) as DynMeetingsProvider,
+        );
+    }
+    if !meetings_providers.is_empty() {
         let _meetings_manager = Arc::new(MeetingsManager::new(
-            provider,
+            Arc::new(meetings_providers),
             db.clone(),
             &task_tracker,
             &cancellation_token,

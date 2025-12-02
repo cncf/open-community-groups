@@ -105,12 +105,11 @@ pub(crate) struct ImageStorageConfigS3 {
     pub force_path_style: Option<bool>,
 }
 
-/// Meetings provider configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(tag = "provider", rename_all = "snake_case")]
-pub(crate) enum MeetingsConfig {
-    /// Use Zoom as meetings provider.
-    Zoom(MeetingsZoomConfig),
+/// Meetings configuration (multiple providers supported).
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub(crate) struct MeetingsConfig {
+    /// Zoom provider configuration.
+    pub zoom: Option<MeetingsZoomConfig>,
 }
 
 /// Zoom meetings configuration.

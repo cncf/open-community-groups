@@ -96,12 +96,14 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
+
+    canceled,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published,
     published_at,
-    published_by,
-    canceled
+    published_by
 ) values (
     :'eventID',
     :'groupID',
@@ -113,12 +115,14 @@ insert into event (
     'virtual',
     now(),
     now() + interval '1 hour',
+
+    false,
     true,
+    'zoom',
     true,
     true,
     now(),
-    :'userID',
-    false
+    :'userID'
 );
 
 -- Event without meeting_requested (to verify meeting_in_sync is not changed)
@@ -167,6 +171,7 @@ insert into session (
     ends_at,
     session_kind_id,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'sessionMeetingID',
@@ -176,6 +181,7 @@ insert into session (
     now() + interval '30 minutes',
     'virtual',
     true,
+    'zoom',
     true
 );
 

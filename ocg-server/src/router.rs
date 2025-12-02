@@ -72,6 +72,9 @@ pub(crate) async fn setup(
     notifications_manager: DynNotificationsManager,
     server_cfg: &HttpServerConfig,
 ) -> Result<Router> {
+    // Check which meetings providers are configured
+    let zoom_enabled = meetings_cfg.as_ref().is_some_and(|cfg| cfg.zoom.is_some());
+
     // Setup router state
     let state = State {
         db: db.clone(),
@@ -160,8 +163,14 @@ pub(crate) async fn setup(
     router = router
         .route("/log-out", get(auth::log_out))
         .route("/section/user-menu", get(auth::user_menu_section))
-        .route("/sign-up", get(auth::sign_up_page))
-        .route("/webhooks/zoom", post(meetings::zoom_event))
+        .route("/sign-up", get(auth::sign_up_page));
+
+    // Setup Zoom webhook route if enabled in configuration
+    if zoom_enabled {
+        router = router.route("/webhooks/zoom", post(meetings::zoom_event));
+    }
+
+    router = router
         .layer(MessagesManagerLayer)
         .layer(auth_layer)
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

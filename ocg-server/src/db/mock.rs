@@ -468,6 +468,7 @@ mock! {
         ) -> Result<()>;
         async fn update_meeting_recording_url(
             &self,
+            provider: crate::services::meetings::MeetingProvider,
             provider_meeting_id: &str,
             recording_url: &str,
         ) -> Result<()>;

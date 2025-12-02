@@ -68,13 +68,11 @@ log:
   # Output format [json|pretty]
   format: json
 
-# Meetings provider configuration
+# Meetings providers configuration (multiple providers can be enabled simultaneously)
 meetings:
-  # Meetings provider [null|zoom]
-  provider: null
-
-  # Zoom provider configuration (used when provider is set to zoom)
+  # Zoom provider configuration (set enabled to true to enable)
   zoom:
+    enabled: false
     accountId: ""
     clientId: ""
     clientSecret: ""

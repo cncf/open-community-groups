@@ -127,6 +127,7 @@ insert into event (
     timezone,
     event_category_id,
     event_kind_id,
+    meeting_provider_id,
     meeting_requested,
     meeting_in_sync,
     starts_at,
@@ -140,6 +141,7 @@ insert into event (
     'America/New_York',
     :'category1ID',
     'virtual',
+    'zoom',
     true,
     false,
     '2025-03-01 10:00:00-05',
@@ -179,6 +181,7 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
+    meeting_provider_id,
     meeting_requested,
     meeting_in_sync
 ) values (
@@ -189,6 +192,7 @@ insert into session (
     '2025-04-01 10:00:00-04',
     '2025-04-01 11:00:00-04',
     'virtual',
+    'zoom',
     true,
     false
 );
@@ -228,6 +232,7 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
+    meeting_provider_id,
     meeting_requested,
     meeting_in_sync
 ) values (
@@ -238,12 +243,13 @@ insert into session (
     '2025-05-01 10:00:00-04',
     '2025-05-01 11:00:00-04',
     'virtual',
+    'zoom',
     true,
     true
 );
 
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url)
-values (:'meeting1ID', :'session2ID', '123123123', 'https://zoom.us/j/123123123');
+insert into meeting (join_url, meeting_id, meeting_provider_id, provider_meeting_id, session_id)
+values ('https://zoom.us/j/123123123', :'meeting1ID', 'zoom', '123123123', :'session2ID');
 
 -- ============================================================================
 -- TESTS
@@ -262,6 +268,7 @@ select update_event(
         "kind_id": "virtual",
         "starts_at": "2025-02-01T14:00:00",
         "ends_at": "2025-02-01T16:00:00",
+        "meeting_provider_id": "zoom",
         "meeting_requested": true
     }'::jsonb
 );
@@ -278,18 +285,20 @@ select is(
         "category_name": "Workshop",
         "description": "Updated description",
         "hosts": [],
-        "speakers": [],
         "kind": "virtual",
-        "meeting_requested": true,
         "name": "Updated Event Name",
         "published": false,
-        "starts_at": 1738447200,
-        "ends_at": 1738454400,
-        "sponsors": [],
-        "sessions": {},
         "slug": "updated-event-slug",
+        "speakers": [],
+        "sponsors": [],
         "timezone": "America/Los_Angeles",
-        "meeting_in_sync": false
+
+        "ends_at": 1738454400,
+        "meeting_in_sync": false,
+        "meeting_provider": "zoom",
+        "meeting_requested": true,
+        "sessions": {},
+        "starts_at": 1738447200
     }'::jsonb,
     'update_event should update basic fields and clear hosts/sponsors/sessions when not provided'
 );
@@ -355,6 +364,7 @@ select update_event(
                 "starts_at": "2025-02-01T14:30:00",
                 "ends_at": "2025-02-01T15:30:00",
                 "kind": "virtual",
+                "meeting_provider_id": "zoom",
                 "meeting_requested": true,
                 "meeting_requires_password": true,
                 "speakers": [{"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}]
@@ -432,6 +442,7 @@ select ok(
                 "starts_at": 1738387800,
                 "ends_at": 1738391400,
                 "kind": "virtual",
+                "meeting_provider": "zoom",
                 "meeting_requested": true,
                 "speakers": [
                     {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
@@ -525,6 +536,7 @@ select update_event(
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
         "kind_id": "virtual",
+        "meeting_provider_id": "zoom",
         "meeting_requested": true,
         "starts_at": "2025-03-01T10:00:00",
         "ends_at": "2025-03-01T12:00:00"
@@ -579,6 +591,7 @@ select update_event(
                 "starts_at": "2025-04-01T10:00:00",
                 "ends_at": "2025-04-01T11:00:00",
                 "kind": "virtual",
+                "meeting_provider_id": "zoom",
                 "meeting_requested": true
             }
         ]

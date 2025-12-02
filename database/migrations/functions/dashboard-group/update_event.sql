@@ -60,6 +60,7 @@ begin
             else is_event_meeting_in_sync(v_event_before, p_event)
         end,
         meeting_join_url = nullif(p_event->>'meeting_join_url', ''),
+        meeting_provider_id = p_event->>'meeting_provider_id',
         meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
         meeting_requested = (p_event->>'meeting_requested')::boolean,
         meeting_requires_password = (p_event->>'meeting_requires_password')::boolean,
@@ -174,6 +175,7 @@ begin
                         else (select is_session_meeting_in_sync(v_session_before, v_session, v_event_before->>'timezone', p_event->>'timezone'))
                     end,
                     meeting_join_url = v_session->>'meeting_join_url',
+                    meeting_provider_id = v_session->>'meeting_provider_id',
                     meeting_recording_url = v_session->>'meeting_recording_url',
                     meeting_requested = (v_session->>'meeting_requested')::boolean,
                     meeting_requires_password = (v_session->>'meeting_requires_password')::boolean
@@ -196,6 +198,7 @@ begin
                     location,
                     meeting_in_sync,
                     meeting_join_url,
+                    meeting_provider_id,
                     meeting_recording_url,
                     meeting_requested,
                     meeting_requires_password
@@ -212,6 +215,7 @@ begin
                         else null
                     end,
                     v_session->>'meeting_join_url',
+                    v_session->>'meeting_provider_id',
                     v_session->>'meeting_recording_url',
                     (v_session->>'meeting_requested')::boolean,
                     (v_session->>'meeting_requires_password')::boolean

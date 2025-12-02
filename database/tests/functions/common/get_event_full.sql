@@ -216,6 +216,7 @@ insert into session (
     location,
     meeting_in_sync,
     meeting_join_url,
+    meeting_provider_id,
     meeting_recording_url,
     meeting_requested,
     meeting_requires_password
@@ -230,6 +231,7 @@ insert into session (
     'Main Hall',
     null,
     'https://stream.example.com/session1',
+    null,
     'https://youtube.com/watch?v=session1',
     false,
     null
@@ -245,6 +247,7 @@ insert into session (
     'Room A',
     true,
     null,
+    'zoom',
     null,
     true,
     true
@@ -262,6 +265,7 @@ insert into session (
     location,
     meeting_in_sync,
     meeting_join_url,
+    meeting_provider_id,
     meeting_recording_url,
     meeting_requested,
     meeting_requires_password
@@ -277,24 +281,27 @@ insert into session (
     null,
     null,
     null,
+    null,
     false,
     null
 );
 
 -- Link meeting to event
-insert into meeting (event_id, join_url, password, provider_meeting_id, recording_url)
+insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_url)
 values (
     :'eventID',
     'https://meeting.example.com/event',
+    'zoom',
     'event-secret',
     'meeting-event-001',
     'https://meeting.example.com/event-recording'
 );
 
 -- Link meeting to session
-insert into meeting (join_url, password, provider_meeting_id, recording_url, session_id)
+insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_url, session_id)
 values (
     'https://meeting.example.com/session2',
+    'zoom',
     'session-secret',
     'meeting-session2-001',
     'https://meeting.example.com/session2-recording',
@@ -602,6 +609,7 @@ select is(
                     "starts_at": 1718533800,
                     "meeting_in_sync": true,
                     "meeting_password": "session-secret",
+                    "meeting_provider": "zoom",
                     "meeting_requested": true,
                     "meeting_requires_password": true,
                     "location": "Room A",

@@ -87,6 +87,7 @@ insert into event (
     canceled,
     meeting_error,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'eventID',
@@ -103,12 +104,13 @@ insert into event (
     true,
     'Previous sync error',
     false,
+    'zoom',
     true
 );
 
 -- Meeting linked to event
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url, password)
-values (:'meetingEventID', :'eventID', '123456789', 'https://zoom.us/j/123456789', 'pass123');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url, password)
+values (:'meetingEventID', :'eventID', 'zoom', '123456789', 'https://zoom.us/j/123456789', 'pass123');
 
 -- Session: has meeting to delete (with previous error)
 insert into session (
@@ -121,6 +123,7 @@ insert into session (
 
     meeting_error,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'sessionID',
@@ -132,16 +135,17 @@ insert into session (
 
     'Previous sync error',
     false,
+    'zoom',
     true
 );
 
 -- Meeting linked to session
-insert into meeting (meeting_id, session_id, provider_meeting_id, join_url, password)
-values (:'meetingSessionID', :'sessionID', '987654321', 'https://zoom.us/j/987654321', 'sesspass');
+insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url, password)
+values (:'meetingSessionID', :'sessionID', 'zoom', '987654321', 'https://zoom.us/j/987654321', 'sesspass');
 
 -- Orphan meeting (no event_id or session_id)
-insert into meeting (meeting_id, provider_meeting_id, join_url)
-values (:'meetingOrphanID', '555666777', 'https://zoom.us/j/555666777');
+insert into meeting (meeting_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingOrphanID', 'zoom', '555666777', 'https://zoom.us/j/555666777');
 
 -- ============================================================================
 -- TESTS

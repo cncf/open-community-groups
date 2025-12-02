@@ -28,6 +28,7 @@ returns json as $$
         'longitude', st_x(g.location::geometry),
         'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
         'meeting_password', m_event.password,
+        'meeting_provider', e.meeting_provider_id,
         'starts_at', floor(extract(epoch from e.starts_at)),
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,

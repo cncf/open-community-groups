@@ -15,6 +15,7 @@ use tracing::{instrument, trace, warn};
 use crate::{
     config::{MeetingsConfig, MeetingsZoomConfig},
     db::DynDB,
+    services::meetings::MeetingProvider,
 };
 
 /// Zoom webhook event types we handle.
@@ -38,9 +39,8 @@ pub(crate) async fn zoom_event(
     headers: HeaderMap,
     body: String,
 ) -> impl IntoResponse {
-    // Extract Zoom config
-    let Some(MeetingsConfig::Zoom(zoom_cfg)) = meetings_cfg else {
-        warn!("zoom webhook received but meetings integration not configured");
+    // Extract Zoom config (route only registered when zoom is configured)
+    let Some(zoom_cfg) = meetings_cfg.as_ref().and_then(|cfg| cfg.zoom.as_ref()) else {
         return StatusCode::NOT_FOUND.into_response();
     };
 
@@ -62,7 +62,7 @@ pub(crate) async fn zoom_event(
     // Handle based on event type
     match payload.event.as_str() {
         EVENT_RECORDING_COMPLETED => handle_recording_completed(&db, &payload).await,
-        EVENT_URL_VALIDATION => handle_url_validation(&payload, &zoom_cfg),
+        EVENT_URL_VALIDATION => handle_url_validation(&payload, zoom_cfg),
         _ => {
             trace!(event = %payload.event, "ignoring unhandled zoom event");
             StatusCode::OK.into_response()
@@ -85,7 +85,7 @@ async fn handle_recording_completed(db: &DynDB, payload: &ZoomWebhookPayload) ->
 
     // Update recording URL in database
     if let Err(err) = db
-        .update_meeting_recording_url(&provider_meeting_id, recording_url)
+        .update_meeting_recording_url(MeetingProvider::Zoom, &provider_meeting_id, recording_url)
         .await
     {
         warn!(?err, "failed to update meeting recording url");

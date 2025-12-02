@@ -1,5 +1,6 @@
 -- add_meeting adds a new meeting and marks the event/session as synced.
 create or replace function add_meeting(
+    p_meeting_provider_id text,
     p_provider_meeting_id text,
     p_url text,
     p_password text,
@@ -8,8 +9,8 @@ create or replace function add_meeting(
 ) returns void as $$
 begin
     -- Insert new meeting
-    insert into meeting (provider_meeting_id, join_url, password, event_id, session_id)
-    values (p_provider_meeting_id, p_url, p_password, p_event_id, p_session_id);
+    insert into meeting (meeting_provider_id, provider_meeting_id, join_url, password, event_id, session_id)
+    values (p_meeting_provider_id, p_provider_meeting_id, p_url, p_password, p_event_id, p_session_id);
 
     -- Mark event as synced (in the case of event meeting)
     if p_event_id is not null then

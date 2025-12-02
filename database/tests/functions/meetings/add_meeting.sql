@@ -81,8 +81,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'eventID',
     :'groupID',
@@ -94,8 +95,9 @@ insert into event (
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
-    true,
-    false
+    false,
+    'zoom',
+    true
 );
 
 -- Session: needs meeting
@@ -106,8 +108,9 @@ insert into session (
     starts_at,
     ends_at,
     session_kind_id,
-    meeting_requested,
-    meeting_in_sync
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
 ) values (
     :'sessionID',
     :'eventID',
@@ -115,8 +118,9 @@ insert into session (
     '2025-06-01 10:00:00-04',
     '2025-06-01 10:30:00-04',
     'virtual',
-    true,
-    false
+    false,
+    'zoom',
+    true
 );
 
 -- Event with previous error: needs meeting
@@ -134,6 +138,7 @@ insert into event (
 
     meeting_error,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'eventWithErrorID',
@@ -149,6 +154,7 @@ insert into event (
 
     'Previous sync error',
     false,
+    'zoom',
     true
 );
 
@@ -163,6 +169,7 @@ insert into session (
 
     meeting_error,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'sessionWithErrorID',
@@ -174,6 +181,7 @@ insert into session (
 
     'Previous sync error',
     false,
+    'zoom',
     true
 );
 
@@ -182,7 +190,7 @@ insert into session (
 -- ============================================================================
 
 -- Test 1: Add meeting linked to event - verify meeting record created
-select add_meeting('123456789', 'https://zoom.us/j/123456789', 'pass123', :'eventID', null);
+select add_meeting('zoom', '123456789', 'https://zoom.us/j/123456789', 'pass123', :'eventID', null);
 select is(
     (select count(*) from meeting where event_id = :'eventID'),
     1::bigint,
@@ -197,7 +205,7 @@ select is(
 );
 
 -- Test 3: Add meeting linked to session - verify meeting record created
-select add_meeting('987654321', 'https://zoom.us/j/987654321', 'sesspass', null, :'sessionID');
+select add_meeting('zoom', '987654321', 'https://zoom.us/j/987654321', 'sesspass', null, :'sessionID');
 select is(
     (select count(*) from meeting where session_id = :'sessionID'),
     1::bigint,
@@ -213,7 +221,7 @@ select is(
 
 -- Test 5: Add duplicate meeting for same event - should fail with unique violation
 select throws_ok(
-    format('select add_meeting(''duplicate123'', ''https://zoom.us/j/duplicate123'', ''pass'', %L, null)', :'eventID'),
+    format('select add_meeting(''zoom'', ''duplicate123'', ''https://zoom.us/j/duplicate123'', ''pass'', %L, null)', :'eventID'),
     '23505',
     null,
     'Adding duplicate meeting for same event fails with unique constraint violation'
@@ -221,14 +229,14 @@ select throws_ok(
 
 -- Test 6: Add duplicate meeting for same session - should fail with unique violation
 select throws_ok(
-    format('select add_meeting(''duplicate456'', ''https://zoom.us/j/duplicate456'', ''pass'', null, %L)', :'sessionID'),
+    format('select add_meeting(''zoom'', ''duplicate456'', ''https://zoom.us/j/duplicate456'', ''pass'', null, %L)', :'sessionID'),
     '23505',
     null,
     'Adding duplicate meeting for same session fails with unique constraint violation'
 );
 
 -- Test 7: Add meeting to event with previous error - verify error cleared
-select add_meeting('111111111', 'https://zoom.us/j/111111111', 'pass111', :'eventWithErrorID', null);
+select add_meeting('zoom', '111111111', 'https://zoom.us/j/111111111', 'pass111', :'eventWithErrorID', null);
 select is(
     (select meeting_error from event where event_id = :'eventWithErrorID'),
     null,
@@ -236,7 +244,7 @@ select is(
 );
 
 -- Test 8: Add meeting to session with previous error - verify error cleared
-select add_meeting('222222222', 'https://zoom.us/j/222222222', 'pass222', null, :'sessionWithErrorID');
+select add_meeting('zoom', '222222222', 'https://zoom.us/j/222222222', 'pass222', null, :'sessionWithErrorID');
 select is(
     (select meeting_error from session where session_id = :'sessionWithErrorID'),
     null,

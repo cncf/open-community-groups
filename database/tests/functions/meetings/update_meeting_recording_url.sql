@@ -92,15 +92,15 @@ insert into event (
 );
 
 -- Meeting linked to event
-insert into meeting (meeting_id, event_id, provider_meeting_id, join_url)
-values (:'meetingID', :'eventID', '123456789', 'https://zoom.us/j/123456789');
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url)
+values (:'meetingID', :'eventID', 'zoom', '123456789', 'https://zoom.us/j/123456789');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Test 1: Update recording URL - verify recording_url is set
-select update_meeting_recording_url('123456789', 'https://zoom.us/rec/share/abc123');
+select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123');
 select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
     'https://zoom.us/rec/share/abc123',
@@ -115,7 +115,7 @@ select isnt(
 );
 
 -- Test 3: Update with different URL - verify URL is overwritten
-select update_meeting_recording_url('123456789', 'https://zoom.us/rec/share/xyz789');
+select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789');
 select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
     'https://zoom.us/rec/share/xyz789',
@@ -124,7 +124,7 @@ select is(
 
 -- Test 4: Update non-existent meeting - should not raise error
 select lives_ok(
-    $$ select update_meeting_recording_url('nonexistent', 'https://example.com/rec') $$,
+    $$ select update_meeting_recording_url('zoom', 'nonexistent', 'https://example.com/rec') $$,
     'Updating non-existent meeting does not raise error'
 );
 

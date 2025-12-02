@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(226);
+select plan(234);
 
 -- ============================================================================
 -- TESTS
@@ -37,6 +37,7 @@ select has_table('images');
 select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
 select has_table('meeting');
+select has_table('meeting_provider');
 select has_table('notification_attachment');
 select has_table('region');
 select has_table('session');
@@ -140,6 +141,7 @@ select columns_are('event', array[
     'meeting_error',
     'meeting_in_sync',
     'meeting_join_url',
+    'meeting_provider_id',
     'meeting_recording_url',
     'meeting_requested',
     'meeting_requires_password',
@@ -210,6 +212,7 @@ select columns_are('meeting', array[
     'meeting_id',
     'created_at',
     'join_url',
+    'meeting_provider_id',
     'provider_meeting_id',
 
     'event_id',
@@ -217,6 +220,12 @@ select columns_are('meeting', array[
     'recording_url',
     'session_id',
     'updated_at'
+]);
+
+-- Test: meeting_provider columns should match expected
+select columns_are('meeting_provider', array[
+    'meeting_provider_id',
+    'display_name'
 ]);
 
 -- Test: group columns should match expected
@@ -334,6 +343,7 @@ select columns_are('session', array[
     'meeting_error',
     'meeting_in_sync',
     'meeting_join_url',
+    'meeting_provider_id',
     'meeting_recording_url',
     'meeting_requested',
     'meeting_requires_password'
@@ -443,6 +453,7 @@ select has_pk('images');
 select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
 select has_pk('meeting');
+select has_pk('meeting_provider');
 select has_pk('notification_attachment');
 select has_pk('region');
 select has_pk('session');
@@ -460,6 +471,7 @@ select col_is_fk('custom_notification', 'group_id', 'group');
 select col_is_fk('event', 'event_category_id', 'event_category');
 select col_is_fk('event', 'event_kind_id', 'event_kind');
 select col_is_fk('event', 'group_id', 'group');
+select col_is_fk('event', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('event', 'published_by', 'user');
 select col_is_fk('event_attendee', 'event_id', 'event');
 select col_is_fk('event_attendee', 'user_id', 'user');
@@ -485,11 +497,13 @@ select col_is_fk('images', 'created_by', 'user');
 select col_is_fk('legacy_event_host', 'event_id', 'event');
 select col_is_fk('legacy_event_speaker', 'event_id', 'event');
 select col_is_fk('meeting', 'event_id', 'event');
+select col_is_fk('meeting', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('meeting', 'session_id', 'session');
 select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
 select col_is_fk('region', 'community_id', 'community');
 select col_is_fk('session', 'event_id', 'event');
+select col_is_fk('session', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('session', 'session_kind_id', 'session_kind');
 select col_is_fk('session_speaker', 'session_id', 'session');
 select col_is_fk('session_speaker', 'user_id', 'user');
@@ -606,9 +620,16 @@ select indexes_are('legacy_event_speaker', array[
 -- Test: meeting indexes should match expected
 select indexes_are('meeting', array[
     'meeting_event_id_idx',
+    'meeting_meeting_provider_id_idx',
+    'meeting_meeting_provider_id_provider_meeting_id_idx',
     'meeting_pkey',
-    'meeting_provider_meeting_id_idx',
     'meeting_session_id_idx'
+]);
+
+-- Test: meeting_provider indexes should match expected
+select indexes_are('meeting_provider', array[
+    'meeting_provider_display_name_key',
+    'meeting_provider_pkey'
 ]);
 
 -- Test: notification_attachment indexes should match expected
@@ -727,6 +748,15 @@ select results_eq(
         ('virtual', 'Virtual')
     $$,
     'Event kinds should exist'
+);
+
+-- Test: meeting providers should match expected values
+select results_eq(
+    'select * from meeting_provider order by meeting_provider_id',
+    $$ values
+        ('zoom', 'Zoom')
+    $$,
+    'Meeting providers should exist'
 );
 
 -- Test: session kinds should match expected values

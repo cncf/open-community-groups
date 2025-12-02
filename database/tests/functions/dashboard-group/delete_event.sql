@@ -80,8 +80,9 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
-    meeting_requested,
     meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventID',
@@ -95,6 +96,7 @@ insert into event (
     now(),
     now() + interval '1 hour',
     true,
+    'zoom',
     true,
     true
 );
@@ -139,6 +141,7 @@ insert into session (
     ends_at,
     session_kind_id,
     meeting_in_sync,
+    meeting_provider_id,
     meeting_requested
 ) values (
     :'sessionMeetingID',
@@ -148,6 +151,7 @@ insert into session (
     now() + interval '30 minutes',
     'virtual',
     true,
+    'zoom',
     true
 );
 

@@ -281,6 +281,7 @@ with request_event as (
             "kind_id": "virtual",
             "starts_at": "2025-03-01T10:00:00",
             "ends_at": "2025-03-01T11:30:00",
+            "meeting_provider_id": "zoom",
             "meeting_requested": true,
             "meeting_requires_password": true,
             "sessions": [
@@ -290,6 +291,7 @@ with request_event as (
                     "starts_at": "2025-03-01T10:00:00",
                     "ends_at": "2025-03-01T11:00:00",
                     "kind": "virtual",
+                    "meeting_provider_id": "zoom",
                     "meeting_requested": true,
                     "meeting_requires_password": true
                 }
