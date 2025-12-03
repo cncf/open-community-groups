@@ -144,6 +144,30 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Shows confirmation dialog when switching from manual to automatic mode.
+   * @returns {Promise<boolean>} True if user confirms, false if cancelled
+   */
+  async _confirmManualToAutomaticSwitch() {
+    const result = await Swal.fire({
+      text: "Switching to automatic mode will replace the current meeting link. Do you want to continue?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, switch to automatic",
+      cancelButtonText: "No, keep manual",
+      position: "center",
+      backdrop: true,
+      buttonsStyling: false,
+      iconColor: "var(--color-primary-500)",
+      customClass: {
+        popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
+        confirmButton: "btn-primary",
+        cancelButton: "btn-primary-outline ms-5",
+      },
+    });
+    return result.isConfirmed;
+  }
+
+  /**
    * Renders a selectable mode card.
    * @param {object} option Card data
    * @returns {import('lit').TemplateResult} Mode card element
@@ -219,6 +243,13 @@ export class OnlineEventDetails extends LitWrapper {
       this._createMeeting = false;
       this._requirePassword = false;
     } else if (newMode === "automatic" && this._mode === "manual") {
+      if (this.meetingInSync) {
+        const confirmed = await this._confirmManualToAutomaticSwitch();
+        if (!confirmed) {
+          this.requestUpdate();
+          return;
+        }
+      }
       this._mode = "automatic";
       this._joinUrl = "";
       this._recordingUrl = "";
