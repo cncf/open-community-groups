@@ -7,6 +7,7 @@ import {
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/avatar-image.js";
 import "/static/js/common/speakers-selector.js";
+import "/static/js/common/online-event-details.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
@@ -42,6 +43,7 @@ export class SessionsSection extends LitWrapper {
     super();
     this.sessions = [];
     this.sessionKinds = [];
+    this._bindHtmxCleanup();
   }
 
   connectedCallback() {
@@ -122,6 +124,8 @@ export class SessionsSection extends LitWrapper {
       starts_at: "",
       ends_at: "",
       location: "",
+      meeting_requested: false,
+      meeting_requires_password: false,
       meeting_join_url: "",
       meeting_recording_url: "",
       speakers: [],
@@ -238,7 +242,54 @@ export class SessionsSection extends LitWrapper {
         )}
       </div>`;
   }
+
+  /**
+   * Removes empty session parameters before HTMX submits the form.
+   * Prevents backend validation errors when a placeholder session is untouched.
+   * @private
+   */
+  _bindHtmxCleanup() {
+    if (SessionsSection._cleanupBound || typeof window === "undefined" || !window.htmx) {
+      return;
+    }
+    window.htmx.on("htmx:configRequest", (event) => {
+      const params = event.detail?.parameters;
+      if (!params || typeof params !== "object") {
+        return;
+      }
+
+      const buckets = {};
+      Object.entries(params).forEach(([key, value]) => {
+        const match = key.match(/^sessions\[(\d+)\]/);
+        if (!match) return;
+        const idx = match[1];
+        if (!buckets[idx]) buckets[idx] = [];
+        buckets[idx].push({ key, value });
+      });
+
+      const isNonEmpty = (entry) => {
+        const { key, value } = entry;
+        if (value === null || typeof value === "undefined") return false;
+        if (Array.isArray(value)) return value.length > 0;
+        const normalized = String(value).trim();
+        if (normalized === "" || normalized === "0") return false;
+        if (normalized === "false") return false;
+        if (key.endsWith("_mode") && normalized === "manual") return false;
+        return true;
+      };
+
+      Object.values(buckets).forEach((entries) => {
+        const hasContent = entries.some(isNonEmpty);
+        if (hasContent) return;
+        entries.forEach(({ key }) => {
+          delete params[key];
+        });
+      });
+    });
+    SessionsSection._cleanupBound = true;
+  }
 }
+SessionsSection._cleanupBound = false;
 customElements.define("sessions-section", SessionsSection);
 
 /**
@@ -273,6 +324,8 @@ class SessionItem extends LitWrapper {
       starts_at: "",
       ends_at: "",
       location: "",
+      meeting_requested: false,
+      meeting_requires_password: false,
       meeting_join_url: "",
       meeting_recording_url: "",
       speakers: [],
@@ -288,6 +341,10 @@ class SessionItem extends LitWrapper {
     if (!this.data) {
       this.data = {};
     }
+    this.data.meeting_requested =
+      this.data.meeting_requested === true || this.data.meeting_requested === "true";
+    this.data.meeting_requires_password =
+      this.data.meeting_requires_password === true || this.data.meeting_requires_password === "true";
     this.data.speakers = normalizeSpeakers(this.data.speakers);
     this.isObjectEmpty = isObjectEmpty(this.data);
   }
@@ -432,6 +489,19 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-full">
+        <online-event-details
+          kind=${this.data.kind || "virtual"}
+          meeting-join-url=${this.data.meeting_join_url || ""}
+          meeting-recording-url=${this.data.meeting_recording_url || ""}
+          ?meeting-requested=${this.data.meeting_requested}
+          ?meeting-requires-password=${this.data.meeting_requires_password}
+          starts-at=${this.data.starts_at || ""}
+          ends-at=${this.data.ends_at || ""}
+          field-name-prefix="sessions[${this.index}]"
+        ></online-event-details>
+      </div>
+
+      <div class="col-span-full">
         <label class="form-label"> Location </label>
         <div class="mt-2">
           <input
@@ -442,44 +512,6 @@ class SessionItem extends LitWrapper {
             class="input-primary"
             value=${this.data.location}
             placeholder="Optional - physical location or meeting room"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-        </div>
-      </div>
-
-      <div class="col-span-3">
-        <label class="form-label"> Meeting URL </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="meeting_join_url"
-            type="url"
-            name="sessions[${this.index}][meeting_join_url]"
-            class="input-primary"
-            value=${this.data.meeting_join_url}
-            placeholder="Optional - link to live stream"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-        </div>
-      </div>
-
-      <div class="col-span-3">
-        <label class="form-label"> Meeting Recording URL </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="meeting_recording_url"
-            type="url"
-            name="sessions[${this.index}][meeting_recording_url]"
-            class="input-primary"
-            value=${this.data.meeting_recording_url}
-            placeholder="Optional - link to recorded session"
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"

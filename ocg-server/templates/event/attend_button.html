@@ -70,6 +70,7 @@
     return Number.isFinite(parsedCapacity) ? parsedCapacity : null;
   })();
   const isSoldOut = remainingCapacity !== null && remainingCapacity <= 0;
+  const meetingLiveWindowMinutes = 15;
   const isPastEvent = (() => {
     if (!startsAtValue) {
       return false;
@@ -112,6 +113,32 @@
     }
   };
 
+  const isMeetingLive = () => {
+    if (!startsAtValue) {
+      return false;
+    }
+    const startsAt = new Date(startsAtValue);
+    if (Number.isNaN(startsAt.valueOf())) {
+      return false;
+    }
+    const liveFrom = startsAt.getTime() - meetingLiveWindowMinutes * 60 * 1000;
+    return Date.now() >= liveFrom;
+  };
+
+  const toggleMeetingDetailsVisibility = (isAttendee) => {
+    const canShow = isAttendee && isMeetingLive();
+    const sections = document.querySelectorAll('[data-meeting-details]');
+    const meetingButtons = document.querySelectorAll('[data-meeting-link]');
+    sections.forEach((section) => {
+      section.classList.toggle('hidden', !canShow);
+    });
+    meetingButtons.forEach((button) => {
+      button.classList.toggle('hidden', !canShow);
+    });
+  };
+
+  let userIsAttendee = false;
+
   updateButtonStateForEventDate(document.getElementById('attend-btn'));
   applySoldOutState(document.getElementById('attend-btn'));
   updateButtonStateForEventDate(document.getElementById('leave-btn'));
@@ -144,6 +171,8 @@
         if (response.is_attendee) {
           leaveBtn.classList.remove('hidden');
           updateButtonStateForEventDate(leaveBtn);
+          userIsAttendee = true;
+          toggleMeetingDetailsVisibility(userIsAttendee);
         } else {
           attendBtn.classList.remove('hidden');
           if (isSoldOut) {
@@ -151,6 +180,8 @@
           } else {
             updateButtonStateForEventDate(attendBtn);
           }
+          userIsAttendee = false;
+          toggleMeetingDetailsVisibility(userIsAttendee);
         }
       } catch (error) {
         if (isSoldOut) {
@@ -160,6 +191,8 @@
           signinBtn.classList.remove('hidden');
           updateButtonStateForEventDate(signinBtn);
         }
+        userIsAttendee = false;
+        toggleMeetingDetailsVisibility(userIsAttendee);
       }
     } else {
       // User not authenticated or error
@@ -170,6 +203,8 @@
         signinBtn.classList.remove('hidden');
         updateButtonStateForEventDate(signinBtn);
       }
+      userIsAttendee = false;
+      toggleMeetingDetailsVisibility(userIsAttendee);
     }
   });
 

@@ -410,6 +410,7 @@ input:placeholder-shown {
 .icon-marker { --icon-url: url('/static/images/icons/marker.svg'); }
 .icon-meetup { --icon-url: url('/static/images/icons/meetup.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
+.icon-meeting { --icon-url: url('/static/images/icons/meeting.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
 .icon-pending-invitation { --icon-url: url('/static/images/icons/pending_invitation.svg'); }

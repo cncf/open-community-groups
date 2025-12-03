@@ -92,7 +92,9 @@
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#add-event-button, #cancel-button"
-                hx-exclude="[name=toggle_registration_required]">Add</button>
+                hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_meeting_requires_password]">
+          Add
+        </button>
       </div>
       {# End save button -#}
     </div>
@@ -415,35 +417,8 @@
         {# Online Event Details section -#}
         <div class="pb-12">
           {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
-
-          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-            {# Meeting URL -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="meeting_join_url" class="form-label">Meeting URL</label>
-              <div class="mt-2">
-                <input type="url"
-                       name="meeting_join_url"
-                       id="meeting_join_url"
-                       class="input-primary"
-                       placeholder="https://zoom.us/j/123456789">
-              </div>
-              <p class="form-legend">URL to join the meeting.</p>
-            </div>
-            {# End Meeting URL -#}
-
-            {# Meeting recording URL -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="meeting_recording_url" class="form-label">Meeting recording URL</label>
-              <div class="mt-2">
-                <input type="url"
-                       name="meeting_recording_url"
-                       id="meeting_recording_url"
-                       class="input-primary"
-                       placeholder="https://youtube.com/watch?v=...">
-              </div>
-              <p class="form-legend">URL of the meeting recording (can be added after the event).</p>
-            </div>
-            {# End Meeting recording URL -#}
+          <div class="mt-10 max-w-5xl">
+            <online-event-details id="online-event-details" kind="virtual"></online-event-details>
           </div>
         </div>
         {# End online event details section -#}
@@ -515,14 +490,19 @@
   import {
     generateSlug
   } from '/static/js/dashboard/common.js';
+  import {
+    validateMeetingRequest
+  } from '/static/js/dashboard/group/meeting-validations.js';
   import '/static/js/common/user-search-selector.js';
   import '/static/js/common/speakers-selector.js';
+  import '/static/js/common/online-event-details.js';
 
   const addEventButton = document.getElementById('add-event-button');
   const cancelButton = document.getElementById('cancel-button');
   const kindSelect = document.getElementById('kind_id');
   const venueSection = document.getElementById('venue-section');
   const onlineSection = document.getElementById('online-section');
+  const onlineEventDetails = document.getElementById('online-event-details');
 
   // Tab switching functionality
   function displayActiveSection(sectionName) {
@@ -583,6 +563,28 @@
     });
   }
 
+  // Update component kind when event kind changes
+  if (kindSelect && onlineEventDetails) {
+    onlineEventDetails.kind = kindSelect.value;
+    kindSelect.addEventListener('change', () => {
+      onlineEventDetails.kind = kindSelect.value;
+    });
+  }
+
+  // Update component starts/ends times when they change for validation
+  const startsAtInput = document.getElementById('starts_at');
+  const endsAtInput = document.getElementById('ends_at');
+  if (startsAtInput && onlineEventDetails) {
+    startsAtInput.addEventListener('change', () => {
+      onlineEventDetails.startsAt = startsAtInput.value;
+    });
+  }
+  if (endsAtInput && onlineEventDetails) {
+    endsAtInput.addEventListener('change', () => {
+      onlineEventDetails.endsAt = endsAtInput.value;
+    });
+  }
+
   if (cancelButton) {
     cancelButton.addEventListener('htmx:afterRequest', () => {
       history.pushState({}, "Events list", '/dashboard/group?tab=events');
@@ -596,7 +598,15 @@
         // Use multiple form validation
         const isValid = validateEventForms();
 
-        if (!isValid) {
+        // Validate online event details component
+        let onlineValid = true;
+        if (onlineEventDetails) {
+          onlineEventDetails.startsAt = startsAtInput?.value || '';
+          onlineEventDetails.endsAt = endsAtInput?.value || '';
+          onlineValid = onlineEventDetails.validate(displayActiveSection);
+        }
+
+        if (!isValid || !onlineValid) {
           // Prevent form submission
           e.preventDefault();
           return false;

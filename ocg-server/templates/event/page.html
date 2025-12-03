@@ -127,30 +127,35 @@
               <div class="p-4 h-full flex flex-col">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
                 <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400 h-full">
-                  <div class="flex items-start gap-3">
-                    <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
-                    <div>
-                      {% if let Some(starts_at) = event.starts_at -%}
-                        <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
-                          {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
-                        </div>
-                        <div class="mt-2 text-base text-stone-600">
-                          {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
-                        </div>
-                      {% else -%}
-                        <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
-                      {% endif -%}
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-3">
+                      <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
+                      <div>
+                        {% if let Some(starts_at) = event.starts_at -%}
+                          <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                            {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
+                          </div>
+                          <div class="mt-2 text-base text-stone-600">
+                            {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
+                          </div>
+                        {% else -%}
+                          <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
+                        {% endif -%}
+                      </div>
                     </div>
-                  </div>
 
-                  {% if let Some(meeting_join_url) = event.meeting_join_url -%}
-                    <div class="mt-4">
-                      <a href="{{ meeting_join_url }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>
-                    </div>
-                  {% endif -%}
+                    {% if let Some(meeting_join_url) = event.meeting_join_url -%}
+                      <div data-meeting-link class="hidden">
+                        <a href="{{ meeting_join_url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="group btn-secondary-anchor p-1.5 size-[40px] sm:size-[30px] flex items-center justify-center"
+                           aria-label="Meeting link">
+                          <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-meeting"></div>
+                        </a>
+                      </div>
+                    {% endif -%}
+                  </div>
                 </div>
               </div>
             </div>
@@ -205,6 +210,33 @@
           {% endif -%}
           {# End event banner -#}
           <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
+          {% if let Some(meeting_join_url) = event.meeting_join_url -%}
+            <div data-meeting-details class="hidden mt-6 sm:mt-8">
+              <div class="border border-stone-200 bg-stone-50 rounded-lg p-4 sm:p-5">
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
+                  <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
+                </div>
+                <div class="text-sm text-stone-700 mb-4">
+                  Attendees can join the session with the link below when it is time.
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                  <a href="{{ meeting_join_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     class="group btn-primary-outline inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
+                    <div class="svg-icon size-3 icon-meeting"></div>
+                    <span>Open meeting</span>
+                  </a>
+                  {% if let Some(starts_at) = event.starts_at -%}
+                    <span class="text-xs text-stone-500">
+                      Starts {{ starts_at.with_timezone(event.timezone).format("%B %e, %G at %I:%M %p %Z") }}
+                    </span>
+                  {% endif -%}
+                </div>
+              </div>
+            </div>
+          {% endif -%}
         </div>
         {# End event description -#}
 
