@@ -136,7 +136,9 @@
     const sections = document.querySelectorAll('[data-meeting-details]');
     const meetingButtons = document.querySelectorAll('[data-meeting-link]');
     sections.forEach((section) => {
-      section.classList.toggle('hidden', !canShow);
+      const sectionHasRecording = section.dataset?.hasRecording === 'true';
+      const sectionCanShow = isAttendee && (eventIsLive || hasRecording || sectionHasRecording);
+      section.classList.toggle('hidden', !sectionCanShow);
     });
     meetingButtons.forEach((button) => {
       button.classList.toggle('hidden', !canShow);

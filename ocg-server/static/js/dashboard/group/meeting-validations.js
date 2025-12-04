@@ -1,3 +1,6 @@
+/**
+ * Zoom API limits meeting duration to 5 to 720 minutes.
+ */
 export const MIN_MEETING_MINUTES = 5;
 export const MAX_MEETING_MINUTES = 720;
 
