@@ -418,7 +418,13 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {import('lit').TemplateResult} Status display or empty template
    */
   _renderMeetingStatus() {
-    if (!this.meetingInSync && !this.meetingPassword && !this.meetingError) {
+    const shouldShowPending = this._mode === "automatic" && this._createMeeting && !this.meetingInSync;
+    const hasMeetingDetails =
+      this.meetingInSync || this.meetingPassword || this.meetingError || this.meetingJoinUrl;
+    const showPendingMessage =
+      !this.meetingInSync && !this.meetingJoinUrl && !this.meetingPassword && !this.meetingError;
+
+    if (!shouldShowPending && !hasMeetingDetails) {
       return html``;
     }
 
@@ -432,10 +438,15 @@ export class OnlineEventDetails extends LitWrapper {
               `
             : html`
                 <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
-                <span class="text-sm font-medium text-amber-700">Meeting pending sync</span>
+                <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
               `}
         </div>
 
+        ${showPendingMessage
+          ? html`
+              <p class="text-sm text-stone-700">We requested the meeting; syncing may take a few minutes.</p>
+            `
+          : ""}
         ${this.meetingJoinUrl
           ? html`
               <div class="text-sm text-stone-700 break-words">
@@ -624,5 +635,6 @@ export class OnlineEventDetails extends LitWrapper {
     `;
   }
 }
-
-customElements.define("online-event-details", OnlineEventDetails);
+if (!customElements.get("online-event-details")) {
+  customElements.define("online-event-details", OnlineEventDetails);
+}
