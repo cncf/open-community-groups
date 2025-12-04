@@ -344,7 +344,6 @@ class SessionItem extends LitWrapper {
     if (!this.data) {
       this.data = {};
     }
-    console.log("Session item data:", this.data);
     this.data.meeting_requested =
       this.data.meeting_requested === true || this.data.meeting_requested === "true";
     this.data.meeting_requires_password =
