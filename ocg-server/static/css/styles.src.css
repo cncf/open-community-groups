@@ -421,6 +421,7 @@ input:placeholder-shown {
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
+.icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }

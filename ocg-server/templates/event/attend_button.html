@@ -3,7 +3,9 @@
      {% if let Some(starts_at) = event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      {% if let Some(remaining_capacity) = event.remaining_capacity %}
        data-remaining-capacity="{{ remaining_capacity }}"
-     {% endif %}>
+     {% endif %}
+     data-is-live="{{ event.is_live() }}"
+     data-has-recording="{{ event.meeting_recording_url.is_some() }}">
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
@@ -41,6 +43,19 @@
     <span>Cancel attendance</span>
   </button>
 
+  {% if event.is_live() %}
+    {% if let Some(meeting_join_url) = event.meeting_join_url %}
+      <a id="join-meeting-btn"
+         href="{{ meeting_join_url }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="hidden group btn-primary-outline w-52 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
+        <div class="svg-icon size-3 icon-meeting"></div>
+        <span>Join meeting</span>
+      </a>
+    {% endif %}
+  {% endif %}
+
   <!-- Hidden element that checks attendance status -->
   <div id="attendance-checker"
        hx-get="/event/{{ event.event_id }}/attendance"
@@ -70,7 +85,8 @@
     return Number.isFinite(parsedCapacity) ? parsedCapacity : null;
   })();
   const isSoldOut = remainingCapacity !== null && remainingCapacity <= 0;
-  const meetingLiveWindowMinutes = 15;
+  const eventIsLive = attendanceContainer?.dataset?.isLive === 'true';
+  const hasRecording = attendanceContainer?.dataset?.hasRecording === 'true';
   const isPastEvent = (() => {
     if (!startsAtValue) {
       return false;
@@ -113,20 +129,10 @@
     }
   };
 
-  const isMeetingLive = () => {
-    if (!startsAtValue) {
-      return false;
-    }
-    const startsAt = new Date(startsAtValue);
-    if (Number.isNaN(startsAt.valueOf())) {
-      return false;
-    }
-    const liveFrom = startsAt.getTime() - meetingLiveWindowMinutes * 60 * 1000;
-    return Date.now() >= liveFrom;
-  };
-
+  // Toggle visibility of meeting details on event page based on attendance
+  // and event live status
   const toggleMeetingDetailsVisibility = (isAttendee) => {
-    const canShow = isAttendee && isMeetingLive();
+    const canShow = isAttendee && (eventIsLive || hasRecording);
     const sections = document.querySelectorAll('[data-meeting-details]');
     const meetingButtons = document.querySelectorAll('[data-meeting-link]');
     sections.forEach((section) => {
