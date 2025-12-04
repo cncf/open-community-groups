@@ -126,7 +126,10 @@ export class SessionsSection extends LitWrapper {
       location: "",
       meeting_requested: false,
       meeting_requires_password: false,
+      meeting_in_sync: false,
       meeting_join_url: "",
+      meeting_password: "",
+      meeting_error: "",
       meeting_recording_url: "",
       speakers: [],
     };
@@ -179,7 +182,7 @@ export class SessionsSection extends LitWrapper {
     const hasSingleSessionItem = this.sessions.length === 1;
 
     return html`<div class="mt-10">
-      <div class="flex w-full xl:w-2/3">
+      <div class="flex w-full">
         <div class="flex flex-col space-y-3 me-3">
           <div>
             <button
@@ -341,10 +344,14 @@ class SessionItem extends LitWrapper {
     if (!this.data) {
       this.data = {};
     }
+    console.log("Session item data:", this.data);
     this.data.meeting_requested =
       this.data.meeting_requested === true || this.data.meeting_requested === "true";
     this.data.meeting_requires_password =
       this.data.meeting_requires_password === true || this.data.meeting_requires_password === "true";
+    this.data.meeting_in_sync = this.data.meeting_in_sync === true || this.data.meeting_in_sync === "true";
+    this.data.meeting_password = this.data.meeting_password || "";
+    this.data.meeting_error = this.data.meeting_error || "";
     this.data.speakers = normalizeSpeakers(this.data.speakers);
     this.isObjectEmpty = isObjectEmpty(this.data);
   }
@@ -358,9 +365,10 @@ class SessionItem extends LitWrapper {
     const value = event.target.value;
     const name = event.target.dataset.name;
 
-    this.data[name] = value;
+    this.data = { ...this.data, [name]: value };
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
+    this.requestUpdate();
   };
 
   /**
@@ -369,9 +377,10 @@ class SessionItem extends LitWrapper {
    * @private
    */
   _onTextareaChange = (value) => {
-    this.data.description = value;
+    this.data = { ...this.data, description: value };
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
+    this.requestUpdate();
   };
 
   _handleSpeakersChanged = (event) => {
@@ -495,6 +504,9 @@ class SessionItem extends LitWrapper {
           meeting-recording-url=${this.data.meeting_recording_url || ""}
           ?meeting-requested=${this.data.meeting_requested}
           ?meeting-requires-password=${this.data.meeting_requires_password}
+          ?meeting-in-sync=${this.data.meeting_in_sync}
+          meeting-password=${this.data.meeting_password || ""}
+          meeting-error=${this.data.meeting_error || ""}
           starts-at=${this.data.starts_at || ""}
           ends-at=${this.data.ends_at || ""}
           field-name-prefix="sessions[${this.index}]"
