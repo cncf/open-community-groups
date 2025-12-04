@@ -32,6 +32,8 @@ pub(crate) struct AddPage {
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Flag indicating if meetings functionality is enabled.
+    pub meetings_enabled: bool,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
     /// List of sponsors available for this group.
@@ -60,6 +62,8 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Flag indicating if meetings functionality is enabled.
+    pub meetings_enabled: bool,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
     /// List of sponsors available for this group.

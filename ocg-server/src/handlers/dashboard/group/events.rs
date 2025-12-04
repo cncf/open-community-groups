@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
-    config::HttpServerConfig,
+    config::{HttpServerConfig, MeetingsConfig},
     db::DynDB,
     handlers::{
         error::HandlerError,
@@ -39,8 +39,10 @@ pub(crate) async fn add_page(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(meetings_cfg): State<Option<MeetingsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
+    let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let (categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
@@ -52,6 +54,7 @@ pub(crate) async fn add_page(
         group_id,
         categories,
         event_kinds,
+        meetings_enabled,
         session_kinds,
         sponsors,
         timezones,
@@ -79,9 +82,11 @@ pub(crate) async fn update_page(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(meetings_cfg): State<Option<MeetingsConfig>>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
+    let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
         db.list_event_categories(community_id),
@@ -95,6 +100,7 @@ pub(crate) async fn update_page(
         event,
         categories,
         event_kinds,
+        meetings_enabled,
         session_kinds,
         sponsors,
         timezones,

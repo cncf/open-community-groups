@@ -112,6 +112,13 @@ pub(crate) struct MeetingsConfig {
     pub zoom: Option<MeetingsZoomConfig>,
 }
 
+impl MeetingsConfig {
+    /// Check if at least one meetings provider is enabled.
+    pub(crate) fn meetings_enabled(&self) -> bool {
+        self.zoom.is_some()
+    }
+}
+
 /// Zoom meetings configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct MeetingsZoomConfig {
