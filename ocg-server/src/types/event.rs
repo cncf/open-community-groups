@@ -247,6 +247,18 @@ impl EventFull {
         build_location(&parts, max_len)
     }
 
+    /// Check if the event is currently live.
+    #[allow(dead_code)]
+    pub fn is_live(&self) -> bool {
+        match (self.starts_at, self.ends_at) {
+            (Some(starts_at), Some(ends_at)) => {
+                let now = Utc::now();
+                now >= starts_at && now <= ends_at
+            }
+            _ => false,
+        }
+    }
+
     /// Try to create an `EventFull` instance from a JSON string.
     #[instrument(skip_all, err)]
     pub fn try_from_json(data: &str) -> Result<Self> {
@@ -325,7 +337,7 @@ pub struct LegacyUser {
 
 /// Session information within an event.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Session {
     /// Type of session (hybrid, in-person, virtual).
     pub kind: SessionKind,
@@ -364,6 +376,20 @@ pub struct Session {
     pub meeting_requires_password: Option<bool>,
 }
 
+impl Session {
+    /// Check if the session is currently live.
+    #[allow(dead_code)]
+    pub fn is_live(&self) -> bool {
+        match self.ends_at {
+            Some(ends_at) => {
+                let now = Utc::now();
+                now >= self.starts_at && now <= ends_at
+            }
+            None => false,
+        }
+    }
+}
+
 /// Categorization of session attendance modes.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
@@ -394,4 +420,100 @@ pub struct Speaker {
     /// Embedded user profile information.
     #[serde(flatten)]
     pub user: User,
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Duration, Utc};
+
+    use super::*;
+
+    #[test]
+    fn event_full_is_live_returns_false_when_ends_at_is_none() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() - Duration::hours(1)),
+            ends_at: None,
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_false_when_event_ended() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() - Duration::hours(2)),
+            ends_at: Some(Utc::now() - Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_false_when_event_not_started() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() + Duration::hours(1)),
+            ends_at: Some(Utc::now() + Duration::hours(2)),
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_false_when_starts_at_is_none() {
+        let event = EventFull {
+            starts_at: None,
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_true_when_event_is_live() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() - Duration::hours(1)),
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_false_when_ends_at_is_none() {
+        let session = Session {
+            starts_at: Utc::now() - Duration::hours(1),
+            ..Default::default()
+        };
+        assert!(!session.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_false_when_session_ended() {
+        let session = Session {
+            ends_at: Some(Utc::now() - Duration::hours(1)),
+            starts_at: Utc::now() - Duration::hours(2),
+            ..Default::default()
+        };
+        assert!(!session.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_false_when_session_not_started() {
+        let session = Session {
+            ends_at: Some(Utc::now() + Duration::hours(2)),
+            starts_at: Utc::now() + Duration::hours(1),
+            ..Default::default()
+        };
+        assert!(!session.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_true_when_session_is_live() {
+        let session = Session {
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            starts_at: Utc::now() - Duration::hours(1),
+            ..Default::default()
+        };
+        assert!(session.is_live());
+    }
 }
