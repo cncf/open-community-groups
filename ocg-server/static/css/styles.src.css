@@ -432,6 +432,7 @@ input:placeholder-shown {
 .icon-user-small { --icon-url: url('/static/images/icons/user_small.svg'); }
 .icon-vertical-dots { --icon-url: url('/static/images/icons/vertical_dots.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
+.icon-warning { --icon-url: url('/static/images/icons/warning.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
 .icon-youtube { --icon-url: url('/static/images/icons/youtube.svg'); }
