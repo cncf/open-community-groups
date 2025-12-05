@@ -6,6 +6,7 @@ import {
   MAX_MEETING_MINUTES,
 } from "/static/js/dashboard/group/meeting-validations.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
+import "/static/js/common/multiple-inputs.js";
 
 /**
  * Online event details component for managing meeting information. Supports
@@ -22,6 +23,20 @@ export class OnlineEventDetails extends LitWrapper {
       type: Boolean,
       attribute: "meeting-requires-password",
     },
+    meetingHosts: {
+      type: Array,
+      attribute: "meeting-hosts",
+      converter: {
+        fromAttribute: (value) => {
+          if (!value || value.trim() === "") return [];
+          try {
+            return JSON.parse(value);
+          } catch {
+            return [];
+          }
+        },
+      },
+    },
     startsAt: { type: String, attribute: "starts-at" },
     endsAt: { type: String, attribute: "ends-at" },
     meetingInSync: { type: Boolean, attribute: "meeting-in-sync" },
@@ -36,6 +51,7 @@ export class OnlineEventDetails extends LitWrapper {
     _createMeeting: { type: Boolean, state: true },
     _requirePassword: { type: Boolean, state: true },
     _providerId: { type: String, state: true },
+    _hosts: { type: Array, state: true },
   };
 
   constructor() {
@@ -45,6 +61,7 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingRecordingUrl = "";
     this.meetingRequested = false;
     this.meetingRequiresPassword = false;
+    this.meetingHosts = [];
     this.startsAt = "";
     this.endsAt = "";
     this.meetingInSync = false;
@@ -59,6 +76,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._createMeeting = false;
     this._requirePassword = false;
     this._providerId = "zoom";
+    this._hosts = [];
   }
 
   connectedCallback() {
@@ -70,6 +88,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._createMeeting = this.meetingRequested;
     this._requirePassword = this.meetingRequiresPassword;
     this._providerId = this.meetingProviderId || "zoom";
+    this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
 
     // Determine mode based on meeting state
     if (this.meetingRequested || this.meetingInSync) {
@@ -77,6 +96,13 @@ export class OnlineEventDetails extends LitWrapper {
     } else {
       this._mode = "manual";
     }
+  }
+
+  /**
+   * Called after first render to initialize sub-components.
+   */
+  firstUpdated() {
+    this._initializeHostsInput();
   }
 
   updated(changedProperties) {
@@ -107,6 +133,31 @@ export class OnlineEventDetails extends LitWrapper {
           availability.reason || "Automatic meetings are disabled until the schedule requirements are met.",
         );
       }
+    }
+
+    // Reinitialize hosts input when switching to automatic mode or when create meeting is toggled
+    if (changedProperties.has("_mode") || changedProperties.has("_createMeeting")) {
+      if (this._mode === "automatic" && this._createMeeting) {
+        // Wait for next render cycle to ensure the input element exists
+        setTimeout(() => this._initializeHostsInput(), 0);
+      }
+    }
+  }
+
+  /**
+   * Initializes the meeting hosts input component with existing data.
+   * @private
+   */
+  _initializeHostsInput() {
+    const hostsInput = this.renderRoot.querySelector("#meeting-hosts-input");
+
+    if (hostsInput && this._hosts.length > 0) {
+      // Convert plain string array to the format MultipleInputs expects: {id, value}
+      const formattedItems = this._hosts.map((host, index) => ({
+        id: index,
+        value: host,
+      }));
+      hostsInput.items = formattedItems;
     }
   }
 
@@ -379,6 +430,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._createMeeting = false;
     this._requirePassword = false;
     this._providerId = "zoom";
+    this._hosts = [];
     this.requestUpdate();
   }
 
@@ -555,7 +607,7 @@ export class OnlineEventDetails extends LitWrapper {
 
         ${this._createMeeting
           ? html`
-              <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 space-y-2">
+              <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 space-y-7">
                 <div class="space-y-2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                   <select
@@ -565,7 +617,7 @@ export class OnlineEventDetails extends LitWrapper {
                     <option value="zoom" .selected="${this._providerId === "zoom"}">Zoom</option>
                   </select>
                 </div>
-                <div class="flex items-center justify-between gap-3 mt-3">
+                <div class="flex items-center justify-between gap-3">
                   <div>
                     <div class="text-sm font-medium text-stone-900">Require meeting password</div>
                     <p class="text-sm text-stone-600 leading-relaxed">
@@ -583,6 +635,19 @@ export class OnlineEventDetails extends LitWrapper {
                       class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
                     ></div>
                   </label>
+                </div>
+                <div class="space-y-2">
+                  <label class="form-label text-sm font-medium text-stone-900">Meeting hosts</label>
+                  <multiple-inputs
+                    id="meeting-hosts-input"
+                    .items="${this._hosts}"
+                    field-name="${this._getFieldName("meeting_hosts")}"
+                    input-type="email"
+                    label="Host"
+                    placeholder="host@example.com"
+                    legend="Email addresses of additional meeting hosts (optional)."
+                  >
+                  </multiple-inputs>
                 </div>
               </div>
             `

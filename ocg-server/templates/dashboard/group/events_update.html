@@ -443,6 +443,8 @@
             {% endif %}
 
             {% if let Some(meeting_error) = event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
+
+            {% if let Some(meeting_hosts) = event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
             starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
           </div>
         </div>
