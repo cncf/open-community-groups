@@ -28,7 +28,7 @@
         {# Event header with name and group -#}
         <div>
           {# Main flex container for logo, name/group, and social networks -#}
-          <div class="flex flex-1 flex-row items-stretch gap-6">
+          <div class="flex flex-1 flex-row items-stretch md:gap-6">
             {# Event logo -#}
             <div class="relative">
               {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = event.color, name = Some(event.group.name)) -%}
