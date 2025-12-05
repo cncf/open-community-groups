@@ -245,8 +245,8 @@ pub(crate) struct CreateMeetingRequest {
     pub meeting_type: i32,
     pub topic: String,
 
+    pub default_password: Option<bool>,
     pub duration: Option<Minutes>,
-    pub password: Option<String>,
     pub settings: Option<MeetingSettings>,
     pub start_time: Option<DateTime<Utc>>,
     pub timezone: Option<String>,
@@ -260,9 +260,9 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
             meeting_type: 2, // Scheduled meeting
             topic: m.topic.clone().unwrap_or_default(),
 
+            default_password: m.requires_password,
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
-            password: m.password.clone(),
-            settings: Some(default_meeting_settings(m.requires_password.unwrap_or(false))),
+            settings: Some(default_meeting_settings()),
             start_time: m.starts_at,
             timezone: m.timezone.clone(),
         })
@@ -274,8 +274,8 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct MeetingSettings {
     pub auto_recording: Option<String>,
+    pub jbh_time: Option<i32>,
     pub join_before_host: Option<bool>,
-    pub meeting_password: Option<bool>,
     pub mute_upon_entry: Option<bool>,
     pub participant_video: Option<bool>,
     pub waiting_room: Option<bool>,
@@ -308,8 +308,8 @@ struct TokenResponse {
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize)]
 pub(crate) struct UpdateMeetingRequest {
+    pub default_password: Option<bool>,
     pub duration: Option<Minutes>,
-    pub password: Option<String>,
     pub settings: Option<MeetingSettings>,
     pub start_time: Option<DateTime<Utc>>,
     pub timezone: Option<String>,
@@ -321,9 +321,9 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
 
     fn try_from(m: &Meeting) -> Result<Self, Self::Error> {
         Ok(Self {
+            default_password: m.requires_password,
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
-            password: m.password.clone(),
-            settings: Some(default_meeting_settings(m.requires_password.unwrap_or(false))),
+            settings: Some(default_meeting_settings()),
             start_time: m.starts_at,
             timezone: m.timezone.clone(),
             topic: m.topic.clone(),
@@ -443,11 +443,11 @@ pub(crate) struct ZoomMeeting {
 }
 
 /// Returns the default settings applied to all meetings.
-fn default_meeting_settings(requires_password: bool) -> MeetingSettings {
+fn default_meeting_settings() -> MeetingSettings {
     MeetingSettings {
-        auto_recording: None,
+        auto_recording: Some("cloud".to_string()),
+        jbh_time: Some(15),
         join_before_host: Some(true),
-        meeting_password: if requires_password { Some(true) } else { None },
         mute_upon_entry: Some(true),
         participant_video: Some(false),
         waiting_room: Some(false),
