@@ -64,19 +64,19 @@ export class OnlineEventDetails extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
 
-    if (this.meetingRequested) {
+    // Initialize state from attributes
+    this._joinUrl = this.meetingJoinUrl || "";
+    this._recordingUrl = this.meetingRecordingUrl || "";
+    this._createMeeting = this.meetingRequested;
+    this._requirePassword = this.meetingRequiresPassword;
+    this._providerId = this.meetingProviderId || "zoom";
+
+    // Determine mode based on meeting state
+    if (this.meetingRequested || this.meetingInSync) {
       this._mode = "automatic";
-    } else if (this.meetingJoinUrl || this.meetingRecordingUrl) {
-      this._mode = "manual";
     } else {
       this._mode = "manual";
     }
-
-    this._joinUrl = this.meetingJoinUrl || "";
-    this._recordingUrl = this.meetingRecordingUrl || "";
-    this._createMeeting = this.meetingRequested || false;
-    this._requirePassword = this.meetingRequiresPassword || false;
-    this._providerId = this.meetingProviderId || "zoom";
   }
 
   updated(changedProperties) {
@@ -229,7 +229,7 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     if (newMode === "manual" && this._mode === "automatic") {
-      const meetingExists = this.meetingInSync || (this._createMeeting && this.meetingJoinUrl);
+      const meetingExists = this.meetingInSync || this._createMeeting;
 
       if (meetingExists) {
         const confirmed = await this._confirmModeSwitch();
@@ -243,6 +243,13 @@ export class OnlineEventDetails extends LitWrapper {
       this._createMeeting = false;
       this._requirePassword = false;
     } else if (newMode === "automatic" && this._mode === "manual") {
+      const availability = this._getAutomaticAvailability();
+      if (!availability.allowed) {
+        showInfoAlert(availability.reason);
+        this.requestUpdate();
+        return;
+      }
+
       if (this.meetingInSync) {
         const confirmed = await this._confirmManualToAutomaticSwitch();
         if (!confirmed) {
@@ -386,17 +393,11 @@ export class OnlineEventDetails extends LitWrapper {
     const providerIdValue = isAutomatic ? (this._providerId || "").trim() : "";
 
     return html`
-      <input
-        type="hidden"
-        name="${this._getFieldName("meeting_join_url")}"
-        value="${joinUrlValue}"
-        ?disabled="${joinUrlValue === ""}"
-      />
+      <input type="hidden" name="${this._getFieldName("meeting_join_url")}" value="${joinUrlValue}" />
       <input
         type="hidden"
         name="${this._getFieldName("meeting_recording_url")}"
         value="${recordingUrlValue}"
-        ?disabled="${recordingUrlValue === ""}"
       />
       <input type="hidden" name="${this._getFieldName("meeting_requested")}" value="${isAutomatic}" />
       <input
@@ -404,12 +405,7 @@ export class OnlineEventDetails extends LitWrapper {
         name="${this._getFieldName("meeting_requires_password")}"
         value="${isAutomatic && this._requirePassword}"
       />
-      <input
-        type="hidden"
-        name="${this._getFieldName("meeting_provider_id")}"
-        value="${providerIdValue}"
-        ?disabled="${!isAutomatic || providerIdValue === ""}"
-      />
+      <input type="hidden" name="${this._getFieldName("meeting_provider_id")}" value="${providerIdValue}" />
     `;
   }
 
