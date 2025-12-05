@@ -133,8 +133,8 @@ impl DBMeetings for PgDB {
             meeting_id: row.get("meeting_id"),
             password: row.get("password"),
             provider: row
-                .get::<_, String>("meeting_provider_id")
-                .parse()
+                .get::<_, Option<String>>("meeting_provider_id")
+                .and_then(|s| s.parse().ok())
                 .unwrap_or_default(),
             provider_meeting_id: row.get("provider_meeting_id"),
             requires_password: row.get("requires_password"),
