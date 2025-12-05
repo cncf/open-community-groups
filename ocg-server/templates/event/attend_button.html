@@ -43,19 +43,6 @@
     <span>Cancel attendance</span>
   </button>
 
-  {% if event.is_live() %}
-    {% if let Some(meeting_join_url) = event.meeting_join_url %}
-      <a id="join-meeting-btn"
-         href="{{ meeting_join_url }}"
-         target="_blank"
-         rel="noopener noreferrer"
-         class="hidden group btn-primary-outline w-52 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
-        <div class="svg-icon size-3 icon-meeting"></div>
-        <span>Join meeting</span>
-      </a>
-    {% endif %}
-  {% endif %}
-
   <!-- Hidden element that checks attendance status -->
   <div id="attendance-checker"
        hx-get="/event/{{ event.event_id }}/attendance"
@@ -129,19 +116,24 @@
     }
   };
 
-  // Toggle visibility of meeting details on event page based on attendance
-  // and event live status
+  // Toggle visibility of meeting details and join links based on attendance
+  // status. Recordings are visible to everyone, join links only to attendees.
   const toggleMeetingDetailsVisibility = (isAttendee) => {
-    const canShow = isAttendee && (eventIsLive || hasRecording);
     const sections = document.querySelectorAll('[data-meeting-details]');
-    const meetingButtons = document.querySelectorAll('[data-meeting-link]');
+
     sections.forEach((section) => {
       const sectionHasRecording = section.dataset?.hasRecording === 'true';
-      const sectionCanShow = isAttendee && (eventIsLive || hasRecording || sectionHasRecording);
-      section.classList.toggle('hidden', !sectionCanShow);
+
+      // Show if: has recording (everyone) OR is live AND is attendee
+      const showSection = sectionHasRecording || (eventIsLive && isAttendee);
+
+      section.classList.toggle('hidden', !showSection);
     });
-    meetingButtons.forEach((button) => {
-      button.classList.toggle('hidden', !canShow);
+
+    // Hide join links for non-attendees
+    const joinLinks = document.querySelectorAll('[data-join-link]');
+    joinLinks.forEach((link) => {
+      link.classList.toggle('hidden', !isAttendee);
     });
   };
 

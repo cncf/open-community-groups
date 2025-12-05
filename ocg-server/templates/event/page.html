@@ -145,7 +145,7 @@
                     </div>
 
                     {% if let Some(meeting_join_url) = event.meeting_join_url -%}
-                      <div data-meeting-link class="hidden">
+                      <div data-join-link class="hidden">
                         <a href="{{ meeting_join_url }}"
                            target="_blank"
                            rel="noopener noreferrer"
@@ -234,18 +234,15 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
                   {% if let Some(meeting_join_url) = meeting_join_url -%}
-                    <a href="{{ meeting_join_url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
-                      <div class="svg-icon size-3 icon-meeting"></div>
-                      <span>Open meeting</span>
-                    </a>
-                    {% if let Some(starts_at) = event.starts_at -%}
-                      <span class="text-xs text-stone-500">
-                        Starts {{ starts_at.with_timezone(event.timezone).format("%B %e, %G at %I:%M %p %Z") }}
-                      </span>
-                    {% endif -%}
+                    <div data-join-link>
+                      <a href="{{ meeting_join_url }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
+                        <div class="svg-icon size-3 icon-meeting"></div>
+                        <span>Open meeting</span>
+                      </a>
+                    </div>
                   {% endif -%}
                   {% if let Some(meeting_recording_url) = meeting_recording_url -%}
                     <a href="{{ meeting_recording_url }}"
@@ -507,6 +504,7 @@
         <div class="flex flex-wrap items-center gap-3">
           {% if let Some(meeting_join_url) = session.meeting_join_url -%}
             <a href="{{ meeting_join_url }}"
+               data-join-link
                target="_blank"
                rel="noopener noreferrer"
                class="group btn-primary-outline inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
