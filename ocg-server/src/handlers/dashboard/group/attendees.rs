@@ -224,8 +224,10 @@ mod tests {
             base_url: "https://test.example.com".to_string(),
             ..Default::default()
         };
-
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/check-in/{event_id}/qr-code"))
@@ -298,7 +300,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/attendees?event_id={event_id}"))
@@ -356,7 +358,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/attendees")
@@ -470,7 +472,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/dashboard/group/notifications/{event_id}"))
@@ -539,7 +541,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/dashboard/group/notifications/{event_id}"))

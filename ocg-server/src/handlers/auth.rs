@@ -720,7 +720,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(LOG_IN_URL)
@@ -772,7 +772,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(LOG_IN_URL)
@@ -813,7 +813,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(SIGN_UP_URL)
@@ -865,7 +865,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(SIGN_UP_URL)
@@ -909,7 +909,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/section/user-menu")
@@ -982,7 +982,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.email = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1044,7 +1047,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.email = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1095,7 +1101,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(LOG_OUT_URL)
@@ -1134,7 +1140,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(LOG_OUT_URL)
@@ -1195,7 +1201,10 @@ mod tests {
                 token_url: "https://oauth.example/token".to_string(),
             },
         );
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1261,7 +1270,10 @@ mod tests {
                 token_url: "https://oauth.example/token".to_string(),
             },
         );
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1366,7 +1378,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.linuxfoundation = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1418,7 +1433,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.linuxfoundation = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1476,7 +1494,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.linuxfoundation = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let request = Request::builder()
@@ -1649,7 +1670,10 @@ mod tests {
             },
             ..Default::default()
         };
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret-password";
@@ -1700,7 +1724,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.email = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request (password not provided)
         let form = "email=test%40example.test&name=Test+User&username=test-user";
@@ -1758,7 +1785,10 @@ mod tests {
         // Setup router
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.email = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Setup request
         let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret";
@@ -1814,7 +1844,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/account/update/details")
@@ -1860,7 +1890,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/account/update/details")
@@ -1909,7 +1939,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let form = "old_password=current-password&new_password=new-password";
         let request = Request::builder()
             .method("PUT")
@@ -1961,7 +1991,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let form = "old_password=wrong-password&new_password=new-password";
         let request = Request::builder()
             .method("PUT")
@@ -2013,7 +2043,10 @@ mod tests {
         // Setup router and send request
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.email = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/verify-email/{verification_code}"))
@@ -2067,7 +2100,10 @@ mod tests {
         // Setup router and send request
         let mut server_cfg = HttpServerConfig::default();
         server_cfg.login.email = true;
-        let router = setup_test_router_with_config(db, nm, server_cfg).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/verify-email/{verification_code}"))

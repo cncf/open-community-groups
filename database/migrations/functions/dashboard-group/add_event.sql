@@ -1,7 +1,8 @@
 -- add_event adds a new event to the database.
 create or replace function add_event(
     p_group_id uuid,
-    p_event jsonb
+    p_event jsonb,
+    p_cfg_max_participants jsonb default null
 )
 returns uuid as $$
 declare
@@ -9,6 +10,7 @@ declare
     v_community_id uuid;
     v_event_speaker jsonb;
     v_host_id uuid;
+    v_provider_max_participants int;
     v_session jsonb;
     v_session_id uuid;
     v_session_speaker jsonb;
@@ -22,6 +24,18 @@ begin
     select community_id into v_community_id
     from "group"
     where group_id = p_group_id;
+
+    -- Validate event capacity against max_participants when meeting is requested
+    if (p_event->>'meeting_requested')::boolean = true then
+        v_provider_max_participants := (p_cfg_max_participants->>(p_event->>'meeting_provider_id'))::int;
+
+        if v_provider_max_participants is not null
+           and (p_event->>'capacity')::int > v_provider_max_participants
+        then
+            raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
+                (p_event->>'capacity')::int, v_provider_max_participants;
+        end if;
+    end if;
 
     -- Insert event
     insert into event (

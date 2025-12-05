@@ -339,7 +339,7 @@ mod tests {
     use crate::{
         config::HttpServerConfig,
         db::{DynDB, mock::MockDB},
-        handlers::tests::{sample_auth_user, sample_session_record, setup_test_router_with_image_storage},
+        handlers::tests::{TestRouterBuilder, sample_auth_user, sample_session_record},
         router::State as RouterState,
         services::{
             images::{DynImageStorage, Image, MockImageStorage},
@@ -626,9 +626,11 @@ mod tests {
             disable_referer_checks: true,
             ..HttpServerConfig::default()
         };
-        let router =
-            setup_test_router_with_image_storage(db, storage, MockNotificationsManager::new(), server_cfg)
-                .await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .with_image_storage(storage)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Send request without referer
         let request = Request::builder()
@@ -682,9 +684,11 @@ mod tests {
             base_url: "https://example.test".to_string(),
             ..HttpServerConfig::default()
         };
-        let router =
-            setup_test_router_with_image_storage(db, storage, MockNotificationsManager::new(), server_cfg)
-                .await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .with_image_storage(storage)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
 
         // Send request without referer
         let request = Request::builder()
@@ -743,9 +747,11 @@ mod tests {
             base_url: "https://example.test".to_string(),
             ..HttpServerConfig::default()
         };
-        let router =
-            setup_test_router_with_image_storage(db, storage, MockNotificationsManager::new(), server_cfg)
-                .await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .with_image_storage(storage)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
         let request = Request::builder()
             .method("POST")
             .uri("/images")

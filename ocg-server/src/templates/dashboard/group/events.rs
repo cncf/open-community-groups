@@ -1,5 +1,7 @@
 //! Templates and types for managing events in the group dashboard.
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use askama::Template;
 use chrono::NaiveDateTime;
@@ -34,6 +36,8 @@ pub(crate) struct AddPage {
     pub event_kinds: Vec<EventKindSummary>,
     /// Flag indicating if meetings functionality is enabled.
     pub meetings_enabled: bool,
+    /// Maximum participants per meeting provider.
+    pub meetings_max_participants: HashMap<MeetingProvider, i32>,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
     /// List of sponsors available for this group.
@@ -64,6 +68,8 @@ pub(crate) struct UpdatePage {
     pub event_kinds: Vec<EventKindSummary>,
     /// Flag indicating if meetings functionality is enabled.
     pub meetings_enabled: bool,
+    /// Maximum participants per meeting provider.
+    pub meetings_max_participants: HashMap<MeetingProvider, i32>,
     /// List of available session kinds.
     pub session_kinds: Vec<SessionKindSummary>,
     /// List of sponsors available for this group.

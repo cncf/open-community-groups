@@ -128,6 +128,8 @@ pub(crate) struct MeetingsZoomConfig {
     pub client_id: String,
     /// OAuth client secret.
     pub client_secret: String,
+    /// Maximum number of participants allowed in a meeting (Zoom plan limit).
+    pub max_participants: i32,
     /// Webhook secret token for signature verification.
     pub webhook_secret_token: String,
 }

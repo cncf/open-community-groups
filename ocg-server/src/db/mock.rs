@@ -1,5 +1,7 @@
 //! DB trait mock implementation for testing.
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
@@ -205,6 +207,7 @@ mock! {
             &self,
             group_id: Uuid,
             event: &crate::templates::dashboard::group::events::Event,
+            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<Uuid>;
         async fn add_group_sponsor(
             &self,
@@ -295,6 +298,7 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             event: &crate::templates::dashboard::group::events::Event,
+            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<()>;
         async fn update_group_sponsor(
             &self,

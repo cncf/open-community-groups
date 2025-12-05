@@ -81,6 +81,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested
@@ -95,6 +97,8 @@ insert into event (
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
+
+    100,
     false,
     'zoom',
     true
@@ -136,6 +140,7 @@ insert into event (
     starts_at,
     ends_at,
 
+    capacity,
     meeting_error,
     meeting_in_sync,
     meeting_provider_id,
@@ -152,6 +157,7 @@ insert into event (
     '2025-06-02 10:00:00-04',
     '2025-06-02 11:00:00-04',
 
+    100,
     'Previous sync error',
     false,
     'zoom',

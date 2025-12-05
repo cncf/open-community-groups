@@ -120,6 +120,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_hosts,
     meeting_in_sync,
     meeting_provider_id,
@@ -136,6 +138,8 @@ insert into event (
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
+
+    100,
     array['host1@example.com', 'host2@example.com'],
     false,
     'zoom',
@@ -155,6 +159,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -170,6 +176,8 @@ insert into event (
     'virtual',
     '2025-06-02 10:00:00-05',
     '2025-06-02 12:00:00-05',
+
+    100,
     false,
     'zoom',
     true,
@@ -192,6 +200,7 @@ insert into event (
     ends_at,
 
     canceled,
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested
@@ -208,6 +217,7 @@ insert into event (
     '2025-06-03 11:00:00-07',
 
     true,
+    100,
     false,
     'zoom',
     true
@@ -228,6 +238,7 @@ insert into event (
     starts_at,
     ends_at,
 
+    capacity,
     deleted,
     meeting_in_sync,
     meeting_provider_id,
@@ -244,6 +255,7 @@ insert into event (
     '2025-06-04 10:00:00+01',
     '2025-06-04 11:00:00+01',
 
+    100,
     true,
     false,
     'zoom',
@@ -264,6 +276,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -279,6 +293,8 @@ insert into event (
     'virtual',
     '2025-06-05 10:00:00-04',
     '2025-06-05 11:00:00-04',
+
+    100,
     true,
     'zoom',
     true,
@@ -451,6 +467,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -466,6 +484,8 @@ insert into event (
     'virtual',
     '2025-06-07 10:00:00-04',
     '2025-06-07 11:00:00-04',
+
+    100,
     true,
     'zoom',
     true,
@@ -540,6 +560,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -555,6 +577,8 @@ insert into event (
     'virtual',
     '2025-06-09 10:00:00-04',
     '2025-06-09 11:00:00-04',
+
+    100,
     true,
     'zoom',
     true,
@@ -599,6 +623,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -615,6 +641,8 @@ insert into event (
     'virtual',
     '2025-06-10 10:00:00-04',
     '2025-06-10 11:00:00-04',
+
+    100,
     true,
     'zoom',
     true,
@@ -635,6 +663,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -650,6 +680,8 @@ insert into event (
     'virtual',
     '2025-06-11 10:00:00-04',
     '2025-06-11 11:00:00-04',
+
+    100,
     true,
     'zoom',
     true,
@@ -669,6 +701,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -684,6 +718,8 @@ insert into event (
     'virtual',
     '2025-06-12 10:00:00-04',
     '2025-06-12 11:00:00-04',
+
+    100,
     true,
     'zoom',
     true,
@@ -845,6 +881,7 @@ insert into event (
     ends_at,
 
     canceled,
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested
@@ -861,6 +898,7 @@ insert into event (
     '2025-06-15 11:00:00-04',
 
     true,
+    100,
     true,
     'zoom',
     true

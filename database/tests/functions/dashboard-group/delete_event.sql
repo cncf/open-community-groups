@@ -80,6 +80,8 @@ insert into event (
     event_kind_id,
     starts_at,
     ends_at,
+
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -95,6 +97,8 @@ insert into event (
     'virtual',
     now(),
     now() + interval '1 hour',
+
+    100,
     true,
     'zoom',
     true,

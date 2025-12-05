@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -283,6 +283,7 @@ with request_event as (
             "timezone": "UTC",
             "category_id": "00000000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
+            "capacity": 100,
             "starts_at": "2025-03-01T10:00:00",
             "ends_at": "2025-03-01T11:30:00",
             "meeting_hosts": ["event-alt-host@example.com"],
@@ -366,6 +367,48 @@ select throws_ok(
     'P0001',
     'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
     'add_event should throw error when speaker user_id does not exist in community'
+);
+
+-- add_event throws error when capacity exceeds max_participants with meeting_requested
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Capacity Exceed Event", "slug": "capacity-exceed", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    )$$,
+    'P0001',
+    'event capacity (200) exceeds maximum participants allowed (100)',
+    'add_event should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
+);
+
+-- add_event succeeds when capacity is within max_participants
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Valid Capacity Event", "slug": "valid-capacity", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    ) is not null),
+    'add_event should succeed when capacity is within cfg_max_participants'
+);
+
+-- add_event succeeds when meeting_requested is false (no capacity check against max_participants)
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Meeting Event", "slug": "no-meeting", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    ) is not null),
+    'add_event should succeed with high capacity when meeting_requested is false'
+);
+
+-- add_event succeeds when cfg_max_participants is null (no limit configured)
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Limit Event", "slug": "no-limit", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        null
+    ) is not null),
+    'add_event should succeed when cfg_max_participants is null'
 );
 
 -- ============================================================================

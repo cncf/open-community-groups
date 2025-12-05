@@ -98,6 +98,7 @@ insert into event (
     ends_at,
 
     canceled,
+    capacity,
     meeting_in_sync,
     meeting_provider_id,
     meeting_requested,
@@ -117,6 +118,7 @@ insert into event (
     now() + interval '1 hour',
 
     false,
+    100,
     true,
     'zoom',
     true,

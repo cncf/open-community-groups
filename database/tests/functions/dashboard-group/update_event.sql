@@ -3,19 +3,20 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000002'
-\set event1ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set user1ID '00000000-0000-0000-0000-000000000020'
 \set user2ID '00000000-0000-0000-0000-000000000021'
 \set user3ID '00000000-0000-0000-0000-000000000022'
+\set event1ID '00000000-0000-0000-0000-000000000003'
+\set event4ID '00000000-0000-0000-0000-000000000004'
 \set event5ID '00000000-0000-0000-0000-000000000005'
 \set event6ID '00000000-0000-0000-0000-000000000006'
 \set event7ID '00000000-0000-0000-0000-000000000007'
@@ -127,6 +128,7 @@ insert into event (
     timezone,
     event_category_id,
     event_kind_id,
+    capacity,
     meeting_provider_id,
     meeting_requested,
     meeting_in_sync,
@@ -141,6 +143,7 @@ insert into event (
     'America/New_York',
     :'category1ID',
     'virtual',
+    100,
     'zoom',
     true,
     false,
@@ -251,6 +254,31 @@ insert into session (
 insert into meeting (join_url, meeting_id, meeting_provider_id, provider_meeting_id, session_id)
 values ('https://zoom.us/j/123123123', :'meeting1ID', 'zoom', '123123123', :'session2ID');
 
+-- Canceled Event
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+
+    canceled
+) values (
+    :'event4ID',
+    :'group1ID',
+    'Canceled Event',
+    'canceled-event',
+    'This event was canceled',
+    'America/New_York',
+    :'category1ID',
+    'in-person',
+
+    true
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -266,6 +294,7 @@ select update_event(
         "timezone": "America/Los_Angeles",
         "category_id": "00000000-0000-0000-0000-000000000012",
         "kind_id": "virtual",
+        "capacity": 100,
         "starts_at": "2025-02-01T14:00:00",
         "ends_at": "2025-02-01T16:00:00",
         "meeting_provider_id": "zoom",
@@ -293,6 +322,8 @@ select is(
         "sponsors": [],
         "timezone": "America/Los_Angeles",
 
+        "capacity": 100,
+        "remaining_capacity": 100,
         "ends_at": 1738454400,
         "meeting_in_sync": false,
         "meeting_provider": "zoom",
@@ -505,30 +536,6 @@ select throws_ok(
     'update_event should throw error when group_id does not match'
 );
 
--- update_event throws error for canceled event
--- First, create a canceled event for testing
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    canceled
-) values (
-    '00000000-0000-0000-0000-000000000004',
-    :'group1ID',
-    'Canceled Event',
-    'canceled-event',
-    'This event was canceled',
-    'America/New_York',
-    :'category1ID',
-    'in-person',
-    true
-);
-
 -- Test: Event meeting_in_sync=false is preserved when updating unrelated fields
 select update_event(
     :'group1ID'::uuid,
@@ -540,6 +547,7 @@ select update_event(
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
         "kind_id": "virtual",
+        "capacity": 100,
         "meeting_provider_id": "zoom",
         "meeting_requested": true,
         "starts_at": "2025-03-01T10:00:00",
@@ -705,6 +713,52 @@ select is(
     (select jsonb_build_object('meeting_id', meeting_id, 'session_id', session_id) from meeting where meeting_id = :'meeting1ID'),
     jsonb_build_object('meeting_id', :'meeting1ID'::uuid, 'session_id', null),
     'meeting becomes orphan (session_id set to null) after session deletion'
+);
+
+-- update_event throws error when capacity exceeds max_participants with meeting_requested
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    )$$,
+    'P0001',
+    'event capacity (200) exceeds maximum participants allowed (100)',
+    'update_event should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
+);
+
+-- update_event succeeds when capacity is within max_participants
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test updated", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    )$$,
+    'update_event should succeed when capacity is within cfg_max_participants'
+);
+
+-- update_event succeeds when meeting_requested is false (no capacity check against max_participants)
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test no meeting", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    )$$,
+    'update_event should succeed with high capacity when meeting_requested is false'
+);
+
+-- update_event succeeds when cfg_max_participants is null (no limit configured)
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test no limit", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
+        null
+    )$$,
+    'update_event should succeed when cfg_max_participants is null'
 );
 
 -- ============================================================================

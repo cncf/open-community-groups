@@ -50,6 +50,9 @@ alter table event
             and event_kind_id not in ('hybrid', 'virtual')
         )
     ),
+    add constraint event_meeting_capacity_required_chk check (
+        not (meeting_requested = true and capacity is null)
+    ),
     add constraint event_meeting_provider_required_chk check (
         not (meeting_requested = true and meeting_provider_id is null)
     ),

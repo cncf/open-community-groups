@@ -85,6 +85,7 @@ insert into event (
     ends_at,
 
     canceled,
+    capacity,
     meeting_error,
     meeting_in_sync,
     meeting_provider_id,
@@ -102,6 +103,7 @@ insert into event (
     '2025-06-01 11:00:00-04',
 
     true,
+    100,
     'Previous sync error',
     false,
     'zoom',

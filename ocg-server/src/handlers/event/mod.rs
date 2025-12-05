@@ -241,7 +241,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/group/test-group/event/test-event")
@@ -291,7 +291,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/group/test-group/event/test-event")
@@ -351,7 +351,9 @@ mod tests {
             .returning(|_, _| Ok(true));
 
         // Setup router and send request
-        let router = setup_test_router(db, MockNotificationsManager::new()).await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .build()
+            .await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/check-in/{event_id}"))
@@ -431,7 +433,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/event/{event_id}/attend"))
@@ -481,7 +483,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/event/{event_id}/attendance"))
@@ -537,7 +539,9 @@ mod tests {
             .returning(|_, _, _| Ok(()));
 
         // Setup router and send request
-        let router = setup_test_router(db, MockNotificationsManager::new()).await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .build()
+            .await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/check-in/{event_id}"))
@@ -587,7 +591,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("DELETE")
             .uri(format!("/event/{event_id}/leave"))
