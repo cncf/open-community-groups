@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- TESTS
@@ -266,6 +266,89 @@ select is(
     ),
     false,
     'Session kind change from virtual to in-person desyncs meeting'
+);
+
+-- meeting_hosts unchanged keeps sync
+select is(
+    is_session_meeting_in_sync(
+        '{
+            "name": "Session One",
+            "session_kind_id": "virtual",
+            "starts_at": 1748787300,
+            "ends_at": 1748789100,
+            "meeting_requested": true,
+            "meeting_requires_password": true,
+            "meeting_hosts": ["host1@example.com"]
+        }'::jsonb,
+        '{
+            "name": "Session One",
+            "kind": "virtual",
+            "starts_at": "2025-06-01T10:15:00",
+            "ends_at": "2025-06-01T10:45:00",
+            "meeting_requested": true,
+            "meeting_requires_password": true,
+            "meeting_hosts": ["host1@example.com"]
+        }'::jsonb,
+        'America/New_York',
+        'America/New_York'
+    ),
+    true,
+    'Session meeting_hosts unchanged keeps sync'
+);
+
+-- meeting_hosts change desyncs meeting
+select is(
+    is_session_meeting_in_sync(
+        '{
+            "name": "Session One",
+            "session_kind_id": "virtual",
+            "starts_at": 1748787300,
+            "ends_at": 1748789100,
+            "meeting_requested": true,
+            "meeting_requires_password": true,
+            "meeting_hosts": ["host1@example.com"]
+        }'::jsonb,
+        '{
+            "name": "Session One",
+            "kind": "virtual",
+            "starts_at": "2025-06-01T10:15:00",
+            "ends_at": "2025-06-01T10:45:00",
+            "meeting_requested": true,
+            "meeting_requires_password": true,
+            "meeting_hosts": ["host1@example.com", "host2@example.com"]
+        }'::jsonb,
+        'America/New_York',
+        'America/New_York'
+    ),
+    false,
+    'Session meeting_hosts change desyncs meeting'
+);
+
+-- meeting_hosts added desyncs meeting
+select is(
+    is_session_meeting_in_sync(
+        '{
+            "name": "Session One",
+            "session_kind_id": "virtual",
+            "starts_at": 1748787300,
+            "ends_at": 1748789100,
+            "meeting_requested": true,
+            "meeting_requires_password": true
+        }'::jsonb,
+        '{
+            "name": "Session One",
+            "kind": "virtual",
+            "starts_at": "2025-06-01T10:15:00",
+            "ends_at": "2025-06-01T10:45:00",
+            "meeting_requested": true,
+            "meeting_requires_password": true,
+            "meeting_hosts": ["host1@example.com"]
+        }'::jsonb,
+        'America/New_York',
+        'America/New_York'
+    ),
+    false,
+    'Session meeting_hosts added desyncs meeting'
 );
 
 -- ============================================================================

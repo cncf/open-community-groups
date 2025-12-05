@@ -194,6 +194,8 @@ pub struct EventFull {
     pub longitude: Option<f64>,
     /// Error message if meeting sync failed.
     pub meeting_error: Option<String>,
+    /// Meeting hosts to synchronize with provider (email addresses).
+    pub meeting_hosts: Option<Vec<String>>,
     /// Whether the event meeting is in sync.
     pub meeting_in_sync: Option<bool>,
     /// URL to join the meeting.
@@ -360,6 +362,8 @@ pub struct Session {
     pub location: Option<String>,
     /// Error message if meeting sync failed.
     pub meeting_error: Option<String>,
+    /// Meeting hosts to synchronize with provider (email addresses).
+    pub meeting_hosts: Option<Vec<String>>,
     /// Whether the meeting data is in sync with the provider.
     pub meeting_in_sync: Option<bool>,
     /// URL to join the meeting.

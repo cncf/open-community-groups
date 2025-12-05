@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(11);
 
 -- ============================================================================
 -- TESTS
@@ -214,6 +214,89 @@ select is(
     ),
     false,
     'Event timezone change desyncs meeting'
+);
+
+-- meeting_hosts unchanged keeps sync
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "meeting_hosts": ["host1@example.com", "host2@example.com"]
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "meeting_hosts": ["host1@example.com", "host2@example.com"]
+        }'::jsonb
+    ),
+    true,
+    'Event meeting_hosts unchanged keeps sync'
+);
+
+-- meeting_hosts change desyncs meeting
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "meeting_hosts": ["host1@example.com"]
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "meeting_hosts": ["host1@example.com", "host2@example.com"]
+        }'::jsonb
+    ),
+    false,
+    'Event meeting_hosts change desyncs meeting'
+);
+
+-- meeting_hosts added desyncs meeting
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "meeting_hosts": ["host1@example.com"]
+        }'::jsonb
+    ),
+    false,
+    'Event meeting_hosts added desyncs meeting'
 );
 
 -- ============================================================================

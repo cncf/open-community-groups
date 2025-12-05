@@ -103,6 +103,8 @@ pub(crate) struct Event {
     pub hosts: Option<Vec<Uuid>>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
+    /// Meeting hosts to synchronize with provider (email addresses).
+    pub meeting_hosts: Option<Vec<String>>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Desired meeting provider.
@@ -192,6 +194,8 @@ pub(crate) struct Session {
     pub ends_at: Option<NaiveDateTime>,
     /// Location for the session.
     pub location: Option<String>,
+    /// Meeting hosts to synchronize with provider (email addresses).
+    pub meeting_hosts: Option<Vec<String>>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
     /// Desired meeting provider.

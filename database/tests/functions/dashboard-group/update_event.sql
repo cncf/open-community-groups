@@ -341,6 +341,7 @@ select update_event(
         "starts_at": "2025-02-01T14:00:00",
         "ends_at": "2025-02-01T16:00:00",
         "logo_url": "https://example.com/new-logo.png",
+        "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
         "meeting_join_url": "https://youtube.com/new-live",
         "meeting_recording_url": "https://youtube.com/new-recording",
         "meetup_url": "https://meetup.com/new-event",
@@ -364,6 +365,7 @@ select update_event(
                 "starts_at": "2025-02-01T14:30:00",
                 "ends_at": "2025-02-01T15:30:00",
                 "kind": "virtual",
+                "meeting_hosts": ["session-althost@example.com"],
                 "meeting_provider_id": "zoom",
                 "meeting_requested": true,
                 "meeting_requires_password": true,
@@ -395,6 +397,7 @@ select is(
             {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
         ],
         "kind": "hybrid",
+        "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
         "meeting_in_sync": false,
         "meeting_requested": false,
         "meeting_requires_password": true,
@@ -442,6 +445,7 @@ select ok(
                 "starts_at": 1738387800,
                 "ends_at": 1738391400,
                 "kind": "virtual",
+                "meeting_hosts": ["session-althost@example.com"],
                 "meeting_provider": "zoom",
                 "meeting_requested": true,
                 "speakers": [

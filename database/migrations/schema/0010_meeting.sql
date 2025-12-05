@@ -33,6 +33,7 @@ alter table event
     rename column streaming_url to meeting_join_url;
 alter table event
     add column meeting_error text check (meeting_error <> ''),
+    add column meeting_hosts text[],
     add column meeting_in_sync boolean,
     add column meeting_provider_id text references meeting_provider,
     add column meeting_requested boolean,
@@ -66,6 +67,7 @@ alter table session
     rename column streaming_url to meeting_join_url;
 alter table session
     add column meeting_error text check (meeting_error <> ''),
+    add column meeting_hosts text[],
     add column meeting_in_sync boolean,
     add column meeting_provider_id text references meeting_provider,
     add column meeting_requested boolean,

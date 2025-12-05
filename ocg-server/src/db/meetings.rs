@@ -129,6 +129,7 @@ impl DBMeetings for PgDB {
             delete: row.get("delete"),
             duration,
             event_id: row.get("event_id"),
+            hosts: row.get("hosts"),
             join_url: row.get("join_url"),
             meeting_id: row.get("meeting_id"),
             password: row.get("password"),

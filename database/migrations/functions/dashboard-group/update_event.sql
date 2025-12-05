@@ -53,6 +53,7 @@ begin
         description_short = nullif(p_event->>'description_short', ''),
         ends_at = (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
         logo_url = nullif(p_event->>'logo_url', ''),
+        meeting_hosts = case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
         meeting_in_sync = case
             when (v_event_before->>'meeting_in_sync')::boolean = false
                  and (p_event->>'meeting_requested')::boolean is distinct from false
@@ -168,6 +169,7 @@ begin
                     ends_at = (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                     session_kind_id = v_session->>'kind',
                     location = v_session->>'location',
+                    meeting_hosts = case when v_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(v_session->'meeting_hosts')) else null end,
                     meeting_in_sync = case
                         when (v_session_before->>'meeting_in_sync')::boolean = false
                              and (v_session->>'meeting_requested')::boolean is distinct from false
@@ -196,6 +198,7 @@ begin
                     ends_at,
                     session_kind_id,
                     location,
+                    meeting_hosts,
                     meeting_in_sync,
                     meeting_join_url,
                     meeting_provider_id,
@@ -210,6 +213,7 @@ begin
                     (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                     v_session->>'kind',
                     v_session->>'location',
+                    case when v_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(v_session->'meeting_hosts')) else null end,
                     case
                         when (v_session->>'meeting_requested')::boolean = true then false
                         else null

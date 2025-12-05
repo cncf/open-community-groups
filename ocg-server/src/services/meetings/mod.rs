@@ -355,6 +355,7 @@ pub(crate) struct Meeting {
     pub delete: Option<bool>,
     pub duration: Option<Duration>,
     pub event_id: Option<Uuid>,
+    pub hosts: Option<Vec<String>>,
     pub join_url: Option<String>,
     pub meeting_id: Option<Uuid>,
     pub password: Option<String>,

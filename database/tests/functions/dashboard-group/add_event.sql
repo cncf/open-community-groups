@@ -133,6 +133,7 @@ with new_event as (
             "starts_at": "2025-01-01T10:00:00",
             "ends_at": "2025-01-01T12:00:00",
             "logo_url": "https://example.com/logo.png",
+            "meeting_hosts": ["host1@example.com", "host2@example.com"],
             "meeting_join_url": "https://youtube.com/live",
             "meeting_recording_url": "https://youtube.com/recording",
             "meetup_url": "https://meetup.com/event",
@@ -164,6 +165,7 @@ with new_event as (
                     "starts_at": "2025-01-01T11:00:00",
                     "ends_at": "2025-01-01T11:45:00",
                     "kind": "virtual",
+                    "meeting_hosts": ["session-host@example.com"],
                     "meeting_join_url": "https://youtube.com/live/session2",
                     "speakers": [
                         {"user_id": "00000000-0000-0000-0000-000000000020", "featured": false},
@@ -211,6 +213,7 @@ select is(
         "starts_at": 1735754400,
         "ends_at": 1735761600,
         "logo_url": "https://example.com/logo.png",
+        "meeting_hosts": ["host1@example.com", "host2@example.com"],
         "meeting_join_url": "https://youtube.com/live",
         "meeting_recording_url": "https://youtube.com/recording",
         "meetup_url": "https://meetup.com/event",
@@ -246,6 +249,7 @@ select ok(
                 "starts_at": 1735758000,
                 "ends_at": 1735760700,
                 "kind": "virtual",
+                "meeting_hosts": ["session-host@example.com"],
                 "meeting_join_url": "https://youtube.com/live/session2",
                 "speakers": [
                     {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1", "featured": false},
@@ -281,6 +285,7 @@ with request_event as (
             "kind_id": "virtual",
             "starts_at": "2025-03-01T10:00:00",
             "ends_at": "2025-03-01T11:30:00",
+            "meeting_hosts": ["event-alt-host@example.com"],
             "meeting_provider_id": "zoom",
             "meeting_requested": true,
             "meeting_requires_password": true,
@@ -291,6 +296,7 @@ with request_event as (
                     "starts_at": "2025-03-01T10:00:00",
                     "ends_at": "2025-03-01T11:00:00",
                     "kind": "virtual",
+                    "meeting_hosts": ["session-alt-host@example.com"],
                     "meeting_provider_id": "zoom",
                     "meeting_requested": true,
                     "meeting_requires_password": true
@@ -304,12 +310,14 @@ select is(
     (
         select jsonb_build_object(
             'event', jsonb_build_object(
+                'meeting_hosts', meeting_hosts,
                 'meeting_requested', meeting_requested,
                 'meeting_in_sync', meeting_in_sync,
                 'meeting_requires_password', meeting_requires_password
             ),
             'session', (
                 select jsonb_build_object(
+                    'meeting_hosts', meeting_hosts,
                     'meeting_requested', meeting_requested,
                     'meeting_in_sync', meeting_in_sync,
                     'meeting_requires_password', meeting_requires_password
@@ -323,17 +331,19 @@ select is(
     ),
     '{
         "event": {
+            "meeting_hosts": ["event-alt-host@example.com"],
             "meeting_requested": true,
             "meeting_in_sync": false,
             "meeting_requires_password": true
         },
         "session": {
+            "meeting_hosts": ["session-alt-host@example.com"],
             "meeting_requested": true,
             "meeting_in_sync": false,
             "meeting_requires_password": true
         }
     }'::jsonb,
-    'add_event sets meeting flags consistently for event and session when requested'
+    'add_event sets meeting flags and hosts for event and session when requested'
 );
 
 -- add_event throws error for invalid host user_id
