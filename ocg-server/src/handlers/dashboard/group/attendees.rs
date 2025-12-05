@@ -60,14 +60,14 @@ pub(crate) async fn generate_check_in_qr_code(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(cfg): State<HttpServerConfig>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Ensure the event belongs to the selected group before generating the QR code
     db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Get base URL from configuration
-    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
 
     // Construct check-in URL
     let check_in_url = format!("{base_url}/check-in/{event_id}");
@@ -96,9 +96,9 @@ pub(crate) async fn send_event_custom_notification(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     Form(notification): Form<EventCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -118,7 +118,7 @@ pub(crate) async fn send_event_custom_notification(
     }
 
     // Enqueue notification
-    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
     let template_data = EventCustom {
         body: notification.body.clone(),
@@ -220,12 +220,14 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let cfg = HttpServerConfig {
+        let server_cfg = HttpServerConfig {
             base_url: "https://test.example.com".to_string(),
             ..Default::default()
         };
-
-        let router = setup_test_router_with_config(cfg, db, nm).await;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/check-in/{event_id}/qr-code"))
@@ -298,7 +300,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/attendees?event_id={event_id}"))
@@ -356,7 +358,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/attendees")
@@ -470,7 +472,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/dashboard/group/notifications/{event_id}"))
@@ -539,7 +541,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/dashboard/group/notifications/{event_id}"))

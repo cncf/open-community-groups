@@ -177,7 +177,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user/invitations")
@@ -239,7 +239,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user/invitations")
@@ -294,7 +294,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/user/invitations/community/accept")
@@ -354,7 +354,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/user/invitations/group/{group_id}/accept"))
@@ -413,7 +413,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/user/invitations/community/reject")
@@ -468,7 +468,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/user/invitations/group/{group_id}/reject"))

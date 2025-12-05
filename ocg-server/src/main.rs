@@ -6,7 +6,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]
 
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -21,8 +21,11 @@ use tracing_subscriber::EnvFilter;
 use crate::{
     config::{Config, ImageStorageConfig, LogFormat},
     db::PgDB,
-    services::images::{DbImageStorage, DynImageStorage, S3ImageStorage},
-    services::notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
+    services::{
+        images::{DbImageStorage, DynImageStorage, S3ImageStorage},
+        meetings::{DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider},
+        notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
+    },
 };
 
 /// Authentication and authorization functionality.
@@ -91,6 +94,31 @@ async fn main() -> Result<()> {
         });
     }
 
+    // Setup image storage provider.
+    let image_storage: DynImageStorage = match &cfg.images {
+        ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db.clone())),
+        ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
+    };
+
+    // Setup meetings manager (if any provider is configured).
+    let mut meetings_providers = HashMap::new();
+    if let Some(ref meetings_cfg) = cfg.meetings
+        && let Some(ref zoom_cfg) = meetings_cfg.zoom
+    {
+        meetings_providers.insert(
+            MeetingProvider::Zoom,
+            Arc::new(ZoomMeetingsProvider::new(zoom_cfg)) as DynMeetingsProvider,
+        );
+    }
+    if !meetings_providers.is_empty() {
+        let _meetings_manager = Arc::new(MeetingsManager::new(
+            Arc::new(meetings_providers),
+            db.clone(),
+            &task_tracker,
+            &cancellation_token,
+        ));
+    }
+
     // Setup notifications manager.
     let email_sender: DynEmailSender = Arc::new(LettreEmailSender::new(&cfg.email)?);
     let notifications_manager = Arc::new(PgNotificationsManager::new(
@@ -101,14 +129,15 @@ async fn main() -> Result<()> {
         &cancellation_token,
     ));
 
-    // Setup image storage provider.
-    let image_storage: DynImageStorage = match &cfg.images {
-        ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db.clone())),
-        ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
-    };
-
     // Setup and launch the HTTP server.
-    let router = router::setup(&cfg.server, db, notifications_manager, image_storage).await?;
+    let router = router::setup(
+        db,
+        image_storage,
+        cfg.meetings.clone(),
+        notifications_manager,
+        &cfg.server,
+    )
+    .await?;
     let listener = TcpListener::bind(&cfg.server.addr).await?;
     info!("server started");
     info!(%cfg.server.addr, "listening");

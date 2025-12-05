@@ -410,6 +410,7 @@ input:placeholder-shown {
 .icon-marker { --icon-url: url('/static/images/icons/marker.svg'); }
 .icon-meetup { --icon-url: url('/static/images/icons/meetup.svg'); }
 .icon-members { --icon-url: url('/static/images/icons/members.svg'); }
+.icon-meeting { --icon-url: url('/static/images/icons/meeting.svg'); }
 .icon-next { --icon-url: url('/static/images/icons/next.svg'); }
 .icon-pencil { --icon-url: url('/static/images/icons/pencil.svg'); }
 .icon-pending-invitation { --icon-url: url('/static/images/icons/pending_invitation.svg'); }
@@ -420,6 +421,7 @@ input:placeholder-shown {
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
+.icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
@@ -431,6 +433,7 @@ input:placeholder-shown {
 .icon-user-small { --icon-url: url('/static/images/icons/user_small.svg'); }
 .icon-vertical-dots { --icon-url: url('/static/images/icons/vertical_dots.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
+.icon-warning { --icon-url: url('/static/images/icons/warning.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
 .icon-youtube { --icon-url: url('/static/images/icons/youtube.svg'); }

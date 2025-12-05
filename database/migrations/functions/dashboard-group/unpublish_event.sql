@@ -5,7 +5,13 @@ create or replace function unpublish_event(
 )
 returns void as $$
 begin
+    -- Update event to mark as unpublished
+    -- Also set meeting_in_sync to false to trigger meeting deletion when applicable
     update event set
+        meeting_in_sync = case
+            when meeting_requested = true then false
+            else meeting_in_sync
+        end,
         published = false,
         published_at = null,
         published_by = null
@@ -16,5 +22,10 @@ begin
     if not found then
         raise exception 'event not found or inactive';
     end if;
+
+    -- Mark sessions as out of sync to trigger meeting deletion
+    update session set meeting_in_sync = false
+    where event_id = p_event_id
+    and meeting_requested = true;
 end;
 $$ language plpgsql;

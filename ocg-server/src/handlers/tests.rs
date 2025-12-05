@@ -341,9 +341,11 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         latitude: Some(42.0),
         logo_url: Some("https://example.test/logo.png".to_string()),
         longitude: Some(-71.0),
+        meeting_join_url: Some("https://example.test/meeting".to_string()),
+        meeting_password: None,
+        meeting_provider: None,
         popover_html: None,
         remaining_capacity: None,
-        streaming_url: Some("https://example.test/stream".to_string()),
         starts_at: Some(starts_at),
         venue_city: Some("Boston".to_string()),
         venue_address: Some("456 Sample Rd".to_string()),
@@ -637,32 +639,54 @@ pub(crate) fn sample_template_user() -> TemplateUser {
     }
 }
 
-/// Builds the application router with the default configuration for handler tests.
-pub(crate) async fn setup_test_router(db: MockDB, nm: MockNotificationsManager) -> Router {
-    setup_test_router_with_image_storage(HttpServerConfig::default(), db, nm, MockImageStorage::new()).await
+/// Builder for test router configuration.
+pub(crate) struct TestRouterBuilder {
+    db: MockDB,
+    image_storage: Option<MockImageStorage>,
+    meetings_cfg: Option<crate::config::MeetingsConfig>,
+    nm: MockNotificationsManager,
+    server_cfg: Option<HttpServerConfig>,
 }
 
-/// Builds the application router with a custom configuration for handler tests.
-pub(crate) async fn setup_test_router_with_config(
-    cfg: HttpServerConfig,
-    db: MockDB,
-    nm: MockNotificationsManager,
-) -> Router {
-    setup_test_router_with_image_storage(cfg, db, nm, MockImageStorage::new()).await
-}
+impl TestRouterBuilder {
+    /// Creates a new test router builder with required dependencies.
+    pub(crate) fn new(db: MockDB, nm: MockNotificationsManager) -> Self {
+        Self {
+            db,
+            image_storage: None,
+            meetings_cfg: None,
+            nm,
+            server_cfg: None,
+        }
+    }
 
-/// Builds the application router with a custom image storage for handler tests.
-pub(crate) async fn setup_test_router_with_image_storage(
-    cfg: HttpServerConfig,
-    db: MockDB,
-    nm: MockNotificationsManager,
-    image_storage: MockImageStorage,
-) -> Router {
-    let db: DynDB = Arc::new(db);
-    let nm: DynNotificationsManager = Arc::new(nm);
-    let is: DynImageStorage = Arc::new(image_storage);
+    /// Builds the application router with the configured options.
+    pub(crate) async fn build(self) -> Router {
+        let db: DynDB = Arc::new(self.db);
+        let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
+        let nm: DynNotificationsManager = Arc::new(self.nm);
+        let server_cfg = self.server_cfg.unwrap_or_default();
 
-    router::setup(&cfg, db, nm, is)
-        .await
-        .expect("router setup should succeed")
+        router::setup(db, is, self.meetings_cfg, nm, &server_cfg)
+            .await
+            .expect("router setup should succeed")
+    }
+
+    /// Sets a custom image storage.
+    pub(crate) fn with_image_storage(mut self, is: MockImageStorage) -> Self {
+        self.image_storage = Some(is);
+        self
+    }
+
+    /// Sets a custom meetings configuration.
+    pub(crate) fn with_meetings_cfg(mut self, cfg: crate::config::MeetingsConfig) -> Self {
+        self.meetings_cfg = Some(cfg);
+        self
+    }
+
+    /// Sets a custom server configuration.
+    pub(crate) fn with_server_cfg(mut self, cfg: HttpServerConfig) -> Self {
+        self.server_cfg = Some(cfg);
+        self
+    }
 }

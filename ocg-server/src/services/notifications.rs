@@ -31,7 +31,7 @@ use crate::{
 };
 
 /// Number of concurrent workers that deliver notifications.
-const NUM_WORKERS: usize = 1;
+const NUM_WORKERS: usize = 2;
 
 /// Time to wait after a delivery error before retrying.
 const PAUSE_ON_ERROR: Duration = Duration::from_secs(10);

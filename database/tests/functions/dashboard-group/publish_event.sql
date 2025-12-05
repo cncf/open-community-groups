@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,9 @@ select plan(4);
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set eventID '00000000-0000-0000-0000-000000000031'
+\set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
+\set sessionMeetingID '00000000-0000-0000-0000-000000000051'
+\set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
 \set userID '00000000-0000-0000-0000-000000000041'
 
 -- ============================================================================
@@ -81,7 +84,7 @@ insert into "user" (
     'user'
 );
 
--- Event (unpublished)
+-- Event (unpublished, with meeting_in_sync=true to verify it gets set to false)
 insert into event (
     event_id,
     group_id,
@@ -91,6 +94,13 @@ insert into event (
     timezone,
     event_category_id,
     event_kind_id,
+    starts_at,
+    ends_at,
+
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published
 ) values (
     :'eventID',
@@ -100,7 +110,89 @@ insert into event (
     'A test event',
     'UTC',
     :'eventCategoryID',
+    'virtual',
+    '2025-06-01 10:00:00+00',
+    '2025-06-01 11:00:00+00',
+
+    100,
+    true,
+    'zoom',
+    true,
+    false
+);
+
+-- Event without meeting_requested (to verify meeting_in_sync is not changed)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_requested,
+    published
+) values (
+    :'eventNoMeetingID',
+    :'groupID',
+    'Test Event No Meeting',
+    'test-event-no-meeting',
+    'A test event without meeting',
+    'UTC',
+    :'eventCategoryID',
     'in-person',
+    '2025-06-02 10:00:00+00',
+    '2025-06-02 11:00:00+00',
+    null,
+    false,
+    false
+);
+
+-- Session with meeting_requested=true (should be marked as out of sync)
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingID',
+    :'eventID',
+    'Session With Meeting',
+    '2025-06-01 10:00:00+00',
+    '2025-06-01 10:30:00+00',
+    'virtual',
+    true,
+    'zoom',
+    true
+);
+
+-- Session with meeting_requested=false (should NOT be marked as out of sync)
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_in_sync,
+    meeting_requested
+) values (
+    :'sessionNoMeetingID',
+    :'eventID',
+    'Session Without Meeting',
+    '2025-06-01 10:30:00+00',
+    '2025-06-01 11:00:00+00',
+    'in-person',
+    null,
     false
 );
 
@@ -127,6 +219,35 @@ select is(
     (select published_by from event where event_id = :'eventID')::text,
     :'userID',
     'publish_event should set published_by to the user'
+);
+
+-- Test: publish_event should set event meeting_in_sync to false
+select is(
+    (select meeting_in_sync from event where event_id = :'eventID'),
+    false,
+    'publish_event should set event meeting_in_sync=false'
+);
+
+-- Test: publish_event should set session meeting_in_sync to false when meeting_requested=true
+select is(
+    (select meeting_in_sync from session where session_id = :'sessionMeetingID'),
+    false,
+    'publish_event should set session meeting_in_sync=false when meeting_requested=true'
+);
+
+-- Test: publish_event should NOT change session meeting_in_sync when meeting_requested=false
+select is(
+    (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
+    null,
+    'publish_event should not change session meeting_in_sync when meeting_requested=false'
+);
+
+-- Test: publish_event should NOT change event meeting_in_sync when meeting_requested=false
+select publish_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid, :'userID'::uuid);
+select is(
+    (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
+    null,
+    'publish_event should not change event meeting_in_sync when meeting_requested=false'
 );
 
 -- Test: publish_event should throw error when group_id does not match

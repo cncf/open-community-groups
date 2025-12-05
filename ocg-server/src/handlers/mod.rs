@@ -24,6 +24,8 @@ pub(crate) mod extractors;
 pub(crate) mod group;
 /// Images handlers.
 pub(crate) mod images;
+/// Meetings handlers.
+pub(crate) mod meetings;
 /// Shared tests helpers for handlers modules.
 #[cfg(test)]
 pub(crate) mod tests;

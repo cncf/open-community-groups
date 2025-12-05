@@ -71,7 +71,9 @@
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#update-event-button, #cancel-button"
-                hx-exclude="[name=toggle_registration_required]">Update</button>
+                hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_meeting_requires_password]">
+          Update
+        </button>
       </div>
       {# End save button -#}
     </div>
@@ -415,38 +417,35 @@
 
         {# Online Event Details section -#}
         <div class="pb-12">
-          {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
+          {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
+          <div class="mt-10 max-w-5xl">
+            <online-event-details id="online-event-details" kind="{{ event.kind }}"
+            {% if let Some(meeting_join_url) = event.meeting_join_url %}
+              meeting-join-url="{{ meeting_join_url }}"
+            {% endif %}
 
-          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-            {# Streaming URL -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="streaming_url" class="form-label">Streaming URL</label>
-              <div class="mt-2">
-                <input type="url"
-                       name="streaming_url"
-                       id="streaming_url"
-                       class="input-primary"
-                       placeholder="https://zoom.us/j/123456789"
-                       {% if let Some(streaming_url) = event.streaming_url %}value="{{ streaming_url }}"{% endif %}>
-              </div>
-              <p class="form-legend">URL for live streaming or video conference.</p>
-            </div>
-            {# End Streaming URL -#}
+            {% if let Some(meeting_recording_url) = event.meeting_recording_url %}
+              meeting-recording-url="{{ meeting_recording_url }}"
+            {% endif %}
 
-            {# Recording URL -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="recording_url" class="form-label">Recording URL</label>
-              <div class="mt-2">
-                <input type="url"
-                       name="recording_url"
-                       id="recording_url"
-                       class="input-primary"
-                       placeholder="https://youtube.com/watch?v=..."
-                       {% if let Some(recording_url) = event.recording_url %}value="{{ recording_url }}"{% endif %}>
-              </div>
-              <p class="form-legend">URL to the event recording (can be added after the event).</p>
-            </div>
-            {# End Recording URL -#}
+            {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}
+
+            {% if event.meeting_requires_password.unwrap_or(false) %}meeting-requires-password="true"{% endif %}
+
+            {% if let Some(meeting_in_sync) = event.meeting_in_sync %}
+
+              {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}
+
+            {% endif %}
+
+            {% if let Some(meeting_password) = event.meeting_password %}
+              meeting-password="{{ meeting_password }}"
+            {% endif %}
+
+            {% if let Some(meeting_error) = event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
+
+            {% if let Some(meeting_hosts) = event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
+            starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
           </div>
         </div>
         {# End online event details section -#}
@@ -515,14 +514,19 @@
     showErrorAlert,
     showSuccessAlert
   } from '/static/js/common/alerts.js';
+  import {
+    validateMeetingRequest
+  } from '/static/js/dashboard/group/meeting-validations.js';
   import '/static/js/common/user-search-selector.js';
   import '/static/js/common/speakers-selector.js';
+  import '/static/js/common/online-event-details.js';
 
   const updateEventButton = document.getElementById('update-event-button');
   const cancelButton = document.getElementById('cancel-button');
   const kindSelect = document.getElementById('kind_id');
   const venueSection = document.getElementById('venue-section');
   const onlineSection = document.getElementById('online-section');
+  const onlineEventDetails = document.getElementById('online-event-details');
 
   // Tab switching functionality
   function displayActiveSection(sectionName) {
@@ -583,6 +587,28 @@
     });
   }
 
+  // Update component kind when event kind changes
+  if (kindSelect && onlineEventDetails) {
+    onlineEventDetails.kind = kindSelect.value;
+    kindSelect.addEventListener('change', () => {
+      onlineEventDetails.kind = kindSelect.value;
+    });
+  }
+
+  // Update component starts/ends times when they change for validation
+  const startsAtInput = document.getElementById('starts_at');
+  const endsAtInput = document.getElementById('ends_at');
+  if (startsAtInput && onlineEventDetails) {
+    startsAtInput.addEventListener('change', () => {
+      onlineEventDetails.startsAt = startsAtInput.value;
+    });
+  }
+  if (endsAtInput && onlineEventDetails) {
+    endsAtInput.addEventListener('change', () => {
+      onlineEventDetails.endsAt = endsAtInput.value;
+    });
+  }
+
   if (cancelButton) {
     cancelButton.addEventListener('htmx:afterRequest', () => {
       history.pushState({}, "Events list", '/dashboard/group?tab=events');
@@ -596,7 +622,15 @@
         // Use multiple form validation
         const isValid = validateEventForms();
 
-        if (!isValid) {
+        // Validate online event details component
+        let onlineValid = true;
+        if (onlineEventDetails) {
+          onlineEventDetails.startsAt = startsAtInput?.value || '';
+          onlineEventDetails.endsAt = endsAtInput?.value || '';
+          onlineValid = onlineEventDetails.validate(displayActiveSection);
+        }
+
+        if (!isValid || !onlineValid) {
           // Prevent form submission
           e.preventDefault();
           return false;

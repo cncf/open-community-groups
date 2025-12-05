@@ -96,7 +96,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/{group_id}/select"))

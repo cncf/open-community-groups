@@ -12,6 +12,7 @@ rust-version = "1.91.0"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
+base64 = "0.22"
 askama = { version = "0.14.0", features = ["serde_json"] }
 async-trait = "0.1.89"
 aws-credential-types = "1.2.8"
@@ -29,6 +30,8 @@ chrono-tz = { version = "0.10.4", features = ["serde"] }
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
 emojis = "0.8.0"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
+hex = "0.4"
+hmac = "0.12"
 icalendar = "0.17.5"
 image = { version = "0.25.2", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
 lettre = { version = "0.11.19", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
@@ -55,6 +58,7 @@ serde_qs = "0.15.0"
 serde_with = "3.15.1"
 sha2 = "0.10.9"
 strum = { version = "0.27", features = ["derive"] }
+subtle = "2.5"
 thiserror = "2.0.17"
 time = "0.3.44"
 tokio = { version = "1.48.0", features = [

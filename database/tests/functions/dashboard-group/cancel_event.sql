@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,9 @@ select plan(5);
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set eventID '00000000-0000-0000-0000-000000000031'
+\set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
+\set sessionMeetingID '00000000-0000-0000-0000-000000000051'
+\set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
 \set userID '00000000-0000-0000-0000-000000000041'
 
 -- ============================================================================
@@ -91,10 +94,17 @@ insert into event (
     timezone,
     event_category_id,
     event_kind_id,
+    starts_at,
+    ends_at,
+
+    canceled,
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested,
     published,
     published_at,
-    published_by,
-    canceled
+    published_by
 ) values (
     :'eventID',
     :'groupID',
@@ -103,10 +113,98 @@ insert into event (
     'A test event',
     'UTC',
     :'eventCategoryID',
+    'virtual',
+    now(),
+    now() + interval '1 hour',
+
+    false,
+    100,
+    true,
+    'zoom',
+    true,
+    true,
+    now(),
+    :'userID'
+);
+
+-- Event without meeting_requested (to verify meeting_in_sync is not changed)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+    meeting_in_sync,
+    meeting_requested,
+    published,
+    published_at,
+    published_by,
+    canceled
+) values (
+    :'eventNoMeetingID',
+    :'groupID',
+    'Test Event No Meeting',
+    'test-event-no-meeting',
+    'A test event without meeting',
+    'UTC',
+    :'eventCategoryID',
     'in-person',
+    now(),
+    now() + interval '1 hour',
+    null,
+    false,
     true,
     now(),
     :'userID',
+    false
+);
+
+-- Session with meeting_requested=true (should be marked as out of sync)
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_requested
+) values (
+    :'sessionMeetingID',
+    :'eventID',
+    'Session With Meeting',
+    now(),
+    now() + interval '30 minutes',
+    'virtual',
+    true,
+    'zoom',
+    true
+);
+
+-- Session with meeting_requested=false (should NOT be marked as out of sync)
+insert into session (
+    session_id,
+    event_id,
+    name,
+    starts_at,
+    ends_at,
+    session_kind_id,
+    meeting_in_sync,
+    meeting_requested
+) values (
+    :'sessionNoMeetingID',
+    :'eventID',
+    'Session Without Meeting',
+    now() + interval '30 minutes',
+    now() + interval '1 hour',
+    'in-person',
+    null,
     false
 );
 
@@ -139,6 +237,34 @@ select is(
     (select published_by from event where event_id = :'eventID'),
     null,
     'cancel_event should set published_by to null'
+);
+
+select is(
+    (select meeting_in_sync from event where event_id = :'eventID'),
+    false,
+    'cancel_event should mark meeting_in_sync false when meeting was requested'
+);
+
+-- Test: cancel_event should set session meeting_in_sync to false when meeting_requested=true
+select is(
+    (select meeting_in_sync from session where session_id = :'sessionMeetingID'),
+    false,
+    'cancel_event should set session meeting_in_sync=false when meeting_requested=true'
+);
+
+-- Test: cancel_event should NOT change session meeting_in_sync when meeting_requested=false
+select is(
+    (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
+    null,
+    'cancel_event should not change session meeting_in_sync when meeting_requested=false'
+);
+
+-- Test: cancel_event should NOT change event meeting_in_sync when meeting_requested=false
+select cancel_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid);
+select is(
+    (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
+    null,
+    'cancel_event should not change event meeting_in_sync when meeting_requested=false'
 );
 
 -- Test: cancel_event should throw error when group_id does not match

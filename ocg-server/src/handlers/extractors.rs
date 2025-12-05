@@ -341,9 +341,9 @@ mod tests {
 
         // Setup config
         let scopes = vec!["read:user".to_string()];
-        let mut cfg = HttpServerConfig::default();
-        cfg.login.github = true;
-        cfg.oauth2.insert(
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.github = true;
+        server_cfg.oauth2.insert(
             OAuth2Provider::GitHub,
             OAuth2ProviderConfig {
                 auth_url: "https://github.com/login/oauth/authorize".to_string(),
@@ -357,14 +357,14 @@ mod tests {
 
         // Setup auth layer with the configured provider
         let session_layer = SessionManagerLayer::new(MemoryStore::default());
-        let backend = AuthnBackend::new(db.clone(), &cfg.oauth2, &cfg.oidc)
+        let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
             .await
             .expect("backend setup should succeed");
         let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
         // Setup router
         let mut state = build_state(db, is, nm);
-        state.cfg = cfg;
+        state.server_cfg = server_cfg;
         let router = Router::new()
             .route(
                 "/log-in/oauth2/{provider}",
@@ -455,9 +455,9 @@ mod tests {
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup auth layer with an empty set of OAuth2 providers
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let session_layer = SessionManagerLayer::new(MemoryStore::default());
-        let backend = AuthnBackend::new(db.clone(), &cfg.oauth2, &cfg.oidc)
+        let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
             .await
             .expect("backend setup should succeed");
         let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
@@ -551,9 +551,9 @@ mod tests {
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
         // Setup auth layer with an empty set of OIDC providers
-        let cfg = HttpServerConfig::default();
+        let server_cfg = HttpServerConfig::default();
         let session_layer = SessionManagerLayer::new(MemoryStore::default());
-        let backend = AuthnBackend::new(db.clone(), &cfg.oauth2, &cfg.oidc)
+        let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
             .await
             .expect("backend setup should succeed");
         let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
@@ -666,11 +666,12 @@ mod tests {
     /// Builds router state with the provided database and notifications manager.
     fn build_state(db: DynDB, image_storage: DynImageStorage, nm: DynNotificationsManager) -> router::State {
         router::State {
-            cfg: HttpServerConfig::default(),
             db,
             image_storage,
+            meetings_cfg: None,
             notifications_manager: nm,
             serde_qs_de: serde_qs::Config::new(3, false),
+            server_cfg: HttpServerConfig::default(),
         }
     }
 }
