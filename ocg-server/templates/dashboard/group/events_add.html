@@ -224,7 +224,14 @@
                      class="input-primary"
                      placeholder="100">
             </div>
-            <p class="form-legend">Maximum number of attendees.</p>
+            <p class="form-legend">
+              Maximum number of attendees.
+              <strong class="text-amber-600">Required when requesting automatic meeting creation.</strong>
+            </p>
+            <p class="form-legend text-xs text-stone-500 mt-1">
+              Note: Meeting providers have participant limits. If capacity exceeds your provider
+              limit, attendees may be unable to join the meeting.
+            </p>
           </div>
           {# End Capacity -#}
 
@@ -418,7 +425,7 @@
         <div class="pb-12">
           {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
           <div class="mt-10 max-w-5xl">
-            <online-event-details id="online-event-details" kind="virtual"></online-event-details>
+            <online-event-details id="online-event-details" kind="virtual" meeting-max-participants="{{ meetings_max_participants|json }}"></online-event-details>
           </div>
         </div>
         {# End online event details section -#}

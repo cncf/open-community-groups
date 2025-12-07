@@ -3,6 +3,7 @@
  */
 export const MIN_MEETING_MINUTES = 5;
 export const MAX_MEETING_MINUTES = 720;
+export const DEFAULT_MEETING_PROVIDER = "zoom";
 
 /**
  * Validates whether automatic meeting creation is allowed for the provided data.
@@ -11,6 +12,8 @@ export const MAX_MEETING_MINUTES = 720;
  * @param {string} params.kindValue Event kind value
  * @param {string} params.startsAtValue Start datetime-local string
  * @param {string} params.endsAtValue End datetime-local string
+ * @param {number} [params.capacityValue] Event capacity value
+ * @param {number} [params.capacityLimit] Meeting provider capacity limit
  * @param {function} params.showError Function to display error messages
  * @param {function} [params.displaySection] Optional section switcher
  * @param {HTMLElement} [params.startsAtInput] Start input element to focus
@@ -22,6 +25,8 @@ export const validateMeetingRequest = ({
   kindValue,
   startsAtValue,
   endsAtValue,
+  capacityValue,
+  capacityLimit,
   showError,
   displaySection,
   startsAtInput,
@@ -81,6 +86,18 @@ export const validateMeetingRequest = ({
     displaySection?.("date-venue");
     endsAtInput?.focus();
     return false;
+  }
+
+  if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
+    showError("Event capacity is required for automatic meeting creation.");
+    displaySection?.("details");
+    return false;
+  }
+
+  if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
+    console.warn(
+      `Event capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Verify your meeting provider supports this many participants.`,
+    );
   }
 
   return true;

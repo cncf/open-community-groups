@@ -8,6 +8,8 @@ import {
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/multiple-inputs.js";
 
+const DEFAULT_MEETING_PROVIDER = "zoom";
+
 /**
  * Online event details component for managing meeting information. Supports
  * manual URL entry and automatic meeting creation modes.
@@ -44,6 +46,21 @@ export class OnlineEventDetails extends LitWrapper {
     meetingError: { type: String, attribute: "meeting-error" },
     fieldNamePrefix: { type: String, attribute: "field-name-prefix" },
     meetingProviderId: { type: String, attribute: "meeting-provider-id" },
+    meetingMaxParticipants: {
+      type: Object,
+      attribute: "meeting-max-participants",
+      converter: {
+        fromAttribute: (value) => {
+          if (!value) return {};
+          try {
+            return JSON.parse(value);
+          } catch (e) {
+            console.warn("Failed to parse meeting-max-participants", e);
+            return {};
+          }
+        },
+      },
+    },
 
     _mode: { type: String, state: true },
     _joinUrl: { type: String, state: true },
@@ -52,6 +69,7 @@ export class OnlineEventDetails extends LitWrapper {
     _requirePassword: { type: Boolean, state: true },
     _providerId: { type: String, state: true },
     _hosts: { type: Array, state: true },
+    _capacityWarning: { type: String, state: true },
   };
 
   constructor() {
@@ -68,15 +86,17 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingPassword = "";
     this.meetingError = "";
     this.fieldNamePrefix = "";
-    this.meetingProviderId = "zoom";
+    this.meetingProviderId = DEFAULT_MEETING_PROVIDER;
+    this.meetingMaxParticipants = {};
 
     this._mode = "manual";
     this._joinUrl = "";
     this._recordingUrl = "";
     this._createMeeting = false;
     this._requirePassword = false;
-    this._providerId = "zoom";
+    this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
+    this._capacityWarning = "";
   }
 
   connectedCallback() {
@@ -87,7 +107,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._recordingUrl = this.meetingRecordingUrl || "";
     this._createMeeting = this.meetingRequested;
     this._requirePassword = this.meetingRequiresPassword;
-    this._providerId = this.meetingProviderId || "zoom";
+    this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
     this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
 
     // Determine mode based on meeting state
@@ -96,6 +116,10 @@ export class OnlineEventDetails extends LitWrapper {
     } else {
       this._mode = "manual";
     }
+
+    const capacityField = document.getElementById("capacity");
+    capacityField?.addEventListener("input", () => this._checkMeetingCapacity());
+    this._checkMeetingCapacity();
   }
 
   /**
@@ -141,6 +165,7 @@ export class OnlineEventDetails extends LitWrapper {
         // Wait for next render cycle to ensure the input element exists
         setTimeout(() => this._initializeHostsInput(), 0);
       }
+      this._checkMeetingCapacity();
     }
   }
 
@@ -329,6 +354,7 @@ export class OnlineEventDetails extends LitWrapper {
     if (!this._createMeeting) {
       this._requirePassword = false;
     }
+    this._checkMeetingCapacity();
   }
 
   /**
@@ -415,6 +441,8 @@ export class OnlineEventDetails extends LitWrapper {
       kindValue: this.kind,
       startsAtValue: this.startsAt,
       endsAtValue: this.endsAt,
+      capacityValue: this._getCapacityValue(),
+      capacityLimit: this._getCapacityLimit(),
       showError: showErrorAlert,
       displaySection,
     });
@@ -429,7 +457,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._recordingUrl = "";
     this._createMeeting = false;
     this._requirePassword = false;
-    this._providerId = "zoom";
+    this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
     this.requestUpdate();
   }
@@ -459,6 +487,46 @@ export class OnlineEventDetails extends LitWrapper {
       />
       <input type="hidden" name="${this._getFieldName("meeting_provider_id")}" value="${providerIdValue}" />
     `;
+  }
+
+  _getCapacityValue() {
+    const capacityField = document.getElementById("capacity");
+    const value = parseInt(capacityField?.value, 10);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  _getCapacityLimit() {
+    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+      return null;
+    }
+
+    const providerKey = (this._providerId || DEFAULT_MEETING_PROVIDER).toLowerCase();
+    const limit = this.meetingMaxParticipants[providerKey];
+    const parsedLimit = parseInt(limit, 10);
+
+    if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+      return parsedLimit;
+    }
+
+    return null;
+  }
+
+  _checkMeetingCapacity() {
+    if (!(this._mode === "automatic" && this._createMeeting)) {
+      this._capacityWarning = "";
+      return;
+    }
+
+    const capacityValue = this._getCapacityValue();
+
+    const capacityLimit = this._getCapacityLimit();
+
+    if (Number.isFinite(capacityLimit) && Number.isFinite(capacityValue) && capacityValue > capacityLimit) {
+      this._capacityWarning = `Capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Ensure your meeting provider supports this many participants.`;
+      return;
+    }
+
+    this._capacityWarning = "";
   }
 
   /**
@@ -612,9 +680,14 @@ export class OnlineEventDetails extends LitWrapper {
                   <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                   <select
                     class="input-primary"
-                    @change="${(e) => (this._providerId = e.target.value || "zoom")}"
+                    @change="${(e) => {
+                      this._providerId = e.target.value || DEFAULT_MEETING_PROVIDER;
+                      this._checkMeetingCapacity();
+                    }}"
                   >
-                    <option value="zoom" .selected="${this._providerId === "zoom"}">Zoom</option>
+                    <option value="zoom" .selected="${this._providerId === DEFAULT_MEETING_PROVIDER}">
+                      Zoom
+                    </option>
                   </select>
                 </div>
                 <div class="flex items-center justify-between gap-3">
@@ -691,6 +764,13 @@ export class OnlineEventDetails extends LitWrapper {
           ${this._mode === "manual" ? this._renderManualFields() : this._renderAutomaticFields()}
         </div>
 
+        ${this._capacityWarning
+          ? html`
+              <div class="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm p-3">
+                ${this._capacityWarning}
+              </div>
+            `
+          : ""}
         ${this._mode === "automatic" ? this._renderMeetingStatus() : ""}
       </div>
     `;

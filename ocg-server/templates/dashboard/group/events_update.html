@@ -211,7 +211,14 @@
                      placeholder="100"
                      {% if let Some(capacity) = event.capacity %}value="{{ capacity }}"{% endif %}>
             </div>
-            <p class="form-legend">Maximum number of attendees.</p>
+            <p class="form-legend">
+              Maximum number of attendees.
+              <strong class="text-amber-600">Required when requesting automatic meeting creation.</strong>
+            </p>
+            <p class="form-legend text-xs text-stone-500 mt-1">
+              Note: Meeting providers have participant limits. If capacity exceeds your provider
+              limit, attendees may be unable to join the meeting.
+            </p>
           </div>
           {# End Capacity -#}
 
@@ -445,7 +452,7 @@
             {% if let Some(meeting_error) = event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
 
             {% if let Some(meeting_hosts) = event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
-            starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
+            meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
           </div>
         </div>
         {# End online event details section -#}
