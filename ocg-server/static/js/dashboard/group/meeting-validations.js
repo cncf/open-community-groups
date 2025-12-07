@@ -95,9 +95,11 @@ export const validateMeetingRequest = ({
   }
 
   if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
-    console.warn(
-      `Event capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Verify your meeting provider supports this many participants.`,
+    showError(
+      `Event capacity (${capacityValue}) exceeds the configured meeting participant limit (${capacityLimit}). Reduce capacity or disable automatic meeting creation.`,
     );
+    displaySection?.("details");
+    return false;
   }
 
   return true;
