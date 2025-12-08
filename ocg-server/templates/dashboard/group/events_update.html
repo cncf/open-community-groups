@@ -677,11 +677,18 @@
         clearVenueFields();
       }
 
+      // Check if change would disable automatic meetings
+      if (onlineEventDetails) {
+        const accepted = await onlineEventDetails.trySetKind(newValue);
+        if (!accepted) {
+          kindSelect.value = previousKindValue;
+          updateSectionVisibility(kindSelect.value || '');
+          return;
+        }
+      }
+
       previousKindValue = newValue;
       updateSectionVisibility(newValue);
-      if (onlineEventDetails) {
-        onlineEventDetails.kind = newValue;
-      }
     });
   } else {
     updateSectionVisibility('');
@@ -690,14 +697,27 @@
   // Update component starts/ends times when they change for validation
   const startsAtInput = document.getElementById('starts_at');
   const endsAtInput = document.getElementById('ends_at');
+  let previousStartsAt = startsAtInput?.value || '';
+  let previousEndsAt = endsAtInput?.value || '';
+
   if (startsAtInput && onlineEventDetails) {
-    startsAtInput.addEventListener('change', () => {
-      onlineEventDetails.startsAt = startsAtInput.value;
+    startsAtInput.addEventListener('change', async () => {
+      const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
+      if (!accepted) {
+        startsAtInput.value = previousStartsAt;
+        return;
+      }
+      previousStartsAt = startsAtInput.value;
     });
   }
   if (endsAtInput && onlineEventDetails) {
-    endsAtInput.addEventListener('change', () => {
-      onlineEventDetails.endsAt = endsAtInput.value;
+    endsAtInput.addEventListener('change', async () => {
+      const accepted = await onlineEventDetails.trySetEndsAt(endsAtInput.value);
+      if (!accepted) {
+        endsAtInput.value = previousEndsAt;
+        return;
+      }
+      previousEndsAt = endsAtInput.value;
     });
   }
 

@@ -121,33 +121,6 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   updated(changedProperties) {
-    if (changedProperties.has("kind") && this.kind === "in-person") {
-      if (this._mode === "automatic" && this._createMeeting) {
-        this._mode = "manual";
-        this._createMeeting = false;
-        showInfoAlert(
-          "Automatic meetings can only be created for virtual or hybrid events. The event has been switched to manual mode.",
-        );
-      }
-    }
-
-    if (
-      (changedProperties.has("startsAt") ||
-        changedProperties.has("endsAt") ||
-        changedProperties.has("kind")) &&
-      this._mode === "automatic"
-    ) {
-      const availability = this._getAutomaticAvailability();
-      if (!availability.allowed) {
-        this._mode = "manual";
-        this._createMeeting = false;
-        this._joinUrl = "";
-        showInfoAlert(
-          availability.reason || "Automatic meetings are disabled until the schedule requirements are met.",
-        );
-      }
-    }
-
     // Reinitialize hosts input when switching to automatic mode or when create meeting is toggled
     if (changedProperties.has("_mode") || changedProperties.has("_createMeeting")) {
       if (this._mode === "automatic" && this._createMeeting) {
@@ -255,18 +228,175 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Shows confirmation dialog when a change would disable automatic meetings.
+   * @returns {Promise<boolean>} True if user confirms, false if cancelled
+   */
+  async _confirmAutomaticDisable() {
+    const result = await Swal.fire({
+      text: "This change will disable automatic meeting creation. Do you want to continue?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, disable automatic",
+      cancelButtonText: "No, keep settings",
+      position: "center",
+      backdrop: true,
+      buttonsStyling: false,
+      iconColor: "var(--color-primary-500)",
+      customClass: {
+        popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
+        confirmButton: "btn-primary",
+        cancelButton: "btn-primary-outline ms-5",
+      },
+    });
+    return result.isConfirmed;
+  }
+
+  /**
+   * Checks if confirmation is needed before disabling automatic meetings.
+   * @returns {boolean} True if meeting is synced or hosts were added
+   */
+  _needsDisableConfirmation() {
+    return this._mode === "automatic" && (this.meetingInSync || this._hosts.length > 0);
+  }
+
+  /**
+   * Emits event when user cancels a change that would disable automatic meetings.
+   * @param {string} property - The property that triggered the conflict
+   */
+  _emitMeetingModeConflict(property) {
+    this.dispatchEvent(
+      new CustomEvent("meeting-mode-conflict", {
+        bubbles: true,
+        composed: true,
+        detail: { property },
+      }),
+    );
+  }
+
+  /**
+   * Disables automatic meeting mode and switches to manual.
+   */
+  _disableAutomaticMode() {
+    this._mode = "manual";
+    this._createMeeting = false;
+  }
+
+  /**
+   * Tries to set event kind, showing confirmation if it would disable automatic meetings.
+   * @param {string} value - The new kind value
+   * @returns {Promise<boolean>} True if the change was accepted
+   */
+  async trySetKind(value) {
+    const wouldDisable = value === "in-person" && this._mode === "automatic" && this._createMeeting;
+
+    if (wouldDisable && this._needsDisableConfirmation()) {
+      const confirmed = await this._confirmAutomaticDisable();
+      if (!confirmed) {
+        this._emitMeetingModeConflict("kind");
+        return false;
+      }
+      this._disableAutomaticMode();
+    } else if (wouldDisable) {
+      this._disableAutomaticMode();
+    }
+
+    this.kind = value;
+    return true;
+  }
+
+  /**
+   * Tries to set start time, showing confirmation if it would disable automatic meetings.
+   * @param {string} value - The new startsAt value
+   * @returns {Promise<boolean>} True if the change was accepted
+   */
+  async trySetStartsAt(value) {
+    const wouldDisable = this._wouldScheduleChangeDisableAutomatic(value, this.endsAt);
+
+    if (wouldDisable && this._needsDisableConfirmation()) {
+      const confirmed = await this._confirmAutomaticDisable();
+      if (!confirmed) {
+        this._emitMeetingModeConflict("startsAt");
+        return false;
+      }
+      this._disableAutomaticMode();
+    } else if (wouldDisable) {
+      this._disableAutomaticMode();
+    }
+
+    this.startsAt = value;
+    return true;
+  }
+
+  /**
+   * Tries to set end time, showing confirmation if it would disable automatic meetings.
+   * @param {string} value - The new endsAt value
+   * @returns {Promise<boolean>} True if the change was accepted
+   */
+  async trySetEndsAt(value) {
+    const wouldDisable = this._wouldScheduleChangeDisableAutomatic(this.startsAt, value);
+
+    if (wouldDisable && this._needsDisableConfirmation()) {
+      const confirmed = await this._confirmAutomaticDisable();
+      if (!confirmed) {
+        this._emitMeetingModeConflict("endsAt");
+        return false;
+      }
+      this._disableAutomaticMode();
+    } else if (wouldDisable) {
+      this._disableAutomaticMode();
+    }
+
+    this.endsAt = value;
+    return true;
+  }
+
+  /**
+   * Checks if a schedule change would make automatic meetings unavailable.
+   * @param {string} startsAt - The start time value
+   * @param {string} endsAt - The end time value
+   * @returns {boolean} True if the change would disable automatic meetings
+   */
+  _wouldScheduleChangeDisableAutomatic(startsAt, endsAt) {
+    if (this._mode !== "automatic" || !this._createMeeting) {
+      return false;
+    }
+
+    const isVirtualOrHybrid = this.kind === "virtual" || this.kind === "hybrid";
+    if (!isVirtualOrHybrid) {
+      return true;
+    }
+
+    if (!startsAt || !endsAt) {
+      return true;
+    }
+
+    const startDate = new Date(startsAt);
+    const endDate = new Date(endsAt);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      return true;
+    }
+
+    const durationMinutes = (endDate - startDate) / 60000;
+
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      return true;
+    }
+
+    if (durationMinutes < MIN_MEETING_MINUTES || durationMinutes > MAX_MEETING_MINUTES) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Renders a selectable mode card.
    * @param {object} option Card data
    * @returns {import('lit').TemplateResult} Mode card element
    */
   _renderModeOption(option) {
     const isSelected = this._mode === option.value;
-    const cardClasses = [
-      "h-full rounded-xl border transition bg-white",
-      "p-4 md:p-5 flex",
-      isSelected ? "border-primary-400 ring-2 ring-primary-200" : "border-stone-200",
-      option.disabled ? "opacity-60 cursor-not-allowed" : "hover:border-primary-300",
-    ].join(" ");
 
     return html`
       <label class="block h-full">
@@ -278,7 +408,13 @@ export class OnlineEventDetails extends LitWrapper {
           ?disabled="${option.disabled}"
           @change="${this._handleModeChange}"
         />
-        <div class="${cardClasses}">
+        <div
+          class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
+            ? "border-primary-400 ring-2 ring-primary-200"
+            : "border-stone-200"} ${option.disabled
+            ? "opacity-60 cursor-not-allowed"
+            : "hover:border-primary-300"}"
+        >
           <div class="flex items-start gap-3">
             <span class="mt-1 inline-flex">
               <span
@@ -317,6 +453,12 @@ export class OnlineEventDetails extends LitWrapper {
       // Only ask for confirmation if meeting was actually synced (exists in Zoom)
       if (this.meetingInSync) {
         const confirmed = await this._confirmModeSwitch();
+        if (!confirmed) {
+          this.requestUpdate();
+          return;
+        }
+      } else if (this._needsDisableConfirmation()) {
+        const confirmed = await this._confirmAutomaticDisable();
         if (!confirmed) {
           this.requestUpdate();
           return;
@@ -418,7 +560,7 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {boolean} True if valid or not in automatic mode, false otherwise
    */
   validate(displaySection = null) {
-    if (this._mode !== "automatic" || !this._createMeeting) {
+    if (!this._isAutomaticMeetingActive()) {
       return true;
     }
 
@@ -492,7 +634,7 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   _checkMeetingCapacity() {
-    if (!(this._mode === "automatic" && this._createMeeting)) {
+    if (!this._isAutomaticMeetingActive()) {
       this._capacityWarning = "";
       return;
     }
@@ -507,6 +649,14 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     this._capacityWarning = "";
+  }
+
+  /**
+   * Determines if automatic meeting features are active for validation.
+   * @returns {boolean} True when in automatic mode with a requested or synced meeting.
+   */
+  _isAutomaticMeetingActive() {
+    return this._mode === "automatic" && (this._createMeeting || this.meetingInSync);
   }
 
   /**
@@ -637,6 +787,7 @@ export class OnlineEventDetails extends LitWrapper {
               Meeting duration must be between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes.
             </li>
             <li>Manual links cannot be set while automatic creation is on.</li>
+            <li>The meeting is not going to be created until you publish the event.</li>
           </ul>
         </div>
 
