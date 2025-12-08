@@ -10,6 +10,22 @@ const findVenueField = (fieldId) =>
   document.getElementById(fieldId) || document.querySelector(`[name="${fieldId}"]`);
 
 /**
+ * Updates visibility of venue and online event sections based on event kind.
+ * @param {string} kind The event kind value (virtual, in-person, hybrid)
+ */
+export const updateSectionVisibility = (kind) => {
+  const venueSection = document.getElementById("venue-information-section");
+  const onlineSection = document.getElementById("online-event-details-section");
+
+  if (venueSection) {
+    venueSection.classList.toggle("hidden", kind === "virtual");
+  }
+  if (onlineSection) {
+    onlineSection.classList.toggle("hidden", kind === "in-person");
+  }
+};
+
+/**
  * Validates whether automatic meeting creation is allowed for the provided data.
  * @param {object} params Validation inputs
  * @param {boolean} params.requested Whether automatic meeting is requested
