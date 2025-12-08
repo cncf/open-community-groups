@@ -361,7 +361,12 @@ export const isObjectEmpty = (obj) => {
   const objectWithoutId = { ...obj };
   delete objectWithoutId.id;
   return Object.values(objectWithoutId).every(
-    (x) => x === null || x === "" || typeof x === "undefined" || (Array.isArray(x) && x.length === 0),
+    (x) =>
+      x === null ||
+      x === "" ||
+      x === false ||
+      typeof x === "undefined" ||
+      (Array.isArray(x) && x.length === 0),
   );
 };
 

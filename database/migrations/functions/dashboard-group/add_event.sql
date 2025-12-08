@@ -1,7 +1,8 @@
 -- add_event adds a new event to the database.
 create or replace function add_event(
     p_group_id uuid,
-    p_event jsonb
+    p_event jsonb,
+    p_cfg_max_participants jsonb default null
 )
 returns uuid as $$
 declare
@@ -9,6 +10,7 @@ declare
     v_community_id uuid;
     v_event_speaker jsonb;
     v_host_id uuid;
+    v_provider_max_participants int;
     v_session jsonb;
     v_session_id uuid;
     v_session_speaker jsonb;
@@ -22,6 +24,18 @@ begin
     select community_id into v_community_id
     from "group"
     where group_id = p_group_id;
+
+    -- Validate event capacity against max_participants when meeting is requested
+    if (p_event->>'meeting_requested')::boolean = true then
+        v_provider_max_participants := (p_cfg_max_participants->>(p_event->>'meeting_provider_id'))::int;
+
+        if v_provider_max_participants is not null
+           and (p_event->>'capacity')::int > v_provider_max_participants
+        then
+            raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
+                (p_event->>'capacity')::int, v_provider_max_participants;
+        end if;
+    end if;
 
     -- Insert event
     insert into event (
@@ -38,12 +52,16 @@ begin
         description_short,
         ends_at,
         logo_url,
+        meeting_hosts,
+        meeting_in_sync,
+        meeting_join_url,
+        meeting_provider_id,
+        meeting_recording_url,
+        meeting_requested,
         meetup_url,
         photos_urls,
-        recording_url,
         registration_required,
         starts_at,
-        streaming_url,
         tags,
         venue_address,
         venue_city,
@@ -63,12 +81,19 @@ begin
         p_event->>'description_short',
         (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
         p_event->>'logo_url',
+        case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
+        case
+            when (p_event->>'meeting_requested')::boolean = true then false
+            else null
+        end,
+        p_event->>'meeting_join_url',
+        p_event->>'meeting_provider_id',
+        p_event->>'meeting_recording_url',
+        (p_event->>'meeting_requested')::boolean,
         p_event->>'meetup_url',
         case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-        p_event->>'recording_url',
         (p_event->>'registration_required')::boolean,
         (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-        p_event->>'streaming_url',
         case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
         p_event->>'venue_address',
         p_event->>'venue_city',
@@ -152,8 +177,12 @@ begin
                 ends_at,
                 session_kind_id,
                 location,
-                recording_url,
-                streaming_url
+                meeting_hosts,
+                meeting_in_sync,
+                meeting_join_url,
+                meeting_provider_id,
+                meeting_recording_url,
+                meeting_requested
             ) values (
                 v_event_id,
                 v_session->>'name',
@@ -162,8 +191,15 @@ begin
                 (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
                 v_session->>'kind',
                 v_session->>'location',
-                v_session->>'recording_url',
-                v_session->>'streaming_url'
+                case when v_session->'meeting_hosts' is not null then array(select jsonb_array_elements_text(v_session->'meeting_hosts')) else null end,
+                case
+                    when (v_session->>'meeting_requested')::boolean = true then false
+                    else null
+                end,
+                v_session->>'meeting_join_url',
+                v_session->>'meeting_provider_id',
+                v_session->>'meeting_recording_url',
+                (v_session->>'meeting_requested')::boolean
             )
             returning session_id into v_session_id;
 

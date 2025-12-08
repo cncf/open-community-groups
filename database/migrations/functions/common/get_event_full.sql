@@ -24,13 +24,19 @@ returns json as $$
         'latitude', st_y(g.location::geometry),
         'logo_url', e.logo_url,
         'longitude', st_x(g.location::geometry),
+        'meeting_error', e.meeting_error,
+        'meeting_hosts', e.meeting_hosts,
+        'meeting_in_sync', e.meeting_in_sync,
+        'meeting_join_url', coalesce(m_event.join_url, e.meeting_join_url),
+        'meeting_password', m_event.password,
+        'meeting_provider', e.meeting_provider_id,
+        'meeting_recording_url', coalesce(m_event.recording_url, e.meeting_recording_url),
+        'meeting_requested', e.meeting_requested,
         'meetup_url', e.meetup_url,
         'photos_urls', e.photos_urls,
         'published_at', floor(extract(epoch from e.published_at)),
-        'recording_url', e.recording_url,
         'registration_required', e.registration_required,
         'starts_at', floor(extract(epoch from e.starts_at)),
-        'streaming_url', e.streaming_url,
         'tags', e.tags,
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
@@ -118,8 +124,14 @@ returns json as $$
                         'description', s.description,
                         'ends_at', floor(extract(epoch from s.ends_at)),
                         'location', s.location,
-                        'recording_url', s.recording_url,
-                        'streaming_url', s.streaming_url,
+                        'meeting_error', s.meeting_error,
+                        'meeting_hosts', s.meeting_hosts,
+                        'meeting_in_sync', s.meeting_in_sync,
+                        'meeting_join_url', coalesce(m_session.join_url, s.meeting_join_url),
+                        'meeting_password', m_session.password,
+                        'meeting_provider', s.meeting_provider_id,
+                        'meeting_recording_url', coalesce(m_session.recording_url, s.meeting_recording_url),
+                        'meeting_requested', s.meeting_requested,
 
                         'speakers', (
                             select coalesce(json_agg(json_strip_nulls(json_build_object(
@@ -143,6 +155,7 @@ returns json as $$
                         )
                     )) as session_json
                 from session s
+                left join meeting m_session on m_session.session_id = s.session_id
                 where s.event_id = e.event_id
             ),
             event_sessions_grouped as (
@@ -192,6 +205,7 @@ returns json as $$
     from event e
     join "group" g using (group_id)
     join event_category ec using (event_category_id)
+    left join meeting m_event on m_event.event_id = e.event_id
     left join (
         select event_id, count(*)::int as attendee_count
         from event_attendee

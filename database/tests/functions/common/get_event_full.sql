@@ -141,9 +141,11 @@ insert into event (
     banner_url,
     capacity,
     registration_required,
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_recording_url,
+    meeting_requested,
     meetup_url,
-    streaming_url,
-    recording_url,
     photos_urls,
     created_at
 ) values (
@@ -170,9 +172,11 @@ insert into event (
     'https://example.com/event-banner.png',
     500,
     true,
+    true,
+    null,
+    null,
+    false,
     'https://meetup.com/event123',
-    'https://stream.example.com/live',
-    'https://youtube.com/watch?v=123',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     '2024-04-01 10:00:00+00'
 );
@@ -208,8 +212,11 @@ insert into session (
     starts_at,
     ends_at,
     location,
-    streaming_url,
-    recording_url
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_recording_url,
+    meeting_requested
 ) values (
     :'session1ID',
     :'eventID',
@@ -219,8 +226,11 @@ insert into session (
     '2024-06-15 09:00:00+00',
     '2024-06-15 10:00:00+00',
     'Main Hall',
+    null,
     'https://stream.example.com/session1',
-    'https://youtube.com/watch?v=session1'
+    null,
+    'https://youtube.com/watch?v=session1',
+    false
 ),
 (
     :'session2ID',
@@ -231,8 +241,11 @@ insert into session (
     '2024-06-16 10:30:00+00',
     '2024-06-16 11:30:00+00',
     'Room A',
+    true,
     null,
-    null
+    'zoom',
+    null,
+    true
 );
 
 -- Additional session on the same day to verify sorting within the day
@@ -245,8 +258,11 @@ insert into session (
     starts_at,
     ends_at,
     location,
-    streaming_url,
-    recording_url
+    meeting_in_sync,
+    meeting_join_url,
+    meeting_provider_id,
+    meeting_recording_url,
+    meeting_requested
 ) values (
     :'session3ID',
     :'eventID',
@@ -257,7 +273,32 @@ insert into session (
     '2024-06-15 08:45:00+00',
     'Lobby',
     null,
-    null
+    null,
+    null,
+    null,
+    false
+);
+
+-- Link meeting to event
+insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_url)
+values (
+    :'eventID',
+    'https://meeting.example.com/event',
+    'zoom',
+    'event-secret',
+    'meeting-event-001',
+    'https://meeting.example.com/event-recording'
+);
+
+-- Link meeting to session
+insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_url, session_id)
+values (
+    'https://meeting.example.com/session2',
+    'zoom',
+    'session-secret',
+    'meeting-session2-001',
+    'https://meeting.example.com/session2-recording',
+    :'session2ID'
 );
 
 -- Session Speakers
@@ -405,13 +446,16 @@ select is(
         "latitude": 40.73061,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -73.935242,
+        "meeting_in_sync": true,
+        "meeting_password": "event-secret",
+        "meeting_requested": false,
+        "meeting_join_url": "https://meeting.example.com/event",
+        "meeting_recording_url": "https://meeting.example.com/event-recording",
         "meetup_url": "https://meetup.com/event123",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "published_at": 1714564800,
-        "recording_url": "https://youtube.com/watch?v=123",
         "registration_required": true,
         "starts_at": 1718442000,
-        "streaming_url": "https://stream.example.com/live",
         "tags": ["technology", "conference", "workshops"],
         "venue_address": "123 Main St",
         "venue_city": "New York",
@@ -503,6 +547,7 @@ select is(
                     "kind": "in-person",
                     "name": "Breakfast & Registration",
                     "starts_at": 1718438400,
+                    "meeting_requested": false,
                     "location": "Lobby",
                     "speakers": []
                 },
@@ -514,8 +559,9 @@ select is(
                     "name": "Opening Keynote: The Future of Cloud Native",
                     "starts_at": 1718442000,
                     "location": "Main Hall",
-                    "recording_url": "https://youtube.com/watch?v=session1",
-                    "streaming_url": "https://stream.example.com/session1",
+                    "meeting_join_url": "https://stream.example.com/session1",
+                    "meeting_recording_url": "https://youtube.com/watch?v=session1",
+                    "meeting_requested": false,
                     "speakers": [
                         {
                             "user_id": "00000000-0000-0000-0000-000000000043",
@@ -553,7 +599,13 @@ select is(
                     "kind": "virtual",
                     "name": "Workshop: Kubernetes Security Best Practices",
                     "starts_at": 1718533800,
+                    "meeting_in_sync": true,
+                    "meeting_password": "session-secret",
+                    "meeting_provider": "zoom",
+                    "meeting_requested": true,
                     "location": "Room A",
+                    "meeting_join_url": "https://meeting.example.com/session2",
+                    "meeting_recording_url": "https://meeting.example.com/session2-recording",
                     "speakers": []
                 }
             ]

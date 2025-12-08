@@ -68,6 +68,17 @@ log:
   # Output format [json|pretty]
   format: json
 
+# Meetings providers configuration (multiple providers can be enabled simultaneously)
+meetings:
+  # Zoom provider configuration (set enabled to true to enable)
+  zoom:
+    enabled: false
+    accountId: ""
+    clientId: ""
+    clientSecret: ""
+    maxParticipants: 100
+    webhookSecretToken: ""
+
 # Database migrator configuration
 dbmigrator:
   job:

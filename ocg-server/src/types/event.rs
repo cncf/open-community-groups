@@ -11,6 +11,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    services::meetings::MeetingProvider,
     templates::{
         common::User,
         helpers::{
@@ -70,6 +71,12 @@ pub struct EventSummary {
     pub logo_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Password required to join the meeting.
+    pub meeting_password: Option<String>,
+    /// Desired meeting provider for this event.
+    pub meeting_provider: Option<MeetingProvider>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
@@ -77,8 +84,6 @@ pub struct EventSummary {
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// Streaming URL for live broadcasts.
-    pub streaming_url: Option<String>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
     /// City where the event venue is located (for in-person events).
@@ -187,6 +192,22 @@ pub struct EventFull {
     pub logo_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
+    /// Error message if meeting sync failed.
+    pub meeting_error: Option<String>,
+    /// Meeting hosts to synchronize with provider (email addresses).
+    pub meeting_hosts: Option<Vec<String>>,
+    /// Whether the event meeting is in sync.
+    pub meeting_in_sync: Option<bool>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Password required to join the event meeting.
+    pub meeting_password: Option<String>,
+    /// Desired meeting provider for this event.
+    pub meeting_provider: Option<MeetingProvider>,
+    /// URL for meeting recording.
+    pub meeting_recording_url: Option<String>,
+    /// Whether the event requests a meeting.
+    pub meeting_requested: Option<bool>,
     /// Meetup.com URL for the event.
     pub meetup_url: Option<String>,
     /// URLs to event photos.
@@ -194,15 +215,11 @@ pub struct EventFull {
     /// When the event was published.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub published_at: Option<DateTime<Utc>>,
-    /// URL for event recording.
-    pub recording_url: Option<String>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
-    /// URL for live streaming.
-    pub streaming_url: Option<String>,
     /// Event tags for categorization.
     pub tags: Option<Vec<String>>,
     /// Street address of the venue.
@@ -228,6 +245,18 @@ impl EventFull {
             .venue_name(self.venue_name.as_ref());
 
         build_location(&parts, max_len)
+    }
+
+    /// Check if the event is currently live.
+    #[allow(dead_code)]
+    pub fn is_live(&self) -> bool {
+        match (self.starts_at, self.ends_at) {
+            (Some(starts_at), Some(ends_at)) => {
+                let now = Utc::now();
+                now >= starts_at && now <= ends_at
+            }
+            _ => false,
+        }
     }
 
     /// Try to create an `EventFull` instance from a JSON string.
@@ -308,7 +337,7 @@ pub struct LegacyUser {
 
 /// Session information within an event.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Session {
     /// Type of session (hybrid, in-person, virtual).
     pub kind: SessionKind,
@@ -329,10 +358,36 @@ pub struct Session {
     pub ends_at: Option<DateTime<Utc>>,
     /// Location details for the session.
     pub location: Option<String>,
-    /// URL for session recording.
-    pub recording_url: Option<String>,
-    /// URL for session live stream.
-    pub streaming_url: Option<String>,
+    /// Error message if meeting sync failed.
+    pub meeting_error: Option<String>,
+    /// Meeting hosts to synchronize with provider (email addresses).
+    pub meeting_hosts: Option<Vec<String>>,
+    /// Whether the meeting data is in sync with the provider.
+    pub meeting_in_sync: Option<bool>,
+    /// URL to join the meeting.
+    pub meeting_join_url: Option<String>,
+    /// Password required to join the session meeting.
+    pub meeting_password: Option<String>,
+    /// Desired meeting provider for this session.
+    pub meeting_provider: Option<MeetingProvider>,
+    /// URL for meeting recording.
+    pub meeting_recording_url: Option<String>,
+    /// Whether the session requests a meeting.
+    pub meeting_requested: Option<bool>,
+}
+
+impl Session {
+    /// Check if the session is currently live.
+    #[allow(dead_code)]
+    pub fn is_live(&self) -> bool {
+        match self.ends_at {
+            Some(ends_at) => {
+                let now = Utc::now();
+                now >= self.starts_at && now <= ends_at
+            }
+            None => false,
+        }
+    }
 }
 
 /// Categorization of session attendance modes.
@@ -365,4 +420,100 @@ pub struct Speaker {
     /// Embedded user profile information.
     #[serde(flatten)]
     pub user: User,
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Duration, Utc};
+
+    use super::*;
+
+    #[test]
+    fn event_full_is_live_returns_false_when_ends_at_is_none() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() - Duration::hours(1)),
+            ends_at: None,
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_false_when_event_ended() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() - Duration::hours(2)),
+            ends_at: Some(Utc::now() - Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_false_when_event_not_started() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() + Duration::hours(1)),
+            ends_at: Some(Utc::now() + Duration::hours(2)),
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_false_when_starts_at_is_none() {
+        let event = EventFull {
+            starts_at: None,
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_live_returns_true_when_event_is_live() {
+        let event = EventFull {
+            starts_at: Some(Utc::now() - Duration::hours(1)),
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_false_when_ends_at_is_none() {
+        let session = Session {
+            starts_at: Utc::now() - Duration::hours(1),
+            ..Default::default()
+        };
+        assert!(!session.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_false_when_session_ended() {
+        let session = Session {
+            ends_at: Some(Utc::now() - Duration::hours(1)),
+            starts_at: Utc::now() - Duration::hours(2),
+            ..Default::default()
+        };
+        assert!(!session.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_false_when_session_not_started() {
+        let session = Session {
+            ends_at: Some(Utc::now() + Duration::hours(2)),
+            starts_at: Utc::now() + Duration::hours(1),
+            ..Default::default()
+        };
+        assert!(!session.is_live());
+    }
+
+    #[test]
+    fn session_is_live_returns_true_when_session_is_live() {
+        let session = Session {
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            starts_at: Utc::now() - Duration::hours(1),
+            ..Default::default()
+        };
+        assert!(session.is_live());
+    }
 }

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -133,11 +133,12 @@ with new_event as (
             "starts_at": "2025-01-01T10:00:00",
             "ends_at": "2025-01-01T12:00:00",
             "logo_url": "https://example.com/logo.png",
+            "meeting_hosts": ["host1@example.com", "host2@example.com"],
+            "meeting_join_url": "https://youtube.com/live",
+            "meeting_recording_url": "https://youtube.com/recording",
             "meetup_url": "https://meetup.com/event",
             "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-            "recording_url": "https://youtube.com/recording",
             "registration_required": true,
-            "streaming_url": "https://youtube.com/live",
             "tags": ["technology", "conference", "networking"],
             "venue_address": "123 Main St",
             "venue_city": "San Francisco",
@@ -164,7 +165,8 @@ with new_event as (
                     "starts_at": "2025-01-01T11:00:00",
                     "ends_at": "2025-01-01T11:45:00",
                     "kind": "virtual",
-                    "streaming_url": "https://youtube.com/live/session2",
+                    "meeting_hosts": ["session-host@example.com"],
+                    "meeting_join_url": "https://youtube.com/live/session2",
                     "speakers": [
                         {"user_id": "00000000-0000-0000-0000-000000000020", "featured": false},
                         {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}
@@ -211,11 +213,12 @@ select is(
         "starts_at": 1735754400,
         "ends_at": 1735761600,
         "logo_url": "https://example.com/logo.png",
+        "meeting_hosts": ["host1@example.com", "host2@example.com"],
+        "meeting_join_url": "https://youtube.com/live",
+        "meeting_recording_url": "https://youtube.com/recording",
         "meetup_url": "https://meetup.com/event",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "recording_url": "https://youtube.com/recording",
         "registration_required": true,
-        "streaming_url": "https://youtube.com/live",
         "tags": ["technology", "conference", "networking"],
         "venue_address": "123 Main St",
         "venue_city": "San Francisco",
@@ -246,7 +249,8 @@ select ok(
                 "starts_at": 1735758000,
                 "ends_at": 1735760700,
                 "kind": "virtual",
-                "streaming_url": "https://youtube.com/live/session2",
+                "meeting_hosts": ["session-host@example.com"],
+                "meeting_join_url": "https://youtube.com/live/session2",
                 "speakers": [
                     {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1", "featured": false},
                     {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
@@ -266,6 +270,75 @@ select ok(
         ]'::jsonb
     ),
     'sessions contain expected rows (ignoring session_id)'
+);
+
+-- add_event sets meeting flags (requested/in_sync/password) consistently for events and sessions
+with request_event as (
+    select add_event(
+        :'groupID'::uuid,
+        '{
+            "name": "Meeting Requested Event",
+            "slug": "meeting-requested-event",
+            "description": "Event requesting meeting support",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "capacity": 100,
+            "starts_at": "2025-03-01T10:00:00",
+            "ends_at": "2025-03-01T11:30:00",
+            "meeting_hosts": ["event-alt-host@example.com"],
+            "meeting_provider_id": "zoom",
+            "meeting_requested": true,
+            "sessions": [
+                {
+                    "name": "Requested Session",
+                    "description": "Session needing meeting",
+                    "starts_at": "2025-03-01T10:00:00",
+                    "ends_at": "2025-03-01T11:00:00",
+                    "kind": "virtual",
+                    "meeting_hosts": ["session-alt-host@example.com"],
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true
+                }
+            ]
+        }'::jsonb
+    ) as event_id
+)
+select event_id as event_request_id from request_event \gset
+select is(
+    (
+        select jsonb_build_object(
+            'event', jsonb_build_object(
+                'meeting_hosts', meeting_hosts,
+                'meeting_requested', meeting_requested,
+                'meeting_in_sync', meeting_in_sync
+            ),
+            'session', (
+                select jsonb_build_object(
+                    'meeting_hosts', meeting_hosts,
+                    'meeting_requested', meeting_requested,
+                    'meeting_in_sync', meeting_in_sync
+                )
+                from session
+                where event_id = :'event_request_id'::uuid
+            )
+        )
+        from event
+        where event_id = :'event_request_id'::uuid
+    ),
+    '{
+        "event": {
+            "meeting_hosts": ["event-alt-host@example.com"],
+            "meeting_requested": true,
+            "meeting_in_sync": false
+        },
+        "session": {
+            "meeting_hosts": ["session-alt-host@example.com"],
+            "meeting_requested": true,
+            "meeting_in_sync": false
+        }
+    }'::jsonb,
+    'add_event sets meeting flags and hosts for event and session when requested'
 );
 
 -- add_event throws error for invalid host user_id
@@ -288,6 +361,48 @@ select throws_ok(
     'P0001',
     'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
     'add_event should throw error when speaker user_id does not exist in community'
+);
+
+-- add_event throws error when capacity exceeds max_participants with meeting_requested
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Capacity Exceed Event", "slug": "capacity-exceed", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    )$$,
+    'P0001',
+    'event capacity (200) exceeds maximum participants allowed (100)',
+    'add_event should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
+);
+
+-- add_event succeeds when capacity is within max_participants
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Valid Capacity Event", "slug": "valid-capacity", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    ) is not null),
+    'add_event should succeed when capacity is within cfg_max_participants'
+);
+
+-- add_event succeeds when meeting_requested is false (no capacity check against max_participants)
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Meeting Event", "slug": "no-meeting", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
+        '{"zoom": 100}'::jsonb
+    ) is not null),
+    'add_event should succeed with high capacity when meeting_requested is false'
+);
+
+-- add_event succeeds when cfg_max_participants is null (no limit configured)
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Limit Event", "slug": "no-limit", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        null
+    ) is not null),
+    'add_event should succeed when cfg_max_participants is null'
 );
 
 -- ============================================================================

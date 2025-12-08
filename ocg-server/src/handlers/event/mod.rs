@@ -98,9 +98,9 @@ pub(crate) async fn check_in_page(
 #[instrument(skip_all)]
 pub(crate) async fn attend_event(
     auth_session: AuthSession,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -115,7 +115,7 @@ pub(crate) async fn attend_event(
         db.get_community(community_id),
         db.get_event_summary_by_id(community_id, event_id),
     )?;
-    let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = build_event_page_link(base_url, &event);
     let calendar_ics = build_event_calendar_attachment(base_url, &event);
     let template_data = EventWelcome {
@@ -241,7 +241,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/group/test-group/event/test-event")
@@ -291,7 +291,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/group/test-group/event/test-event")
@@ -351,7 +351,9 @@ mod tests {
             .returning(|_, _| Ok(true));
 
         // Setup router and send request
-        let router = setup_test_router(db, MockNotificationsManager::new()).await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .build()
+            .await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/check-in/{event_id}"))
@@ -431,7 +433,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/event/{event_id}/attend"))
@@ -481,7 +483,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/event/{event_id}/attendance"))
@@ -537,7 +539,9 @@ mod tests {
             .returning(|_, _, _| Ok(()));
 
         // Setup router and send request
-        let router = setup_test_router(db, MockNotificationsManager::new()).await;
+        let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+            .build()
+            .await;
         let request = Request::builder()
             .method("POST")
             .uri(format!("/check-in/{event_id}"))
@@ -587,7 +591,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("DELETE")
             .uri(format!("/event/{event_id}/leave"))

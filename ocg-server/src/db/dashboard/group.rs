@@ -1,6 +1,6 @@
 //! Database interface for group dashboard operations.
 
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
+    services::meetings::MeetingProvider,
     templates::dashboard::group::{
         analytics::GroupStats,
         attendees::{Attendee, AttendeesFilters},
@@ -36,7 +37,12 @@ pub(crate) trait DBDashboardGroup {
     async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid>;
 
     /// Adds a new event to the database.
-    async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid>;
+    async fn add_event(
+        &self,
+        group_id: Uuid,
+        event: &Event,
+        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+    ) -> Result<Uuid>;
 
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
@@ -103,7 +109,13 @@ pub(crate) trait DBDashboardGroup {
     async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
     /// Updates an existing event.
-    async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()>;
+    async fn update_event(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event: &Event,
+        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+    ) -> Result<()>;
 
     /// Updates an existing sponsor.
     async fn update_group_sponsor(
@@ -155,15 +167,20 @@ impl DBDashboardGroup for PgDB {
         Ok(id)
     }
     /// [`DBDashboardGroup::add_event`]
-    #[instrument(skip(self, event), err)]
-    async fn add_event(&self, group_id: Uuid, event: &Event) -> Result<Uuid> {
+    #[instrument(skip(self, event, cfg_max_participants), err)]
+    async fn add_event(
+        &self,
+        group_id: Uuid,
+        event: &Event,
+        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+    ) -> Result<Uuid> {
         trace!("db: add event");
 
         let db = self.pool.get().await?;
         let event_id = db
             .query_one(
-                "select add_event($1::uuid, $2::jsonb)::uuid",
-                &[&group_id, &Json(event)],
+                "select add_event($1::uuid, $2::jsonb, $3::jsonb)::uuid",
+                &[&group_id, &Json(event), &Json(cfg_max_participants)],
             )
             .await?
             .get(0);
@@ -473,14 +490,20 @@ impl DBDashboardGroup for PgDB {
     }
 
     /// [`DBDashboardGroup::update_event`]
-    #[instrument(skip(self, event), err)]
-    async fn update_event(&self, group_id: Uuid, event_id: Uuid, event: &Event) -> Result<()> {
+    #[instrument(skip(self, event, cfg_max_participants), err)]
+    async fn update_event(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        event: &Event,
+        cfg_max_participants: &HashMap<MeetingProvider, i32>,
+    ) -> Result<()> {
         trace!("db: update event");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select update_event($1::uuid, $2::uuid, $3::jsonb)",
-            &[&group_id, &event_id, &Json(event)],
+            "select update_event($1::uuid, $2::uuid, $3::jsonb, $4::jsonb)",
+            &[&group_id, &event_id, &Json(event), &Json(cfg_max_participants)],
         )
         .await?;
 

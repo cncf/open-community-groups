@@ -341,6 +341,7 @@ class EventSelector extends LitWrapper {
     if (!details || typeof details !== "object") {
       return;
     }
+    this._resetMeetingFields();
     const {
       appendCopySuffix,
       setCategoryValue,
@@ -371,11 +372,21 @@ class EventSelector extends LitWrapper {
     setTextValue("venue_address", details.venue_address);
     setTextValue("venue_city", details.venue_city);
     setTextValue("venue_zip_code", details.venue_zip_code);
-    setTextValue("streaming_url", details.streaming_url);
-    setTextValue("recording_url", details.recording_url);
     setHosts(details.hosts);
     setSponsors(details.sponsors);
     setSessions(details.sessions);
+  }
+
+  /**
+   * Resets meeting-related fields to avoid copying existing links or sync state.
+   */
+  _resetMeetingFields() {
+    setTextValue("meeting_join_url", "");
+    setTextValue("meeting_recording_url", "");
+    const meetingDetails = document.querySelector("online-event-details");
+    if (meetingDetails && typeof meetingDetails.reset === "function") {
+      meetingDetails.reset();
+    }
   }
 
   /**

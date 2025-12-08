@@ -3,7 +3,10 @@
      {% if let Some(starts_at) = event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
      {% if let Some(remaining_capacity) = event.remaining_capacity %}
        data-remaining-capacity="{{ remaining_capacity }}"
-     {% endif %}>
+     {% endif %}
+     data-is-live="{{ event.is_live() }}"
+     data-has-recording="{{ event.meeting_recording_url.is_some() }}"
+     class="flex flex-row flex-wrap gap-2">
 
   <!-- Loading spinner (shown initially) -->
   <button id="loading-btn"
@@ -30,6 +33,19 @@
     <div class="svg-icon size-3 icon-user-plus"></div>
     <span>Attend event</span>
   </button>
+
+  <!-- Join meeting button (hidden initially, shown for attendees when live) -->
+  {% if let Some(meeting_join_url) = event.meeting_join_url %}
+    <a id="join-meeting-btn"
+       href="{{ meeting_join_url }}"
+       data-join-link
+       target="_blank"
+       rel="noopener noreferrer"
+       class="hidden group btn-primary-outline-anchor w-52 h-10 sm:h-[30px] flex items-center justify-center space-x-2">
+      <div class="svg-icon size-3 icon-meeting"></div>
+      <span>Join meeting</span>
+    </a>
+  {% endif %}
 
   <!-- Leave button (hidden initially) -->
   <button id="leave-btn"
@@ -70,6 +86,8 @@
     return Number.isFinite(parsedCapacity) ? parsedCapacity : null;
   })();
   const isSoldOut = remainingCapacity !== null && remainingCapacity <= 0;
+  const eventIsLive = attendanceContainer?.dataset?.isLive === 'true';
+  const hasRecording = attendanceContainer?.dataset?.hasRecording === 'true';
   const isPastEvent = (() => {
     if (!startsAtValue) {
       return false;
@@ -112,6 +130,37 @@
     }
   };
 
+  // Toggle visibility of meeting details and join links based on attendance
+  // status. Meeting details visible to all attendees. Recordings visible to
+  // everyone. Join links: always for attendees in meeting details, only when
+  // live for quick-access buttons.
+  const toggleMeetingDetailsVisibility = (isAttendee) => {
+    const sections = document.querySelectorAll('[data-meeting-details]');
+
+    sections.forEach((section) => {
+      const sectionHasRecording = section.dataset?.hasRecording === 'true';
+
+      // Show if: has recording (everyone) OR is attendee
+      const showSection = sectionHasRecording || isAttendee;
+
+      section.classList.toggle('hidden', !showSection);
+    });
+
+    // Join links in meeting details: visible to all attendees
+    const joinLinksAlways = document.querySelectorAll('[data-join-link-always]');
+    joinLinksAlways.forEach((link) => {
+      link.classList.toggle('hidden', !isAttendee);
+    });
+
+    // Quick-access join links: only for attendees when event is live
+    const joinLinksLive = document.querySelectorAll('[data-join-link]');
+    joinLinksLive.forEach((link) => {
+      link.classList.toggle('hidden', !(isAttendee && eventIsLive));
+    });
+  };
+
+  let userIsAttendee = false;
+
   updateButtonStateForEventDate(document.getElementById('attend-btn'));
   applySoldOutState(document.getElementById('attend-btn'));
   updateButtonStateForEventDate(document.getElementById('leave-btn'));
@@ -144,6 +193,8 @@
         if (response.is_attendee) {
           leaveBtn.classList.remove('hidden');
           updateButtonStateForEventDate(leaveBtn);
+          userIsAttendee = true;
+          toggleMeetingDetailsVisibility(userIsAttendee);
         } else {
           attendBtn.classList.remove('hidden');
           if (isSoldOut) {
@@ -151,6 +202,8 @@
           } else {
             updateButtonStateForEventDate(attendBtn);
           }
+          userIsAttendee = false;
+          toggleMeetingDetailsVisibility(userIsAttendee);
         }
       } catch (error) {
         if (isSoldOut) {
@@ -160,6 +213,8 @@
           signinBtn.classList.remove('hidden');
           updateButtonStateForEventDate(signinBtn);
         }
+        userIsAttendee = false;
+        toggleMeetingDetailsVisibility(userIsAttendee);
       }
     } else {
       // User not authenticated or error
@@ -170,6 +225,8 @@
         signinBtn.classList.remove('hidden');
         updateButtonStateForEventDate(signinBtn);
       }
+      userIsAttendee = false;
+      toggleMeetingDetailsVisibility(userIsAttendee);
     }
   });
 

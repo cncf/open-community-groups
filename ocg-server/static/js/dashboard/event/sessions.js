@@ -7,6 +7,7 @@ import {
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/avatar-image.js";
 import "/static/js/common/speakers-selector.js";
+import "/static/js/common/online-event-details.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";
 
 /**
@@ -26,8 +27,8 @@ export class SessionsSection extends LitWrapper {
    *  - starts_at: Session start time (datetime-local format)
    *  - ends_at: Session end time (datetime-local format, optional)
    *  - location: Location details (optional)
-   *  - recording_url: URL for session recording (optional)
-   *  - streaming_url: URL for session live stream (optional)
+   *  - meeting_join_url: URL for session meeting (optional)
+   *  - meeting_recording_url: URL for session meeting recording (optional)
    *  - speakers: Session speakers (array, handled separately)
    */
   static properties = {
@@ -36,16 +37,24 @@ export class SessionsSection extends LitWrapper {
     sessionKinds: { type: Array, attribute: "session-kinds" },
     // Timezone to render datetime-local values (e.g. "Europe/Amsterdam")
     timezone: { type: String, attribute: "timezone" },
+    meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
+    // Whether meetings feature is enabled for the group
+    meetingsEnabled: { type: Boolean, attribute: "meetings-enabled" },
   };
 
   constructor() {
     super();
     this.sessions = [];
     this.sessionKinds = [];
+    this.meetingMaxParticipants = {};
+    this.meetingsEnabled = false;
+    this._bindHtmxCleanup();
   }
 
   connectedCallback() {
     super.connectedCallback();
+
+    console.log("SessionsSection connected", this.sessions);
 
     // Accept JSON passed via attributes when used from server templates.
     if (typeof this.sessions === "string") {
@@ -79,6 +88,17 @@ export class SessionsSection extends LitWrapper {
       }
     }
     if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
+
+    if (typeof this.meetingMaxParticipants === "string") {
+      try {
+        this.meetingMaxParticipants = JSON.parse(this.meetingMaxParticipants || "{}");
+      } catch (_) {
+        this.meetingMaxParticipants = {};
+      }
+    }
+    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+      this.meetingMaxParticipants = {};
+    }
 
     this._initializeSessionIds();
   }
@@ -122,8 +142,14 @@ export class SessionsSection extends LitWrapper {
       starts_at: "",
       ends_at: "",
       location: "",
-      recording_url: "",
-      streaming_url: "",
+      meeting_requested: false,
+      meeting_in_sync: false,
+      meeting_join_url: "",
+      meeting_provider_id: "",
+      meeting_password: "",
+      meeting_error: "",
+      meeting_recording_url: "",
+      meeting_hosts: [],
       speakers: [],
     };
 
@@ -175,7 +201,7 @@ export class SessionsSection extends LitWrapper {
     const hasSingleSessionItem = this.sessions.length === 1;
 
     return html`<div class="mt-10">
-      <div class="flex w-full xl:w-2/3">
+      <div class="flex w-full">
         <div class="flex flex-col space-y-3 me-3">
           <div>
             <button
@@ -214,6 +240,8 @@ export class SessionsSection extends LitWrapper {
           .data=${session}
           .index=${index}
           .sessionKinds=${this.sessionKinds || []}
+          .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+          .meetingsEnabled=${this.meetingsEnabled}
           .onDataChange=${this._onDataChange}
           class="w-full"
         ></session-item>
@@ -238,7 +266,54 @@ export class SessionsSection extends LitWrapper {
         )}
       </div>`;
   }
+
+  /**
+   * Removes empty session parameters before HTMX submits the form.
+   * Prevents backend validation errors when a placeholder session is untouched.
+   * @private
+   */
+  _bindHtmxCleanup() {
+    if (SessionsSection._cleanupBound || typeof window === "undefined" || !window.htmx) {
+      return;
+    }
+    window.htmx.on("htmx:configRequest", (event) => {
+      const params = event.detail?.parameters;
+      if (!params || typeof params !== "object") {
+        return;
+      }
+
+      const buckets = {};
+      Object.entries(params).forEach(([key, value]) => {
+        const match = key.match(/^sessions\[(\d+)\]/);
+        if (!match) return;
+        const idx = match[1];
+        if (!buckets[idx]) buckets[idx] = [];
+        buckets[idx].push({ key, value });
+      });
+
+      const isNonEmpty = (entry) => {
+        const { key, value } = entry;
+        if (value === null || typeof value === "undefined") return false;
+        if (Array.isArray(value)) return value.length > 0;
+        const normalized = String(value).trim();
+        if (normalized === "" || normalized === "0") return false;
+        if (normalized === "false") return false;
+        if (key.endsWith("_mode") && normalized === "manual") return false;
+        return true;
+      };
+
+      Object.values(buckets).forEach((entries) => {
+        const hasContent = entries.some(isNonEmpty);
+        if (hasContent) return;
+        entries.forEach(({ key }) => {
+          delete params[key];
+        });
+      });
+    });
+    SessionsSection._cleanupBound = true;
+  }
 }
+SessionsSection._cleanupBound = false;
 customElements.define("sessions-section", SessionsSection);
 
 /**
@@ -261,6 +336,12 @@ class SessionItem extends LitWrapper {
     onDataChange: { type: Function },
     // Session kinds list provided by parent component
     sessionKinds: { type: Array, attribute: "session-kinds" },
+    meetingMaxParticipants: {
+      type: Object,
+      attribute: "meeting-max-participants",
+    },
+    // Whether meetings feature is enabled for the group
+    meetingsEnabled: { type: Boolean },
   };
 
   constructor() {
@@ -273,14 +354,19 @@ class SessionItem extends LitWrapper {
       starts_at: "",
       ends_at: "",
       location: "",
-      recording_url: "",
-      streaming_url: "",
+      meeting_requested: false,
+      meeting_join_url: "",
+      meeting_recording_url: "",
+      meeting_provider_id: "",
+      meeting_hosts: [],
       speakers: [],
     };
     this.index = 0;
     this.isObjectEmpty = true;
     this.onDataChange = () => {};
     this.sessionKinds = [];
+    this.meetingMaxParticipants = {};
+    this.meetingsEnabled = false;
   }
 
   connectedCallback() {
@@ -288,8 +374,25 @@ class SessionItem extends LitWrapper {
     if (!this.data) {
       this.data = {};
     }
+    this.data.meeting_requested =
+      this.data.meeting_requested === true || this.data.meeting_requested === "true";
+    this.data.meeting_in_sync = this.data.meeting_in_sync === true || this.data.meeting_in_sync === "true";
+    this.data.meeting_provider_id = this.data.meeting_provider_id || "";
+    this.data.meeting_password = this.data.meeting_password || "";
+    this.data.meeting_error = this.data.meeting_error || "";
     this.data.speakers = normalizeSpeakers(this.data.speakers);
     this.isObjectEmpty = isObjectEmpty(this.data);
+
+    if (typeof this.meetingMaxParticipants === "string") {
+      try {
+        this.meetingMaxParticipants = JSON.parse(this.meetingMaxParticipants || "{}");
+      } catch (_) {
+        this.meetingMaxParticipants = {};
+      }
+    }
+    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+      this.meetingMaxParticipants = {};
+    }
   }
 
   /**
@@ -301,9 +404,10 @@ class SessionItem extends LitWrapper {
     const value = event.target.value;
     const name = event.target.dataset.name;
 
-    this.data[name] = value;
+    this.data = { ...this.data, [name]: value };
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
+    this.requestUpdate();
   };
 
   /**
@@ -312,9 +416,10 @@ class SessionItem extends LitWrapper {
    * @private
    */
   _onTextareaChange = (value) => {
-    this.data.description = value;
+    this.data = { ...this.data, description: value };
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
+    this.requestUpdate();
   };
 
   _handleSpeakersChanged = (event) => {
@@ -450,43 +555,72 @@ class SessionItem extends LitWrapper {
         </div>
       </div>
 
-      <div class="col-span-3">
-        <label class="form-label"> Recording URL </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="recording_url"
-            type="url"
-            name="sessions[${this.index}][recording_url]"
-            class="input-primary"
-            value=${this.data.recording_url}
-            placeholder="Optional - link to recorded session"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-        </div>
-      </div>
-
-      <div class="col-span-3">
-        <label class="form-label"> Streaming URL </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="streaming_url"
-            type="url"
-            name="sessions[${this.index}][streaming_url]"
-            class="input-primary"
-            value=${this.data.streaming_url}
-            placeholder="Optional - link to live stream"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-        </div>
-      </div>
+      ${this.data.kind !== "in-person"
+        ? html`
+            <div class="col-span-full">
+              <label class="form-label"> Session meeting details </label>
+              <div class="mt-2">
+                ${this.meetingsEnabled
+                  ? html`
+                      <online-event-details
+                        kind=${this.data.kind || "virtual"}
+                        meeting-join-url=${this.data.meeting_join_url || ""}
+                        meeting-recording-url=${this.data.meeting_recording_url || ""}
+                        ?meeting-requested=${this.data.meeting_requested}
+                        ?meeting-in-sync=${this.data.meeting_in_sync}
+                        meeting-password=${this.data.meeting_password || ""}
+                        meeting-error=${this.data.meeting_error || ""}
+                        starts-at=${this.data.starts_at || ""}
+                        ends-at=${this.data.ends_at || ""}
+                        .meetingHosts=${this.data.meeting_hosts || {}}
+                        .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+                        field-name-prefix="sessions[${this.index}]"
+                      ></online-event-details>
+                    `
+                  : html`
+                      <div class="space-y-6">
+                        <div class="grid grid-cols-1 gap-6">
+                          <div class="space-y-2">
+                            <label for="meeting_join_url_${this.index}" class="form-label">Meeting URL</label>
+                            <div class="mt-2">
+                              <input
+                                type="url"
+                                id="meeting_join_url_${this.index}"
+                                name="sessions[${this.index}][meeting_join_url]"
+                                class="input-primary"
+                                value=${this.data.meeting_join_url || ""}
+                                placeholder="https://meet.example.com/123456789"
+                                @input=${(e) => this._onInputChange(e)}
+                                data-name="meeting_join_url"
+                              />
+                            </div>
+                            <p class="form-legend">Teams, Meet, or any other video link.</p>
+                          </div>
+                          <div class="space-y-2">
+                            <label for="meeting_recording_url_${this.index}" class="form-label"
+                              >Recording URL (optional)</label
+                            >
+                            <div class="mt-2">
+                              <input
+                                type="url"
+                                id="meeting_recording_url_${this.index}"
+                                name="sessions[${this.index}][meeting_recording_url]"
+                                class="input-primary"
+                                value=${this.data.meeting_recording_url || ""}
+                                placeholder="https://youtube.com/watch?v=..."
+                                @input=${(e) => this._onInputChange(e)}
+                                data-name="meeting_recording_url"
+                              />
+                            </div>
+                            <p class="form-legend">Add a recording link now or after the event.</p>
+                          </div>
+                        </div>
+                      </div>
+                    `}
+              </div>
+            </div>
+          `
+        : ""}
     </div>`;
   }
 }

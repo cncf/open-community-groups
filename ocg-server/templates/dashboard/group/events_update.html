@@ -27,23 +27,23 @@
       </li>
       <li>
         <button type="button"
+                data-section="hosts-sponsors"
+                data-active="false"
+                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+          <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+          </div>
+          <span class="hidden lg:inline">Hosts & Speakers</span>
+          <span class="lg:hidden">Hosts</span>
+        </button>
+      </li>
+      <li>
+        <button type="button"
                 data-section="sessions"
                 data-active="false"
                 class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
           Sessions
-        </button>
-      </li>
-      <li>
-        <button type="button"
-                data-section="hosts-sponsors"
-                data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-          <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="hidden lg:inline">People & Sponsors</span>
-          <span class="lg:hidden">People</span>
         </button>
       </li>
     </ul>
@@ -71,7 +71,9 @@
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#update-event-button, #cancel-button"
-                hx-exclude="[name=toggle_registration_required]">Update</button>
+                hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested]">
+          Update
+        </button>
       </div>
       {# End save button -#}
     </div>
@@ -114,24 +116,6 @@
 
               <div class="col-span-3"></div>
 
-              {# Event category -#}
-              <div class="col-span-full lg:col-span-3">
-                <label for="category_id" class="form-label">
-                  Category <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2 grid grid-cols-1">
-                  <select id="category_id" name="category_id" class="select-primary" required>
-                    <option value="">Select a category</option>
-                    {% for category in categories %}
-                      <option value="{{ category.event_category_id }}"
-                              {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <p class="form-legend">Type of event or meetup.</p>
-              </div>
-              {# End Event category -#}
-
               {# Event kind -#}
               <div class="col-span-full lg:col-span-3">
                 <label for="kind_id" class="form-label">
@@ -149,6 +133,24 @@
                 <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
               </div>
               {# End Event kind -#}
+
+              {# Event category -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="category_id" class="form-label">
+                  Category <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2 grid grid-cols-1">
+                  <select id="category_id" name="category_id" class="select-primary" required>
+                    <option value="">Select a category</option>
+                    {% for category in categories %}
+                      <option value="{{ category.event_category_id }}"
+                              {% if category.name == event.category_name %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <p class="form-legend">Type of event or meetup.</p>
+              </div>
+              {# End Event category -#}
 
               {# Logo URL -#}
               <div class="col-span-full lg:col-span-3">
@@ -198,8 +200,13 @@
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {# Capacity -#}
-          <div class="col-span-full lg:col-span-2">
-            <label for="capacity" class="form-label">Capacity</label>
+          <div class="col-span-full lg:col-span-4">
+            <label for="capacity" class="form-label">
+              Capacity
+              {%- if meetings_enabled %}
+                <span class="asterisk">* <sup class="text-xs font-normal">(required when requesting automatic meeting creation)</sup></span>
+              {%- endif -%}
+            </label>
             <div class="mt-2">
               <input type="number"
                      name="capacity"
@@ -209,11 +216,16 @@
                      placeholder="100"
                      {% if let Some(capacity) = event.capacity %}value="{{ capacity }}"{% endif %}>
             </div>
-            <p class="form-legend">Maximum number of attendees.</p>
+            <p class="form-legend">
+              Maximum number of attendees.
+              {%- if meetings_enabled %}
+                <br />
+                Note: Meeting providers have participant limits. If capacity exceeds your provider
+                limit, attendees may be unable to join the meeting.
+              {%- endif -%}
+            </p>
           </div>
           {# End Capacity -#}
-
-          <div class="col-span-4"></div>
 
           {# Registration required -#}
           <div class="col-span-full lg:col-span-3">
@@ -284,7 +296,7 @@
     <form id="date-venue-form">
       <div class="space-y-12">
         {# Date and Time section -#}
-        <div class="border-b border-stone-900/10 pb-12">
+        <div>
           <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -340,7 +352,8 @@
         {# End date and time section -#}
 
         {# Venue Information section -#}
-        <div class="border-b border-stone-900/10 pb-12">
+        <div id="venue-information-section"
+             class="border-t border-stone-900/10 pt-12">
           {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -414,39 +427,68 @@
         {# End venue information section -#}
 
         {# Online Event Details section -#}
-        <div class="pb-12">
-          {% call macros::form_title(title = "Online Event Details", description = "Streaming and recording information for virtual and hybrid events.") -%}
+        <div id="online-event-details-section"
+             class="border-t border-stone-900/10 pt-12">
+          {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
+          <div class="mt-10 max-w-5xl">
+            {% if meetings_enabled %}
+              <online-event-details id="online-event-details" kind="{{ event.kind }}"
+              {% if let Some(meeting_join_url) = event.meeting_join_url %}
+                meeting-join-url="{{ meeting_join_url }}"
+              {% endif %}
 
-          <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-            {# Streaming URL -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="streaming_url" class="form-label">Streaming URL</label>
-              <div class="mt-2">
-                <input type="url"
-                       name="streaming_url"
-                       id="streaming_url"
-                       class="input-primary"
-                       placeholder="https://zoom.us/j/123456789"
-                       {% if let Some(streaming_url) = event.streaming_url %}value="{{ streaming_url }}"{% endif %}>
-              </div>
-              <p class="form-legend">URL for live streaming or video conference.</p>
-            </div>
-            {# End Streaming URL -#}
+              {% if let Some(meeting_recording_url) = event.meeting_recording_url %}
+                meeting-recording-url="{{ meeting_recording_url }}"
+              {% endif %}
 
-            {# Recording URL -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="recording_url" class="form-label">Recording URL</label>
-              <div class="mt-2">
-                <input type="url"
-                       name="recording_url"
-                       id="recording_url"
-                       class="input-primary"
-                       placeholder="https://youtube.com/watch?v=..."
-                       {% if let Some(recording_url) = event.recording_url %}value="{{ recording_url }}"{% endif %}>
+              {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}
+
+              {% if let Some(meeting_in_sync) = event.meeting_in_sync %}
+
+                {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}
+
+              {% endif %}
+
+              {% if let Some(meeting_password) = event.meeting_password %}
+                meeting-password="{{ meeting_password }}"
+              {% endif %}
+
+              {% if let Some(meeting_error) = event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
+
+              {% if let Some(meeting_hosts) = event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
+              meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
+            {% else %}
+              <div class="space-y-6">
+                <div class="grid grid-cols-1 gap-6">
+                  <div class="space-y-2">
+                    <label for="meeting_join_url" class="form-label">Meeting URL</label>
+                    <div class="mt-2">
+                      <input type="url"
+                             id="meeting_join_url"
+                             name="meeting_join_url"
+                             class="input-primary"
+                             placeholder="https://meet.example.com/123456789"
+                             {% if let Some(meeting_join_url) = event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}>
+                    </div>
+                    <p class="form-legend">Teams, Meet, or any other video link.</p>
+                  </div>
+                  <div class="space-y-2">
+                    <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>
+                    <div class="mt-2">
+                      <input type="url"
+                             id="meeting_recording_url"
+                             name="meeting_recording_url"
+                             class="input-primary"
+                             placeholder="https://youtube.com/watch?v=..."
+                             {% if let Some(meeting_recording_url) = event.meeting_recording_url %}
+                               value="{{ meeting_recording_url }}"
+                             {% endif %}>
+                    </div>
+                    <p class="form-legend">Add a recording link now or after the event.</p>
+                  </div>
+                </div>
               </div>
-              <p class="form-legend">URL to the event recording (can be added after the event).</p>
-            </div>
-            {# End Recording URL -#}
+            {% endif %}
           </div>
         </div>
         {# End online event details section -#}
@@ -460,14 +502,16 @@
     <form id="sessions-form">
       <div class="pb-12">
         <div class="mt-10">
-          <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}"></sessions-section>
+          <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}"
+          {% if meetings_enabled %}meetings-enabled{% endif %}
+          ></sessions-section>
         </div>
       </div>
     </form>
   </div>
   {# End Sessions Tab -#}
 
-  {# People & Sponsors Tab -#}
+  {# Hosts & Speakers Tab -#}
   <div data-content="hosts-sponsors" class="hidden">
     <form id="hosts-sponsors-form">
       <div class="space-y-12">
@@ -500,7 +544,7 @@
       </div>
     </form>
   </div>
-  {# End People & Sponsors Tab -#}
+  {# End Hosts & Speakers Tab -#}
 
 </div>
 </div>
@@ -515,14 +559,21 @@
     showErrorAlert,
     showSuccessAlert
   } from '/static/js/common/alerts.js';
+  import {
+    validateMeetingRequest,
+    hasVenueData,
+    clearVenueFields,
+    confirmVenueDataDeletion,
+    updateSectionVisibility
+  } from '/static/js/dashboard/group/meeting-validations.js';
   import '/static/js/common/user-search-selector.js';
   import '/static/js/common/speakers-selector.js';
+  import '/static/js/common/online-event-details.js';
 
   const updateEventButton = document.getElementById('update-event-button');
   const cancelButton = document.getElementById('cancel-button');
   const kindSelect = document.getElementById('kind_id');
-  const venueSection = document.getElementById('venue-section');
-  const onlineSection = document.getElementById('online-section');
+  const onlineEventDetails = document.getElementById('online-event-details');
 
   // Tab switching functionality
   function displayActiveSection(sectionName) {
@@ -566,6 +617,25 @@
     return true;
   }
 
+  function validateSessionOnlineDetails() {
+    const sessionsSection = document.querySelector('sessions-section');
+    if (!sessionsSection) {
+      return true;
+    }
+
+    const sessionOnlineDetails = sessionsSection.querySelectorAll('online-event-details');
+    const displaySessionsSection = () => displayActiveSection('sessions');
+
+    for (const component of sessionOnlineDetails) {
+      if (!component.validate(displaySessionsSection)) {
+        displaySessionsSection();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   // Add event listeners to tab buttons
   const sectionsBtn = document.querySelectorAll('[data-section]');
   sectionsBtn.forEach((btn) => {
@@ -583,6 +653,74 @@
     });
   }
 
+  // Update component kind when event kind changes
+  if (kindSelect) {
+    let previousKindValue = kindSelect.value;
+    updateSectionVisibility(kindSelect.value || '');
+    if (onlineEventDetails) {
+      onlineEventDetails.kind = kindSelect.value;
+    }
+
+    kindSelect.addEventListener('change', async () => {
+      const newValue = kindSelect.value;
+
+      if (newValue === 'virtual' && hasVenueData()) {
+        const confirmed = await confirmVenueDataDeletion();
+        if (!confirmed) {
+          kindSelect.value = previousKindValue;
+          updateSectionVisibility(kindSelect.value || '');
+          if (onlineEventDetails) {
+            onlineEventDetails.kind = kindSelect.value;
+          }
+          return;
+        }
+        clearVenueFields();
+      }
+
+      // Check if change would disable automatic meetings
+      if (onlineEventDetails) {
+        const accepted = await onlineEventDetails.trySetKind(newValue);
+        if (!accepted) {
+          kindSelect.value = previousKindValue;
+          updateSectionVisibility(kindSelect.value || '');
+          return;
+        }
+      }
+
+      previousKindValue = newValue;
+      updateSectionVisibility(newValue);
+    });
+  } else {
+    updateSectionVisibility('');
+  }
+
+  // Update component starts/ends times when they change for validation
+  const startsAtInput = document.getElementById('starts_at');
+  const endsAtInput = document.getElementById('ends_at');
+  let previousStartsAt = startsAtInput?.value || '';
+  let previousEndsAt = endsAtInput?.value || '';
+
+  if (startsAtInput && onlineEventDetails) {
+    startsAtInput.addEventListener('change', async () => {
+      const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
+      if (!accepted) {
+        startsAtInput.value = previousStartsAt;
+        return;
+      }
+      previousStartsAt = startsAtInput.value;
+    });
+  }
+  if (endsAtInput && onlineEventDetails) {
+    endsAtInput.addEventListener('change', async () => {
+      const accepted = await onlineEventDetails.trySetEndsAt(endsAtInput.value);
+      if (!accepted) {
+        endsAtInput.value = previousEndsAt;
+        return;
+      }
+      previousEndsAt = endsAtInput.value;
+    });
+  }
+
   if (cancelButton) {
     cancelButton.addEventListener('htmx:afterRequest', () => {
       history.pushState({}, "Events list", '/dashboard/group?tab=events');
@@ -596,7 +734,17 @@
         // Use multiple form validation
         const isValid = validateEventForms();
 
-        if (!isValid) {
+        // Validate online event details component
+        let onlineValid = true;
+        if (onlineEventDetails) {
+          onlineEventDetails.startsAt = startsAtInput?.value || '';
+          onlineEventDetails.endsAt = endsAtInput?.value || '';
+          onlineValid = onlineEventDetails.validate(displayActiveSection);
+        }
+
+        const sessionsOnlineValid = validateSessionOnlineDetails();
+
+        if (!isValid || !onlineValid || !sessionsOnlineValid) {
           // Prevent form submission
           e.preventDefault();
           return false;

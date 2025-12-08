@@ -30,6 +30,9 @@ pub(crate) struct Config {
     pub log: LogConfig,
     /// HTTP server configuration.
     pub server: HttpServerConfig,
+
+    /// Meetings configuration.
+    pub meetings: Option<MeetingsConfig>,
 }
 
 impl Config {
@@ -100,6 +103,37 @@ pub(crate) struct ImageStorageConfigS3 {
     pub endpoint: Option<String>,
     /// Use path-style requests for compatibility with certain providers.
     pub force_path_style: Option<bool>,
+}
+
+/// Meetings configuration (multiple providers supported).
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub(crate) struct MeetingsConfig {
+    /// Zoom provider configuration.
+    pub zoom: Option<MeetingsZoomConfig>,
+}
+
+impl MeetingsConfig {
+    /// Check if at least one meetings provider is enabled.
+    pub(crate) fn meetings_enabled(&self) -> bool {
+        self.zoom.as_ref().is_some_and(|z| z.enabled)
+    }
+}
+
+/// Zoom meetings configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct MeetingsZoomConfig {
+    /// Zoom account identifier.
+    pub account_id: String,
+    /// OAuth client identifier.
+    pub client_id: String,
+    /// OAuth client secret.
+    pub client_secret: String,
+    /// Whether this provider is enabled.
+    pub enabled: bool,
+    /// Maximum number of participants allowed in a meeting (Zoom plan limit).
+    pub max_participants: i32,
+    /// Webhook secret token for signature verification.
+    pub webhook_secret_token: String,
 }
 
 /// SMTP server configuration.

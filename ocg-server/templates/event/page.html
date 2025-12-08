@@ -28,7 +28,7 @@
         {# Event header with name and group -#}
         <div>
           {# Main flex container for logo, name/group, and social networks -#}
-          <div class="flex flex-1 flex-row items-stretch gap-6">
+          <div class="flex flex-1 flex-row items-stretch md:gap-6">
             {# Event logo -#}
             <div class="relative">
               {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = event.color, name = Some(event.group.name)) -%}
@@ -127,30 +127,35 @@
               <div class="p-4 h-full flex flex-col">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
                 <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400 h-full">
-                  <div class="flex items-start gap-3">
-                    <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
-                    <div>
-                      {% if let Some(starts_at) = event.starts_at -%}
-                        <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
-                          {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
-                        </div>
-                        <div class="mt-2 text-base text-stone-600">
-                          {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
-                        </div>
-                      {% else -%}
-                        <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
-                      {% endif -%}
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-3">
+                      <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
+                      <div>
+                        {% if let Some(starts_at) = event.starts_at -%}
+                          <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
+                            {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
+                          </div>
+                          <div class="mt-2 text-base text-stone-600">
+                            {{ starts_at.with_timezone(event.timezone).format("%I:%M %p %Z") }}
+                          </div>
+                        {% else -%}
+                          <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
+                        {% endif -%}
+                      </div>
                     </div>
-                  </div>
 
-                  {% if let Some(streaming_url) = event.streaming_url -%}
-                    <div class="mt-4">
-                      <a href="{{ streaming_url }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="text-sm text-primary-500 hover:text-primary-600 transition-colors">Join virtual event</a>
-                    </div>
-                  {% endif -%}
+                    {% if let Some(meeting_join_url) = event.meeting_join_url -%}
+                      <div data-join-link class="hidden">
+                        <a href="{{ meeting_join_url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="group btn-secondary-anchor p-1.5 size-[40px] sm:size-[30px] flex items-center justify-center"
+                           aria-label="Meeting link">
+                          <div class="svg-icon size-3 bg-primary-500 group-hover:bg-white icon-meeting"></div>
+                        </a>
+                      </div>
+                    {% endif -%}
+                  </div>
                 </div>
               </div>
             </div>
@@ -205,6 +210,53 @@
           {% endif -%}
           {# End event banner -#}
           <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
+          {% if event.meeting_join_url.is_some() || event.meeting_recording_url.is_some() -%}
+            {% let meeting_join_url = event.meeting_join_url -%}
+            {% let meeting_recording_url = event.meeting_recording_url -%}
+            {% let has_join = meeting_join_url.is_some() -%}
+            {% let has_recording = meeting_recording_url.is_some() -%}
+            <div data-meeting-details
+                 data-has-recording="{{ has_recording }}"
+                 class="hidden mt-6 sm:mt-8">
+              <div class="border border-stone-200 bg-stone-50 rounded-lg p-4 sm:p-5">
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="svg-icon size-4 bg-stone-700 icon-meeting"></div>
+                  <div class="text-sm font-semibold uppercase tracking-wide text-stone-700">Meeting details</div>
+                </div>
+                <div class="text-sm text-stone-700 mb-4">
+                  {% if has_join && has_recording -%}
+                    Use the links below to join the session or watch the recording.
+                  {% elif has_join -%}
+                    Use the link below to join the session.
+                  {% else -%}
+                    Use the link below to watch the recording.
+                  {% endif -%}
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                  {% if let Some(meeting_join_url) = meeting_join_url -%}
+                    <div data-join-link-always>
+                      <a href="{{ meeting_join_url }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
+                        <div class="svg-icon size-3 icon-meeting"></div>
+                        <span>Meeting link</span>
+                      </a>
+                    </div>
+                  {% endif -%}
+                  {% if let Some(meeting_recording_url) = meeting_recording_url -%}
+                    <a href="{{ meeting_recording_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="group btn-primary-outline-anchor h-10 md:h-[30px] flex items-center justify-center space-x-2">
+                      <div class="svg-icon size-3 icon-recording"></div>
+                      <span>View recording</span>
+                    </a>
+                  {% endif -%}
+                </div>
+              </div>
+            </div>
+          {% endif -%}
         </div>
         {# End event description -#}
 
@@ -442,6 +494,35 @@
     {% endif -%}
     {% if let Some(description) = session.description -%}
       <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
+    {% endif -%}
+    {% if session.meeting_join_url.is_some() || session.meeting_recording_url.is_some() -%}
+      {% let has_join = session.meeting_join_url.is_some() -%}
+      {% let has_recording_session = session.meeting_recording_url.is_some() -%}
+      <div data-meeting-details
+           data-has-recording="{{ has_recording_session }}"
+           class="hidden mt-3">
+        <div class="flex flex-wrap items-center gap-3">
+          {% if let Some(meeting_join_url) = session.meeting_join_url -%}
+            <a href="{{ meeting_join_url }}"
+               data-join-link-always
+               target="_blank"
+               rel="noopener noreferrer"
+               class="group btn-primary-outline inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
+              <div class="svg-icon size-3 icon-meeting"></div>
+              <span>Join session</span>
+            </a>
+          {% endif -%}
+          {% if let Some(meeting_recording_url) = session.meeting_recording_url -%}
+            <a href="{{ meeting_recording_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="group btn-secondary-outline-anchor inline-flex items-center gap-2 rounded-full h-10 sm:h-[30px] text-sm">
+              <div class="svg-icon size-3 icon-recording"></div>
+              <span>View recording</span>
+            </a>
+          {% endif -%}
+        </div>
+      </div>
     {% endif -%}
     {% if !session.speakers.is_empty() -%}
       <div class="mt-4">

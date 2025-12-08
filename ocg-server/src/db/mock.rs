@@ -1,5 +1,7 @@
 //! DB trait mock implementation for testing.
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use mockall::mock;
@@ -205,6 +207,7 @@ mock! {
             &self,
             group_id: Uuid,
             event: &crate::templates::dashboard::group::events::Event,
+            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<Uuid>;
         async fn add_group_sponsor(
             &self,
@@ -295,6 +298,7 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             event: &crate::templates::dashboard::group::events::Event,
+            cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<()>;
         async fn update_group_sponsor(
             &self,
@@ -437,6 +441,41 @@ mock! {
             &self,
             file_name: &str,
         ) -> Result<Option<crate::services::images::Image>>;
+    }
+
+    #[async_trait]
+    impl crate::db::meetings::DBMeetings for DB {
+        async fn add_meeting(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+        async fn delete_meeting(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+        async fn get_meeting_out_of_sync(
+            &self,
+            client_id: Uuid,
+        ) -> Result<Option<crate::services::meetings::Meeting>>;
+        async fn set_meeting_error(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+            error: &str,
+        ) -> Result<()>;
+        async fn update_meeting(
+            &self,
+            client_id: Uuid,
+            meeting: &crate::services::meetings::Meeting,
+        ) -> Result<()>;
+        async fn update_meeting_recording_url(
+            &self,
+            provider: crate::services::meetings::MeetingProvider,
+            provider_meeting_id: &str,
+            recording_url: &str,
+        ) -> Result<()>;
     }
 
     #[async_trait]

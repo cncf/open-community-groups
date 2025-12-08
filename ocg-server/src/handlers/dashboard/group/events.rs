@@ -1,5 +1,7 @@
 //! HTTP handlers for managing events in the group dashboard.
 
+use std::collections::HashMap;
+
 use anyhow::Result;
 use askama::Template;
 use axum::{
@@ -14,13 +16,16 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
-    config::HttpServerConfig,
+    config::{HttpServerConfig, MeetingsConfig},
     db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{CommunityId, SelectedGroupId},
     },
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::{
+        meetings::MeetingProvider,
+        notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    },
     templates::{
         dashboard::group::events::{self, Event},
         notifications::{EventCanceled, EventPublished, EventRescheduled},
@@ -39,8 +44,11 @@ pub(crate) async fn add_page(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(meetings_cfg): State<Option<MeetingsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
+    let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
+    let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let (categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
@@ -52,6 +60,8 @@ pub(crate) async fn add_page(
         group_id,
         categories,
         event_kinds,
+        meetings_enabled,
+        meetings_max_participants,
         session_kinds,
         sponsors,
         timezones,
@@ -79,9 +89,12 @@ pub(crate) async fn update_page(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(meetings_cfg): State<Option<MeetingsConfig>>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
+    let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
+    let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
         db.list_event_categories(community_id),
@@ -95,6 +108,8 @@ pub(crate) async fn update_page(
         event,
         categories,
         event_kinds,
+        meetings_enabled,
+        meetings_max_participants,
         session_kinds,
         sponsors,
         timezones,
@@ -125,6 +140,7 @@ pub(crate) async fn details(
 pub(crate) async fn add(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    State(meetings_cfg): State<Option<MeetingsConfig>>,
     State(serde_qs_de): State<serde_qs::Config>,
     body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -135,7 +151,8 @@ pub(crate) async fn add(
     };
 
     // Add event to database
-    db.add_event(group_id, &event).await?;
+    let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
+    db.add_event(group_id, &event, &cfg_max_participants).await?;
 
     Ok((
         StatusCode::CREATED,
@@ -149,9 +166,9 @@ pub(crate) async fn add(
 pub(crate) async fn cancel(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load event summary before canceling
@@ -169,7 +186,7 @@ pub(crate) async fn cancel(
         let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
         if !user_ids.is_empty() {
             event.canceled = true; // Update local event to reflect canceled status
-            let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let link = build_event_page_link(base_url, &event);
             let community = db.get_community(community_id).await?;
             let calendar_ics = build_event_calendar_attachment(base_url, &event);
@@ -203,9 +220,9 @@ pub(crate) async fn publish(
     auth_session: AuthSession,
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -229,7 +246,7 @@ pub(crate) async fn publish(
                 db.get_community(community_id),
                 db.get_event_summary(community_id, group_id, event_id),
             )?;
-            let base_url = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let link = build_event_page_link(base_url, &event);
             let calendar_ics = build_event_calendar_attachment(base_url, &event);
             let template_data = EventPublished {
@@ -291,10 +308,11 @@ pub(crate) async fn unpublish(
 pub(crate) async fn update(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
-    State(cfg): State<HttpServerConfig>,
     State(db): State<DynDB>,
+    State(meetings_cfg): State<Option<MeetingsConfig>>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(serde_qs_de): State<serde_qs::Config>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -308,7 +326,9 @@ pub(crate) async fn update(
     let before = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Update event in database
-    db.update_event(group_id, event_id, &event).await?;
+    let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
+    db.update_event(group_id, event_id, &event, &cfg_max_participants)
+        .await?;
 
     // Notify attendees if event was rescheduled
     let after = db.get_event_summary(community_id, group_id, event_id).await?;
@@ -321,7 +341,7 @@ pub(crate) async fn update(
     if should_notify {
         let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
         if !user_ids.is_empty() {
-            let base = cfg.base_url.strip_suffix('/').unwrap_or(&cfg.base_url);
+            let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let link = build_event_page_link(base, &after);
             let community = db.get_community(community_id).await?;
             let calendar_ics = build_event_calendar_attachment(base, &after);
@@ -347,6 +367,19 @@ pub(crate) async fn update(
         .into_response())
 }
 
+// Helpers.
+
+/// Builds a `HashMap` of meeting provider to max participants from config.
+fn build_meetings_max_participants(meetings_cfg: Option<&MeetingsConfig>) -> HashMap<MeetingProvider, i32> {
+    let mut map = HashMap::new();
+    if let Some(cfg) = meetings_cfg
+        && let Some(zoom) = &cfg.zoom
+    {
+        map.insert(MeetingProvider::Zoom, zoom.max_participants);
+    }
+    map
+}
+
 // Tests.
 
 #[cfg(test)]
@@ -364,10 +397,14 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
+        config::{MeetingsConfig, MeetingsZoomConfig},
         db::mock::MockDB,
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::{MockNotificationsManager, NotificationKind},
+        services::{
+            meetings::MeetingProvider,
+            notifications::{MockNotificationsManager, NotificationKind},
+        },
         templates::notifications::{EventCanceled, EventPublished, EventRescheduled},
         types::event::{EventFull, EventSummary},
     };
@@ -423,7 +460,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/events/add")
@@ -480,7 +517,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/events")
@@ -563,7 +600,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/events/{event_id}/update"))
@@ -624,7 +661,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/events/{event_id}/details"))
@@ -669,16 +706,34 @@ mod tests {
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_add_event()
             .times(1)
-            .withf(move |id, event| {
-                *id == group_id && event.name == event_form.name && event.slug == event_form.slug
+            .withf(move |id, event, cfg_max_participants| {
+                *id == group_id
+                    && event.name == event_form.name
+                    && event.slug == event_form.slug
+                    && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
             })
-            .returning(move |_, _| Ok(Uuid::new_v4()));
+            .returning(move |_, _, _| Ok(Uuid::new_v4()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
 
-        // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        // Setup meetings config with Zoom
+        let meetings_cfg = MeetingsConfig {
+            zoom: Some(MeetingsZoomConfig {
+                account_id: "test-account".to_string(),
+                client_id: "test-client".to_string(),
+                client_secret: "test-secret".to_string(),
+                enabled: true,
+                max_participants: 100,
+                webhook_secret_token: "test-token".to_string(),
+            }),
+        };
+
+        // Setup router with meetings config and send request
+        let router = TestRouterBuilder::new(db, nm)
+            .with_meetings_cfg(meetings_cfg)
+            .build()
+            .await;
         let request = Request::builder()
             .method("POST")
             .uri("/dashboard/group/events/add")
@@ -724,7 +779,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
             .uri("/dashboard/group/events/add")
@@ -812,7 +867,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/events/{event_id}/cancel"))
@@ -918,7 +973,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/events/{event_id}/publish"))
@@ -968,7 +1023,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("DELETE")
             .uri(format!("/dashboard/group/events/{event_id}/delete"))
@@ -1018,7 +1073,7 @@ mod tests {
         let nm = MockNotificationsManager::new();
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/events/{event_id}/unpublish"))
@@ -1040,6 +1095,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)]
     async fn test_update_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
@@ -1092,10 +1148,13 @@ mod tests {
             });
         db.expect_update_event()
             .times(1)
-            .withf(move |gid, eid, event| {
-                *gid == group_id && *eid == event_id && event.name == event_form.name
+            .withf(move |gid, eid, event, cfg_max_participants| {
+                *gid == group_id
+                    && *eid == event_id
+                    && event.name == event_form.name
+                    && cfg_max_participants.is_empty()
             })
-            .returning(move |_, _, _| Ok(()));
+            .returning(move |_, _, _, _| Ok(()));
         db.expect_list_event_attendees_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
@@ -1128,7 +1187,7 @@ mod tests {
             .returning(|_| Box::pin(async { Ok(()) }));
 
         // Setup router and send request
-        let router = setup_test_router(db, nm).await;
+        let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/events/{event_id}/update"))
