@@ -115,7 +115,7 @@ pub(crate) struct MeetingsConfig {
 impl MeetingsConfig {
     /// Check if at least one meetings provider is enabled.
     pub(crate) fn meetings_enabled(&self) -> bool {
-        self.zoom.is_some()
+        self.zoom.as_ref().is_some_and(|z| z.enabled)
     }
 }
 
@@ -128,6 +128,8 @@ pub(crate) struct MeetingsZoomConfig {
     pub client_id: String,
     /// OAuth client secret.
     pub client_secret: String,
+    /// Whether this provider is enabled.
+    pub enabled: bool,
     /// Maximum number of participants allowed in a meeting (Zoom plan limit).
     pub max_participants: i32,
     /// Webhook secret token for signature verification.

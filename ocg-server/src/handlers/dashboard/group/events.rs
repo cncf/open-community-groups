@@ -723,6 +723,7 @@ mod tests {
                 account_id: "test-account".to_string(),
                 client_id: "test-client".to_string(),
                 client_secret: "test-secret".to_string(),
+                enabled: true,
                 max_participants: 100,
                 webhook_secret_token: "test-token".to_string(),
             }),
