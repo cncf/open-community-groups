@@ -4,6 +4,10 @@
 export const MIN_MEETING_MINUTES = 5;
 export const MAX_MEETING_MINUTES = 720;
 export const DEFAULT_MEETING_PROVIDER = "zoom";
+const VENUE_FIELDS = ["venue_name", "venue_address", "venue_city", "venue_zip_code"];
+
+const findVenueField = (fieldId) =>
+  document.getElementById(fieldId) || document.querySelector(`[name="${fieldId}"]`);
 
 /**
  * Validates whether automatic meeting creation is allowed for the provided data.
@@ -103,4 +107,51 @@ export const validateMeetingRequest = ({
   }
 
   return true;
+};
+
+/**
+ * Checks whether any venue input field contains non-empty text.
+ * @returns {boolean} True when at least one venue field has data
+ */
+export const hasVenueData = () =>
+  VENUE_FIELDS.some((fieldId) => {
+    const field = findVenueField(fieldId);
+    return field && field.value.trim() !== "";
+  });
+
+/**
+ * Clears all venue input field values if the elements exist in the DOM.
+ * @returns {void}
+ */
+export const clearVenueFields = () => {
+  VENUE_FIELDS.forEach((fieldId) => {
+    const field = findVenueField(fieldId);
+    if (field) {
+      field.value = "";
+    }
+  });
+};
+
+/**
+ * Prompts the user to confirm deleting venue data when switching to virtual.
+ * @returns {Promise<boolean>} Resolves true when the user confirms
+ */
+export const confirmVenueDataDeletion = async () => {
+  const result = await Swal.fire({
+    text: "Switching to a virtual event will delete the venue information. Do you want to continue?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, delete venue info",
+    cancelButtonText: "No, keep it",
+    position: "center",
+    backdrop: true,
+    buttonsStyling: false,
+    iconColor: "var(--color-primary-500)",
+    customClass: {
+      popup: "pb-10! pt-5! px-0! rounded-lg! max-w-[100%] md:max-w-[400px]! shadow-lg!",
+      confirmButton: "btn-primary",
+      cancelButton: "btn-primary-outline ms-5",
+    },
+  });
+  return result.isConfirmed;
 };

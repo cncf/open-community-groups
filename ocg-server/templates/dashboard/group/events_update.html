@@ -201,7 +201,12 @@
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {# Capacity -#}
           <div class="col-span-full lg:col-span-4">
-            <label for="capacity" class="form-label">Capacity</label>
+            <label for="capacity" class="form-label">
+              Capacity
+              {%- if meetings_enabled %}
+                <span class="asterisk">* <sup class="text-xs font-normal">(required when requesting automatic meeting creation)</sup></span>
+              {%- endif -%}
+            </label>
             <div class="mt-2">
               <input type="number"
                      name="capacity"
@@ -214,7 +219,6 @@
             <p class="form-legend">
               Maximum number of attendees.
               {%- if meetings_enabled %}
-                <span class="font-semibold">Required when requesting automatic meeting creation.</span>
                 <br />
                 Note: Meeting providers have participant limits. If capacity exceeds your provider
                 limit, attendees may be unable to join the meeting.
@@ -552,7 +556,10 @@
     showSuccessAlert
   } from '/static/js/common/alerts.js';
   import {
-    validateMeetingRequest
+    validateMeetingRequest,
+    hasVenueData,
+    clearVenueFields,
+    confirmVenueDataDeletion
   } from '/static/js/dashboard/group/meeting-validations.js';
   import '/static/js/common/user-search-selector.js';
   import '/static/js/common/speakers-selector.js';
@@ -645,9 +652,23 @@
 
   // Update component kind when event kind changes
   if (kindSelect && onlineEventDetails) {
+    let previousKindValue = kindSelect.value;
     onlineEventDetails.kind = kindSelect.value;
-    kindSelect.addEventListener('change', () => {
-      onlineEventDetails.kind = kindSelect.value;
+
+    kindSelect.addEventListener('change', async () => {
+      const newValue = kindSelect.value;
+
+      if (newValue === 'virtual' && hasVenueData()) {
+        const confirmed = await confirmVenueDataDeletion();
+        if (!confirmed) {
+          kindSelect.value = previousKindValue;
+          return;
+        }
+        clearVenueFields();
+      }
+
+      previousKindValue = newValue;
+      onlineEventDetails.kind = newValue;
     });
   }
 
