@@ -27,23 +27,23 @@
       </li>
       <li>
         <button type="button"
+                data-section="hosts-sponsors"
+                data-active="false"
+                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+          <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+          </div>
+          <span class="hidden lg:inline">Hosts & Speakers</span>
+          <span class="lg:hidden">Hosts</span>
+        </button>
+      </li>
+      <li>
+        <button type="button"
                 data-section="sessions"
                 data-active="false"
                 class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
           <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
           </div>
           Sessions
-        </button>
-      </li>
-      <li>
-        <button type="button"
-                data-section="hosts-sponsors"
-                data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-          <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="hidden lg:inline">People & Sponsors</span>
-          <span class="lg:hidden">People</span>
         </button>
       </li>
     </ul>
@@ -511,7 +511,7 @@
   </div>
   {# End Sessions Tab -#}
 
-  {# People & Sponsors Tab -#}
+  {# Hosts & Speakers Tab -#}
   <div data-content="hosts-sponsors" class="hidden">
     <form id="hosts-sponsors-form">
       <div class="space-y-12">
@@ -544,7 +544,7 @@
       </div>
     </form>
   </div>
-  {# End People & Sponsors Tab -#}
+  {# End Hosts & Speakers Tab -#}
 
 </div>
 </div>

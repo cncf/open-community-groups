@@ -540,7 +540,10 @@ export class OnlineEventDetails extends LitWrapper {
 
         ${showPendingMessage
           ? html`
-              <p class="text-sm text-stone-700">We requested the meeting; syncing may take a few minutes.</p>
+              <p class="text-sm text-stone-700">
+                We've requested a meeting for this event. The meeting details (join link and password) will
+                appear here once synced, which usually takes a few minutes.
+              </p>
             `
           : ""}
         ${this.meetingJoinUrl
