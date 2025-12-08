@@ -737,7 +737,7 @@ export class OnlineEventDetails extends LitWrapper {
       {
         value: "manual",
         title: "Use my own meeting link",
-        description: "Paste a Teams, Meet, or other link.",
+        description: "Paste a Zoom, Teams, Meet, or other link.",
         helper: "",
         disabled: false,
       },
@@ -758,7 +758,7 @@ export class OnlineEventDetails extends LitWrapper {
           ${modeOptions.map((option) => this._renderModeOption(option))}
         </div>
 
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div class="grid grid-cols-1 gap-6 ${this._mode === "manual" ? "" : "md:grid-cols-2"}">
           ${this._mode === "manual" ? this._renderManualFields() : this._renderAutomaticFields()}
         </div>
 

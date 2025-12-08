@@ -459,7 +459,7 @@
               meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
             {% else %}
               <div class="space-y-6">
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div class="grid grid-cols-1 gap-6">
                   <div class="space-y-2">
                     <label for="meeting_join_url" class="form-label">Meeting URL</label>
                     <div class="mt-2">
