@@ -467,7 +467,7 @@
     <form id="sessions-form">
       <div class="pb-12">
         <div class="mt-10">
-          <sessions-section session-kinds="{{ session_kinds|json }}"></sessions-section>
+          <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}"></sessions-section>
         </div>
       </div>
     </form>
@@ -581,6 +581,25 @@
     return true;
   }
 
+  function validateSessionOnlineDetails() {
+    const sessionsSection = document.querySelector('sessions-section');
+    if (!sessionsSection) {
+      return true;
+    }
+
+    const sessionOnlineDetails = sessionsSection.querySelectorAll('online-event-details');
+    const displaySessionsSection = () => displayActiveSection('sessions');
+
+    for (const component of sessionOnlineDetails) {
+      if (!component.validate(displaySessionsSection)) {
+        displaySessionsSection();
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   // Add event listeners to tab buttons
   const sectionsBtn = document.querySelectorAll('[data-section]');
   sectionsBtn.forEach((btn) => {
@@ -641,7 +660,9 @@
           onlineValid = onlineEventDetails.validate(displayActiveSection);
         }
 
-        if (!isValid || !onlineValid) {
+        const sessionsOnlineValid = validateSessionOnlineDetails();
+
+        if (!isValid || !onlineValid || !sessionsOnlineValid) {
           // Prevent form submission
           e.preventDefault();
           return false;

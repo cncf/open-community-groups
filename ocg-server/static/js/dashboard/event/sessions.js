@@ -37,17 +37,21 @@ export class SessionsSection extends LitWrapper {
     sessionKinds: { type: Array, attribute: "session-kinds" },
     // Timezone to render datetime-local values (e.g. "Europe/Amsterdam")
     timezone: { type: String, attribute: "timezone" },
+    meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
   };
 
   constructor() {
     super();
     this.sessions = [];
     this.sessionKinds = [];
+    this.meetingMaxParticipants = {};
     this._bindHtmxCleanup();
   }
 
   connectedCallback() {
     super.connectedCallback();
+
+    console.log("SessionsSection connected", this.sessions);
 
     // Accept JSON passed via attributes when used from server templates.
     if (typeof this.sessions === "string") {
@@ -81,6 +85,17 @@ export class SessionsSection extends LitWrapper {
       }
     }
     if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
+
+    if (typeof this.meetingMaxParticipants === "string") {
+      try {
+        this.meetingMaxParticipants = JSON.parse(this.meetingMaxParticipants || "{}");
+      } catch (_) {
+        this.meetingMaxParticipants = {};
+      }
+    }
+    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+      this.meetingMaxParticipants = {};
+    }
 
     this._initializeSessionIds();
   }
@@ -128,9 +143,11 @@ export class SessionsSection extends LitWrapper {
       meeting_requires_password: false,
       meeting_in_sync: false,
       meeting_join_url: "",
+      meeting_provider_id: "",
       meeting_password: "",
       meeting_error: "",
       meeting_recording_url: "",
+      meeting_hosts: [],
       speakers: [],
     };
 
@@ -221,6 +238,7 @@ export class SessionsSection extends LitWrapper {
           .data=${session}
           .index=${index}
           .sessionKinds=${this.sessionKinds || []}
+          .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
           .onDataChange=${this._onDataChange}
           class="w-full"
         ></session-item>
@@ -315,6 +333,10 @@ class SessionItem extends LitWrapper {
     onDataChange: { type: Function },
     // Session kinds list provided by parent component
     sessionKinds: { type: Array, attribute: "session-kinds" },
+    meetingMaxParticipants: {
+      type: Object,
+      attribute: "meeting-max-participants",
+    },
   };
 
   constructor() {
@@ -331,12 +353,15 @@ class SessionItem extends LitWrapper {
       meeting_requires_password: false,
       meeting_join_url: "",
       meeting_recording_url: "",
+      meeting_provider_id: "",
+      meeting_hosts: [],
       speakers: [],
     };
     this.index = 0;
     this.isObjectEmpty = true;
     this.onDataChange = () => {};
     this.sessionKinds = [];
+    this.meetingMaxParticipants = {};
   }
 
   connectedCallback() {
@@ -349,10 +374,22 @@ class SessionItem extends LitWrapper {
     this.data.meeting_requires_password =
       this.data.meeting_requires_password === true || this.data.meeting_requires_password === "true";
     this.data.meeting_in_sync = this.data.meeting_in_sync === true || this.data.meeting_in_sync === "true";
+    this.data.meeting_provider_id = this.data.meeting_provider_id || "";
     this.data.meeting_password = this.data.meeting_password || "";
     this.data.meeting_error = this.data.meeting_error || "";
     this.data.speakers = normalizeSpeakers(this.data.speakers);
     this.isObjectEmpty = isObjectEmpty(this.data);
+
+    if (typeof this.meetingMaxParticipants === "string") {
+      try {
+        this.meetingMaxParticipants = JSON.parse(this.meetingMaxParticipants || "{}");
+      } catch (_) {
+        this.meetingMaxParticipants = {};
+      }
+    }
+    if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
+      this.meetingMaxParticipants = {};
+    }
   }
 
   /**
@@ -508,6 +545,8 @@ class SessionItem extends LitWrapper {
           meeting-error=${this.data.meeting_error || ""}
           starts-at=${this.data.starts_at || ""}
           ends-at=${this.data.ends_at || ""}
+          .meetingHosts=${this.data.meeting_hosts || {}}
+          .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
           field-name-prefix="sessions[${this.index}]"
         ></online-event-details>
       </div>
