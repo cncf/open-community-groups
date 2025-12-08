@@ -9,7 +9,7 @@ select plan(1);
 -- TESTS
 -- ============================================================================
 
--- Test: list_session_kinds should return all session kinds
+-- Should return all session kinds ordered by session_kind_id
 select is(
     list_session_kinds()::jsonb,
     '[
@@ -26,7 +26,7 @@ select is(
             "display_name": "Virtual"
         }
     ]'::jsonb,
-    'list_session_kinds should return all session kinds ordered by session_kind_id'
+    'Should return all session kinds ordered by session_kind_id'
 );
 
 -- ============================================================================

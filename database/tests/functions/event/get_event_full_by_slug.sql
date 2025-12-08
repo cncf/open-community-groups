@@ -9,17 +9,17 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
 \set eventID '00000000-0000-0000-0000-000000000041'
+\set groupID '00000000-0000-0000-0000-000000000031'
+\set sponsor1ID '00000000-0000-0000-0000-000000000061'
+\set sponsor2ID '00000000-0000-0000-0000-000000000062'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 \set user3ID '00000000-0000-0000-0000-000000000053'
 \set user4ID '00000000-0000-0000-0000-000000000054'
-\set sponsor1ID '00000000-0000-0000-0000-000000000061'
-\set sponsor2ID '00000000-0000-0000-0000-000000000062'
 
 -- ============================================================================
 -- SEED DATA
@@ -166,7 +166,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: get_event_full_by_slug should return correct event JSON
+-- Should return correct event data as JSON
 select is(
     get_event_full_by_slug(:'communityID'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
     '{
@@ -305,13 +305,13 @@ select is(
         "description_short": "Annual tech conference",
         "registration_required": true
     }'::jsonb,
-    'get_event_full_by_slug should return correct event data as JSON'
+    'Should return correct event data as JSON'
 );
 
--- Test: get_event_full_by_slug with non-existing event slug should return null
+-- Should return null with non-existing event slug
 select ok(
     get_event_full_by_slug(:'communityID'::uuid, 'test-group', 'non-existing-event') is null,
-    'get_event_full_by_slug with non-existing event slug should return null'
+    'Should return null with non-existing event slug'
 );
 
 -- ============================================================================

@@ -1,22 +1,22 @@
--- =============================================================================
+-- ============================================================================
 -- SETUP
--- =============================================================================
+-- ============================================================================
 
 begin;
 select plan(4);
 
--- =============================================================================
+-- ============================================================================
 -- VARIABLES
--- =============================================================================
+-- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupID '00000000-0000-0000-0000-000000000031'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000032'
+\set groupID '00000000-0000-0000-0000-000000000031'
 
--- =============================================================================
+-- ============================================================================
 -- SEED DATA
--- =============================================================================
+-- ============================================================================
 
 -- Community
 insert into community (
@@ -90,47 +90,44 @@ insert into "group" (
 );
 
 
--- =============================================================================
+-- ============================================================================
 -- TESTS
--- =============================================================================
+-- ============================================================================
 
--- Test: activate_group should set active to true
+-- Should set active to true
 select activate_group(:'communityID'::uuid, :'groupID'::uuid);
 
--- Test: activate_group should set active to true
+-- Should set active to true
 select is(
     (select active from "group" where group_id = :'groupID'::uuid),
     true,
-    'activate_group should set active to true'
+    'Should set active to true'
 );
 
--- Test: activate_group should throw error for already deleted group
+-- Should throw error for already deleted group
 select throws_ok(
     $$select activate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
-    'P0001',
     'group not found or inactive',
-    'activate_group should throw error when trying to activate already deleted group'
+    'Should throw error when trying to activate already deleted group'
 );
 
--- Test: activate_group should throw error for wrong community_id
+-- Should throw error for wrong community_id
 select throws_ok(
     $$select activate_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'group not found or inactive',
-    'activate_group should throw error when community_id does not match'
+    'Should throw error when community_id does not match'
 );
 
--- Test: activate_group should throw error for non-existent group
+-- Should throw error for non-existent group
 select throws_ok(
     $$select activate_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
-    'P0001',
     'group not found or inactive',
-    'activate_group should throw error for non-existent group'
+    'Should throw error for non-existent group'
 );
 
--- =============================================================================
+-- ============================================================================
 -- CLEANUP
--- =============================================================================
+-- ============================================================================
 
 select * from finish();
 rollback;

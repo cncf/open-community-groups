@@ -54,7 +54,7 @@ values (:'sponsorID', :'groupID', 'Theta', 'https://ex.com/theta.png', 'https://
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_sponsor returns sponsor
+-- Should return sponsor when it belongs to group
 select is(
     get_group_sponsor(:'sponsorID'::uuid, :'groupID'::uuid)::jsonb,
     '{
@@ -63,7 +63,7 @@ select is(
         "name":"Theta",
         "website_url":"https://theta.io"
     }'::jsonb,
-    'get_group_sponsor should return sponsor when it belongs to group'
+    'Should return sponsor when it belongs to group'
 );
 
 -- ============================================================================

@@ -9,13 +9,12 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000002'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
 \set eventWithErrorID '00000000-0000-0000-0000-000000000102'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000002'
 \set sessionID '00000000-0000-0000-0000-000000000201'
 \set sessionWithErrorID '00000000-0000-0000-0000-000000000202'
 
@@ -195,7 +194,7 @@ insert into session (
 -- TESTS
 -- ============================================================================
 
--- Test 1: Add meeting linked to event - verify meeting record created
+-- Should create meeting record when linked to event
 select add_meeting('zoom', '123456789', 'https://zoom.us/j/123456789', 'pass123', :'eventID', null);
 select is(
     (select count(*) from meeting where event_id = :'eventID'),
@@ -203,14 +202,14 @@ select is(
     'Meeting record created for event'
 );
 
--- Test 2: Add meeting linked to event - verify event marked as synced
+-- Should mark event as synced after adding meeting
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     true,
     'Event marked as synced after adding meeting'
 );
 
--- Test 3: Add meeting linked to session - verify meeting record created
+-- Should create meeting record when linked to session
 select add_meeting('zoom', '987654321', 'https://zoom.us/j/987654321', 'sesspass', null, :'sessionID');
 select is(
     (select count(*) from meeting where session_id = :'sessionID'),
@@ -218,30 +217,30 @@ select is(
     'Meeting record created for session'
 );
 
--- Test 4: Add meeting linked to session - verify session marked as synced
+-- Should mark session as synced after adding meeting
 select is(
     (select meeting_in_sync from session where session_id = :'sessionID'),
     true,
     'Session marked as synced after adding meeting'
 );
 
--- Test 5: Add duplicate meeting for same event - should fail with unique violation
+-- Should fail with unique violation when adding duplicate meeting for same event
 select throws_ok(
     format('select add_meeting(''zoom'', ''duplicate123'', ''https://zoom.us/j/duplicate123'', ''pass'', %L, null)', :'eventID'),
     '23505',
     null,
-    'Adding duplicate meeting for same event fails with unique constraint violation'
+    'Should fail with unique constraint violation'
 );
 
--- Test 6: Add duplicate meeting for same session - should fail with unique violation
+-- Should fail with unique violation when adding duplicate meeting for same session
 select throws_ok(
     format('select add_meeting(''zoom'', ''duplicate456'', ''https://zoom.us/j/duplicate456'', ''pass'', null, %L)', :'sessionID'),
     '23505',
     null,
-    'Adding duplicate meeting for same session fails with unique constraint violation'
+    'Should fail with unique constraint violation'
 );
 
--- Test 7: Add meeting to event with previous error - verify error cleared
+-- Should clear error when adding meeting to event with previous error
 select add_meeting('zoom', '111111111', 'https://zoom.us/j/111111111', 'pass111', :'eventWithErrorID', null);
 select is(
     (select meeting_error from event where event_id = :'eventWithErrorID'),
@@ -249,7 +248,7 @@ select is(
     'Event meeting_error cleared after successful add_meeting'
 );
 
--- Test 8: Add meeting to session with previous error - verify error cleared
+-- Should clear error when adding meeting to session with previous error
 select add_meeting('zoom', '222222222', 'https://zoom.us/j/222222222', 'pass222', null, :'sessionWithErrorID');
 select is(
     (select meeting_error from session where session_id = :'sessionWithErrorID'),

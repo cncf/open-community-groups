@@ -9,16 +9,16 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set futureEventID '00000000-0000-0000-0000-000000000031'
 \set checkInWindowEventID '00000000-0000-0000-0000-000000000032'
-\set pastEventID '00000000-0000-0000-0000-000000000033'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set futureEventID '00000000-0000-0000-0000-000000000031'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000021'
 \set multiDayEventID '00000000-0000-0000-0000-000000000034'
-\set sameDayWithEndsAtEventID '00000000-0000-0000-0000-000000000035'
 \set noStartTimeEventID '00000000-0000-0000-0000-000000000036'
+\set pastEventID '00000000-0000-0000-0000-000000000033'
+\set sameDayWithEndsAtEventID '00000000-0000-0000-0000-000000000035'
 \set userID '00000000-0000-0000-0000-000000000041'
 \set userID2 '00000000-0000-0000-0000-000000000042'
 
@@ -281,16 +281,16 @@ insert into event_attendee (event_id, user_id) values
 -- TESTS
 -- ============================================================================
 
--- Test: check_in_event should succeed when within the allowed window
+-- Should succeed when within the allowed window
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'checkInWindowEventID', :'userID'
     ),
-    'check_in_event within allowed window succeeds'
+    'Should succeed within allowed window'
 );
 
--- Test: check_in_event should set the checked_in flag
+-- Should set the checked_in flag
 select is(
     (
         select checked_in
@@ -298,20 +298,20 @@ select is(
         where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
     ),
     true,
-    'check_in_event marks attendee as checked in'
+    'Should mark attendee as checked in'
 );
 
--- Test: check_in_event should set the checked_in_at timestamp
+-- Should set the checked_in_at timestamp
 select ok(
     (
         select checked_in_at is not null
         from event_attendee
         where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
     ),
-    'check_in_event sets checked_in_at timestamp'
+    'Should set checked_in_at timestamp'
 );
 
--- Test: check_in_event should set checked_in_at to a recent timestamp
+-- Should set checked_in_at to a recent timestamp
 select ok(
     (
         select checked_in_at >= now() - interval '10 seconds'
@@ -319,81 +319,81 @@ select ok(
         from event_attendee
         where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
     ),
-    'check_in_event sets checked_in_at to current time'
+    'Should set checked_in_at to current time'
 );
 
--- Test: check_in_event should error when user is not attending
+-- Should error when user is not attending
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'checkInWindowEventID', :'userID2'
     ),
     'user is not registered for this event',
-    'check_in_event requires attendee record'
+    'Should require attendee record'
 );
 
--- Test: check_in_event should error if window has not opened yet
+-- Should error if window has not opened yet
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'futureEventID', :'userID'
     ),
     'check-in window closed',
-    'check_in_event before start window raises'
+    'Should error before start window'
 );
 
--- Test: check_in_event should error if window already closed
+-- Should error if window already closed
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'pastEventID', :'userID'
     ),
     'check-in window closed',
-    'check_in_event after allowed time raises'
+    'Should error after allowed time'
 );
 
--- Test: event not found
+-- Should error when event not found
 select throws_ok(
     $$select check_in_event('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
     'event not found or inactive',
-    'check_in_event should throw error when event does not exist'
+    'Should throw error when event does not exist'
 );
 
--- Test: check_in_event should allow check-in to multi-day event within window
+-- Should allow check-in to multi-day event within window
 select check_in_event(:'communityID'::uuid, :'multiDayEventID'::uuid, :'userID'::uuid);
 select is(
     (select checked_in from event_attendee where event_id = :'multiDayEventID' and user_id = :'userID'),
     true,
-    'check_in_event should allow check-in for ongoing multi-day event'
+    'Should allow check-in for ongoing multi-day event'
 );
 
--- Test: check_in_event should allow check-in to same-day event with ends_at within window
+-- Should allow check-in to same-day event with ends_at within window
 select check_in_event(:'communityID'::uuid, :'sameDayWithEndsAtEventID'::uuid, :'userID'::uuid);
 select is(
     (select checked_in from event_attendee where event_id = :'sameDayWithEndsAtEventID' and user_id = :'userID'),
     true,
-    'check_in_event should allow check-in for same-day event with ends_at'
+    'Should allow check-in for same-day event with ends_at'
 );
 
--- Test: check_in_event should error when event has no start time
+-- Should error when event has no start time
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'noStartTimeEventID', :'userID'
     ),
     'event has no start time',
-    'check_in_event should throw error when event has no start time'
+    'Should throw error when event has no start time'
 );
 
--- Test: check_in_event is idempotent - can call multiple times
+-- Should be idempotent - can call multiple times
 select check_in_event(:'communityID'::uuid, :'checkInWindowEventID'::uuid, :'userID'::uuid);
 select is(
     (select count(*)::int from event_attendee where event_id = :'checkInWindowEventID' and user_id = :'userID' and checked_in = true),
     1,
-    'check_in_event should be idempotent'
+    'Should be idempotent'
 );
 
--- Test: check_in_event should not update checked_in_at on subsequent check-ins
+-- Should not update checked_in_at on subsequent check-ins
 select checked_in_at
 from event_attendee
 where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid \gset previous_
@@ -405,7 +405,7 @@ select is(
         where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
     ),
     :'previous_checked_in_at'::timestamptz,
-    'check_in_event should not update checked_in_at on subsequent check-ins'
+    'Should not update checked_in_at on subsequent check-ins'
 );
 
 -- ============================================================================

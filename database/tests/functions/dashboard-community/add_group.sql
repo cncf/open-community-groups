@@ -9,8 +9,8 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set regionID '00000000-0000-0000-0000-000000000012'
 
 -- ============================================================================
@@ -50,7 +50,7 @@ values (:'categoryID', 'Technology', :'communityID');
 -- TESTS
 -- ============================================================================
 
--- Test: add_group with required fields only should create group
+-- Should create group with minimal required fields and return expected structure
 select is(
     (select (
         get_group_full(
@@ -74,10 +74,10 @@ select is(
         "organizers": [],
         "sponsors": []
     }'::jsonb,
-    'add_group should create group with minimal required fields and return expected structure'
+    'Should create group with minimal required fields and return expected structure'
 );
 
--- Test: add_group with all fields should create group
+-- Should create group with all fields and return expected structure
 select is(
     (select (
         get_group_full(
@@ -151,10 +151,10 @@ select is(
         "organizers": [],
         "sponsors": []
     }'::jsonb,
-    'add_group should create group with all fields and return expected structure'
+    'Should create group with all fields and return expected structure'
 );
 
--- Test: add_group should convert empty strings to null for nullable fields
+-- Should convert empty strings to null for nullable fields
 do $$
 declare
     v_group_id uuid;
@@ -220,7 +220,7 @@ select is(
         "photos_urls": null,
         "tags": null
     }'::jsonb,
-    'add_group should convert empty strings to null for nullable fields'
+    'Should convert empty strings to null for nullable fields'
 );
 
 -- ============================================================================

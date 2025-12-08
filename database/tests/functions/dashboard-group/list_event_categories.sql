@@ -38,7 +38,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: list_event_categories should return categories ordered for community
+-- Should return categories for community 1 ordered by order field then name
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -58,10 +58,10 @@ select is(
             "slug": "meetup"
         }
     ]'::jsonb,
-    'list_event_categories should return categories for community 1 ordered by order field then name'
+    'Should return categories for community 1 ordered by order field then name'
 );
 
--- Test: list_event_categories should return only categories for specified community
+-- Should return only categories for community 2
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     '[
@@ -71,7 +71,7 @@ select is(
             "slug": "seminar"
         }
     ]'::jsonb,
-    'list_event_categories should return only categories for community 2'
+    'Should return only categories for community 2'
 );
 
 -- ============================================================================

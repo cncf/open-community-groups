@@ -9,14 +9,14 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
+\set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000002'
 \set eventID '00000000-0000-0000-0000-000000000003'
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000004'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000002'
 \set sessionMeetingID '00000000-0000-0000-0000-000000000051'
 \set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
@@ -184,70 +184,69 @@ insert into session (
 -- TESTS
 -- ============================================================================
 
--- Test: delete_event should set deleted=true
+-- Should set deleted=true
 select delete_event(:'groupID'::uuid, :'eventID'::uuid);
 select is(
     (select deleted from event where event_id = :'eventID'),
     true,
-    'delete_event should set deleted=true'
+    'Should set deleted=true'
 );
 
--- Test: delete_event should set deleted_at timestamp
+-- Should set deleted_at timestamp
 select isnt(
     (select deleted_at from event where event_id = :'eventID'),
     null,
-    'delete_event should set deleted_at timestamp'
+    'Should set deleted_at timestamp'
 );
 
--- Test: delete_event should set published=false
+-- Should set published=false
 select is(
     (select published from event where event_id = :'eventID'),
     false,
-    'delete_event should set published=false'
+    'Should set published=false'
 );
 
--- Test: delete_event should set meeting_in_sync=false
+-- Should set meeting_in_sync=false
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     false,
-    'delete_event should mark meeting_in_sync false when meeting was requested'
+    'Should mark meeting_in_sync false when meeting was requested'
 );
 
--- Test: delete_event should set session meeting_in_sync to false when meeting_requested=true
+-- Should set session meeting_in_sync to false when meeting_requested=true
 select is(
     (select meeting_in_sync from session where session_id = :'sessionMeetingID'),
     false,
-    'delete_event should set session meeting_in_sync=false when meeting_requested=true'
+    'Should set session meeting_in_sync=false when meeting_requested=true'
 );
 
--- Test: delete_event should NOT change session meeting_in_sync when meeting_requested=false
+-- Should not change session meeting_in_sync when meeting_requested=false
 select is(
     (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
     null,
-    'delete_event should not change session meeting_in_sync when meeting_requested=false'
+    'Should not change session meeting_in_sync when meeting_requested=false'
 );
 
--- Test: delete_event should NOT change event meeting_in_sync when meeting_requested=false
+-- Should not change event meeting_in_sync when meeting_requested=false
 select delete_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid);
 select is(
     (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
     null,
-    'delete_event should not change event meeting_in_sync when meeting_requested=false'
+    'Should not change event meeting_in_sync when meeting_requested=false'
 );
 
--- Test: event should still exist in database (soft delete)
+-- Should keep event in database (soft delete)
 select is(
     (select count(*)::int from event where event_id = :'eventID'),
     1,
-    'delete_event should keep event in database (soft delete)'
+    'Should keep event in database (soft delete)'
 );
 
--- Test: delete_event should throw error when group_id does not match
+-- Should throw error when group_id does not match
 select throws_ok(
     $$select delete_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
-    'P0001',
     'event not found or inactive',
-    'delete_event should throw error when group_id does not match'
+    'Should throw error when group_id does not match'
 );
 
 -- ============================================================================

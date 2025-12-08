@@ -9,13 +9,13 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set eventCategoryID '00000000-0000-0000-0000-000000000061'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000051'
 \set event2ID '00000000-0000-0000-0000-000000000052'
 \set event3ID '00000000-0000-0000-0000-000000000053'
 \set event4ID '00000000-0000-0000-0000-000000000054'
+\set eventCategoryID '00000000-0000-0000-0000-000000000061'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
@@ -110,7 +110,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: get_community_home_stats should return correct community statistics
+-- Should return correct community statistics as JSON
 select is(
     get_community_home_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -119,10 +119,10 @@ select is(
         "groups_members": 3,
         "events_attendees": 2
     }'::jsonb,
-    'get_community_home_stats should return correct stats as JSON'
+    'Should return correct community statistics as JSON'
 );
 
--- Test: get_community_home_stats with non-existent community should return zeros
+-- Should return zeros for non-existing community
 select is(
     get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{
@@ -131,10 +131,10 @@ select is(
         "groups_members": 0,
         "events_attendees": 0
     }'::jsonb,
-    'get_community_home_stats with non-existing community should return zeros'
+    'Should return zeros for non-existing community'
 );
 
--- Test: get_community_home_stats should exclude deleted groups, unpublished/canceled/deleted events
+-- Should exclude deleted groups and unpublished/canceled/deleted events
 -- Data setup:
 -- - 3 groups: 2 active (group1, group2), 1 deleted (group3)
 -- - 4 events: 1 published (event1), 1 unpublished (event2), 1 canceled (event3), 1 deleted (event4)
@@ -149,7 +149,7 @@ select is(
         "groups_members": 3,
         "events_attendees": 2
     }'::jsonb,
-    'get_community_home_stats should exclude deleted groups and unpublished/canceled/deleted events'
+    'Should exclude deleted groups and unpublished/canceled/deleted events'
 );
 
 -- ============================================================================

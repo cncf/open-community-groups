@@ -9,9 +9,9 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 \set region2ID '00000000-0000-0000-0000-000000000022'
 
@@ -63,7 +63,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: get_community_filters_options should return correct filter options
+-- Should return correct filter options as JSON
 select is(
     get_community_filters_options('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
@@ -88,10 +88,10 @@ select is(
             {"name": "Business", "value": "business"}
         ]
     }'::jsonb,
-    'get_community_filters_options should return correct filter options as JSON'
+    'Should return correct filter options as JSON'
 );
 
--- Test: get_community_filters_options with non-existent community should return default options
+-- Should return default options for non-existing community
 select is(
     get_community_filters_options('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{
@@ -106,7 +106,7 @@ select is(
         "event_category": [],
         "group_category": []
     }'::jsonb,
-    'get_community_filters_options with non-existing community should return default options'
+    'Should return default options for non-existing community'
 );
 
 -- ============================================================================

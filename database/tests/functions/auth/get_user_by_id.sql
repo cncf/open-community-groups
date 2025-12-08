@@ -9,15 +9,15 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set userWithTeamsID '00000000-0000-0000-0001-000000000001'
-\set userNoTeamsID '00000000-0000-0000-0001-000000000002'
-\set userGroupOnlyID '00000000-0000-0000-0001-000000000003'
-\set userCommunityOnlyID '00000000-0000-0000-0001-000000000004'
-\set userBothTeamsID '00000000-0000-0000-0001-000000000005'
-\set nonExistentUserID '00000000-0000-0000-0001-999999999999'
-\set groupID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000001'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set groupID '00000000-0000-0000-0000-000000000001'
+\set nonExistentUserID '00000000-0000-0000-0001-999999999999'
+\set userBothTeamsID '00000000-0000-0000-0001-000000000005'
+\set userCommunityOnlyID '00000000-0000-0000-0001-000000000004'
+\set userGroupOnlyID '00000000-0000-0000-0001-000000000003'
+\set userNoTeamsID '00000000-0000-0000-0001-000000000002'
+\set userWithTeamsID '00000000-0000-0000-0001-000000000001'
 
 -- ============================================================================
 -- SEED DATA
@@ -245,7 +245,7 @@ insert into community_team (
 -- TESTS
 -- ============================================================================
 
--- Test: get_user_by_id with include_password false should return user without password
+-- Should return user without password when include_password is false
 select is(
     get_user_by_id(:'userWithTeamsID'::uuid, false)::jsonb,
     '{
@@ -262,7 +262,7 @@ select is(
     'Should return user without password when include_password is false'
 );
 
--- Test: get_user_by_id with include_password true should return user with password
+-- Should return user with password when include_password is true
 select is(
     get_user_by_id(:'userWithTeamsID'::uuid, true)::jsonb,
     '{
@@ -280,14 +280,14 @@ select is(
     'Should return user with password when include_password is true'
 );
 
--- Test: get_user_by_id with non-existent ID should return null
+-- Should return null when ID does not exist
 select is(
     get_user_by_id(:'nonExistentUserID'::uuid, false)::jsonb,
     null::jsonb,
     'Should return null when ID does not exist'
 );
 
--- Test: get_user_by_id with no team memberships should return false team flags
+-- Should return false team membership fields when user has no team memberships
 select is(
     get_user_by_id(:'userNoTeamsID'::uuid, false)::jsonb,
     '{
@@ -300,10 +300,10 @@ select is(
         "user_id": "00000000-0000-0000-0001-000000000002",
         "username": "nogroupsuser"
     }'::jsonb,
-    'Should return user with false team membership fields when user has no team memberships'
+    'Should return false team membership fields when user has no team memberships'
 );
 
--- Test: get_user_by_id with group team only should return correct team flags
+-- Should return correct team flags when user is only in group team
 select is(
     get_user_by_id(:'userGroupOnlyID'::uuid, false)::jsonb,
     '{
@@ -316,10 +316,10 @@ select is(
         "user_id": "00000000-0000-0000-0001-000000000003",
         "username": "grouponlyuser"
     }'::jsonb,
-    'Should return user with belongs_to_any_group_team=true and belongs_to_community_team=false when user is only in group team'
+    'Should return correct team flags when user is only in group team'
 );
 
--- Test: get_user_by_id with community team only should return correct team flags
+-- Should return belongs_to_any_group_team true when user is in community team
 select is(
     get_user_by_id(:'userCommunityOnlyID'::uuid, false)::jsonb,
     '{
@@ -332,10 +332,10 @@ select is(
         "user_id": "00000000-0000-0000-0001-000000000004",
         "username": "communityonlyuser"
     }'::jsonb,
-    'Should return user with belongs_to_any_group_team=true when user is only in community team'
+    'Should return belongs_to_any_group_team true when user is in community team'
 );
 
--- Test: get_user_by_id with both team memberships should return both flags true
+-- Should return both team flags true when user is in both teams
 select is(
     get_user_by_id(:'userBothTeamsID'::uuid, false)::jsonb,
     '{
@@ -348,7 +348,7 @@ select is(
         "user_id": "00000000-0000-0000-0001-000000000005",
         "username": "bothuser"
     }'::jsonb,
-    'Should return user with both belongs_to_any_group_team=true and belongs_to_community_team=true when user is in both teams'
+    'Should return both team flags true when user is in both teams'
 );
 
 -- ============================================================================

@@ -9,13 +9,13 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set attendee1ID '00000000-0000-0000-0000-000000000041'
+\set attendee2ID '00000000-0000-0000-0000-000000000042'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000021'
-\set attendee1ID '00000000-0000-0000-0000-000000000041'
-\set attendee2ID '00000000-0000-0000-0000-000000000042'
 
 -- ============================================================================
 -- SEED DATA
@@ -169,7 +169,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: get_event_summary should return correct event summary JSON
+-- Should return correct event summary data as JSON
 select is(
     get_event_summary(
         :'communityID'::uuid,
@@ -205,37 +205,37 @@ select is(
         "zip_code": "10001",
         "remaining_capacity": 3
     }'::jsonb,
-    'get_event_summary should return correct event summary data as JSON'
+    'Should return correct event summary data as JSON'
 );
 
--- Test: get_event_summary with non-existent event ID should return null
+-- Should return null for non-existent event ID
 select ok(
     get_event_summary(
         :'communityID'::uuid,
         :'groupID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
-    'get_event_summary with non-existent event ID should return null'
+    'Should return null for non-existent event ID'
 );
 
--- Test: get_event_summary should return null when group does not match event
+-- Should return null when group does not match event
 select ok(
     get_event_summary(
         :'communityID'::uuid,
         '00000000-0000-0000-0000-000000000099'::uuid,
         :'eventID'::uuid
     ) is null,
-    'get_event_summary should return null when group does not match event'
+    'Should return null when group does not match event'
 );
 
--- Test: get_event_summary should return null when community does not match event
+-- Should return null when community does not match event
 select ok(
     get_event_summary(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,
-    'get_event_summary should return null when community does not match event'
+    'Should return null when community does not match event'
 );
 
 -- ============================================================================

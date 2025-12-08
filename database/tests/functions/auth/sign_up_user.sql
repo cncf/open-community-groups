@@ -40,7 +40,7 @@ insert into community (
 -- TESTS
 -- ============================================================================
 
--- User with email_verified=true should not generate verification code
+-- Should not generate verification code when email_verified is true
 with verified_user_result as (
     select * from sign_up_user(
         :'communityID',
@@ -63,10 +63,10 @@ select ok(
     and ("user"::jsonb ? 'auth_hash')
     and length(("user"::jsonb->>'auth_hash')) = 64
     and verification_code is null,
-    'User with email_verified=true should not generate verification code'
+    'Should not generate verification code when email_verified is true'
 ) from verified_user_result;
 
--- User with email_verified=false should generate verification code
+-- Should generate verification code when email_verified is false
 with unverified_user_result as (
     select * from sign_up_user(
         :'communityID',
@@ -89,10 +89,10 @@ select ok(
     and ("user"::jsonb ? 'auth_hash')
     and length(("user"::jsonb->>'auth_hash')) = 64
     and verification_code is not null,
-    'User with email_verified=false should generate verification code'
+    'Should generate verification code when email_verified is false'
 ) from unverified_user_result;
 
--- User without email_verified parameter defaults to false and generates code
+-- Should default to false and generate verification code when email_verified is omitted
 with default_user_result as (
     select * from sign_up_user(
         :'communityID',
@@ -114,10 +114,10 @@ select ok(
     and ("user"::jsonb ? 'auth_hash')
     and length(("user"::jsonb->>'auth_hash')) = 64
     and verification_code is not null,
-    'User without email_verified parameter should default to false and generate verification code'
+    'Should default to false and generate verification code when email_verified is omitted'
 ) from default_user_result;
 
--- Duplicate username should get numeric suffix starting at 2
+-- Should add numeric suffix starting at 2 for duplicate usernames
 with duplicate_user_1 as (
     select * from sign_up_user(
         :'communityID',
@@ -145,10 +145,10 @@ duplicate_user_2 as (
 select ok(
     (select "user"::jsonb->>'username' from duplicate_user_1) = 'duplicateuser'
     and (select "user"::jsonb->>'username' from duplicate_user_2) = 'duplicateuser2',
-    'Duplicate username should get numeric suffix starting at 2'
+    'Should add numeric suffix starting at 2 for duplicate usernames'
 );
 
--- Multiple duplicate usernames should increment properly
+-- Should increment suffix properly for multiple duplicate usernames
 with duplicate_user_3 as (
     select * from sign_up_user(
         :'communityID',
@@ -176,7 +176,7 @@ duplicate_user_4 as (
 select ok(
     (select "user"::jsonb->>'username' from duplicate_user_3) = 'duplicateuser3'
     and (select "user"::jsonb->>'username' from duplicate_user_4) = 'duplicateuser4',
-    'Multiple duplicate usernames should increment properly (3, 4, etc)'
+    'Should increment suffix properly for multiple duplicate usernames (3, 4, etc)'
 );
 
 -- ============================================================================

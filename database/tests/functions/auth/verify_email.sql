@@ -40,7 +40,7 @@ insert into community (
 -- TESTS
 -- ============================================================================
 
--- Valid verification code should verify email
+-- Should set email_verified to true for valid verification code
 
 -- Create user with unverified email
 with test_user as (
@@ -61,11 +61,11 @@ select verify_email(verification_code) from test_user;
 select is(
     email_verified,
     true,
-    'Valid verification code should set email_verified to true'
+    'Should set email_verified to true for valid verification code'
 ) from "user" 
 where email = 'test1@example.com';
 
--- Verification code should be deleted after use
+-- Should delete verification code after use
 with test_user as (
     select * from sign_up_user(
         :'communityID',
@@ -86,19 +86,18 @@ verification_result as (
 select is(
     count(*)::integer,
     0,
-    'Verification code should be deleted after use'
+    'Should delete verification code after use'
 ) from email_verification_code 
 where email_verification_code_id = (select verification_code from verification_result);
 
--- Invalid verification code raises exception
+-- Should raise exception for invalid verification code
 select throws_ok(
     'select verify_email(''00000000-0000-0000-0000-000000000099''::uuid)',
-    'P0001',
     'email verification failed: invalid code',
-    'Non-existent verification code should raise exception'
+    'Should raise exception for non-existent verification code'
 );
 
--- Expired verification code raises exception
+-- Should raise exception for expired verification code
 
 -- Create user and expire their code
 with test_user as (
@@ -120,12 +119,11 @@ expired_code_update as (
 )
 select throws_ok(
     'select verify_email(''' || coalesce((select email_verification_code_id::text from expired_code_update), '00000000-0000-0000-0000-000000000098') || '''::uuid)',
-    'P0001',
     'email verification failed: invalid code',
-    'Expired verification code should raise exception'
+    'Should raise exception for expired verification code'
 );
 
--- Already used verification code raises exception
+-- Should raise exception for already used verification code
 with test_user as (
     select * from sign_up_user(
         :'communityID',
@@ -145,9 +143,8 @@ first_use as (
 )
 select throws_ok(
     format('select verify_email(''%s''::uuid)', (select verification_code from first_use)),
-    'P0001',
     'email verification failed: invalid code',
-    'Already used verification code should raise exception'
+    'Should raise exception for already used verification code'
 );
 
 -- ============================================================================

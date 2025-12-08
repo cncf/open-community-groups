@@ -9,7 +9,7 @@ select plan(1);
 -- TESTS
 -- ============================================================================
 
--- Test: list_group_roles should return all roles
+-- Should return all roles ordered by group_role_id
 select is(
     list_group_roles()::jsonb,
     '[
@@ -18,7 +18,7 @@ select is(
             "display_name": "Organizer"
         }
     ]'::jsonb,
-    'list_group_roles should return all roles ordered by group_role_id'
+    'Should return all roles ordered by group_role_id'
 );
 
 -- ============================================================================

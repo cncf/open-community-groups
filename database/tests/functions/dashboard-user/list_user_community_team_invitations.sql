@@ -43,14 +43,14 @@ insert into community_team (
 -- TESTS
 -- ============================================================================
 
--- Test: listing pending invitations returns unaccepted for the community
+-- Should return only pending invitations for the given community
 select results_eq(
     $$ select list_user_community_team_invitations('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid)::jsonb $$,
     $$ values ('[{"community_id":"00000000-0000-0000-0000-000000000001","community_name":"c1","created_at":1704164645}]'::jsonb) $$,
     'Should return only pending invitations for the given community'
 );
 
--- Test: user with no pending invitations should return empty array
+-- Should return empty array when user has no pending invitations
 select results_eq(
     $$ select list_user_community_team_invitations('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000012'::uuid)::jsonb $$,
     $$ values ('[]'::jsonb) $$,

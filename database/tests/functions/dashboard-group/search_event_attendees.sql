@@ -9,14 +9,14 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set event1ID '00000000-0000-0000-0000-000000000041'
+\set event2ID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
-\set event1ID '00000000-0000-0000-0000-000000000041'
-\set event2ID '00000000-0000-0000-0000-000000000042'
 
 -- ============================================================================
 -- SEED DATA
@@ -71,7 +71,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: returns attendees for event1 ordered by name/username with fields
+-- Should return attendees for event1 with expected fields and order
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000041"}'::jsonb)::jsonb,
     '[
@@ -81,7 +81,7 @@ select is(
     'Should return attendees for event1 with expected fields and order'
 );
 
--- Test: returns attendees for event2
+-- Should return attendees for event2
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000042"}'::jsonb)::jsonb,
     '[
@@ -90,14 +90,14 @@ select is(
     'Should return attendees for event2'
 );
 
--- Test: missing event_id should return empty array
+-- Should return empty list when no event_id provided
 select is(
     search_event_attendees(:'groupID'::uuid, '{}'::jsonb)::text,
     '[]',
     'Should return empty list when no event_id provided'
 );
 
--- Test: non-existing event should return empty array
+-- Should return empty list for non-existing event
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-999999999999"}'::jsonb)::text,
     '[]',

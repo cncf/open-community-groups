@@ -71,10 +71,10 @@ insert into community_team (
 -- TESTS
 -- ============================================================================
 
--- Test: accepting a community team invitation should flip accepted to true
+-- Should flip accepted to true when accepting invitation
 select lives_ok(
     $$ select accept_community_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
-    'accept_community_team_invitation should execute successfully'
+    'Should execute successfully'
 );
 select results_eq(
     $$ select accepted from community_team where community_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000011'::uuid $$,

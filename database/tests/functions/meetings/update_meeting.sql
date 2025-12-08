@@ -9,16 +9,14 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000002'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
-\set sessionID '00000000-0000-0000-0000-000000000201'
-
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000002'
 \set meetingEventID '00000000-0000-0000-0000-000000000301'
 \set meetingSessionID '00000000-0000-0000-0000-000000000302'
+\set sessionID '00000000-0000-0000-0000-000000000201'
 
 -- ============================================================================
 -- SEED DATA
@@ -146,7 +144,7 @@ values (:'meetingSessionID', :'sessionID', 'zoom', '987654321', 'https://zoom.us
 -- TESTS
 -- ============================================================================
 
--- Test 1: Update meeting linked to event - verify meeting record updated
+-- Should update meeting record when linked to event
 select update_meeting(:'meetingEventID', '111222333', 'https://zoom.us/j/111222333', 'newpass', :'eventID', null);
 select is(
     (select provider_meeting_id from meeting where meeting_id = :'meetingEventID'),
@@ -154,7 +152,7 @@ select is(
     'Meeting record updated for event'
 );
 
--- Test 2: Update meeting linked to event - verify event marked as synced
+-- Should mark event as synced after updating meeting
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     true,
@@ -164,7 +162,7 @@ select is(
 -- Mark event as out of sync again for next test
 update event set meeting_in_sync = false where event_id = :'eventID';
 
--- Test 3: Update meeting linked to session - verify meeting record updated
+-- Should update meeting record when linked to session
 select update_meeting(:'meetingSessionID', '444555666', 'https://zoom.us/j/444555666', 'newsesspass', null, :'sessionID');
 select is(
     (select provider_meeting_id from meeting where meeting_id = :'meetingSessionID'),
@@ -172,21 +170,21 @@ select is(
     'Meeting record updated for session'
 );
 
--- Test 4: Update meeting linked to session - verify session marked as synced
+-- Should mark session as synced after updating meeting
 select is(
     (select meeting_in_sync from session where session_id = :'sessionID'),
     true,
     'Session marked as synced after updating meeting'
 );
 
--- Test 5: Update meeting linked to event - verify previous error cleared
+-- Should clear previous error when updating meeting linked to event
 select is(
     (select meeting_error from event where event_id = :'eventID'),
     null,
     'Event meeting_error cleared after successful update_meeting'
 );
 
--- Test 6: Update meeting linked to session - verify previous error cleared
+-- Should clear previous error when updating meeting linked to session
 select is(
     (select meeting_error from session where session_id = :'sessionID'),
     null,

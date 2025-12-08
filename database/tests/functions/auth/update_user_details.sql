@@ -10,9 +10,9 @@ select plan(3);
 -- ============================================================================
 
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set userID '00000000-0000-0000-0000-000000000002'
 \set user2ID '00000000-0000-0000-0000-000000000003'
 \set user3ID '00000000-0000-0000-0000-000000000004'
+\set userID '00000000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
@@ -168,7 +168,7 @@ select update_user_details(
     }'::jsonb
 );
 
--- Test: update_user_details with all fields should return updated user data
+-- Should update all provided user fields
 select is(
     get_user_by_id(:'userID'::uuid, false)::jsonb,
     jsonb_build_object(
@@ -205,7 +205,7 @@ select update_user_details(
     }'::jsonb
 );
 
--- Test: update_user_details with name only should clear optional fields
+-- Should clear optional fields when only name is provided
 select is(
     get_user_by_id(:'user2ID'::uuid, false)::jsonb,
     jsonb_build_object(
@@ -219,7 +219,7 @@ select is(
         "name": "Updated Name Only",
         "username": "testuser2"
     }'::jsonb,
-    'Should update only name field and set other optional fields to null (removed from JSON due to json_strip_nulls)'
+    'Should clear optional fields when only name is provided'
 );
 
 -- Update user with required field and explicit null values for optional fields
@@ -242,7 +242,7 @@ select update_user_details(
     }'::jsonb
 );
 
--- Test: update_user_details with explicit nulls should handle same as omitted fields
+-- Should handle explicit null values same as omitted fields
 select is(
     get_user_by_id(:'user3ID'::uuid, false)::jsonb,
     jsonb_build_object(
@@ -256,7 +256,7 @@ select is(
         "name": "Explicitly Nulled User",
         "username": "testuser3"
     }'::jsonb,
-    'Should handle explicit null values same as omitted fields (removed from JSON due to json_strip_nulls)'
+    'Should handle explicit null values same as omitted fields'
 );
 
 -- ============================================================================

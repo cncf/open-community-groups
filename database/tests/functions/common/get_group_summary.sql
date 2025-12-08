@@ -9,12 +9,12 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set regionID '00000000-0000-0000-0000-000000000012'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set groupDeletedID '00000000-0000-0000-0000-000000000023'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
-\set groupDeletedID '00000000-0000-0000-0000-000000000023'
+\set regionID '00000000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -130,7 +130,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_summary should return correct group summary JSON
+-- Should return correct group summary JSON
 select is(
     get_group_summary(
         :'communityID'::uuid,
@@ -161,34 +161,34 @@ select is(
         },
         "state": "NY"
     }'::jsonb,
-    'get_group_summary should return correct group summary data as JSON'
+    'Should return correct group summary data as JSON'
 );
 
--- Test: get_group_summary with non-existent group should return null
+-- Should return null for non-existent group
 select ok(
     get_group_summary(
         :'communityID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
-    'get_group_summary with non-existent group ID should return null'
+    'Should return null for non-existent group ID'
 );
 
--- Test: get_group_summary with deleted group should return data
+-- Should return data for deleted group
 select ok(
     get_group_summary(
         :'communityID'::uuid,
         :'groupDeletedID'::uuid
     ) is not null,
-    'get_group_summary with deleted group ID should return data'
+    'Should return data for deleted group'
 );
 
--- Test: get_group_summary should return null when community does not match group
+-- Should return null when community does not match group
 select ok(
     get_group_summary(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid
     ) is null,
-    'get_group_summary should return null when community does not match group'
+    'Should return null when community does not match group'
 );
 
 -- ============================================================================

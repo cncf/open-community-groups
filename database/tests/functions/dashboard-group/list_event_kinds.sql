@@ -9,7 +9,7 @@ select plan(1);
 -- TESTS
 -- ============================================================================
 
--- Test: list_event_kinds should return all event kinds
+-- Should return all three event kinds ordered by event_kind_id
 select is(
     list_event_kinds()::jsonb,
     '[
@@ -26,7 +26,7 @@ select is(
             "display_name": "Virtual"
         }
     ]'::jsonb,
-    'list_event_kinds should return all three event kinds ordered by event_kind_id'
+    'Should return all three event kinds ordered by event_kind_id'
 );
 
 -- ============================================================================

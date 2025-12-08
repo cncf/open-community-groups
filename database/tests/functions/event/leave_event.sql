@@ -9,18 +9,18 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventDeleted '00000000-0000-0000-0000-000000000044'
+\set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
+\set eventOK '00000000-0000-0000-0000-000000000041'
+\set eventPast '00000000-0000-0000-0000-000000000047'
+\set eventUnpublished '00000000-0000-0000-0000-000000000046'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
-\set eventOK '00000000-0000-0000-0000-000000000041'
-\set eventDeleted '00000000-0000-0000-0000-000000000044'
-\set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
-\set eventUnpublished '00000000-0000-0000-0000-000000000046'
-\set eventPast '00000000-0000-0000-0000-000000000047'
 
 -- ============================================================================
 -- SEED DATA
@@ -80,67 +80,63 @@ insert into event_attendee (event_id, user_id) values
 -- TESTS
 -- ============================================================================
 
--- Test: leave_event should succeed for attending user
+-- Should succeed for attending user
 select lives_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventOK', :'user1ID'
     ),
-    'leave_event on attending user succeeds'
+    'Should succeed for attending user'
 );
 
--- Test: leave_event should remove attendee record
+-- Should remove attendee record
 select ok(
     not exists(
         select 1
         from event_attendee
         where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
     ),
-    'leave_event removes attendee record'
+    'Should remove attendee record'
 );
 
--- Test: leave_event when not attending should error
+-- Should error when user is not attending
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventOK', :'user2ID'
     ),
-    'P0001',
     'user is not attending this event',
-    'leave_event not attending raises exception'
+    'Should error when user is not attending'
 );
 
--- Test: leave_event past event should error
+-- Should error for past event
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPast', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
-    'leave_event past event raises exception'
+    'Should error for past event'
 );
 
--- Test: leave_event in inactive group should error
+-- Should error for event in inactive group
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInactiveGroup', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
-    'leave_event event in inactive group raises exception'
+    'Should error for event in inactive group'
 );
 
--- Test: leave_event deleted event should error
+-- Should error for deleted event
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventDeleted', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
-    'leave_event deleted event raises exception'
+    'Should error for deleted event'
 );
 
 -- ============================================================================

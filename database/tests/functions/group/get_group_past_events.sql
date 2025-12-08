@@ -9,14 +9,14 @@ select plan(1);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set eventCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
+\set eventCategoryID '00000000-0000-0000-0000-000000000021'
+\set groupID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
 -- SEED DATA
@@ -96,18 +96,16 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_past_events should return published past events JSON
+-- Should return published past events ordered by date DESC as JSON
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
     ),
-    'get_group_past_events should return published past events ordered by date DESC as JSON'
+    'Should return published past events ordered by date DESC as JSON'
 );
 
--- get_group_past_events with non-existing group slug
--- Removed redundant non-existing group slug case (covered in upcoming events tests)
 
 -- Finish tests and rollback transaction
 select * from finish();

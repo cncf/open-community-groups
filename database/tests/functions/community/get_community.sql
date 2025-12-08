@@ -107,7 +107,7 @@ insert into community (
 -- TESTS
 -- ============================================================================
 
--- Test: get_community with all fields should return expected JSON
+-- Should return correct data for community with all fields populated
 select is(
     get_community(:'community1ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
@@ -141,10 +141,10 @@ select is(
         "wechat_url": "https://wechat.com/testcommunity",
         "youtube_url": "https://youtube.com/testcommunity"
     }'::jsonb,
-    'get_community should return correct data for community with all fields populated'
+    'Should return correct data for community with all fields populated'
 );
 
--- Test: get_community with minimal fields should return expected JSON
+-- Should return correct data for community with only required fields
 select is(
     get_community(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
@@ -158,13 +158,13 @@ select is(
         "theme": {"primary_color": "#0000FF"},
         "title": "Cloud Native Portland Community"
     }'::jsonb,
-    'get_community should return correct data for community with only required fields (NULL optional fields excluded)'
+    'Should return correct data for community with only required fields'
 );
 
--- Test: get_community with non-existent ID should return null
+-- Should return null for non-existent ID
 select ok(
     get_community(:'nonExistentCommunityID'::uuid) is null,
-    'get_community non-existent ID returns null'
+    'Should return null for non-existent ID'
 );
 
 -- ============================================================================

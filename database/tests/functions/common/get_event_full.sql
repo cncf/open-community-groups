@@ -10,13 +10,17 @@ select plan(4);
 -- ============================================================================
 
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
+\set groupCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set legacyHost1ID '00000000-0000-0000-0000-000000000071'
+\set legacyHost2ID '00000000-0000-0000-0000-000000000072'
+\set legacySpeaker1ID '00000000-0000-0000-0000-000000000073'
+\set legacySpeaker2ID '00000000-0000-0000-0000-000000000074'
 \set session1ID '00000000-0000-0000-0000-000000000051'
 \set session2ID '00000000-0000-0000-0000-000000000052'
 \set session3ID '00000000-0000-0000-0000-000000000053'
@@ -25,10 +29,6 @@ select plan(4);
 \set user1ID '00000000-0000-0000-0000-000000000041'
 \set user2ID '00000000-0000-0000-0000-000000000042'
 \set user3ID '00000000-0000-0000-0000-000000000043'
-\set legacyHost1ID '00000000-0000-0000-0000-000000000071'
-\set legacyHost2ID '00000000-0000-0000-0000-000000000072'
-\set legacySpeaker1ID '00000000-0000-0000-0000-000000000073'
-\set legacySpeaker2ID '00000000-0000-0000-0000-000000000074'
 
 -- ============================================================================
 -- SEED DATA
@@ -421,7 +421,7 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Test: get_event_full should return complete event JSON
+-- Should return complete event JSON
 select is(
     get_event_full(
         :'communityID'::uuid,
@@ -667,10 +667,10 @@ select is(
             }
         ]
     }'::jsonb,
-    'get_event_full should return complete event data with hosts, organizers, and sessions as JSON'
+    'Should return complete event data with hosts, organizers, and sessions as JSON'
 );
 
--- Test: get_event_full with non-existent event should return null
+-- Should return null for non-existent event
 
 select ok(
     get_event_full(
@@ -678,27 +678,27 @@ select ok(
         :'groupID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
-    'get_event_full with non-existent event ID should return null'
+    'Should return null for non-existent event ID'
 );
 
--- Test: get_event_full should return null when group does not match event
+-- Should return null when group does not match event
 select ok(
     get_event_full(
         :'communityID'::uuid,
         :'groupInactiveID'::uuid,
         :'eventID'::uuid
     ) is null,
-    'get_event_full should return null when group does not match event'
+    'Should return null when group does not match event'
 );
 
--- Test: get_event_full should return null when community does not match event
+-- Should return null when community does not match event
 select ok(
     get_event_full(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,
-    'get_event_full should return null when community does not match event'
+    'Should return null when community does not match event'
 );
 
 -- ============================================================================

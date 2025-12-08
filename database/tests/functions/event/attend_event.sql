@@ -9,20 +9,20 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set eventCanceled '00000000-0000-0000-0000-000000000043'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
+\set eventDeleted '00000000-0000-0000-0000-000000000044'
+\set eventFull '00000000-0000-0000-0000-000000000047'
+\set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
+\set eventOK '00000000-0000-0000-0000-000000000041'
+\set eventPast '00000000-0000-0000-0000-000000000046'
+\set eventUnpublished '00000000-0000-0000-0000-000000000042'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
-\set eventOK '00000000-0000-0000-0000-000000000041'
-\set eventUnpublished '00000000-0000-0000-0000-000000000042'
-\set eventCanceled '00000000-0000-0000-0000-000000000043'
-\set eventDeleted '00000000-0000-0000-0000-000000000044'
-\set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
-\set eventPast '00000000-0000-0000-0000-000000000046'
-\set eventFull '00000000-0000-0000-0000-000000000047'
 
 -- ============================================================================
 -- SEED DATA
@@ -82,7 +82,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: attend_event should succeed for valid event
+-- Should succeed for valid event
 select lives_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -91,7 +91,7 @@ select lives_ok(
     'User should be able to attend a valid event'
 );
 
--- Test: attending should add user to event_attendee
+-- Should add user to event_attendee table
 select ok(
     exists(
         select 1
@@ -101,7 +101,7 @@ select ok(
     'User should be added to event_attendee table after attending'
 );
 
--- Test: attend_event should let users join until capacity is reached
+-- Should let users join until capacity is reached
 select lives_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
@@ -110,68 +110,62 @@ select lives_ok(
     'User should be able to attend a capacity-limited event when space exists'
 );
 
--- Test: attend_event should error when capacity limit is reached
+-- Should error when capacity limit is reached
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventFull', :'user2ID'
     ),
-    'P0001',
     'event has reached capacity',
     'Should reject attendance when event capacity is full'
 );
 
--- Test: attend_event duplicate should error
+-- Should error on duplicate attendance
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventOK', :'user1ID'
     ),
-    'P0001',
     'user is already attending this event',
     'Should not allow duplicate attendance'
 );
 
--- Test: attend_event unpublished event should error
+-- Should error for unpublished event
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventUnpublished', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
     'Should not allow attending unpublished event'
 );
 
--- Test: attend_event canceled event should error
+-- Should error for canceled event
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventCanceled', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
     'Should not allow attending canceled event'
 );
 
--- Test: attend_event past event should error
+-- Should error for past event
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventPast', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
     'Should not allow attending past event'
 );
 
--- Test: attend_event in inactive group should error
+-- Should error for event in inactive group
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
         :'communityID', :'eventInactiveGroup', :'user1ID'
     ),
-    'P0001',
     'event not found or inactive',
     'Should not allow attending event from inactive group'
 );

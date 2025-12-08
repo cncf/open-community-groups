@@ -9,11 +9,11 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set deletedGroupID '00000000-0000-0000-0000-000000000023'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
-\set deletedGroupID '00000000-0000-0000-0000-000000000023'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 
@@ -70,38 +70,35 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Test: join_group should succeed for active group
+-- Should succeed for active group
 select lives_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'User should be able to join an active group'
 );
 
--- Test: joining should add user to group_member
+-- Should add user to group_member table
 select ok(
     exists(select 1 from group_member where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid),
     'User should be added to group_member table after joining'
 );
 
--- Test: join_group duplicate should error
+-- Should error on duplicate join
 select throws_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'user is already a member of this group',
     'Should not allow user to join a group they are already a member of'
 );
 
--- Test: join_group on inactive group should error
+-- Should error for inactive group
 select throws_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'group not found or inactive',
     'Should not allow user to join an inactive group'
 );
 
--- Test: join_group on deleted group should error
+-- Should error for deleted group
 select throws_ok(
     $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000023'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'group not found or inactive',
     'Should not allow user to join a deleted group'
 );

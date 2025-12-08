@@ -9,16 +9,16 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000002'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set user1ID '00000000-0000-0000-0000-000000000020'
-\set user2ID '00000000-0000-0000-0000-000000000021'
-\set user3ID '00000000-0000-0000-0000-000000000022'
+\set groupID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
 \set sponsor2ID '00000000-0000-0000-0000-000000000062'
+\set user1ID '00000000-0000-0000-0000-000000000020'
+\set user2ID '00000000-0000-0000-0000-000000000021'
+\set user3ID '00000000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -87,7 +87,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- add_event function creates event with required fields only
+-- Should create event with minimal required fields and return expected structure
 select is(
     (select (
         get_event_full(
@@ -113,10 +113,10 @@ select is(
         "slug": "k8s-fundamentals-workshop",
         "timezone": "America/New_York"
     }'::jsonb,
-    'add_event should create event with minimal required fields and return expected structure'
+    'Should create event with minimal required fields and return expected structure'
 );
 
--- add_event function creates event with all fields including hosts, sponsors, and sessions
+-- Should create event with all fields including hosts, sponsors, and sessions
 with new_event as (
     select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
@@ -229,11 +229,11 @@ select is(
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
         ]
     }'::jsonb,
-    'add_event should create event with all fields (excluding sessions)'
+    'Should create event with all fields (excluding sessions)'
 );
 
 
--- Sessions assertions: contents ignoring session_id (order-insensitive)
+-- Sessions should contain expected rows (ignoring session_id)
 select ok(
     (select (
         get_event_full(
@@ -269,10 +269,10 @@ select ok(
             }
         ]'::jsonb
     ),
-    'sessions contain expected rows (ignoring session_id)'
+    'Sessions contain expected rows (ignoring session_id)'
 );
 
--- add_event sets meeting flags (requested/in_sync/password) consistently for events and sessions
+-- Should set meeting flags consistently for events and sessions when requested
 with request_event as (
     select add_event(
         :'groupID'::uuid,
@@ -338,71 +338,68 @@ select is(
             "meeting_in_sync": false
         }
     }'::jsonb,
-    'add_event sets meeting flags and hosts for event and session when requested'
+    'Should set meeting flags and hosts for event and session when requested'
 );
 
--- add_event throws error for invalid host user_id
+-- Should throw error for invalid host user_id
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Test Event", "slug": "test-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
-    'P0001',
     'host user 99999999-9999-9999-9999-999999999999 not found in community',
-    'add_event should throw error when host user_id does not exist in community'
+    'Should throw error when host user_id does not exist in community'
 );
 
--- add_event throws error for invalid speaker user_id
+-- Should throw error for invalid speaker user_id
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Test Event", "slug": "test-event-speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
-    'P0001',
     'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
-    'add_event should throw error when speaker user_id does not exist in community'
+    'Should throw error when speaker user_id does not exist in community'
 );
 
--- add_event throws error when capacity exceeds max_participants with meeting_requested
+-- Should throw error when capacity exceeds max_participants with meeting_requested
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Capacity Exceed Event", "slug": "capacity-exceed", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
-    'P0001',
     'event capacity (200) exceeds maximum participants allowed (100)',
-    'add_event should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
+    'Should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
 );
 
--- add_event succeeds when capacity is within max_participants
+-- Should succeed when capacity is within max_participants
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Valid Capacity Event", "slug": "valid-capacity", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
-    'add_event should succeed when capacity is within cfg_max_participants'
+    'Should succeed when capacity is within cfg_max_participants'
 );
 
--- add_event succeeds when meeting_requested is false (no capacity check against max_participants)
+-- Should succeed with high capacity when meeting_requested is false
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Meeting Event", "slug": "no-meeting", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
-    'add_event should succeed with high capacity when meeting_requested is false'
+    'Should succeed with high capacity when meeting_requested is false'
 );
 
--- add_event succeeds when cfg_max_participants is null (no limit configured)
+-- Should succeed when cfg_max_participants is null
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Limit Event", "slug": "no-limit", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
         null
     ) is not null),
-    'add_event should succeed when cfg_max_participants is null'
+    'Should succeed when cfg_max_participants is null'
 );
 
 -- ============================================================================
