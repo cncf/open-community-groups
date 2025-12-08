@@ -188,7 +188,7 @@ begin
                         when (v_session_before->>'meeting_in_sync')::boolean = false
                              and (v_session->>'meeting_requested')::boolean is distinct from false
                         then false
-                        else (select is_session_meeting_in_sync(v_session_before, v_session, v_event_before->>'timezone', p_event->>'timezone'))
+                        else (select is_session_meeting_in_sync(v_session_before, v_session, v_event_before, p_event))
                     end,
                     meeting_join_url = v_session->>'meeting_join_url',
                     meeting_provider_id = v_session->>'meeting_provider_id',

@@ -58,6 +58,11 @@ select plan(28);
 \set meetingSessionUnpublishedDeleteID '00000000-0000-0000-0000-000000000312'
 \set meetingSessionUpdateID '00000000-0000-0000-0000-000000000304'
 
+\set userEventHost1ID '00000000-0000-0000-0000-000000000401'
+\set userEventHost2ID '00000000-0000-0000-0000-000000000402'
+\set userEventSpeaker1ID '00000000-0000-0000-0000-000000000403'
+\set userSessionSpeaker1ID '00000000-0000-0000-0000-000000000404'
+
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
@@ -82,6 +87,13 @@ insert into community (
     'https://example.com/logo.png',
     '{}'::jsonb
 );
+
+-- Users for event_host, event_speaker, session_speaker tests
+insert into "user" (user_id, community_id, email, username, auth_hash) values
+    (:'userEventHost1ID', :'communityID', 'eventhost1@example.com', 'eventhost1', 'hash1'),
+    (:'userEventHost2ID', :'communityID', 'eventhost2@example.com', 'eventhost2', 'hash2'),
+    (:'userEventSpeaker1ID', :'communityID', 'eventspeaker1@example.com', 'eventspeaker1', 'hash3'),
+    (:'userSessionSpeaker1ID', :'communityID', 'sessionspeaker1@example.com', 'sessionspeaker1', 'hash4');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -954,19 +966,33 @@ insert into session (
     true
 );
 
+-- Event hosts and speakers for combined hosts testing
+-- eventCreateID: add event_host and event_speaker
+insert into event_host (event_id, user_id) values
+    (:'eventCreateID', :'userEventHost1ID');
+insert into event_speaker (event_id, user_id, featured) values
+    (:'eventCreateID', :'userEventSpeaker1ID', false);
+-- eventInSyncID (parent of sessionCreateID): add event_host
+insert into event_host (event_id, user_id) values
+    (:'eventInSyncID', :'userEventHost2ID');
+-- sessionCreateID: add session_speaker
+insert into session_speaker (session_id, user_id, featured) values
+    (:'sessionCreateID', :'userSessionSpeaker1ID', false);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Test 1: Event create - returns event with delete=false, no meeting_id
 -- Priority: create/update operations come before deletes
+-- Hosts include: explicit meeting_hosts + event_host emails + event_speaker emails (sorted)
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
     '{
         "delete": false,
         "duration_secs": 3600,
         "event_id": "00000000-0000-0000-0000-000000000101",
-        "hosts": ["host1@example.com", "host2@example.com"],
+        "hosts": ["eventhost1@example.com", "eventspeaker1@example.com", "host1@example.com", "host2@example.com"],
         "meeting_id": null,
         "meeting_provider_id": "zoom",
         "requires_password": null,
@@ -1009,13 +1035,14 @@ update event set meeting_in_sync = true where event_id = :'eventUpdateID';
 
 -- Test 3: Session create - returns session with delete=false, no meeting_id
 -- Priority: session create/update comes before event delete
+-- Hosts include: explicit meeting_hosts + event_host emails + session_speaker emails (sorted)
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
     '{
         "delete": false,
         "duration_secs": 1800,
         "event_id": null,
-        "hosts": ["sessionhost@example.com"],
+        "hosts": ["eventhost2@example.com", "sessionhost@example.com", "sessionspeaker1@example.com"],
         "meeting_id": null,
         "meeting_provider_id": "zoom",
         "requires_password": null,
@@ -1033,13 +1060,14 @@ select is(
 update session set meeting_in_sync = true where session_id = :'sessionCreateID';
 
 -- Test 4: Session update - returns session with delete=false, has provider_meeting_id
+-- Hosts include: event_host emails from parent event (no explicit meeting_hosts or session_speaker)
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
     '{
         "delete": false,
         "duration_secs": 1800,
         "event_id": null,
-        "hosts": null,
+        "hosts": ["eventhost2@example.com"],
         "meeting_id": "00000000-0000-0000-0000-000000000304",
         "meeting_provider_id": "zoom",
         "requires_password": null,
@@ -1509,6 +1537,7 @@ select is(
 update session set meeting_in_sync = true where session_id = :'sessionCanceledNoMeetingID';
 
 -- Test 28: Session with requires_password=true returns the flag correctly
+-- Hosts include event_host from parent event (eventInSyncID)
 update session set meeting_in_sync = false where session_id = :'sessionRequiresPasswordID';
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
@@ -1516,7 +1545,7 @@ select is(
         "delete": false,
         "duration_secs": 1800,
         "event_id": null,
-        "hosts": null,
+        "hosts": ["eventhost2@example.com"],
         "meeting_id": null,
         "meeting_provider_id": "zoom",
         "requires_password": true,

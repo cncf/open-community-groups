@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(15);
 
 -- ============================================================================
 -- TESTS
@@ -297,6 +297,118 @@ select is(
     ),
     false,
     'Event meeting_hosts added desyncs meeting'
+);
+
+-- Event hosts unchanged keeps sync
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "hosts": ["00000000-0000-0000-0000-000000000001"]
+        }'::jsonb
+    ),
+    true,
+    'Event hosts unchanged keeps sync'
+);
+
+-- Event hosts change desyncs meeting
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "hosts": ["00000000-0000-0000-0000-000000000002"]
+        }'::jsonb
+    ),
+    false,
+    'Event hosts change desyncs meeting'
+);
+
+-- Event speakers unchanged keeps sync
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
+        }'::jsonb
+    ),
+    true,
+    'Event speakers unchanged keeps sync'
+);
+
+-- Event speakers change desyncs meeting
+select is(
+    is_event_meeting_in_sync(
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind": "virtual",
+            "starts_at": 1748786400,
+            "ends_at": 1748790000,
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
+        }'::jsonb,
+        '{
+            "name": "Sync Event",
+            "timezone": "America/New_York",
+            "kind_id": "virtual",
+            "starts_at": "2025-06-01T10:00:00",
+            "ends_at": "2025-06-01T11:00:00",
+            "meeting_requested": true,
+            "meeting_requires_password": false,
+            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000002", "featured": false}]
+        }'::jsonb
+    ),
+    false,
+    'Event speakers change desyncs meeting'
 );
 
 -- ============================================================================

@@ -38,7 +38,16 @@ begin
             false as delete,
             extract(epoch from e.ends_at - e.starts_at)::double precision as duration_secs,
             e.event_id,
-            e.meeting_hosts as hosts,
+            (
+                select array_agg(distinct email order by email) filter (where email is not null)
+                from (
+                    select unnest(e.meeting_hosts) as email
+                    union
+                    select u.email from event_host eh join "user" u using (user_id) where eh.event_id = e.event_id
+                    union
+                    select u.email from event_speaker es join "user" u using (user_id) where es.event_id = e.event_id
+                ) combined
+            ) as hosts,
             m.join_url,
             m.meeting_id,
             e.meeting_provider_id,
@@ -74,7 +83,16 @@ begin
             false as delete,
             extract(epoch from s.ends_at - s.starts_at)::double precision as duration_secs,
             null::uuid as event_id,
-            s.meeting_hosts as hosts,
+            (
+                select array_agg(distinct email order by email) filter (where email is not null)
+                from (
+                    select unnest(s.meeting_hosts) as email
+                    union
+                    select u.email from event_host eh join "user" u using (user_id) where eh.event_id = s.event_id
+                    union
+                    select u.email from session_speaker ss join "user" u using (user_id) where ss.session_id = s.session_id
+                ) combined
+            ) as hosts,
             m.join_url,
             m.meeting_id,
             s.meeting_provider_id,
