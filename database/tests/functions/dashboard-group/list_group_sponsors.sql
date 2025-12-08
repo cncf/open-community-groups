@@ -62,21 +62,21 @@ values
 -- TESTS
 -- ============================================================================
 
--- list_group_sponsors returns sponsors for a group sorted by name
+-- Should return group sponsors sorted by name
 select is(
     list_group_sponsors(:'group1ID'::uuid)::jsonb,
     '[
         {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
         {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
     ]'::jsonb,
-    'list_group_sponsors should return group sponsors sorted by name'
+    'Should return group sponsors sorted by name'
 );
 
--- list_group_sponsors returns empty array for group without sponsors
+-- Should return empty array for unknown group
 select is(
     list_group_sponsors('00000000-0000-0000-0000-000000000099'::uuid)::jsonb,
     '[]'::jsonb,
-    'list_group_sponsors should return empty array for unknown group'
+    'Should return empty array for unknown group'
 );
 
 -- ============================================================================

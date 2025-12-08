@@ -9,8 +9,8 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
@@ -61,7 +61,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: list_group_members named first (name,username), then unnamed by username
+-- Should order named users by name then username, then unnamed by username
 select is(
     list_group_members(:'groupID'::uuid)::jsonb,
     '[
@@ -79,7 +79,7 @@ select is(
     'Should order named users by name then username, then unnamed by username'
 );
 
--- Test: list_group_members for empty group should return empty array
+-- Should return empty list for non-existing group
 select is(
     list_group_members('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',

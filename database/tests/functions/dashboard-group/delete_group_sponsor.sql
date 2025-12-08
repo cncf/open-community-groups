@@ -9,11 +9,11 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
+\set categoryID '40000000-0000-0000-0000-000000000011'
 \set communityID '40000000-0000-0000-0000-000000000001'
-\set groupID     '40000000-0000-0000-0000-000000000002'
-\set sponsorID   '40000000-0000-0000-0000-000000000003'
-\set eventID     '40000000-0000-0000-0000-000000000004'
-\set categoryID  '40000000-0000-0000-0000-000000000011'
+\set eventID '40000000-0000-0000-0000-000000000004'
+\set groupID '40000000-0000-0000-0000-000000000002'
+\set sponsorID '40000000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
@@ -77,26 +77,26 @@ values (:'eventID', :'sponsorID', 'Gold');
 -- TESTS
 -- ============================================================================
 
--- Test: delete_group_sponsor fails when referenced by event_sponsor
+-- Should fail when sponsor is referenced by event
 select throws_like(
     $$select delete_group_sponsor('40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
     '%foreign key%',
-    'delete_group_sponsor should fail when sponsor is referenced by event'
+    'Should fail when sponsor is referenced by event'
 );
 
 -- Remove reference and try again
 delete from event_sponsor where group_sponsor_id = :'sponsorID'::uuid;
 
--- Test: delete_group_sponsor deletes the row when unreferenced
+-- Should remove sponsor when unreferenced
 select lives_ok(
     $$select delete_group_sponsor('40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
-    'delete_group_sponsor should not error when unreferenced'
+    'Should not error when unreferenced'
 );
 
 select is(
     (select count(*) from group_sponsor where group_sponsor_id = '40000000-0000-0000-0000-000000000003'::uuid),
     0::bigint,
-    'delete_group_sponsor should remove sponsor'
+    'Should remove sponsor'
 );
 
 -- ============================================================================

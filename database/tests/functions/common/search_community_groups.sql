@@ -9,15 +9,15 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set region1ID '00000000-0000-0000-0000-000000000021'
+\set community1ID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
+\set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
+\set region1ID '00000000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
@@ -93,7 +93,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Test: search_community_groups without filters should return all groups JSON
+-- Should return all active groups without filters
 select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{}'::jsonb))::jsonb,
     '[
@@ -192,24 +192,24 @@ select is(
             "longitude": -0.1278
         }
     ]'::jsonb,
-    'search_community_groups without filters returns all active groups with correct JSON structure'
+    'Should return all active groups without filters'
 );
 
--- Test: search_community_groups should return correct total count
+-- Should return correct total count
 select is(
     (select total from search_community_groups(:'community1ID'::uuid, '{}'::jsonb)),
     4::bigint,
-    'search_community_groups returns correct total count'
+    'Should return correct total count'
 );
 
--- Test: search_community_groups with non-existing community should return zero total
+-- Should return zero total for non-existing community
 select is(
     (select total from search_community_groups(:'nonExistentCommunityID'::uuid, '{}'::jsonb)),
     0::bigint,
-    'search_community_groups with non-existing community returns zero total'
+    'Should return zero total for non-existing community'
 );
 
--- Test: search_community_groups category filter should return Business Leaders JSON
+-- Category filter should return Business Leaders JSON
 select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"group_category":["business"]}'::jsonb))::jsonb,
     '[
@@ -233,10 +233,10 @@ select is(
             "longitude": -0.1278
         }
     ]'::jsonb,
-    'search_community_groups category filter returns expected group JSON'
+    'Category filter should return expected group JSON'
 );
 
--- Test: search_community_groups region filter should return expected groups JSON
+-- Region filter should return expected groups JSON
 select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"region":["north-america"]}'::jsonb))::jsonb,
     '[
@@ -316,10 +316,10 @@ select is(
             "state": "NY"
         }
     ]'::jsonb,
-    'search_community_groups region filter returns expected groups JSON'
+    'Region filter should return expected groups JSON'
 );
 
--- Test: search_community_groups ts_query filter should return Docker Users JSON
+-- Text search filter should return Docker Users JSON
 select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"ts_query":"Docker"}'::jsonb))::jsonb,
     '[
@@ -349,10 +349,10 @@ select is(
             "state": "NY"
         }
     ]'::jsonb,
-    'search_community_groups ts_query filter returns expected group JSON'
+    'Text search filter should return expected group JSON'
 );
 
--- Test: search_community_groups distance filter near Austin should return Tech Innovators
+-- Distance filter near Austin should return Tech Innovators
 select is(
     (select groups from search_community_groups(
         :'community1ID'::uuid,
@@ -385,10 +385,10 @@ select is(
             "state": "TX"
         }
     ]'::jsonb,
-    'search_community_groups distance filter returns expected group JSON'
+    'Distance filter should return expected group JSON'
 );
 
--- Test: search_community_groups pagination should return the second group JSON
+-- Pagination should return the second group JSON
 select is(
     (select groups from search_community_groups(:'community1ID'::uuid, '{"limit":1, "offset":1}'::jsonb))::jsonb,
     '[
@@ -418,14 +418,14 @@ select is(
             "state": "CA"
         }
     ]'::jsonb,
-    'search_community_groups pagination returns expected group JSON'
+    'Pagination should return expected group JSON'
 );
 
--- Test: search_community_groups include_bbox should return expected bbox
+-- Include bbox option should return expected bbox
 select is(
     (select bbox from search_community_groups(:'community1ID'::uuid, '{"include_bbox":true}'::jsonb))::jsonb,
     '{"ne_lat": 51.5074, "ne_lon": -0.1278, "sw_lat": 30.2672, "sw_lon": -122.4194}'::jsonb,
-    'search_community_groups include_bbox returns expected bbox'
+    'Include bbox option should return expected bbox'
 );
 
 -- ============================================================================

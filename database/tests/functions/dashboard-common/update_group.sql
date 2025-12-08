@@ -9,14 +9,14 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set groupDeletedID '00000000-0000-0000-0000-000000000022'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set group2ID '00000000-0000-0000-0000-000000000023'
 \set group3ID '00000000-0000-0000-0000-000000000024'
+\set groupDeletedID '00000000-0000-0000-0000-000000000022'
+\set groupID '00000000-0000-0000-0000-000000000021'
+\set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
 
 -- ============================================================================
 -- SEED DATA
@@ -120,7 +120,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Test: update_group should update fields correctly
+-- Should update all provided fields correctly
 select update_group(
     :'communityID'::uuid,
     :'groupID'::uuid,
@@ -142,7 +142,7 @@ select update_group(
     }'::jsonb
 );
 
--- Test: update_group should return expected structure after update
+-- Should return expected structure after update
 select is(
     (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb - 'active' - 'created_at' - 'members_count'),
     '{
@@ -168,22 +168,21 @@ select is(
         "organizers": [],
         "sponsors": []
     }'::jsonb,
-    'update_group should update all provided fields and return expected structure'
+    'Should update all provided fields and return expected structure'
 );
 
--- Test: update_group should throw error when updating deleted group
+-- Should throw error when updating deleted group
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000022'::uuid,
         '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
-    'P0001',
     'group not found or inactive',
-    'update_group should throw error when trying to update deleted group'
+    'Should throw error when trying to update deleted group'
 );
 
--- Test: update_group should convert empty strings to null for nullable fields
+-- Should convert empty strings to null for nullable fields
 insert into "group" (
     group_id,
     name,
@@ -243,29 +242,28 @@ select update_group(
     }'::jsonb
 );
 
--- Test: update_group should keep minimal fields after empty-string conversion
+-- Should keep minimal fields after empty-string conversion
 select is(
     (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "updated-group-empty-strings"
     }'::jsonb,
-    'update_group should convert empty strings to null for nullable fields'
+    'Should convert empty strings to null for nullable fields'
 );
 
--- Test: update_group should throw error when community_id mismatches
+-- Should throw error when community_id mismatches
 select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000099'::uuid,
         '00000000-0000-0000-0000-000000000021'::uuid,
         '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
-    'P0001',
     'group not found or inactive',
-    'update_group should throw error when community_id does not match'
+    'Should throw error when community_id does not match'
 );
 
--- Test: update_group should handle explicit null values for array fields
+-- Should handle explicit null values for array fields
 select update_group(
     :'communityID'::uuid,
     :'group3ID'::uuid,
@@ -279,7 +277,7 @@ select update_group(
     }'::jsonb
 );
 
--- Test: update_group should persist explicit null arrays in result
+-- Should persist explicit null arrays in result
 select is(
     (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
     '{
@@ -287,7 +285,7 @@ select is(
         "slug": "updated-group-null-arrays",
         "description": "Updated description"
     }'::jsonb,
-    'update_group should handle explicit null values for array fields (tags, photos_urls)'
+    'Should handle explicit null values for array fields (tags, photos_urls)'
 );
 
 -- ============================================================================

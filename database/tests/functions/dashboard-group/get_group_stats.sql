@@ -8,20 +8,20 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
+\set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set otherCommunityID '00000000-0000-0000-0000-000000000002'
-\set groupID '00000000-0000-0000-0000-000000000101'
-\set otherGroupID '00000000-0000-0000-0000-000000000102'
-\set otherCommunityGroupID '00000000-0000-0000-0000-000000000103'
-\set nonExistentGroupID '00000000-0000-0000-0000-999999999999'
-\set eventCategoryID '00000000-0000-0000-0000-000000000201'
 \set event1ID '00000000-0000-0000-0000-000000000301'
 \set event2ID '00000000-0000-0000-0000-000000000302'
-\set eventOtherGroupID '00000000-0000-0000-0000-000000000303'
+\set event3ID '00000000-0000-0000-0000-000000000303'
+\set eventCategoryID '00000000-0000-0000-0000-000000000201'
+\set group1ID '00000000-0000-0000-0000-000000000101'
+\set group2ID '00000000-0000-0000-0000-000000000102'
+\set group3ID '00000000-0000-0000-0000-000000000103'
+\set groupCategoryID '00000000-0000-0000-0000-000000000501'
+\set nonExistentGroupID '00000000-0000-0000-0000-999999999999'
 \set user1ID '00000000-0000-0000-0000-000000000401'
 \set user2ID '00000000-0000-0000-0000-000000000402'
-\set userOtherID '00000000-0000-0000-0000-000000000403'
-\set groupCategoryID '00000000-0000-0000-0000-000000000501'
+\set user3ID '00000000-0000-0000-0000-000000000403'
 
 -- ============================================================================
 -- SEED DATA
@@ -49,7 +49,7 @@ insert into community (
         '{}'::jsonb
     ),
     (
-        :'otherCommunityID',
+        :'community2ID',
         'other-community',
         'Other Community',
         'other.example.org',
@@ -78,21 +78,21 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Group One', 'group-one', '2024-01-01 00:00:00+00', true, false),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two', '2024-02-01 00:00:00+00', true, false),
-    (:'otherCommunityGroupID', :'otherCommunityID', :'groupCategoryID', 'Other Community Group', 'other-group', '2024-03-01 00:00:00+00', true, false);
+    (:'group1ID', :'communityID', :'groupCategoryID', 'Group One', 'group-one', '2024-01-01 00:00:00+00', true, false),
+    (:'group2ID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two', '2024-02-01 00:00:00+00', true, false),
+    (:'group3ID', :'community2ID', :'groupCategoryID', 'Other Community Group', 'other-group', '2024-03-01 00:00:00+00', true, false);
 
 -- Users
 insert into "user" (user_id, community_id, auth_hash, email, username) values
     (:'user1ID', :'communityID', 'hash-1', 'user1@example.com', 'user1'),
     (:'user2ID', :'communityID', 'hash-2', 'user2@example.com', 'user2'),
-    (:'userOtherID', :'communityID', 'hash-3', 'user3@example.com', 'user3');
+    (:'user3ID', :'communityID', 'hash-3', 'user3@example.com', 'user3');
 
 -- Members
 insert into group_member (group_id, user_id, created_at) values
-    (:'groupID', :'user1ID', '2024-01-05 00:00:00+00'),
-    (:'groupID', :'user2ID', '2024-03-10 00:00:00+00'),
-    (:'otherGroupID', :'userOtherID', '2024-04-01 00:00:00+00');
+    (:'group1ID', :'user1ID', '2024-01-05 00:00:00+00'),
+    (:'group1ID', :'user2ID', '2024-03-10 00:00:00+00'),
+    (:'group2ID', :'user3ID', '2024-04-01 00:00:00+00');
 
 -- Events
 insert into event (
@@ -109,24 +109,24 @@ insert into event (
     deleted,
     starts_at
 ) values
-    (:'event1ID', :'groupID', :'eventCategoryID', 'in-person', 'Event One', 'event-one', 'First event', 'UTC', true, false, false, '2024-02-15 00:00:00+00'),
-    (:'event2ID', :'groupID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two', 'Second event', 'UTC', true, false, false, '2024-04-15 00:00:00+00'),
-    (:'eventOtherGroupID', :'otherGroupID', :'eventCategoryID', 'in-person', 'Other Group Event', 'other-event', 'Other group event', 'UTC', true, false, false, '2024-05-15 00:00:00+00');
+    (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event One', 'event-one', 'First event', 'UTC', true, false, false, '2024-02-15 00:00:00+00'),
+    (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two', 'Second event', 'UTC', true, false, false, '2024-04-15 00:00:00+00'),
+    (:'event3ID', :'group2ID', :'eventCategoryID', 'in-person', 'Other Group Event', 'other-event', 'Other group event', 'UTC', true, false, false, '2024-05-15 00:00:00+00');
 
 -- Attendees
 insert into event_attendee (event_id, user_id, created_at) values
     (:'event1ID', :'user1ID', '2024-02-01 00:00:00+00'),
     (:'event1ID', :'user2ID', '2024-02-05 00:00:00+00'),
     (:'event2ID', :'user1ID', '2024-04-10 00:00:00+00'),
-    (:'eventOtherGroupID', :'userOtherID', '2024-05-20 00:00:00+00');
+    (:'event3ID', :'user3ID', '2024-05-20 00:00:00+00');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_stats should return complete accurate JSON for seeded group
+-- Should return complete accurate JSON for seeded group
 select is(
-    get_group_stats(:'communityID'::uuid, :'groupID'::uuid)::jsonb,
+    get_group_stats(:'communityID'::uuid, :'group1ID'::uuid)::jsonb,
     $$
     {
         "members": {
@@ -164,10 +164,10 @@ select is(
         }
     }
     $$,
-    'get_group_stats should return complete accurate JSON for seeded group'
+    'Should return complete accurate JSON for seeded group'
 );
 
--- Test: get_group_stats should return empty stats for unknown group
+-- Should return empty stats for unknown group
 select is(
     get_group_stats(:'communityID'::uuid, :'nonExistentGroupID'::uuid)::jsonb,
     $$
@@ -189,14 +189,14 @@ select is(
         }
     }
     $$,
-    'get_group_stats should return empty stats for unknown group'
+    'Should return empty stats for unknown group'
 );
 
--- Test: get_group_stats should ignore data from other groups and communities
+-- Should only count events from the requested group
 select is(
-    (get_group_stats(:'communityID'::uuid, :'groupID'::uuid)::jsonb->'events'->>'total')::int,
+    (get_group_stats(:'communityID'::uuid, :'group1ID'::uuid)::jsonb->'events'->>'total')::int,
     2,
-    'get_group_stats should only count events from the requested group'
+    'Should only count events from the requested group'
 );
 
 -- ============================================================================

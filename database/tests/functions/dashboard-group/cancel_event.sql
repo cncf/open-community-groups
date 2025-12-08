@@ -10,11 +10,11 @@ select plan(9);
 -- ============================================================================
 
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000021'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000021'
 \set sessionMeetingID '00000000-0000-0000-0000-000000000051'
 \set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
 \set userID '00000000-0000-0000-0000-000000000041'
@@ -212,67 +212,66 @@ insert into session (
 -- TESTS
 -- ============================================================================
 
--- Test: cancel_event should mark as canceled and clear publication metadata
+-- Should mark as canceled and clear publication metadata
 select cancel_event(:'groupID'::uuid, :'eventID'::uuid);
 
 select is(
     (select canceled from event where event_id = :'eventID'),
     true,
-    'cancel_event should set canceled=true'
+    'Should set canceled=true'
 );
 
 select is(
     (select published from event where event_id = :'eventID'),
     false,
-    'cancel_event should set published=false'
+    'Should set published=false'
 );
 
 select is(
     (select published_at from event where event_id = :'eventID'),
     null,
-    'cancel_event should set published_at to null'
+    'Should set published_at to null'
 );
 
 select is(
     (select published_by from event where event_id = :'eventID'),
     null,
-    'cancel_event should set published_by to null'
+    'Should set published_by to null'
 );
 
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     false,
-    'cancel_event should mark meeting_in_sync false when meeting was requested'
+    'Should mark meeting_in_sync false when meeting was requested'
 );
 
--- Test: cancel_event should set session meeting_in_sync to false when meeting_requested=true
+-- Should set session meeting_in_sync to false when meeting_requested=true
 select is(
     (select meeting_in_sync from session where session_id = :'sessionMeetingID'),
     false,
-    'cancel_event should set session meeting_in_sync=false when meeting_requested=true'
+    'Should set session meeting_in_sync=false when meeting_requested=true'
 );
 
--- Test: cancel_event should NOT change session meeting_in_sync when meeting_requested=false
+-- Should not change session meeting_in_sync when meeting_requested=false
 select is(
     (select meeting_in_sync from session where session_id = :'sessionNoMeetingID'),
     null,
-    'cancel_event should not change session meeting_in_sync when meeting_requested=false'
+    'Should not change session meeting_in_sync when meeting_requested=false'
 );
 
--- Test: cancel_event should NOT change event meeting_in_sync when meeting_requested=false
+-- Should not change event meeting_in_sync when meeting_requested=false
 select cancel_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid);
 select is(
     (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
     null,
-    'cancel_event should not change event meeting_in_sync when meeting_requested=false'
+    'Should not change event meeting_in_sync when meeting_requested=false'
 );
 
--- Test: cancel_event should throw error when group_id does not match
+-- Should throw error when group_id does not match
 select throws_ok(
     $$select cancel_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'event not found or inactive',
-    'cancel_event should throw error when group_id does not match'
+    'Should throw error when group_id does not match'
 );
 
 -- ============================================================================

@@ -9,8 +9,8 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set user1ID '00000000-0000-0000-0000-000000000011'
 \set user2ID '00000000-0000-0000-0000-000000000012'
 \set user3ID '00000000-0000-0000-0000-000000000013'
@@ -83,7 +83,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: search_user by username prefix should return expected matches
+-- Should find users by username prefix
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'john'),
     '[
@@ -100,10 +100,10 @@ select is(
             "photo_url": null
         }
     ]'::jsonb,
-    'search_user should find users by username prefix'
+    'Should find users by username prefix'
 );
 
--- Test: search_user by name prefix should return expected matches
+-- Should find users by name prefix
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'jane'),
     '[
@@ -114,10 +114,10 @@ select is(
             "photo_url": "https://example.com/jane.jpg"
         }
     ]'::jsonb,
-    'search_user should find users by name prefix'
+    'Should find users by name prefix'
 );
 
--- Test: search_user by email prefix should return expected matches
+-- Should find users by email prefix
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'alice@'),
     '[
@@ -128,10 +128,10 @@ select is(
             "photo_url": "https://example.com/alice.jpg"
         }
     ]'::jsonb,
-    'search_user should find users by email prefix'
+    'Should find users by email prefix'
 );
 
--- Test: search_user limit should cap results to 5
+-- Should cap results to maximum of 5
 insert into "user" (username, email, auth_hash, community_id, name)
 values 
     ('test1', 'test1@example.com', 'hash8', :'communityID', 'Test User 1'),
@@ -144,17 +144,17 @@ values
 select is(
     jsonb_array_length(search_user('00000000-0000-0000-0000-000000000001'::uuid, 'test')),
     5,
-    'search_user should return maximum 5 results'
+    'Should return maximum 5 results'
 );
 
--- Test: search_user with non-matching query should return no results
+-- Should return no results for non-matching query
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, 'nonexistent'),
     '[]'::jsonb,
-    'search_user should return no results for non-matching query'
+    'Should return no results for non-matching query'
 );
 
--- Test: search_user should be isolated per community
+-- Should only return users from the specified community
 select is(
     search_user('00000000-0000-0000-0000-000000000002'::uuid, 'john'),
     '[
@@ -165,17 +165,17 @@ select is(
             "photo_url": "https://example.com/other.jpg"
         }
     ]'::jsonb,
-    'search_user should only return users from the specified community'
+    'Should only return users from the specified community'
 );
 
--- Test: search_user with empty query should return no results
+-- Should return no results for empty query
 select is(
     search_user('00000000-0000-0000-0000-000000000001'::uuid, ''),
     '[]'::jsonb,
-    'search_user should return no results for empty query'
+    'Should return no results for empty query'
 );
 
--- Test: search_user should treat % and _ as literals
+-- Should treat % and _ as literal characters, not wildcards
 insert into "user" (user_id, username, email, auth_hash, community_id, name)
 values 
     (:'user8ID', 'user%test', 'usertest@example.com', 'hash14', :'communityID', 'User Percent Test'),
@@ -187,7 +187,7 @@ select is(
     and search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user%') @> '[{"username": "user%test"}]'::jsonb
     and search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user_') @> '[{"username": "user_special"}]'::jsonb,
     true,
-    'search_user should treat % and _ as literal characters, not wildcards'
+    'Should treat % and _ as literal characters, not wildcards'
 );
 
 -- ============================================================================

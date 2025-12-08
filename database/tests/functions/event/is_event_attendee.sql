@@ -9,12 +9,12 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set otherCommunityID '00000000-0000-0000-0000-000000000002'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set community2ID '00000000-0000-0000-0000-000000000002'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000031'
 \set eventID '00000000-0000-0000-0000-000000000041'
+\set groupID '00000000-0000-0000-0000-000000000031'
 \set user1ID '00000000-0000-0000-0000-000000000051'
 \set user2ID '00000000-0000-0000-0000-000000000052'
 
@@ -25,7 +25,7 @@ select plan(4);
 -- Community
 insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme) values
     (:'communityID', 'cncf-sea', 'CNCF Seattle', 'sea.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb),
-    (:'otherCommunityID', 'cncf-ny', 'CNCF NY', 'ny.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb);
+    (:'community2ID', 'cncf-ny', 'CNCF NY', 'ny.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb);
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -79,44 +79,44 @@ insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :
 -- TESTS
 -- ============================================================================
 
--- User1 is attendee and checked in
+-- Should return (true, true) for checked-in attendee
 select is(
     (
         select row(is_attendee, is_checked_in)::text
         from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
     ),
     '(t,t)',
-    'is_event_attendee returns (true, true) for a checked-in attendee'
+    'Should return (true, true) for a checked-in attendee'
 );
 
--- User2 is attendee but not checked in
+-- Should return (true, false) for attendee not checked in
 select is(
     (
         select row(is_attendee, is_checked_in)::text
         from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)
     ),
     '(t,f)',
-    'is_event_attendee returns (true, false) for an attendee not checked in'
+    'Should return (true, false) for an attendee not checked in'
 );
 
--- Different community should return (false, false)
+-- Should return (false, false) when scoped by wrong community
 select is(
     (
         select row(is_attendee, is_checked_in)::text
-        from is_event_attendee(:'otherCommunityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
+        from is_event_attendee(:'community2ID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)
     ),
     '(f,f)',
-    'is_event_attendee returns (false, false) when scoped by wrong community'
+    'Should return (false, false) when scoped by wrong community'
 );
 
--- Non-attendee should return (false, false)
+-- Should return (false, false) for non-attendee
 select is(
     (
         select row(is_attendee, is_checked_in)::text
         from is_event_attendee(:'communityID'::uuid, :'eventID'::uuid, '00000000-0000-0000-0000-000000000053'::uuid)
     ),
     '(f,f)',
-    'is_event_attendee returns (false, false) for a non-attendee'
+    'Should return (false, false) for a non-attendee'
 );
 
 -- ============================================================================

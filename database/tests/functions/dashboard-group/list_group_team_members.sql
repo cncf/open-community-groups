@@ -9,8 +9,8 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
@@ -47,7 +47,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: list_group_team_members should include both members with acceptance state
+-- Should return list of group team members with accepted flag
 select is(
     list_group_team_members(:'groupID'::uuid)::jsonb,
     '[
@@ -57,7 +57,7 @@ select is(
     'Should return list of group team members with accepted flag'
 );
 
--- Test: list_group_team_members for empty group should return empty array
+-- Should return empty list for non-existing group
 select is(
     list_group_team_members('00000000-0000-0000-0000-000000000099'::uuid)::text,
     '[]',

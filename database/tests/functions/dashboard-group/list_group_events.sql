@@ -8,15 +8,15 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set group1ID '00000000-0000-0000-0000-000000000002'
-\set group2ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
+\set community1ID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000021'
 \set event2ID '00000000-0000-0000-0000-000000000022'
 \set event3ID '00000000-0000-0000-0000-000000000023'
 \set event4ID '00000000-0000-0000-0000-000000000024'
 \set event5ID '00000000-0000-0000-0000-000000000025'
+\set group1ID '00000000-0000-0000-0000-000000000002'
+\set group2ID '00000000-0000-0000-0000-000000000003'
 \set groupCategory1ID '00000000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -196,7 +196,7 @@ insert into event (
 select is(
     list_group_events('00000000-0000-0000-0000-000000000099'::uuid)::jsonb,
     jsonb_build_object('past', '[]'::jsonb, 'upcoming', '[]'::jsonb),
-    'list_group_events should return empty arrays for group with no events'
+    'Should return empty arrays for group with no events'
 );
 
 select is(
@@ -210,10 +210,10 @@ select is(
             get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
         )
     ),
-    'list_group_events should group events by timeframe with ordering'
+    'Should group events by timeframe with ordering'
 );
 
--- Test: list_group_events should return full JSON for group2 single event
+-- Should return correct grouped JSON for specified group
 select is(
     list_group_events(:'group2ID'::uuid)::jsonb,
     jsonb_build_object(
@@ -222,7 +222,7 @@ select is(
             get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
         )
     ),
-    'list_group_events should return correct grouped JSON for specified group'
+    'Should return correct grouped JSON for specified group'
 );
 
 -- ============================================================================

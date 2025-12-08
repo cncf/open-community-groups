@@ -9,16 +9,16 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set group2ID '00000000-0000-0000-0000-000000000032'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
 \set event5ID '00000000-0000-0000-0000-000000000045'
+\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
+\set group1ID '00000000-0000-0000-0000-000000000031'
+\set group2ID '00000000-0000-0000-0000-000000000032'
 
 -- ============================================================================
 -- SEED DATA
@@ -118,10 +118,10 @@ select is(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
-    'search_community_events without filters returns all published events with correct JSON structure'
+    'Should return all published events without filters'
 );
 
--- Test: search_community_events sort_direction asc should return events ascending
+-- Should return events in ascending order when sort_direction is asc
 select is(
     (select events from search_community_events(
         :'communityID'::uuid,
@@ -133,10 +133,10 @@ select is(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
-    'search_community_events sort_direction asc returns events ascending by date'
+    'Should return events in ascending order when sort_direction is asc'
 );
 
--- Test: search_community_events sort_direction desc should return events descending
+-- Should return events in descending order when sort_direction is desc
 select is(
     (select events from search_community_events(
         :'communityID'::uuid,
@@ -148,42 +148,42 @@ select is(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb
     ),
-    'search_community_events sort_direction desc returns events descending by date'
+    'Should return events in descending order when sort_direction is desc'
 );
 
--- Test: search_community_events should return correct total count
+-- Should return correct total count
 select is(
     (select total from search_community_events(:'communityID'::uuid, '{}'::jsonb)),
     4::bigint,
-    'search_community_events returns correct total count'
+    'Should return correct total count'
 );
 
--- Test: search_community_events with non-existing community should return zero total
+-- Should return zero total for non-existing community
 select is(
     (select total from search_community_events('00000000-0000-0000-0000-999999999999'::uuid, '{}'::jsonb)),
     0::bigint,
-    'search_community_events with non-existing community returns zero total'
+    'Should return zero total for non-existing community'
 );
 
--- Test: search_community_events kind filter should return only Docker Training JSON
+-- Should filter events by kind
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"kind":["virtual"]}'::jsonb))::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'search_community_events kind filter returns expected event JSON'
+    'Should filter events by kind'
 );
 
--- Test: search_community_events ts_query filter should return only Docker Training JSON
+-- Should filter events by text search query
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"ts_query":"Docker"}'::jsonb))::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'search_community_events ts_query filter returns expected event JSON'
+    'Should filter events by text search query'
 );
 
--- Test: search_community_events date_from should return remaining 2 events JSON
+-- Should filter events by date_from
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"date_from":"2026-02-02"}'::jsonb))::jsonb,
     jsonb_build_array(
@@ -191,10 +191,10 @@ select is(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
-    'search_community_events date_from returns expected events JSON'
+    'Should filter events by date_from'
 );
 
--- Test: search_community_events distance filter should return expected events JSON in SF
+-- Should filter events by distance
 select is(
     (select events from search_community_events(
         :'communityID'::uuid,
@@ -205,19 +205,19 @@ select is(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
-    'search_community_events distance filter returns expected events JSON in SF'
+    'Should filter events by distance'
 );
 
--- Test: search_community_events pagination should return second item JSON
+-- Should paginate results correctly
 select is(
     (select events from search_community_events(:'communityID'::uuid, '{"limit":1, "offset":1}'::jsonb))::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'search_community_events pagination returns expected event JSON'
+    'Should paginate results correctly'
 );
 
--- Test: search_community_events group filter should return events from selected groups
+-- Should filter events by group
 select is(
     (
         select events
@@ -231,14 +231,14 @@ select is(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
-    'search_community_events group filter returns expected events JSON'
+    'Should filter events by group'
 );
 
--- Test: search_community_events include_bbox should return bbox at group location
+-- Should return bbox covering all group locations when include_bbox is true
 select is(
     (select bbox from search_community_events(:'communityID'::uuid, '{"include_bbox":true}'::jsonb))::jsonb,
     '{"ne_lat": 40.73061, "ne_lon": -73.935242, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
-    'search_community_events include_bbox returns expected bbox covering all group locations'
+    'Should return bbox covering all group locations when include_bbox is true'
 );
 
 -- ============================================================================

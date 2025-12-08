@@ -9,16 +9,16 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
+\set category1ID '00000000-0000-0000-0000-000000000021'
 \set community1ID '00000000-0000-0000-0000-000000000001'
-\set groupMemberUserID '00000000-0000-0000-0000-000000000011'
-\set regularUserID '00000000-0000-0000-0000-000000000012'
 \set communityAdminUserID '00000000-0000-0000-0000-000000000013'
 \set dualRoleUserID '00000000-0000-0000-0000-000000000014'
-\set category1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
+\set groupMemberUserID '00000000-0000-0000-0000-000000000011'
+\set regularUserID '00000000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -113,14 +113,14 @@ insert into group_team (group_id, user_id, role, accepted) values
 -- TESTS
 -- ============================================================================
 
--- Regular user (not in any teams) should see no groups
+-- Should see empty array for user without any team memberships
 select is(
     list_user_groups(:'regularUserID'::uuid)::text,
     '[]',
     'Regular user without any team memberships should see empty array'
 );
 
--- Group team member (not community team) should see only their assigned groups
+-- Should see only groups where they are members for group team member
 select is(
     list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
@@ -160,7 +160,7 @@ select is(
     'Group team member (not in community team) should see only groups A and B where they are members'
 );
 
--- Community team member (not in any group teams) should see all non-deleted groups
+-- Should see all non-deleted groups for community team member
 select is(
     list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
     '[
@@ -216,7 +216,7 @@ select is(
     'Community team member (not in any group teams) should see all three non-deleted groups (A, B, C)'
 );
 
--- User with both community team and group team membership should see all groups without duplicates
+-- Should see all groups without duplicates for dual role user
 select is(
     list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
     '[

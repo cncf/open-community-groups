@@ -9,17 +9,17 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
+\set categoryID '00000000-0000-0000-0000-000000000031'
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
-\set groupID '00000000-0000-0000-0000-000000000021'
 \set group2ID '00000000-0000-0000-0000-000000000022'
-\set userOrganizerID '00000000-0000-0000-0000-000000000011'
-\set userRegularID '00000000-0000-0000-0000-000000000012'
-\set userCommunityTeamID '00000000-0000-0000-0000-000000000013'
+\set groupID '00000000-0000-0000-0000-000000000021'
 \set userCommunityTeam2ID '00000000-0000-0000-0000-000000000014'
+\set userCommunityTeamID '00000000-0000-0000-0000-000000000013'
 \set userCommunityTeamPendingID '00000000-0000-0000-0000-000000000015'
 \set userGroupTeamPendingID '00000000-0000-0000-0000-000000000016'
-\set categoryID '00000000-0000-0000-0000-000000000031'
+\set userOrganizerID '00000000-0000-0000-0000-000000000011'
+\set userRegularID '00000000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -213,64 +213,64 @@ values (:'group2ID', :'userCommunityTeamID', 'organizer', true);
 -- TESTS
 -- ============================================================================
 
--- Test: user_owns_group with group team member should return true
+-- Should return true for user in group_team
 select ok(
     user_owns_group(:'community1ID', :'groupID', :'userOrganizerID'),
-    'User in group_team should own the group'
+    'Should return true for user in group_team'
 );
 
--- Test: user_owns_group with non-member should return false
+-- Should return false for user not in group_team
 select ok(
     not user_owns_group(:'community1ID', :'groupID', :'userRegularID'),
-    'User not in group_team should not own the group'
+    'Should return false for user not in group_team'
 );
 
--- Test: user_owns_group with pending group team member should return false
+-- Should return false for pending group team member
 select ok(
     not user_owns_group(:'community1ID', :'groupID', :'userGroupTeamPendingID'),
-    'Pending group team member should not own the group'
+    'Should return false for pending group team member'
 );
 
--- Test: user_owns_group with non-existent user should return false
+-- Should return false for non-existent user
 select ok(
     not user_owns_group(:'community1ID', :'groupID', '00000000-0000-0000-0000-000000000099'::uuid),
-    'Non-existent user should not own the group'
+    'Should return false for non-existent user'
 );
 
--- Test: user_owns_group with wrong community should return false
+-- Should return false for cross-community ownership check
 select ok(
     not user_owns_group(:'community2ID', :'groupID', :'userOrganizerID'),
-    'Cross-community ownership check should fail even for actual group owner'
+    'Should return false for cross-community ownership check'
 );
 
--- Test: user_owns_group with community team member should return true
+-- Should return true for community team member
 select ok(
     user_owns_group(:'community1ID', :'groupID', :'userCommunityTeamID'),
-    'Community team member should own any group in their community'
+    'Should return true for community team member'
 );
 
--- Test: user_owns_group with community team for any group should return true
+-- Should return true for community team member on any group in their community
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
-    'Community team member should own groups they are not explicitly part of'
+    'Should return true for community team member on any group in their community'
 );
 
--- Test: user_owns_group with different community team should return false
+-- Should return false for community team member from different community
 select ok(
     not user_owns_group(:'community1ID', :'groupID', :'userCommunityTeam2ID'),
-    'Community team member from different community should not own the group'
+    'Should return false for community team member from different community'
 );
 
--- Test: user_owns_group with both team memberships should return true
+-- Should return true for user in both group team and community team
 select ok(
     user_owns_group(:'community1ID', :'group2ID', :'userCommunityTeamID'),
-    'User who is both group team and community team member should own the group'
+    'Should return true for user in both group team and community team'
 );
 
--- Test: user_owns_group with pending community team member should return false
+-- Should return false for pending community team member
 select ok(
     not user_owns_group(:'community1ID', :'groupID', :'userCommunityTeamPendingID'),
-    'Pending community team member should not own the group'
+    'Should return false for pending community team member'
 );
 
 -- ============================================================================

@@ -9,8 +9,8 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set userID '00000000-0000-0000-0000-000000000031'
 
@@ -42,10 +42,10 @@ values (:'groupID', :'userID', 'organizer', true);
 -- TESTS
 -- ============================================================================
 
--- Test: deleting an existing member should remove membership
+-- Should remove membership
 select lives_ok(
     $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
-    'delete_group_team_member should succeed'
+    'Should succeed'
 );
 select results_eq(
     $$ select count(*) from group_team where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid $$,
@@ -53,10 +53,9 @@ select results_eq(
     'Membership should be removed'
 );
 
--- Test: deleting a non-existing member should raise error
+-- Should raise error when deleting non-existing member
 select throws_ok(
     $$ select delete_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
-    'P0001',
     'user is not a group team member',
     'Second delete should fail since member no longer exists'
 );

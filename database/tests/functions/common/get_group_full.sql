@@ -9,11 +9,11 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set regionID '00000000-0000-0000-0000-000000000012'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
+\set regionID '00000000-0000-0000-0000-000000000012'
 \set sponsor1ID '00000000-0000-0000-0000-000000000041'
 \set sponsor2ID '00000000-0000-0000-0000-000000000042'
 \set user1ID '00000000-0000-0000-0000-000000000031'
@@ -175,7 +175,7 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_full should return complete group JSON
+-- Should return complete group JSON
 select is(
     get_group_full(
         :'communityID'::uuid,
@@ -261,25 +261,25 @@ select is(
             }
         ]
     }'::jsonb,
-    'get_group_full should return complete group data with organizers and member count as JSON'
+    'Should return complete group data with organizers and member count as JSON'
 );
 
--- Test: get_group_full with non-existent group should return null
+-- Should return null for non-existent group
 select ok(
     get_group_full(
         :'communityID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
-    'get_group_full with non-existent group ID should return null'
+    'Should return null for non-existent group ID'
 );
 
--- Test: get_group_full should return null when community does not match group
+-- Should return null when community does not match group
 select ok(
     get_group_full(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid
     ) is null,
-    'get_group_full should return null when community does not match group'
+    'Should return null when community does not match group'
 );
 
 -- ============================================================================

@@ -9,8 +9,8 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set userID '00000000-0000-0000-0000-000000000031'
 
@@ -35,10 +35,10 @@ values (:'groupID', :'userID', 'organizer', false);
 -- TESTS
 -- ============================================================================
 
--- Test: accepting a pending invite should flip accepted to true
+-- Should flip accepted to true when accepting pending invite
 select lives_ok(
     $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
-    'accept_group_team_invitation should succeed'
+    'Should succeed for pending invite'
 );
 select results_eq(
     $$ select accepted from group_team where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid $$,
@@ -46,7 +46,7 @@ select results_eq(
     'Invite should be marked as accepted'
 );
 
--- Test: accepting again should raise error when no pending invitation exists
+-- Should raise error when no pending invitation exists
 select throws_ok(
     $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
     'no pending group invitation found',

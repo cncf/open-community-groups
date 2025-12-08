@@ -9,14 +9,14 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
-\set group1ID '00000000-0000-0000-0000-000000000031'
+\set community1ID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
+\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
+\set group1ID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
 -- SEED DATA
@@ -97,21 +97,21 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_upcoming_events should return published future events JSON
+-- Should return published future events ordered by date ASC as JSON
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
-    'get_group_upcoming_events should return published future events ordered by date ASC as JSON'
+    'Should return published future events ordered by date ASC as JSON'
 );
 
--- Test: get_group_upcoming_events with non-existent group should return empty array
+-- Should return empty array with non-existing group slug
 select is(
     get_group_upcoming_events(:'community1ID'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[]'::jsonb,
-    'get_group_upcoming_events with non-existing group slug should return empty array'
+    'Should return empty array with non-existing group slug'
 );
 
 -- Finish tests and rollback transaction

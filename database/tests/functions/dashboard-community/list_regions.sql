@@ -49,7 +49,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: list_regions should return complete JSON ordered properly
+-- Should return complete region data ordered by order field, then by name
 select is(
     list_regions(:'community1ID'::uuid)::jsonb,
     '[
@@ -66,10 +66,10 @@ select is(
             "order": 2
         }
     ]'::jsonb,
-    'list_regions should return complete region data ordered by order field, then by name'
+    'Should return complete region data ordered by order field, then by name'
 );
 
--- Test: list_regions should return empty array for community with no regions
+-- Should return empty array for community with no regions
 insert into community (
     community_id,
     name,
@@ -93,7 +93,7 @@ insert into community (
 select is(
     list_regions(:'community3ID'::uuid)::jsonb,
     '[]'::jsonb,
-    'list_regions should return empty array for community with no regions'
+    'Should return empty array for community with no regions'
 );
 
 -- ============================================================================

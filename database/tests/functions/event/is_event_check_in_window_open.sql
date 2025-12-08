@@ -9,16 +9,16 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
+\set checkInWindowEventID '00000000-0000-0000-0000-000000000042'
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set eventCategoryID '00000000-0000-0000-0000-000000000031'
 \set futureEventID '00000000-0000-0000-0000-000000000041'
-\set checkInWindowEventID '00000000-0000-0000-0000-000000000042'
-\set pastEventID '00000000-0000-0000-0000-000000000043'
+\set groupCategoryID '00000000-0000-0000-0000-000000000021'
+\set groupID '00000000-0000-0000-0000-000000000011'
 \set multiDayEventID '00000000-0000-0000-0000-000000000044'
-\set sameDayWithEndsAtEventID '00000000-0000-0000-0000-000000000045'
 \set noStartTimeEventID '00000000-0000-0000-0000-000000000046'
+\set pastEventID '00000000-0000-0000-0000-000000000043'
+\set sameDayWithEndsAtEventID '00000000-0000-0000-0000-000000000045'
 
 -- ============================================================================
 -- SEED DATA
@@ -240,40 +240,40 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Test: is_event_check_in_window_open should return false for future event
+-- Should return false for future event
 select ok(
     not is_event_check_in_window_open(:'communityID'::uuid, :'futureEventID'::uuid),
-    'is_event_check_in_window_open returns false for future event'
+    'Should return false for future event'
 );
 
--- Test: is_event_check_in_window_open should return true for event within check-in window
+-- Should return true for event within check-in window
 select ok(
     is_event_check_in_window_open(:'communityID'::uuid, :'checkInWindowEventID'::uuid),
-    'is_event_check_in_window_open returns true for event within check-in window'
+    'Should return true for event within check-in window'
 );
 
--- Test: is_event_check_in_window_open should return false for past event
+-- Should return false for past event
 select ok(
     not is_event_check_in_window_open(:'communityID'::uuid, :'pastEventID'::uuid),
-    'is_event_check_in_window_open returns false for past event'
+    'Should return false for past event'
 );
 
--- Test: is_event_check_in_window_open should return true for ongoing multi-day event
+-- Should return true for ongoing multi-day event
 select ok(
     is_event_check_in_window_open(:'communityID'::uuid, :'multiDayEventID'::uuid),
-    'is_event_check_in_window_open returns true for ongoing multi-day event'
+    'Should return true for ongoing multi-day event'
 );
 
--- Test: is_event_check_in_window_open should return true for same-day event with ends_at
+-- Should return true for same-day event with ends_at
 select ok(
     is_event_check_in_window_open(:'communityID'::uuid, :'sameDayWithEndsAtEventID'::uuid),
-    'is_event_check_in_window_open returns true for same-day event with ends_at'
+    'Should return true for same-day event with ends_at'
 );
 
--- Test: is_event_check_in_window_open should return false for event without start time
+-- Should return false for event without start time
 select ok(
     not is_event_check_in_window_open(:'communityID'::uuid, :'noStartTimeEventID'::uuid),
-    'is_event_check_in_window_open returns false for event without start time'
+    'Should return false for event without start time'
 );
 
 -- ============================================================================

@@ -84,7 +84,7 @@ insert into community (
 -- TESTS
 -- ============================================================================
 
--- updating required fields (optional fields not provided should become null)
+-- Should update required fields and set optional fields to null when not provided
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -113,10 +113,10 @@ select is(
         "theme": {"primary_color": "#FF0000"},
         "title": "Cloud Native Seattle Updated"
     }'::jsonb,
-    'update_community should update required fields and set optional fields to null when not provided'
+    'Should update required fields and set optional fields to null when not provided'
 );
 
--- updating all fields including optional ones
+-- Should update all fields including optional ones
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -186,10 +186,10 @@ select is(
         "youtube_url": "https://youtube.com/new",
         "jumbotron_image_url": "https://new.com/jumbotron.png"
     }'::jsonb,
-    'update_community should update all fields correctly including optional ones'
+    'Should update all fields correctly including optional ones'
 );
 
--- update_community converts empty strings to null for nullable fields
+-- Should convert empty strings to null for nullable fields
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
@@ -240,7 +240,7 @@ select is(
         "wechat_url": null,
         "youtube_url": null
     }'::jsonb,
-    'update_community should convert empty strings to null for nullable fields'
+    'Should convert empty strings to null for nullable fields'
 );
 
 -- ============================================================================

@@ -10,8 +10,8 @@ select plan(4);
 -- ============================================================================
 
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set userTeamMemberID '00000000-0000-0000-0000-000000000011'
 \set userRegularID '00000000-0000-0000-0000-000000000012'
+\set userTeamMemberID '00000000-0000-0000-0000-000000000011'
 \set userTeamMemberPendingID '00000000-0000-0000-0000-000000000013'
 
 -- ============================================================================
@@ -93,28 +93,28 @@ insert into community_team (
 -- TESTS
 -- ============================================================================
 
--- User in community_team should own the community
+-- Should return true for user in community_team
 select ok(
     user_owns_community(:'communityID', :'userTeamMemberID'),
-    'User in community_team should own the community'
+    'Should return true for user in community_team'
 );
 
--- User not in community_team should not own the community
+-- Should return false for user not in community_team
 select ok(
     not user_owns_community(:'communityID', :'userRegularID'),
-    'User not in community_team should not own the community'
+    'Should return false for user not in community_team'
 );
 
--- Non-existent user should not own the community
+-- Should return false for non-existent user
 select ok(
     not user_owns_community(:'communityID', '00000000-0000-0000-0000-000000000099'::uuid),
-    'Non-existent user should not own the community'
+    'Should return false for non-existent user'
 );
 
--- Pending community_team member (accepted = false) should not own the community
+-- Should return false for pending team member
 select ok(
     not user_owns_community(:'communityID', :'userTeamMemberPendingID'),
-    'Pending team member should not own the community'
+    'Should return false for pending team member'
 );
 
 -- ============================================================================

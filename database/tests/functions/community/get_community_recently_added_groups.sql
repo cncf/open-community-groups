@@ -9,13 +9,13 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
-\set region1ID '00000000-0000-0000-0000-000000000021'
-\set region2ID '00000000-0000-0000-0000-000000000022'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set region1ID '00000000-0000-0000-0000-000000000021'
+\set region2ID '00000000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -70,7 +70,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- get_community_recently_added_groups function returns correct data
+-- Should return groups ordered by creation date DESC
 select is(
     get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
     '[
@@ -140,14 +140,14 @@ select is(
             }
         }
     ]'::jsonb,
-    'get_community_recently_added_groups should return groups ordered by creation date DESC as JSON'
+    'Should return groups ordered by creation date DESC'
 );
 
--- get_community_recently_added_groups with non-existing community
+-- Should return empty array for non-existing community
 select is(
     get_community_recently_added_groups('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '[]'::jsonb,
-    'get_community_recently_added_groups with non-existing community should return empty array'
+    'Should return empty array for non-existing community'
 );
 
 -- ============================================================================

@@ -9,11 +9,11 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000002'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000002'
 \set meetingID '00000000-0000-0000-0000-000000000301'
 
 -- ============================================================================
@@ -99,7 +99,7 @@ values (:'meetingID', :'eventID', 'zoom', '123456789', 'https://zoom.us/j/123456
 -- TESTS
 -- ============================================================================
 
--- Test 1: Update recording URL - verify recording_url is set
+-- Should set recording_url when updating
 select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123');
 select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
@@ -107,14 +107,14 @@ select is(
     'Recording URL updated successfully'
 );
 
--- Test 2: Update recording URL - verify updated_at is set
+-- Should set updated_at after recording URL update
 select isnt(
     (select updated_at from meeting where meeting_id = :'meetingID'),
     null,
     'updated_at is set after recording URL update'
 );
 
--- Test 3: Update with different URL - verify URL is overwritten
+-- Should overwrite recording URL when updating with different URL
 select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789');
 select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
@@ -122,7 +122,7 @@ select is(
     'Recording URL can be updated with a new value'
 );
 
--- Test 4: Update non-existent meeting - should not raise error
+-- Should not raise error when updating non-existent meeting
 select lives_ok(
     $$ select update_meeting_recording_url('zoom', 'nonexistent', 'https://example.com/rec') $$,
     'Updating non-existent meeting does not raise error'

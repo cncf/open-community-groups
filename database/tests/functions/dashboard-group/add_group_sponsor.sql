@@ -49,7 +49,7 @@ values (:'groupID', :'communityID', 'Group NYC', 'group-nyc', '10000000-0000-000
 -- TESTS
 -- ============================================================================
 
--- Test: get_group_sponsor returns created sponsor (compare without id)
+-- Should return created sponsor
 select is(
     (
         select (get_group_sponsor(
@@ -67,7 +67,7 @@ select is(
         "name":"Epsilon",
         "website_url":"https://epsi.io"
     }'::jsonb,
-    'get_group_sponsor should return created sponsor'
+    'Should return created sponsor'
 );
 
 -- ============================================================================

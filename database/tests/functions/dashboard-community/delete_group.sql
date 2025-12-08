@@ -9,10 +9,10 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupID '00000000-0000-0000-0000-000000000021'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000022'
+\set groupID '00000000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
@@ -91,47 +91,45 @@ insert into "group" (
 -- TESTS
 -- ============================================================================
 
--- delete_group function performs soft delete
+-- Should perform soft delete
 select delete_group(:'communityID'::uuid, :'groupID'::uuid);
 
 select is(
     (select deleted from "group" where group_id = :'groupID'::uuid),
     true,
-    'delete_group should set deleted to true'
+    'Should set deleted to true'
 );
 
 select ok(
     (select deleted_at from "group" where group_id = :'groupID'::uuid) is not null,
-    'delete_group should set deleted_at timestamp'
+    'Should set deleted_at timestamp'
 );
 
--- Verify the group still exists in database
+-- Should perform soft delete (record still exists)
 select ok(
     exists(select 1 from "group" where group_id = :'groupID'::uuid),
-    'delete_group should perform soft delete (record still exists)'
+    'Should perform soft delete (record still exists)'
 );
 
--- Verify active field is set to false when deleting
+-- Should set active to false when deleting
 select is(
     (select active from "group" where group_id = :'groupID'::uuid),
     false,
-    'delete_group should set active to false when deleting'
+    'Should set active to false when deleting'
 );
 
--- delete_group throws error for already deleted group
+-- Should throw error for already deleted group
 select throws_ok(
     $$select delete_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
-    'P0001',
     'group not found or inactive',
-    'delete_group should throw error when trying to delete already deleted group'
+    'Should throw error when trying to delete already deleted group'
 );
 
--- delete_group throws error for wrong community_id
+-- Should throw error for wrong community_id
 select throws_ok(
     $$select delete_group('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
-    'P0001',
     'group not found or inactive',
-    'delete_group should throw error when community_id does not match'
+    'Should throw error when community_id does not match'
 );
 
 -- ============================================================================

@@ -9,9 +9,9 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set categoryID '00000000-0000-0000-0000-000000000011'
 \set activeGroupID '00000000-0000-0000-0000-000000000021'
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
@@ -75,25 +75,25 @@ values (:'inactiveGroupID', :'user1ID');
 -- TESTS
 -- ============================================================================
 
--- Test: is_group_member existing member should return true
+-- Should return true for existing group member
 select ok(
     is_group_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid),
     'Should return true for existing group member'
 );
 
--- Test: is_group_member non-member should return false
+-- Should return false for non-member
 select ok(
     not is_group_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid),
     'Should return false for non-member'
 );
 
--- Test: is_group_member invalid group should return false
+-- Should return false for invalid group
 select ok(
     not is_group_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000000'::uuid, '00000000-0000-0000-0000-000000000031'::uuid),
     'Should return false for invalid group'
 );
 
--- Test: is_group_member inactive group should return false (even if member)
+-- Should return false for inactive group even if user is a member
 select ok(
     not is_group_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000031'::uuid),
     'Should return false for inactive group even if user is a member'

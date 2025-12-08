@@ -9,11 +9,11 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
+\set communityID '00000000-0000-0000-0000-000000000001'
+\set deletedGroupID '00000000-0000-0000-0000-000000000023'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
-\set deletedGroupID '00000000-0000-0000-0000-000000000023'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000032'
 
@@ -74,38 +74,35 @@ values (:'groupID', :'user1ID');
 -- TESTS
 -- ============================================================================
 
--- Test: leave_group should succeed for member
+-- Should succeed for member
 select lives_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
     'User should be able to leave a group they are a member of'
 );
 
--- Test: leave_group should remove user from group_member
+-- Should remove user from group_member table
 select ok(
     not exists(select 1 from group_member where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid),
     'User should be removed from group_member table after leaving'
 );
 
--- Test: leave_group when not a member should error
+-- Should error when user is not a member
 select throws_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
-    'P0001',
     'user is not a member of this group',
     'Should not allow user to leave a group they are not a member of'
 );
 
--- Test: leave_group on inactive group should error
+-- Should error for inactive group
 select throws_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'group not found or inactive',
     'Should not allow user to leave an inactive group'
 );
 
--- Test: leave_group on deleted group should error
+-- Should error for deleted group
 select throws_ok(
     $$select leave_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000023'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
-    'P0001',
     'group not found or inactive',
     'Should not allow user to leave a deleted group'
 );

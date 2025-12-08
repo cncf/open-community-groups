@@ -9,13 +9,13 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set regionID '00000000-0000-0000-0000-000000000021'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000031'
+\set memberID '00000000-0000-0000-0000-000000000043'
 \set organizer1ID '00000000-0000-0000-0000-000000000041'
 \set organizer2ID '00000000-0000-0000-0000-000000000042'
-\set memberID '00000000-0000-0000-0000-000000000043'
+\set regionID '00000000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
@@ -119,7 +119,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- get_group_full_by_slug function returns correct data
+-- Should return correct group data as JSON
 select is(
     get_group_full_by_slug(:'communityID'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
     '{
@@ -175,13 +175,13 @@ select is(
         },
         "members_count": 3
     }'::jsonb,
-    'get_group_full_by_slug should return correct group data as JSON'
+    'Should return correct group data as JSON'
 );
 
--- get_group_full_by_slug with non-existing group slug
+-- Should return null with non-existing group slug
 select ok(
     get_group_full_by_slug(:'communityID'::uuid, 'non-existing-group') is null,
-    'get_group_full_by_slug with non-existing group slug should return null'
+    'Should return null with non-existing group slug'
 );
 
 -- ============================================================================

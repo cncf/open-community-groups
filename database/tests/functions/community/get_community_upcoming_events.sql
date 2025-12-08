@@ -9,14 +9,14 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set category1ID '00000000-0000-0000-0000-000000000011'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
-\set group1ID '00000000-0000-0000-0000-000000000031'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
+\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
+\set group1ID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
 -- SEED DATA
@@ -91,20 +91,20 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- get_community_upcoming_events function returns correct data
+-- Should return only published future events
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'get_community_upcoming_events should return only published future events as JSON'
+    'Should return only published future events'
 );
 
--- get_community_upcoming_events with non-existing community
+-- Should return empty array for non-existing community
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-999999999999'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[]'::jsonb,
-    'get_community_upcoming_events with non-existing community should return empty array'
+    'Should return empty array for non-existing community'
 );
 
 -- ============================================================================

@@ -9,14 +9,14 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
+\set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityID '00000000-0000-0000-0000-000000000001'
-\set otherCommunityID '00000000-0000-0000-0000-000000000002'
-\set groupID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set eventID '00000000-0000-0000-0000-000000000031'
 \set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set userID '00000000-0000-0000-0000-000000000051'
+\set eventID '00000000-0000-0000-0000-000000000031'
+\set groupCategoryID '00000000-0000-0000-0000-000000000021'
+\set groupID '00000000-0000-0000-0000-000000000011'
 \set nonExistingEventID '00000000-0000-0000-0000-000000000099'
+\set userID '00000000-0000-0000-0000-000000000051'
 
 -- ============================================================================
 -- SEED DATA
@@ -34,7 +34,7 @@ insert into community (
     theme
 ) values
     (:'communityID', 'event-summary-community', 'Event Summary', 'summary.example.test', 'Event Summary', 'Community for summary tests', 'https://example.test/logo.png', '{}'::jsonb),
-    (:'otherCommunityID', 'other-community', 'Other Community', 'other.example.test', 'Other', 'Another community', 'https://example.test/other.png', '{}'::jsonb);
+    (:'community2ID', 'other-community', 'Other Community', 'other.example.test', 'Other', 'Another community', 'https://example.test/other.png', '{}'::jsonb);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name, created_at)
@@ -111,23 +111,23 @@ values (:'eventID', :'userID', true, '2025-06-02 00:00:00');
 -- TESTS
 -- ============================================================================
 
--- Test: get_event_summary_by_id should match get_event_summary output
+-- Should return the same payload as get_event_summary
 select is(
     get_event_summary_by_id(:'communityID'::uuid, :'eventID'::uuid)::jsonb,
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
-    'get_event_summary_by_id should return the same payload as get_event_summary'
+    'Should return the same payload as get_event_summary'
 );
 
--- Test: get_event_summary_by_id should return null for missing event
+-- Should return null for missing event
 select ok(
     get_event_summary_by_id(:'communityID'::uuid, :'nonExistingEventID'::uuid) is null,
-    'get_event_summary_by_id returns null when the event does not exist'
+    'Should return null when the event does not exist'
 );
 
--- Test: get_event_summary_by_id should return null when community mismatches
+-- Should return null when community mismatches
 select ok(
-    get_event_summary_by_id(:'otherCommunityID'::uuid, :'eventID'::uuid) is null,
-    'get_event_summary_by_id returns null when the event belongs to another community'
+    get_event_summary_by_id(:'community2ID'::uuid, :'eventID'::uuid) is null,
+    'Should return null when the event belongs to another community'
 );
 
 -- ============================================================================

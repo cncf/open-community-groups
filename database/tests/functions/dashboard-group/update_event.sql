@@ -8,24 +8,24 @@ select plan(20);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set group1ID '00000000-0000-0000-0000-000000000002'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set user1ID '00000000-0000-0000-0000-000000000020'
-\set user2ID '00000000-0000-0000-0000-000000000021'
-\set user3ID '00000000-0000-0000-0000-000000000022'
+\set community1ID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000003'
 \set event4ID '00000000-0000-0000-0000-000000000004'
 \set event5ID '00000000-0000-0000-0000-000000000005'
 \set event6ID '00000000-0000-0000-0000-000000000006'
 \set event7ID '00000000-0000-0000-0000-000000000007'
+\set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
 \set session1ID '00000000-0000-0000-0000-000000000101'
 \set session2ID '00000000-0000-0000-0000-000000000102'
 \set sponsorNewID '00000000-0000-0000-0000-000000000062'
 \set sponsorOrigID '00000000-0000-0000-0000-000000000061'
+\set user1ID '00000000-0000-0000-0000-000000000020'
+\set user2ID '00000000-0000-0000-0000-000000000021'
+\set user3ID '00000000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -283,7 +283,7 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- update_event returns expected payload when optional collections are omitted
+-- Should update basic fields and clear hosts/sponsors/sessions when not provided
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -331,10 +331,10 @@ select is(
         "sessions": {},
         "starts_at": 1738447200
     }'::jsonb,
-    'update_event should update basic fields and clear hosts/sponsors/sessions when not provided'
+    'Should update basic fields and clear hosts/sponsors/sessions when not provided'
 );
 
--- update_event sets meeting flags when meeting support is requested (no sessions)
+-- Should initialize meeting flags for requested event without sessions
 select is(
     (
         select jsonb_build_object(
@@ -348,10 +348,10 @@ select is(
         "meeting_requested": true,
         "meeting_in_sync": false
     }'::jsonb,
-    'meeting flags are initialized for requested event without sessions'
+    'Meeting flags are initialized for requested event without sessions'
 );
 
--- update_event updates event, nested relations, and meeting flags with full payload
+-- Should update all fields (excluding sessions) with full payload
 select update_event(
     '00000000-0000-0000-0000-000000000002'::uuid,
     '00000000-0000-0000-0000-000000000003'::uuid,
@@ -452,10 +452,10 @@ select is(
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}
         ]
     }'::jsonb,
-    'update_event should update all fields (excluding sessions)'
+    'Should update all fields (excluding sessions)'
 );
 
--- Sessions assertions: contents ignoring session_id (order-insensitive)
+-- Should contain expected session rows (ignoring session_id)
 select ok(
     (select (
         get_event_full(
@@ -480,10 +480,10 @@ select ok(
             }
         ]'::jsonb
     ),
-    'sessions contain expected rows (ignoring session_id)'
+    'Sessions contain expected rows (ignoring session_id)'
 );
 
--- Check meeting flags for event and session
+-- Should set meeting_in_sync=false when meeting disabled to trigger deletion
 select is(
     (
         select jsonb_build_object(
@@ -513,10 +513,10 @@ select is(
             "meeting_in_sync": false
         }
     }'::jsonb,
-    'update_event sets meeting_in_sync=false when meeting disabled to trigger deletion'
+    'Should set meeting_in_sync=false when meeting disabled to trigger deletion'
 );
 
--- update_event throws error for wrong group_id
+-- Should throw error when group_id does not match
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000099'::uuid,
@@ -524,10 +524,10 @@ select throws_ok(
         '{"name": "Won''t Work", "slug": "wont-work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
     'event not found or inactive',
-    'update_event should throw error when group_id does not match'
+    'Should throw error when group_id does not match'
 );
 
--- Test: Event meeting_in_sync=false is preserved when updating unrelated fields
+-- Should preserve meeting_in_sync=false when updating unrelated fields
 select update_event(
     :'group1ID'::uuid,
     :'event5ID'::uuid,
@@ -548,10 +548,10 @@ select update_event(
 select is(
     (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
     false,
-    'update_event preserves meeting_in_sync=false when updating unrelated fields'
+    'Should preserve meeting_in_sync=false when updating unrelated fields'
 );
 
--- Test: Event meeting_in_sync stays false when meeting_requested changes to false
+-- Should keep meeting_in_sync=false when meeting_requested changes to false
 select update_event(
     :'group1ID'::uuid,
     :'event5ID'::uuid,
@@ -570,10 +570,10 @@ select update_event(
 select is(
     (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
     false,
-    'update_event keeps meeting_in_sync=false when meeting_requested changes to false'
+    'Should keep meeting_in_sync=false when meeting_requested changes to false'
 );
 
--- Test: Session meeting_in_sync=false is preserved when updating unrelated fields
+-- Should preserve session meeting_in_sync=false when updating unrelated fields
 select update_event(
     :'group1ID'::uuid,
     :'event6ID'::uuid,
@@ -603,10 +603,10 @@ select update_event(
 select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
-    'update_event preserves session meeting_in_sync=false when updating unrelated fields'
+    'Should preserve session meeting_in_sync=false when updating unrelated fields'
 );
 
--- Test: Session meeting_in_sync stays false when meeting_requested changes to false
+-- Should keep session meeting_in_sync=false when meeting_requested changes to false
 select update_event(
     :'group1ID'::uuid,
     :'event6ID'::uuid,
@@ -635,7 +635,7 @@ select update_event(
 select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
-    'update_event keeps session meeting_in_sync=false when meeting_requested changes to false'
+    'Should keep session meeting_in_sync=false when meeting_requested changes to false'
 );
 
 select throws_ok(
@@ -645,38 +645,35 @@ select throws_ok(
         '{"name": "Try to Update Canceled", "slug": "try-update-canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
     'event not found or inactive',
-    'update_event should throw error when event is canceled'
+    'Should throw error when event is canceled'
 );
 
--- update_event throws error for invalid host user_id
+-- Should throw error for invalid host user_id
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Host", "slug": "invalid-host-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
-    'P0001',
     'host user 99999999-9999-9999-9999-999999999999 not found in community',
-    'update_event should throw error when host user_id does not exist in community'
+    'Should throw error when host user_id does not exist in community'
 );
 
--- update_event throws error for invalid speaker user_id
+-- Should throw error for invalid speaker user_id
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Speaker", "slug": "invalid-speaker-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
-    'P0001',
     'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
-    'update_event should throw error when speaker user_id does not exist in community'
+    'Should throw error when speaker user_id does not exist in community'
 );
 
--- Test: Session removed via update_event creates orphan meeting
--- First verify session and meeting exist
+-- Should verify session exists before update
 select ok(
     (select count(*) = 1 from session where session_id = :'session2ID'),
-    'session exists before update'
+    'Session exists before update'
 );
 -- Update event without the session (removes it via cascade)
 select update_event(
@@ -694,19 +691,19 @@ select update_event(
         "sessions": []
     }'::jsonb
 );
--- Verify session is deleted and meeting is now orphan
+-- Should verify session is deleted and meeting is orphan after update
 select is(
     (select count(*) from session where session_id = :'session2ID'),
     0::bigint,
-    'session is deleted after update_event with empty sessions'
+    'Session is deleted after update_event with empty sessions'
 );
 select is(
     (select jsonb_build_object('meeting_id', meeting_id, 'session_id', session_id) from meeting where meeting_id = :'meeting1ID'),
     jsonb_build_object('meeting_id', :'meeting1ID'::uuid, 'session_id', null),
-    'meeting becomes orphan (session_id set to null) after session deletion'
+    'Meeting becomes orphan (session_id set to null) after session deletion'
 );
 
--- update_event throws error when capacity exceeds max_participants with meeting_requested
+-- Should throw error when capacity exceeds max_participants with meeting_requested
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
@@ -714,12 +711,11 @@ select throws_ok(
         '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
-    'P0001',
     'event capacity (200) exceeds maximum participants allowed (100)',
-    'update_event should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
+    'Should throw error when capacity exceeds cfg_max_participants with meeting_requested=true'
 );
 
--- update_event succeeds when capacity is within max_participants
+-- Should succeed when capacity is within max_participants
 select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
@@ -727,10 +723,10 @@ select lives_ok(
         '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test updated", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
-    'update_event should succeed when capacity is within cfg_max_participants'
+    'Should succeed when capacity is within cfg_max_participants'
 );
 
--- update_event succeeds when meeting_requested is false (no capacity check against max_participants)
+-- Should succeed with high capacity when meeting_requested is false
 select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
@@ -738,10 +734,10 @@ select lives_ok(
         '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test no meeting", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
-    'update_event should succeed with high capacity when meeting_requested is false'
+    'Should succeed with high capacity when meeting_requested is false'
 );
 
--- update_event succeeds when cfg_max_participants is null (no limit configured)
+-- Should succeed when cfg_max_participants is null
 select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
@@ -749,7 +745,7 @@ select lives_ok(
         '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test no limit", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
         null
     )$$,
-    'update_event should succeed when cfg_max_participants is null'
+    'Should succeed when cfg_max_participants is null'
 );
 
 -- ============================================================================

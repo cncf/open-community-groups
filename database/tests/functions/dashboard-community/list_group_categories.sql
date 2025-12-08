@@ -9,12 +9,12 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set community3ID '00000000-0000-0000-0000-000000000003'
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set category3ID '00000000-0000-0000-0000-000000000013'
+\set community1ID '00000000-0000-0000-0000-000000000001'
+\set community2ID '00000000-0000-0000-0000-000000000002'
+\set community3ID '00000000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
@@ -49,7 +49,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Test: list_group_categories should return complete JSON ordered properly
+-- Should return complete category data ordered by order field, then by name
 select is(
     list_group_categories(:'community1ID'::uuid)::jsonb,
     '[
@@ -66,10 +66,10 @@ select is(
             "order": 2
         }
     ]'::jsonb,
-    'list_group_categories should return complete category data ordered by order field, then by name'
+    'Should return complete category data ordered by order field, then by name'
 );
 
--- Test: list_group_categories should return empty array for community with no categories
+-- Should return empty array for community with no categories
 insert into community (
     community_id,
     name,
@@ -93,7 +93,7 @@ insert into community (
 select is(
     list_group_categories(:'community3ID'::uuid)::jsonb,
     '[]'::jsonb,
-    'list_group_categories should return empty array for community with no categories'
+    'Should return empty array for community with no categories'
 );
 
 -- ============================================================================

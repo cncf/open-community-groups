@@ -54,7 +54,7 @@ values (:'sponsorID', :'groupID', 'Iota', 'https://ex.com/iota.png', null);
 -- TESTS
 -- ============================================================================
 
--- Test: update_group_sponsor updates provided fields
+-- Should update provided fields
 select lives_ok(
     $$select update_group_sponsor('30000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000003'::uuid, '{
         "name":"Iota Updated",
@@ -62,16 +62,16 @@ select lives_ok(
         "logo_url":"https://ex.com/iota2.png",
         "website_url":"https://iota.io"
     }'::jsonb)$$,
-    'update_group_sponsor should not error'
+    'Should not error'
 );
 
 select results_eq(
     $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
     $$values ('Iota Updated'::text, 'https://ex.com/iota2.png'::text, 'https://iota.io'::text)$$,
-    'update_group_sponsor should update fields'
+    'Should update fields'
 );
 
--- Test: update_group_sponsor sets website_url to null when field not provided
+-- Should set website_url to null when field not provided
 select update_group_sponsor(
     '30000000-0000-0000-0000-000000000002'::uuid,
     '30000000-0000-0000-0000-000000000003'::uuid,
@@ -84,7 +84,7 @@ select update_group_sponsor(
 select results_eq(
     $$select name, logo_url, website_url from group_sponsor where group_sponsor_id = '30000000-0000-0000-0000-000000000003'::uuid$$,
     $$values ('Iota Final'::text, 'https://ex.com/iota3.png'::text, null::text)$$,
-    'update_group_sponsor should set website_url to null when field not provided'
+    'Should set website_url to null when field not provided'
 );
 
 -- ============================================================================

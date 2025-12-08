@@ -9,17 +9,15 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000002'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
-\set sessionID '00000000-0000-0000-0000-000000000201'
-
+\set groupCategoryID '00000000-0000-0000-0000-000000000010'
+\set groupID '00000000-0000-0000-0000-000000000002'
 \set meetingEventID '00000000-0000-0000-0000-000000000301'
 \set meetingOrphanID '00000000-0000-0000-0000-000000000303'
 \set meetingSessionID '00000000-0000-0000-0000-000000000302'
+\set sessionID '00000000-0000-0000-0000-000000000201'
 
 -- ============================================================================
 -- SEED DATA
@@ -153,7 +151,7 @@ values (:'meetingOrphanID', 'zoom', '555666777', 'https://zoom.us/j/555666777');
 -- TESTS
 -- ============================================================================
 
--- Test 1: Delete meeting linked to event - verify meeting record deleted
+-- Should delete meeting record when linked to event
 select delete_meeting(:'meetingEventID', :'eventID', null);
 select is(
     (select count(*) from meeting where meeting_id = :'meetingEventID'),
@@ -161,14 +159,14 @@ select is(
     'Meeting record deleted for event'
 );
 
--- Test 2: Delete meeting linked to event - verify event marked as synced
+-- Should mark event as synced after deleting meeting
 select is(
     (select meeting_in_sync from event where event_id = :'eventID'),
     true,
     'Event marked as synced after deleting meeting'
 );
 
--- Test 3: Delete meeting linked to session - verify meeting record deleted
+-- Should delete meeting record when linked to session
 select delete_meeting(:'meetingSessionID', null, :'sessionID');
 select is(
     (select count(*) from meeting where meeting_id = :'meetingSessionID'),
@@ -176,14 +174,14 @@ select is(
     'Meeting record deleted for session'
 );
 
--- Test 4: Delete meeting linked to session - verify session marked as synced
+-- Should mark session as synced after deleting meeting
 select is(
     (select meeting_in_sync from session where session_id = :'sessionID'),
     true,
     'Session marked as synced after deleting meeting'
 );
 
--- Test 5: Delete orphan meeting - verify meeting record deleted
+-- Should delete orphan meeting record
 select delete_meeting(:'meetingOrphanID', null, null);
 select is(
     (select count(*) from meeting where meeting_id = :'meetingOrphanID'),
@@ -191,14 +189,14 @@ select is(
     'Orphan meeting record deleted'
 );
 
--- Test 6: Delete meeting linked to event - verify previous error cleared
+-- Should clear previous error when deleting meeting linked to event
 select is(
     (select meeting_error from event where event_id = :'eventID'),
     null,
     'Event meeting_error cleared after successful delete_meeting'
 );
 
--- Test 7: Delete meeting linked to session - verify previous error cleared
+-- Should clear previous error when deleting meeting linked to session
 select is(
     (select meeting_error from session where session_id = :'sessionID'),
     null,
