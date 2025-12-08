@@ -226,15 +226,15 @@
             </div>
             <p class="form-legend">
               Maximum number of attendees.
-              <strong class="text-amber-600">Required when requesting automatic meeting creation.</strong>
-              <br />
-              Note: Meeting providers have participant limits. If capacity exceeds your provider
-              limit, attendees may be unable to join the meeting.
+              {%- if meetings_enabled %}
+                <span class="font-semibold">Required when requesting automatic meeting creation.</span>
+                <br />
+                Note: Meeting providers have participant limits. If capacity exceeds your provider
+                limit, attendees may be unable to join the meeting.
+              {%- endif -%}
             </p>
           </div>
           {# End Capacity -#}
-
-          <div class="col-span-4"></div>
 
           {# Registration required -#}
           <div class="col-span-full lg:col-span-3">
@@ -424,7 +424,36 @@
         <div class="pb-12">
           {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
           <div class="mt-10 max-w-5xl">
-            <online-event-details id="online-event-details" kind="virtual" meeting-max-participants="{{ meetings_max_participants|json }}"></online-event-details>
+            {% if meetings_enabled %}
+              <online-event-details id="online-event-details" kind="virtual" meeting-max-participants="{{ meetings_max_participants|json }}"></online-event-details>
+            {% else %}
+              <div class="space-y-6">
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div class="space-y-2">
+                    <label for="meeting_join_url" class="form-label">Meeting URL</label>
+                    <div class="mt-2">
+                      <input type="url"
+                             id="meeting_join_url"
+                             name="meeting_join_url"
+                             class="input-primary"
+                             placeholder="https://meet.example.com/123456789">
+                    </div>
+                    <p class="form-legend">Teams, Meet, or any other video link.</p>
+                  </div>
+                  <div class="space-y-2">
+                    <label for="meeting_recording_url" class="form-label">Recording URL (optional)</label>
+                    <div class="mt-2">
+                      <input type="url"
+                             id="meeting_recording_url"
+                             name="meeting_recording_url"
+                             class="input-primary"
+                             placeholder="https://youtube.com/watch?v=...">
+                    </div>
+                    <p class="form-legend">Add a recording link now or after the event.</p>
+                  </div>
+                </div>
+              </div>
+            {% endif %}
           </div>
         </div>
         {# End online event details section -#}

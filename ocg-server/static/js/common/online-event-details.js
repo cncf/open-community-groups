@@ -61,7 +61,6 @@ export class OnlineEventDetails extends LitWrapper {
         },
       },
     },
-
     _mode: { type: String, state: true },
     _joinUrl: { type: String, state: true },
     _recordingUrl: { type: String, state: true },
