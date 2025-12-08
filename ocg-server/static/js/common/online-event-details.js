@@ -304,9 +304,8 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     if (newMode === "manual" && this._mode === "automatic") {
-      const meetingExists = this.meetingInSync || this._createMeeting;
-
-      if (meetingExists) {
+      // Only ask for confirmation if meeting was actually synced (exists in Zoom)
+      if (this.meetingInSync) {
         const confirmed = await this._confirmModeSwitch();
         if (!confirmed) {
           this.requestUpdate();

@@ -307,7 +307,7 @@
     <form id="date-venue-form">
       <div class="space-y-12">
         {# Date and Time section -#}
-        <div id="venue-information-section">
+        <div>
           <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
             {# Timezone -#}
@@ -357,7 +357,8 @@
         {# End date and time section -#}
 
         {# Venue Information section -#}
-        <div class="border-t border-stone-900/10 pt-12">
+        <div id="venue-information-section"
+             class="border-t border-stone-900/10 pt-12">
           {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
