@@ -502,7 +502,9 @@
     <form id="sessions-form">
       <div class="pb-12">
         <div class="mt-10">
-          <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}"></sessions-section>
+          <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}"
+          {% if meetings_enabled %}meetings-enabled{% endif %}
+          ></sessions-section>
         </div>
       </div>
     </form>

@@ -185,6 +185,28 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Checks if the component is being used in a session context.
+   * @returns {boolean} True if used for a session, false for a full event.
+   * @private
+   */
+  _isSession() {
+    return this.fieldNamePrefix.startsWith("sessions");
+  }
+
+  /**
+   * Returns the appropriate legend text for the meeting hosts input based on
+   * whether this is a session or full event context.
+   * @returns {string} Legend text explaining default meeting hosts behavior.
+   * @private
+   */
+  _getMeetingHostsLegend() {
+    if (this._isSession()) {
+      return "By default, hosts and session speakers are added as meeting hosts. Add additional emails here if their meeting provider email differs from their user email (optional).";
+    }
+    return "By default, hosts and event speakers are added as meeting hosts. Add additional emails here if their meeting provider email differs from their user email (optional).";
+  }
+
+  /**
    * Shows confirmation dialog when switching from automatic to manual mode.
    * @returns {Promise<boolean>} True if user confirms, false if cancelled
    */
@@ -327,16 +349,6 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     this.requestUpdate();
-  }
-
-  /**
-   * Handles toggle change for create meeting.
-   * @param {Event} e - Change event from toggle input
-   */
-  _handleCreateMeetingChange(e) {
-    e.stopPropagation();
-    this._createMeeting = e.target.checked;
-    this._checkMeetingCapacity();
   }
 
   /**
@@ -607,42 +619,28 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
-   * Renders automatic mode fields (create meeting toggle).
+   * Renders automatic mode fields.
    * @returns {import('lit').TemplateResult} Automatic mode field elements
    */
   _renderAutomaticFields() {
     return html`
-      <div class="space-y-4 rounded-xl border border-stone-200 bg-white p-4 md:col-span-2">
-        <div class="flex items-start justify-between gap-4">
-          <div class="space-y-1">
-            <div class="text-base font-semibold text-stone-900">Create meeting automatically</div>
-            <p class="form-legend">We will create and manage the meeting when you save this event.</p>
-            <ul class="list-disc list-inside form-legend">
-              <li>Only available for virtual or hybrid events.</li>
-              <li>
-                Requires start and end times between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES}
-                minutes.
-              </li>
-              <li>Manual links cannot be set while automatic creation is on.</li>
-            </ul>
-          </div>
-          <label class="inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              class="sr-only peer"
-              .checked="${this._createMeeting}"
-              @change="${this._handleCreateMeetingChange}"
-            />
-            <div
-              class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-            ></div>
-          </label>
+      <div class="space-y-4 rounded-xl border border-stone-200 bg-white p-4 md:p-5 md:col-span-2">
+        <div class="space-y-1">
+          <div class="text-base font-semibold text-stone-900 mb-3">Create meeting automatically</div>
+          <p class="form-legend">We will create and manage the meeting when you save this event.</p>
+          <ul class="list-disc list-inside mt-2 form-legend">
+            <li>Only available for virtual or hybrid events.</li>
+            <li>
+              Meeting duration must be between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes.
+            </li>
+            <li>Manual links cannot be set while automatic creation is on.</li>
+          </ul>
         </div>
 
         ${this._createMeeting
           ? html`
               <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 space-y-7">
-                <div class="space-y-2">
+                <div class="space-y-2 lg:w-1/2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                   <select
                     class="input-primary"
@@ -656,7 +654,7 @@ export class OnlineEventDetails extends LitWrapper {
                     </option>
                   </select>
                 </div>
-                <div class="space-y-2">
+                <div class="space-y-2 lg:w-1/2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting hosts</label>
                   <multiple-inputs
                     id="meeting-hosts-input"
@@ -665,7 +663,7 @@ export class OnlineEventDetails extends LitWrapper {
                     input-type="email"
                     label="Host"
                     placeholder="host@example.com"
-                    legend="Email addresses of additional meeting hosts (optional)."
+                    legend="${this._getMeetingHostsLegend()}"
                   >
                   </multiple-inputs>
                 </div>

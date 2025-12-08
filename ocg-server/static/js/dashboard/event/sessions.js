@@ -38,6 +38,8 @@ export class SessionsSection extends LitWrapper {
     // Timezone to render datetime-local values (e.g. "Europe/Amsterdam")
     timezone: { type: String, attribute: "timezone" },
     meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
+    // Whether meetings feature is enabled for the group
+    meetingsEnabled: { type: Boolean, attribute: "meetings-enabled" },
   };
 
   constructor() {
@@ -45,6 +47,7 @@ export class SessionsSection extends LitWrapper {
     this.sessions = [];
     this.sessionKinds = [];
     this.meetingMaxParticipants = {};
+    this.meetingsEnabled = false;
     this._bindHtmxCleanup();
   }
 
@@ -238,6 +241,7 @@ export class SessionsSection extends LitWrapper {
           .index=${index}
           .sessionKinds=${this.sessionKinds || []}
           .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+          .meetingsEnabled=${this.meetingsEnabled}
           .onDataChange=${this._onDataChange}
           class="w-full"
         ></session-item>
@@ -336,6 +340,8 @@ class SessionItem extends LitWrapper {
       type: Object,
       attribute: "meeting-max-participants",
     },
+    // Whether meetings feature is enabled for the group
+    meetingsEnabled: { type: Boolean },
   };
 
   constructor() {
@@ -360,6 +366,7 @@ class SessionItem extends LitWrapper {
     this.onDataChange = () => {};
     this.sessionKinds = [];
     this.meetingMaxParticipants = {};
+    this.meetingsEnabled = false;
   }
 
   connectedCallback() {
@@ -530,23 +537,6 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-full">
-        <online-event-details
-          kind=${this.data.kind || "virtual"}
-          meeting-join-url=${this.data.meeting_join_url || ""}
-          meeting-recording-url=${this.data.meeting_recording_url || ""}
-          ?meeting-requested=${this.data.meeting_requested}
-          ?meeting-in-sync=${this.data.meeting_in_sync}
-          meeting-password=${this.data.meeting_password || ""}
-          meeting-error=${this.data.meeting_error || ""}
-          starts-at=${this.data.starts_at || ""}
-          ends-at=${this.data.ends_at || ""}
-          .meetingHosts=${this.data.meeting_hosts || {}}
-          .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
-          field-name-prefix="sessions[${this.index}]"
-        ></online-event-details>
-      </div>
-
-      <div class="col-span-full">
         <label class="form-label"> Location </label>
         <div class="mt-2">
           <input
@@ -564,6 +554,73 @@ class SessionItem extends LitWrapper {
           />
         </div>
       </div>
+
+      ${this.data.kind !== "in-person"
+        ? html`
+            <div class="col-span-full">
+              <label class="form-label"> Session meeting details </label>
+              <div class="mt-2">
+                ${this.meetingsEnabled
+                  ? html`
+                      <online-event-details
+                        kind=${this.data.kind || "virtual"}
+                        meeting-join-url=${this.data.meeting_join_url || ""}
+                        meeting-recording-url=${this.data.meeting_recording_url || ""}
+                        ?meeting-requested=${this.data.meeting_requested}
+                        ?meeting-in-sync=${this.data.meeting_in_sync}
+                        meeting-password=${this.data.meeting_password || ""}
+                        meeting-error=${this.data.meeting_error || ""}
+                        starts-at=${this.data.starts_at || ""}
+                        ends-at=${this.data.ends_at || ""}
+                        .meetingHosts=${this.data.meeting_hosts || {}}
+                        .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+                        field-name-prefix="sessions[${this.index}]"
+                      ></online-event-details>
+                    `
+                  : html`
+                      <div class="space-y-6">
+                        <div class="grid grid-cols-1 gap-6">
+                          <div class="space-y-2">
+                            <label for="meeting_join_url_${this.index}" class="form-label">Meeting URL</label>
+                            <div class="mt-2">
+                              <input
+                                type="url"
+                                id="meeting_join_url_${this.index}"
+                                name="sessions[${this.index}][meeting_join_url]"
+                                class="input-primary"
+                                value=${this.data.meeting_join_url || ""}
+                                placeholder="https://meet.example.com/123456789"
+                                @input=${(e) => this._onInputChange(e)}
+                                data-name="meeting_join_url"
+                              />
+                            </div>
+                            <p class="form-legend">Teams, Meet, or any other video link.</p>
+                          </div>
+                          <div class="space-y-2">
+                            <label for="meeting_recording_url_${this.index}" class="form-label"
+                              >Recording URL (optional)</label
+                            >
+                            <div class="mt-2">
+                              <input
+                                type="url"
+                                id="meeting_recording_url_${this.index}"
+                                name="sessions[${this.index}][meeting_recording_url]"
+                                class="input-primary"
+                                value=${this.data.meeting_recording_url || ""}
+                                placeholder="https://youtube.com/watch?v=..."
+                                @input=${(e) => this._onInputChange(e)}
+                                data-name="meeting_recording_url"
+                              />
+                            </div>
+                            <p class="form-legend">Add a recording link now or after the event.</p>
+                          </div>
+                        </div>
+                      </div>
+                    `}
+              </div>
+            </div>
+          `
+        : ""}
     </div>`;
   }
 }
