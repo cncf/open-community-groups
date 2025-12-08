@@ -360,7 +360,6 @@ pub(crate) struct Meeting {
     pub meeting_id: Option<Uuid>,
     pub password: Option<String>,
     pub provider_meeting_id: Option<String>,
-    pub requires_password: Option<bool>,
     pub session_id: Option<Uuid>,
     pub starts_at: Option<DateTime<Utc>>,
     pub timezone: Option<String>,

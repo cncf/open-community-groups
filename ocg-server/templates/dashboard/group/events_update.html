@@ -437,8 +437,6 @@
 
               {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}
 
-              {% if event.meeting_requires_password.unwrap_or(false) %}meeting-requires-password="true"{% endif %}
-
               {% if let Some(meeting_in_sync) = event.meeting_in_sync %}
 
                 {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}

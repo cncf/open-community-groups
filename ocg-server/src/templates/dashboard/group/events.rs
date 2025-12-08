@@ -120,8 +120,6 @@ pub(crate) struct Event {
     pub meeting_recording_url: Option<String>,
     /// Whether a meeting has been requested for the event.
     pub meeting_requested: Option<bool>,
-    /// Whether the event meeting requires a password.
-    pub meeting_requires_password: Option<bool>,
     /// Meetup.com URL.
     pub meetup_url: Option<String>,
     /// Gallery of photo URLs.
@@ -211,8 +209,6 @@ pub(crate) struct Session {
     pub meeting_recording_url: Option<String>,
     /// Whether a meeting has been requested for the session.
     pub meeting_requested: Option<bool>,
-    /// Whether the session meeting requires a password.
-    pub meeting_requires_password: Option<bool>,
     /// Session speakers.
     pub speakers: Option<Vec<Speaker>>,
 }

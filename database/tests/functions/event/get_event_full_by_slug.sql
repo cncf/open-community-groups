@@ -94,7 +94,6 @@ insert into event (
     meeting_join_url,
     meeting_recording_url,
     meeting_requested,
-    meeting_requires_password,
     meetup_url
 ) values (
     :'eventID',
@@ -123,7 +122,6 @@ insert into event (
     'https://stream.example.com/live',
     'https://youtube.com/watch?v=123',
     false,
-    true,
     'https://meetup.com/event123'
 );
 
@@ -250,7 +248,6 @@ select is(
         "event_id": "00000000-0000-0000-0000-000000000041",
         "logo_url": "https://example.com/event-logo.png",
         "meeting_in_sync": true,
-        "meeting_requires_password": true,
         "sessions": {},
         "timezone": "America/New_York",
         "published": true,

@@ -339,16 +339,14 @@ select is(
     (
         select jsonb_build_object(
             'meeting_requested', meeting_requested,
-            'meeting_in_sync', meeting_in_sync,
-            'meeting_requires_password', meeting_requires_password
+            'meeting_in_sync', meeting_in_sync
         )
         from event
         where event_id = :'event1ID'::uuid
     ),
     '{
         "meeting_requested": true,
-        "meeting_in_sync": false,
-        "meeting_requires_password": null
+        "meeting_in_sync": false
     }'::jsonb,
     'meeting flags are initialized for requested event without sessions'
 );
@@ -365,7 +363,6 @@ select update_event(
         "category_id": "00000000-0000-0000-0000-000000000011",
         "kind_id": "hybrid",
         "meeting_requested": false,
-        "meeting_requires_password": true,
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
         "description_short": "Updated short description",
@@ -399,7 +396,6 @@ select update_event(
                 "meeting_hosts": ["session-althost@example.com"],
                 "meeting_provider_id": "zoom",
                 "meeting_requested": true,
-                "meeting_requires_password": true,
                 "speakers": [{"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}]
             }
         ]
@@ -431,7 +427,6 @@ select is(
         "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
         "meeting_in_sync": false,
         "meeting_requested": false,
-        "meeting_requires_password": true,
         "name": "Fully Updated Event",
         "published": false,
         "slug": "fully-updated-event",
@@ -494,14 +489,12 @@ select is(
         select jsonb_build_object(
             'event', jsonb_build_object(
                 'meeting_requested', meeting_requested,
-                'meeting_in_sync', meeting_in_sync,
-                'meeting_requires_password', meeting_requires_password
+                'meeting_in_sync', meeting_in_sync
             ),
             'session', (
                 select jsonb_build_object(
                     'meeting_requested', meeting_requested,
-                    'meeting_in_sync', meeting_in_sync,
-                    'meeting_requires_password', meeting_requires_password
+                    'meeting_in_sync', meeting_in_sync
                 )
                 from session
                 where event_id = :'event1ID'::uuid
@@ -513,13 +506,11 @@ select is(
     '{
         "event": {
             "meeting_requested": false,
-            "meeting_in_sync": false,
-            "meeting_requires_password": true
+            "meeting_in_sync": false
         },
         "session": {
             "meeting_requested": true,
-            "meeting_in_sync": false,
-            "meeting_requires_password": true
+            "meeting_in_sync": false
         }
     }'::jsonb,
     'update_event sets meeting_in_sync=false when meeting disabled to trigger deletion'

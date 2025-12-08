@@ -208,8 +208,6 @@ pub struct EventFull {
     pub meeting_recording_url: Option<String>,
     /// Whether the event requests a meeting.
     pub meeting_requested: Option<bool>,
-    /// Whether the event meeting requires a password.
-    pub meeting_requires_password: Option<bool>,
     /// Meetup.com URL for the event.
     pub meetup_url: Option<String>,
     /// URLs to event photos.
@@ -376,8 +374,6 @@ pub struct Session {
     pub meeting_recording_url: Option<String>,
     /// Whether the session requests a meeting.
     pub meeting_requested: Option<bool>,
-    /// Whether the meeting requires a password.
-    pub meeting_requires_password: Option<bool>,
 }
 
 impl Session {

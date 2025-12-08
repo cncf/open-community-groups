@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,7 +22,6 @@ select plan(28);
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000106'
 \set eventOrphanID '00000000-0000-0000-0000-000000000107'
 \set eventOrphanWithSessionID '00000000-0000-0000-0000-000000000108'
-\set eventRequiresPasswordID '00000000-0000-0000-0000-000000000110'
 \set eventSessionOrphanID '00000000-0000-0000-0000-000000000109'
 \set eventUnpublishedCreateID '00000000-0000-0000-0000-000000000111'
 \set eventUnpublishedDeleteID '00000000-0000-0000-0000-000000000112'
@@ -38,7 +37,6 @@ select plan(28);
 \set sessionMeetingDisabledID '00000000-0000-0000-0000-000000000210'
 \set sessionOrphanCascadeID '00000000-0000-0000-0000-000000000207'
 \set sessionOrphanID '00000000-0000-0000-0000-000000000206'
-\set sessionRequiresPasswordID '00000000-0000-0000-0000-000000000212'
 \set sessionUnpublishedCreateID '00000000-0000-0000-0000-000000000208'
 \set sessionUnpublishedDeleteID '00000000-0000-0000-0000-000000000209'
 \set sessionUpdateID '00000000-0000-0000-0000-000000000202'
@@ -622,46 +620,6 @@ insert into session (
 insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
 values (:'meetingOrphanSessionCascadeID', :'sessionOrphanCascadeID', 'zoom', '222333444', 'https://zoom.us/j/222333444');
 
--- Event: needs meeting create with password required (published, meeting_requires_password=true)
--- Initially set meeting_in_sync=true to not interfere with other tests
-insert into event (
-    event_id,
-    group_id,
-    name,
-    slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    starts_at,
-    ends_at,
-
-    capacity,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    meeting_requires_password,
-    published
-) values (
-    :'eventRequiresPasswordID',
-    :'groupID',
-    'Event Requires Password Test',
-    'event-requires-password-test',
-    'Test event with meeting_requires_password=true',
-    'America/New_York',
-    :'categoryID',
-    'virtual',
-    '2025-06-10 10:00:00-04',
-    '2025-06-10 11:00:00-04',
-
-    100,
-    true,
-    'zoom',
-    true,
-    true,
-    true
-);
-
 -- Event: unpublished event needing create (should NOT be returned)
 -- Initially set meeting_in_sync=true to not interfere with other tests
 insert into event (
@@ -940,32 +898,6 @@ insert into session (
     true
 );
 
--- Session: with meeting_requires_password=true (on eventInSyncID which is active)
--- Initially set meeting_in_sync=true to not interfere with other tests
-insert into session (
-    session_id,
-    event_id,
-    name,
-    starts_at,
-    ends_at,
-    session_kind_id,
-    meeting_in_sync,
-    meeting_provider_id,
-    meeting_requested,
-    meeting_requires_password
-) values (
-    :'sessionRequiresPasswordID',
-    :'eventInSyncID',
-    'Session Requires Password Test',
-    '2025-06-05 12:00:00-04',
-    '2025-06-05 12:30:00-04',
-    'virtual',
-    true,
-    'zoom',
-    true,
-    true
-);
-
 -- Event hosts and speakers for combined hosts testing
 -- eventCreateID: add event_host and event_speaker
 insert into event_host (event_id, user_id) values
@@ -983,7 +915,7 @@ insert into session_speaker (session_id, user_id, featured) values
 -- TESTS
 -- ============================================================================
 
--- Test 1: Event create - returns event with delete=false, no meeting_id
+-- Event create - returns event with delete=false, no meeting_id
 -- Priority: create/update operations come before deletes
 -- Hosts include: explicit meeting_hosts + event_host emails + event_speaker emails (sorted)
 select is(
@@ -995,7 +927,6 @@ select is(
         "hosts": ["eventhost1@example.com", "eventspeaker1@example.com", "host1@example.com", "host2@example.com"],
         "meeting_id": null,
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": null,
@@ -1009,7 +940,7 @@ select is(
 -- Mark event as synced to test next case
 update event set meeting_in_sync = true where event_id = :'eventCreateID';
 
--- Test 2: Event update - returns event with delete=false, has provider_meeting_id
+-- Event update - returns event with delete=false, has provider_meeting_id
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
     '{
@@ -1019,7 +950,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000301",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": "pass123",
         "provider_meeting_id": "123456789",
         "session_id": null,
@@ -1033,7 +963,7 @@ select is(
 -- Mark event as synced to test next case
 update event set meeting_in_sync = true where event_id = :'eventUpdateID';
 
--- Test 3: Session create - returns session with delete=false, no meeting_id
+-- Session create - returns session with delete=false, no meeting_id
 -- Priority: session create/update comes before event delete
 -- Hosts include: explicit meeting_hosts + event_host emails + session_speaker emails (sorted)
 select is(
@@ -1045,7 +975,6 @@ select is(
         "hosts": ["eventhost2@example.com", "sessionhost@example.com", "sessionspeaker1@example.com"],
         "meeting_id": null,
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": "00000000-0000-0000-0000-000000000201",
@@ -1059,7 +988,7 @@ select is(
 -- Mark session as synced to test next case
 update session set meeting_in_sync = true where session_id = :'sessionCreateID';
 
--- Test 4: Session update - returns session with delete=false, has provider_meeting_id
+-- Session update - returns session with delete=false, has provider_meeting_id
 -- Hosts include: event_host emails from parent event (no explicit meeting_hosts or session_speaker)
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
@@ -1070,7 +999,6 @@ select is(
         "hosts": ["eventhost2@example.com"],
         "meeting_id": "00000000-0000-0000-0000-000000000304",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": "sesspass",
         "provider_meeting_id": "444555666",
         "session_id": "00000000-0000-0000-0000-000000000202",
@@ -1084,7 +1012,7 @@ select is(
 -- Mark session as synced to test next case
 update session set meeting_in_sync = true where session_id = :'sessionUpdateID';
 
--- Test 5: Event delete (canceled) - returns event with delete=true
+-- Event delete (canceled) - returns event with delete=true
 -- Priority: delete operations come after create/update
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1095,7 +1023,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000302",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "987654321",
         "session_id": null,
@@ -1110,7 +1037,7 @@ select is(
 -- Mark event as synced to test next case
 update event set meeting_in_sync = true where event_id = :'eventDeleteCanceledID';
 
--- Test 6: Event delete (soft deleted) - returns event with delete=true
+-- Event delete (soft deleted) - returns event with delete=true
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
     '{
@@ -1120,7 +1047,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000303",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "111222333",
         "session_id": null,
@@ -1135,7 +1061,7 @@ select is(
 -- Mark event as synced to test next case
 update event set meeting_in_sync = true where event_id = :'eventDeleteSoftID';
 
--- Test 7: Session delete (parent canceled) - returns session with delete=true
+-- Session delete (parent canceled) - returns session with delete=true
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
     '{
@@ -1145,7 +1071,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000305",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "777888999",
         "session_id": "00000000-0000-0000-0000-000000000203",
@@ -1161,7 +1086,7 @@ select is(
 delete from meeting where meeting_id = :'meetingSessionDeleteParentCanceledID';
 update session set meeting_in_sync = true where session_id = :'sessionDeleteParentCanceledID';
 
--- Test 8: Session delete (parent deleted) - returns session with delete=true
+-- Session delete (parent deleted) - returns session with delete=true
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
     '{
@@ -1171,7 +1096,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000306",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "000111222",
         "session_id": "00000000-0000-0000-0000-000000000204",
@@ -1187,7 +1111,7 @@ select is(
 delete from meeting where meeting_id = :'meetingSessionDeleteParentDeletedID';
 update session set meeting_in_sync = true where session_id = :'sessionDeleteParentDeletedID';
 
--- Test 9: Orphan event meeting - hard delete event triggers ON DELETE SET NULL
+-- Orphan event meeting - hard delete event triggers ON DELETE SET NULL
 delete from event where event_id = :'eventOrphanID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1198,7 +1122,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000307",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "333444555",
         "session_id": null,
@@ -1211,7 +1134,7 @@ select is(
 );
 delete from meeting where meeting_id = :'meetingOrphanEventID';
 
--- Test 10: Orphan session meeting - hard delete session triggers ON DELETE SET NULL
+-- Orphan session meeting - hard delete session triggers ON DELETE SET NULL
 delete from session where session_id = :'sessionOrphanID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1222,7 +1145,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000308",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "666777888",
         "session_id": null,
@@ -1235,7 +1157,7 @@ select is(
 );
 delete from meeting where meeting_id = :'meetingOrphanSessionID';
 
--- Test 11-12: Multiple orphan meetings - event delete cascades to session delete
+-- Multiple orphan meetings - event delete cascades to session delete
 -- Both meetings become orphans (event meeting via ON DELETE SET NULL on event,
 -- session meeting via cascade delete of session then ON DELETE SET NULL)
 delete from event where event_id = :'eventOrphanWithSessionID';
@@ -1252,7 +1174,7 @@ select is(
 );
 delete from meeting where meeting_id = (select meeting_id from get_meeting_out_of_sync());
 
--- Test 13: Event in sync - should NOT be returned
+-- Event in sync - should NOT be returned
 -- (eventInSyncID has meeting_in_sync=true, so should be skipped)
 -- At this point all out-of-sync items have been processed
 select is(
@@ -1261,7 +1183,7 @@ select is(
     'Event in sync is not returned'
 );
 
--- Test 14: Verify in-sync events are not returned by re-adding out-of-sync event
+-- Verify in-sync events are not returned by re-adding out-of-sync event
 update event set meeting_in_sync = false where event_id = :'eventCreateID';
 select is(
     (select event_id::text from get_meeting_out_of_sync()),
@@ -1270,44 +1192,21 @@ select is(
 );
 update event set meeting_in_sync = true where event_id = :'eventCreateID';
 
--- Test 15: Verify no-meeting-requested events are not returned
+-- Verify no-meeting-requested events are not returned
 select is(
     (select count(*) from get_meeting_out_of_sync()),
     0::bigint,
     'Events with meeting_requested=false are not returned'
 );
 
--- Test 16: Verify empty queue after all items processed
+-- Verify empty queue after all items processed
 select is(
     (select count(*) from get_meeting_out_of_sync()),
     0::bigint,
     'Empty queue returns empty result'
 );
 
--- Test 17: Event with requires_password=true returns the flag correctly
-update event set meeting_in_sync = false where event_id = :'eventRequiresPasswordID';
-select is(
-    (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
-    '{
-        "delete": false,
-        "duration_secs": 3600,
-        "event_id": "00000000-0000-0000-0000-000000000110",
-        "hosts": null,
-        "meeting_id": null,
-        "meeting_provider_id": "zoom",
-        "requires_password": true,
-        "password": null,
-        "provider_meeting_id": null,
-        "session_id": null,
-        "timezone": "America/New_York",
-        "topic": "Event Requires Password Test",
-        "join_url": null
-    }'::jsonb,
-    'Event with requires_password=true returns flag correctly'
-);
-update event set meeting_in_sync = true where event_id = :'eventRequiresPasswordID';
-
--- Test 18: Unpublished event without meeting returns for delete (to mark as synced)
+-- Unpublished event without meeting returns for delete (to mark as synced)
 -- This ensures events that were canceled/unpublished before meeting creation don't wedge the queue
 update event set meeting_in_sync = false where event_id = :'eventUnpublishedCreateID';
 select is(
@@ -1319,7 +1218,6 @@ select is(
         "hosts": null,
         "meeting_id": null,
         "meeting_provider_id": null,
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": null,
@@ -1332,7 +1230,7 @@ select is(
 );
 update event set meeting_in_sync = true where event_id = :'eventUnpublishedCreateID';
 
--- Test 19: Unpublished event with meeting triggers delete
+-- Unpublished event with meeting triggers delete
 update event set meeting_in_sync = false where event_id = :'eventUnpublishedDeleteID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1343,7 +1241,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000311",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "555666777",
         "session_id": null,
@@ -1356,7 +1253,7 @@ select is(
 );
 update event set meeting_in_sync = true where event_id = :'eventUnpublishedDeleteID';
 
--- Test 20: Session on unpublished event without meeting returns for delete (to mark as synced)
+-- Session on unpublished event without meeting returns for delete (to mark as synced)
 update session set meeting_in_sync = false where session_id = :'sessionUnpublishedCreateID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1367,7 +1264,6 @@ select is(
         "hosts": null,
         "meeting_id": null,
         "meeting_provider_id": null,
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": "00000000-0000-0000-0000-000000000208",
@@ -1380,7 +1276,7 @@ select is(
 );
 update session set meeting_in_sync = true where session_id = :'sessionUnpublishedCreateID';
 
--- Test 21: Session on unpublished event with meeting triggers delete
+-- Session on unpublished event with meeting triggers delete
 -- Insert meeting and set meeting_in_sync=false now to avoid interfering with earlier delete tests
 insert into meeting (meeting_id, session_id, meeting_provider_id, provider_meeting_id, join_url)
 values (:'meetingSessionUnpublishedDeleteID', :'sessionUnpublishedDeleteID', 'zoom', '888999000', 'https://zoom.us/j/888999000');
@@ -1394,7 +1290,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000312",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "888999000",
         "session_id": "00000000-0000-0000-0000-000000000209",
@@ -1408,7 +1303,7 @@ select is(
 delete from meeting where meeting_id = :'meetingSessionUnpublishedDeleteID';
 update session set meeting_in_sync = true where session_id = :'sessionUnpublishedDeleteID';
 
--- Test 22: Event republished triggers create (was unpublished, now published)
+-- Event republished triggers create (was unpublished, now published)
 update event set published = true, meeting_in_sync = false where event_id = :'eventUnpublishedCreateID';
 select is(
     (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
@@ -1419,7 +1314,6 @@ select is(
         "hosts": null,
         "meeting_id": null,
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": null,
@@ -1431,14 +1325,14 @@ select is(
 );
 update event set meeting_in_sync = true where event_id = :'eventUnpublishedCreateID';
 
--- Test 23: Verify all unpublished test data cleaned up
+-- Verify all unpublished test data cleaned up
 select is(
     (select count(*) from get_meeting_out_of_sync()),
     0::bigint,
     'All unpublished test data cleaned up'
 );
 
--- Test 24: Event with meeting disabled triggers delete
+-- Event with meeting disabled triggers delete
 update event set meeting_in_sync = false where event_id = :'eventMeetingDisabledID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1449,7 +1343,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000313",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "321321321",
         "session_id": null,
@@ -1463,7 +1356,7 @@ select is(
 delete from meeting where meeting_id = :'meetingEventMeetingDisabledID';
 update event set meeting_in_sync = true where event_id = :'eventMeetingDisabledID';
 
--- Test 25: Session with meeting disabled triggers delete
+-- Session with meeting disabled triggers delete
 update session set meeting_in_sync = false where session_id = :'sessionMeetingDisabledID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1474,7 +1367,6 @@ select is(
         "hosts": null,
         "meeting_id": "00000000-0000-0000-0000-000000000314",
         "meeting_provider_id": "zoom",
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": "654654654",
         "session_id": "00000000-0000-0000-0000-000000000210",
@@ -1488,7 +1380,7 @@ select is(
 delete from meeting where meeting_id = :'meetingSessionMeetingDisabledID';
 update session set meeting_in_sync = true where session_id = :'sessionMeetingDisabledID';
 
--- Test 26: Event canceled before meeting created (no meeting row)
+-- Event canceled before meeting created (no meeting row)
 update event set meeting_in_sync = false where event_id = :'eventCanceledNoMeetingID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1499,7 +1391,6 @@ select is(
         "hosts": null,
         "meeting_id": null,
         "meeting_provider_id": null,
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": null,
@@ -1512,7 +1403,7 @@ select is(
 );
 update event set meeting_in_sync = true where event_id = :'eventCanceledNoMeetingID';
 
--- Test 27: Session on canceled event before meeting created (no meeting row)
+-- Session on canceled event before meeting created (no meeting row)
 update session set meeting_in_sync = false where session_id = :'sessionCanceledNoMeetingID';
 select is(
     (select row_to_json(r)::jsonb from get_meeting_out_of_sync() r),
@@ -1523,7 +1414,6 @@ select is(
         "hosts": null,
         "meeting_id": null,
         "meeting_provider_id": null,
-        "requires_password": null,
         "password": null,
         "provider_meeting_id": null,
         "session_id": "00000000-0000-0000-0000-000000000211",
@@ -1535,30 +1425,6 @@ select is(
     'Session on canceled event before meeting created returns with delete=true and null meeting fields'
 );
 update session set meeting_in_sync = true where session_id = :'sessionCanceledNoMeetingID';
-
--- Test 28: Session with requires_password=true returns the flag correctly
--- Hosts include event_host from parent event (eventInSyncID)
-update session set meeting_in_sync = false where session_id = :'sessionRequiresPasswordID';
-select is(
-    (select row_to_json(r)::jsonb - 'starts_at' from get_meeting_out_of_sync() r),
-    '{
-        "delete": false,
-        "duration_secs": 1800,
-        "event_id": null,
-        "hosts": ["eventhost2@example.com"],
-        "meeting_id": null,
-        "meeting_provider_id": "zoom",
-        "requires_password": true,
-        "password": null,
-        "provider_meeting_id": null,
-        "session_id": "00000000-0000-0000-0000-000000000212",
-        "timezone": "America/New_York",
-        "topic": "Session Requires Password Test",
-        "join_url": null
-    }'::jsonb,
-    'Session with requires_password=true returns flag correctly'
-);
-update session set meeting_in_sync = true where session_id = :'sessionRequiresPasswordID';
 
 -- ============================================================================
 -- CLEANUP

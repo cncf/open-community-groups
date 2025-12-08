@@ -145,7 +145,6 @@ select columns_are('event', array[
     'meeting_provider_id',
     'meeting_recording_url',
     'meeting_requested',
-    'meeting_requires_password',
     'meetup_url',
     'photos_urls',
     'published_at',
@@ -347,8 +346,7 @@ select columns_are('session', array[
     'meeting_join_url',
     'meeting_provider_id',
     'meeting_recording_url',
-    'meeting_requested',
-    'meeting_requires_password'
+    'meeting_requested'
 ]);
 
 -- Test: session_kind columns should match expected

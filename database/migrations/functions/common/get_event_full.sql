@@ -32,7 +32,6 @@ returns json as $$
         'meeting_provider', e.meeting_provider_id,
         'meeting_recording_url', coalesce(m_event.recording_url, e.meeting_recording_url),
         'meeting_requested', e.meeting_requested,
-        'meeting_requires_password', e.meeting_requires_password,
         'meetup_url', e.meetup_url,
         'photos_urls', e.photos_urls,
         'published_at', floor(extract(epoch from e.published_at)),
@@ -133,7 +132,6 @@ returns json as $$
                         'meeting_provider', s.meeting_provider_id,
                         'meeting_recording_url', coalesce(m_session.recording_url, s.meeting_recording_url),
                         'meeting_requested', s.meeting_requested,
-                        'meeting_requires_password', s.meeting_requires_password,
 
                         'speakers', (
                             select coalesce(json_agg(json_strip_nulls(json_build_object(

@@ -78,7 +78,6 @@ begin
         meeting_provider_id = p_event->>'meeting_provider_id',
         meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
         meeting_requested = (p_event->>'meeting_requested')::boolean,
-        meeting_requires_password = (p_event->>'meeting_requires_password')::boolean,
         meetup_url = nullif(p_event->>'meetup_url', ''),
         photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
         registration_required = (p_event->>'registration_required')::boolean,
@@ -193,8 +192,7 @@ begin
                     meeting_join_url = v_session->>'meeting_join_url',
                     meeting_provider_id = v_session->>'meeting_provider_id',
                     meeting_recording_url = v_session->>'meeting_recording_url',
-                    meeting_requested = (v_session->>'meeting_requested')::boolean,
-                    meeting_requires_password = (v_session->>'meeting_requires_password')::boolean
+                    meeting_requested = (v_session->>'meeting_requested')::boolean
                 where session_id = v_session_id
                 and event_id = p_event_id;
 
@@ -217,8 +215,7 @@ begin
                     meeting_join_url,
                     meeting_provider_id,
                     meeting_recording_url,
-                    meeting_requested,
-                    meeting_requires_password
+                    meeting_requested
                 ) values (
                     p_event_id,
                     v_session->>'name',
@@ -235,8 +232,7 @@ begin
                     v_session->>'meeting_join_url',
                     v_session->>'meeting_provider_id',
                     v_session->>'meeting_recording_url',
-                    (v_session->>'meeting_requested')::boolean,
-                    (v_session->>'meeting_requires_password')::boolean
+                    (v_session->>'meeting_requested')::boolean
                 )
                 returning session_id into v_session_id;
             end if;

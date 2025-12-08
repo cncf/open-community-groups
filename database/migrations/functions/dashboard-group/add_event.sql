@@ -58,7 +58,6 @@ begin
         meeting_provider_id,
         meeting_recording_url,
         meeting_requested,
-        meeting_requires_password,
         meetup_url,
         photos_urls,
         registration_required,
@@ -91,7 +90,6 @@ begin
         p_event->>'meeting_provider_id',
         p_event->>'meeting_recording_url',
         (p_event->>'meeting_requested')::boolean,
-        (p_event->>'meeting_requires_password')::boolean,
         p_event->>'meetup_url',
         case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
         (p_event->>'registration_required')::boolean,
@@ -184,8 +182,7 @@ begin
                 meeting_join_url,
                 meeting_provider_id,
                 meeting_recording_url,
-                meeting_requested,
-                meeting_requires_password
+                meeting_requested
             ) values (
                 v_event_id,
                 v_session->>'name',
@@ -202,8 +199,7 @@ begin
                 v_session->>'meeting_join_url',
                 v_session->>'meeting_provider_id',
                 v_session->>'meeting_recording_url',
-                (v_session->>'meeting_requested')::boolean,
-                (v_session->>'meeting_requires_password')::boolean
+                (v_session->>'meeting_requested')::boolean
             )
             returning session_id into v_session_id;
 

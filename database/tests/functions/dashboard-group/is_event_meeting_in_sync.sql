@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(14);
 
 -- ============================================================================
 -- TESTS
@@ -18,8 +18,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": false
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Sync Event",
@@ -27,8 +26,7 @@ select is(
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_requires_password": false
+            "meeting_requested": true
         }'::jsonb
     ),
     true,
@@ -44,8 +42,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": false
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Sync Event",
@@ -53,8 +50,7 @@ select is(
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": false,
-            "meeting_requires_password": false
+            "meeting_requested": false
         }'::jsonb
     ),
     false,
@@ -70,8 +66,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": false,
-            "meeting_requires_password": false
+            "meeting_requested": false
         }'::jsonb,
         '{
             "name": "Sync Event",
@@ -79,8 +74,7 @@ select is(
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_requires_password": false
+            "meeting_requested": true
         }'::jsonb
     ),
     false,
@@ -96,16 +90,14 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": false
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requires_password": false
+            "ends_at": "2025-06-01T11:00:00"
         }'::jsonb
     ),
     false,
@@ -121,8 +113,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": true
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Renamed Event",
@@ -130,38 +121,11 @@ select is(
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_requires_password": true
+            "meeting_requested": true
         }'::jsonb
     ),
     false,
     'Event name change desyncs meeting'
-);
-
--- Password requirement change desyncs meeting
-select is(
-    is_event_meeting_in_sync(
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind": "virtual",
-            "starts_at": 1748786400,
-            "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": true
-        }'::jsonb,
-        '{
-            "name": "Sync Event",
-            "timezone": "America/New_York",
-            "kind_id": "virtual",
-            "starts_at": "2025-06-01T10:00:00",
-            "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_requires_password": false
-        }'::jsonb
-    ),
-    false,
-    'Event password change desyncs meeting'
 );
 
 -- Schedule change (start or end) desyncs meeting
@@ -173,8 +137,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": true
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Sync Event",
@@ -182,8 +145,7 @@ select is(
             "kind_id": "virtual",
             "starts_at": "2025-06-01T11:00:00",
             "ends_at": "2025-06-01T12:00:00",
-            "meeting_requested": true,
-            "meeting_requires_password": true
+            "meeting_requested": true
         }'::jsonb
     ),
     false,
@@ -199,8 +161,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": true
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Sync Event",
@@ -208,8 +169,7 @@ select is(
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
-            "meeting_requested": true,
-            "meeting_requires_password": true
+            "meeting_requested": true
         }'::jsonb
     ),
     false,
@@ -226,7 +186,6 @@ select is(
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "meeting_hosts": ["host1@example.com", "host2@example.com"]
         }'::jsonb,
         '{
@@ -236,7 +195,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "meeting_hosts": ["host1@example.com", "host2@example.com"]
         }'::jsonb
     ),
@@ -254,7 +212,6 @@ select is(
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "meeting_hosts": ["host1@example.com"]
         }'::jsonb,
         '{
@@ -264,7 +221,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "meeting_hosts": ["host1@example.com", "host2@example.com"]
         }'::jsonb
     ),
@@ -281,8 +237,7 @@ select is(
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
-            "meeting_requested": true,
-            "meeting_requires_password": false
+            "meeting_requested": true
         }'::jsonb,
         '{
             "name": "Sync Event",
@@ -291,7 +246,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "meeting_hosts": ["host1@example.com"]
         }'::jsonb
     ),
@@ -309,7 +263,6 @@ select is(
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]
         }'::jsonb,
         '{
@@ -319,7 +272,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "hosts": ["00000000-0000-0000-0000-000000000001"]
         }'::jsonb
     ),
@@ -337,7 +289,6 @@ select is(
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]
         }'::jsonb,
         '{
@@ -347,7 +298,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "hosts": ["00000000-0000-0000-0000-000000000002"]
         }'::jsonb
     ),
@@ -365,7 +315,6 @@ select is(
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
         }'::jsonb,
         '{
@@ -375,7 +324,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
         }'::jsonb
     ),
@@ -393,7 +341,6 @@ select is(
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
         }'::jsonb,
         '{
@@ -403,7 +350,6 @@ select is(
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "meeting_requires_password": false,
             "speakers": [{"user_id": "00000000-0000-0000-0000-000000000002", "featured": false}]
         }'::jsonb
     ),

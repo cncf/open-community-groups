@@ -260,7 +260,7 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
             meeting_type: 2, // Scheduled meeting
             topic: m.topic.clone().unwrap_or_default(),
 
-            default_password: m.requires_password,
+            default_password: Some(true),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
             settings: Some(default_meeting_settings(m.hosts.as_deref())),
             start_time: m.starts_at,
@@ -324,7 +324,7 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
 
     fn try_from(m: &Meeting) -> Result<Self, Self::Error> {
         Ok(Self {
-            default_password: m.requires_password,
+            default_password: Some(true),
             duration: m.duration.map(Minutes::try_from_duration).transpose()?,
             settings: Some(default_meeting_settings(m.hosts.as_deref())),
             start_time: m.starts_at,

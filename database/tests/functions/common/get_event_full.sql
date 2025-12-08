@@ -145,7 +145,6 @@ insert into event (
     meeting_join_url,
     meeting_recording_url,
     meeting_requested,
-    meeting_requires_password,
     meetup_url,
     photos_urls,
     created_at
@@ -177,7 +176,6 @@ insert into event (
     null,
     null,
     false,
-    true,
     'https://meetup.com/event123',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     '2024-04-01 10:00:00+00'
@@ -218,8 +216,7 @@ insert into session (
     meeting_join_url,
     meeting_provider_id,
     meeting_recording_url,
-    meeting_requested,
-    meeting_requires_password
+    meeting_requested
 ) values (
     :'session1ID',
     :'eventID',
@@ -233,8 +230,7 @@ insert into session (
     'https://stream.example.com/session1',
     null,
     'https://youtube.com/watch?v=session1',
-    false,
-    null
+    false
 ),
 (
     :'session2ID',
@@ -249,7 +245,6 @@ insert into session (
     null,
     'zoom',
     null,
-    true,
     true
 );
 
@@ -267,8 +262,7 @@ insert into session (
     meeting_join_url,
     meeting_provider_id,
     meeting_recording_url,
-    meeting_requested,
-    meeting_requires_password
+    meeting_requested
 ) values (
     :'session3ID',
     :'eventID',
@@ -282,8 +276,7 @@ insert into session (
     null,
     null,
     null,
-    false,
-    null
+    false
 );
 
 -- Link meeting to event
@@ -456,7 +449,6 @@ select is(
         "meeting_in_sync": true,
         "meeting_password": "event-secret",
         "meeting_requested": false,
-        "meeting_requires_password": true,
         "meeting_join_url": "https://meeting.example.com/event",
         "meeting_recording_url": "https://meeting.example.com/event-recording",
         "meetup_url": "https://meetup.com/event123",
@@ -611,7 +603,6 @@ select is(
                     "meeting_password": "session-secret",
                     "meeting_provider": "zoom",
                     "meeting_requested": true,
-                    "meeting_requires_password": true,
                     "location": "Room A",
                     "meeting_join_url": "https://meeting.example.com/session2",
                     "meeting_recording_url": "https://meeting.example.com/session2-recording",

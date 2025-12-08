@@ -289,7 +289,6 @@ with request_event as (
             "meeting_hosts": ["event-alt-host@example.com"],
             "meeting_provider_id": "zoom",
             "meeting_requested": true,
-            "meeting_requires_password": true,
             "sessions": [
                 {
                     "name": "Requested Session",
@@ -299,8 +298,7 @@ with request_event as (
                     "kind": "virtual",
                     "meeting_hosts": ["session-alt-host@example.com"],
                     "meeting_provider_id": "zoom",
-                    "meeting_requested": true,
-                    "meeting_requires_password": true
+                    "meeting_requested": true
                 }
             ]
         }'::jsonb
@@ -313,15 +311,13 @@ select is(
             'event', jsonb_build_object(
                 'meeting_hosts', meeting_hosts,
                 'meeting_requested', meeting_requested,
-                'meeting_in_sync', meeting_in_sync,
-                'meeting_requires_password', meeting_requires_password
+                'meeting_in_sync', meeting_in_sync
             ),
             'session', (
                 select jsonb_build_object(
                     'meeting_hosts', meeting_hosts,
                     'meeting_requested', meeting_requested,
-                    'meeting_in_sync', meeting_in_sync,
-                    'meeting_requires_password', meeting_requires_password
+                    'meeting_in_sync', meeting_in_sync
                 )
                 from session
                 where event_id = :'event_request_id'::uuid
@@ -334,14 +330,12 @@ select is(
         "event": {
             "meeting_hosts": ["event-alt-host@example.com"],
             "meeting_requested": true,
-            "meeting_in_sync": false,
-            "meeting_requires_password": true
+            "meeting_in_sync": false
         },
         "session": {
             "meeting_hosts": ["session-alt-host@example.com"],
             "meeting_requested": true,
-            "meeting_in_sync": false,
-            "meeting_requires_password": true
+            "meeting_in_sync": false
         }
     }'::jsonb,
     'add_event sets meeting flags and hosts for event and session when requested'

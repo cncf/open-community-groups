@@ -138,7 +138,6 @@ impl DBMeetings for PgDB {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or_default(),
             provider_meeting_id: row.get("provider_meeting_id"),
-            requires_password: row.get("requires_password"),
             session_id: row.get("session_id"),
             starts_at,
             timezone: row.get("timezone"),
