@@ -21,10 +21,6 @@ export class OnlineEventDetails extends LitWrapper {
     meetingJoinUrl: { type: String, attribute: "meeting-join-url" },
     meetingRecordingUrl: { type: String, attribute: "meeting-recording-url" },
     meetingRequested: { type: Boolean, attribute: "meeting-requested" },
-    meetingRequiresPassword: {
-      type: Boolean,
-      attribute: "meeting-requires-password",
-    },
     meetingHosts: {
       type: Array,
       attribute: "meeting-hosts",
@@ -65,7 +61,6 @@ export class OnlineEventDetails extends LitWrapper {
     _joinUrl: { type: String, state: true },
     _recordingUrl: { type: String, state: true },
     _createMeeting: { type: Boolean, state: true },
-    _requirePassword: { type: Boolean, state: true },
     _providerId: { type: String, state: true },
     _hosts: { type: Array, state: true },
     _capacityWarning: { type: String, state: true },
@@ -77,7 +72,6 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingJoinUrl = "";
     this.meetingRecordingUrl = "";
     this.meetingRequested = false;
-    this.meetingRequiresPassword = false;
     this.meetingHosts = [];
     this.startsAt = "";
     this.endsAt = "";
@@ -92,7 +86,6 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinUrl = "";
     this._recordingUrl = "";
     this._createMeeting = false;
-    this._requirePassword = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
     this._capacityWarning = "";
@@ -105,7 +98,6 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinUrl = this.meetingJoinUrl || "";
     this._recordingUrl = this.meetingRecordingUrl || "";
     this._createMeeting = this.meetingRequested;
-    this._requirePassword = this.meetingRequiresPassword;
     this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
     this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
 
@@ -133,7 +125,6 @@ export class OnlineEventDetails extends LitWrapper {
       if (this._mode === "automatic" && this._createMeeting) {
         this._mode = "manual";
         this._createMeeting = false;
-        this._requirePassword = false;
         showInfoAlert(
           "Automatic meetings can only be created for virtual or hybrid events. The event has been switched to manual mode.",
         );
@@ -150,7 +141,6 @@ export class OnlineEventDetails extends LitWrapper {
       if (!availability.allowed) {
         this._mode = "manual";
         this._createMeeting = false;
-        this._requirePassword = false;
         this._joinUrl = "";
         showInfoAlert(
           availability.reason || "Automatic meetings are disabled until the schedule requirements are met.",
@@ -281,10 +271,8 @@ export class OnlineEventDetails extends LitWrapper {
             </span>
             <div class="space-y-1">
               <div class="text-base font-semibold text-stone-900">${option.title}</div>
-              <p class="text-sm text-stone-600 leading-relaxed">${option.description}</p>
-              ${option.helper
-                ? html`<p class="text-sm text-amber-700 leading-relaxed">${option.helper}</p>`
-                : ""}
+              <p class="form-legend">${option.description}</p>
+              ${option.helper ? html`<p class="form-legend font-semibold">${option.helper}</p>` : ""}
             </div>
           </div>
         </div>
@@ -315,7 +303,6 @@ export class OnlineEventDetails extends LitWrapper {
 
       this._mode = "manual";
       this._createMeeting = false;
-      this._requirePassword = false;
     } else if (newMode === "automatic" && this._mode === "manual") {
       const availability = this._getAutomaticAvailability();
       if (!availability.allowed) {
@@ -349,18 +336,7 @@ export class OnlineEventDetails extends LitWrapper {
   _handleCreateMeetingChange(e) {
     e.stopPropagation();
     this._createMeeting = e.target.checked;
-    if (!this._createMeeting) {
-      this._requirePassword = false;
-    }
     this._checkMeetingCapacity();
-  }
-
-  /**
-   * Handles toggle change for require password.
-   * @param {Event} e - Change event from toggle input
-   */
-  _handleRequirePasswordChange(e) {
-    this._requirePassword = e.target.checked;
   }
 
   /**
@@ -454,7 +430,6 @@ export class OnlineEventDetails extends LitWrapper {
     this._joinUrl = "";
     this._recordingUrl = "";
     this._createMeeting = false;
-    this._requirePassword = false;
     this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
     this.requestUpdate();
@@ -478,11 +453,6 @@ export class OnlineEventDetails extends LitWrapper {
         value="${recordingUrlValue}"
       />
       <input type="hidden" name="${this._getFieldName("meeting_requested")}" value="${isAutomatic}" />
-      <input
-        type="hidden"
-        name="${this._getFieldName("meeting_requires_password")}"
-        value="${isAutomatic && this._requirePassword}"
-      />
       <input type="hidden" name="${this._getFieldName("meeting_provider_id")}" value="${providerIdValue}" />
     `;
   }
@@ -637,7 +607,7 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
-   * Renders automatic mode fields (create meeting and password toggles).
+   * Renders automatic mode fields (create meeting toggle).
    * @returns {import('lit').TemplateResult} Automatic mode field elements
    */
   _renderAutomaticFields() {
@@ -646,10 +616,8 @@ export class OnlineEventDetails extends LitWrapper {
         <div class="flex items-start justify-between gap-4">
           <div class="space-y-1">
             <div class="text-base font-semibold text-stone-900">Create meeting automatically</div>
-            <p class="text-sm text-stone-600 leading-relaxed">
-              We will create and manage the meeting when you save this event.
-            </p>
-            <ul class="list-disc pl-5 space-y-1 text-sm text-stone-600 leading-relaxed">
+            <p class="form-legend">We will create and manage the meeting when you save this event.</p>
+            <ul class="list-disc list-inside form-legend">
               <li>Only available for virtual or hybrid events.</li>
               <li>
                 Requires start and end times between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES}
@@ -687,25 +655,6 @@ export class OnlineEventDetails extends LitWrapper {
                       Zoom
                     </option>
                   </select>
-                </div>
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <div class="text-sm font-medium text-stone-900">Require meeting password</div>
-                    <p class="text-sm text-stone-600 leading-relaxed">
-                      Add password protection for attendees.
-                    </p>
-                  </div>
-                  <label class="inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      class="sr-only peer"
-                      .checked="${this._requirePassword}"
-                      @change="${this._handleRequirePasswordChange}"
-                    />
-                    <div
-                      class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-                    ></div>
-                  </label>
                 </div>
                 <div class="space-y-2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting hosts</label>
@@ -753,8 +702,8 @@ export class OnlineEventDetails extends LitWrapper {
     return html`
       ${this._renderHiddenInputs()}
 
-      <div class="space-y-6 max-w-5xl">
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div class="space-y-8 max-w-5xl">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
           ${modeOptions.map((option) => this._renderModeOption(option))}
         </div>
 

@@ -140,7 +140,6 @@ export class SessionsSection extends LitWrapper {
       ends_at: "",
       location: "",
       meeting_requested: false,
-      meeting_requires_password: false,
       meeting_in_sync: false,
       meeting_join_url: "",
       meeting_provider_id: "",
@@ -350,7 +349,6 @@ class SessionItem extends LitWrapper {
       ends_at: "",
       location: "",
       meeting_requested: false,
-      meeting_requires_password: false,
       meeting_join_url: "",
       meeting_recording_url: "",
       meeting_provider_id: "",
@@ -371,8 +369,6 @@ class SessionItem extends LitWrapper {
     }
     this.data.meeting_requested =
       this.data.meeting_requested === true || this.data.meeting_requested === "true";
-    this.data.meeting_requires_password =
-      this.data.meeting_requires_password === true || this.data.meeting_requires_password === "true";
     this.data.meeting_in_sync = this.data.meeting_in_sync === true || this.data.meeting_in_sync === "true";
     this.data.meeting_provider_id = this.data.meeting_provider_id || "";
     this.data.meeting_password = this.data.meeting_password || "";
@@ -539,7 +535,6 @@ class SessionItem extends LitWrapper {
           meeting-join-url=${this.data.meeting_join_url || ""}
           meeting-recording-url=${this.data.meeting_recording_url || ""}
           ?meeting-requested=${this.data.meeting_requested}
-          ?meeting-requires-password=${this.data.meeting_requires_password}
           ?meeting-in-sync=${this.data.meeting_in_sync}
           meeting-password=${this.data.meeting_password || ""}
           meeting-error=${this.data.meeting_error || ""}

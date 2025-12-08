@@ -173,7 +173,6 @@ const buildSessionEntries = (sessionsData) => {
         meeting_join_url: "",
         meeting_recording_url: "",
         meeting_requested: false,
-        meeting_requires_password: false,
         meeting_in_sync: false,
         meeting_password: "",
         meeting_error: "",

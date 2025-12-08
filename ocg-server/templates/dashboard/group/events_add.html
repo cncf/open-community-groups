@@ -94,7 +94,7 @@
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#add-event-button, #cancel-button"
-                hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_meeting_requires_password]">
+                hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested]">
           Add
         </button>
       </div>
@@ -134,23 +134,6 @@
 
               <div class="col-span-3"></div>
 
-              {# Event category -#}
-              <div class="col-span-full lg:col-span-3">
-                <label for="category_id" class="form-label">
-                  Category <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2 grid grid-cols-1">
-                  <select id="category_id" name="category_id" class="select-primary" required>
-                    <option value="">Select a category</option>
-                    {% for category in categories %}
-                      <option value="{{ category.event_category_id }}">{{ category.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <p class="form-legend">Type of event or meetup.</p>
-              </div>
-              {# End Event category -#}
-
               {# Event kind -#}
               <div class="col-span-full lg:col-span-3">
                 <label for="kind_id" class="form-label">
@@ -167,6 +150,23 @@
                 <p class="form-legend">Whether this is an in-person, virtual, or hybrid event.</p>
               </div>
               {# End Event kind -#}
+
+              {# Event category -#}
+              <div class="col-span-full lg:col-span-3">
+                <label for="category_id" class="form-label">
+                  Category <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2 grid grid-cols-1">
+                  <select id="category_id" name="category_id" class="select-primary" required>
+                    <option value="">Select a category</option>
+                    {% for category in categories %}
+                      <option value="{{ category.event_category_id }}">{{ category.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <p class="form-legend">Type of event or meetup.</p>
+              </div>
+              {# End Event category -#}
 
               {# Logo URL -#}
               <div class="col-span-full lg:col-span-3">
