@@ -80,7 +80,7 @@ insert into "group" (
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
-    'seattle-kubernetes-meetup',
+    'abc1234',
     :'communityID',
     :'groupCategoryID',
     true,
@@ -103,7 +103,7 @@ insert into "group" (
 ) values (
     :'groupInactiveID',
     'Inactive DevOps Group',
-    'inactive-devops-group',
+    'xyz9876',
     :'communityID',
     :'groupCategoryID',
     false
@@ -151,7 +151,7 @@ insert into event (
 ) values (
     :'eventID',
     'KubeCon Seattle 2024',
-    'kubecon-seattle-2024',
+    'def5678',
     'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem',
     'Annual Kubernetes conference',
     'America/New_York',
@@ -382,7 +382,7 @@ insert into event (
 ) values (
     :'eventUnpublishedID',
     'Draft Workshop',
-    'draft-workshop',
+    'ghi9abc',
     'A draft workshop that is not yet published',
     'virtual',
     :'eventCategoryID',
@@ -407,7 +407,7 @@ insert into event (
 ) values (
     :'eventInactiveGroupID',
     'Legacy Event',
-    'legacy-event',
+    'jkl2def',
     'An event from an inactive group that should not appear in normal listings',
     'virtual',
     :'eventCategoryID',
@@ -437,7 +437,7 @@ select is(
         "kind": "hybrid",
         "name": "KubeCon Seattle 2024",
         "published": true,
-        "slug": "kubecon-seattle-2024",
+        "slug": "def5678",
         "timezone": "America/New_York",
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
@@ -465,7 +465,7 @@ select is(
         "group": {
             "city": "New York",
             "name": "Seattle Kubernetes Meetup",
-            "slug": "seattle-kubernetes-meetup",
+            "slug": "abc1234",
             "state": "NY",
             "active": true,
             "category": {

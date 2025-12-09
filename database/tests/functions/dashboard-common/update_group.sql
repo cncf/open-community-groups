@@ -61,7 +61,7 @@ insert into "group" (
 ) values (
     :'groupID',
     'Original Group',
-    'original-group',
+    'abc1234',
     :'communityID',
     :'category1ID',
     'Original description',
@@ -83,7 +83,7 @@ insert into "group" (
 ) values (
     :'groupDeletedID',
     'Deleted Group',
-    'deleted-group',
+    'xyz9876',
     :'communityID',
     :'category1ID',
     'Deleted group description',
@@ -107,7 +107,7 @@ insert into "group" (
 ) values (
     :'group3ID'::uuid,
     'Test Group for Null Arrays',
-    'test-group-null-arrays',
+    'mno3ghi',
     :'communityID',
     :'category1ID',
     'Has array fields',
@@ -126,7 +126,6 @@ select update_group(
     :'groupID'::uuid,
     '{
         "name": "Updated Group",
-        "slug": "updated-group",
         "category_id": "00000000-0000-0000-0000-000000000012",
         "description": "Updated description",
         "description_short": "Updated brief description",
@@ -147,7 +146,7 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb - 'active' - 'created_at' - 'members_count'),
     '{
         "name": "Updated Group",
-        "slug": "updated-group",
+        "slug": "abc1234",
         "category": {
             "group_category_id": "00000000-0000-0000-0000-000000000012",
             "name": "Business",
@@ -176,7 +175,7 @@ select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000022'::uuid,
-        '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
+        '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
     'group not found or inactive',
     'Should throw error when trying to update deleted group'
@@ -200,7 +199,7 @@ insert into "group" (
 ) values (
     :'group2ID'::uuid,
     'Test Group for Empty Strings',
-    'test-group-empty-strings',
+    'pqr4jkl',
     :'communityID',
     :'category1ID',
     'Has some values',
@@ -218,7 +217,6 @@ select update_group(
     :'group2ID'::uuid,
     '{
         "name": "Updated Group Empty Strings",
-        "slug": "updated-group-empty-strings",
         "category_id": "00000000-0000-0000-0000-000000000011",
         "description": "",
         "description_short": "",
@@ -247,7 +245,7 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
-        "slug": "updated-group-empty-strings"
+        "slug": "pqr4jkl"
     }'::jsonb,
     'Should convert empty strings to null for nullable fields'
 );
@@ -257,7 +255,7 @@ select throws_ok(
     $$select update_group(
         '00000000-0000-0000-0000-000000000099'::uuid,
         '00000000-0000-0000-0000-000000000021'::uuid,
-        '{"name": "Won''t Work", "slug": "wont-work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
+        '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
     'group not found or inactive',
     'Should throw error when community_id does not match'
@@ -269,7 +267,6 @@ select update_group(
     :'group3ID'::uuid,
     '{
         "name": "Updated Group Null Arrays",
-        "slug": "updated-group-null-arrays",
         "category_id": "00000000-0000-0000-0000-000000000011",
         "description": "Updated description",
         "tags": null,
@@ -282,7 +279,7 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Null Arrays",
-        "slug": "updated-group-null-arrays",
+        "slug": "mno3ghi",
         "description": "Updated description"
     }'::jsonb,
     'Should handle explicit null values for array fields (tags, photos_urls)'

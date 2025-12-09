@@ -69,7 +69,7 @@ insert into "group" (
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
-    'seattle-kubernetes-meetup',
+    'abc1234',
     :'communityID',
     :'categoryID',
     :'regionID',
@@ -96,7 +96,7 @@ insert into "group" (
 ) values (
     :'groupInactiveID',
     'Inactive DevOps Group',
-    'inactive-devops-group',
+    'xyz9876',
     :'communityID',
     :'categoryID',
     false,
@@ -117,7 +117,7 @@ insert into "group" (
 ) values (
     :'groupDeletedID',
     'Deleted DevOps Group',
-    'deleted-devops-group',
+    'mno3ghi',
     :'communityID',
     :'categoryID',
     false,
@@ -146,7 +146,7 @@ select is(
         "created_at": 1705312800,
         "group_id": "00000000-0000-0000-0000-000000000021",
         "name": "Seattle Kubernetes Meetup",
-        "slug": "seattle-kubernetes-meetup",
+        "slug": "abc1234",
         "city": "New York",
         "country_code": "US",
         "country_name": "United States",

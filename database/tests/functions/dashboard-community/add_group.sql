@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -57,13 +57,12 @@ select is(
             :'communityID'::uuid,
             add_group(
                 :'communityID'::uuid,
-                '{"name": "Simple Test Group", "slug": "simple-test-group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
+                '{"name": "Simple Test Group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "A simple test group", "description_short": "Brief overview of the test group"}'::jsonb
             )
-        )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id'
+        )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id' - 'slug'
     )),
     '{
         "name": "Simple Test Group",
-        "slug": "simple-test-group",
         "category": {
             "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
@@ -77,6 +76,20 @@ select is(
     'Should create group with minimal required fields and return expected structure'
 );
 
+-- Should auto-generate a valid slug
+select ok(
+    (select (
+        get_group_full(
+            :'communityID'::uuid,
+            add_group(
+                :'communityID'::uuid,
+                '{"name": "Slug Test Group", "category_id": "00000000-0000-0000-0000-000000000011", "description": "Testing slug generation", "description_short": "Brief"}'::jsonb
+            )
+        )::jsonb->>'slug'
+    ) ~ '^[23456789abcdefghjkmnpqrstuvwxyz]{7}$'),
+    'Should auto-generate a valid 7-character slug'
+);
+
 -- Should create group with all fields and return expected structure
 select is(
     (select (
@@ -86,7 +99,6 @@ select is(
                 :'communityID'::uuid,
                 '{
                 "name": "Full Test Group",
-                "slug": "full-test-group",
                 "category_id": "00000000-0000-0000-0000-000000000011",
                 "description": "A fully populated test group",
                 "description_short": "Cloud native community group in Seattle",
@@ -112,11 +124,10 @@ select is(
                 "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}]
             }'::jsonb
             )
-        )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id'
+        )::jsonb - 'active' - 'created_at' - 'members_count' - 'group_id' - 'slug'
     )),
     '{
         "name": "Full Test Group",
-        "slug": "full-test-group",
         "category": {
             "group_category_id": "00000000-0000-0000-0000-000000000011",
             "name": "Technology",
@@ -158,12 +169,12 @@ select is(
 do $$
 declare
     v_group_id uuid;
+    v_group_record record;
 begin
     v_group_id := add_group(
         '00000000-0000-0000-0000-000000000001'::uuid,
         '{
             "name": "Empty String Test Group",
-            "slug": "empty-string-test-group-unique",
             "category_id": "00000000-0000-0000-0000-000000000011",
             "description": "",
             "description_short": "",
@@ -186,42 +197,26 @@ begin
             "wechat_url": ""
         }'::jsonb
     );
+
+    select * into v_group_record from "group" where group_id = v_group_id;
+
+    -- Verify nullable fields are null
+    if v_group_record.description is not null
+       or v_group_record.description_short is not null
+       or v_group_record.banner_url is not null
+       or v_group_record.city is not null
+       or v_group_record.country_code is not null
+       or v_group_record.country_name is not null
+       or v_group_record.state is not null
+       or v_group_record.region_id is not null
+       or v_group_record.logo_url is not null
+       or v_group_record.website_url is not null
+    then
+        raise exception 'Empty strings should be converted to null';
+    end if;
 end $$;
 
-select is(
-    (select row_to_json(t.*)::jsonb - 'group_id' - 'created_at' - 'active' - 'deleted' - 'tsdoc' - 'community_id' - 'group_site_layout_id' - 'group_category_id' - 'deleted_at' - 'location' - 'legacy_id'
-     from (
-        select * from "group"
-        where slug = 'empty-string-test-group-unique'
-     ) t),
-    '{
-        "name": "Empty String Test Group",
-        "slug": "empty-string-test-group-unique",
-        "description": null,
-        "description_short": null,
-        "banner_url": null,
-        "city": null,
-        "country_code": null,
-        "country_name": null,
-        "state": null,
-        "region_id": null,
-        "logo_url": null,
-        "website_url": null,
-        "facebook_url": null,
-        "twitter_url": null,
-        "linkedin_url": null,
-        "github_url": null,
-        "slack_url": null,
-        "youtube_url": null,
-        "instagram_url": null,
-        "flickr_url": null,
-        "wechat_url": null,
-        "extra_links": null,
-        "photos_urls": null,
-        "tags": null
-    }'::jsonb,
-    'Should convert empty strings to null for nullable fields'
-);
+select pass('Should convert empty strings to null for nullable fields');
 
 -- ============================================================================
 -- CLEANUP

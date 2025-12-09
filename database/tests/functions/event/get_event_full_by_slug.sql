@@ -52,7 +52,7 @@ values (:'categoryID', 'Technology', :'communityID');
 
 -- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active, created_at)
-values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
+values (:'groupID', 'Test Group', 'abc1234', :'communityID', :'categoryID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -98,7 +98,7 @@ insert into event (
 ) values (
     :'eventID',
     'Tech Conference 2024',
-    'tech-conference-2024',
+    'def5678',
     'Annual technology conference with workshops and talks',
     'Annual tech conference',
     'America/New_York',
@@ -168,16 +168,16 @@ values
 
 -- Should return correct event data as JSON
 select is(
-    get_event_full_by_slug(:'communityID'::uuid, 'test-group', 'tech-conference-2024')::jsonb - '{created_at}'::text[],
+    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb - '{created_at}'::text[],
     '{
         "kind": "hybrid",
         "name": "Tech Conference 2024",
-        "slug": "tech-conference-2024",
+        "slug": "def5678",
         "tags": ["technology", "conference", "workshops"],
         "group": {
             "active": true,
             "name": "Test Group",
-            "slug": "test-group",
+            "slug": "abc1234",
             "category": {
                 "group_category_id": "00000000-0000-0000-0000-000000000011",
                 "name": "Technology",
@@ -310,7 +310,7 @@ select is(
 
 -- Should return null with non-existing event slug
 select ok(
-    get_event_full_by_slug(:'communityID'::uuid, 'test-group', 'non-existing-event') is null,
+    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'non-existing-event') is null,
     'Should return null with non-existing event slug'
 );
 

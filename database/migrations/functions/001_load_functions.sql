@@ -5,6 +5,7 @@
 {{ template "auth/user_owns_group.sql" }}
 {{ template "auth/verify_email.sql" }}
 
+{{ template "common/generate_slug.sql" }}
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}

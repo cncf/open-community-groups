@@ -353,7 +353,7 @@ mod tests {
                         serde_json::from_value::<GroupWelcome>(data.clone())
                             .map(|welcome| {
                                 welcome.group.group_id == group_id
-                                    && welcome.link == "/group/test-group"
+                                    && welcome.link == "/group/npq6789"
                                     && welcome.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(234);
+select plan(235);
 
 -- ============================================================================
 -- TESTS
@@ -565,9 +565,9 @@ select indexes_are('group', array[
     'group_group_category_id_idx',
     'group_region_id_idx',
     'group_group_site_layout_id_idx',
-    'group_tsdoc_idx',
     'group_location_idx',
-    'group_search_idx'
+    'group_search_idx',
+    'group_tsdoc_idx'
 ]);
 
 -- Test: group_member indexes should match expected
@@ -682,6 +682,7 @@ select has_function('delete_event');
 select has_function('delete_group');
 select has_function('delete_group_sponsor');
 select has_function('delete_group_team_member');
+select has_function('generate_slug');
 select has_function('get_community');
 select has_function('get_community_filters_options');
 select has_function('get_community_home_stats');

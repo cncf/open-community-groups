@@ -82,7 +82,7 @@ insert into "group" (
 ) values (
     :'groupID',
     'Kubernetes NYC',
-    'kubernetes-nyc',
+    'abc1234',
     :'communityID',
     :'categoryID',
     :'regionID',
@@ -121,12 +121,12 @@ values
 
 -- Should return correct group data as JSON
 select is(
-    get_group_full_by_slug(:'communityID'::uuid, 'kubernetes-nyc')::jsonb - '{created_at}'::text[],
+    get_group_full_by_slug(:'communityID'::uuid, 'abc1234')::jsonb - '{created_at}'::text[],
     '{
         "active": true,
         "city": "New York",
         "name": "Kubernetes NYC",
-        "slug": "kubernetes-nyc",
+        "slug": "abc1234",
         "tags": ["kubernetes", "cloud-native", "devops"],
         "state": "NY",
         "group_id": "00000000-0000-0000-0000-000000000031",

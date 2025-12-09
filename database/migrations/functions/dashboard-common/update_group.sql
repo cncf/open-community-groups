@@ -8,7 +8,6 @@ returns void as $$
 begin
     update "group" set
         name = p_group->>'name',
-        slug = p_group->>'slug',
         group_category_id = (p_group->>'category_id')::uuid,
 
         banner_url = nullif(p_group->>'banner_url', ''),

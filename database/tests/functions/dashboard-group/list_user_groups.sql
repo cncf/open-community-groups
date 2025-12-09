@@ -85,10 +85,10 @@ insert into "group" (
     country_code,
     country_name
 ) values
-    (:'group1ID', :'community1ID', :'category1ID', 'Group A', 'group-a', '2024-01-01 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group2ID', :'community1ID', :'category1ID', 'Group B', 'group-b', '2024-01-02 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'group-c', '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'group-d', '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States');
+    (:'group1ID', :'community1ID', :'category1ID', 'Group A', 'abc1234', '2024-01-01 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group2ID', :'community1ID', :'category1ID', 'Group B', 'def5678', '2024-01-02 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'ghi9abc', '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'jkl2def', '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States');
 
 -- Mark group4 as deleted (must also set active = false per check constraint)
 update "group" set deleted = true, active = false where group_id = :'group4ID';
@@ -135,7 +135,7 @@ select is(
             "created_at": 1704103200,
             "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Group A",
-            "slug": "group-a",
+            "slug": "abc1234",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -151,7 +151,7 @@ select is(
             "created_at": 1704189600,
             "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Group B",
-            "slug": "group-b",
+            "slug": "def5678",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -175,7 +175,7 @@ select is(
             "created_at": 1704103200,
             "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Group A",
-            "slug": "group-a",
+            "slug": "abc1234",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -191,7 +191,7 @@ select is(
             "created_at": 1704189600,
             "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Group B",
-            "slug": "group-b",
+            "slug": "def5678",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -207,7 +207,7 @@ select is(
             "created_at": 1704276000,
             "group_id": "00000000-0000-0000-0000-000000000033",
             "name": "Group C",
-            "slug": "group-c",
+            "slug": "ghi9abc",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -231,7 +231,7 @@ select is(
             "created_at": 1704103200,
             "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Group A",
-            "slug": "group-a",
+            "slug": "abc1234",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -247,7 +247,7 @@ select is(
             "created_at": 1704189600,
             "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Group B",
-            "slug": "group-b",
+            "slug": "def5678",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"
@@ -263,7 +263,7 @@ select is(
             "created_at": 1704276000,
             "group_id": "00000000-0000-0000-0000-000000000033",
             "name": "Group C",
-            "slug": "group-c",
+            "slug": "ghi9abc",
             "city": "Test City",
             "country_code": "US",
             "country_name": "United States"

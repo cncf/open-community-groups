@@ -71,7 +71,7 @@ insert into "group" (
     :'groupID',
     :'communityID',
     'Kubernetes Study Group',
-    'kubernetes-study-group',
+    'abc1234',
     'A study group focused on Kubernetes best practices and implementation',
     :'groupCategoryID'
 );
@@ -88,18 +88,17 @@ values
 -- ============================================================================
 
 -- Should create event with minimal required fields and return expected structure
-select is(
+select ok(
     (select (
         get_event_full(
             :'communityID'::uuid,
             :'groupID'::uuid,
             add_event(
                 :'groupID'::uuid,
-                '{"name": "Kubernetes Fundamentals Workshop", "slug": "k8s-fundamentals-workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+                '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
-    )),
-    '{
+        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug'
+    )) = '{
         "canceled": false,
         "category_name": "Conference",
         "description": "Learn the basics of Kubernetes deployment and management",
@@ -110,7 +109,6 @@ select is(
         "published": false,
         "sponsors": [],
         "sessions": {},
-        "slug": "k8s-fundamentals-workshop",
         "timezone": "America/New_York"
     }'::jsonb,
     'Should create event with minimal required fields and return expected structure'
@@ -122,7 +120,6 @@ with new_event as (
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "CloudNativeCon Seattle 2025",
-            "slug": "cloudnativecon-seattle-2025",
             "description": "Premier conference for cloud native technologies and community collaboration",
             "timezone": "America/Los_Angeles",
             "category_id": "00000000-0000-0000-0000-000000000011",
@@ -183,13 +180,12 @@ with new_event as (
 select event_id from new_event \gset
 
 -- Check event fields except sessions
-select is(
+select ok(
     (select get_event_full(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'event_id'::uuid
-    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'),
-    '{
+    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug') = '{
         "canceled": false,
         "category_name": "Conference",
         "description": "Premier conference for cloud native technologies and community collaboration",
@@ -204,7 +200,6 @@ select is(
         "kind": "hybrid",
         "name": "CloudNativeCon Seattle 2025",
         "published": false,
-        "slug": "cloudnativecon-seattle-2025",
         "timezone": "America/Los_Angeles",
         "banner_url": "https://example.com/banner.jpg",
         "capacity": 100,
@@ -278,7 +273,6 @@ with request_event as (
         :'groupID'::uuid,
         '{
             "name": "Meeting Requested Event",
-            "slug": "meeting-requested-event",
             "description": "Event requesting meeting support",
             "timezone": "UTC",
             "category_id": "00000000-0000-0000-0000-000000000011",
@@ -345,7 +339,7 @@ select is(
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Test Event", "slug": "test-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
+        '{"name": "Test Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
     'host user 99999999-9999-9999-9999-999999999999 not found in community',
     'Should throw error when host user_id does not exist in community'
@@ -355,7 +349,7 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Test Event", "slug": "test-event-speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
+        '{"name": "Test Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
     'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
     'Should throw error when speaker user_id does not exist in community'
@@ -365,7 +359,7 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Capacity Exceed Event", "slug": "capacity-exceed", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
     'event capacity (200) exceeds maximum participants allowed (100)',
@@ -376,7 +370,7 @@ select throws_ok(
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Valid Capacity Event", "slug": "valid-capacity", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
     'Should succeed when capacity is within cfg_max_participants'
@@ -386,7 +380,7 @@ select ok(
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Meeting Event", "slug": "no-meeting", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
+        '{"name": "No Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
     'Should succeed with high capacity when meeting_requested is false'
@@ -396,7 +390,7 @@ select ok(
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Limit Event", "slug": "no-limit", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
         null
     ) is not null),
     'Should succeed when cfg_max_participants is null'

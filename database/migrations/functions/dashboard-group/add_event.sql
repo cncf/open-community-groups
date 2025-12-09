@@ -6,16 +6,19 @@ create or replace function add_event(
 )
 returns uuid as $$
 declare
-    v_event_id uuid;
     v_community_id uuid;
+    v_event_id uuid;
     v_event_speaker jsonb;
     v_host_id uuid;
+    v_max_retries int := 10;
     v_provider_max_participants int;
+    v_retries int := 0;
     v_session jsonb;
     v_session_id uuid;
     v_session_speaker jsonb;
-    v_speaker_id uuid;
+    v_slug text;
     v_speaker_featured boolean;
+    v_speaker_id uuid;
     v_sponsor jsonb;
     v_sponsor_id uuid;
     v_sponsor_level text;
@@ -37,70 +40,83 @@ begin
         end if;
     end if;
 
-    -- Insert event
-    insert into event (
-        group_id,
-        name,
-        slug,
-        description,
-        timezone,
-        event_category_id,
-        event_kind_id,
+    -- Insert event with unique slug generation and collision retry
+    loop
+        v_slug := generate_slug(7);
 
-        banner_url,
-        capacity,
-        description_short,
-        ends_at,
-        logo_url,
-        meeting_hosts,
-        meeting_in_sync,
-        meeting_join_url,
-        meeting_provider_id,
-        meeting_recording_url,
-        meeting_requested,
-        meetup_url,
-        photos_urls,
-        registration_required,
-        starts_at,
-        tags,
-        venue_address,
-        venue_city,
-        venue_name,
-        venue_zip_code
-    ) values (
-        p_group_id,
-        p_event->>'name',
-        p_event->>'slug',
-        p_event->>'description',
-        p_event->>'timezone',
-        (p_event->>'category_id')::uuid,
-        p_event->>'kind_id',
+        begin
+            insert into event (
+                group_id,
+                name,
+                slug,
+                description,
+                timezone,
+                event_category_id,
+                event_kind_id,
 
-        p_event->>'banner_url',
-        (p_event->>'capacity')::int,
-        p_event->>'description_short',
-        (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
-        p_event->>'logo_url',
-        case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
-        case
-            when (p_event->>'meeting_requested')::boolean = true then false
-            else null
-        end,
-        p_event->>'meeting_join_url',
-        p_event->>'meeting_provider_id',
-        p_event->>'meeting_recording_url',
-        (p_event->>'meeting_requested')::boolean,
-        p_event->>'meetup_url',
-        case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-        (p_event->>'registration_required')::boolean,
-        (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
-        case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
-        p_event->>'venue_address',
-        p_event->>'venue_city',
-        p_event->>'venue_name',
-        p_event->>'venue_zip_code'
-    )
-    returning event_id into v_event_id;
+                banner_url,
+                capacity,
+                description_short,
+                ends_at,
+                logo_url,
+                meeting_hosts,
+                meeting_in_sync,
+                meeting_join_url,
+                meeting_provider_id,
+                meeting_recording_url,
+                meeting_requested,
+                meetup_url,
+                photos_urls,
+                registration_required,
+                starts_at,
+                tags,
+                venue_address,
+                venue_city,
+                venue_name,
+                venue_zip_code
+            ) values (
+                p_group_id,
+                p_event->>'name',
+                v_slug,
+                p_event->>'description',
+                p_event->>'timezone',
+                (p_event->>'category_id')::uuid,
+                p_event->>'kind_id',
+
+                p_event->>'banner_url',
+                (p_event->>'capacity')::int,
+                p_event->>'description_short',
+                (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
+                p_event->>'logo_url',
+                case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
+                case
+                    when (p_event->>'meeting_requested')::boolean = true then false
+                    else null
+                end,
+                p_event->>'meeting_join_url',
+                p_event->>'meeting_provider_id',
+                p_event->>'meeting_recording_url',
+                (p_event->>'meeting_requested')::boolean,
+                p_event->>'meetup_url',
+                case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
+                (p_event->>'registration_required')::boolean,
+                (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone'),
+                case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
+                p_event->>'venue_address',
+                p_event->>'venue_city',
+                p_event->>'venue_name',
+                p_event->>'venue_zip_code'
+            )
+            returning event_id into v_event_id;
+
+            exit; -- Success, exit the loop
+        exception when unique_violation then
+            v_retries := v_retries + 1;
+            if v_retries >= v_max_retries then
+                raise exception 'failed to generate unique slug after % attempts', v_max_retries;
+            end if;
+        end;
+    end loop;
 
     -- Insert event hosts
     if p_event->'hosts' is not null then

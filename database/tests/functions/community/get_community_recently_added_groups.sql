@@ -56,13 +56,13 @@ values
 insert into "group" (group_id, name, slug, community_id, group_category_id, created_at, logo_url, description,
                      city, state, country_code, country_name, region_id)
 values
-    (:'group1ID', 'Test Group 1', 'test-group-1', :'communityID', :'category1ID',
+    (:'group1ID', 'Test Group 1', 'abc1234', :'communityID', :'category1ID',
      '2024-01-01 09:00:00+00', 'https://example.com/logo1.png', 'First group',
      'New York', 'NY', 'US', 'United States', :'region1ID'),
-    (:'group2ID', 'Test Group 2', 'test-group-2', :'communityID', :'category1ID',
+    (:'group2ID', 'Test Group 2', 'def5678', :'communityID', :'category1ID',
      '2024-01-02 09:00:00+00', 'https://example.com/logo2.png', 'Second group',
      'San Francisco', 'CA', 'US', 'United States', :'region1ID'),
-    (:'group3ID', 'Test Group 3', 'test-group-3', :'communityID', :'category1ID',
+    (:'group3ID', 'Test Group 3', 'ghi9abc', :'communityID', :'category1ID',
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
      'London', null, 'GB', 'United Kingdom', :'region2ID');
 
@@ -78,7 +78,7 @@ select is(
             "active": true,
             "city": "London",
             "name": "Test Group 3",
-            "slug": "test-group-3",
+            "slug": "ghi9abc",
             "group_id": "00000000-0000-0000-0000-000000000033",
             "logo_url": "https://example.com/logo3.png",
             "created_at": 1704272400,
@@ -99,7 +99,7 @@ select is(
             "active": true,
             "city": "San Francisco",
             "name": "Test Group 2",
-            "slug": "test-group-2",
+            "slug": "def5678",
             "state": "CA",
             "group_id": "00000000-0000-0000-0000-000000000032",
             "logo_url": "https://example.com/logo2.png",
@@ -121,7 +121,7 @@ select is(
             "active": true,
             "city": "New York",
             "name": "Test Group 1",
-            "slug": "test-group-1",
+            "slug": "abc1234",
             "state": "NY",
             "group_id": "00000000-0000-0000-0000-000000000031",
             "logo_url": "https://example.com/logo1.png",

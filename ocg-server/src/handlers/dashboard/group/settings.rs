@@ -238,10 +238,7 @@ mod tests {
         db.expect_update_group()
             .times(1)
             .withf(move |cid, gid, group| {
-                *cid == community_id
-                    && *gid == group_id
-                    && group.name == update.name
-                    && group.slug == update.slug
+                *cid == community_id && *gid == group_id && group.name == update.name
             })
             .returning(move |_, _, _| Ok(()));
 

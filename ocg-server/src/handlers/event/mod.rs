@@ -426,7 +426,7 @@ mod tests {
                     && notification.recipients == vec![user_id]
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventWelcome>(value.clone())
-                            .map(|template| template.link == "/group/test-group/event/sample-event")
+                            .map(|template| template.link == "/group/def5678/event/ghi9abc")
                             .unwrap_or(false)
                     })
             })

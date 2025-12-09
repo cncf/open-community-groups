@@ -258,7 +258,6 @@ pub(crate) fn sample_event_form() -> GroupEventForm {
         description: "Event description".to_string(),
         kind_id: "virtual".to_string(),
         name: "Sample Event".to_string(),
-        slug: "sample-event".to_string(),
         timezone: "UTC".to_string(),
 
         banner_url: Some("https://example.test/banner.png".to_string()),
@@ -289,7 +288,7 @@ pub(crate) fn sample_event_full(event_id: Uuid, group_id: Uuid) -> EventFull {
         organizers: vec![sample_template_user()],
         published: true,
         sessions,
-        slug: "test-event".to_string(),
+        slug: "abc1234".to_string(),
         timezone: UTC,
 
         banner_url: Some("https://example.test/banner.png".to_string()),
@@ -325,11 +324,11 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         group_category_name: "Meetup".to_string(),
         group_color: "#123456".to_string(),
         group_name: "Test Group".to_string(),
-        group_slug: "test-group".to_string(),
+        group_slug: "def5678".to_string(),
         kind: EventKind::Virtual,
         name: "Sample Event".to_string(),
         published: true,
-        slug: "sample-event".to_string(),
+        slug: "ghi9abc".to_string(),
         timezone: UTC,
 
         description_short: Some("A brief summary of the sample event".to_string()),
@@ -401,7 +400,6 @@ pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
         category_id,
         description: "Group description".to_string(),
         name: "Test Group".to_string(),
-        slug: "test-group".to_string(),
         ..Default::default()
     }
 }
@@ -416,7 +414,7 @@ pub(crate) fn sample_group_full(group_id: Uuid) -> GroupFull {
         members_count: 0,
         name: "Test Group".to_string(),
         organizers: Vec::new(),
-        slug: "test-group".to_string(),
+        slug: "jkm2345".to_string(),
         sponsors: Vec::new(),
 
         city: Some("Test City".to_string()),
@@ -511,7 +509,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         group_id,
         name: "Test Group".to_string(),
-        slug: "test-group".to_string(),
+        slug: "npq6789".to_string(),
 
         city: Some("San Francisco".to_string()),
         country_code: Some("US".to_string()),
@@ -532,7 +530,6 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
         category_id: Uuid::new_v4(),
         description: "Updated description".to_string(),
         name: "Updated Group".to_string(),
-        slug: "updated-group".to_string(),
 
         banner_url: Some("https://example.test/banner.png".to_string()),
         city: Some("Test City".to_string()),
