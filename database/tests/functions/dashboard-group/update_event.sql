@@ -80,7 +80,7 @@ insert into "group" (
     :'group1ID',
     :'community1ID',
     'Test Group',
-    'test-group',
+    'abc1234',
     'A test group',
     '00000000-0000-0000-0000-000000000010'
 );
@@ -105,7 +105,7 @@ insert into event (
     :'event1ID',
     :'group1ID',
     'Original Event',
-    'original-event',
+    'def5678',
     'Original description',
     'America/New_York',
     :'category1ID',
@@ -138,7 +138,7 @@ insert into event (
     :'event5ID',
     :'group1ID',
     'Event With Pending Sync',
-    'event-pending-sync',
+    'ghi9abc',
     'This event has a pending meeting sync',
     'America/New_York',
     :'category1ID',
@@ -167,7 +167,7 @@ insert into event (
     :'event6ID',
     :'group1ID',
     'Event With Session Pending Sync',
-    'event-session-pending-sync',
+    'jkl2def',
     'This event has a session with pending meeting sync',
     'America/New_York',
     :'category1ID',
@@ -217,7 +217,7 @@ insert into event (
     :'event7ID',
     :'group1ID',
     'Event For Session Removal Test',
-    'event-session-removal-test',
+    'mno3ghi',
     'This event has a session with a meeting',
     'America/New_York',
     :'category1ID',
@@ -270,7 +270,7 @@ insert into event (
     :'event4ID',
     :'group1ID',
     'Canceled Event',
-    'canceled-event',
+    'pqr4jkl',
     'This event was canceled',
     'America/New_York',
     :'category1ID',
@@ -289,7 +289,6 @@ select update_event(
     '00000000-0000-0000-0000-000000000003'::uuid,
     '{
         "name": "Updated Event Name",
-        "slug": "updated-event-slug",
         "description": "Updated description",
         "timezone": "America/Los_Angeles",
         "category_id": "00000000-0000-0000-0000-000000000012",
@@ -317,7 +316,7 @@ select is(
         "kind": "virtual",
         "name": "Updated Event Name",
         "published": false,
-        "slug": "updated-event-slug",
+        "slug": "def5678",
         "speakers": [],
         "sponsors": [],
         "timezone": "America/Los_Angeles",
@@ -357,7 +356,6 @@ select update_event(
     '00000000-0000-0000-0000-000000000003'::uuid,
     '{
         "name": "Fully Updated Event",
-        "slug": "fully-updated-event",
         "description": "Fully updated description",
         "timezone": "Asia/Tokyo",
         "category_id": "00000000-0000-0000-0000-000000000011",
@@ -429,7 +427,7 @@ select is(
         "meeting_requested": false,
         "name": "Fully Updated Event",
         "published": false,
-        "slug": "fully-updated-event",
+        "slug": "def5678",
         "timezone": "Asia/Tokyo",
         "banner_url": "https://example.com/new-banner.jpg",
         "capacity": 200,
@@ -521,7 +519,7 @@ select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000099'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
-        '{"name": "Won''t Work", "slug": "wont-work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+        '{"name": "Won''t Work", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
     'event not found or inactive',
     'Should throw error when group_id does not match'
@@ -533,7 +531,6 @@ select update_event(
     :'event5ID'::uuid,
     '{
         "name": "Event With Pending Sync",
-        "slug": "event-pending-sync",
         "description": "Updated description - unrelated to meeting",
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
@@ -557,7 +554,6 @@ select update_event(
     :'event5ID'::uuid,
     '{
         "name": "Event With Pending Sync",
-        "slug": "event-pending-sync",
         "description": "Updated description",
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
@@ -579,7 +575,6 @@ select update_event(
     :'event6ID'::uuid,
     '{
         "name": "Event With Session Pending Sync",
-        "slug": "event-session-pending-sync",
         "description": "Updated event description - unrelated to session meeting",
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
@@ -612,7 +607,6 @@ select update_event(
     :'event6ID'::uuid,
     '{
         "name": "Event With Session Pending Sync",
-        "slug": "event-session-pending-sync",
         "description": "Updated event description",
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
@@ -642,7 +636,7 @@ select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000004'::uuid,
-        '{"name": "Try to Update Canceled", "slug": "try-update-canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+        '{"name": "Try to Update Canceled", "description": "This should fail", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     )$$,
     'event not found or inactive',
     'Should throw error when event is canceled'
@@ -653,7 +647,7 @@ select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
-        '{"name": "Event with Invalid Host", "slug": "invalid-host-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
+        '{"name": "Event with Invalid Host", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
     'host user 99999999-9999-9999-9999-999999999999 not found in community',
     'Should throw error when host user_id does not exist in community'
@@ -664,7 +658,7 @@ select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
-        '{"name": "Event with Invalid Speaker", "slug": "invalid-speaker-event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
+        '{"name": "Event with Invalid Speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
     'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
     'Should throw error when speaker user_id does not exist in community'
@@ -681,7 +675,6 @@ select update_event(
     :'event7ID'::uuid,
     '{
         "name": "Event For Session Removal Test",
-        "slug": "event-session-removal-test",
         "description": "This event has a session with a meeting",
         "timezone": "America/New_York",
         "category_id": "00000000-0000-0000-0000-000000000011",
@@ -708,7 +701,7 @@ select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
+        '{"name": "Event With Pending Sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
     'event capacity (200) exceeds maximum participants allowed (100)',
@@ -720,7 +713,7 @@ select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test updated", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
+        '{"name": "Event With Pending Sync", "description": "Test updated", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
     'Should succeed when capacity is within cfg_max_participants'
@@ -731,7 +724,7 @@ select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test no meeting", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
+        '{"name": "Event With Pending Sync", "description": "Test no meeting", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
     'Should succeed with high capacity when meeting_requested is false'
@@ -742,7 +735,7 @@ select lives_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000005'::uuid,
-        '{"name": "Event With Pending Sync", "slug": "event-pending-sync", "description": "Test no limit", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
+        '{"name": "Event With Pending Sync", "description": "Test no limit", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T12:00:00"}'::jsonb,
         null
     )$$,
     'Should succeed when cfg_max_participants is null'

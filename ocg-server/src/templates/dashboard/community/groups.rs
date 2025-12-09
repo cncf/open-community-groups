@@ -53,14 +53,12 @@ pub(crate) struct UpdatePage {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct Group {
-    /// Group name.
-    pub name: String,
-    /// URL-friendly identifier.
-    pub slug: String,
     /// Category this group belongs to.
     pub category_id: Uuid,
     /// Group description.
     pub description: String,
+    /// Group name.
+    pub name: String,
 
     /// Banner image URL.
     pub banner_url: Option<String>,

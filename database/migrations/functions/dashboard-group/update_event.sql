@@ -56,7 +56,6 @@ begin
     -- Update event
     update event set
         name = p_event->>'name',
-        slug = p_event->>'slug',
         description = p_event->>'description',
         timezone = p_event->>'timezone',
         event_category_id = (p_event->>'category_id')::uuid,

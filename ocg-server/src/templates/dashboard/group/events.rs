@@ -84,18 +84,16 @@ pub(crate) struct UpdatePage {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub(crate) struct Event {
-    /// Event name.
-    pub name: String,
-    /// URL-friendly identifier.
-    pub slug: String,
-    /// Event description.
-    pub description: String,
-    /// Timezone for the event.
-    pub timezone: String,
     /// Category this event belongs to.
     pub category_id: Uuid,
+    /// Event description.
+    pub description: String,
     /// Type of event (in-person, virtual, hybrid).
     pub kind_id: String,
+    /// Event name.
+    pub name: String,
+    /// Timezone for the event.
+    pub timezone: String,
 
     /// Banner image URL.
     pub banner_url: Option<String>,

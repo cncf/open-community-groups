@@ -533,9 +533,6 @@
     showSuccessAlert
   } from '/static/js/common/alerts.js';
   import {
-    generateSlug
-  } from '/static/js/dashboard/common.js';
-  import {
     validateMeetingRequest,
     hasVenueData,
     clearVenueFields,
@@ -728,17 +725,9 @@
       }
     });
 
-    // Generate slug and add to request parameters
+    // Convert datetime-local values to proper ISO format for PostgreSQL
     addEventButton.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'add-event-button') {
-        const nameInput = document.getElementById('name');
-
-        if (nameInput && nameInput.value.trim()) {
-          const slug = generateSlug(nameInput.value);
-          e.detail.parameters.slug = slug;
-        }
-
-        // Convert datetime-local values to proper ISO format for PostgreSQL
         Object.keys(e.detail.parameters).forEach(key => {
           if (key.match(/^(starts_at|ends_at)$/) || key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/)) {
             if (e.detail.parameters[key]) {

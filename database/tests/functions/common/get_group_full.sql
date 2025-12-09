@@ -97,7 +97,7 @@ insert into "group" (
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
-    'seattle-kubernetes-meetup',
+    'abc1234',
     :'communityID',
     :'categoryID',
     :'regionID',
@@ -164,7 +164,7 @@ insert into "group" (
 ) values (
     :'groupInactiveID',
     'Inactive DevOps Group',
-    'inactive-devops-group',
+    'xyz9876',
     :'communityID',
     :'categoryID',
     false,
@@ -192,7 +192,7 @@ select is(
         "group_id": "00000000-0000-0000-0000-000000000021",
         "members_count": 4,
         "name": "Seattle Kubernetes Meetup",
-        "slug": "seattle-kubernetes-meetup",
+        "slug": "abc1234",
         "banner_url": "https://example.com/group-banner.png",
         "city": "New York",
         "country_code": "US",

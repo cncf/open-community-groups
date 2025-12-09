@@ -709,7 +709,6 @@ mod tests {
             .withf(move |id, event, cfg_max_participants| {
                 *id == group_id
                     && event.name == event_form.name
-                    && event.slug == event_form.slug
                     && cfg_max_participants.get(&MeetingProvider::Zoom) == Some(&100)
             })
             .returning(move |_, _, _| Ok(Uuid::new_v4()));
@@ -857,7 +856,7 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventCanceled>(value.clone())
                             .map(|template| {
-                                template.link == "/group/test-group/event/sample-event"
+                                template.link == "/group/def5678/event/ghi9abc"
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
@@ -963,7 +962,7 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventPublished>(value.clone())
                             .map(|template| {
-                                template.link == "/group/test-group/event/sample-event"
+                                template.link == "/group/def5678/event/ghi9abc"
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
@@ -1177,7 +1176,7 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventRescheduled>(value.clone())
                             .map(|template| {
-                                template.link == "/group/test-group/event/sample-event"
+                                template.link == "/group/def5678/event/ghi9abc"
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
