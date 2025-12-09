@@ -78,8 +78,12 @@ pub(crate) struct Group {
     pub github_url: Option<String>,
     /// Instagram profile URL.
     pub instagram_url: Option<String>,
+    /// Latitude coordinate of the group location.
+    pub latitude: Option<f64>,
     /// `LinkedIn` profile URL.
     pub linkedin_url: Option<String>,
+    /// Longitude coordinate of the group location.
+    pub longitude: Option<f64>,
     /// URL to the group logo.
     pub logo_url: Option<String>,
     /// Gallery of photo URLs.

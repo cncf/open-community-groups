@@ -65,6 +65,11 @@ begin
         capacity = (p_event->>'capacity')::int,
         description_short = nullif(p_event->>'description_short', ''),
         ends_at = (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
+        location = case
+            when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
+            then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography
+            else null
+        end,
         logo_url = nullif(p_event->>'logo_url', ''),
         meeting_hosts = case when p_event->'meeting_hosts' is not null then array(select jsonb_array_elements_text(p_event->'meeting_hosts')) else null end,
         meeting_in_sync = case

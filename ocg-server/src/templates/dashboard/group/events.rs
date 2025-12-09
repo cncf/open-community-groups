@@ -105,6 +105,10 @@ pub(crate) struct Event {
     pub ends_at: Option<NaiveDateTime>,
     /// User IDs of event hosts.
     pub hosts: Option<Vec<Uuid>>,
+    /// Latitude coordinate of the event location.
+    pub latitude: Option<f64>,
+    /// Longitude coordinate of the event location.
+    pub longitude: Option<f64>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
     /// Meeting hosts to synchronize with provider (email addresses).
