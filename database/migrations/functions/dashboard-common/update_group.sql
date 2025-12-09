@@ -22,6 +22,11 @@ begin
         github_url = nullif(p_group->>'github_url', ''),
         instagram_url = nullif(p_group->>'instagram_url', ''),
         linkedin_url = nullif(p_group->>'linkedin_url', ''),
+        location = case
+            when (p_group->>'latitude') is not null and (p_group->>'longitude') is not null
+            then ST_SetSRID(ST_MakePoint((p_group->>'longitude')::float, (p_group->>'latitude')::float), 4326)::geography
+            else null
+        end,
         logo_url = nullif(p_group->>'logo_url', ''),
         photos_urls = case
             when p_group ? 'photos_urls' and jsonb_typeof(p_group->'photos_urls') != 'null' then
