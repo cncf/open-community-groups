@@ -5,6 +5,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use tokio_postgres::error::SqlState;
 
 use crate::templates::community::explore::FilterError;
 
@@ -15,9 +16,13 @@ pub(crate) enum HandlerError {
     #[error("authentication error")]
     Auth(String),
 
+    /// Database error with user-facing message.
+    #[error("database error: {0}")]
+    Database(String),
+
     /// Any other error, wrapped in `anyhow::Error` for flexibility.
     #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    Other(anyhow::Error),
 
     /// Error during JSON serialization or deserialization.
     #[error("serde json error: {0}")]
@@ -41,11 +46,22 @@ impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         match self {
             HandlerError::Auth(_) => StatusCode::UNAUTHORIZED.into_response(),
+            HandlerError::Database(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response(),
             HandlerError::Validation(report) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, report.to_string()).into_response()
             }
             _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
+    }
+}
+
+impl From<anyhow::Error> for HandlerError {
+    fn from(err: anyhow::Error) -> Self {
+        // Try to extract P0001 error message from tokio_postgres
+        if let Some(msg) = extract_db_error_message(&err) {
+            return HandlerError::Database(msg);
+        }
+        HandlerError::Other(err)
     }
 }
 
@@ -55,5 +71,45 @@ impl From<FilterError> for HandlerError {
             FilterError::Parse(e) => HandlerError::Other(anyhow::anyhow!(e)),
             FilterError::Validation(report) => HandlerError::Validation(report),
         }
+    }
+}
+
+/// Extracts user-facing message from P0001 (RAISE EXCEPTION) database errors.
+fn extract_db_error_message(err: &anyhow::Error) -> Option<String> {
+    let pg_err = err.downcast_ref::<tokio_postgres::Error>()?;
+    let db_err = pg_err.as_db_error()?;
+
+    // P0001 is the default SQLSTATE for RAISE EXCEPTION
+    if db_err.code() == &SqlState::RAISE_EXCEPTION {
+        return Some(db_err.message().to_string());
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::body::to_bytes;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_database_error_returns_422_with_message() {
+        let message = "event has reached capacity";
+        let error = HandlerError::Database(message.to_string());
+        let response = error.into_response();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(bytes.as_ref(), message.as_bytes());
+    }
+
+    #[tokio::test]
+    async fn test_non_db_anyhow_error_returns_500() {
+        let error: HandlerError = anyhow::anyhow!("some internal error").into();
+        let response = error.into_response();
+        let parts = response.into_parts().0;
+
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
