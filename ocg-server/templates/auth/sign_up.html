@@ -58,6 +58,7 @@
                   <input id="name"
                          name="name"
                          type="text"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="name"
                          autocorrect="off"
@@ -77,6 +78,7 @@
                   <input id="email"
                          name="email"
                          type="email"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="email"
                          required>
@@ -93,6 +95,7 @@
                   <input id="username"
                          name="username"
                          type="text"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="username"
                          autocorrect="off"

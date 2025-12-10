@@ -120,7 +120,7 @@
                   <input type="text"
                          name="name"
                          id="name"
-                         maxlength="100"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="off"
                          autocorrect="off"
@@ -190,7 +190,7 @@
                         name="description_short"
                         rows="2"
                         class="input-primary"
-                        maxlength="200"></textarea>
+                        maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
             </div>
             <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
           </div>

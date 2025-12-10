@@ -22,7 +22,7 @@
             <input type="text"
                    name="name"
                    id="name"
-                   maxlength="100"
+                   maxlength="{{ crate::validation::MAX_LEN_M }}"
                    class="input-primary"
                    autocomplete="off"
                    autocorrect="off"
@@ -88,7 +88,7 @@
                   name="description_short"
                   rows="2"
                   class="input-primary"
-                  maxlength="200"></textarea>
+                  maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
       </div>
       <p class="form-legend">Brief description for group listings and previews.</p>
     </div>
@@ -120,6 +120,7 @@
         <input type="text"
                name="city"
                id="city"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
                class="input-primary"
                autocomplete="off"
                autocorrect="off"
@@ -137,6 +138,7 @@
         <input type="text"
                name="state"
                id="state"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
                class="input-primary"
                autocomplete="off"
                autocorrect="off"
@@ -154,6 +156,7 @@
         <input type="text"
                name="country_name"
                id="country_name"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
                class="input-primary"
                autocomplete="off"
                autocorrect="off"
