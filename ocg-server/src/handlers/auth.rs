@@ -1869,7 +1869,7 @@ mod tests {
             .await;
 
         // Setup request
-        let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret";
+        let form = "email=test%40example.test&name=Test+User&username=test-user&password=secretpw";
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up")
@@ -1911,7 +1911,12 @@ mod tests {
         db.expect_sign_up_user().times(0);
         db.expect_update_session()
             .times(1)
-            .withf(|record| message_matches(record, "email: not a valid email: value is missing `@`\n"))
+            .withf(|record| {
+                message_matches(
+                    record,
+                    "email: not a valid email: value is missing `@`\npassword: length is lower than 8\n",
+                )
+            })
             .returning(|_| Ok(()));
 
         // Setup notifications manager mock

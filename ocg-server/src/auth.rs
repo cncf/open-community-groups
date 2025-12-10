@@ -23,7 +23,7 @@ use uuid::Uuid;
 use crate::{
     config::{HttpServerConfig, OAuth2Config, OAuth2Provider, OidcConfig, OidcProvider},
     db::DynDB,
-    validation::{trimmed_non_empty, trimmed_non_empty_opt},
+    validation::{MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty, trimmed_non_empty_opt},
 };
 
 /// Type alias for the authentication layer used in the router.
@@ -504,7 +504,7 @@ pub(crate) struct UserSummary {
     #[garde(skip)]
     pub has_password: Option<bool>,
     /// User's password (if present).
-    #[garde(custom(trimmed_non_empty_opt))]
+    #[garde(custom(trimmed_non_empty_opt), length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
     pub password: Option<String>,
 }
 

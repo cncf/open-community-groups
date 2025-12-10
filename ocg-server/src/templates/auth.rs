@@ -14,7 +14,8 @@ use crate::{
     templates::{PageId, filters, helpers::user_initials},
     types::community::Community,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_vec,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty, trimmed_non_empty_opt,
+        trimmed_non_empty_vec,
     },
 };
 
@@ -188,7 +189,7 @@ impl From<crate::auth::User> for UserDetails {
 #[derive(Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct UserPassword {
     /// The new password to set.
-    #[garde(length(min = 8, max = MAX_LEN_M))]
+    #[garde(length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
     pub new_password: String,
     /// The user's current password.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]

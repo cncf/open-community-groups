@@ -35,6 +35,9 @@ pub const MAX_ITEMS: usize = 25;
 /// Maximum pagination limit for results per page.
 pub const MAX_PAGINATION_LIMIT: usize = 25;
 
+/// Minimum length for passwords.
+pub const MIN_PASSWORD_LEN: usize = 8;
+
 // Custom validators.
 
 /// Validates that each string in a vector is a valid email address within max length.
