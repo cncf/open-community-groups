@@ -24,7 +24,10 @@ use crate::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
     },
-    validation::{MAX_LEN_M, MAX_LEN_S, MAX_LIMIT, trimmed_non_empty_opt, valid_latitude, valid_longitude},
+    validation::{
+        MAX_ITEMS, MAX_LEN_M, MAX_LEN_S, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt, valid_latitude,
+        valid_longitude,
+    },
 };
 
 use super::{
@@ -199,23 +202,23 @@ impl From<Option<&String>> for Entity {
 pub(crate) struct EventsFilters {
     /// Selected event categories to filter by.
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
     pub event_category: Vec<String>,
     /// Selected groups to filter by.
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS))]
     pub group: Vec<Uuid>,
     /// Selected group categories to filter by.
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
     pub group_category: Vec<String>,
     /// Event types to include (in-person, online, hybrid).
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS))]
     pub kind: Vec<EventKind>,
     /// Geographic regions to filter by.
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
     pub region: Vec<String>,
 
     /// Northeast latitude of bounding box for map view.
@@ -246,7 +249,7 @@ pub(crate) struct EventsFilters {
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// Number of results per page.
-    #[garde(range(max = MAX_LIMIT))]
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
     #[garde(custom(valid_longitude))]
@@ -378,11 +381,11 @@ impl Pagination for EventsFilters {
 pub(crate) struct GroupsFilters {
     /// Selected group categories to filter by.
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
     pub group_category: Vec<String>,
     /// Geographic regions to filter by.
     #[serde(default)]
-    #[garde(skip)]
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
     pub region: Vec<String>,
 
     /// Northeast latitude of bounding box for map view.
@@ -407,7 +410,7 @@ pub(crate) struct GroupsFilters {
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// Number of results per page.
-    #[garde(range(max = MAX_LIMIT))]
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
     #[garde(custom(valid_longitude))]

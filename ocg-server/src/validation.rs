@@ -12,6 +12,7 @@
 
 use std::collections::BTreeMap;
 
+use garde::rules::email::parse_email;
 use reqwest::Url;
 
 // Maximum length constants for validation.
@@ -20,16 +21,19 @@ use reqwest::Url;
 pub const MAX_LEN_S: usize = 100;
 
 /// Maximum length for medium text fields (names, titles, usernames).
-pub const MAX_LEN_M: usize = 255;
+pub const MAX_LEN_M: usize = 250;
 
 /// Maximum length for long text fields (URLs, bios, short descriptions).
-pub const MAX_LEN_L: usize = 2048;
+pub const MAX_LEN_L: usize = 2000;
 
 /// Maximum length for extra-long text fields (full descriptions).
-pub const MAX_LEN_XL: usize = 10000;
+pub const MAX_LEN_XL: usize = 20000;
 
-/// Maximum pagination limit.
-pub const MAX_LIMIT: usize = 25;
+/// Maximum number of elements in a collection (filters, tags, etc.).
+pub const MAX_ITEMS: usize = 25;
+
+/// Maximum pagination limit for results per page.
+pub const MAX_PAGINATION_LIMIT: usize = 25;
 
 // Custom validators.
 
@@ -37,14 +41,12 @@ pub const MAX_LIMIT: usize = 25;
 pub fn email_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
     if let Some(vec) = value {
         for email in vec {
-            if !email.contains('@') || email.trim().is_empty() {
-                return Err(garde::Error::new("invalid email address"));
-            }
             if email.len() > MAX_LEN_M {
                 return Err(garde::Error::new(format!(
                     "email exceeds max length of {MAX_LEN_M}"
                 )));
             }
+            parse_email(email).map_err(|e| garde::Error::new(format!("invalid email: {e}")))?;
         }
     }
     Ok(())
