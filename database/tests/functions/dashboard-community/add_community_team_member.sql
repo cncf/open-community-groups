@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -61,15 +61,11 @@ select throws_ok(
     'Should not allow duplicate community team membership'
 );
 
--- Should not create membership for user from another community
-select lives_ok(
+-- Should fail for user from another community
+select throws_ok(
     $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000012'::uuid) $$,
-    'Should not fail for other community user'
-);
-select results_eq(
-    $$ select count(*) from community_team where community_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000012'::uuid $$,
-    $$ values (0::bigint) $$,
-    'No membership should be created for other community user'
+    format('team member user %s not found in community', '00000000-0000-0000-0000-000000000012'),
+    'Should fail for other community user'
 );
 
 -- ============================================================================

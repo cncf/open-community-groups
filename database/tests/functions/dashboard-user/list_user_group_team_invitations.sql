@@ -16,6 +16,7 @@ select plan(3);
 \set group1ID '00000000-0000-0000-0000-000000000021'
 \set group2ID '00000000-0000-0000-0000-000000000022'
 \set group3ID '00000000-0000-0000-0000-000000000023'
+\set user2ID '00000000-0000-0000-0000-000000000032'
 \set userID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
@@ -38,15 +39,16 @@ insert into "group" (group_id, community_id, group_category_id, name, slug) valu
     (:'group2ID', :'communityID', :'category1ID', 'G2', 'g2'),
     (:'group3ID', :'community2ID', :'category2ID', 'G3', 'g3');
 
--- User
+-- Users
 insert into "user" (user_id, auth_hash, community_id, email, name, username, email_verified) values
-    (:'userID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true);
+    (:'userID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true),
+    (:'user2ID', gen_random_bytes(32), :'community2ID', 'bob@example.com', 'Bob', 'bob', true);
 
 -- Pending group invitations (two in main community, one in other community)
 insert into group_team (group_id, user_id, role, accepted, created_at) values
     (:'group1ID', :'userID', 'organizer', false, '2024-01-02 10:00:00+00'),
     (:'group2ID', :'userID', 'organizer', false, '2024-01-03 10:00:00+00'),
-    (:'group3ID', :'userID', 'organizer', false, '2024-01-04 10:00:00+00');
+    (:'group3ID', :'user2ID', 'organizer', false, '2024-01-04 10:00:00+00');
 
 -- Accepted membership should not be listed (mark existing invite as accepted)
 update group_team

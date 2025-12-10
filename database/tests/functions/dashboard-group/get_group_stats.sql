@@ -13,15 +13,18 @@ select plan(3);
 \set event1ID '00000000-0000-0000-0000-000000000301'
 \set event2ID '00000000-0000-0000-0000-000000000302'
 \set event3ID '00000000-0000-0000-0000-000000000303'
+\set eventCategory2ID '00000000-0000-0000-0000-000000000202'
 \set eventCategoryID '00000000-0000-0000-0000-000000000201'
 \set group1ID '00000000-0000-0000-0000-000000000101'
 \set group2ID '00000000-0000-0000-0000-000000000102'
 \set group3ID '00000000-0000-0000-0000-000000000103'
+\set groupCategory2ID '00000000-0000-0000-0000-000000000502'
 \set groupCategoryID '00000000-0000-0000-0000-000000000501'
 \set nonExistentGroupID '00000000-0000-0000-0000-999999999999'
 \set user1ID '00000000-0000-0000-0000-000000000401'
 \set user2ID '00000000-0000-0000-0000-000000000402'
 \set user3ID '00000000-0000-0000-0000-000000000403'
+\set user4ID '00000000-0000-0000-0000-000000000404'
 
 -- ============================================================================
 -- SEED DATA
@@ -59,13 +62,15 @@ insert into community (
         '{}'::jsonb
     );
 
--- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+-- Group categories
+insert into group_category (group_category_id, community_id, name) values
+    (:'groupCategoryID', :'communityID', 'Tech'),
+    (:'groupCategory2ID', :'community2ID', 'Tech2');
 
--- Event category
-insert into event_category (event_category_id, community_id, name, slug)
-values (:'eventCategoryID', :'communityID', 'Conference', 'conference');
+-- Event categories
+insert into event_category (event_category_id, community_id, name, slug) values
+    (:'eventCategoryID', :'communityID', 'Conference', 'conference'),
+    (:'eventCategory2ID', :'community2ID', 'Conference2', 'conference2');
 
 -- Groups
 insert into "group" (
@@ -80,13 +85,14 @@ insert into "group" (
 ) values
     (:'group1ID', :'communityID', :'groupCategoryID', 'Group One', 'group-one', '2024-01-01 00:00:00+00', true, false),
     (:'group2ID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two', '2024-02-01 00:00:00+00', true, false),
-    (:'group3ID', :'community2ID', :'groupCategoryID', 'Other Community Group', 'other-group', '2024-03-01 00:00:00+00', true, false);
+    (:'group3ID', :'community2ID', :'groupCategory2ID', 'Other Community Group', 'other-group', '2024-03-01 00:00:00+00', true, false);
 
 -- Users
 insert into "user" (user_id, community_id, auth_hash, email, username) values
     (:'user1ID', :'communityID', 'hash-1', 'user1@example.com', 'user1'),
     (:'user2ID', :'communityID', 'hash-2', 'user2@example.com', 'user2'),
-    (:'user3ID', :'communityID', 'hash-3', 'user3@example.com', 'user3');
+    (:'user3ID', :'communityID', 'hash-3', 'user3@example.com', 'user3'),
+    (:'user4ID', :'community2ID', 'hash-4', 'user4@example.com', 'user4');
 
 -- Members
 insert into group_member (group_id, user_id, created_at) values
@@ -111,14 +117,14 @@ insert into event (
 ) values
     (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event One', 'event-one', 'First event', 'UTC', true, false, false, '2024-02-15 00:00:00+00'),
     (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two', 'Second event', 'UTC', true, false, false, '2024-04-15 00:00:00+00'),
-    (:'event3ID', :'group2ID', :'eventCategoryID', 'in-person', 'Other Group Event', 'other-event', 'Other group event', 'UTC', true, false, false, '2024-05-15 00:00:00+00');
+    (:'event3ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Other Group Event', 'other-event', 'Other group event', 'UTC', true, false, false, '2024-05-15 00:00:00+00');
 
 -- Attendees
 insert into event_attendee (event_id, user_id, created_at) values
     (:'event1ID', :'user1ID', '2024-02-01 00:00:00+00'),
     (:'event1ID', :'user2ID', '2024-02-05 00:00:00+00'),
     (:'event2ID', :'user1ID', '2024-04-10 00:00:00+00'),
-    (:'event3ID', :'user3ID', '2024-05-20 00:00:00+00');
+    (:'event3ID', :'user4ID', '2024-05-20 00:00:00+00');
 
 -- ============================================================================
 -- TESTS

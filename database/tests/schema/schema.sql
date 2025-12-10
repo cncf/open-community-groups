@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(245);
+select plan(259);
 
 -- ============================================================================
 -- TESTS
@@ -678,9 +678,16 @@ select has_function('add_group_sponsor');
 select has_function('add_group_team_member');
 select has_function('attend_event');
 select has_function('cancel_event');
+select has_function('check_community_team_community');
+select has_function('check_event_attendee_community');
+select has_function('check_event_category_community');
 select has_function('check_event_host_community');
 select has_function('check_event_speaker_community');
 select has_function('check_event_sponsor_group');
+select has_function('check_group_category_community');
+select has_function('check_group_member_community');
+select has_function('check_group_region_community');
+select has_function('check_group_team_community');
 select has_function('check_in_event');
 select has_function('check_session_speaker_community');
 select has_function('check_session_within_event_bounds');
@@ -748,9 +755,16 @@ select has_function('user_owns_group');
 select has_function('verify_email');
 
 -- Test: check expected triggers exist
+select has_trigger('community_team', 'community_team_community_check');
+select has_trigger('event', 'event_category_community_check');
+select has_trigger('event_attendee', 'event_attendee_community_check');
 select has_trigger('event_host', 'event_host_community_check');
 select has_trigger('event_speaker', 'event_speaker_community_check');
 select has_trigger('event_sponsor', 'event_sponsor_group_check');
+select has_trigger('group', 'group_category_community_check');
+select has_trigger('group', 'group_region_community_check');
+select has_trigger('group_member', 'group_member_community_check');
+select has_trigger('group_team', 'group_team_community_check');
 select has_trigger('session', 'session_within_event_bounds_check');
 select has_trigger('session_speaker', 'session_speaker_community_check');
 
