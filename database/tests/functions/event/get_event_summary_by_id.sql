@@ -104,8 +104,8 @@ insert into event (
 );
 
 -- Event attendee
-insert into event_attendee (event_id, user_id, checked_in, created_at)
-values (:'eventID', :'userID', true, '2025-06-02 00:00:00');
+insert into event_attendee (event_id, user_id, checked_in, checked_in_at, created_at)
+values (:'eventID', :'userID', true, '2025-06-02 00:00:00', '2025-06-02 00:00:00');
 
 -- ============================================================================
 -- TESTS

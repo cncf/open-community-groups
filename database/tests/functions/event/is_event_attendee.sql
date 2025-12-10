@@ -70,7 +70,7 @@ insert into event (
 );
 
 -- Event Attendee - user1 is checked in
-insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :'user1ID', true);
+insert into event_attendee (event_id, user_id, checked_in, checked_in_at) values (:'eventID', :'user1ID', true, current_timestamp);
 
 -- Event Attendee - user2 is not checked in
 insert into event_attendee (event_id, user_id, checked_in) values (:'eventID', :'user2ID', false);
