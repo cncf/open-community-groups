@@ -9,8 +9,8 @@ use axum::{
     middleware::Next,
     response::{Html, IntoResponse, Redirect},
 };
-use axum_extra::extract::Form;
 use axum_messages::Messages;
+use garde::Validate;
 use openidconnect as oidc;
 use password_auth::verify_password;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
@@ -19,13 +19,15 @@ use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::validation::trimmed_non_empty;
+
 use crate::{
     auth::{self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials},
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, OAuth2, Oidc},
+        extractors::{CommunityId, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -157,7 +159,7 @@ pub(crate) async fn log_in(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
-    Form(login_form): Form<LoginForm>,
+    ValidatedForm(login_form): ValidatedForm<LoginForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Sanitize next url
     let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
@@ -275,7 +277,7 @@ pub(crate) async fn oauth2_callback(
 pub(crate) async fn oauth2_redirect(
     session: Session,
     OAuth2(oauth2_provider): OAuth2,
-    Form(NextUrl { next_url }): Form<NextUrl>,
+    Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Generate the authorization url
     let mut builder = oauth2_provider.client.authorize_url(oauth2::CsrfToken::new_random);
@@ -375,7 +377,7 @@ pub(crate) async fn oidc_callback(
 pub(crate) async fn oidc_redirect(
     session: Session,
     Oidc(oidc_provider): Oidc,
-    Form(NextUrl { next_url }): Form<NextUrl>,
+    Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Generate the authorization url
     let mut builder = oidc_provider.client.authorize_url(
@@ -409,7 +411,7 @@ pub(crate) async fn sign_up(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
-    Form(mut user_summary): Form<auth::UserSummary>,
+    ValidatedForm(mut user_summary): ValidatedForm<auth::UserSummary>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check if the password has been provided
     let Some(password) = user_summary.password.take() else {
@@ -459,17 +461,10 @@ pub(crate) async fn update_user_details(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(user_data): ValidatedFormQs<UserDetails>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
-
-    // Get user details from body
-    let user_data: UserDetails = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(data) => data,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
 
     // Update user in database
     let user_id = user.user_id;
@@ -484,7 +479,7 @@ pub(crate) async fn update_user_details(
 pub(crate) async fn update_user_password(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    Form(mut input): Form<templates::auth::UserPassword>,
+    ValidatedForm(mut input): ValidatedForm<templates::auth::UserPassword>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -555,11 +550,13 @@ fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
 // Types.
 
 /// Login form data from the user.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub(crate) struct LoginForm {
     /// Username for authentication.
+    #[garde(custom(trimmed_non_empty))]
     pub username: String,
     /// Password for authentication.
+    #[garde(custom(trimmed_non_empty))]
     pub password: String,
 }
 
@@ -661,6 +658,7 @@ mod tests {
     use std::{collections::HashMap, sync::Arc};
 
     use anyhow::anyhow;
+    use axum::extract::Query;
     use axum::{
         Router,
         body::{Body, to_bytes},
@@ -672,7 +670,6 @@ mod tests {
         response::IntoResponse,
         routing::get,
     };
-    use axum_extra::extract::Form;
     use axum_login::tower_sessions::session;
     use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
     use openidconnect as oidc;
@@ -1301,7 +1298,7 @@ mod tests {
         // Setup session and form input
         let store = Arc::new(MemoryStore::default());
         let session = Session::new(None, store, None);
-        let form = Form(NextUrl {
+        let query = Query(NextUrl {
             next_url: Some("/dashboard".to_string()),
         });
 
@@ -1319,7 +1316,7 @@ mod tests {
         };
 
         // Execute handler
-        let response = oauth2_redirect(session.clone(), OAuth2(Arc::new(provider)), form)
+        let response = oauth2_redirect(session.clone(), OAuth2(Arc::new(provider)), query)
             .await
             .expect("oauth2 redirect should succeed")
             .into_response();
@@ -1525,7 +1522,7 @@ mod tests {
         // Setup session and form input
         let store = Arc::new(MemoryStore::default());
         let session = Session::new(None, store, None);
-        let form = Form(NextUrl {
+        let query = Query(NextUrl {
             next_url: Some("/dashboard".to_string()),
         });
 
@@ -1554,7 +1551,7 @@ mod tests {
         };
 
         // Execute handler
-        let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), form)
+        let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), query)
             .await
             .expect("oidc redirect should succeed")
             .into_response();

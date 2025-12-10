@@ -3,6 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -63,8 +64,9 @@ impl Attendee {
 }
 
 /// Filter parameters for attendees searches.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesFilters {
     /// Selected event to scope attendees list.
+    #[garde(skip)]
     pub event_id: Option<Uuid>,
 }

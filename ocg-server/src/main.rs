@@ -46,6 +46,8 @@ mod templates;
 mod types;
 /// Utility helpers shared across modules.
 mod util;
+/// Validation utilities and custom validators.
+mod validation;
 
 /// Command-line arguments for the application.
 #[derive(Debug, Parser)]

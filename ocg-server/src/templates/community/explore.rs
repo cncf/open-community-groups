@@ -4,6 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::http::HeaderMap;
 use chrono::{Datelike, Months, NaiveDate, Utc};
+use garde::Validate;
 use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -23,6 +24,7 @@ use crate::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
     },
+    validation::{MAX_LEN_M, MAX_LEN_S, MAX_LIMIT, trimmed_non_empty_opt, valid_latitude, valid_longitude},
 };
 
 use super::{
@@ -193,63 +195,85 @@ impl From<Option<&String>> for Entity {
 /// location-based filters (bounding box, distance), temporal filters (date range),
 /// categorical filters, etc.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct EventsFilters {
     /// Selected event categories to filter by.
     #[serde(default)]
+    #[garde(skip)]
     pub event_category: Vec<String>,
     /// Selected groups to filter by.
     #[serde(default)]
+    #[garde(skip)]
     pub group: Vec<Uuid>,
     /// Selected group categories to filter by.
     #[serde(default)]
+    #[garde(skip)]
     pub group_category: Vec<String>,
     /// Event types to include (in-person, online, hybrid).
     #[serde(default)]
+    #[garde(skip)]
     pub kind: Vec<EventKind>,
     /// Geographic regions to filter by.
     #[serde(default)]
+    #[garde(skip)]
     pub region: Vec<String>,
 
     /// Northeast latitude of bounding box for map view.
+    #[garde(custom(valid_latitude))]
     pub bbox_ne_lat: Option<f64>,
     /// Northeast longitude of bounding box for map view.
+    #[garde(custom(valid_longitude))]
     pub bbox_ne_lon: Option<f64>,
     /// Southwest latitude of bounding box for map view.
+    #[garde(custom(valid_latitude))]
     pub bbox_sw_lat: Option<f64>,
     /// Southwest longitude of bounding box for map view.
+    #[garde(custom(valid_longitude))]
     pub bbox_sw_lon: Option<f64>,
     /// Start date for event filtering (YYYY-MM-DD format).
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub date_from: Option<String>,
     /// End date for event filtering (YYYY-MM-DD format).
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub date_to: Option<String>,
     /// Maximum distance in meters from user's location.
+    #[garde(skip)]
     pub distance: Option<u64>,
     /// Whether to include bounding box in results (for map view).
+    #[garde(skip)]
     pub include_bbox: Option<bool>,
     /// User's latitude for distance-based filtering.
+    #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// Number of results per page.
+    #[garde(range(max = MAX_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
+    #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
     /// Pagination offset for results.
+    #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort order for results (e.g., "date", "distance").
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub sort_by: Option<String>,
     /// Sort direction for results ("asc" or "desc").
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub sort_direction: Option<String>,
     /// Full-text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
     /// Display mode for results (list, calendar, or map).
+    #[garde(skip)]
     pub view_mode: Option<ViewMode>,
 }
 
 impl EventsFilters {
     /// Create a new `EventsFilters` instance from the raw query string and headers.
     #[instrument(err)]
-    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
+    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
         let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
+        filters.validate()?;
 
         // Clean up entries that are empty strings
         filters.event_category.retain(|c| !c.is_empty());
@@ -350,40 +374,55 @@ impl Pagination for EventsFilters {
 /// entities. Supports location-based filtering, categorical filtering, and full-text
 /// search.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct GroupsFilters {
     /// Selected group categories to filter by.
     #[serde(default)]
+    #[garde(skip)]
     pub group_category: Vec<String>,
     /// Geographic regions to filter by.
     #[serde(default)]
+    #[garde(skip)]
     pub region: Vec<String>,
 
     /// Northeast latitude of bounding box for map view.
+    #[garde(custom(valid_latitude))]
     pub bbox_ne_lat: Option<f64>,
     /// Northeast longitude of bounding box for map view.
+    #[garde(custom(valid_longitude))]
     pub bbox_ne_lon: Option<f64>,
     /// Southwest latitude of bounding box for map view.
+    #[garde(custom(valid_latitude))]
     pub bbox_sw_lat: Option<f64>,
     /// Southwest longitude of bounding box for map view.
+    #[garde(custom(valid_longitude))]
     pub bbox_sw_lon: Option<f64>,
     /// Maximum distance in meters from user's location.
+    #[garde(skip)]
     pub distance: Option<f64>,
     /// Whether to include bounding box in results.
+    #[garde(skip)]
     pub include_bbox: Option<bool>,
     /// User's latitude for distance-based filtering.
+    #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// Number of results per page.
+    #[garde(range(max = MAX_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
+    #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
     /// Pagination offset for results.
+    #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort order for results.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub sort_by: Option<String>,
     /// Full-text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
     /// Display mode for results (list or map).
+    #[garde(skip)]
     pub view_mode: Option<ViewMode>,
 }
 
@@ -391,8 +430,9 @@ impl GroupsFilters {
     /// Create a new `GroupsFilters` instance from the raw query string and headers
     /// provided.
     #[instrument(err)]
-    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self> {
+    pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
         let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
+        filters.validate()?;
 
         // Clean up entries that are empty strings
         filters.group_category.retain(|c| !c.is_empty());
@@ -443,6 +483,18 @@ impl Pagination for GroupsFilters {
     fn set_offset(&mut self, offset: Option<usize>) {
         self.offset = offset;
     }
+}
+
+/// Error that can occur when creating filter instances.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum FilterError {
+    /// Error parsing the query string.
+    #[error("parse error: {0}")]
+    Parse(#[from] serde_html_form::de::Error),
+
+    /// Validation error.
+    #[error("validation error: {0}")]
+    Validation(#[from] garde::Report),
 }
 
 /// Available options for filters.

@@ -3,12 +3,15 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Form, State},
+    extract::State,
     http::StatusCode,
     response::{Html, IntoResponse},
 };
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
+
+use crate::validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty};
 
 use crate::{
     auth::AuthSession,
@@ -16,7 +19,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{CommunityId, SelectedGroupId, ValidatedForm},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{dashboard::group::members, notifications::GroupCustom},
@@ -48,7 +51,7 @@ pub(crate) async fn send_group_custom_notification(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    Form(notification): Form<GroupCustomNotification>,
+    ValidatedForm(notification): ValidatedForm<GroupCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -99,12 +102,14 @@ pub(crate) async fn send_group_custom_notification(
 // Types.
 
 /// Form data for custom group notifications.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct GroupCustomNotification {
-    /// Title line for the notification email.
-    pub title: String,
     /// Body text for the notification.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
     pub body: String,
+    /// Title line for the notification email.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    pub title: String,
 }
 
 // Tests.

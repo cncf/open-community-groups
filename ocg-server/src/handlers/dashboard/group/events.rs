@@ -20,7 +20,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{CommunityId, SelectedGroupId, ValidatedFormQs},
     },
     services::{
         meetings::MeetingProvider,
@@ -141,15 +141,8 @@ pub(crate) async fn add(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(event): ValidatedFormQs<Event>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse event information from body
-    let event: Event = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(event) => event,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
     // Add event to database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     db.add_event(group_id, &event, &cfg_max_participants).await?;
@@ -311,17 +304,10 @@ pub(crate) async fn update(
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
     State(notifications_manager): State<DynNotificationsManager>,
-    State(serde_qs_de): State<serde_qs::Config>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
-    body: String,
+    ValidatedFormQs(event): ValidatedFormQs<Event>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse event information from body
-    let event: Event = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(event) => event,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
     // Load event summary before update to detect reschedule
     let before = db.get_event_summary(community_id, group_id, event_id).await?;
 
