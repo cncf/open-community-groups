@@ -4,9 +4,7 @@
 -- `check (btrim(field) <> '')` to reject strings that contain only whitespace.
 -- It also adds some missing CHECK constraints.
 
--- =============================================================================
--- COMMUNITY TABLE
--- =============================================================================
+-- Community table
 
 alter table community drop constraint community_description_check;
 alter table community add constraint community_description_check check (btrim(description) <> '');
@@ -80,9 +78,7 @@ alter table community add constraint community_wechat_url_check check (btrim(wec
 alter table community drop constraint community_youtube_url_check;
 alter table community add constraint community_youtube_url_check check (btrim(youtube_url) <> '');
 
--- =============================================================================
--- USER TABLE
--- =============================================================================
+-- User table
 
 alter table "user" drop constraint user_auth_hash_check;
 alter table "user" add constraint user_auth_hash_check check (btrim(auth_hash) <> '');
@@ -129,9 +125,7 @@ alter table "user" add constraint user_twitter_url_check check (btrim(twitter_ur
 alter table "user" drop constraint user_website_url_check;
 alter table "user" add constraint user_website_url_check check (btrim(website_url) <> '');
 
--- =============================================================================
--- REGION TABLE
--- =============================================================================
+-- Region table
 
 alter table region drop constraint region_name_check;
 alter table region add constraint region_name_check check (btrim(name) <> '');
@@ -139,9 +133,7 @@ alter table region add constraint region_name_check check (btrim(name) <> '');
 alter table region drop constraint region_normalized_name_check;
 alter table region add constraint region_normalized_name_check check (btrim(normalized_name) <> '');
 
--- =============================================================================
--- GROUP_CATEGORY TABLE
--- =============================================================================
+-- Group category table
 
 alter table group_category drop constraint group_category_name_check;
 alter table group_category add constraint group_category_name_check check (btrim(name) <> '');
@@ -149,15 +141,11 @@ alter table group_category add constraint group_category_name_check check (btrim
 alter table group_category drop constraint group_category_normalized_name_check;
 alter table group_category add constraint group_category_normalized_name_check check (btrim(normalized_name) <> '');
 
--- =============================================================================
--- GROUP_ROLE TABLE (ADD MISSING)
--- =============================================================================
+-- Group role table
 
 alter table group_role add constraint group_role_display_name_check check (btrim(display_name) <> '');
 
--- =============================================================================
--- GROUP TABLE
--- =============================================================================
+-- Group table
 
 alter table "group" drop constraint group_name_check;
 alter table "group" add constraint group_name_check check (btrim(name) <> '');
@@ -219,9 +207,7 @@ alter table "group" add constraint group_wechat_url_check check (btrim(wechat_ur
 alter table "group" drop constraint group_youtube_url_check;
 alter table "group" add constraint group_youtube_url_check check (btrim(youtube_url) <> '');
 
--- =============================================================================
--- GROUP_SPONSOR TABLE
--- =============================================================================
+-- Group sponsor table
 
 alter table group_sponsor drop constraint group_sponsor_logo_url_check;
 alter table group_sponsor add constraint group_sponsor_logo_url_check check (btrim(logo_url) <> '');
@@ -232,9 +218,7 @@ alter table group_sponsor add constraint group_sponsor_name_check check (btrim(n
 alter table group_sponsor drop constraint group_sponsor_website_url_check;
 alter table group_sponsor add constraint group_sponsor_website_url_check check (btrim(website_url) <> '');
 
--- =============================================================================
--- EVENT_CATEGORY TABLE
--- =============================================================================
+-- Event category table
 
 alter table event_category drop constraint event_category_name_check;
 alter table event_category add constraint event_category_name_check check (btrim(name) <> '');
@@ -242,9 +226,7 @@ alter table event_category add constraint event_category_name_check check (btrim
 alter table event_category drop constraint event_category_slug_check;
 alter table event_category add constraint event_category_slug_check check (btrim(slug) <> '');
 
--- =============================================================================
--- EVENT TABLE
--- =============================================================================
+-- Event table
 
 alter table event drop constraint event_description_check;
 alter table event add constraint event_description_check check (btrim(description) <> '');
@@ -291,16 +273,12 @@ alter table event add constraint event_venue_name_check check (btrim(venue_name)
 alter table event drop constraint event_venue_zip_code_check;
 alter table event add constraint event_venue_zip_code_check check (btrim(venue_zip_code) <> '');
 
--- =============================================================================
--- EVENT_SPONSOR TABLE
--- =============================================================================
+-- Event sponsor table
 
 alter table event_sponsor drop constraint event_sponsor_level_check;
 alter table event_sponsor add constraint event_sponsor_level_check check (btrim(level) <> '');
 
--- =============================================================================
--- SESSION TABLE
--- =============================================================================
+-- Session table
 
 -- Add missing name constraint
 alter table session add constraint session_name_check check (btrim(name) <> '');
@@ -320,23 +298,17 @@ alter table session add constraint session_meeting_join_url_check check (btrim(m
 alter table session drop constraint session_meeting_error_check;
 alter table session add constraint session_meeting_error_check check (btrim(meeting_error) <> '');
 
--- =============================================================================
--- NOTIFICATION_KIND TABLE
--- =============================================================================
+-- Notification kind table
 
 alter table notification_kind drop constraint notification_kind_name_check;
 alter table notification_kind add constraint notification_kind_name_check check (btrim(name) <> '');
 
--- =============================================================================
--- NOTIFICATION TABLE
--- =============================================================================
+-- Notification table
 
 alter table notification drop constraint notification_error_check;
 alter table notification add constraint notification_error_check check (btrim(error) <> '');
 
--- =============================================================================
--- LEGACY_EVENT_HOST TABLE
--- =============================================================================
+-- Legacy event host table
 
 alter table legacy_event_host drop constraint legacy_event_host_bio_check;
 alter table legacy_event_host add constraint legacy_event_host_bio_check check (btrim(bio) <> '');
@@ -350,9 +322,7 @@ alter table legacy_event_host add constraint legacy_event_host_photo_url_check c
 alter table legacy_event_host drop constraint legacy_event_host_title_check;
 alter table legacy_event_host add constraint legacy_event_host_title_check check (btrim(title) <> '');
 
--- =============================================================================
--- LEGACY_EVENT_SPEAKER TABLE
--- =============================================================================
+-- Legacy event speaker table
 
 alter table legacy_event_speaker drop constraint legacy_event_speaker_bio_check;
 alter table legacy_event_speaker add constraint legacy_event_speaker_bio_check check (btrim(bio) <> '');
@@ -366,9 +336,7 @@ alter table legacy_event_speaker add constraint legacy_event_speaker_photo_url_c
 alter table legacy_event_speaker drop constraint legacy_event_speaker_title_check;
 alter table legacy_event_speaker add constraint legacy_event_speaker_title_check check (btrim(title) <> '');
 
--- =============================================================================
--- ATTACHMENT TABLE (ADD MISSING)
--- =============================================================================
+-- Attachment table
 
 alter table attachment drop constraint attachment_content_type_check;
 alter table attachment add constraint attachment_content_type_check check (btrim(content_type) <> '');
@@ -377,9 +345,7 @@ alter table attachment add constraint attachment_file_name_check check (btrim(fi
 
 alter table attachment add constraint attachment_hash_check check (btrim(hash) <> '');
 
--- =============================================================================
--- CUSTOM_NOTIFICATION TABLE
--- =============================================================================
+-- Custom notification table
 
 alter table custom_notification drop constraint custom_notification_subject_check;
 alter table custom_notification add constraint custom_notification_subject_check check (btrim(subject) <> '');
@@ -387,15 +353,11 @@ alter table custom_notification add constraint custom_notification_subject_check
 alter table custom_notification drop constraint custom_notification_body_check;
 alter table custom_notification add constraint custom_notification_body_check check (btrim(body) <> '');
 
--- =============================================================================
--- MEETING_PROVIDER TABLE (ADD MISSING)
--- =============================================================================
+-- Meeting provider table
 
 alter table meeting_provider add constraint meeting_provider_display_name_check check (btrim(display_name) <> '');
 
--- =============================================================================
--- MEETING TABLE
--- =============================================================================
+-- Meeting table
 
 alter table meeting drop constraint meeting_join_url_check;
 alter table meeting add constraint meeting_join_url_check check (btrim(join_url) <> '');
