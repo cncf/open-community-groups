@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Form,
     extract::{Path, Query, Request, State},
     http::StatusCode,
     middleware::Next,
@@ -159,10 +160,17 @@ pub(crate) async fn log_in(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
-    ValidatedForm(login_form): ValidatedForm<LoginForm>,
+    Form(login_form): Form<LoginForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Sanitize next url
     let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
+
+    // Validate form
+    if let Err(e) = login_form.validate() {
+        messages.error(e.to_string());
+        let log_in_url = get_log_in_url(next_url.as_deref());
+        return Ok(Redirect::to(&log_in_url));
+    }
 
     // Authenticate user
     let creds = PasswordCredentials {
@@ -411,8 +419,17 @@ pub(crate) async fn sign_up(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
-    ValidatedForm(mut user_summary): ValidatedForm<auth::UserSummary>,
+    Form(mut user_summary): Form<auth::UserSummary>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Sanitize next url
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
+
+    // Validate form
+    if let Err(e) = user_summary.validate() {
+        messages.error(e.to_string());
+        return Ok(get_sign_up_url(next_url.as_deref()).into_response());
+    }
+
     // Check if the password has been provided
     let Some(password) = user_summary.password.take() else {
         return Ok((StatusCode::BAD_REQUEST, "password not provided").into_response());
@@ -450,7 +467,6 @@ pub(crate) async fn sign_up(
     }
 
     // Redirect to the log in page on success
-    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
     let log_in_url = get_log_in_url(next_url.as_deref());
     Ok(Redirect::to(&log_in_url).into_response())
 }
@@ -533,6 +549,15 @@ fn get_log_in_url(next_url: Option<&str>) -> String {
         log_in_url = format!("{log_in_url}?next_url={}", encode_next_url(&next_url));
     }
     log_in_url
+}
+
+/// Get the sign up url including the next url if provided.
+fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
+    let mut sign_up_url = SIGN_UP_URL.to_string();
+    if let Some(next_url) = sanitize_next_url(next_url) {
+        sign_up_url = format!("{sign_up_url}?next_url={}", encode_next_url(&next_url));
+    }
+    Redirect::to(&sign_up_url)
 }
 
 /// Sanitize a `next_url` value ensuring it points to an in-site path.
@@ -1057,6 +1082,62 @@ mod tests {
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from("username=test-user&password=wrong"))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(LOG_IN_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_log_in_validation_error() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_user_by_username().times(0);
+        db.expect_update_session()
+            .times(1)
+            .withf(|record| message_matches(record, "username: value cannot be empty or whitespace-only\n"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
+
+        // Setup request (username is whitespace only - validation should fail)
+        let request = Request::builder()
+            .method("POST")
+            .uri("/log-in")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from("username=+++&password=secret"))
             .unwrap();
         let response = router.oneshot(request).await.unwrap();
         let (parts, body) = response.into_parts();
@@ -1789,6 +1870,64 @@ mod tests {
 
         // Setup request
         let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret";
+        let request = Request::builder()
+            .method("POST")
+            .uri("/sign-up")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(form))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(SIGN_UP_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_sign_up_validation_error() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_sign_up_user().times(0);
+        db.expect_update_session()
+            .times(1)
+            .withf(|record| message_matches(record, "email: not a valid email: value is missing `@`\n"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue().times(0);
+
+        // Setup router
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
+
+        // Setup request (invalid email - validation should fail)
+        let form = "email=invalid-email&name=Test+User&username=test-user&password=secret";
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up")
