@@ -47,9 +47,8 @@
 <script type="module">
   import {
     showConfirmAlert,
-    showErrorAlert,
-    showSuccessAlert,
     showInfoAlert,
+    handleHtmxResponse,
   } from '/static/js/common/alerts.js';
   import {
     isSuccessfulXHRStatus
@@ -101,13 +100,15 @@
   });
 
   document.getElementById('join-btn').addEventListener('htmx:afterRequest', (evt) => {
-    if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
-      showSuccessAlert('You have successfully joined this group.');
-      // Fire custom event to trigger membership check
+    const xhr = evt.detail?.xhr;
+    const ok = handleHtmxResponse({
+      xhr,
+      successMessage: 'You have successfully joined this group.',
+      errorMessage: 'Something went wrong joining this group. Please try again later.'
+    });
+    if (ok) {
       document.body.dispatchEvent(new Event('membership-changed'));
     } else {
-      showErrorAlert('Something went wrong joining this group. Please try again later.');
-      // Restore buttons state
       document.getElementById('loading-btn').classList.add('hidden');
       document.getElementById('join-btn').classList.remove('hidden');
     }
@@ -120,13 +121,15 @@
   });
 
   document.getElementById('leave-btn').addEventListener('htmx:afterRequest', (evt) => {
-    if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
-      showSuccessAlert('You have successfully left this group.');
-      // Fire custom event to trigger membership check
+    const xhr = evt.detail?.xhr;
+    const ok = handleHtmxResponse({
+      xhr,
+      successMessage: 'You have successfully left this group.',
+      errorMessage: 'Something went wrong leaving this group. Please try again later.'
+    });
+    if (ok) {
       document.body.dispatchEvent(new Event('membership-changed'));
     } else {
-      showErrorAlert('Something went wrong leaving this group. Please try again later.');
-      // Restore buttons state
       document.getElementById('loading-btn').classList.add('hidden');
       document.getElementById('leave-btn').classList.remove('hidden');
     }

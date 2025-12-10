@@ -106,12 +106,8 @@
                   <script type="module">
                     import {
                       showConfirmAlert,
-                      showErrorAlert,
-                      showSuccessAlert,
+                      handleHtmxResponse,
                     } from '/static/js/common/alerts.js';
-                    import {
-                      isSuccessfulXHRStatus
-                    } from '/static/js/common/common.js';
 
                     const deleteButton = document.getElementById('delete-sponsor-{{ sponsor.group_sponsor_id }}');
                     if (deleteButton) {
@@ -124,11 +120,12 @@
                       });
 
                       deleteButton.addEventListener('htmx:afterRequest', (e) => {
-                        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                          showSuccessAlert('You have successfully deleted the sponsor.');
-                        } else {
-                          showErrorAlert('Something went wrong deleting this sponsor. Please try again later.');
-                        }
+                        const xhr = e.detail?.xhr;
+                        handleHtmxResponse({
+                          xhr,
+                          successMessage: 'You have successfully deleted the sponsor.',
+                          errorMessage: 'Something went wrong deleting this sponsor. Please try again later.'
+                        });
                       });
                     }
                   </script>

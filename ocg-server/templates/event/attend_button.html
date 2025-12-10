@@ -67,9 +67,8 @@
 <script type="module">
   import {
     showConfirmAlert,
-    showSuccessAlert,
-    showErrorAlert,
     showInfoAlert,
+    handleHtmxResponse,
   } from '/static/js/common/alerts.js';
   import {
     isSuccessfulXHRStatus
@@ -238,13 +237,15 @@
   });
 
   document.getElementById('attend-btn').addEventListener('htmx:afterRequest', (evt) => {
-    if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
-      showSuccessAlert('You have successfully registered for this event.');
-      // Fire custom event to trigger attendance check
+    const xhr = evt.detail?.xhr;
+    const ok = handleHtmxResponse({
+      xhr,
+      successMessage: 'You have successfully registered for this event.',
+      errorMessage: 'Something went wrong registering for this event. Please try again later.'
+    });
+    if (ok) {
       document.body.dispatchEvent(new Event('attendance-changed'));
     } else {
-      showErrorAlert('Something went wrong registering for this event. Please try again later.');
-      // Restore buttons state
       document.getElementById('loading-btn').classList.add('hidden');
       document.getElementById('attend-btn').classList.remove('hidden');
     }
@@ -258,13 +259,15 @@
   });
 
   document.getElementById('leave-btn').addEventListener('htmx:afterRequest', (evt) => {
-    if (isSuccessfulXHRStatus(evt.detail.xhr.status)) {
-      showSuccessAlert('You have successfully canceled your attendance.');
-      // Fire custom event to trigger attendance check
+    const xhr = evt.detail?.xhr;
+    const ok = handleHtmxResponse({
+      xhr,
+      successMessage: 'You have successfully canceled your attendance.',
+      errorMessage: 'Something went wrong canceling your attendance. Please try again later.'
+    });
+    if (ok) {
       document.body.dispatchEvent(new Event('attendance-changed'));
     } else {
-      showErrorAlert('Something went wrong canceling your attendance. Please try again later.');
-      // Restore buttons state
       document.getElementById('loading-btn').classList.add('hidden');
       document.getElementById('leave-btn').classList.remove('hidden');
     }

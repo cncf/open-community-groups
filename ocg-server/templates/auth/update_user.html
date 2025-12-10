@@ -320,23 +320,20 @@
 
 <script type="module">
   import {
-    showErrorAlert,
-    showSuccessAlert
+    handleHtmxResponse
   } from '/static/js/common/alerts.js';
-  import {
-    isSuccessfulXHRStatus
-  } from '/static/js/common/common.js';
 
   const userDetailsForm = document.getElementById('user-details-form');
   const passwordForm = document.getElementById('password-form');
 
   if (userDetailsForm) {
     userDetailsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
-        showErrorAlert('Something went wrong updating the user details, please try again later.');
-      } else {
-        showSuccessAlert('You have successfully updated your details.');
-      }
+      const xhr = e.detail?.xhr;
+      handleHtmxResponse({
+        xhr,
+        successMessage: 'You have successfully updated your details.',
+        errorMessage: 'Something went wrong updating the user details, please try again later.'
+      });
     });
   }
 
@@ -357,11 +354,12 @@
     passwordConfirmation.addEventListener('input', isValidPassword);
 
     passwordForm.addEventListener('htmx:afterRequest', (e) => {
-      if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
-        showErrorAlert('Something went wrong updating the password, please try again later.');
-      } else {
-        showSuccessAlert('You have successfully updated your password.');
-      }
+      const xhr = e.detail?.xhr;
+      handleHtmxResponse({
+        xhr,
+        successMessage: 'You have successfully updated your password.',
+        errorMessage: 'Something went wrong updating the password, please try again later.'
+      });
     });
   }
 </script>

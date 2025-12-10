@@ -358,11 +358,7 @@
 
 <script type="module">
   import {
-    isSuccessfulXHRStatus
-  } from '/static/js/common/common.js';
-  import {
-    showErrorAlert,
-    showSuccessAlert
+    handleHtmxResponse
   } from '/static/js/common/alerts.js';
 
   const groupsForm = document.getElementById('groups-form');
@@ -377,11 +373,12 @@
   if (groupsForm) {
     groupsForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'groups-form') {
-        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('You have successfully updated the group.');
-        } else {
-          showErrorAlert('Something went wrong updating the group, please try again later.');
-        }
+        const xhr = e.detail?.xhr;
+        handleHtmxResponse({
+          xhr,
+          successMessage: 'You have successfully updated the group.',
+          errorMessage: 'Something went wrong updating the group, please try again later.'
+        });
       }
     });
   }

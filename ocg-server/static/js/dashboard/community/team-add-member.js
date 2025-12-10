@@ -2,13 +2,8 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
 import "/static/js/common/avatar-image.js";
-import {
-  computeUserInitials,
-  isSuccessfulXHRStatus,
-  lockBodyScroll,
-  unlockBodyScroll,
-} from "/static/js/common/common.js";
-import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
+import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { handleHtmxResponse } from "/static/js/common/alerts.js";
 
 // TODO - Hardcoded role options for add endpoint
 const ROLE_OPTIONS = {
@@ -151,12 +146,15 @@ export class TeamAddMember extends LitWrapper {
           form.removeEventListener("htmx:afterRequest", this._afterRequestHandler);
         }
         this._afterRequestHandler = (e) => {
-          if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
+          const xhr = e.detail?.xhr;
+          const ok = handleHtmxResponse({
+            xhr,
+            successMessage: "Invitation sent to the selected user.",
+            errorMessage: "Something went wrong adding this team member. Please try again later.",
+          });
+          if (ok) {
             this._close();
             this._resetSelection();
-            showSuccessAlert("Invitation sent to the selected user.");
-          } else {
-            showErrorAlert("Something went wrong adding this team member. Please try again later.");
           }
         };
         form.addEventListener("htmx:afterRequest", this._afterRequestHandler);

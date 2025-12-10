@@ -58,6 +58,50 @@ export const showErrorAlert = (message, withHtml = false) => {
 };
 
 /**
+ * Displays a server error with a warning box when available (e.g., 422 errors).
+ * @param {string} baseMessage - Fallback human message.
+ * @param {string} serverError - Raw server response text (optional).
+ */
+export const showServerErrorAlert = (baseMessage, serverError) => {
+  const warningBox = serverError
+    ? `<div class="mt-4 mb-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 text-left">
+      ${serverError}
+      </div>`
+    : "";
+  showErrorAlert(`${baseMessage}${warningBox}`, true);
+};
+
+/**
+ * Handles common HTMX response patterns and displays alerts.
+ * Returns true on success (2xx), false otherwise.
+ * @param {Object} params
+ * @param {XMLHttpRequest} params.xhr
+ * @param {string} params.successMessage
+ * @param {string} params.errorMessage
+ */
+export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
+  if (!xhr) {
+    showErrorAlert(errorMessage);
+    return false;
+  }
+
+  if (xhr.status >= 200 && xhr.status < 300) {
+    if (successMessage) {
+      showSuccessAlert(successMessage);
+    }
+    return true;
+  }
+
+  if (xhr.status === 422) {
+    showServerErrorAlert(errorMessage, xhr.responseText?.trim());
+    return false;
+  }
+
+  showErrorAlert(errorMessage);
+  return false;
+};
+
+/**
  * Displays an informational alert with plain text message.
  * Auto-dismisses after 10 seconds.
  * @param {string} message - The info message to display

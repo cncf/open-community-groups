@@ -200,12 +200,8 @@
                           <script type="module">
                             import {
                               showConfirmAlert,
-                              showErrorAlert,
-                              showSuccessAlert,
+                              handleHtmxResponse,
                             } from '/static/js/common/alerts.js';
-                            import {
-                              isSuccessfulXHRStatus
-                            } from '/static/js/common/common.js';
 
                             const deactivateGroupBtn = document.getElementById('deactivate-group-{{ group.group_id }}');
                             if (deactivateGroupBtn) {
@@ -218,11 +214,12 @@
                               });
 
                               deactivateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                  showSuccessAlert("You have successfully deactivated the group.");
-                                } else {
-                                  showErrorAlert("Something went wrong deactivating this group. Please try again later.");
-                                }
+                                const xhr = e.detail?.xhr;
+                                handleHtmxResponse({
+                                  xhr,
+                                  successMessage: "You have successfully deactivated the group.",
+                                  errorMessage: "Something went wrong deactivating this group. Please try again later."
+                                });
                               });
                             }
                           </script>
@@ -243,12 +240,8 @@
                           <script type="module">
                             import {
                               showConfirmAlert,
-                              showErrorAlert,
-                              showSuccessAlert,
+                              handleHtmxResponse,
                             } from '/static/js/common/alerts.js';
-                            import {
-                              isSuccessfulXHRStatus
-                            } from '/static/js/common/common.js';
 
                             const activateGroupBtn = document.getElementById('activate-group-{{ group.group_id }}');
                             if (activateGroupBtn) {
@@ -261,11 +254,12 @@
                               });
 
                               activateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                  showSuccessAlert("You have successfully activated the group.");
-                                } else {
-                                  showErrorAlert("Something went wrong activating this group. Please try again later.");
-                                }
+                                const xhr = e.detail?.xhr;
+                                handleHtmxResponse({
+                                  xhr,
+                                  successMessage: "You have successfully activated the group.",
+                                  errorMessage: "Something went wrong activating this group. Please try again later."
+                                });
                               });
                             }
                           </script>
@@ -288,12 +282,8 @@
                         <script type="module">
                           import {
                             showConfirmAlert,
-                            showErrorAlert,
-                            showSuccessAlert,
+                            handleHtmxResponse,
                           } from '/static/js/common/alerts.js';
-                          import {
-                            isSuccessfulXHRStatus
-                          } from '/static/js/common/common.js';
 
                           const deleteGroupBtn = document.getElementById('delete-group-{{ group.group_id }}');
                           if (deleteGroupBtn) {
@@ -306,11 +296,12 @@
                             });
 
                             deleteGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                              if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                showSuccessAlert("You have successfully deleted the group.");
-                              } else {
-                                showErrorAlert("Something went wrong deleting this group. Please try again later.");
-                              }
+                              const xhr = e.detail?.xhr;
+                              handleHtmxResponse({
+                                xhr,
+                                successMessage: "You have successfully deleted the group.",
+                                errorMessage: "Something went wrong deleting this group. Please try again later."
+                              });
                             });
                           }
                         </script>

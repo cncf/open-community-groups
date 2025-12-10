@@ -77,11 +77,7 @@
 
 <script type="module">
   import {
-    isSuccessfulXHRStatus
-  } from '/static/js/common/common.js';
-  import {
-    showErrorAlert,
-    showSuccessAlert
+    handleHtmxResponse
   } from '/static/js/common/alerts.js';
 
   const sponsorForm = document.getElementById('sponsor-form');
@@ -89,11 +85,12 @@
   if (sponsorForm) {
     sponsorForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'sponsor-form') {
-        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('You have successfully added the sponsor.');
-        } else {
-          showErrorAlert('Something went wrong adding the sponsor, please try again later.');
-        }
+        const xhr = e.detail?.xhr;
+        handleHtmxResponse({
+          xhr,
+          successMessage: 'You have successfully added the sponsor.',
+          errorMessage: 'Something went wrong adding the sponsor, please try again later.'
+        });
       }
     });
   }

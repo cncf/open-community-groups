@@ -210,27 +210,30 @@
                           <script type="module">
                             import {
                               showConfirmAlert,
-                              showErrorAlert,
-                              showSuccessAlert,
+                              handleHtmxResponse,
                             } from '/static/js/common/alerts.js';
-                            import {
-                              isSuccessfulXHRStatus
-                            } from '/static/js/common/common.js';
 
-                            const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
-                            if (deleteEventButton) {
-                              deleteEventButton.addEventListener('click', (event) => {
-                                showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.event_id }}", "Yes");
-                              });
+                            (() => {
+                              const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
+                              if (deleteEventButton) {
+                                deleteEventButton.addEventListener('click', () => {
+                                  showConfirmAlert(
+                                    "Are you sure you wish to delete this event?",
+                                    "delete-event-{{ event.event_id }}",
+                                    "Yes"
+                                  );
+                                });
 
-                              deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                  showSuccessAlert("You have successfully deleted the event.");
-                                } else {
-                                  showErrorAlert("Something went wrong deleting this event. Please try again later.");
-                                }
-                              });
-                            }
+                                deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
+                                  const xhr = e.detail?.xhr;
+                                  handleHtmxResponse({
+                                    xhr,
+                                    successMessage: "You have successfully deleted the event.",
+                                    errorMessage: "Something went wrong deleting this event. Please try again later."
+                                  });
+                                });
+                              }
+                            })();
                           </script>
                         </li>
                         {# End delete button -#}
@@ -408,12 +411,8 @@
                             <script type="module">
                               import {
                                 showConfirmAlert,
-                                showErrorAlert,
-                                showSuccessAlert,
+                                handleHtmxResponse,
                               } from '/static/js/common/alerts.js';
-                              import {
-                                isSuccessfulXHRStatus
-                              } from '/static/js/common/common.js';
 
                               const unpublishEventButton = document.getElementById('unpublish-event-{{ event.event_id }}');
                               if (unpublishEventButton) {
@@ -422,11 +421,12 @@
                                 });
 
                                 unpublishEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                    showSuccessAlert("You have successfully unpublished the event.");
-                                  } else {
-                                    showErrorAlert("An error occurred unpublishing this event, please try again later.");
-                                  }
+                                  const xhr = e.detail?.xhr;
+                                  handleHtmxResponse({
+                                    xhr,
+                                    successMessage: "You have successfully unpublished the event.",
+                                    errorMessage: "An error occurred unpublishing this event, please try again later."
+                                  });
                                 });
                               }
                             </script>
@@ -447,12 +447,8 @@
                             <script type="module">
                               import {
                                 showConfirmAlert,
-                                showErrorAlert,
-                                showSuccessAlert,
+                                handleHtmxResponse,
                               } from '/static/js/common/alerts.js';
-                              import {
-                                isSuccessfulXHRStatus
-                              } from '/static/js/common/common.js';
 
                               const publishEventButton = document.getElementById('publish-event-{{ event.event_id }}');
                               if (publishEventButton) {
@@ -461,11 +457,12 @@
                                 });
 
                                 publishEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                    showSuccessAlert("You have successfully published the event.");
-                                  } else {
-                                    showErrorAlert("An error occurred publishing this event, please try again later.");
-                                  }
+                                  const xhr = e.detail?.xhr;
+                                  handleHtmxResponse({
+                                    xhr,
+                                    successMessage: "You have successfully published the event.",
+                                    errorMessage: "An error occurred publishing this event, please try again later."
+                                  });
                                 });
                               }
                             </script>
@@ -489,12 +486,8 @@
                             <script type="module">
                               import {
                                 showConfirmAlert,
-                                showErrorAlert,
-                                showSuccessAlert,
+                                handleHtmxResponse,
                               } from '/static/js/common/alerts.js';
-                              import {
-                                isSuccessfulXHRStatus
-                              } from '/static/js/common/common.js';
 
                               const cancelEventButton = document.getElementById('cancel-event-{{ event.event_id }}');
                               if (cancelEventButton) {
@@ -503,11 +496,12 @@
                                 });
 
                                 cancelEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                  if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                    showSuccessAlert("You have successfully canceled the event.");
-                                  } else {
-                                    showErrorAlert("Something went wrong canceling this event. Please try again later.");
-                                  }
+                                  const xhr = e.detail?.xhr;
+                                  handleHtmxResponse({
+                                    xhr,
+                                    successMessage: "You have successfully canceled the event.",
+                                    errorMessage: "Something went wrong canceling this event. Please try again later."
+                                  });
                                 });
                               }
                             </script>
@@ -530,27 +524,30 @@
                           <script type="module">
                             import {
                               showConfirmAlert,
-                              showErrorAlert,
-                              showSuccessAlert,
+                              handleHtmxResponse,
                             } from '/static/js/common/alerts.js';
-                            import {
-                              isSuccessfulXHRStatus
-                            } from '/static/js/common/common.js';
 
-                            const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
-                            if (deleteEventButton) {
-                              deleteEventButton.addEventListener('click', (event) => {
-                                showConfirmAlert("Are you sure you wish to delete this event?", "delete-event-{{ event.event_id }}", "Yes");
-                              });
+                            (() => {
+                              const deleteEventButton = document.getElementById('delete-event-{{ event.event_id }}');
+                              if (deleteEventButton) {
+                                deleteEventButton.addEventListener('click', () => {
+                                  showConfirmAlert(
+                                    "Are you sure you wish to delete this event?",
+                                    "delete-event-{{ event.event_id }}",
+                                    "Yes"
+                                  );
+                                });
 
-                              deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
-                                if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                                  showSuccessAlert("You have successfully deleted the event.");
-                                } else {
-                                  showErrorAlert("Something went wrong deleting this event. Please try again later.");
-                                }
-                              });
-                            }
+                                deleteEventButton.addEventListener("htmx:afterRequest", (e) => {
+                                  const xhr = e.detail?.xhr;
+                                  handleHtmxResponse({
+                                    xhr,
+                                    successMessage: "You have successfully deleted the event.",
+                                    errorMessage: "Something went wrong deleting this event. Please try again later."
+                                  });
+                                });
+                              }
+                            })();
                           </script>
                         </li>
                         {# End delete button -#}

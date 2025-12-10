@@ -178,8 +178,7 @@
 {% block scripts -%}
   <script type="module">
     import {
-      showSuccessAlert,
-      showErrorAlert
+      handleHtmxResponse
     } from "/static/js/common/alerts.js";
 
     const successCard = document.getElementById("check-in-success-card");
@@ -190,13 +189,12 @@
     if (form) {
       form.addEventListener("htmx:afterRequest", (event) => {
         const xhr = event.detail?.xhr;
-        if (!xhr) {
-          showErrorAlert("Unable to process your check-in. Please try again.");
-          return;
-        }
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          showSuccessAlert("You're all checked in! Enjoy the event.");
+        const ok = handleHtmxResponse({
+          xhr,
+          successMessage: "You're all checked in! Enjoy the event.",
+          errorMessage: "Check-in failed. Please try again in a few seconds."
+        });
+        if (ok) {
           if (successCard) {
             successCard.classList.remove("hidden");
           }
@@ -209,8 +207,6 @@
           if (viewDetailsButton) {
             viewDetailsButton.classList.remove("hidden");
           }
-        } else {
-          showErrorAlert("Check-in failed. Please try again in a few seconds.");
         }
       });
     }

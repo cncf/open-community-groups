@@ -1,5 +1,5 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
-import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
+import { showSuccessAlert, showErrorAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 
 const DEFAULT_ERROR_MESSAGE = "Failed to send email. Please try again.";
 
@@ -67,18 +67,14 @@ export const createNotificationModal = ({
   if (form) {
     form.addEventListener("htmx:afterRequest", (event) => {
       const xhr = event.detail?.xhr;
-      if (!xhr) {
-        showErrorAlert(DEFAULT_ERROR_MESSAGE, false);
-        return;
-      }
-
-      if (xhr.status >= 200 && xhr.status < 300) {
-        showSuccessAlert(successMessage || "Email sent successfully.");
+      const ok = handleHtmxResponse({
+        xhr,
+        successMessage: successMessage || "Email sent successfully.",
+        errorMessage: xhr ? xhr.statusText || DEFAULT_ERROR_MESSAGE : DEFAULT_ERROR_MESSAGE,
+      });
+      if (ok) {
         form.reset();
         toggleModal();
-      } else {
-        const errorMessage = xhr.responseText || DEFAULT_ERROR_MESSAGE;
-        showErrorAlert(errorMessage, true);
       }
     });
   }
