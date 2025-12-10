@@ -94,7 +94,7 @@ select lives_ok(
 -- Should fail when region is from different community
 select throws_ok(
     format('update "group" set region_id = %L where group_id = %L', :'region2ID', :'groupID'),
-    format('region %s not found in community', :'region2ID'),
+    'region not found in community',
     'Should fail when region is from different community'
 );
 
@@ -102,7 +102,7 @@ select throws_ok(
 select throws_ok(
     format('insert into "group" (group_id, community_id, name, slug, description, group_category_id, region_id) values (%L, %L, %L, %L, %L, %L, %L)',
         gen_random_uuid(), :'community1ID', 'Another Group', 'another-group', 'Another test group', :'categoryID', :'region2ID'),
-    format('region %s not found in community', :'region2ID'),
+    'region not found in community',
     'Should fail when inserting group with region from different community'
 );
 

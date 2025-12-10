@@ -84,14 +84,14 @@ select lives_ok(
 select throws_ok(
     format('insert into "group" (group_id, community_id, name, slug, description, group_category_id) values (%L, %L, %L, %L, %L, %L)',
         gen_random_uuid(), :'community1ID', 'Another Group', 'another-group', 'Another test group', :'category2ID'),
-    format('group category %s not found in community', :'category2ID'),
+    'group category not found in community',
     'Should fail when group category is from different community'
 );
 
 -- Should fail when updating group to category from different community
 select throws_ok(
     format('update "group" set group_category_id = %L where group_id = %L', :'category2ID', :'groupID'),
-    format('group category %s not found in community', :'category2ID'),
+    'group category not found in community',
     'Should fail when updating group to category from different community'
 );
 

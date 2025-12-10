@@ -101,14 +101,14 @@ select lives_ok(
 -- Should fail when team member is from different community
 select throws_ok(
     format('insert into group_team (group_id, user_id, role) values (%L, %L, %L)', :'groupID', :'user2ID', 'organizer'),
-    format('team member user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when team member is from different community'
 );
 
 -- Should fail when updating group_team to user from different community
 select throws_ok(
     format('update group_team set user_id = %L where group_id = %L', :'user2ID', :'groupID'),
-    format('team member user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when updating group_team to user from different community'
 );
 

@@ -128,14 +128,14 @@ select lives_ok(
 -- Should fail when attendee is from different community
 select throws_ok(
     format('insert into event_attendee (event_id, user_id) values (%L, %L)', :'eventID', :'user2ID'),
-    format('attendee user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when attendee is from different community'
 );
 
 -- Should fail when updating event_attendee to user from different community
 select throws_ok(
     format('update event_attendee set user_id = %L where event_id = %L', :'user2ID', :'eventID'),
-    format('attendee user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when updating event_attendee to user from different community'
 );
 

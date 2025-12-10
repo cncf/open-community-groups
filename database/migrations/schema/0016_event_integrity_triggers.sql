@@ -22,7 +22,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from v_event_community_id then
-        raise exception 'host user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -55,7 +55,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from v_event_community_id then
-        raise exception 'speaker user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -89,7 +89,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from v_session_community_id then
-        raise exception 'speaker user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -121,7 +121,7 @@ begin
 
     -- Validate groups match
     if v_sponsor_group_id is distinct from v_event_group_id then
-        raise exception 'sponsor % not found in group', NEW.group_sponsor_id;
+        raise exception 'sponsor not found in group';
     end if;
 
     return NEW;

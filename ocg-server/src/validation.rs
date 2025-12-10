@@ -8,7 +8,6 @@
 
 #![allow(clippy::trivially_copy_pass_by_ref)]
 #![allow(clippy::ref_option)]
-#![allow(clippy::collapsible_if)]
 
 use std::collections::BTreeMap;
 
@@ -87,10 +86,10 @@ pub fn trimmed_non_empty(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
 /// Returns Ok if the value is None, or if it's Some with non-whitespace content.
 /// Returns an error if the value is Some but empty or whitespace-only.
 pub fn trimmed_non_empty_opt(value: &Option<String>, _ctx: &()) -> garde::Result {
-    if let Some(s) = value {
-        if s.trim().is_empty() {
-            return Err(garde::Error::new("value cannot be empty or whitespace-only"));
-        }
+    if let Some(s) = value
+        && s.trim().is_empty()
+    {
+        return Err(garde::Error::new("value cannot be empty or whitespace-only"));
     }
     Ok(())
 }
@@ -159,20 +158,20 @@ pub fn url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
 
 /// Validates that a latitude value is within valid range (-90 to 90).
 pub fn valid_latitude(value: &Option<f64>, _ctx: &()) -> garde::Result {
-    if let Some(lat) = value {
-        if !(-90.0..=90.0).contains(lat) {
-            return Err(garde::Error::new("latitude must be between -90 and 90"));
-        }
+    if let Some(lat) = value
+        && !(-90.0..=90.0).contains(lat)
+    {
+        return Err(garde::Error::new("latitude must be between -90 and 90"));
     }
     Ok(())
 }
 
 /// Validates that a longitude value is within valid range (-180 to 180).
 pub fn valid_longitude(value: &Option<f64>, _ctx: &()) -> garde::Result {
-    if let Some(lon) = value {
-        if !(-180.0..=180.0).contains(lon) {
-            return Err(garde::Error::new("longitude must be between -180 and 180"));
-        }
+    if let Some(lon) = value
+        && !(-180.0..=180.0).contains(lon)
+    {
+        return Err(garde::Error::new("longitude must be between -180 and 180"));
     }
     Ok(())
 }

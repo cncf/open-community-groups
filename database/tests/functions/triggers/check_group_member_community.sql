@@ -101,14 +101,14 @@ select lives_ok(
 -- Should fail when member is from different community
 select throws_ok(
     format('insert into group_member (group_id, user_id) values (%L, %L)', :'groupID', :'user2ID'),
-    format('member user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when member is from different community'
 );
 
 -- Should fail when updating group_member to user from different community
 select throws_ok(
     format('update group_member set user_id = %L where group_id = %L', :'user2ID', :'groupID'),
-    format('member user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when updating group_member to user from different community'
 );
 

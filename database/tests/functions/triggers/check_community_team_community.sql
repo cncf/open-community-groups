@@ -78,14 +78,14 @@ select lives_ok(
 -- Should fail when team member is from different community
 select throws_ok(
     format('insert into community_team (community_id, user_id) values (%L, %L)', :'community1ID', :'user2ID'),
-    format('team member user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when team member is from different community'
 );
 
 -- Should fail when updating community_team to user from different community
 select throws_ok(
     format('update community_team set user_id = %L where community_id = %L', :'user2ID', :'community1ID'),
-    format('team member user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when updating community_team to user from different community'
 );
 

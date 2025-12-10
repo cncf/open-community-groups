@@ -26,7 +26,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from v_group_community_id then
-        raise exception 'member user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -59,7 +59,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from v_event_community_id then
-        raise exception 'attendee user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -91,7 +91,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from v_group_community_id then
-        raise exception 'team member user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -117,7 +117,7 @@ begin
 
     -- Validate communities match
     if v_user_community_id is distinct from NEW.community_id then
-        raise exception 'team member user % not found in community', NEW.user_id;
+        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -153,7 +153,7 @@ begin
 
     -- Validate communities match
     if v_category_community_id is distinct from v_group_community_id then
-        raise exception 'event category % not found in community', NEW.event_category_id;
+        raise exception 'event category not found in community';
     end if;
 
     return NEW;
@@ -179,7 +179,7 @@ begin
 
     -- Validate communities match
     if v_category_community_id is distinct from NEW.community_id then
-        raise exception 'group category % not found in community', NEW.group_category_id;
+        raise exception 'group category not found in community';
     end if;
 
     return NEW;
@@ -210,7 +210,7 @@ begin
 
     -- Validate communities match
     if v_region_community_id is distinct from NEW.community_id then
-        raise exception 'region % not found in community', NEW.region_id;
+        raise exception 'region not found in community';
     end if;
 
     return NEW;

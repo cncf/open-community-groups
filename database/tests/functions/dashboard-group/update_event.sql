@@ -649,7 +649,7 @@ select throws_ok(
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Host", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
-    'host user 99999999-9999-9999-9999-999999999999 not found in community',
+    'user not found in community',
     'Should throw error when host user_id does not exist in community'
 );
 
@@ -660,7 +660,7 @@ select throws_ok(
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
-    'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
+    'user not found in community',
     'Should throw error when speaker user_id does not exist in community'
 );
 

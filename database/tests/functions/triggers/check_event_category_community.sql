@@ -107,14 +107,14 @@ select lives_ok(
 select throws_ok(
     format('insert into event (event_id, group_id, name, slug, description, timezone, event_category_id, event_kind_id) values (%L, %L, %L, %L, %L, %L, %L, %L)',
         gen_random_uuid(), :'groupID', 'Another Event', 'another-event', 'Another test event', 'UTC', :'category2ID', 'in-person'),
-    format('event category %s not found in community', :'category2ID'),
+    'event category not found in community',
     'Should fail when event category is from different community'
 );
 
 -- Should fail when updating event to category from different community
 select throws_ok(
     format('update event set event_category_id = %L where event_id = %L', :'category2ID', :'eventID'),
-    format('event category %s not found in community', :'category2ID'),
+    'event category not found in community',
     'Should fail when updating event to category from different community'
 );
 

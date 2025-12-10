@@ -148,14 +148,14 @@ select lives_ok(
 -- Should fail when speaker is from different community
 select throws_ok(
     format('insert into session_speaker (session_id, user_id) values (%L, %L)', :'sessionID', :'user2ID'),
-    format('speaker user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when speaker is from different community'
 );
 
 -- Should fail when updating session_speaker to user from different community
 select throws_ok(
     format('update session_speaker set user_id = %L where session_id = %L', :'user2ID', :'sessionID'),
-    format('speaker user %s not found in community', :'user2ID'),
+    'user not found in community',
     'Should fail when updating session_speaker to user from different community'
 );
 

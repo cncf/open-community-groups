@@ -78,7 +78,7 @@ select throws_ok(
 -- Should fail for user from another community
 select throws_ok(
     $$ select add_group_team_member('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, 'organizer') $$,
-    format('team member user %s not found in community', '00000000-0000-0000-0000-000000000032'),
+    'user not found in community',
     'Should fail for other community user'
 );
 
