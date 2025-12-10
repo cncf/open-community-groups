@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(236);
+select plan(245);
 
 -- ============================================================================
 -- TESTS
@@ -678,7 +678,11 @@ select has_function('add_group_sponsor');
 select has_function('add_group_team_member');
 select has_function('attend_event');
 select has_function('cancel_event');
+select has_function('check_event_host_community');
+select has_function('check_event_speaker_community');
+select has_function('check_event_sponsor_group');
 select has_function('check_in_event');
+select has_function('check_session_speaker_community');
 select has_function('check_session_within_event_bounds');
 select has_function('delete_community_team_member');
 select has_function('delete_event');
@@ -742,6 +746,13 @@ select has_function('update_user_details');
 select has_function('user_owns_community');
 select has_function('user_owns_group');
 select has_function('verify_email');
+
+-- Test: check expected triggers exist
+select has_trigger('event_host', 'event_host_community_check');
+select has_trigger('event_speaker', 'event_speaker_community_check');
+select has_trigger('event_sponsor', 'event_sponsor_group_check');
+select has_trigger('session', 'session_within_event_bounds_check');
+select has_trigger('session_speaker', 'session_speaker_community_check');
 
 -- Test: event kinds should match expected values
 select results_eq(
