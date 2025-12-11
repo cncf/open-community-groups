@@ -1,10 +1,10 @@
 /**
  * Form validation module for enforcing trimmed values and password confirmation.
- * Auto-wires forms with `data-enforce-trimmed="true"` attribute.
+ * Auto-wires all forms on the page.
  * @module form-validation
  */
 
-import { trimmedNonEmpty, passwordsMatch } from "./validators.js";
+import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -12,8 +12,6 @@ import { trimmedNonEmpty, passwordsMatch } from "./validators.js";
 
 const FIELD_SELECTOR =
   'input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea';
-
-const FORM_SELECTOR = 'form[data-enforce-trimmed="true"]';
 
 // -----------------------------------------------------------------------------
 // Helper Functions
@@ -138,7 +136,7 @@ const validateIncludedForms = (elt) => {
 
   for (const selector of selectors) {
     const target = document.querySelector(selector);
-    if (target?.matches(FORM_SELECTOR) && !validateForm(target)) {
+    if (target?.matches("form") && !validateForm(target)) {
       return false;
     }
   }
@@ -180,7 +178,7 @@ const wireForm = (form) => {
 const handleConfigRequest = (event) => {
   const target = event.target;
 
-  if (target.matches(FORM_SELECTOR) && !validateForm(target)) {
+  if (target.matches("form") && !validateForm(target)) {
     event.preventDefault();
     return;
   }
@@ -195,40 +193,23 @@ const handleConfigRequest = (event) => {
 // -----------------------------------------------------------------------------
 
 /**
- * Wires validation for all matching forms within a root node.
- * @param {ParentNode} root - Root element to search in
- */
-const wireFormsIn = (root) => {
-  root.querySelectorAll(FORM_SELECTOR).forEach(wireForm);
-
-  if (root instanceof Element && root.matches(FORM_SELECTOR)) {
-    wireForm(root);
-  }
-};
-
-/**
  * Initializes form validation on all matching forms.
  */
 const init = () => {
-  wireFormsIn(document);
+  console.log("Initializing form validation module");
+  document.querySelectorAll("form").forEach(wireForm);
 
-  document.body.addEventListener("htmx:afterSwap", (event) => {
-    const target = event.target;
+  if (window.htmx && typeof htmx.onLoad === "function") {
+    htmx.onLoad((elt) => {
+      if (!elt) return;
+      if (elt instanceof HTMLFormElement) {
+        wireForm(elt);
+      }
+      elt.querySelectorAll?.("form").forEach(wireForm);
+    });
+  }
 
-    if (target instanceof Element) {
-      wireFormsIn(target);
-    }
-  });
-
-  document.body.addEventListener("htmx:load", (event) => {
-    const target = event.target;
-
-    if (target instanceof Element) {
-      wireFormsIn(target);
-    }
-  });
-
-  document.body.addEventListener("htmx:configRequest", handleConfigRequest);
+  document.body?.addEventListener("htmx:configRequest", handleConfigRequest);
 };
 
 if (document.readyState === "loading") {

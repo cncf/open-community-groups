@@ -6,7 +6,6 @@
       hx-put="/dashboard/account/update/details"
       hx-ext="no-empty-vals"
       hx-trigger="submit"
-      data-enforce-trimmed="true"
       hx-indicator="#dashboard-spinner, #user-details-spinner"
       hx-disabled-elt="button[type=submit]">
   <div class="space-y-12">
@@ -265,7 +264,6 @@
         hx-ext="no-empty-vals"
         hx-trigger="submit"
         hx-target="body"
-        data-enforce-trimmed="true"
         hx-indicator="#dashboard-spinner, #password-update-spinner"
         hx-disabled-elt="button[type=submit]">
     <div class="space-y-12">
@@ -351,21 +349,6 @@
   }
 
   if (passwordForm) {
-    const password = document.getElementById('new_password');
-    const passwordConfirmation = document.getElementById('password_confirmation');
-
-    const isValidPassword = () => {
-      // Check if passwords match
-      if (password.value !== passwordConfirmation.value) {
-        passwordConfirmation.setCustomValidity('Passwords do not match');
-      } else {
-        passwordConfirmation.setCustomValidity('');
-      }
-    };
-
-    password.addEventListener('input', isValidPassword);
-    passwordConfirmation.addEventListener('input', isValidPassword);
-
     passwordForm.addEventListener('htmx:afterRequest', (e) => {
       const xhr = e.detail?.xhr;
       handleHtmxResponse({

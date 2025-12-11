@@ -47,8 +47,7 @@
 
           <form id="sign-up-form"
                 action="/sign-up{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                method="post"
-                data-enforce-trimmed="true">
+                method="post">
             <div class="space-y-5">
               {# Name field -#}
               <div>
@@ -174,27 +173,5 @@
         {# End messages -#}
       </div>
     </div>
-
-    {# JavaScript for password validation -#}
-    <script type="module">
-      const signupForm = document.getElementById('sign-up-form');
-      const passwords = document.querySelectorAll('input[type="password"]');
-
-      const validatePasswords = () => {
-        const password = document.getElementById('password');
-        const passwordConfirmation = document.getElementById('password_confirmation');
-
-        if (password.value !== passwordConfirmation.value) {
-          passwordConfirmation.setCustomValidity('Passwords do not match');
-        } else {
-          passwordConfirmation.setCustomValidity('');
-        }
-      };
-
-      passwords.forEach((password) => {
-        password.addEventListener('input', validatePasswords);
-      });
-    </script>
-    {# End JavaScript for password validation -#}
   </div>
 {% endblock content -%}

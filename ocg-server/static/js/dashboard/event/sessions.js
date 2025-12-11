@@ -54,8 +54,6 @@ export class SessionsSection extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
 
-    console.log("SessionsSection connected", this.sessions);
-
     // Accept JSON passed via attributes when used from server templates.
     if (typeof this.sessions === "string") {
       try {

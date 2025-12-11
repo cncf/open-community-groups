@@ -83,7 +83,7 @@
     <div class="space-y-12">
       {# Event Details Tab -#}
       <div data-content="details">
-        <form id="details-form" data-enforce-trimmed="true">
+        <form id="details-form">
           <div class="pb-12">
             <p class="mt-1 text-sm/6 text-stone-500">Please update as many details about this event as possible.</p>
 
@@ -289,7 +289,7 @@
 
   {# Date & Venue Tab -#}
   <div data-content="date-venue" class="hidden">
-    <form id="date-venue-form" data-enforce-trimmed="true">
+    <form id="date-venue-form">
       <div class="space-y-12">
         {# Date and Time section -#}
         <div>
@@ -495,7 +495,7 @@
 
   {# Sessions Tab -#}
   <div data-content="sessions" class="hidden">
-    <form id="sessions-form" data-enforce-trimmed="true">
+    <form id="sessions-form">
       <div class="pb-12">
         <div class="mt-10">
           <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}"
@@ -509,7 +509,7 @@
 
   {# Hosts & Speakers Tab -#}
   <div data-content="hosts-sponsors" class="hidden">
-    <form id="hosts-sponsors-form" data-enforce-trimmed="true">
+    <form id="hosts-sponsors-form">
       <div class="space-y-12">
         {# Hosts Section -#}
         <div class="border-b border-stone-900/10 pb-12">
