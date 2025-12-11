@@ -12,6 +12,7 @@ declare
     v_event_before jsonb;
     v_event_speaker jsonb;
     v_host_id uuid;
+    v_is_past_event boolean;
     v_processed_session_ids uuid[] := '{}';
     v_provider_max_participants int;
     v_session jsonb;
@@ -32,7 +33,49 @@ begin
     from "group"
     where group_id = p_group_id;
 
-    -- Validate event dates are not in the past
+    -- Load current event state for sync calculation and existence check
+    select get_event_full(v_community_id, p_group_id, p_event_id)::jsonb
+    into v_event_before
+    from event e
+    where e.event_id = p_event_id
+    and e.group_id = p_group_id
+    and e.deleted = false
+    and e.canceled = false;
+
+    if v_event_before is null then
+        raise exception 'event not found or inactive';
+    end if;
+
+    -- Check if the event is in the past
+    v_is_past_event := coalesce(
+        to_timestamp((v_event_before->>'ends_at')::bigint),
+        to_timestamp((v_event_before->>'starts_at')::bigint)
+    ) < current_timestamp;
+
+    -- Handle past events: only allow updating specific fields
+    if v_is_past_event then
+        -- Update only allowed fields for past events
+        update event set
+            banner_url = nullif(p_event->>'banner_url', ''),
+            description = p_event->>'description',
+            description_short = nullif(p_event->>'description_short', ''),
+            logo_url = nullif(p_event->>'logo_url', ''),
+            meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
+            photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
+            tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
+            venue_address = nullif(p_event->>'venue_address', ''),
+            venue_city = nullif(p_event->>'venue_city', ''),
+            venue_name = nullif(p_event->>'venue_name', ''),
+            venue_zip_code = nullif(p_event->>'venue_zip_code', '')
+        where event_id = p_event_id
+        and group_id = p_group_id
+        and deleted = false
+        and canceled = false;
+
+        return;
+    end if;
+
+    -- Validate event dates are not in the past (only for non-past events)
     if p_event->>'starts_at' is not null then
         v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
         if v_starts_at < current_timestamp then
@@ -63,19 +106,6 @@ begin
                 end if;
             end if;
         end loop;
-    end if;
-
-    -- Load current event state for sync calculation and existence check
-    select get_event_full(v_community_id, p_group_id, p_event_id)::jsonb
-    into v_event_before
-    from event e
-    where e.event_id = p_event_id
-    and e.group_id = p_group_id
-    and e.deleted = false
-    and e.canceled = false;
-
-    if v_event_before is null then
-        raise exception 'event not found or inactive';
     end if;
 
     -- Validate event capacity against max_participants when meeting is requested

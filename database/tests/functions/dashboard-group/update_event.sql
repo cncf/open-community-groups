@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(34);
+select plan(39);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(34);
 \set event5ID '00000000-0000-0000-0000-000000000005'
 \set event6ID '00000000-0000-0000-0000-000000000006'
 \set event7ID '00000000-0000-0000-0000-000000000007'
+\set event8ID '00000000-0000-0000-0000-000000000008'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
@@ -147,8 +148,8 @@ insert into event (
     'zoom',
     true,
     false,
-    '2025-03-01 10:00:00-05',
-    '2025-03-01 12:00:00-05'
+    '2030-03-01 10:00:00-05',
+    '2030-03-01 12:00:00-05'
 );
 
 -- Event with session having meeting_in_sync=false
@@ -172,8 +173,8 @@ insert into event (
     'America/New_York',
     :'category1ID',
     'virtual',
-    '2025-04-01 09:00:00-04',
-    '2025-04-01 17:00:00-04'
+    '2030-04-01 09:00:00-04',
+    '2030-04-01 17:00:00-04'
 );
 
 insert into session (
@@ -192,8 +193,8 @@ insert into session (
     :'event6ID',
     'Session With Pending Sync',
     'Session description',
-    '2025-04-01 10:00:00-04',
-    '2025-04-01 11:00:00-04',
+    '2030-04-01 10:00:00-04',
+    '2030-04-01 11:00:00-04',
     'virtual',
     'zoom',
     true,
@@ -222,8 +223,8 @@ insert into event (
     'America/New_York',
     :'category1ID',
     'virtual',
-    '2025-05-01 09:00:00-04',
-    '2025-05-01 17:00:00-04',
+    '2030-05-01 09:00:00-04',
+    '2030-05-01 17:00:00-04',
     true
 );
 
@@ -243,8 +244,8 @@ insert into session (
     :'event7ID',
     'Session To Be Removed',
     'Session description',
-    '2025-05-01 10:00:00-04',
-    '2025-05-01 11:00:00-04',
+    '2030-05-01 10:00:00-04',
+    '2030-05-01 11:00:00-04',
     'virtual',
     'zoom',
     true,
@@ -277,6 +278,41 @@ insert into event (
     'in-person',
 
     true
+);
+
+-- Past Event (for testing limited updates)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+
+    description_short,
+    photos_urls,
+    tags,
+    venue_name
+) values (
+    :'event8ID',
+    :'group1ID',
+    'Past Event',
+    'stu5mno',
+    'This event already happened',
+    'America/New_York',
+    :'category1ID',
+    'in-person',
+    '2020-01-01 10:00:00-05',
+    '2020-01-01 12:00:00-05',
+
+    'Original short description',
+    array['https://example.com/original-photo.jpg'],
+    array['original', 'tags'],
+    'Original Venue'
 );
 
 -- ============================================================================
@@ -889,6 +925,126 @@ select lives_ok(
         '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'Should succeed when session is within event bounds'
+);
+
+-- Should update allowed fields and ignore restricted fields on past events
+select update_event(
+    :'group1ID'::uuid,
+    :'event8ID'::uuid,
+    '{
+        "name": "Attempted Name Change",
+        "description": "Updated description for past event",
+        "description_short": "Updated short description",
+        "timezone": "Asia/Tokyo",
+        "category_id": "00000000-0000-0000-0000-000000000012",
+        "kind_id": "virtual",
+        "capacity": 999,
+        "starts_at": "2030-06-01T10:00:00",
+        "ends_at": "2030-06-01T12:00:00",
+        "meeting_requested": true,
+        "meeting_provider_id": "zoom",
+        "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+        "meeting_recording_url": "https://youtube.com/recording",
+        "tags": ["updated", "past", "event"],
+        "venue_name": "Updated Venue",
+        "venue_address": "123 Updated St",
+        "venue_city": "Updated City",
+        "venue_zip_code": "12345",
+        "banner_url": "https://example.com/banner.jpg",
+        "logo_url": "https://example.com/logo.png"
+    }'::jsonb
+);
+-- Verify allowed fields were updated
+select is(
+    (
+        select jsonb_build_object(
+            'banner_url', banner_url,
+            'description', description,
+            'description_short', description_short,
+            'logo_url', logo_url,
+            'meeting_recording_url', meeting_recording_url,
+            'photos_urls', photos_urls,
+            'tags', tags,
+            'venue_address', venue_address,
+            'venue_city', venue_city,
+            'venue_name', venue_name,
+            'venue_zip_code', venue_zip_code
+        )
+        from event
+        where event_id = :'event8ID'::uuid
+    ),
+    '{
+        "banner_url": "https://example.com/banner.jpg",
+        "description": "Updated description for past event",
+        "description_short": "Updated short description",
+        "logo_url": "https://example.com/logo.png",
+        "meeting_recording_url": "https://youtube.com/recording",
+        "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+        "tags": ["updated", "past", "event"],
+        "venue_address": "123 Updated St",
+        "venue_city": "Updated City",
+        "venue_name": "Updated Venue",
+        "venue_zip_code": "12345"
+    }'::jsonb,
+    'Should update allowed fields on past events'
+);
+
+-- Verify restricted fields were ignored despite being in payload
+select is(
+    (
+        select jsonb_build_object(
+            'capacity', capacity,
+            'ends_at', ends_at,
+            'event_category_id', event_category_id,
+            'event_kind_id', event_kind_id,
+            'meeting_provider_id', meeting_provider_id,
+            'meeting_requested', meeting_requested,
+            'name', name,
+            'starts_at', starts_at,
+            'timezone', timezone
+        )
+        from event
+        where event_id = :'event8ID'::uuid
+    ),
+    jsonb_build_object(
+        'capacity', null,
+        'ends_at', '2020-01-01 17:00:00+00'::timestamptz,
+        'event_category_id', :'category1ID'::uuid,
+        'event_kind_id', 'in-person',
+        'meeting_provider_id', null,
+        'meeting_requested', null,
+        'name', 'Past Event',
+        'starts_at', '2020-01-01 15:00:00+00'::timestamptz,
+        'timezone', 'America/New_York'
+    ),
+    'Should ignore restricted fields on past events despite being in payload'
+);
+
+-- Should ignore hosts/speakers/sponsors on past events despite being in payload
+select update_event(
+    :'group1ID'::uuid,
+    :'event8ID'::uuid,
+    '{
+        "description": "Another update with hosts",
+        "hosts": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"],
+        "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}],
+        "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}]
+    }'::jsonb
+);
+select is(
+    (select count(*) from event_host where event_id = :'event8ID'::uuid),
+    0::bigint,
+    'Should ignore hosts on past events despite being in payload'
+);
+select is(
+    (select count(*) from event_speaker where event_id = :'event8ID'::uuid),
+    0::bigint,
+    'Should ignore speakers on past events despite being in payload'
+);
+select is(
+    (select count(*) from event_sponsor where event_id = :'event8ID'::uuid),
+    0::bigint,
+    'Should ignore sponsors on past events despite being in payload'
 );
 
 -- ============================================================================
