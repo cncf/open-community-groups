@@ -1,7 +1,7 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { showSuccessAlert, showErrorAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 
-const DEFAULT_ERROR_MESSAGE = "Failed to send email. Please try again.";
+const DEFAULT_ERROR_MESSAGE = "Failed to send email. Please try again later.";
 
 // Central helper for attaching modal controls and HTMX success handling.
 export const createNotificationModal = ({

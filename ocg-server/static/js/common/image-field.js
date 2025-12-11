@@ -212,7 +212,7 @@ export class ImageField extends LitWrapper {
       showSuccessAlert("Image added successfully.");
     } catch (error) {
       const ERROR_MESSAGE =
-        'Something went wrong adding the image, please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
       showErrorAlert(ERROR_MESSAGE, true);
     } finally {
       this._isUploading = false;

@@ -236,7 +236,7 @@ export class GalleryField extends LitWrapper {
       } catch (error) {
         if (!this._uploadErrorShown) {
           const ERROR_MESSAGE =
-            'Something went wrong adding the images, please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+            'Something went wrong adding the images. Please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
           showErrorAlert(ERROR_MESSAGE, true);
           this._uploadErrorShown = true;
         }

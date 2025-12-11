@@ -42,14 +42,16 @@ export const showSuccessAlert = (message) => {
  * @param {string} message - The error message to display
  * @param {boolean} withHtml - Whether to display the message as HTML content
  */
-export const showErrorAlert = (message, withHtml = false) => {
+export const showErrorAlert = (message, withHtml = false, persist = false) => {
   const alertOptions = {
     text: message,
     icon: "error",
     showConfirmButton: true,
-    timer: 30000,
     ...getCommonAlertOptions(),
   };
+  if (!persist) {
+    alertOptions.timer = 30000;
+  }
   if (withHtml) {
     alertOptions.html = message; // Use HTML content if specified
   }
@@ -68,7 +70,19 @@ export const showServerErrorAlert = (baseMessage, serverError) => {
       ${serverError}
       </div>`
     : "";
-  showErrorAlert(`${baseMessage}${warningBox}`, true);
+  showErrorAlert(`${baseMessage}${warningBox}`, true, true);
+};
+
+/**
+ * Removes retry guidance suffixes from error messages.
+ * @param {string} message
+ * @returns {string}
+ */
+const stripRetryMessage = (message) => {
+  if (!message) {
+    return message;
+  }
+  return message.replace(/\s*Please try again later\.?/i, "").trim();
 };
 
 /**
@@ -93,7 +107,8 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   }
 
   if (xhr.status === 422) {
-    showServerErrorAlert(errorMessage, xhr.responseText?.trim());
+    const cleanedErrorMessage = stripRetryMessage(errorMessage);
+    showServerErrorAlert(cleanedErrorMessage, xhr.responseText?.trim());
     return false;
   }
 
