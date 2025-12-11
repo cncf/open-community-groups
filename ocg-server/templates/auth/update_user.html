@@ -6,6 +6,7 @@
       hx-put="/dashboard/account/update/details"
       hx-ext="no-empty-vals"
       hx-trigger="submit"
+      data-enforce-trimmed="true"
       hx-indicator="#dashboard-spinner, #user-details-spinner"
       hx-disabled-elt="button[type=submit]">
   <div class="space-y-12">
@@ -264,6 +265,7 @@
         hx-ext="no-empty-vals"
         hx-trigger="submit"
         hx-target="body"
+        data-enforce-trimmed="true"
         hx-indicator="#dashboard-spinner, #password-update-spinner"
         hx-disabled-elt="button[type=submit]">
     <div class="space-y-12">
@@ -295,6 +297,7 @@
                      id="new_password"
                      name="new_password"
                      class="input-primary"
+                     data-password
                      required>
             </div>
           </div>
@@ -308,6 +311,7 @@
                      id="password_confirmation"
                      name="password_confirmation"
                      class="input-primary"
+                     data-password-confirmation
                      required>
             </div>
           </div>

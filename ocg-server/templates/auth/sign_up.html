@@ -47,7 +47,8 @@
 
           <form id="sign-up-form"
                 action="/sign-up{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                method="post">
+                method="post"
+                data-enforce-trimmed="true">
             <div class="space-y-5">
               {# Name field -#}
               <div>
@@ -119,6 +120,7 @@
                            name="password"
                            class="input-primary"
                            autocomplete="new-password"
+                           data-password
                            required>
                   </div>
                 </div>
@@ -135,6 +137,7 @@
                            name="password_confirmation"
                            class="input-primary"
                            autocomplete="new-password"
+                           data-password-confirmation
                            required>
                   </div>
                 </div>

@@ -47,6 +47,7 @@
 
           <form action="/log-in{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
                 method="post"
+                data-enforce-trimmed="true"
                 role="form"
                 aria-labelledby="login-form-title">
             <div class="space-y-5">

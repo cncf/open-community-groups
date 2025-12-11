@@ -6,6 +6,7 @@
       hx-put="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/update"
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
+      data-enforce-trimmed="true"
       hx-indicator="#dashboard-spinner, #group-sponsor-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">

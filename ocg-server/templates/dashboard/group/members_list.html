@@ -129,6 +129,7 @@
         <form id="notification-form"
               hx-post="/dashboard/group/notifications"
               hx-indicator="#notification-spinner"
+              data-enforce-trimmed="true"
               hx-disabled-elt="#submit-notification">
           <div class="mb-4">
             <label for="title" class="form-label">
