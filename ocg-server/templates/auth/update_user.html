@@ -280,6 +280,7 @@
                      id="old_password"
                      name="old_password"
                      class="input-primary"
+                     minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                      required>
             </div>
           </div>
@@ -295,6 +296,7 @@
                      id="new_password"
                      name="new_password"
                      class="input-primary"
+                     minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                      data-password
                      required>
             </div>
@@ -309,6 +311,7 @@
                      id="password_confirmation"
                      name="password_confirmation"
                      class="input-primary"
+                     minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                      data-password-confirmation
                      required>
             </div>

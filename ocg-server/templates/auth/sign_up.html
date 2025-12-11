@@ -119,6 +119,7 @@
                            name="password"
                            class="input-primary"
                            autocomplete="new-password"
+                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                            data-password
                            required>
                   </div>
@@ -136,6 +137,7 @@
                            name="password_confirmation"
                            class="input-primary"
                            autocomplete="new-password"
+                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                            data-password-confirmation
                            required>
                   </div>

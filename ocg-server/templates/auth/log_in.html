@@ -83,6 +83,7 @@
                          name="password"
                          class="input-primary"
                          autocomplete="current-password"
+                         minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                          required
                          aria-required="true"
                          aria-describedby="password-help" />

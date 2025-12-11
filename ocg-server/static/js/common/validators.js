@@ -11,7 +11,7 @@
  */
 export const trimmedNonEmpty = (value) => {
   if (!value || value.trim() === "") {
-    return "Value cannot be empty or whitespace-only";
+    return "Value cannot be empty";
   }
   return null;
 };

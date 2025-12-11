@@ -97,6 +97,45 @@ const validatePasswordConfirmation = (form) => {
 };
 
 /**
+ * Keeps password confirmation validity in sync while typing.
+ * @param {HTMLFormElement} form - The form element
+ */
+const wirePasswordInputs = (form) => {
+  const password = form.querySelector("[data-password]");
+  const confirmation = form.querySelector("[data-password-confirmation]");
+
+  if (!password || !confirmation) return;
+
+  const syncValidity = () => {
+    if (!password.value || !confirmation.value) {
+      confirmation.setCustomValidity("");
+      return;
+    }
+
+    const error = passwordsMatch(password.value, confirmation.value);
+    confirmation.setCustomValidity(error ?? "");
+  };
+
+  password.addEventListener("input", syncValidity);
+  confirmation.addEventListener("input", syncValidity);
+};
+
+/**
+ * Clears custom validity on input for required fields.
+ * @param {HTMLFormElement} form - The form element
+ */
+const wireRequiredInputs = (form) => {
+  const fields = form.querySelectorAll(FIELD_SELECTOR);
+
+  fields.forEach((field) => {
+    if (!field.required) return;
+    field.addEventListener("input", () => {
+      field.setCustomValidity("");
+    });
+  });
+};
+
+/**
  * Validates all fields in a form.
  * @param {HTMLFormElement} form - The form element
  * @returns {boolean} True if all fields are valid
@@ -156,6 +195,9 @@ const validateIncludedForms = (elt) => {
 const wireForm = (form) => {
   if (form.dataset.trimmedReady === "true") return;
   form.dataset.trimmedReady = "true";
+
+  wirePasswordInputs(form);
+  wireRequiredInputs(form);
 
   form.addEventListener("submit", (event) => {
     if (!validateForm(form)) {
