@@ -259,6 +259,16 @@ impl EventFull {
         }
     }
 
+    /// Check if the event is in the past.
+    #[allow(dead_code)]
+    pub fn is_past(&self) -> bool {
+        let reference_time = self.ends_at.or(self.starts_at);
+        match reference_time {
+            Some(time) => time < Utc::now(),
+            None => false,
+        }
+    }
+
     /// Try to create an `EventFull` instance from a JSON string.
     #[instrument(skip_all, err)]
     pub fn try_from_json(data: &str) -> Result<Self> {
@@ -476,6 +486,56 @@ mod tests {
             ..Default::default()
         };
         assert!(event.is_live());
+    }
+
+    #[test]
+    fn event_full_is_past_returns_false_when_both_times_are_none() {
+        let event = EventFull {
+            ends_at: None,
+            starts_at: None,
+            ..Default::default()
+        };
+        assert!(!event.is_past());
+    }
+
+    #[test]
+    fn event_full_is_past_returns_false_when_ends_at_is_in_future() {
+        let event = EventFull {
+            ends_at: Some(Utc::now() + Duration::hours(1)),
+            starts_at: Some(Utc::now() - Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.is_past());
+    }
+
+    #[test]
+    fn event_full_is_past_returns_false_when_starts_at_is_in_future() {
+        let event = EventFull {
+            ends_at: None,
+            starts_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.is_past());
+    }
+
+    #[test]
+    fn event_full_is_past_returns_true_when_ends_at_is_in_past() {
+        let event = EventFull {
+            ends_at: Some(Utc::now() - Duration::hours(1)),
+            starts_at: Some(Utc::now() - Duration::hours(2)),
+            ..Default::default()
+        };
+        assert!(event.is_past());
+    }
+
+    #[test]
+    fn event_full_is_past_returns_true_when_starts_at_is_in_past_and_no_ends_at() {
+        let event = EventFull {
+            ends_at: None,
+            starts_at: Some(Utc::now() - Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.is_past());
     }
 
     #[test]
