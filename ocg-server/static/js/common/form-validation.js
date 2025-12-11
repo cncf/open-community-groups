@@ -159,6 +159,175 @@ const validateForm = (form) => {
   return validatePasswordConfirmation(form);
 };
 
+// -----------------------------------------------------------------------------
+// Date helpers
+// -----------------------------------------------------------------------------
+
+/**
+ * Parses a datetime-local string into a Date.
+ * @param {string} value - Datetime-local string (YYYY-MM-DDTHH:MM)
+ * @returns {Date|null} Date instance or null when invalid/empty
+ */
+export const parseLocalDate = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const reportWithSection = (input, message, onSection) => {
+  if (!input) return false;
+  input.setCustomValidity(message);
+  onSection?.();
+  const show = () => {
+    // Small async delay stabilizes native validity tooltip after DOM/tab changes.
+    input.blur();
+    input.focus({ preventScroll: true });
+    input.reportValidity();
+  };
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setTimeout(show, 0));
+  } else {
+    setTimeout(show, 0);
+  }
+  return false;
+};
+
+/**
+ * Validates event-level start/end dates.
+ * Sets custom validity messages on provided inputs.
+ * @param {Object} params - Validation params
+ * @param {HTMLInputElement|null} params.startsInput - Start datetime input
+ * @param {HTMLInputElement|null} params.endsInput - End datetime input
+ * @param {boolean} [params.allowPastDates=false] - Allow past dates (updates)
+ * @param {Function} [params.onDateSection] - Callback to show date tab
+ * @returns {boolean} True when valid
+ */
+export const validateEventDates = ({
+  startsInput,
+  endsInput,
+  allowPastDates = false,
+  onDateSection,
+} = {}) => {
+  if (startsInput) startsInput.setCustomValidity("");
+  if (endsInput) endsInput.setCustomValidity("");
+
+  const startsAtDate = parseLocalDate(startsInput?.value);
+  const endsAtDate = parseLocalDate(endsInput?.value);
+
+  if (endsInput?.value && !startsInput?.value) {
+    return reportWithSection(startsInput, "Start date is required when end date is set.", onDateSection);
+  }
+
+  if (!allowPastDates) {
+    const now = new Date();
+    if (startsAtDate && startsAtDate < now) {
+      return reportWithSection(startsInput, "Start date cannot be in the past.", onDateSection);
+    }
+    if (endsAtDate && endsAtDate < now) {
+      return reportWithSection(endsInput, "End date cannot be in the past.", onDateSection);
+    }
+  }
+
+  if (startsAtDate && endsAtDate && endsAtDate <= startsAtDate) {
+    return reportWithSection(endsInput, "End date must be after start date.", onDateSection);
+  }
+
+  return true;
+};
+
+/**
+ * Builds a map of session date inputs grouped by index.
+ * @param {HTMLElement|Document} root - Root element to query
+ * @returns {Object} Map keyed by session index
+ */
+const buildSessionDateMap = (root) => {
+  const sessionDateInputs = root.querySelectorAll(
+    'input[name^="sessions"][name$="[starts_at]"],' + 'input[name^="sessions"][name$="[ends_at]"]',
+  );
+
+  const map = {};
+  sessionDateInputs.forEach((input) => {
+    const match = input.name.match(/^sessions\[(\d+)\]\[(starts_at|ends_at)\]$/);
+    if (!match) return;
+    const [, idx, field] = match;
+    if (!map[idx]) map[idx] = {};
+    map[idx][field] = input;
+  });
+  return map;
+};
+
+/**
+ * Validates that session dates fall within event bounds and are ordered.
+ * @param {Object} params - Validation params
+ * @param {Date|null} params.eventStartsAt - Event start date
+ * @param {Date|null} params.eventEndsAt - Event end date
+ * @param {HTMLElement} [params.sessionForm=document] - Root element for inputs
+ * @param {Function} [params.onSessionsSection] - Callback to show sessions tab
+ * @returns {boolean} True when valid
+ */
+export const validateSessionDateBounds = ({
+  eventStartsAt,
+  eventEndsAt,
+  sessionForm = document,
+  onSessionsSection,
+} = {}) => {
+  const sessionsMap = buildSessionDateMap(sessionForm);
+  const sessionEntries = Object.values(sessionsMap);
+  if (sessionEntries.length === 0) return true;
+
+  sessionEntries.forEach(({ starts_at, ends_at }) => {
+    if (starts_at) starts_at.setCustomValidity("");
+    if (ends_at) ends_at.setCustomValidity("");
+  });
+
+  for (const session of sessionEntries) {
+    const startDate = parseLocalDate(session.starts_at?.value);
+    const endDate = parseLocalDate(session.ends_at?.value);
+
+    if (eventStartsAt && startDate && startDate < eventStartsAt) {
+      return reportWithSection(
+        session.starts_at,
+        "Session start cannot be before the event start.",
+        onSessionsSection,
+      );
+    }
+
+    if (eventEndsAt && startDate && startDate > eventEndsAt) {
+      return reportWithSection(
+        session.starts_at,
+        "Session start cannot be after the event end.",
+        onSessionsSection,
+      );
+    }
+
+    if (eventStartsAt && endDate && endDate < eventStartsAt) {
+      return reportWithSection(
+        session.ends_at,
+        "Session end cannot be before the event start.",
+        onSessionsSection,
+      );
+    }
+
+    if (eventEndsAt && endDate && endDate > eventEndsAt) {
+      return reportWithSection(
+        session.ends_at,
+        "Session end cannot be after the event end.",
+        onSessionsSection,
+      );
+    }
+
+    if (startDate && endDate && endDate < startDate) {
+      return reportWithSection(
+        session.ends_at,
+        "Session end must be after the session start.",
+        onSessionsSection,
+      );
+    }
+  }
+
+  return true;
+};
+
 /**
  * Validates forms included via hx-include attribute.
  * @param {HTMLElement} elt - The element with hx-include

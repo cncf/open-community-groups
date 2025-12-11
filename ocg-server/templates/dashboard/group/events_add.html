@@ -537,6 +537,11 @@
     confirmVenueDataDeletion,
     updateSectionVisibility
   } from '/static/js/dashboard/group/meeting-validations.js';
+  import {
+    parseLocalDate,
+    validateEventDates,
+    validateSessionDateBounds
+  } from '/static/js/common/form-validation.js';
   import '/static/js/common/user-search-selector.js';
   import '/static/js/common/speakers-selector.js';
   import '/static/js/common/online-event-details.js';
@@ -704,6 +709,20 @@
       if (e.detail.elt.id === 'add-event-button') {
         // Use multiple form validation
         const isValid = validateEventForms();
+        const eventStartsAt = parseLocalDate(startsAtInput?.value);
+        const eventEndsAt = parseLocalDate(endsAtInput?.value);
+        const datesValid = validateEventDates({
+          startsInput: startsAtInput,
+          endsInput: endsAtInput,
+          allowPastDates: false,
+          onDateSection: () => displayActiveSection('date-venue'),
+        });
+
+        if (!datesValid) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          return false;
+        }
 
         // Validate online event details component
         let onlineValid = true;
@@ -714,10 +733,25 @@
         }
 
         const sessionsOnlineValid = validateSessionOnlineDetails();
+        const sessionBoundsValid = datesValid ?
+          validateSessionDateBounds({
+            eventStartsAt,
+            eventEndsAt,
+            sessionForm: document.getElementById('sessions-form'),
+            onSessionsSection: () => displayActiveSection('sessions'),
+          }) :
+          true;
 
-        if (!isValid || !onlineValid || !sessionsOnlineValid) {
+        if (
+          !isValid ||
+          !datesValid ||
+          !onlineValid ||
+          !sessionsOnlineValid ||
+          !sessionBoundsValid
+        ) {
           // Prevent form submission
           e.preventDefault();
+          e.stopImmediatePropagation();
           return false;
         }
       }
@@ -726,8 +760,10 @@
     // Convert datetime-local values to proper ISO format for PostgreSQL
     addEventButton.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'add-event-button') {
-        Object.keys(e.detail.parameters).forEach(key => {
-          if (key.match(/^(starts_at|ends_at)$/) || key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/)) {
+        Object.keys(e.detail.parameters).forEach((key) => {
+          const isEventDate = key.match(/^(starts_at|ends_at)$/);
+          const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
+          if (isEventDate || isSessionDate) {
             if (e.detail.parameters[key]) {
               e.detail.parameters[key] = convertDateTimeLocalToISO(e.detail.parameters[key]);
             }
@@ -742,7 +778,7 @@
         handleHtmxResponse({
           xhr,
           successMessage: 'You have successfully created the event.',
-          errorMessage: 'Something went wrong creating the event. Please try again later.'
+          errorMessage: 'Something went wrong creating the event. Please try again later.',
         });
       }
     });
