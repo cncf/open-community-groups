@@ -22,8 +22,8 @@ use crate::{
     },
     types::group::GroupSponsor,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, email_vec, trimmed_non_empty, trimmed_non_empty_opt,
-        trimmed_non_empty_vec, valid_latitude, valid_longitude,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, email_vec, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_vec, valid_latitude, valid_longitude,
     },
 };
 
@@ -106,7 +106,7 @@ pub(crate) struct Event {
     pub timezone: String,
 
     /// Banner image URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,
     /// Maximum capacity for the event.
     #[garde(range(min = 0))]
@@ -127,7 +127,7 @@ pub(crate) struct Event {
     #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
     /// URL to the event logo.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
     /// Meeting hosts to synchronize with provider (email addresses).
     #[garde(custom(email_vec))]

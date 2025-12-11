@@ -14,8 +14,8 @@ use crate::{
     templates::{PageId, filters, helpers::user_initials},
     types::community::Community,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MIN_PASSWORD_LEN, trimmed_non_empty, trimmed_non_empty_opt,
-        trimmed_non_empty_vec,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_vec,
     },
 };
 
@@ -149,7 +149,7 @@ pub(crate) struct UserDetails {
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
     /// User's photo URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
     /// User's timezone.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]

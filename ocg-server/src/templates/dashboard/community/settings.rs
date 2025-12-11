@@ -10,8 +10,8 @@ use serde_with::skip_serializing_none;
 use crate::{
     types::community::Community,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_XL, hex_color, trimmed_non_empty, trimmed_non_empty_opt,
-        url_map_values, url_vec,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_XL, hex_color, image_url, image_url_opt, image_url_vec,
+        trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
     },
 };
 
@@ -38,7 +38,7 @@ pub(crate) struct CommunityUpdate {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub display_name: String,
     /// URL to the logo image shown in the page header.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url))]
     pub header_logo_url: String,
     /// Unique identifier used in URLs and database references.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
@@ -54,7 +54,7 @@ pub(crate) struct CommunityUpdate {
     #[garde(url, length(max = MAX_LEN_L))]
     pub ad_banner_link_url: Option<String>,
     /// URL to the advertisement banner image.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub ad_banner_url: Option<String>,
     /// Copyright text displayed in the footer.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
@@ -66,13 +66,13 @@ pub(crate) struct CommunityUpdate {
     #[garde(url, length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
     /// URL to the small icon displayed in browser tabs and bookmarks.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub favicon_url: Option<String>,
     /// Link to the community's Flickr photo collection.
     #[garde(url, length(max = MAX_LEN_L))]
     pub flickr_url: Option<String>,
     /// URL to the logo image shown in the page footer.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub footer_logo_url: Option<String>,
     /// Link to the community's GitHub organization or repository.
     #[garde(url, length(max = MAX_LEN_L))]
@@ -81,7 +81,7 @@ pub(crate) struct CommunityUpdate {
     #[garde(url, length(max = MAX_LEN_L))]
     pub instagram_url: Option<String>,
     /// URL to the jumbotron background image for the community home page.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub jumbotron_image_url: Option<String>,
     /// Link to the community's `LinkedIn` page.
     #[garde(url, length(max = MAX_LEN_L))]
@@ -93,7 +93,7 @@ pub(crate) struct CommunityUpdate {
     #[garde(url, length(max = MAX_LEN_L))]
     pub og_image_url: Option<String>,
     /// Collection of photo URLs for community galleries or slideshows.
-    #[garde(custom(url_vec))]
+    #[garde(custom(image_url_vec))]
     pub photos_urls: Option<Vec<String>>,
     /// Link to the community's Slack workspace.
     #[garde(url, length(max = MAX_LEN_L))]

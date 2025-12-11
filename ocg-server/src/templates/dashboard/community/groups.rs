@@ -12,8 +12,8 @@ use crate::{
     templates::filters,
     types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, trimmed_non_empty, trimmed_non_empty_opt,
-        trimmed_non_empty_vec, url_map_values, url_vec, valid_latitude, valid_longitude,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, image_url_opt, image_url_vec, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_vec, url_map_values, valid_latitude, valid_longitude,
     },
 };
 
@@ -69,7 +69,7 @@ pub(crate) struct Group {
     pub name: String,
 
     /// Banner image URL.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,
     /// City where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -105,10 +105,10 @@ pub(crate) struct Group {
     #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
     /// URL to the group logo.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
     /// Gallery of photo URLs.
-    #[garde(custom(url_vec))]
+    #[garde(custom(image_url_vec))]
     pub photos_urls: Option<Vec<String>>,
     /// Region this group belongs to.
     #[garde(skip)]

@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     types::group::GroupSponsor,
-    validation::{MAX_LEN_L, MAX_LEN_M, trimmed_non_empty},
+    validation::{MAX_LEN_L, MAX_LEN_M, image_url, trimmed_non_empty},
 };
 
 // Pages templates.
@@ -46,7 +46,7 @@ pub(crate) struct UpdatePage {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct Sponsor {
     /// URL to sponsor logo.
-    #[garde(url, length(max = MAX_LEN_L))]
+    #[garde(custom(image_url))]
     pub logo_url: String,
     /// Sponsor name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]

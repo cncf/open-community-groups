@@ -71,6 +71,35 @@ pub fn hex_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
     Ok(())
 }
 
+/// Validates that a required string is a valid image URL (absolute or relative).
+///
+/// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
+pub fn image_url(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
+    validate_image_url(value.as_ref())
+}
+
+/// Validates that an optional string is a valid image URL (absolute or relative).
+///
+/// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
+pub fn image_url_opt(value: &Option<String>, _ctx: &()) -> garde::Result {
+    if let Some(url) = value {
+        validate_image_url(url)?;
+    }
+    Ok(())
+}
+
+/// Validates that each string in a vector is a valid image URL (absolute or relative).
+///
+/// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
+pub fn image_url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
+    if let Some(vec) = value {
+        for url in vec {
+            validate_image_url(url)?;
+        }
+    }
+    Ok(())
+}
+
 /// Validates that a string is non-empty after trimming whitespace.
 ///
 /// Returns an error if the string is empty or contains only whitespace.
@@ -136,26 +165,6 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
     Ok(())
 }
 
-/// Validates that each string in a vector is a valid URL within max length.
-pub fn url_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
-    if let Some(vec) = value {
-        for url in vec {
-            if url.trim().is_empty() {
-                return Err(garde::Error::new("URL cannot be empty"));
-            }
-            if url.len() > MAX_LEN_L {
-                return Err(garde::Error::new(format!(
-                    "URL exceeds max length of {MAX_LEN_L}"
-                )));
-            }
-            if Url::parse(url).is_err() {
-                return Err(garde::Error::new(format!("invalid URL: {url}")));
-            }
-        }
-    }
-    Ok(())
-}
-
 /// Validates that a latitude value is within valid range (-90 to 90).
 pub fn valid_latitude(value: &Option<f64>, _ctx: &()) -> garde::Result {
     if let Some(lat) = value
@@ -172,6 +181,25 @@ pub fn valid_longitude(value: &Option<f64>, _ctx: &()) -> garde::Result {
         && !(-180.0..=180.0).contains(lon)
     {
         return Err(garde::Error::new("longitude must be between -180 and 180"));
+    }
+    Ok(())
+}
+
+// Helpers.
+
+// Validates a single image URL string (absolute or relative)
+fn validate_image_url(url: &str) -> garde::Result {
+    if url.trim().is_empty() {
+        return Err(garde::Error::new("image URL cannot be empty"));
+    }
+    if url.len() > MAX_LEN_L {
+        return Err(garde::Error::new(format!(
+            "image URL exceeds max length of {MAX_LEN_L}"
+        )));
+    }
+    // Accept absolute URLs or relative URLs starting with /
+    if !url.starts_with('/') && Url::parse(url).is_err() {
+        return Err(garde::Error::new(format!("invalid image URL: {url}")));
     }
     Ok(())
 }
@@ -247,6 +275,110 @@ mod tests {
         assert!(hex_color(&"#FFFFFF", &()).is_ok());
         assert!(hex_color(&"#123abc", &()).is_ok());
         assert!(hex_color(&"#D62293", &()).is_ok());
+    }
+
+    #[test]
+    fn test_image_url_invalid() {
+        // Not a valid URL and doesn't start with /
+        assert!(image_url(&"not-a-url", &()).is_err());
+        assert!(image_url(&"example.com/image.png", &()).is_err());
+        // Empty
+        assert!(image_url(&"", &()).is_err());
+        // Whitespace only
+        assert!(image_url(&"   ", &()).is_err());
+    }
+
+    #[test]
+    fn test_image_url_length_exceeded() {
+        let long_url = format!("/{}", "a".repeat(MAX_LEN_L));
+        assert!(image_url(&long_url, &()).is_err());
+    }
+
+    #[test]
+    fn test_image_url_opt_invalid() {
+        assert!(image_url_opt(&Some("not-a-url".to_string()), &()).is_err());
+        assert!(image_url_opt(&Some(String::new()), &()).is_err());
+        assert!(image_url_opt(&Some("   ".to_string()), &()).is_err());
+    }
+
+    #[test]
+    fn test_image_url_opt_length_exceeded() {
+        let long_url = format!("/{}", "a".repeat(MAX_LEN_L));
+        assert!(image_url_opt(&Some(long_url), &()).is_err());
+    }
+
+    #[test]
+    fn test_image_url_opt_none() {
+        assert!(image_url_opt(&None, &()).is_ok());
+    }
+
+    #[test]
+    fn test_image_url_opt_valid() {
+        // Absolute URLs
+        assert!(image_url_opt(&Some("https://example.com/image.png".to_string()), &()).is_ok());
+        assert!(image_url_opt(&Some("http://example.com/logo.svg".to_string()), &()).is_ok());
+        // Relative URLs
+        assert!(image_url_opt(&Some("/images/logo.png".to_string()), &()).is_ok());
+        assert!(image_url_opt(&Some("/logo.svg".to_string()), &()).is_ok());
+    }
+
+    #[test]
+    fn test_image_url_valid() {
+        // Absolute URLs
+        assert!(image_url(&"https://example.com/image.png", &()).is_ok());
+        assert!(image_url(&"http://example.com/logo.svg", &()).is_ok());
+        assert!(image_url(&"https://cdn.example.com/path/to/image.jpg", &()).is_ok());
+        // Relative URLs
+        assert!(image_url(&"/images/logo.png", &()).is_ok());
+        assert!(image_url(&"/logo.svg", &()).is_ok());
+        assert!(image_url(&"/path/to/image.jpg", &()).is_ok());
+    }
+
+    #[test]
+    fn test_image_url_vec_invalid() {
+        assert!(image_url_vec(&Some(vec!["not-a-url".to_string()]), &()).is_err());
+        assert!(image_url_vec(&Some(vec![String::new()]), &()).is_err());
+        assert!(image_url_vec(&Some(vec!["   ".to_string()]), &()).is_err());
+        // One valid, one invalid
+        assert!(
+            image_url_vec(
+                &Some(vec!["/valid/image.png".to_string(), "not-a-url".to_string()]),
+                &()
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn test_image_url_vec_length_exceeded() {
+        let long_url = format!("/{}", "a".repeat(MAX_LEN_L));
+        assert!(image_url_vec(&Some(vec![long_url]), &()).is_err());
+    }
+
+    #[test]
+    fn test_image_url_vec_none() {
+        assert!(image_url_vec(&None, &()).is_ok());
+    }
+
+    #[test]
+    fn test_image_url_vec_valid() {
+        // Absolute URLs
+        assert!(image_url_vec(&Some(vec!["https://example.com/image.png".to_string()]), &()).is_ok());
+        // Relative URLs
+        assert!(image_url_vec(&Some(vec!["/images/logo.png".to_string()]), &()).is_ok());
+        // Mix of absolute and relative
+        assert!(
+            image_url_vec(
+                &Some(vec![
+                    "https://example.com/image.png".to_string(),
+                    "/local/image.jpg".to_string()
+                ]),
+                &()
+            )
+            .is_ok()
+        );
+        // Empty vec is valid
+        assert!(image_url_vec(&Some(vec![]), &()).is_ok());
     }
 
     #[test]
@@ -369,53 +501,6 @@ mod tests {
 
         // Empty map is valid
         assert!(url_map_values(&Some(BTreeMap::new()), &()).is_ok());
-    }
-
-    #[test]
-    fn test_url_vec_invalid() {
-        assert!(url_vec(&Some(vec!["not-a-url".to_string()]), &()).is_err());
-        assert!(url_vec(&Some(vec![String::new()]), &()).is_err());
-        assert!(url_vec(&Some(vec!["   ".to_string()]), &()).is_err());
-        assert!(
-            url_vec(
-                &Some(vec!["https://example.com".to_string(), "not-a-url".to_string()]),
-                &()
-            )
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn test_url_vec_length_exceeded() {
-        // URL exceeding MAX_LEN_L
-        let long_url = format!("https://example.com/{}", "a".repeat(MAX_LEN_L));
-        assert!(url_vec(&Some(vec![long_url]), &()).is_err());
-
-        // One valid, one too long
-        let long_url = format!("https://example.com/{}", "a".repeat(MAX_LEN_L));
-        assert!(url_vec(&Some(vec!["https://example.com".to_string(), long_url]), &()).is_err());
-    }
-
-    #[test]
-    fn test_url_vec_none() {
-        assert!(url_vec(&None, &()).is_ok());
-    }
-
-    #[test]
-    fn test_url_vec_valid() {
-        assert!(url_vec(&Some(vec!["https://example.com".to_string()]), &()).is_ok());
-        assert!(
-            url_vec(
-                &Some(vec![
-                    "https://example.com".to_string(),
-                    "https://other.com/path".to_string()
-                ]),
-                &()
-            )
-            .is_ok()
-        );
-        // Empty vec is valid
-        assert!(url_vec(&Some(vec![]), &()).is_ok());
     }
 
     #[test]
