@@ -228,6 +228,8 @@ export class ImageField extends LitWrapper {
    */
   _setValue(newValue) {
     this.value = newValue || "";
+    const valueInput = this.querySelector(`#${this._valueInputId}`);
+    valueInput?.setCustomValidity("");
     this.dispatchEvent(
       new CustomEvent("image-change", {
         detail: { value: this.value },
@@ -243,6 +245,11 @@ export class ImageField extends LitWrapper {
     }
 
     this._setValue("");
+  }
+
+  _handleValueInvalid(event) {
+    const message = `${this.label} is required.`;
+    event.target.setCustomValidity(message);
   }
 
   /**
@@ -327,12 +334,15 @@ export class ImageField extends LitWrapper {
         </div>
       </div>
       <input
-        type="hidden"
+        type="text"
         id=${valueInputId}
         name=${this.name || valueInputId}
+        class="sr-only"
         .value=${this.value}
         ?required=${this.required}
-        readonly
+        tabindex="-1"
+        aria-hidden="true"
+        @invalid=${this._handleValueInvalid}
       />
     `;
   }

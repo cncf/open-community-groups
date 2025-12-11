@@ -407,7 +407,6 @@ const handleConfigRequest = (event) => {
  * Initializes form validation on all matching forms.
  */
 const init = () => {
-  console.log("Initializing form validation module");
   document.querySelectorAll("form").forEach(wireForm);
 
   if (window.htmx && typeof htmx.onLoad === "function") {
