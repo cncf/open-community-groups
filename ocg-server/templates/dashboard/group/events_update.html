@@ -655,19 +655,8 @@
 
   // Validate multiple forms
   function validateEventForms() {
-    const formSections = [{
-        %
-        if event.is_past() %
-      }
-      'details', 'date-venue' {
-        %
-        else %
-      }
-      'details', 'date-venue', 'sessions', 'hosts-sponsors' {
-        %
-        endif %
-      }
-    ];
+    const formSections = ["details", "date-venue", "sessions", "hosts-sponsors"];
+
 
     for (const formName of formSections) {
       const formElement = document.getElementById(`${formName}-form`);
@@ -683,15 +672,7 @@
   }
 
   function validateSessionOnlineDetails() {
-    {
-      %
-      if event.is_past() %
-    }
-    return true;
-    {
-      %
-      endif %
-    }
+
     const sessionsSection = document.querySelector('sessions-section');
     if (!sessionsSection) {
       return true;
@@ -830,16 +811,6 @@
           onlineValid = onlineEventDetails.validate(displayActiveSection);
         }
 
-        {
-          %
-          if event.is_past() %
-        }
-        const sessionsOnlineValid = true;
-        const sessionBoundsValid = true;
-        {
-          %
-          else %
-        }
         const sessionsOnlineValid = validateSessionOnlineDetails();
         const sessionBoundsValid = datesValid ?
           validateSessionDateBounds({
@@ -849,10 +820,6 @@
             onSessionsSection: () => displayActiveSection('sessions'),
           }) :
           true;
-        {
-          %
-          endif %
-        }
 
         if (
           !isValid ||

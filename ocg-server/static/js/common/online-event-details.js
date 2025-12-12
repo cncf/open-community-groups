@@ -617,18 +617,16 @@ export class OnlineEventDetails extends LitWrapper {
   _renderHiddenInputs() {
     const isAutomatic = this._mode === "automatic" && this._createMeeting;
     const joinUrlValue = isAutomatic ? "" : (this._joinUrl || "").trim();
-    const recordingUrlValue = this._isSession() ? "" : (this._recordingUrl || "").trim();
+    const recordingUrlValue = (this._recordingUrl || "").trim();
     const providerIdValue = isAutomatic ? (this._providerId || "").trim() : "";
 
     return html`
       <input type="hidden" name="${this._getFieldName("meeting_join_url")}" value="${joinUrlValue}" />
-      ${this._isSession()
-        ? ""
-        : html`<input
-            type="hidden"
-            name="${this._getFieldName("meeting_recording_url")}"
-            value="${recordingUrlValue}"
-          />`}
+      <input
+        type="hidden"
+        name="${this._getFieldName("meeting_recording_url")}"
+        value="${recordingUrlValue}"
+      />
       <input type="hidden" name="${this._getFieldName("meeting_requested")}" value="${isAutomatic}" />
       <input type="hidden" name="${this._getFieldName("meeting_provider_id")}" value="${providerIdValue}" />
     `;
@@ -760,7 +758,7 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _renderManualFields() {
     const disabledClasses = this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : "";
-    const recordingDisabled = this._isSession();
+    const recordingDisabled = this._isSession() && this.disabled;
     return html`
       <div class="space-y-2">
         <label for="${this._getFieldName("meeting_join_url")}" class="form-label">Meeting URL</label>
