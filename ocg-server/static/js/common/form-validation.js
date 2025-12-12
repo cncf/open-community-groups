@@ -185,6 +185,7 @@ const reportWithSection = (input, message, onSection) => {
     input.reportValidity();
   };
   if (typeof requestAnimationFrame === "function") {
+    // This prevent to hide custom validity tooltip when called inside an event handler.
     requestAnimationFrame(() => setTimeout(show, 0));
   } else {
     setTimeout(show, 0);
