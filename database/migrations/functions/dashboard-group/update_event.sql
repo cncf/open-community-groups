@@ -78,8 +78,14 @@ begin
     -- Validate event dates are not in the past (only for non-past events)
     if p_event->>'starts_at' is not null then
         v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+        -- For events that haven't started yet: starts_at cannot be in the past
+        -- For events already started (live): starts_at cannot be earlier than current value
         if v_starts_at < current_timestamp then
-            raise exception 'event starts_at cannot be in the past';
+            if to_timestamp((v_event_before->>'starts_at')::bigint) >= current_timestamp then
+                raise exception 'event starts_at cannot be in the past';
+            elsif v_starts_at < to_timestamp((v_event_before->>'starts_at')::bigint) then
+                raise exception 'event starts_at cannot be earlier than current value';
+            end if;
         end if;
     end if;
 

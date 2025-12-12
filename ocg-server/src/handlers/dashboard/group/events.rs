@@ -11,6 +11,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::{TimeDelta, Utc};
+use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -27,7 +28,7 @@ use crate::{
         notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     },
     templates::{
-        dashboard::group::events::{self, Event},
+        dashboard::group::events::{self, Event, PastEventUpdate},
         notifications::{EventCanceled, EventPublished, EventRescheduled},
     },
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -304,16 +305,43 @@ pub(crate) async fn update(
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
     State(notifications_manager): State<DynNotificationsManager>,
+    State(serde_qs_de): State<serde_qs::Config>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
-    ValidatedFormQs(event): ValidatedFormQs<Event>,
+    body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Load event summary before update to detect reschedule
+    // Load event summary before update to detect if it is past
     let before = db.get_event_summary(community_id, group_id, event_id).await?;
+
+    // For past events, deserialize as PastEventUpdate (limited fields)
+    if before.is_past() {
+        let event: PastEventUpdate = serde_qs_de
+            .deserialize_str(&body)
+            .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
+        event.validate()?;
+
+        // Update event in database (no reschedule notifications for past events)
+        let event_json = serde_json::to_value(&event)?;
+        db.update_event(group_id, event_id, &event_json, &HashMap::new())
+            .await?;
+
+        return Ok((
+            StatusCode::NO_CONTENT,
+            [("HX-Trigger", "refresh-group-dashboard-table")],
+        )
+            .into_response());
+    }
+
+    // For non-past events, deserialize as full Event
+    let event: Event = serde_qs_de
+        .deserialize_str(&body)
+        .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
+    event.validate()?;
 
     // Update event in database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    db.update_event(group_id, event_id, &event, &cfg_max_participants)
+    let event_json = serde_json::to_value(&event)?;
+    db.update_event(group_id, event_id, &event_json, &cfg_max_participants)
         .await?;
 
     // Notify attendees if event was rescheduled
@@ -1136,7 +1164,7 @@ mod tests {
             .withf(move |gid, eid, event, cfg_max_participants| {
                 *gid == group_id
                     && *eid == event_id
-                    && event.name == event_form.name
+                    && event.get("name").and_then(|v| v.as_str()) == Some(event_form.name.as_str())
                     && cfg_max_participants.is_empty()
             })
             .returning(move |_, _, _, _| Ok(()));

@@ -113,7 +113,7 @@ pub(crate) trait DBDashboardGroup {
         &self,
         group_id: Uuid,
         event_id: Uuid,
-        event: &Event,
+        event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<()>;
 
@@ -495,7 +495,7 @@ impl DBDashboardGroup for PgDB {
         &self,
         group_id: Uuid,
         event_id: Uuid,
-        event: &Event,
+        event: &serde_json::Value,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<()> {
         trace!("db: update event");

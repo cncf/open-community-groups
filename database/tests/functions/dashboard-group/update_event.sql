@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(39);
+select plan(42);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(39);
 \set event6ID '00000000-0000-0000-0000-000000000006'
 \set event7ID '00000000-0000-0000-0000-000000000007'
 \set event8ID '00000000-0000-0000-0000-000000000008'
+\set event9ID '00000000-0000-0000-0000-000000000009'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
@@ -313,6 +314,31 @@ insert into event (
     array['https://example.com/original-photo.jpg'],
     array['original', 'tags'],
     'Original Venue'
+);
+
+-- Live Event (started in the past, ends in the future)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at
+) values (
+    :'event9ID',
+    :'group1ID',
+    'Live Event',
+    'vwx6pqr',
+    'This event is currently live',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    current_timestamp - interval '1 hour',
+    current_timestamp + interval '2 hours'
 );
 
 -- ============================================================================
@@ -1045,6 +1071,70 @@ select is(
     (select count(*) from event_sponsor where event_id = :'event8ID'::uuid),
     0::bigint,
     'Should ignore sponsors on past events despite being in payload'
+);
+
+-- Should succeed updating live event when starts_at is unchanged
+select lives_ok(
+    format(
+        $$select update_event(
+            '%s'::uuid,
+            '%s'::uuid,
+            jsonb_build_object(
+                'name', 'Live Event Updated',
+                'description', 'Updated description',
+                'timezone', 'UTC',
+                'category_id', '%s',
+                'kind_id', 'in-person',
+                'starts_at', to_char((select starts_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                'ends_at', to_char((select ends_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
+            )
+        )$$,
+        :'group1ID', :'event9ID', :'category1ID', :'event9ID', :'event9ID'
+    ),
+    'Should succeed updating live event when starts_at is unchanged'
+);
+
+-- Should succeed updating live event when starts_at is moved later (but still in past)
+select lives_ok(
+    format(
+        $$select update_event(
+            '%s'::uuid,
+            '%s'::uuid,
+            jsonb_build_object(
+                'name', 'Live Event Updated Again',
+                'description', 'Updated description again',
+                'timezone', 'UTC',
+                'category_id', '%s',
+                'kind_id', 'in-person',
+                'starts_at', to_char((select starts_at from event where event_id = '%s'::uuid) at time zone 'UTC' + interval '30 minutes', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                'ends_at', to_char((select ends_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
+            )
+        )$$,
+        :'group1ID', :'event9ID', :'category1ID', :'event9ID', :'event9ID'
+    ),
+    'Should succeed updating live event when starts_at is moved later (but still in past)'
+);
+
+-- Should throw error when trying to backdate starts_at on live event
+select throws_ok(
+    format(
+        $$select update_event(
+            '%s'::uuid,
+            '%s'::uuid,
+            jsonb_build_object(
+                'name', 'Live Event Backdated',
+                'description', 'Trying to backdate',
+                'timezone', 'UTC',
+                'category_id', '%s',
+                'kind_id', 'in-person',
+                'starts_at', to_char((select starts_at from event where event_id = '%s'::uuid) at time zone 'UTC' - interval '30 minutes', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                'ends_at', to_char((select ends_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
+            )
+        )$$,
+        :'group1ID', :'event9ID', :'category1ID', :'event9ID', :'event9ID'
+    ),
+    'event starts_at cannot be earlier than current value',
+    'Should throw error when trying to backdate starts_at on live event'
 );
 
 -- ============================================================================

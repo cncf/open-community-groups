@@ -297,7 +297,7 @@ mock! {
             &self,
             group_id: Uuid,
             event_id: Uuid,
-            event: &crate::templates::dashboard::group::events::Event,
+            event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<()>;
         async fn update_group_sponsor(

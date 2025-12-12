@@ -218,6 +218,46 @@ impl GroupEvents {
     }
 }
 
+/// Event update details for past events (limited fields).
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Validate)]
+pub(crate) struct PastEventUpdate {
+    /// Event description.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    pub description: String,
+
+    /// Banner image URL.
+    #[garde(custom(image_url_opt))]
+    pub banner_url: Option<String>,
+    /// Short description of the event.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
+    pub description_short: Option<String>,
+    /// URL to the event logo.
+    #[garde(custom(image_url_opt))]
+    pub logo_url: Option<String>,
+    /// Recording URL for meeting.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub meeting_recording_url: Option<String>,
+    /// Gallery of photo URLs.
+    #[garde(custom(trimmed_non_empty_vec))]
+    pub photos_urls: Option<Vec<String>>,
+    /// Tags associated with the event.
+    #[garde(custom(trimmed_non_empty_vec))]
+    pub tags: Option<Vec<String>>,
+    /// Venue address.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    pub venue_address: Option<String>,
+    /// City where the venue is located.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    pub venue_city: Option<String>,
+    /// Name of the venue.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub venue_name: Option<String>,
+    /// Venue zip code.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    pub venue_zip_code: Option<String>,
+}
+
 /// Session details within an event.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]

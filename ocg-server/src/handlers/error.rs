@@ -20,6 +20,10 @@ pub(crate) enum HandlerError {
     #[error("database error: {0}")]
     Database(String),
 
+    /// Error during form deserialization.
+    #[error("deserialization error: {0}")]
+    Deserialization(String),
+
     /// Any other error, wrapped in `anyhow::Error` for flexibility.
     #[error(transparent)]
     Other(anyhow::Error),
@@ -46,7 +50,9 @@ impl IntoResponse for HandlerError {
     fn into_response(self) -> Response {
         match self {
             HandlerError::Auth(_) => StatusCode::UNAUTHORIZED.into_response(),
-            HandlerError::Database(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response(),
+            HandlerError::Database(msg) | HandlerError::Deserialization(msg) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response()
+            }
             HandlerError::Validation(report) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, report.to_string()).into_response()
             }
