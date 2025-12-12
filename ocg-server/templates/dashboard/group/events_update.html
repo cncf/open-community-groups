@@ -3,6 +3,18 @@
 
 {# Events update form -#}
 <div class="space-y-12">
+  {% if event.is_past() -%}
+    <div class="flex items-start space-x-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+      <div class="svg-icon size-5 bg-amber-900 icon-clock mt-0.5"></div>
+      <div class="space-y-1">
+        <div class="font-medium">This event has already happened.</div>
+        <p class="text-sm/6 text-amber-900/80">
+          Only the banner, logo, photos, descriptions, recording link, tags, and venue fields
+          can be updated. All other details are locked.
+        </p>
+      </div>
+    </div>
+  {%- endif %}
   <div class="flex flex-col xl:flex-row xl:justify-between xl:space-x-10">
     <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-900/10 w-full xl:w-auto">
       <li>
@@ -67,7 +79,11 @@
                 class="btn-primary w-24 text-nowrap"
                 hx-put="/dashboard/group/events/{{ event.event_id }}/update"
                 hx-ext="no-empty-vals"
-                hx-include="#details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
+                hx-include="{% if event.is_past() %}
+                              #details-form, #date-venue-form
+                            {% else %}
+                              #details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+                            {% endif %}"
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="#update-event-button, #cancel-button"
@@ -98,13 +114,15 @@
                          name="name"
                          id="name"
                          maxlength="{{ crate::validation::MAX_LEN_M }}"
-                         class="input-primary"
+                         class="input-primary
+                                {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
                          autocomplete="off"
                          autocorrect="off"
                          autocapitalize="off"
                          spellcheck="false"
                          value="{{ event.name }}"
-                         required>
+                         required
+                         {% if event.is_past() %}disabled{% endif %}>
                 </div>
                 <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup).</p>
               </div>
@@ -118,7 +136,12 @@
                   Event Type <span class="asterisk">*</span>
                 </label>
                 <div class="mt-2 grid grid-cols-1">
-                  <select id="kind_id" name="kind_id" class="select-primary" required>
+                  <select id="kind_id"
+                          name="kind_id"
+                          class="select-primary
+                                 {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                          required
+                          {% if event.is_past() %}disabled{% endif %}>
                     <option value="">Select an event type</option>
                     {% for kind in event_kinds %}
                       <option value="{{ kind.event_kind_id }}"
@@ -136,7 +159,12 @@
                   Category <span class="asterisk">*</span>
                 </label>
                 <div class="mt-2 grid grid-cols-1">
-                  <select id="category_id" name="category_id" class="select-primary" required>
+                  <select id="category_id"
+                          name="category_id"
+                          class="select-primary
+                                 {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                          required
+                          {% if event.is_past() %}disabled{% endif %}>
                     <option value="">Select a category</option>
                     {% for category in categories %}
                       <option value="{{ category.event_category_id }}"
@@ -208,9 +236,11 @@
                      name="capacity"
                      id="capacity"
                      min="1"
-                     class="input-primary"
+                     class="input-primary
+                            {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
                      placeholder="100"
-                     {% if let Some(capacity) = event.capacity %}value="{{ capacity }}"{% endif %}>
+                     {% if let Some(capacity) = event.capacity %}value="{{ capacity }}"{% endif %}
+                     {% if event.is_past() %}disabled{% endif %}>
             </div>
             <p class="form-legend">
               Maximum number of attendees.
@@ -230,10 +260,12 @@
                      name="toggle_registration_required"
                      value="required"
                      type="checkbox"
-                     class="sr-only peer"
+                     class="sr-only peer
+                            {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
                      {% if let Some(registration_required) = event.registration_required %}
                        {% if registration_required %}checked{% endif %}
-                     {% endif %}>
+                     {% endif %}
+                     {% if event.is_past() %}disabled{% endif %}>
               <input type="hidden"
                      id="registration_required"
                      name="registration_required"
@@ -255,9 +287,11 @@
               <input type="url"
                      name="meetup_url"
                      id="meetup_url"
-                     class="input-primary"
+                     class="input-primary
+                            {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
                      placeholder="https://meetup.com/group/events/123456"
-                     {% if let Some(meetup_url) = event.meetup_url %}value="{{ meetup_url }}"{% endif %}>
+                     {% if let Some(meetup_url) = event.meetup_url %}value="{{ meetup_url }}"{% endif %}
+                     {% if event.is_past() %}disabled{% endif %}>
             </div>
             <p class="form-legend">Link to the Meetup.com event page.</p>
           </div>
@@ -302,7 +336,12 @@
                 Timezone <span class="asterisk">*</span>
               </label>
               <div class="mt-2 grid grid-cols-1">
-                <select id="timezone" name="timezone" class="select-primary" required>
+                <select id="timezone"
+                        name="timezone"
+                        class="select-primary
+                               {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                        required
+                        {% if event.is_past() %}disabled{% endif %}>
                   <option value="">Select a timezone</option>
                   {% for timezone in timezones %}
                     <option value="{{ timezone }}"
@@ -323,8 +362,10 @@
                 <input type="datetime-local"
                        name="starts_at"
                        id="starts_at"
-                       class="input-primary"
-                       value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                       class="input-primary
+                              {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                       value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+                       {% if event.is_past() %}disabled{% endif %}>
               </div>
               <p class="form-legend">When the event starts.</p>
             </div>
@@ -337,8 +378,10 @@
                 <input type="datetime-local"
                        name="ends_at"
                        id="ends_at"
-                       class="input-primary"
-                       value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                       class="input-primary
+                              {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                       value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+                       {% if event.is_past() %}disabled{% endif %}>
               </div>
               <p class="form-legend">When the event ends.</p>
             </div>
@@ -452,7 +495,9 @@
               {% if let Some(meeting_error) = event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
 
               {% if let Some(meeting_hosts) = event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
-              meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
+              meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+              {% if event.is_past() %}disabled{% endif %}
+              ></online-event-details>
             {% else %}
               <div class="space-y-6">
                 <div class="grid grid-cols-1 gap-6">
@@ -464,7 +509,8 @@
                              name="meeting_join_url"
                              class="input-primary"
                              placeholder="https://meet.example.com/123456789"
-                             {% if let Some(meeting_join_url) = event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}>
+                             {% if let Some(meeting_join_url) = event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}
+                             {% if event.is_past() %}disabled{% endif %}>
                     </div>
                     <p class="form-legend">Teams, Meet, or any other video link.</p>
                   </div>
@@ -500,6 +546,8 @@
         <div class="mt-10">
           <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}"
           {% if meetings_enabled %}meetings-enabled{% endif %}
+
+          {% if event.is_past() %}disabled{% endif %}
           ></sessions-section>
         </div>
       </div>
@@ -515,7 +563,9 @@
         <div class="border-b border-stone-900/10 pb-12">
           <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
           <div class="mt-5">
-            <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
+            <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"
+            {% if event.is_past() %}disabled{% endif %}
+            ></user-search-selector>
           </div>
         </div>
         {# End Hosts Section -#}
@@ -524,7 +574,9 @@
         <div class="border-b border-stone-900/10 pb-12">
           <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Speakers</div>
           <div class="mt-5">
-            <speakers-selector selected-speakers="{{ event.speakers|json }}" dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
+            <speakers-selector selected-speakers="{{ event.speakers|json }}" dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."
+            {% if event.is_past() %}disabled{% endif %}
+            ></speakers-selector>
           </div>
         </div>
         {# End Event Speakers Section -#}
@@ -533,7 +585,9 @@
         <div class="pb-12">
           <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
           <div class="mt-5">
-            <sponsors-section sponsors="{{ sponsors|json }}" selected-sponsors="{{ event.sponsors|json }}" event-id="{{ event.event_id }}"></sponsors-section>
+            <sponsors-section sponsors="{{ sponsors|json }}" selected-sponsors="{{ event.sponsors|json }}" event-id="{{ event.event_id }}"
+            {% if event.is_past() %}disabled{% endif %}
+            ></sponsors-section>
           </div>
         </div>
         {# End Sponsors Section -#}
@@ -601,7 +655,19 @@
 
   // Validate multiple forms
   function validateEventForms() {
-    const formSections = ['details', 'date-venue', 'sessions', 'hosts-sponsors'];
+    const formSections = [{
+        %
+        if event.is_past() %
+      }
+      'details', 'date-venue' {
+        %
+        else %
+      }
+      'details', 'date-venue', 'sessions', 'hosts-sponsors' {
+        %
+        endif %
+      }
+    ];
 
     for (const formName of formSections) {
       const formElement = document.getElementById(`${formName}-form`);
@@ -617,6 +683,15 @@
   }
 
   function validateSessionOnlineDetails() {
+    {
+      %
+      if event.is_past() %
+    }
+    return true;
+    {
+      %
+      endif %
+    }
     const sessionsSection = document.querySelector('sessions-section');
     if (!sessionsSection) {
       return true;
@@ -755,6 +830,16 @@
           onlineValid = onlineEventDetails.validate(displayActiveSection);
         }
 
+        {
+          %
+          if event.is_past() %
+        }
+        const sessionsOnlineValid = true;
+        const sessionBoundsValid = true;
+        {
+          %
+          else %
+        }
         const sessionsOnlineValid = validateSessionOnlineDetails();
         const sessionBoundsValid = datesValid ?
           validateSessionDateBounds({
@@ -764,6 +849,10 @@
             onSessionsSection: () => displayActiveSection('sessions'),
           }) :
           true;
+        {
+          %
+          endif %
+        }
 
         if (
           !isValid ||

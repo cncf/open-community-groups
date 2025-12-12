@@ -23,6 +23,7 @@ export class MarkdownEditor extends LitWrapper {
     required: { type: Boolean },
     onChange: { type: Function },
     mini: { type: Boolean },
+    disabled: { type: Boolean },
   };
 
   /** @type {import('lit').Ref<HTMLTextAreaElement>} Reference to textarea */
@@ -36,6 +37,7 @@ export class MarkdownEditor extends LitWrapper {
     this.required = false;
     this.onChange = undefined;
     this.mini = false;
+    this.disabled = false;
   }
 
   firstUpdated() {
@@ -85,6 +87,7 @@ export class MarkdownEditor extends LitWrapper {
           name=${this.name || this.id}
           class="absolute top-0 left-0 opacity-0 p-0"
           ?required=${this.required}
+          ?disabled=${this.disabled}
         ></textarea>
       </div>
     `;

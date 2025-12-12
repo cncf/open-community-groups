@@ -42,6 +42,7 @@ export class UserSearchField extends LitWrapper {
     disabledUserIds: { type: Array, attribute: false },
     excludeUsernames: { type: Array, attribute: false },
     wrapperClass: { type: String, attribute: "wrapper-class" },
+    disabled: { type: Boolean },
     _isSearching: { type: Boolean },
     _searchResults: { type: Array },
     _searchQuery: { type: String },
@@ -58,6 +59,7 @@ export class UserSearchField extends LitWrapper {
     this.searchDelay = 300;
     this.disabledUserIds = [];
     this.excludeUsernames = [];
+    this.disabled = false;
 
     this._isSearching = false;
     this._searchResults = [];
@@ -88,6 +90,7 @@ export class UserSearchField extends LitWrapper {
    * Programmatically focus the input element after the component is rendered.
    */
   focusInput() {
+    if (this.disabled) return;
     this.updateComplete.then(() => {
       const input = this.renderRoot?.querySelector?.("#search-input");
       if (input) input.focus();
@@ -99,6 +102,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   _clearSearch() {
+    if (this.disabled) return;
     this._searchQuery = "";
     this._searchResults = [];
     this._isSearching = false;
@@ -114,6 +118,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   _handleSearchInput(event) {
+    if (this.disabled) return;
     const query = event.target.value.trim();
     this._searchQuery = query;
 
@@ -137,6 +142,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   async _performSearch(query) {
+    if (this.disabled) return;
     try {
       const response = await fetch(
         `/dashboard/${this.dashboardType}/users/search?q=${encodeURIComponent(query)}`,
@@ -161,6 +167,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   _selectUser(user) {
+    if (this.disabled) return;
     // Emit event for parent components / forms to handle the selection.
     // The detail contains the whole user object as returned by the API.
     this.dispatchEvent(
@@ -179,6 +186,7 @@ export class UserSearchField extends LitWrapper {
    * @private
    */
   _handleOutsidePointer(event) {
+    if (this.disabled) return;
     if (this.contains(event.target)) return;
     this._clearSearch();
   }
@@ -242,7 +250,9 @@ export class UserSearchField extends LitWrapper {
         <input
           id="search-input"
           type="text"
-          class="input-primary peer ps-9 ${this.inputClass || ""}"
+          class="input-primary peer ps-9 ${this.inputClass || ""} ${this.disabled
+            ? "bg-stone-100 cursor-not-allowed"
+            : ""}"
           placeholder=${this.placeholderText ||
           (this.label ? `Search ${this.label} by username` : "Search by username")}
           .value=${this._searchQuery}
@@ -251,11 +261,17 @@ export class UserSearchField extends LitWrapper {
           autocorrect="off"
           autocapitalize="off"
           spellcheck="false"
+          ?disabled=${this.disabled}
         />
 
         <!-- Clear button -->
         <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-          <button type="button" class="cursor-pointer mt-[2px]" @click=${this._clearSearch}>
+          <button
+            type="button"
+            class="cursor-pointer mt-[2px]"
+            @click=${this._clearSearch}
+            ?disabled=${this.disabled}
+          >
             <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
           </button>
         </div>

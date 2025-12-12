@@ -27,6 +27,7 @@ export class SponsorsSection extends LitWrapper {
     showLevelModal: { type: Boolean },
     pendingSponsor: { type: Object },
     pendingLevel: { type: String },
+    disabled: { type: Boolean },
   };
 
   constructor() {
@@ -40,6 +41,7 @@ export class SponsorsSection extends LitWrapper {
     this.showLevelModal = false;
     this.pendingSponsor = null;
     this.pendingLevel = "";
+    this.disabled = false;
   }
 
   connectedCallback() {
@@ -119,6 +121,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _handleClickOutside = (event) => {
+    if (this.disabled) return;
     if (!this.contains(event.target)) {
       this._cleanEnteredValue();
     }
@@ -129,6 +132,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _filterOptions() {
+    if (this.disabled) return;
     const term = (this.enteredValue || "").trim().toLowerCase();
     const baseOptions = this.sponsors || [];
 
@@ -144,6 +148,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _onInputChange(event) {
+    if (this.disabled) return;
     this.enteredValue = event.target.value || "";
     this._filterOptions();
   }
@@ -153,6 +158,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _onInputFocus() {
+    if (this.disabled) return;
     this._filterOptions();
   }
 
@@ -173,6 +179,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _handleKeyDown(event) {
+    if (this.disabled) return;
     if (!this.visibleDropdown || this.visibleOptions.length === 0) return;
 
     switch (event.key) {
@@ -205,6 +212,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _onSelect(sponsor) {
+    if (this.disabled) return;
     const exists = (this.selectedSponsors || []).some((s) => s.group_sponsor_id === sponsor.group_sponsor_id);
     if (!exists) {
       // Open level modal for the selected sponsor
@@ -222,6 +230,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _onRemove(sponsorId) {
+    if (this.disabled) return;
     this.selectedSponsors = (this.selectedSponsors || []).filter((s) => s.group_sponsor_id !== sponsorId);
   }
 
@@ -270,6 +279,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _confirmAddSponsorLevel() {
+    if (this.disabled) return;
     if (!this.pendingSponsor) return;
     const levelVal = (this.pendingLevel || "").trim();
     if (!levelVal) {
@@ -294,6 +304,10 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _closeLevelModal() {
+    if (this.disabled) {
+      this.showLevelModal = false;
+      return;
+    }
     this.showLevelModal = false;
     this.pendingSponsor = null;
     this.pendingLevel = "";
@@ -324,7 +338,7 @@ export class SponsorsSection extends LitWrapper {
           </div>
           <input
             type="text"
-            class="input-primary peer ps-9"
+            class="input-primary peer ps-9 ${this.disabled ? "bg-stone-100 cursor-not-allowed" : ""}"
             placeholder="Search sponsors"
             autocomplete="off"
             autocorrect="off"
@@ -334,16 +348,22 @@ export class SponsorsSection extends LitWrapper {
             @input=${(e) => this._onInputChange(e)}
             @keydown=${(e) => this._handleKeyDown(e)}
             @focus=${() => this._onInputFocus()}
+            ?disabled=${this.disabled}
           />
           <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-            <button @click=${() => this._cleanEnteredValue()} type="button" class="cursor-pointer mt-[2px]">
+            <button
+              @click=${() => this._cleanEnteredValue()}
+              type="button"
+              class="cursor-pointer mt-[2px]"
+              ?disabled=${this.disabled}
+            >
               <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
             </button>
           </div>
 
           <div class="absolute z-10 start-0 end-0">
             <div
-              class="${!this.visibleDropdown
+              class="${this.disabled || !this.visibleDropdown
                 ? "hidden"
                 : ""} bg-white divide-y divide-stone-100 rounded-lg shadow w-full border border-stone-200 mt-1"
             >
@@ -390,6 +410,7 @@ export class SponsorsSection extends LitWrapper {
                         aria-label="Remove ${s.name}"
                         title="Remove"
                         @click=${() => this._onRemove(s.group_sponsor_id)}
+                        ?disabled=${this.disabled}
                       >
                         <div class="svg-icon size-4 icon-close bg-stone-600"></div>
                       </button>
@@ -436,15 +457,21 @@ export class SponsorsSection extends LitWrapper {
                     placeholder="Gold, Silver, Bronze, ..."
                     .value=${this.pendingLevel}
                     @input=${(e) => (this.pendingLevel = e.target.value || "")}
+                    ?disabled=${this.disabled}
                   />
                   <div class="mt-6 flex items-center justify-end gap-3">
-                    <button type="button" class="btn-primary-outline" @click=${() => this._closeLevelModal()}>
+                    <button
+                      type="button"
+                      class="btn-primary-outline"
+                      @click=${() => this._closeLevelModal()}
+                      ?disabled=${this.disabled}
+                    >
                       Cancel
                     </button>
                     <button
                       type="button"
                       class="btn-primary"
-                      ?disabled=${!(this.pendingLevel || "").trim().length}
+                      ?disabled=${this.disabled || !(this.pendingLevel || "").trim().length}
                       @click=${() => this._confirmAddSponsorLevel()}
                     >
                       Add
