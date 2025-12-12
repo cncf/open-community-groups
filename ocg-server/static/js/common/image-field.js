@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
-import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/svg-spinner.js";
 
 const IMAGE_KIND = {
@@ -209,7 +209,6 @@ export class ImageField extends LitWrapper {
       }
 
       this._setValue(data.url);
-      showSuccessAlert("Image added successfully.");
     } catch (error) {
       const ERROR_MESSAGE =
         'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
