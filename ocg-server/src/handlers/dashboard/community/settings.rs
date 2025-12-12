@@ -11,7 +11,10 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, ValidatedFormQs},
+    },
     templates::dashboard::community::settings::{self, CommunityUpdate},
 };
 
@@ -37,16 +40,8 @@ pub(crate) async fn update_page(
 pub(crate) async fn update(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(community_update): ValidatedFormQs<CommunityUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get community update information from body
-    let community_update: CommunityUpdate =
-        match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-            Ok(update) => update,
-            Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-        };
-
     // Update community in database
     db.update_community(community_id, &community_update).await?;
 

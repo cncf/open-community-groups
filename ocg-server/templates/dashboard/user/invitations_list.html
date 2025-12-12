@@ -65,28 +65,29 @@ description = "Manage invitations to join communities."
                     <script type="module">
                       import {
                         showConfirmAlert,
-                        showErrorAlert,
-                        showSuccessAlert,
+                        handleHtmxResponse,
                       } from '/static/js/common/alerts.js';
-                      import {
-                        isSuccessfulXHRStatus
-                      } from '/static/js/common/common.js';
-                      const rejectBtn = document.getElementById('reject-community-{{ invitation.community_name }}');
-                      if (rejectBtn) {
-                        rejectBtn.addEventListener('click', () => {
-                          showConfirmAlert(
-                            "Are you sure you would like to reject this invitation?",
-                            "reject-community-{{ invitation.community_name }}",
-                            "Yes"
-                          );
-                        });
+                      (() => {
+                        const rejectBtn = document.getElementById('reject-community-{{ invitation.community_name }}');
+                        if (rejectBtn) {
+                          rejectBtn.addEventListener('click', () => {
+                            showConfirmAlert(
+                              "Are you sure you would like to reject this invitation?",
+                              "reject-community-{{ invitation.community_name }}",
+                              "Yes"
+                            );
+                          });
 
-                        rejectBtn.addEventListener("htmx:afterRequest", (e) => {
-                          if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                            showErrorAlert("Something went wrong rejecting this invitation. Please try again later.");
-                          }
-                        });
-                      }
+                          rejectBtn.addEventListener("htmx:afterRequest", (e) => {
+                            const xhr = e.detail?.xhr;
+                            handleHtmxResponse({
+                              xhr,
+                              successMessage: '',
+                              errorMessage: "Something went wrong rejecting this invitation. Please try again later."
+                            });
+                          });
+                        }
+                      })();
                     </script>
                   </div>
                 </div>
@@ -170,28 +171,29 @@ description = "Manage invitations to join groups."
                     <script type="module">
                       import {
                         showConfirmAlert,
-                        showErrorAlert,
-                        showSuccessAlert,
+                        handleHtmxResponse,
                       } from '/static/js/common/alerts.js';
-                      import {
-                        isSuccessfulXHRStatus
-                      } from '/static/js/common/common.js';
-                      const rejectBtn = document.getElementById('reject-group-{{ invitation.group_id }}');
-                      if (rejectBtn) {
-                        rejectBtn.addEventListener('click', () => {
-                          showConfirmAlert(
-                            "Are you sure you would like to reject this invitation?",
-                            "reject-group-{{ invitation.group_id }}",
-                            "Yes"
-                          );
-                        });
+                      (() => {
+                        const rejectBtn = document.getElementById('reject-group-{{ invitation.group_id }}');
+                        if (rejectBtn) {
+                          rejectBtn.addEventListener('click', () => {
+                            showConfirmAlert(
+                              "Are you sure you would like to reject this invitation?",
+                              "reject-group-{{ invitation.group_id }}",
+                              "Yes"
+                            );
+                          });
 
-                        rejectBtn.addEventListener("htmx:afterRequest", (e) => {
-                          if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
-                            showErrorAlert("Something went wrong rejecting this invitation. Please try again later.");
-                          }
-                        });
-                      }
+                          rejectBtn.addEventListener("htmx:afterRequest", (e) => {
+                            const xhr = e.detail?.xhr;
+                            handleHtmxResponse({
+                              xhr,
+                              successMessage: '',
+                              errorMessage: "Something went wrong rejecting this invitation. Please try again later."
+                            });
+                          });
+                        }
+                      })();
                     </script>
                   </div>
                 </div>

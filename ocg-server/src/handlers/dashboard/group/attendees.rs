@@ -3,15 +3,18 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Form, Path, Query, State},
+    extract::{Path, Query, State},
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
+use garde::Validate;
 use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
+
+use crate::validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty};
 
 use crate::{
     auth::AuthSession,
@@ -19,7 +22,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{CommunityId, SelectedGroupId, ValidatedForm},
         prepare_headers,
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -100,7 +103,7 @@ pub(crate) async fn send_event_custom_notification(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
-    Form(notification): Form<EventCustomNotification>,
+    ValidatedForm(notification): ValidatedForm<EventCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -151,12 +154,14 @@ pub(crate) async fn send_event_custom_notification(
 // Types.
 
 /// Form data for custom event notifications.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct EventCustomNotification {
-    /// Title line for the notification email.
-    pub title: String,
     /// Body text for the notification.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
     pub body: String,
+    /// Title line for the notification email.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    pub title: String,
 }
 
 // Tests.

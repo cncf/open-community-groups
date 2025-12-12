@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(24);
 
 -- ============================================================================
 -- VARIABLES
@@ -127,8 +127,8 @@ with new_event as (
             "banner_url": "https://example.com/banner.jpg",
             "capacity": 100,
             "description_short": "Short description",
-            "starts_at": "2025-01-01T10:00:00",
-            "ends_at": "2025-01-01T12:00:00",
+            "starts_at": "2030-01-01T10:00:00",
+            "ends_at": "2030-01-01T12:00:00",
             "logo_url": "https://example.com/logo.png",
             "meeting_hosts": ["host1@example.com", "host2@example.com"],
             "meeting_join_url": "https://youtube.com/live",
@@ -150,8 +150,8 @@ with new_event as (
                 {
                     "name": "Opening Keynote",
                     "description": "Welcome and introduction to the conference",
-                    "starts_at": "2025-01-01T10:00:00",
-                    "ends_at": "2025-01-01T10:45:00",
+                    "starts_at": "2030-01-01T10:00:00",
+                    "ends_at": "2030-01-01T10:45:00",
                     "kind": "in-person",
                     "location": "Main Hall",
                     "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}]
@@ -159,8 +159,8 @@ with new_event as (
                 {
                     "name": "Kubernetes Best Practices",
                     "description": "Deep dive into Kubernetes best practices",
-                    "starts_at": "2025-01-01T11:00:00",
-                    "ends_at": "2025-01-01T11:45:00",
+                    "starts_at": "2030-01-01T11:00:00",
+                    "ends_at": "2030-01-01T11:45:00",
                     "kind": "virtual",
                     "meeting_hosts": ["session-host@example.com"],
                     "meeting_join_url": "https://youtube.com/live/session2",
@@ -205,8 +205,8 @@ select ok(
         "capacity": 100,
         "remaining_capacity": 100,
         "description_short": "Short description",
-        "starts_at": 1735754400,
-        "ends_at": 1735761600,
+        "starts_at": 1893520800,
+        "ends_at": 1893528000,
         "logo_url": "https://example.com/logo.png",
         "meeting_hosts": ["host1@example.com", "host2@example.com"],
         "meeting_join_url": "https://youtube.com/live",
@@ -235,14 +235,14 @@ select ok(
             :'communityID'::uuid,
             :'groupID'::uuid,
             :'event_id'::uuid
-        )::jsonb->'sessions'->'2025-01-01'
+        )::jsonb->'sessions'->'2030-01-01'
     ) @>
         '[
             {
                 "name": "Kubernetes Best Practices",
                 "description": "Deep dive into Kubernetes best practices",
-                "starts_at": 1735758000,
-                "ends_at": 1735760700,
+                "starts_at": 1893524400,
+                "ends_at": 1893527100,
                 "kind": "virtual",
                 "meeting_hosts": ["session-host@example.com"],
                 "meeting_join_url": "https://youtube.com/live/session2",
@@ -254,8 +254,8 @@ select ok(
             {
                 "name": "Opening Keynote",
                 "description": "Welcome and introduction to the conference",
-                "starts_at": 1735754400,
-                "ends_at": 1735757100,
+                "starts_at": 1893520800,
+                "ends_at": 1893523500,
                 "kind": "in-person",
                 "location": "Main Hall",
                 "speakers": [
@@ -278,8 +278,8 @@ with request_event as (
             "category_id": "00000000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
             "capacity": 100,
-            "starts_at": "2025-03-01T10:00:00",
-            "ends_at": "2025-03-01T11:30:00",
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T11:30:00",
             "meeting_hosts": ["event-alt-host@example.com"],
             "meeting_provider_id": "zoom",
             "meeting_requested": true,
@@ -287,8 +287,8 @@ with request_event as (
                 {
                     "name": "Requested Session",
                     "description": "Session needing meeting",
-                    "starts_at": "2025-03-01T10:00:00",
-                    "ends_at": "2025-03-01T11:00:00",
+                    "starts_at": "2030-03-01T10:00:00",
+                    "ends_at": "2030-03-01T11:00:00",
                     "kind": "virtual",
                     "meeting_hosts": ["session-alt-host@example.com"],
                     "meeting_provider_id": "zoom",
@@ -341,7 +341,7 @@ select throws_ok(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Test Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
-    'host user 99999999-9999-9999-9999-999999999999 not found in community',
+    'user not found in community',
     'Should throw error when host user_id does not exist in community'
 );
 
@@ -351,7 +351,7 @@ select throws_ok(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Test Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
-    'speaker user 99999999-9999-9999-9999-999999999999 not found in community',
+    'user not found in community',
     'Should throw error when speaker user_id does not exist in community'
 );
 
@@ -359,7 +359,7 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
     'event capacity (200) exceeds maximum participants allowed (100)',
@@ -370,7 +370,7 @@ select throws_ok(
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
     'Should succeed when capacity is within cfg_max_participants'
@@ -390,10 +390,146 @@ select ok(
 select ok(
     (select add_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2025-03-01T10:00:00", "ends_at": "2025-03-01T11:00:00"}'::jsonb,
+        '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         null
     ) is not null),
     'Should succeed when cfg_max_participants is null'
+);
+
+-- Should throw error when event starts_at is in the past
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2020-01-01T10:00:00"}'::jsonb
+    )$$,
+    'event starts_at cannot be in the past',
+    'Should throw error when event starts_at is in the past'
+);
+
+-- Should throw error when event ends_at is in the past
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
+    )$$,
+    'event ends_at cannot be in the past',
+    'Should throw error when event ends_at is in the past'
+);
+
+-- Should throw error when session starts_at is in the past
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Past Start", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past Session", "starts_at": "2020-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
+    )$$,
+    'session starts_at cannot be in the past',
+    'Should throw error when session starts_at is in the past'
+);
+
+-- Should throw error when session ends_at is in the past
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
+    )$$,
+    'session ends_at cannot be in the past',
+    'Should throw error when session ends_at is in the past'
+);
+
+-- Should throw error when event ends_at is before starts_at
+select throws_like(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
+    )$$,
+    '%event_ends_at_after_starts_at_check%',
+    'Should throw error when event ends_at is before starts_at'
+);
+
+-- Should throw error when session ends_at is before starts_at
+select throws_like(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
+    )$$,
+    '%session_ends_at_after_starts_at_check%',
+    'Should throw error when session ends_at is before starts_at'
+);
+
+-- Should throw error when event ends_at is set without starts_at
+select throws_like(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
+    )$$,
+    '%event_ends_at_after_starts_at_check%',
+    'Should throw error when event ends_at is set without starts_at'
+);
+
+-- Should succeed with event ends_at null when starts_at is null
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+    ) is not null),
+    'Should succeed with event ends_at null when starts_at is null'
+);
+
+-- Should succeed with session ends_at null when starts_at is set
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session No End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "No End Session", "starts_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
+    ) is not null),
+    'Should succeed with session ends_at null when starts_at is set'
+);
+
+-- Should succeed with valid future dates for event and sessions
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Future Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Future Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
+    ) is not null),
+    'Should succeed with valid future dates for event and sessions'
+);
+
+-- Should throw error when session starts_at is before event starts_at
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
+    )$$,
+    'session starts_at must be within event bounds',
+    'Should throw error when session starts_at is before event starts_at'
+);
+
+-- Should throw error when session starts_at is after event ends_at
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
+    )$$,
+    'session starts_at must be within event bounds',
+    'Should throw error when session starts_at is after event ends_at'
+);
+
+-- Should throw error when session ends_at is after event ends_at
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
+    )$$,
+    'session ends_at must be within event bounds',
+    'Should throw error when session ends_at is after event ends_at'
+);
+
+-- Should succeed when session is within event bounds
+select ok(
+    (select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
+    ) is not null),
+    'Should succeed when session is within event bounds'
 );
 
 -- ============================================================================

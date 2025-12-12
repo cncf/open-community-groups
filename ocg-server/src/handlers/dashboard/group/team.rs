@@ -7,7 +7,7 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
 };
-use axum_extra::extract::Form;
+use garde::Validate;
 use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
@@ -17,7 +17,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{CommunityId, SelectedGroupId, ValidatedForm},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::group::team,
@@ -55,7 +55,7 @@ pub(crate) async fn add(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    Form(member): Form<NewTeamMember>,
+    ValidatedForm(member): ValidatedForm<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add team member to database using provided role
     db.add_group_team_member(group_id, member.user_id, &member.role)
@@ -110,7 +110,7 @@ pub(crate) async fn update_role(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(user_id): Path<Uuid>,
-    Form(input): Form<NewTeamRole>,
+    ValidatedForm(input): ValidatedForm<NewTeamRole>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update team member role in database
     db.update_group_team_member_role(group_id, user_id, &input.role)
@@ -125,17 +125,20 @@ pub(crate) async fn update_role(
 // Types.
 
 /// Data needed to add a new team member.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub(crate) struct NewTeamMember {
     /// Team role.
+    #[garde(skip)]
     role: GroupRole,
     /// User identifier.
+    #[garde(skip)]
     user_id: Uuid,
 }
 
 /// Data needed to update a team member role.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub(crate) struct NewTeamRole {
+    #[garde(skip)]
     role: GroupRole,
 }
 

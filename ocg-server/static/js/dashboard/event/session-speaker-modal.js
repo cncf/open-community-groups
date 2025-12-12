@@ -22,6 +22,7 @@ export class SessionSpeakerModal extends LitWrapper {
   static properties = {
     dashboardType: { type: String, attribute: "dashboard-type" },
     disabledUserIds: { type: Array, attribute: false },
+    disabled: { type: Boolean },
     _isOpen: { type: Boolean },
     _selectedUser: { type: Object },
     _featured: { type: Boolean },
@@ -31,6 +32,7 @@ export class SessionSpeakerModal extends LitWrapper {
     super();
     this.dashboardType = "group";
     this.disabledUserIds = [];
+    this.disabled = false;
     this._isOpen = false;
     this._selectedUser = null;
     this._featured = false;
@@ -60,6 +62,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * Opens modal, resets state, and focuses search field.
    */
   open() {
+    if (this.disabled) return;
     this._resetState();
     this._isOpen = true;
     lockBodyScroll();
@@ -104,6 +107,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * @private
    */
   _handleUserSelected(event) {
+    if (this.disabled) return;
     const user = event.detail?.user;
     if (!user || this._isDisabled(user)) return;
     this._selectedUser = user;
@@ -127,6 +131,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * @private
    */
   _toggleFeatured(event) {
+    if (this.disabled) return;
     this._featured = !!event.target?.checked;
   }
 
@@ -135,7 +140,7 @@ export class SessionSpeakerModal extends LitWrapper {
    * @private
    */
   _confirmSelection() {
-    if (!this._selectedUser || this._isDisabled(this._selectedUser)) return;
+    if (this.disabled || !this._selectedUser || this._isDisabled(this._selectedUser)) return;
     this.dispatchEvent(
       new CustomEvent("speaker-selected", {
         detail: {
@@ -195,6 +200,7 @@ export class SessionSpeakerModal extends LitWrapper {
                 type="button"
                 class="group bg-transparent hover:bg-stone-200 rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center cursor-pointer"
                 @click=${() => this.close()}
+                ?disabled=${this.disabled}
               >
                 <div class="svg-icon size-5 bg-stone-400 group-hover:bg-stone-700 icon-close"></div>
                 <span class="sr-only">Close modal</span>
@@ -208,6 +214,7 @@ export class SessionSpeakerModal extends LitWrapper {
                   legend="Search by name or username to add a speaker to this session."
                   .disabledUserIds=${this.disabledUserIds || []}
                   @user-selected=${(event) => this._handleUserSelected(event)}
+                  ?disabled=${this.disabled}
                 ></user-search-field>
               </div>
 
@@ -216,7 +223,7 @@ export class SessionSpeakerModal extends LitWrapper {
                   <input
                     type="checkbox"
                     class="sr-only peer"
-                    ?disabled=${!this._selectedUser}
+                    ?disabled=${!this._selectedUser || this.disabled}
                     .checked=${this._featured}
                     @change=${(event) => this._toggleFeatured(event)}
                   />
@@ -233,7 +240,7 @@ export class SessionSpeakerModal extends LitWrapper {
                 <button
                   type="button"
                   class="btn-primary"
-                  ?disabled=${!this._selectedUser}
+                  ?disabled=${!this._selectedUser || this.disabled}
                   @click=${() => this._confirmSelection()}
                 >
                   Add speaker

@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Form, Path, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedGroupId},
+    handlers::{
+        error::HandlerError,
+        extractors::{SelectedGroupId, ValidatedForm},
+    },
     templates::dashboard::group::sponsors::{self, Sponsor},
 };
 
@@ -64,7 +67,7 @@ pub(crate) async fn update_page(
 pub(crate) async fn add(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    Form(sponsor): Form<Sponsor>,
+    ValidatedForm(sponsor): ValidatedForm<Sponsor>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add sponsor to database
     db.add_group_sponsor(group_id, &sponsor).await?;
@@ -98,7 +101,7 @@ pub(crate) async fn update(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
-    Form(sponsor): Form<Sponsor>,
+    ValidatedForm(sponsor): ValidatedForm<Sponsor>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update sponsor in database
     db.update_group_sponsor(group_id, group_sponsor_id, &sponsor).await?;

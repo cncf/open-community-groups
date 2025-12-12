@@ -26,6 +26,7 @@ chrono-tz = { workspace = true }
 deadpool-postgres = { workspace = true }
 emojis = { workspace = true }
 figment = { workspace = true }
+garde = { workspace = true }
 hex = { workspace = true }
 hmac = { workspace = true }
 icalendar = { workspace = true }

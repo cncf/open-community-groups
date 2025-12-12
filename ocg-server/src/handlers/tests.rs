@@ -161,7 +161,7 @@ pub(crate) fn sample_community_update() -> CommunityUpdate {
     CommunityUpdate {
         description: "Updated description".to_string(),
         display_name: "Test".to_string(),
-        header_logo_url: "/logo.png".to_string(),
+        header_logo_url: "https://example.test/logo.png".to_string(),
         name: "test".to_string(),
         primary_color: "#000000".to_string(),
         title: "Test Community".to_string(),

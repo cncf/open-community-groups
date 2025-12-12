@@ -11,6 +11,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::{TimeDelta, Utc};
+use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -20,14 +21,14 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{CommunityId, SelectedGroupId, ValidatedFormQs},
     },
     services::{
         meetings::MeetingProvider,
         notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     },
     templates::{
-        dashboard::group::events::{self, Event},
+        dashboard::group::events::{self, Event, PastEventUpdate},
         notifications::{EventCanceled, EventPublished, EventRescheduled},
     },
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -141,15 +142,8 @@ pub(crate) async fn add(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(event): ValidatedFormQs<Event>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse event information from body
-    let event: Event = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(event) => event,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
     // Add event to database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     db.add_event(group_id, &event, &cfg_max_participants).await?;
@@ -316,18 +310,38 @@ pub(crate) async fn update(
     Path(event_id): Path<Uuid>,
     body: String,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse event information from body
-    let event: Event = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(event) => event,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
-    // Load event summary before update to detect reschedule
+    // Load event summary before update to detect reschedule and if it is past
     let before = db.get_event_summary(community_id, group_id, event_id).await?;
+
+    // For past events, deserialize as PastEventUpdate (limited fields)
+    if before.is_past() {
+        let event: PastEventUpdate = serde_qs_de
+            .deserialize_str(&body)
+            .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
+        event.validate()?;
+
+        // Update event in database (no reschedule notifications for past events)
+        let event_json = serde_json::to_value(&event)?;
+        db.update_event(group_id, event_id, &event_json, &HashMap::new())
+            .await?;
+
+        return Ok((
+            StatusCode::NO_CONTENT,
+            [("HX-Trigger", "refresh-group-dashboard-table")],
+        )
+            .into_response());
+    }
+
+    // For non-past events, deserialize as full Event
+    let event: Event = serde_qs_de
+        .deserialize_str(&body)
+        .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
+    event.validate()?;
 
     // Update event in database
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    db.update_event(group_id, event_id, &event, &cfg_max_participants)
+    let event_json = serde_json::to_value(&event)?;
+    db.update_event(group_id, event_id, &event_json, &cfg_max_participants)
         .await?;
 
     // Notify attendees if event was rescheduled
@@ -392,6 +406,7 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
+    use chrono::Utc;
     use serde_json::{from_slice, from_value, to_value};
     use tower::ServiceExt;
     use uuid::Uuid;
@@ -405,7 +420,10 @@ mod tests {
             meetings::MeetingProvider,
             notifications::{MockNotificationsManager, NotificationKind},
         },
-        templates::notifications::{EventCanceled, EventPublished, EventRescheduled},
+        templates::{
+            dashboard::group::events::PastEventUpdate,
+            notifications::{EventCanceled, EventPublished, EventRescheduled},
+        },
         types::event::{EventFull, EventSummary},
     };
 
@@ -1150,7 +1168,7 @@ mod tests {
             .withf(move |gid, eid, event, cfg_max_participants| {
                 *gid == group_id
                     && *eid == event_id
-                    && event.name == event_form.name
+                    && event.get("name").and_then(|v| v.as_str()) == Some(event_form.name.as_str())
                     && cfg_max_participants.is_empty()
             })
             .returning(move |_, _, _, _| Ok(()));
@@ -1184,6 +1202,87 @@ mod tests {
                     })
             })
             .returning(|_| Box::pin(async { Ok(()) }));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("PUT")
+            .uri(format!("/dashboard/group/events/{event_id}/update"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(body))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-group-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_update_past_event_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let past_event = {
+            let past_time = Utc::now() - chrono::Duration::hours(2);
+            EventSummary {
+                ends_at: Some(past_time + chrono::Duration::hours(1)),
+                starts_at: Some(past_time),
+                ..sample_event_summary(event_id, group_id)
+            }
+        };
+        let past_event_update = PastEventUpdate {
+            description: "Updated past event description".to_string(),
+            banner_url: Some("https://example.test/new-banner.png".to_string()),
+            description_short: Some("Updated short".to_string()),
+            ..Default::default()
+        };
+        let body = serde_qs::to_string(&past_event_update).unwrap();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(past_event.clone()));
+        db.expect_update_event()
+            .times(1)
+            .withf(move |gid, eid, event, cfg_max_participants| {
+                *gid == group_id
+                    && *eid == event_id
+                    && event.get("description").and_then(|v| v.as_str())
+                        == Some("Updated past event description")
+                    && cfg_max_participants.is_empty()
+            })
+            .returning(move |_, _, _, _| Ok(()));
+
+        // Setup notifications manager mock (no expectations - past events don't notify)
+        let nm = MockNotificationsManager::new();
 
         // Setup router and send request
         let router = TestRouterBuilder::new(db, nm).build().await;

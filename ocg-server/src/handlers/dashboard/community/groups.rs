@@ -14,7 +14,10 @@ use uuid::Uuid;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, ValidatedFormQs},
+    },
     templates::{
         community::explore,
         dashboard::community::groups::{self, Group},
@@ -108,15 +111,8 @@ pub(crate) async fn activate(
 pub(crate) async fn add(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(group): ValidatedFormQs<Group>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse group information from body
-    let group: Group = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(group) => group,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
     // Add group to database
     db.add_group(community_id, &group).await?;
 
@@ -164,16 +160,9 @@ pub(crate) async fn delete(
 pub(crate) async fn update(
     CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
     Path(group_id): Path<Uuid>,
-    body: String,
+    ValidatedFormQs(group): ValidatedFormQs<Group>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Parse group information from body
-    let group: Group = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(group) => group,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
     // Update group in database
     db.update_group(community_id, group_id, &group).await?;
 

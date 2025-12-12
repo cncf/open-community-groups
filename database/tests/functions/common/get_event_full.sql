@@ -161,8 +161,8 @@ insert into event (
     true,
     '2024-05-01 12:00:00+00',
     false,
-    '2024-06-15 09:00:00+00',
-    '2024-06-15 17:00:00+00',
+    '2024-06-15 08:00:00+00',
+    '2024-06-16 17:00:00+00',
     array['technology', 'conference', 'workshops'],
     'Convention Center',
     '123 Main St',
@@ -193,10 +193,10 @@ values
     (:'eventID', :'user2ID', false);
 
 -- Event Attendee
-insert into event_attendee (event_id, user_id, checked_in, created_at)
+insert into event_attendee (event_id, user_id, checked_in, checked_in_at, created_at)
 values
-    (:'eventID', :'user1ID', true, '2024-01-01 00:00:00'),
-    (:'eventID', :'user2ID', false, '2024-01-01 00:00:00');
+    (:'eventID', :'user1ID', true, '2024-01-01 00:00:00', '2024-01-01 00:00:00'),
+    (:'eventID', :'user2ID', false, null, '2024-01-01 00:00:00');
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
@@ -442,7 +442,7 @@ select is(
         "banner_url": "https://example.com/event-banner.png",
         "capacity": 500,
         "description_short": "Annual Kubernetes conference",
-        "ends_at": 1718470800,
+        "ends_at": 1718557200,
         "latitude": 40.73061,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -73.935242,
@@ -455,7 +455,7 @@ select is(
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "published_at": 1714564800,
         "registration_required": true,
-        "starts_at": 1718442000,
+        "starts_at": 1718438400,
         "tags": ["technology", "conference", "workshops"],
         "venue_address": "123 Main St",
         "venue_city": "New York",

@@ -7,7 +7,7 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
 };
-use axum_extra::extract::Form;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
@@ -15,7 +15,10 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CommunityId, ValidatedForm},
+    },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::community::team,
     templates::notifications::CommunityTeamInvitation,
@@ -48,7 +51,7 @@ pub(crate) async fn add(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    Form(member): Form<NewTeamMember>,
+    ValidatedForm(member): ValidatedForm<NewTeamMember>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add team member to database
     db.add_community_team_member(community_id, member.user_id).await?;
@@ -96,8 +99,9 @@ pub(crate) async fn delete(
 // Types.
 
 /// Data needed to add a new team member.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct NewTeamMember {
+    #[garde(skip)]
     user_id: Uuid,
 }
 

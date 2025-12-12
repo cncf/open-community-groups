@@ -64,6 +64,7 @@ export class OnlineEventDetails extends LitWrapper {
     _providerId: { type: String, state: true },
     _hosts: { type: Array, state: true },
     _capacityWarning: { type: String, state: true },
+    disabled: { type: Boolean },
   };
 
   constructor() {
@@ -89,6 +90,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._providerId = DEFAULT_MEETING_PROVIDER;
     this._hosts = [];
     this._capacityWarning = "";
+    this.disabled = false;
   }
 
   connectedCallback() {
@@ -287,6 +289,9 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {Promise<boolean>} True if the change was accepted
    */
   async trySetKind(value) {
+    if (this.disabled) {
+      return false;
+    }
     const wouldDisable = value === "in-person" && this._mode === "automatic" && this._createMeeting;
 
     if (wouldDisable && this._needsDisableConfirmation()) {
@@ -310,6 +315,9 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {Promise<boolean>} True if the change was accepted
    */
   async trySetStartsAt(value) {
+    if (this.disabled) {
+      return false;
+    }
     const wouldDisable = this._wouldScheduleChangeDisableAutomatic(value, this.endsAt);
 
     if (wouldDisable && this._needsDisableConfirmation()) {
@@ -333,6 +341,9 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {Promise<boolean>} True if the change was accepted
    */
   async trySetEndsAt(value) {
+    if (this.disabled) {
+      return false;
+    }
     const wouldDisable = this._wouldScheduleChangeDisableAutomatic(this.startsAt, value);
 
     if (wouldDisable && this._needsDisableConfirmation()) {
@@ -397,6 +408,7 @@ export class OnlineEventDetails extends LitWrapper {
    */
   _renderModeOption(option) {
     const isSelected = this._mode === option.value;
+    const isDisabled = this.disabled || option.disabled;
 
     return html`
       <label class="block h-full">
@@ -405,13 +417,13 @@ export class OnlineEventDetails extends LitWrapper {
           class="sr-only"
           value="${option.value}"
           .checked="${isSelected}"
-          ?disabled="${option.disabled}"
+          ?disabled="${isDisabled}"
           @change="${this._handleModeChange}"
         />
         <div
           class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
             ? "border-primary-400 ring-2 ring-primary-200"
-            : "border-stone-200"} ${option.disabled
+            : "border-stone-200"} ${isDisabled
             ? "opacity-60 cursor-not-allowed"
             : "hover:border-primary-300"}"
         >
@@ -443,6 +455,10 @@ export class OnlineEventDetails extends LitWrapper {
    * @param {Event} e - Change event from radio input
    */
   async _handleModeChange(e) {
+    if (this.disabled) {
+      e.preventDefault();
+      return;
+    }
     const newMode = e.target.value;
 
     if (newMode === this._mode) {
@@ -498,6 +514,7 @@ export class OnlineEventDetails extends LitWrapper {
    * @param {Event} e - Input event
    */
   _handleJoinUrlChange(e) {
+    if (this.disabled) return;
     this._joinUrl = e.target.value;
   }
 
@@ -506,10 +523,14 @@ export class OnlineEventDetails extends LitWrapper {
    * @param {Event} e - Input event
    */
   _handleRecordingUrlChange(e) {
+    if (this._isSession()) return;
     this._recordingUrl = e.target.value;
   }
 
   _getAutomaticAvailability() {
+    if (this.disabled) {
+      return { allowed: false, reason: "" };
+    }
     const isVirtualOrHybrid = this.kind === "virtual" || this.kind === "hybrid";
     if (!isVirtualOrHybrid) {
       return {
@@ -736,6 +757,8 @@ export class OnlineEventDetails extends LitWrapper {
    * @returns {import('lit').TemplateResult} Manual mode field elements
    */
   _renderManualFields() {
+    const disabledClasses = this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : "";
+    const recordingDisabled = this._isSession() && this.disabled;
     return html`
       <div class="space-y-2">
         <label for="${this._getFieldName("meeting_join_url")}" class="form-label">Meeting URL</label>
@@ -743,13 +766,14 @@ export class OnlineEventDetails extends LitWrapper {
           <input
             type="url"
             id="${this._getFieldName("meeting_join_url")}"
-            class="input-primary"
+            class="input-primary ${disabledClasses}"
             placeholder="https://meet.example.com/123456789"
             .value="${this._joinUrl}"
             @input="${this._handleJoinUrlChange}"
+            ?disabled=${this.disabled}
           />
         </div>
-        <p class="form-legend">Teams, Meet, or any other video link.</p>
+        <p class="form-legend">Zoom, Teams, Meet, or any other video link.</p>
       </div>
 
       <div class="space-y-2">
@@ -760,13 +784,18 @@ export class OnlineEventDetails extends LitWrapper {
           <input
             type="url"
             id="${this._getFieldName("meeting_recording_url")}"
-            class="input-primary"
+            class="input-primary ${recordingDisabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
             placeholder="https://youtube.com/watch?v=..."
             .value="${this._recordingUrl}"
             @input="${this._handleRecordingUrlChange}"
+            ?disabled=${recordingDisabled}
           />
         </div>
-        <p class="form-legend">Add a recording link now or after the event.</p>
+        <p class="form-legend">
+          ${this._isSession()
+            ? "Session recordings are managed at the event level."
+            : "Add a recording link now or after the event."}
+        </p>
       </div>
     `;
   }
@@ -797,11 +826,14 @@ export class OnlineEventDetails extends LitWrapper {
                 <div class="space-y-2 lg:w-1/2">
                   <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                   <select
-                    class="input-primary"
+                    class="input-primary ${this.disabled
+                      ? "bg-stone-100 text-stone-500 cursor-not-allowed"
+                      : ""}"
                     @change="${(e) => {
                       this._providerId = e.target.value || DEFAULT_MEETING_PROVIDER;
                       this._checkMeetingCapacity();
                     }}"
+                    ?disabled=${this.disabled}
                   >
                     <option value="zoom" .selected="${this._providerId === DEFAULT_MEETING_PROVIDER}">
                       Zoom
@@ -818,6 +850,7 @@ export class OnlineEventDetails extends LitWrapper {
                     label="Host"
                     placeholder="host@example.com"
                     legend="${this._getMeetingHostsLegend()}"
+                    ?disabled=${this.disabled}
                   >
                   </multiple-inputs>
                 </div>
@@ -840,14 +873,14 @@ export class OnlineEventDetails extends LitWrapper {
         title: "Use my own meeting link",
         description: "Paste a Zoom, Teams, Meet, or other link.",
         helper: "",
-        disabled: false,
+        disabled: this.disabled,
       },
       {
         value: "automatic",
         title: "Create meeting automatically",
         description: "We will create and manage a meeting when you save this event.",
         helper: availability.allowed ? "" : availability.reason,
-        disabled: !availability.allowed,
+        disabled: this.disabled || !availability.allowed,
       },
     ];
 

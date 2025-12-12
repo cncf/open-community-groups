@@ -22,7 +22,7 @@
             <input type="text"
                    name="name"
                    id="name"
-                   maxlength="100"
+                   maxlength="{{ crate::validation::MAX_LEN_M }}"
                    class="input-primary"
                    autocomplete="off"
                    autocorrect="off"
@@ -99,7 +99,7 @@
                   name="description_short"
                   rows="2"
                   class="input-primary"
-                  maxlength="200">{% if let Some(description_short) = group.description_short %}{{ description_short }}{% endif %}</textarea>
+                  maxlength="{{ crate::validation::MAX_LEN_M }}">{% if let Some(description_short) = group.description_short %}{{ description_short }}{% endif %}</textarea>
       </div>
       <p class="form-legend">Brief description for group listings and previews.</p>
     </div>
@@ -131,6 +131,7 @@
         <input type="text"
                name="city"
                id="city"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
                class="input-primary"
                autocomplete="off"
                autocorrect="off"
@@ -149,6 +150,7 @@
         <input type="text"
                name="state"
                id="state"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
                class="input-primary"
                autocomplete="off"
                autocorrect="off"
@@ -167,6 +169,7 @@
         <input type="text"
                name="country_name"
                id="country_name"
+               maxlength="{{ crate::validation::MAX_LEN_S }}"
                class="input-primary"
                autocomplete="off"
                autocorrect="off"
@@ -362,11 +365,7 @@
 
 <script type="module">
   import {
-    isSuccessfulXHRStatus
-  } from '/static/js/common/common.js';
-  import {
-    showErrorAlert,
-    showSuccessAlert
+    handleHtmxResponse
   } from '/static/js/common/alerts.js';
 
   const groupsForm = document.getElementById('groups-form');
@@ -381,11 +380,12 @@
   if (groupsForm) {
     groupsForm.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'groups-form') {
-        if (isSuccessfulXHRStatus(e.detail.xhr.status)) {
-          showSuccessAlert('You have successfully updated the group.');
-        } else {
-          showErrorAlert('Something went wrong updating the group, please try again later.');
-        }
+        const xhr = e.detail?.xhr;
+        handleHtmxResponse({
+          xhr,
+          successMessage: 'You have successfully updated the group.',
+          errorMessage: 'Something went wrong updating the group. Please try again later.'
+        });
       }
     });
   }

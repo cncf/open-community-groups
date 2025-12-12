@@ -22,6 +22,7 @@
             <input type="text"
                    name="name"
                    id="name"
+                   maxlength="{{ crate::validation::MAX_LEN_M }}"
                    value="{{ user.name }}"
                    class="input-primary"
                    autocomplete="off"
@@ -59,6 +60,7 @@
             <input type="text"
                    name="company"
                    id="company"
+                   maxlength="{{ crate::validation::MAX_LEN_S }}"
                    value="{%- if let Some(company) = user.company -%}{{ company }}{%- endif -%}"
                    class="input-primary"
                    autocomplete="off"
@@ -77,6 +79,7 @@
             <input type="text"
                    name="title"
                    id="title"
+                   maxlength="{{ crate::validation::MAX_LEN_S }}"
                    value="{%- if let Some(title) = user.title -%}{{ title }}{%- endif -%}"
                    class="input-primary"
                    autocomplete="off"
@@ -99,7 +102,11 @@
       <div class="col-span-full">
         <label for="bio" class="form-label">Bio</label>
         <div class="mt-2">
-          <textarea id="bio" name="bio" rows="6" class="input-primary">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
+          <textarea id="bio"
+                    name="bio"
+                    rows="6"
+                    maxlength="{{ crate::validation::MAX_LEN_M }}"
+                    class="input-primary">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
         <p class="form-legend">A description about yourself and your background.</p>
       </div>
@@ -129,6 +136,7 @@
           <input type="text"
                  name="city"
                  id="city"
+                 maxlength="{{ crate::validation::MAX_LEN_S }}"
                  value="{%- if let Some(city) = user.city -%}{{ city }}{%- endif -%}"
                  class="input-primary"
                  autocomplete="off"
@@ -147,6 +155,7 @@
           <input type="text"
                  name="country"
                  id="country"
+                 maxlength="{{ crate::validation::MAX_LEN_S }}"
                  value="{%- if let Some(country) = user.country -%}{{ country }}{%- endif -%}"
                  class="input-primary"
                  autocomplete="off"
@@ -271,6 +280,7 @@
                      id="old_password"
                      name="old_password"
                      class="input-primary"
+                     minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
                      required>
             </div>
           </div>
@@ -286,6 +296,8 @@
                      id="new_password"
                      name="new_password"
                      class="input-primary"
+                     minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                     data-password
                      required>
             </div>
           </div>
@@ -299,6 +311,8 @@
                      id="password_confirmation"
                      name="password_confirmation"
                      class="input-primary"
+                     minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                     data-password-confirmation
                      required>
             </div>
           </div>
@@ -320,48 +334,31 @@
 
 <script type="module">
   import {
-    showErrorAlert,
-    showSuccessAlert
+    handleHtmxResponse
   } from '/static/js/common/alerts.js';
-  import {
-    isSuccessfulXHRStatus
-  } from '/static/js/common/common.js';
 
   const userDetailsForm = document.getElementById('user-details-form');
   const passwordForm = document.getElementById('password-form');
 
   if (userDetailsForm) {
     userDetailsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
-        showErrorAlert('Something went wrong updating the user details, please try again later.');
-      } else {
-        showSuccessAlert('You have successfully updated your details.');
-      }
+      const xhr = e.detail?.xhr;
+      handleHtmxResponse({
+        xhr,
+        successMessage: 'You have successfully updated your details.',
+        errorMessage: 'Something went wrong updating the user details. Please try again later.'
+      });
     });
   }
 
   if (passwordForm) {
-    const password = document.getElementById('new_password');
-    const passwordConfirmation = document.getElementById('password_confirmation');
-
-    const isValidPassword = () => {
-      // Check if passwords match
-      if (password.value !== passwordConfirmation.value) {
-        passwordConfirmation.setCustomValidity('Passwords do not match');
-      } else {
-        passwordConfirmation.setCustomValidity('');
-      }
-    };
-
-    password.addEventListener('input', isValidPassword);
-    passwordConfirmation.addEventListener('input', isValidPassword);
-
     passwordForm.addEventListener('htmx:afterRequest', (e) => {
-      if (!isSuccessfulXHRStatus(e.detail.xhr.status)) {
-        showErrorAlert('Something went wrong updating the password, please try again later.');
-      } else {
-        showSuccessAlert('You have successfully updated your password.');
-      }
+      const xhr = e.detail?.xhr;
+      handleHtmxResponse({
+        xhr,
+        successMessage: 'You have successfully updated your password.',
+        errorMessage: 'Something went wrong updating the password. Please try again later.'
+      });
     });
   }
 </script>

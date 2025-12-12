@@ -30,6 +30,7 @@ export class UserSearchSelector extends LitWrapper {
     maxUsers: { type: Number, attribute: "max-users" },
     searchDelay: { type: Number, attribute: "search-delay" },
     _isModalOpen: { type: Boolean },
+    disabled: { type: Boolean },
   };
 
   constructor() {
@@ -42,6 +43,7 @@ export class UserSearchSelector extends LitWrapper {
     this.maxUsers = 0; // 0 means no limit
     this.searchDelay = 300;
     this._isModalOpen = true; // always visible inline
+    this.disabled = false;
   }
 
   /**
@@ -49,6 +51,7 @@ export class UserSearchSelector extends LitWrapper {
    * @private
    */
   _openModal() {
+    if (this.disabled) return;
     this._isModalOpen = true;
 
     // Focus search input after render
@@ -72,6 +75,7 @@ export class UserSearchSelector extends LitWrapper {
    * @private
    */
   _addUser(user) {
+    if (this.disabled) return;
     if (this.maxUsers > 0 && this.selectedUsers.length >= this.maxUsers) {
       return;
     }
@@ -85,6 +89,7 @@ export class UserSearchSelector extends LitWrapper {
    * @private
    */
   _removeUser(username) {
+    if (this.disabled) return;
     this.selectedUsers = this.selectedUsers.filter((user) => user.username !== username);
   }
 
@@ -137,6 +142,7 @@ export class UserSearchSelector extends LitWrapper {
           class="p-1 hover:bg-stone-200 rounded-full transition-colors"
           title="Remove user"
           @click=${() => this._removeUser(user.username)}
+          ?disabled=${this.disabled}
         >
           <div class="svg-icon size-3 icon-close bg-stone-600"></div>
         </button>
@@ -145,6 +151,7 @@ export class UserSearchSelector extends LitWrapper {
   }
 
   _handleUserSelected(e) {
+    if (this.disabled) return;
     const user = e.detail?.user;
     if (!user) return;
     this._addUser(user);
@@ -166,6 +173,7 @@ export class UserSearchSelector extends LitWrapper {
           input-class="input-primary"
           wrapper-class="w-full xl:w-1/2"
           @user-selected=${(e) => this._handleUserSelected(e)}
+          ?disabled=${this.disabled}
         ></user-search-field>
       </div>
     `;

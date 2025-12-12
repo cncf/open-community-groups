@@ -40,6 +40,8 @@ export class SessionsSection extends LitWrapper {
     meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
     // Whether meetings feature is enabled for the group
     meetingsEnabled: { type: Boolean, attribute: "meetings-enabled" },
+    // Disable editing controls
+    disabled: { type: Boolean },
   };
 
   constructor() {
@@ -48,13 +50,12 @@ export class SessionsSection extends LitWrapper {
     this.sessionKinds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
+    this.disabled = false;
     this._bindHtmxCleanup();
   }
 
   connectedCallback() {
     super.connectedCallback();
-
-    console.log("SessionsSection connected", this.sessions);
 
     // Accept JSON passed via attributes when used from server templates.
     if (typeof this.sessions === "string") {
@@ -162,6 +163,7 @@ export class SessionsSection extends LitWrapper {
    * @private
    */
   _addSessionItem(index) {
+    if (this.disabled) return;
     const currentSessions = [...this.sessions];
     currentSessions.splice(index, 0, this._getData());
 
@@ -175,6 +177,7 @@ export class SessionsSection extends LitWrapper {
    * @private
    */
   _removeSessionItem(index) {
+    if (this.disabled) return;
     const tmpSessions = this.sessions.filter((_, i) => i !== index);
     // If there are no more session items, add a new one
     this.sessions = tmpSessions.length === 0 ? [this._getData()] : tmpSessions;
@@ -201,13 +204,16 @@ export class SessionsSection extends LitWrapper {
     const hasSingleSessionItem = this.sessions.length === 1;
 
     return html`<div class="mt-10">
-      <div class="flex w-full">
+      <div class="flex w-full max-w-5xl">
         <div class="flex flex-col space-y-3 me-3">
           <div>
             <button
               @click=${() => this._addSessionItem(index)}
               type="button"
-              class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
+              class="p-2 border border-stone-200 rounded-full ${this.disabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:bg-stone-100"}"
+              ?disabled=${this.disabled}
               title="Add above"
             >
               <div class="svg-icon size-4 icon-plus-top bg-stone-600"></div>
@@ -217,7 +223,10 @@ export class SessionsSection extends LitWrapper {
             <button
               @click=${() => this._addSessionItem(index + 1)}
               type="button"
-              class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
+              class="p-2 border border-stone-200 rounded-full ${this.disabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:bg-stone-100"}"
+              ?disabled=${this.disabled}
               title="Add below"
             >
               <div class="svg-icon size-4 icon-plus-bottom bg-stone-600"></div>
@@ -227,7 +236,10 @@ export class SessionsSection extends LitWrapper {
             <button
               @click=${() => this._removeSessionItem(index)}
               type="button"
-              class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
+              class="p-2 border border-stone-200 rounded-full ${this.disabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer hover:bg-stone-100"}"
+              ?disabled=${this.disabled}
               title=${hasSingleSessionItem ? "Clean" : "Delete"}
             >
               <div
@@ -243,6 +255,7 @@ export class SessionsSection extends LitWrapper {
           .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
           .meetingsEnabled=${this.meetingsEnabled}
           .onDataChange=${this._onDataChange}
+          .disabled=${this.disabled}
           class="w-full"
         ></session-item>
       </div>
@@ -342,6 +355,8 @@ class SessionItem extends LitWrapper {
     },
     // Whether meetings feature is enabled for the group
     meetingsEnabled: { type: Boolean },
+    // Disable editing controls
+    disabled: { type: Boolean },
   };
 
   constructor() {
@@ -367,6 +382,7 @@ class SessionItem extends LitWrapper {
     this.sessionKinds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
+    this.disabled = false;
   }
 
   connectedCallback() {
@@ -401,6 +417,7 @@ class SessionItem extends LitWrapper {
    * @private
    */
   _onInputChange = (event) => {
+    if (this.disabled) return;
     const value = event.target.value;
     const name = event.target.dataset.name;
 
@@ -416,6 +433,7 @@ class SessionItem extends LitWrapper {
    * @private
    */
   _onTextareaChange = (value) => {
+    if (this.disabled) return;
     this.data = { ...this.data, description: value };
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
@@ -423,6 +441,7 @@ class SessionItem extends LitWrapper {
   };
 
   _handleSpeakersChanged = (event) => {
+    if (this.disabled) return;
     /**
      * Receives updated speakers from the shared selector.
      * @param {CustomEvent} event
@@ -447,13 +466,14 @@ class SessionItem extends LitWrapper {
             data-name="name"
             type="text"
             name="sessions[${this.index}][name]"
-            class="input-primary"
+            class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
             value=${this.data.name}
             autocomplete="off"
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
             ?required=${!this.isObjectEmpty}
+            ?disabled=${this.disabled}
           />
         </div>
       </div>
@@ -465,8 +485,9 @@ class SessionItem extends LitWrapper {
             @change=${(e) => this._onInputChange(e)}
             data-name="kind"
             name="sessions[${this.index}][kind]"
-            class="input-primary"
+            class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
             ?required=${!this.isObjectEmpty}
+            ?disabled=${this.disabled}
           >
             <option value="" ?selected=${!this.data.kind}>Select type</option>
             ${this.sessionKinds.map(
@@ -487,9 +508,10 @@ class SessionItem extends LitWrapper {
             @input=${(e) => this._onInputChange(e)}
             data-name="starts_at"
             name="sessions[${this.index}][starts_at]"
-            class="input-primary"
+            class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
             value=${this.data.starts_at || ""}
             ?required=${!this.isObjectEmpty}
+            ?disabled=${this.disabled}
           />
         </div>
       </div>
@@ -502,8 +524,9 @@ class SessionItem extends LitWrapper {
             @input=${(e) => this._onInputChange(e)}
             data-name="ends_at"
             name="sessions[${this.index}][ends_at]"
-            class="input-primary"
+            class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
             value=${this.data.ends_at || ""}
+            ?disabled=${this.disabled}
           />
         </div>
       </div>
@@ -517,6 +540,7 @@ class SessionItem extends LitWrapper {
             content=${this.data.description}
             .onChange=${(value) => this._onTextareaChange(value)}
             mini
+            ?disabled=${this.disabled}
           ></markdown-editor>
         </div>
       </div>
@@ -532,6 +556,7 @@ class SessionItem extends LitWrapper {
             help-text="Add speakers or presenters for this session."
             class="w-full"
             @speakers-changed=${this._handleSpeakersChanged}
+            ?disabled=${this.disabled}
           ></speakers-selector>
         </div>
       </div>
@@ -551,6 +576,7 @@ class SessionItem extends LitWrapper {
             autocorrect="off"
             autocapitalize="off"
             spellcheck="false"
+            ?disabled=${this.disabled}
           />
         </div>
       </div>
@@ -575,6 +601,7 @@ class SessionItem extends LitWrapper {
                         .meetingHosts=${this.data.meeting_hosts || {}}
                         .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
                         field-name-prefix="sessions[${this.index}]"
+                        ?disabled=${this.disabled}
                       ></online-event-details>
                     `
                   : html`
@@ -587,11 +614,14 @@ class SessionItem extends LitWrapper {
                                 type="url"
                                 id="meeting_join_url_${this.index}"
                                 name="sessions[${this.index}][meeting_join_url]"
-                                class="input-primary"
+                                class="input-primary ${this.disabled
+                                  ? "bg-stone-100 text-stone-500 cursor-not-allowed"
+                                  : ""}"
                                 value=${this.data.meeting_join_url || ""}
                                 placeholder="https://meet.example.com/123456789"
                                 @input=${(e) => this._onInputChange(e)}
                                 data-name="meeting_join_url"
+                                ?disabled=${this.disabled}
                               />
                             </div>
                             <p class="form-legend">Teams, Meet, or any other video link.</p>
@@ -605,11 +635,14 @@ class SessionItem extends LitWrapper {
                                 type="url"
                                 id="meeting_recording_url_${this.index}"
                                 name="sessions[${this.index}][meeting_recording_url]"
-                                class="input-primary"
+                                class="input-primary ${this.disabled
+                                  ? "bg-stone-100 text-stone-500 cursor-not-allowed"
+                                  : ""}"
                                 value=${this.data.meeting_recording_url || ""}
                                 placeholder="https://youtube.com/watch?v=..."
                                 @input=${(e) => this._onInputChange(e)}
                                 data-name="meeting_recording_url"
+                                ?disabled=${true}
                               />
                             </div>
                             <p class="form-legend">Add a recording link now or after the event.</p>

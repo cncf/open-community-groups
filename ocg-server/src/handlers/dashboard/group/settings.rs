@@ -13,7 +13,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{CommunityId, SelectedGroupId, ValidatedFormQs},
     },
     templates::dashboard::group::settings::{self, GroupUpdate},
 };
@@ -50,15 +50,8 @@ pub(crate) async fn update(
     CommunityId(community_id): CommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(group_update): ValidatedFormQs<GroupUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get group update information from body
-    let group_update: GroupUpdate = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(update) => update,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
-
     // Update group in database
     db.update_group(community_id, group_id, &group_update).await?;
 

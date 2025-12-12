@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
-import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/svg-spinner.js";
 
 const DEFAULT_MAX_IMAGES = 8;
@@ -236,7 +236,7 @@ export class GalleryField extends LitWrapper {
       } catch (error) {
         if (!this._uploadErrorShown) {
           const ERROR_MESSAGE =
-            'Something went wrong adding the images, please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+            'Something went wrong adding the images. Please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
           showErrorAlert(ERROR_MESSAGE, true);
           this._uploadErrorShown = true;
         }
@@ -248,12 +248,6 @@ export class GalleryField extends LitWrapper {
       this._isUploading = false;
     }
     this.requestUpdate();
-
-    if (createdCount > 0) {
-      const message =
-        createdCount === 1 ? "Image added successfully." : `${createdCount} images added successfully.`;
-      showSuccessAlert(message);
-    }
   }
 
   /**

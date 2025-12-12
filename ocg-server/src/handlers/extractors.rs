@@ -6,11 +6,14 @@ use std::time::Duration;
 
 use anyhow::Result;
 use axum::{
-    extract::{FromRequestParts, Path},
+    Form,
+    extract::{FromRequest, FromRequestParts, Path, Request},
     http::{StatusCode, header::HOST, request::Parts},
 };
 #[cfg(not(test))]
 use cached::proc_macro::cached;
+use garde::Validate;
+use serde::de::DeserializeOwned;
 use tower_sessions::Session;
 use tracing::{error, instrument};
 use uuid::Uuid;
@@ -149,6 +152,68 @@ impl FromRequestParts<router::State> for SelectedGroupId {
     }
 }
 
+/// Extractor that deserializes and validates form data using Axum's Form extractor.
+///
+/// Use this for simple, flat form structures. For complex nested structures
+/// (arrays, maps), use `ValidatedFormQs` instead.
+pub(crate) struct ValidatedForm<T>(pub T);
+
+impl<T> FromRequest<router::State> for ValidatedForm<T>
+where
+    T: DeserializeOwned + Validate,
+    T::Context: Default,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request(req: Request, state: &router::State) -> Result<Self, Self::Rejection> {
+        // Deserialize form data
+        let Form(value) = Form::<T>::from_request(req, state)
+            .await
+            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+
+        // Validate the deserialized value
+        value
+            .validate()
+            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+
+        Ok(ValidatedForm(value))
+    }
+}
+
+/// Extractor that deserializes and validates form data using `serde_qs`.
+///
+/// Use this for complex form structures with nested arrays, maps, or deep
+/// nesting that Axum's Form extractor cannot handle.
+pub(crate) struct ValidatedFormQs<T>(pub T);
+
+impl<T> FromRequest<router::State> for ValidatedFormQs<T>
+where
+    T: DeserializeOwned + Validate,
+    T::Context: Default,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request(req: Request, state: &router::State) -> Result<Self, Self::Rejection> {
+        // Read body as string
+        let body = String::from_request(req, state)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
+        // Deserialize using serde_qs
+        let value: T = state
+            .serde_qs_de
+            .deserialize_str(&body)
+            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+
+        // Validate the deserialized value
+        value
+            .validate()
+            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+
+        Ok(ValidatedFormQs(value))
+    }
+}
+
 // Tests.
 
 #[cfg(test)]
@@ -163,6 +228,7 @@ mod tests {
         routing::get,
     };
     use axum_login::AuthManagerLayerBuilder;
+    use serde::Deserialize;
     use tower::ServiceExt;
     use tower_sessions::{MemoryStore, Session, SessionManagerLayer};
     use uuid::Uuid;
@@ -659,6 +725,160 @@ mod tests {
             result,
             Err((StatusCode::BAD_REQUEST, "missing group id"))
         ));
+    }
+
+    #[tokio::test]
+    async fn test_validated_form_success() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup router with a handler that uses ValidatedForm
+        let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/test",
+                axum::routing::post(|ValidatedForm(form): ValidatedForm<TestForm>| async move {
+                    assert_eq!(form.name, "test name");
+                    StatusCode::OK
+                }),
+            )
+            .with_state(state);
+
+        // Send valid request
+        let request = Request::builder()
+            .method("POST")
+            .uri("/test")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from("name=test+name"))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_validated_form_validation_error() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup router with a handler that uses ValidatedForm
+        let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/test",
+                axum::routing::post(
+                    |ValidatedForm(_form): ValidatedForm<TestForm>| async move { StatusCode::OK },
+                ),
+            )
+            .with_state(state);
+
+        // Send request with empty name (validation should fail)
+        let request = Request::builder()
+            .method("POST")
+            .uri("/test")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from("name=+++"))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
+    async fn test_validated_form_qs_success() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup router with a handler that uses ValidatedFormQs
+        let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/test",
+                axum::routing::post(|ValidatedFormQs(form): ValidatedFormQs<TestFormQs>| async move {
+                    assert_eq!(form.name, "test name");
+                    assert_eq!(form.tags, Some(vec!["tag1".to_string(), "tag2".to_string()]));
+                    StatusCode::OK
+                }),
+            )
+            .with_state(state);
+
+        // Send valid request with nested array
+        let request = Request::builder()
+            .method("POST")
+            .uri("/test")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from("name=test+name&tags[0]=tag1&tags[1]=tag2"))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn test_validated_form_qs_validation_error() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup router with a handler that uses ValidatedFormQs
+        let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/test",
+                axum::routing::post(|ValidatedFormQs(_form): ValidatedFormQs<TestFormQs>| async move {
+                    StatusCode::OK
+                }),
+            )
+            .with_state(state);
+
+        // Send request with whitespace-only name (validation should fail)
+        let request = Request::builder()
+            .method("POST")
+            .uri("/test")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from("name=+++"))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    // Test form structs for validation.
+
+    /// Simple test form for `ValidatedForm` tests.
+    #[derive(Debug, Deserialize, garde::Validate)]
+    struct TestForm {
+        #[garde(custom(crate::validation::trimmed_non_empty))]
+        name: String,
+    }
+
+    /// Complex test form for `ValidatedFormQs` tests.
+    #[derive(Debug, Deserialize, garde::Validate)]
+    struct TestFormQs {
+        #[garde(custom(crate::validation::trimmed_non_empty))]
+        name: String,
+
+        #[garde(skip)]
+        tags: Option<Vec<String>>,
     }
 
     // Helpers.

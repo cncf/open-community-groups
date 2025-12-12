@@ -3,6 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum_messages::Message;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
@@ -12,6 +13,10 @@ use crate::{
     handlers::auth::AUTH_PROVIDER_KEY,
     templates::{PageId, filters, helpers::user_initials},
     types::community::Community,
+    validation::{
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_vec,
+    },
 };
 
 // Pages and sections templates.
@@ -116,34 +121,47 @@ impl User {
 
 /// User details that can be updated.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct UserDetails {
     /// User's display name.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub name: String,
 
     /// User's biography.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
     pub bio: Option<String>,
     /// User's city.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
     /// User's company.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub company: Option<String>,
     /// User's country.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub country: Option<String>,
     /// User's Facebook URL.
+    #[garde(url, length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
     /// User's interests.
+    #[garde(custom(trimmed_non_empty_vec))]
     pub interests: Option<Vec<String>>,
     /// User's `LinkedIn` URL.
+    #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
     /// User's photo URL.
+    #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
     /// User's timezone.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub timezone: Option<String>,
     /// User's title.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub title: Option<String>,
     /// User's Twitter URL.
+    #[garde(url, length(max = MAX_LEN_L))]
     pub twitter_url: Option<String>,
     /// User's website URL.
+    #[garde(url, length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
 }
 
@@ -168,10 +186,12 @@ impl From<crate::auth::User> for UserDetails {
 }
 
 /// Input for updating a user's password.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct UserPassword {
     /// The new password to set.
+    #[garde(length(min = MIN_PASSWORD_LEN, max = MAX_LEN_S))]
     pub new_password: String,
     /// The user's current password.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub old_password: String,
 }

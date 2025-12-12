@@ -27,6 +27,7 @@ export class SpeakersSelector extends LitWrapper {
     showAddButton: { type: Boolean, attribute: "show-add-button" },
     label: { type: String },
     helpText: { type: String, attribute: "help-text" },
+    disabled: { type: Boolean },
   };
 
   constructor() {
@@ -37,6 +38,7 @@ export class SpeakersSelector extends LitWrapper {
     this.showAddButton = false;
     this.label = "Speakers";
     this.helpText = "Add speakers or presenters.";
+    this.disabled = false;
   }
 
   connectedCallback() {
@@ -77,10 +79,12 @@ export class SpeakersSelector extends LitWrapper {
    * @private
    */
   _openSpeakerModal = () => {
+    if (this.disabled) return;
     const modal = this.querySelector("session-speaker-modal");
     if (!modal) return;
     modal.disabledUserIds = this._getSpeakers().map((speaker) => speaker.user_id);
     modal.dashboardType = this.dashboardType;
+    modal.disabled = this.disabled;
     if (typeof modal.open === "function") modal.open();
   };
 
@@ -90,6 +94,7 @@ export class SpeakersSelector extends LitWrapper {
    * @private
    */
   _handleSpeakerSelected = (event) => {
+    if (this.disabled) return;
     const user = event.detail?.user;
     if (!user || hasSpeaker(this._getSpeakers(), user)) return;
     const featured = !!event.detail?.featured;
@@ -102,6 +107,7 @@ export class SpeakersSelector extends LitWrapper {
    * @private
    */
   _removeSpeaker = (speaker) => {
+    if (this.disabled) return;
     if (!speaker) return;
     const target = speakerKey(speaker);
     const nextSpeakers = this._getSpeakers().filter((item) => speakerKey(item) !== target);
@@ -131,6 +137,7 @@ export class SpeakersSelector extends LitWrapper {
           class="p-1 hover:bg-stone-200 rounded-full transition-colors"
           title="Remove speaker"
           @click=${() => this._removeSpeaker(speaker)}
+          ?disabled=${this.disabled}
         >
           <div class="svg-icon size-3 icon-close bg-stone-600"></div>
         </button>
@@ -188,7 +195,12 @@ export class SpeakersSelector extends LitWrapper {
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
           <label class="form-label m-0">${this.label}</label>
           ${this.showAddButton
-            ? html`<button type="button" class="btn-secondary" @click=${this._openSpeakerModal}>
+            ? html`<button
+                type="button"
+                class="btn-secondary"
+                @click=${this._openSpeakerModal}
+                ?disabled=${this.disabled}
+              >
                 Add speaker
               </button>`
             : ""}
@@ -201,6 +213,7 @@ export class SpeakersSelector extends LitWrapper {
           dashboard-type=${this.dashboardType}
           .disabledUserIds=${speakers.map((speaker) => speaker.user_id)}
           @speaker-selected=${this._handleSpeakerSelected}
+          ?disabled=${this.disabled}
         ></session-speaker-modal>
       </div>
     `;

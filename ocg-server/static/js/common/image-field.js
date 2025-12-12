@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
-import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/svg-spinner.js";
 
 const IMAGE_KIND = {
@@ -209,10 +209,9 @@ export class ImageField extends LitWrapper {
       }
 
       this._setValue(data.url);
-      showSuccessAlert("Image added successfully.");
     } catch (error) {
       const ERROR_MESSAGE =
-        'Something went wrong adding the image, please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
       showErrorAlert(ERROR_MESSAGE, true);
     } finally {
       this._isUploading = false;
@@ -228,6 +227,8 @@ export class ImageField extends LitWrapper {
    */
   _setValue(newValue) {
     this.value = newValue || "";
+    const valueInput = this.querySelector(`#${this._valueInputId}`);
+    valueInput?.setCustomValidity("");
     this.dispatchEvent(
       new CustomEvent("image-change", {
         detail: { value: this.value },
@@ -243,6 +244,11 @@ export class ImageField extends LitWrapper {
     }
 
     this._setValue("");
+  }
+
+  _handleValueInvalid(event) {
+    const message = `${this.label} is required.`;
+    event.target.setCustomValidity(message);
   }
 
   /**
@@ -327,12 +333,15 @@ export class ImageField extends LitWrapper {
         </div>
       </div>
       <input
-        type="hidden"
+        type="text"
         id=${valueInputId}
         name=${this.name || valueInputId}
+        class="sr-only"
         .value=${this.value}
         ?required=${this.required}
-        readonly
+        tabindex="-1"
+        aria-hidden="true"
+        @invalid=${this._handleValueInvalid}
       />
     `;
   }

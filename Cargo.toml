@@ -30,6 +30,7 @@ chrono-tz = { version = "0.10.4", features = ["serde"] }
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
 emojis = "0.8.0"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
+garde = { version = "0.22.1", features = ["derive", "url", "email"] }
 hex = "0.4"
 hmac = "0.12"
 icalendar = "0.17.5"

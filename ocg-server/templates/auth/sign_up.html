@@ -58,6 +58,7 @@
                   <input id="name"
                          name="name"
                          type="text"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="name"
                          autocorrect="off"
@@ -77,6 +78,7 @@
                   <input id="email"
                          name="email"
                          type="email"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="email"
                          required>
@@ -93,6 +95,7 @@
                   <input id="username"
                          name="username"
                          type="text"
+                         maxlength="{{ crate::validation::MAX_LEN_M }}"
                          class="input-primary"
                          autocomplete="username"
                          autocorrect="off"
@@ -116,6 +119,8 @@
                            name="password"
                            class="input-primary"
                            autocomplete="new-password"
+                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                           data-password
                            required>
                   </div>
                 </div>
@@ -132,6 +137,8 @@
                            name="password_confirmation"
                            class="input-primary"
                            autocomplete="new-password"
+                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                           data-password-confirmation
                            required>
                   </div>
                 </div>
@@ -168,27 +175,5 @@
         {# End messages -#}
       </div>
     </div>
-
-    {# JavaScript for password validation -#}
-    <script type="module">
-      const signupForm = document.getElementById('sign-up-form');
-      const passwords = document.querySelectorAll('input[type="password"]');
-
-      const validatePasswords = () => {
-        const password = document.getElementById('password');
-        const passwordConfirmation = document.getElementById('password_confirmation');
-
-        if (password.value !== passwordConfirmation.value) {
-          passwordConfirmation.setCustomValidity('Passwords do not match');
-        } else {
-          passwordConfirmation.setCustomValidity('');
-        }
-      };
-
-      passwords.forEach((password) => {
-        password.addEventListener('input', validatePasswords);
-      });
-    </script>
-    {# End JavaScript for password validation -#}
   </div>
 {% endblock content -%}

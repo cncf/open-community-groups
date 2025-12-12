@@ -6,7 +6,7 @@ create or replace function add_event(
 )
 returns uuid as $$
 declare
-    v_community_id uuid;
+    v_ends_at timestamptz;
     v_event_id uuid;
     v_event_speaker jsonb;
     v_host_id uuid;
@@ -14,19 +14,50 @@ declare
     v_provider_max_participants int;
     v_retries int := 0;
     v_session jsonb;
+    v_session_ends_at timestamptz;
     v_session_id uuid;
     v_session_speaker jsonb;
+    v_session_starts_at timestamptz;
     v_slug text;
     v_speaker_featured boolean;
     v_speaker_id uuid;
     v_sponsor jsonb;
     v_sponsor_id uuid;
     v_sponsor_level text;
+    v_starts_at timestamptz;
 begin
-    -- Get community_id for validation
-    select community_id into v_community_id
-    from "group"
-    where group_id = p_group_id;
+    -- Validate event dates are not in the past
+    if p_event->>'starts_at' is not null then
+        v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+        if v_starts_at < current_timestamp then
+            raise exception 'event starts_at cannot be in the past';
+        end if;
+    end if;
+
+    if p_event->>'ends_at' is not null then
+        v_ends_at := (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone');
+        if v_ends_at < current_timestamp then
+            raise exception 'event ends_at cannot be in the past';
+        end if;
+    end if;
+
+    -- Validate session dates are not in the past
+    if p_event->'sessions' is not null then
+        for v_session in select jsonb_array_elements(p_event->'sessions')
+        loop
+            v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+            if v_session_starts_at < current_timestamp then
+                raise exception 'session starts_at cannot be in the past';
+            end if;
+
+            if v_session->>'ends_at' is not null then
+                v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone');
+                if v_session_ends_at < current_timestamp then
+                    raise exception 'session ends_at cannot be in the past';
+                end if;
+            end if;
+        end loop;
+    end if;
 
     -- Validate event capacity against max_participants when meeting is requested
     if (p_event->>'meeting_requested')::boolean = true then
@@ -128,15 +159,6 @@ begin
     if p_event->'hosts' is not null then
         for v_host_id in select (jsonb_array_elements_text(p_event->'hosts'))::uuid
         loop
-            -- Validate host exists in same community
-            if not exists (
-                select 1 from "user"
-                where user_id = v_host_id
-                and community_id = v_community_id
-            ) then
-                raise exception 'host user % not found in community', v_host_id;
-            end if;
-
             insert into event_host (event_id, user_id)
             values (v_event_id, v_host_id);
         end loop;
@@ -150,15 +172,6 @@ begin
             v_speaker_id := (v_event_speaker->>'user_id')::uuid;
             v_speaker_featured := (v_event_speaker->>'featured')::boolean;
 
-            -- Validate speaker exists in same community
-            if not exists (
-                select 1 from "user"
-                where user_id = v_speaker_id
-                and community_id = v_community_id
-            ) then
-                raise exception 'speaker user % not found in community', v_speaker_id;
-            end if;
-
             insert into event_speaker (event_id, user_id, featured)
             values (v_event_id, v_speaker_id, v_speaker_featured);
         end loop;
@@ -171,15 +184,6 @@ begin
             -- Extract sponsor details
             v_sponsor_id := (v_sponsor->>'group_sponsor_id')::uuid;
             v_sponsor_level := v_sponsor->>'level';
-
-            -- Validate sponsor belongs to the group
-            if not exists (
-                select 1 from group_sponsor
-                where group_sponsor_id = v_sponsor_id
-                and group_id = p_group_id
-            ) then
-                raise exception 'sponsor % not found in group', v_sponsor_id;
-            end if;
 
             insert into event_sponsor (event_id, group_sponsor_id, level)
             values (v_event_id, v_sponsor_id, v_sponsor_level);
@@ -232,15 +236,6 @@ begin
                     -- Extract speaker details
                     v_speaker_id := (v_session_speaker->>'user_id')::uuid;
                     v_speaker_featured := (v_session_speaker->>'featured')::boolean;
-
-                    -- Validate speaker exists in same community
-                    if not exists (
-                        select 1 from "user"
-                        where user_id = v_speaker_id
-                        and community_id = v_community_id
-                    ) then
-                        raise exception 'speaker user % not found in community', v_speaker_id;
-                    end if;
 
                     insert into session_speaker (session_id, user_id, featured)
                     values (v_session_id, v_speaker_id, v_speaker_featured);

@@ -4,13 +4,14 @@ use std::collections::HashMap;
 
 use askama::Template;
 use axum::{
+    Form,
     extract::{Path, Query, Request, State},
     http::StatusCode,
     middleware::Next,
     response::{Html, IntoResponse, Redirect},
 };
-use axum_extra::extract::Form;
 use axum_messages::Messages;
+use garde::Validate;
 use openidconnect as oidc;
 use password_auth::verify_password;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
@@ -19,13 +20,15 @@ use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
+use crate::validation::trimmed_non_empty;
+
 use crate::{
     auth::{self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials},
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, OAuth2, Oidc},
+        extractors::{CommunityId, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -162,6 +165,13 @@ pub(crate) async fn log_in(
     // Sanitize next url
     let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
 
+    // Validate form
+    if let Err(e) = login_form.validate() {
+        messages.error(e.to_string());
+        let log_in_url = get_log_in_url(next_url.as_deref());
+        return Ok(Redirect::to(&log_in_url));
+    }
+
     // Authenticate user
     let creds = PasswordCredentials {
         community_id,
@@ -275,7 +285,7 @@ pub(crate) async fn oauth2_callback(
 pub(crate) async fn oauth2_redirect(
     session: Session,
     OAuth2(oauth2_provider): OAuth2,
-    Form(NextUrl { next_url }): Form<NextUrl>,
+    Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Generate the authorization url
     let mut builder = oauth2_provider.client.authorize_url(oauth2::CsrfToken::new_random);
@@ -375,7 +385,7 @@ pub(crate) async fn oidc_callback(
 pub(crate) async fn oidc_redirect(
     session: Session,
     Oidc(oidc_provider): Oidc,
-    Form(NextUrl { next_url }): Form<NextUrl>,
+    Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Generate the authorization url
     let mut builder = oidc_provider.client.authorize_url(
@@ -411,6 +421,15 @@ pub(crate) async fn sign_up(
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Sanitize next url
+    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
+
+    // Validate form
+    if let Err(e) = user_summary.validate() {
+        messages.error(e.to_string());
+        return Ok(get_sign_up_url(next_url.as_deref()).into_response());
+    }
+
     // Check if the password has been provided
     let Some(password) = user_summary.password.take() else {
         return Ok((StatusCode::BAD_REQUEST, "password not provided").into_response());
@@ -448,7 +467,6 @@ pub(crate) async fn sign_up(
     }
 
     // Redirect to the log in page on success
-    let next_url = sanitize_next_url(query.get("next_url").map(String::as_str));
     let log_in_url = get_log_in_url(next_url.as_deref());
     Ok(Redirect::to(&log_in_url).into_response())
 }
@@ -459,17 +477,10 @@ pub(crate) async fn update_user_details(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
-    body: String,
+    ValidatedFormQs(user_data): ValidatedFormQs<UserDetails>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
-
-    // Get user details from body
-    let user_data: UserDetails = match serde_qs_de.deserialize_str(&body).map_err(anyhow::Error::new) {
-        Ok(data) => data,
-        Err(e) => return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response()),
-    };
 
     // Update user in database
     let user_id = user.user_id;
@@ -484,7 +495,7 @@ pub(crate) async fn update_user_details(
 pub(crate) async fn update_user_password(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    Form(mut input): Form<templates::auth::UserPassword>,
+    ValidatedForm(mut input): ValidatedForm<templates::auth::UserPassword>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -540,6 +551,15 @@ fn get_log_in_url(next_url: Option<&str>) -> String {
     log_in_url
 }
 
+/// Get the sign up url including the next url if provided.
+fn get_sign_up_url(next_url: Option<&str>) -> Redirect {
+    let mut sign_up_url = SIGN_UP_URL.to_string();
+    if let Some(next_url) = sanitize_next_url(next_url) {
+        sign_up_url = format!("{sign_up_url}?next_url={}", encode_next_url(&next_url));
+    }
+    Redirect::to(&sign_up_url)
+}
+
 /// Sanitize a `next_url` value ensuring it points to an in-site path.
 fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
     let value = next_url?.trim();
@@ -555,11 +575,13 @@ fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
 // Types.
 
 /// Login form data from the user.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Validate)]
 pub(crate) struct LoginForm {
     /// Username for authentication.
+    #[garde(custom(trimmed_non_empty))]
     pub username: String,
     /// Password for authentication.
+    #[garde(custom(trimmed_non_empty))]
     pub password: String,
 }
 
@@ -661,6 +683,7 @@ mod tests {
     use std::{collections::HashMap, sync::Arc};
 
     use anyhow::anyhow;
+    use axum::extract::Query;
     use axum::{
         Router,
         body::{Body, to_bytes},
@@ -672,7 +695,6 @@ mod tests {
         response::IntoResponse,
         routing::get,
     };
-    use axum_extra::extract::Form;
     use axum_login::tower_sessions::session;
     use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl, basic::BasicClient};
     use openidconnect as oidc;
@@ -1075,6 +1097,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_log_in_validation_error() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_user_by_username().times(0);
+        db.expect_update_session()
+            .times(1)
+            .withf(|record| message_matches(record, "username: value cannot be empty or whitespace-only\n"))
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
+
+        // Setup request (username is whitespace only - validation should fail)
+        let request = Request::builder()
+            .method("POST")
+            .uri("/log-in")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from("username=+++&password=secret"))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(LOG_IN_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_log_out_success() {
         // Setup identifiers and data structures
         let session_id = session::Id::default();
@@ -1301,7 +1379,7 @@ mod tests {
         // Setup session and form input
         let store = Arc::new(MemoryStore::default());
         let session = Session::new(None, store, None);
-        let form = Form(NextUrl {
+        let query = Query(NextUrl {
             next_url: Some("/dashboard".to_string()),
         });
 
@@ -1319,7 +1397,7 @@ mod tests {
         };
 
         // Execute handler
-        let response = oauth2_redirect(session.clone(), OAuth2(Arc::new(provider)), form)
+        let response = oauth2_redirect(session.clone(), OAuth2(Arc::new(provider)), query)
             .await
             .expect("oauth2 redirect should succeed")
             .into_response();
@@ -1525,7 +1603,7 @@ mod tests {
         // Setup session and form input
         let store = Arc::new(MemoryStore::default());
         let session = Session::new(None, store, None);
-        let form = Form(NextUrl {
+        let query = Query(NextUrl {
             next_url: Some("/dashboard".to_string()),
         });
 
@@ -1554,7 +1632,7 @@ mod tests {
         };
 
         // Execute handler
-        let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), form)
+        let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), query)
             .await
             .expect("oidc redirect should succeed")
             .into_response();
@@ -1791,7 +1869,70 @@ mod tests {
             .await;
 
         // Setup request
-        let form = "email=test%40example.test&name=Test+User&username=test-user&password=secret";
+        let form = "email=test%40example.test&name=Test+User&username=test-user&password=secretpw";
+        let request = Request::builder()
+            .method("POST")
+            .uri("/sign-up")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(form))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::SEE_OTHER);
+        assert_eq!(
+            parts.headers.get(LOCATION).unwrap(),
+            &HeaderValue::from_static(SIGN_UP_URL),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_sign_up_validation_error() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let session_record = empty_session_record(session_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_sign_up_user().times(0);
+        db.expect_update_session()
+            .times(1)
+            .withf(|record| {
+                message_matches(
+                    record,
+                    "email: not a valid email: value is missing `@`\npassword: length is lower than 8\n",
+                )
+            })
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue().times(0);
+
+        // Setup router
+        let mut server_cfg = HttpServerConfig::default();
+        server_cfg.login.email = true;
+        let router = TestRouterBuilder::new(db, nm)
+            .with_server_cfg(server_cfg)
+            .build()
+            .await;
+
+        // Setup request (invalid email - validation should fail)
+        let form = "email=invalid-email&name=Test+User&username=test-user&password=secret";
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up")
