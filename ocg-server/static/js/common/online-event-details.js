@@ -908,6 +908,5 @@ export class OnlineEventDetails extends LitWrapper {
     `;
   }
 }
-if (!customElements.get("online-event-details")) {
-  customElements.define("online-event-details", OnlineEventDetails);
-}
+
+customElements.define("online-event-details", OnlineEventDetails);

@@ -144,6 +144,7 @@ export const clearVenueFields = () => {
     const field = findVenueField(fieldId);
     if (field) {
       field.value = "";
+      field.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
 };
