@@ -362,67 +362,12 @@
           {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-            {# Venue name -#}
-            <div class="col-span-full lg:col-span-3">
-              <label for="venue_name" class="form-label">Venue Name</label>
-              <div class="mt-2">
-                <input type="text"
-                       name="venue_name"
-                       id="venue_name"
-                       class="input-primary"
-                       placeholder="Conference Center Amsterdam">
-              </div>
-              <p class="form-legend">Name of the venue where the event takes place.</p>
+            {# Location search -#}
+            <div class="col-span-full">
+              <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
+              </location-search-field>
             </div>
-            {# End Venue name -#}
-
-            <div class="col-span-3"></div>
-
-            {# Venue address -#}
-            <div class="col-span-full lg:col-span-4">
-              <label for="venue_address" class="form-label">Address</label>
-              <div class="mt-2">
-                <input type="text"
-                       name="venue_address"
-                       id="venue_address"
-                       class="input-primary"
-                       placeholder="123 Main Street">
-              </div>
-              <p class="form-legend">Street address of the venue.</p>
-            </div>
-            {# End Venue address -#}
-
-            <div class="col-span-2"></div>
-
-            {# Venue city -#}
-            <div class="col-span-full lg:col-span-2">
-              <label for="venue_city" class="form-label">City</label>
-              <div class="mt-2">
-                <input type="text"
-                       name="venue_city"
-                       id="venue_city"
-                       class="input-primary"
-                       placeholder="Amsterdam">
-              </div>
-              <p class="form-legend">City where the venue is located.</p>
-            </div>
-            {# End Venue city -#}
-
-            {# Venue zip code -#}
-            <div class="col-span-full lg:col-span-2">
-              <label for="venue_zip_code" class="form-label">Zip Code</label>
-              <div class="mt-2">
-                <input type="text"
-                       name="venue_zip_code"
-                       id="venue_zip_code"
-                       class="input-primary"
-                       placeholder="1012 AB">
-              </div>
-              <p class="form-legend">Postal/zip code of the venue.</p>
-            </div>
-            {# End Venue zip code -#}
-
-            <div class="col-span-2"></div>
+            {# End location search -#}
           </div>
         </div>
         {# End venue information section -#}
@@ -542,9 +487,6 @@
     validateEventDates,
     validateSessionDateBounds
   } from '/static/js/common/form-validation.js';
-  import '/static/js/common/user-search-selector.js';
-  import '/static/js/common/speakers-selector.js';
-  import '/static/js/common/online-event-details.js';
 
   const addEventButton = document.getElementById('add-event-button');
   const cancelButton = document.getElementById('cancel-button');
