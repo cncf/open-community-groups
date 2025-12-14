@@ -17,7 +17,7 @@ test.describe("Login Page", () => {
 
   test("should have link to sign up page", async ({ page }) => {
     await openLoginPage(page);
-    const signUpLink = page.locator('a[href*="/sign-up"]');
+    const signUpLink = page.getByRole('link', { name: 'Sign up' });
 
     await expect(signUpLink).toBeVisible();
   });
@@ -26,7 +26,7 @@ test.describe("Login Page", () => {
     page,
   }) => {
     await openLoginPage(page);
-    const signUpLink = page.locator('a[href*="/sign-up"]');
+    const signUpLink = page.getByRole('link', { name: 'Sign up' })
 
     await signUpLink.click();
     await expect(page).toHaveURL(/\/sign-up/);
@@ -88,7 +88,7 @@ test.describe("Sign Up Page", () => {
 
   test("should have link to login page", async ({ page }) => {
     await openSignUpPage(page);
-    const loginLink = page.locator('a[href*="/log-in"]');
+    const loginLink = page.getByRole('link', { name: 'Sign in' });
 
     await expect(loginLink).toBeVisible();
   });
@@ -97,7 +97,7 @@ test.describe("Sign Up Page", () => {
     page,
   }) => {
     await openSignUpPage(page);
-    const loginLink = page.locator('a[href*="/log-in"]');
+    const loginLink = page.getByRole('link', { name: 'Sign in' });
 
     await loginLink.click();
     await expect(page).toHaveURL(/\/log-in/);
