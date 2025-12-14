@@ -5,3 +5,9 @@ Chart.lock
 chart/charts
 ocg-server/dist
 ocg-server/static/css/styles.css
+
+# E2E tests (Playwright)
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+tests/e2e/blob-report/
+tests/e2e/playwright/.cache/
