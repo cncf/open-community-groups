@@ -159,6 +159,7 @@ export class LocationSearchField extends LitWrapper {
 
     this._mapElementId = createMapElementId();
     this._leafletMap = null;
+    this._leafletMarker = null;
     this._mapPreviewSyncPromise = Promise.resolve();
   }
 
@@ -205,6 +206,7 @@ export class LocationSearchField extends LitWrapper {
       this._leafletMap.remove();
       this._leafletMap = null;
     }
+    this._leafletMarker = null;
     if (this._outsidePointerHandler) {
       document.removeEventListener("pointerdown", this._outsidePointerHandler);
     }
@@ -1183,6 +1185,8 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
+   * Schedule a map sync so coordinate changes do not overlap.
+   * @returns {Promise<unknown>}
    * @private
    */
   _syncMapPreview() {
@@ -1193,6 +1197,8 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
+   * Initialize or update the enabled map/marker with the latest coords.
+   * @returns {Promise<void>}
    * @private
    */
   async _syncMapPreviewInternal() {
@@ -1203,6 +1209,7 @@ export class LocationSearchField extends LitWrapper {
         this._leafletMap.remove();
         this._leafletMap = null;
       }
+      this._leafletMarker = null;
       return;
     }
 
@@ -1213,12 +1220,33 @@ export class LocationSearchField extends LitWrapper {
     const lng = this._parseCoordinate(this._longitudeValue);
     if (lat === null || lng === null) return;
 
-    if (this._leafletMap) {
-      this._leafletMap.remove();
-      this._leafletMap = null;
+    if (!this._leafletMap) {
+      this._leafletMap = await loadMap(this._mapElementId, lat, lng, {
+        zoom: 15,
+        interactive: false,
+        marker: false,
+      });
     }
 
-    this._leafletMap = await loadMap(this._mapElementId, lat, lng, { zoom: 15, interactive: false });
+    if (this._leafletMarker) {
+      this._leafletMarker.setLatLng([lat, lng]);
+    } else if (window.L) {
+      const icon = L.divIcon({
+        html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker"></div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -25],
+        className: "marker-icon",
+      });
+      this._leafletMarker = L.marker(L.latLng(lat, lng), {
+        icon,
+        interactive: false,
+        autoPanOnFocus: false,
+        bubblingMouseEvents: false,
+      }).addTo(this._leafletMap);
+    }
+
+    this._leafletMap.setView([lat, lng], this._leafletMap.getZoom?.() ?? 15, { animate: false });
   }
 
   /**
