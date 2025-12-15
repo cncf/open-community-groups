@@ -323,6 +323,7 @@ export class LocationSearchField extends LitWrapper {
         signal: this._abortController.signal,
         headers: {
           Accept: "application/json",
+          "User-Agent": "OpenCommunityGroups/0.5.0 (https://github.com/open-community-groups)",
         },
       });
 
