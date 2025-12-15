@@ -615,6 +615,11 @@ export class LocationSearchField extends LitWrapper {
   _handleKeyDown(event) {
     if (event.key === "Enter" && this._searchResults.length === 0) {
       event.preventDefault();
+      if (this._searchQuery.trim().length < 3) {
+        this._hideDropdown();
+        return;
+      }
+
       this._triggerSearch();
       return;
     }
@@ -864,12 +869,12 @@ export class LocationSearchField extends LitWrapper {
   _hasInternalFields() {
     return Boolean(
       this.venueNameFieldName ||
-        this.venueAddressFieldName ||
-        this.venueCityFieldName ||
-        this.venueZipCodeFieldName ||
-        this.stateFieldName ||
-        this.countryNameFieldName ||
-        this.countryCodeFieldName,
+      this.venueAddressFieldName ||
+      this.venueCityFieldName ||
+      this.venueZipCodeFieldName ||
+      this.stateFieldName ||
+      this.countryNameFieldName ||
+      this.countryCodeFieldName,
     );
   }
 
