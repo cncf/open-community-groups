@@ -3,9 +3,6 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { loadMap } from "/static/js/common/common.js";
 import { setTextValue } from "/static/js/common/utils.js";
 
-/** Default mode for location selection */
-const DEFAULT_MODE = "search";
-
 let mapIdCounter = 0;
 const createMapElementId = () => {
   mapIdCounter += 1;
@@ -13,18 +10,12 @@ const createMapElementId = () => {
 };
 
 /**
- * LocationSearchField component for searching and selecting locations using Nominatim.
- *
- * Supports two modes:
- * - Search Location: Search with button click, fields become readonly after selection
- * - Enter Manually: No search interface, all fields editable including coordinates
+ * LocationSearchField component for searching and editing location details using Nominatim.
  */
 export class LocationSearchField extends LitWrapper {
   /**
    * Component properties definition
    * @property {string} placeholderText - Custom placeholder for search input
-   * @property {boolean} mapEnabled - Whether to render the internal map preview
-   * @property {string} mapDivId - Legacy: ID of the map container element
    * @property {string} venueNameFieldId - ID of the venue name input field
    * @property {string} venueAddressFieldId - ID of the venue address input field
    * @property {string} venueCityFieldId - ID of the venue city input field
@@ -42,7 +33,6 @@ export class LocationSearchField extends LitWrapper {
    * @property {string} countryCodeFieldName - Input name for the country code field
    * @property {string} latitudeFieldName - Input name for latitude
    * @property {string} longitudeFieldName - Input name for longitude
-   * @property {string} initialMode - Initial mode: "search" or "manual"
    * @property {string} initialVenueName - Initial venue name value
    * @property {string} initialVenueAddress - Initial venue address value
    * @property {string} initialVenueCity - Initial venue city value
@@ -54,13 +44,10 @@ export class LocationSearchField extends LitWrapper {
    * @property {Array} _searchResults - Internal search results collection
    * @property {string} _searchQuery - Internal current search query string
    * @property {number} _highlightedIndex - Internal index of highlighted result
-   * @property {string} _mode - Current mode: "search" or "manual"
    * @property {boolean} _showDropdown - Whether to render the results dropdown
    */
   static properties = {
     placeholderText: { type: String, attribute: "placeholder-text" },
-    mapEnabled: { type: Boolean, attribute: "map-enabled" },
-    mapDivId: { type: String, attribute: "map-div-id" },
     venueNameFieldId: { type: String, attribute: "venue-name-field-id" },
     venueAddressFieldId: { type: String, attribute: "venue-address-field-id" },
     venueCityFieldId: { type: String, attribute: "venue-city-field-id" },
@@ -78,7 +65,6 @@ export class LocationSearchField extends LitWrapper {
     countryCodeFieldName: { type: String, attribute: "country-code-field-name" },
     latitudeFieldName: { type: String, attribute: "latitude-field-name" },
     longitudeFieldName: { type: String, attribute: "longitude-field-name" },
-    initialMode: { type: String, attribute: "initial-mode" },
     initialVenueName: { type: String, attribute: "initial-venue-name" },
     initialVenueAddress: { type: String, attribute: "initial-venue-address" },
     initialVenueCity: { type: String, attribute: "initial-venue-city" },
@@ -93,7 +79,6 @@ export class LocationSearchField extends LitWrapper {
     _searchQuery: { type: String, state: true },
     _highlightedIndex: { type: Number, state: true },
     _abortController: { type: Object, state: true },
-    _mode: { type: String, state: true },
     _latitudeValue: { type: String, state: true },
     _longitudeValue: { type: String, state: true },
     _venueNameValue: { type: String, state: true },
@@ -104,13 +89,13 @@ export class LocationSearchField extends LitWrapper {
     _countryNameValue: { type: String, state: true },
     _countryCodeValue: { type: String, state: true },
     _showDropdown: { type: Boolean, state: true },
+    _mapVisible: { type: Boolean, state: true },
+    disabled: { type: Boolean },
   };
 
   constructor() {
     super();
     this.placeholderText = "Search for a venue or address...";
-    this.mapEnabled = false;
-    this.mapDivId = "";
     this.venueNameFieldId = "";
     this.venueAddressFieldId = "";
     this.venueCityFieldId = "";
@@ -128,7 +113,6 @@ export class LocationSearchField extends LitWrapper {
     this.countryCodeFieldName = "";
     this.latitudeFieldName = "";
     this.longitudeFieldName = "";
-    this.initialMode = DEFAULT_MODE;
     this.initialVenueName = "";
     this.initialVenueAddress = "";
     this.initialVenueCity = "";
@@ -145,7 +129,6 @@ export class LocationSearchField extends LitWrapper {
     this._highlightedIndex = -1;
     this._abortController = null;
     this._outsidePointerHandler = null;
-    this._mode = DEFAULT_MODE;
     this._latitudeValue = "";
     this._longitudeValue = "";
     this._venueNameValue = "";
@@ -156,16 +139,16 @@ export class LocationSearchField extends LitWrapper {
     this._countryNameValue = "";
     this._countryCodeValue = "";
     this._showDropdown = false;
-
+    this._mapVisible = false;
     this._mapElementId = createMapElementId();
     this._leafletMap = null;
     this._leafletMarker = null;
     this._mapPreviewSyncPromise = Promise.resolve();
+    this.disabled = false;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this._mode = this.initialMode || DEFAULT_MODE;
     this._venueNameValue = this.initialVenueName || "";
     this._venueAddressValue = this.initialVenueAddress || "";
     this._venueCityValue = this.initialVenueCity || "";
@@ -176,25 +159,10 @@ export class LocationSearchField extends LitWrapper {
     this._latitudeValue = this.initialLatitude || "";
     this._longitudeValue = this.initialLongitude || "";
 
-    if (this.mapDivId) {
-      this.mapEnabled = true;
-    }
-
-    if (!this.latitudeFieldId && !this.latitudeFieldName && (this.mapEnabled || this.mapDivId)) {
-      this.latitudeFieldId = "latitude";
-      this.latitudeFieldName = "latitude";
-    }
-    if (!this.longitudeFieldId && !this.longitudeFieldName && (this.mapEnabled || this.mapDivId)) {
-      this.longitudeFieldId = "longitude";
-      this.longitudeFieldName = "longitude";
-    }
-
     if (!this._outsidePointerHandler) {
       this._outsidePointerHandler = (event) => this._handleOutsidePointer(event);
     }
     document.addEventListener("pointerdown", this._outsidePointerHandler);
-
-    this._updateFieldsReadonly(this._mode === "search");
   }
 
   disconnectedCallback() {
@@ -209,12 +177,6 @@ export class LocationSearchField extends LitWrapper {
     this._leafletMarker = null;
     if (this._outsidePointerHandler) {
       document.removeEventListener("pointerdown", this._outsidePointerHandler);
-    }
-  }
-
-  firstUpdated() {
-    if (this._hasValidCoordinates()) {
-      this._syncMapPreview();
     }
   }
 
@@ -273,6 +235,24 @@ export class LocationSearchField extends LitWrapper {
     this._searchQuery = "";
     this._hideDropdown();
     this.focusInput();
+  }
+
+  /**
+   * Ensures the map preview is rendered and synced if coordinates are available.
+   */
+  showMapPreview() {
+    if (!this._mapVisible) {
+      this._mapVisible = true;
+      this.updateComplete.then(() => {
+        if (this._hasValidCoordinates()) {
+          this._syncMapPreview();
+        }
+      });
+      return;
+    }
+    if (this._hasValidCoordinates()) {
+      this._syncMapPreview();
+    }
   }
 
   /**
@@ -361,12 +341,15 @@ export class LocationSearchField extends LitWrapper {
 
     const zipCode = addr.postcode || "";
 
-    const venueName = addr[result.type] || addr.amenity || addr.building || addr.name || "";
+    const venueName =
+      addr[result.type] || addr[result.addresstype] || addr.amenity || addr.building || addr.name || "";
 
     const state = addr.state || addr.province || addr.region || "";
 
     const country = addr.country || "";
     const countryCode = (addr.country_code || "").toUpperCase();
+
+    console.log("Address", result);
 
     return {
       venueName,
@@ -433,8 +416,6 @@ export class LocationSearchField extends LitWrapper {
       setTextValue(this.longitudeFieldId, String(location.longitude));
     }
 
-    this._updateFieldsReadonly(true);
-
     this.dispatchEvent(
       new CustomEvent("location-selected", {
         detail: location,
@@ -443,45 +424,6 @@ export class LocationSearchField extends LitWrapper {
     );
 
     this._clearSearch();
-  }
-
-  /**
-   * Sets or removes the readonly attribute on a field.
-   * @param {string} fieldId - ID of the field to modify
-   * @param {boolean} readonly - Whether to set or remove readonly
-   * @private
-   */
-  _setFieldReadonly(fieldId, readonly) {
-    const field = document.getElementById(fieldId);
-    if (field) {
-      if (readonly) {
-        field.setAttribute("readonly", "");
-      } else {
-        field.removeAttribute("readonly");
-      }
-    }
-  }
-
-  /**
-   * Updates readonly state for all configured fields.
-   * @param {boolean} readonly - Whether fields should be readonly
-   * @private
-   */
-  _updateFieldsReadonly(readonly) {
-    const fieldIds = [
-      this.venueNameFieldId,
-      this.venueAddressFieldId,
-      this.venueCityFieldId,
-      this.venueZipCodeFieldId,
-      this.stateFieldId,
-      this.countryFieldId,
-    ];
-
-    for (const fieldId of fieldIds) {
-      if (fieldId) {
-        this._setFieldReadonly(fieldId, readonly);
-      }
-    }
   }
 
   /**
@@ -513,11 +455,17 @@ export class LocationSearchField extends LitWrapper {
     for (const fieldId of fieldIds) {
       if (fieldId) {
         setTextValue(fieldId, "");
-        this._setFieldReadonly(fieldId, false);
       }
     }
 
-    this._updateFieldsReadonly(this._mode === "search");
+    if (this._leafletMap) {
+      this._leafletMap.remove();
+      this._leafletMap = null;
+    }
+    this._leafletMarker = null;
+    this._mapVisible = false;
+
+    this._clearSearch();
 
     this.dispatchEvent(
       new CustomEvent("location-cleared", {
@@ -585,73 +533,6 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
-   * Handles mode change when radio button is clicked.
-   * @param {Event} event - Change event from radio input
-   * @private
-   */
-  _handleModeChange(event) {
-    const newMode = event.target.value;
-    if (newMode === this._mode) return;
-
-    this._mode = newMode;
-    this._clearSearch();
-    this._updateFieldsReadonly(newMode === "search");
-
-    this.dispatchEvent(
-      new CustomEvent("mode-changed", {
-        detail: { mode: newMode },
-        bubbles: true,
-      }),
-    );
-  }
-
-  /**
-   * Renders a selectable mode card.
-   * @param {Object} option - Card data with value, title, description
-   * @returns {import('lit').TemplateResult} Mode card element
-   * @private
-   */
-  _renderModeOption(option) {
-    const isSelected = this._mode === option.value;
-
-    return html`
-      <label class="block h-full">
-        <input
-          type="radio"
-          class="sr-only"
-          name="location-mode"
-          value="${option.value}"
-          .checked="${isSelected}"
-          @change="${this._handleModeChange}"
-        />
-        <div
-          class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex cursor-pointer ${isSelected
-            ? "border-primary-400 ring-2 ring-primary-200"
-            : "border-stone-200 hover:border-primary-300"}"
-        >
-          <div class="flex items-start gap-3">
-            <span class="mt-1 inline-flex">
-              <span
-                class="${[
-                  "relative flex h-5 w-5 items-center justify-center rounded-full",
-                  "border",
-                  isSelected ? "border-primary-500" : "border-stone-300",
-                ].join(" ")}"
-              >
-                ${isSelected ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>` : ""}
-              </span>
-            </span>
-            <div class="space-y-1">
-              <div class="text-base font-semibold text-stone-900">${option.title}</div>
-              <p class="form-legend">${option.description}</p>
-            </div>
-          </div>
-        </div>
-      </label>
-    `;
-  }
-
-  /**
    * Renders the search interface with input and button.
    * @returns {import('lit').TemplateResult} Search interface template
    * @private
@@ -659,12 +540,11 @@ export class LocationSearchField extends LitWrapper {
   _renderSearchInterface() {
     const shouldRenderDropdown =
       this._showDropdown && this._searchQuery !== "" && this._searchQuery.length >= 3;
+    const disabledClasses = this.disabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : "";
 
     return html`
-      <div class="mt-6 space-y-4" @focusout=${this._handleFocusOut}>
-        <div>
-          <label for="location-search-input" class="form-label">Location Search</label>
-          <div class="mt-2 flex gap-2">
+      <div @focusout=${this._handleFocusOut}>
+        <div class="mt-2 flex gap-2">
             <div class="relative flex-1">
               <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
                 <div class="svg-icon size-4 icon-search bg-stone-300"></div>
@@ -672,7 +552,7 @@ export class LocationSearchField extends LitWrapper {
               <input
                 id="location-search-input"
                 type="text"
-                class="input-primary peer ps-9"
+                class="input-primary peer ps-9 ${disabledClasses}"
                 placeholder=${this.placeholderText}
                 .value=${this._searchQuery}
                 @input=${this._handleSearchInput}
@@ -684,28 +564,35 @@ export class LocationSearchField extends LitWrapper {
                 aria-expanded=${shouldRenderDropdown}
                 aria-haspopup="listbox"
                 aria-autocomplete="list"
+                aria-label="Search for a location"
+                ?disabled=${this.disabled}
               />
-              ${this._searchQuery
-                ? html`
-                    <div class="absolute end-1.5 top-1.5">
-                      <button type="button" class="cursor-pointer mt-[2px]" @click=${this._clearSearch}>
-                        <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-                      </button>
-                    </div>
-                  `
-                : ""}
+              ${
+                this._searchQuery
+                  ? html`
+                      <div class="absolute end-1.5 top-1.5">
+                        <button type="button" class="cursor-pointer mt-[2px]" @click=${this._clearSearch} ?disabled=${this.disabled}>
+                          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+                        </button>
+                      </div>
+                    `
+                  : ""
+              }
               ${shouldRenderDropdown ? this._renderDropdown() : ""}
             </div>
             <button
               type="button"
               class="btn-primary"
               @click=${this._triggerSearch}
-              ?disabled=${this._searchQuery.length < 3 || this._isSearching}
+              ?disabled=${this.disabled || this._searchQuery.length < 3 || this._isSearching}
             >
               Search
             </button>
           </div>
         </div>
+        <p class="form-legend mt-3">
+          If any fields remain empty or incomplete after the search, fill in the missing details manually.
+        </p>
       </div>
     `;
   }
@@ -832,12 +719,12 @@ export class LocationSearchField extends LitWrapper {
   _hasInternalFields() {
     return Boolean(
       this.venueNameFieldName ||
-      this.venueAddressFieldName ||
-      this.venueCityFieldName ||
-      this.venueZipCodeFieldName ||
-      this.stateFieldName ||
-      this.countryNameFieldName ||
-      this.countryCodeFieldName,
+        this.venueAddressFieldName ||
+        this.venueCityFieldName ||
+        this.venueZipCodeFieldName ||
+        this.stateFieldName ||
+        this.countryNameFieldName ||
+        this.countryCodeFieldName,
     );
   }
 
@@ -890,7 +777,6 @@ export class LocationSearchField extends LitWrapper {
   _renderLocationFields() {
     if (!this._hasInternalFields()) return html``;
 
-    const readonly = this._mode === "search";
     const hiddenCountryCodeInput = this.countryCodeFieldName
       ? html`
           <input
@@ -901,6 +787,7 @@ export class LocationSearchField extends LitWrapper {
           />
         `
       : "";
+    const disabledClasses = this.disabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : "";
 
     return html`
       <div class="mt-8 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -912,16 +799,15 @@ export class LocationSearchField extends LitWrapper {
                   >Venue Name</label
                 >
                 <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueNameFieldName}"
-                    id="${this._getInputId(this.venueNameFieldName)}"
-                    class="input-primary"
-                    placeholder="Conference Center Amsterdam"
-                    .value=${this._venueNameValue}
-                    ?readonly=${readonly}
-                    @input=${this._handleVenueNameInput}
-                  />
+                    <input
+                      type="text"
+                      name="${this.venueNameFieldName}"
+                      id="${this._getInputId(this.venueNameFieldName)}"
+                    class="input-primary ${disabledClasses}"
+                      .value=${this._venueNameValue}
+                      ?disabled=${this.disabled}
+                      @input=${this._handleVenueNameInput}
+                    />
                 </div>
                 <p class="form-legend">Name of the venue where the event takes place.</p>
               </div>
@@ -934,16 +820,15 @@ export class LocationSearchField extends LitWrapper {
                   >Address</label
                 >
                 <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueAddressFieldName}"
-                    id="${this._getInputId(this.venueAddressFieldName)}"
-                    class="input-primary"
-                    placeholder="123 Main Street"
-                    .value=${this._venueAddressValue}
-                    ?readonly=${readonly}
-                    @input=${this._handleVenueAddressInput}
-                  />
+                    <input
+                      type="text"
+                      name="${this.venueAddressFieldName}"
+                      id="${this._getInputId(this.venueAddressFieldName)}"
+                    class="input-primary ${disabledClasses}"
+                      .value=${this._venueAddressValue}
+                      ?disabled=${this.disabled}
+                      @input=${this._handleVenueAddressInput}
+                    />
                 </div>
                 <p class="form-legend">Street address of the venue.</p>
               </div>
@@ -954,20 +839,19 @@ export class LocationSearchField extends LitWrapper {
               <div class="col-span-full lg:col-span-2">
                 <label for="${this._getInputId(this.venueCityFieldName)}" class="form-label">City</label>
                 <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueCityFieldName}"
-                    id="${this._getInputId(this.venueCityFieldName)}"
-                    class="input-primary"
-                    placeholder="Amsterdam"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    .value=${this._venueCityValue}
-                    ?readonly=${readonly}
-                    @input=${this._handleVenueCityInput}
-                  />
+                    <input
+                      type="text"
+                      name="${this.venueCityFieldName}"
+                      id="${this._getInputId(this.venueCityFieldName)}"
+                    class="input-primary ${disabledClasses}"
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      .value=${this._venueCityValue}
+                      ?disabled=${this.disabled}
+                      @input=${this._handleVenueCityInput}
+                    />
                 </div>
                 <p class="form-legend">${this._getLegendText("city")}</p>
               </div>
@@ -980,16 +864,15 @@ export class LocationSearchField extends LitWrapper {
                   >Zip Code</label
                 >
                 <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.venueZipCodeFieldName}"
-                    id="${this._getInputId(this.venueZipCodeFieldName)}"
-                    class="input-primary"
-                    placeholder="1012 AB"
-                    .value=${this._venueZipCodeValue}
-                    ?readonly=${readonly}
-                    @input=${this._handleVenueZipCodeInput}
-                  />
+                    <input
+                      type="text"
+                      name="${this.venueZipCodeFieldName}"
+                      id="${this._getInputId(this.venueZipCodeFieldName)}"
+                    class="input-primary ${disabledClasses}"
+                      .value=${this._venueZipCodeValue}
+                      ?disabled=${this.disabled}
+                      @input=${this._handleVenueZipCodeInput}
+                    />
                 </div>
                 <p class="form-legend">${this._getLegendText("zip")}</p>
               </div>
@@ -1002,19 +885,19 @@ export class LocationSearchField extends LitWrapper {
                   >State/Province</label
                 >
                 <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.stateFieldName}"
-                    id="${this._getInputId(this.stateFieldName)}"
-                    class="input-primary"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    .value=${this._stateValue}
-                    ?readonly=${readonly}
-                    @input=${this._handleStateInput}
-                  />
+                    <input
+                      type="text"
+                      name="${this.stateFieldName}"
+                      id="${this._getInputId(this.stateFieldName)}"
+                    class="input-primary ${disabledClasses}"
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      .value=${this._stateValue}
+                      ?disabled=${this.disabled}
+                      @input=${this._handleStateInput}
+                    />
                 </div>
                 <p class="form-legend">${this._getLegendText("state")}</p>
               </div>
@@ -1025,19 +908,19 @@ export class LocationSearchField extends LitWrapper {
               <div class="col-span-full lg:col-span-2">
                 <label for="${this._getInputId(this.countryNameFieldName)}" class="form-label">Country</label>
                 <div class="mt-2">
-                  <input
-                    type="text"
-                    name="${this.countryNameFieldName}"
-                    id="${this._getInputId(this.countryNameFieldName)}"
-                    class="input-primary"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    .value=${this._countryNameValue}
-                    ?readonly=${readonly}
-                    @input=${this._handleCountryNameInput}
-                  />
+                    <input
+                      type="text"
+                      name="${this.countryNameFieldName}"
+                      id="${this._getInputId(this.countryNameFieldName)}"
+                    class="input-primary ${disabledClasses}"
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      .value=${this._countryNameValue}
+                      ?disabled=${this.disabled}
+                      @input=${this._handleCountryNameInput}
+                    />
                 </div>
                 <p class="form-legend">${this._getLegendText("country")}</p>
               </div>
@@ -1075,9 +958,9 @@ export class LocationSearchField extends LitWrapper {
               step="any"
               id="${this._getInputId(latitudeName)}"
               name="${latitudeName}"
-              class="input-primary"
-              placeholder="52.3676"
+              class="input-primary ${this.disabled ? 'cursor-not-allowed bg-stone-100 text-stone-500' : ''}"
               .value=${this._latitudeValue}
+              ?disabled=${this.disabled}
               @input=${this._handleLatitudeInput}
             />
           </div>
@@ -1090,9 +973,9 @@ export class LocationSearchField extends LitWrapper {
               step="any"
               id="${this._getInputId(longitudeName)}"
               name="${longitudeName}"
-              class="input-primary"
-              placeholder="4.9041"
+              class="input-primary ${this.disabled ? 'cursor-not-allowed bg-stone-100 text-stone-500' : ''}"
               .value=${this._longitudeValue}
+              ?disabled=${this.disabled}
               @input=${this._handleLongitudeInput}
             />
           </div>
@@ -1143,40 +1026,6 @@ export class LocationSearchField extends LitWrapper {
     `;
   }
 
-  /**
-   * Renders hidden inputs for lat/lng in search mode.
-   * @returns {import('lit').TemplateResult} Hidden inputs template
-   * @private
-   */
-  _renderHiddenCoordinates() {
-    if (
-      !this.latitudeFieldName &&
-      !this.latitudeFieldId &&
-      !this.longitudeFieldName &&
-      !this.longitudeFieldId
-    ) {
-      return html``;
-    }
-
-    const latitudeName = this.latitudeFieldName || this.latitudeFieldId;
-    const longitudeName = this.longitudeFieldName || this.longitudeFieldId;
-
-    return html`
-      <input
-        type="hidden"
-        id="${this._getInputId(latitudeName)}"
-        name="${latitudeName}"
-        .value=${this._latitudeValue}
-      />
-      <input
-        type="hidden"
-        id="${this._getInputId(longitudeName)}"
-        name="${longitudeName}"
-        .value=${this._longitudeValue}
-      />
-    `;
-  }
-
   async updated(changedProperties) {
     super.updated?.(changedProperties);
 
@@ -1191,6 +1040,9 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _syncMapPreview() {
+    if (!this._mapVisible || !this._hasValidCoordinates()) {
+      return Promise.resolve();
+    }
     this._mapPreviewSyncPromise = this._mapPreviewSyncPromise
       .catch(() => {})
       .then(() => this._syncMapPreviewInternal());
@@ -1203,8 +1055,6 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   async _syncMapPreviewInternal() {
-    if (!this.mapEnabled) return;
-
     if (!this._hasValidCoordinates()) {
       if (this._leafletMap) {
         this._leafletMap.remove();
@@ -1248,6 +1098,7 @@ export class LocationSearchField extends LitWrapper {
     }
 
     this._leafletMap.setView([lat, lng], this._leafletMap.getZoom?.() ?? 15, { animate: false });
+    this._leafletMap.invalidateSize?.(false);
   }
 
   /**
@@ -1255,7 +1106,7 @@ export class LocationSearchField extends LitWrapper {
    * @private
    */
   _renderMapPreview() {
-    if (!this.mapEnabled || !this._hasValidCoordinates()) return html``;
+    if (!this._mapVisible || !this._hasValidCoordinates()) return html``;
 
     return html`
       <div class="mt-6 max-w-5xl">
@@ -1268,31 +1119,13 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
-   * Renders the full component (radio buttons, search interface or coordinate inputs).
+   * Renders the full component (search controls, location fields, and coordinates).
    * @returns {import('lit').TemplateResult} Component template
    */
   render() {
-    const modeOptions = [
-      {
-        value: "search",
-        title: "Search Location",
-        description: "Search for a location to auto-fill venue details.",
-      },
-      {
-        value: "manual",
-        title: "Enter Manually",
-        description: "Enter location details manually including coordinates.",
-      },
-    ];
-
     return html`
       <div class="space-y-6">
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          ${modeOptions.map((option) => this._renderModeOption(option))}
-        </div>
-
-        ${this._mode === "search" ? this._renderSearchInterface() : ""} ${this._renderLocationFields()}
-        ${this._mode === "search" ? this._renderHiddenCoordinates() : this._renderCoordinateInputs()}
+        ${this._renderSearchInterface()} ${this._renderLocationFields()} ${this._renderCoordinateInputs()}
         ${this._renderMapPreview()}
       </div>
     `;

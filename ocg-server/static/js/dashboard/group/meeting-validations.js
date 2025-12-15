@@ -147,6 +147,11 @@ export const clearVenueFields = () => {
       field.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
+
+  const locationSearchField = document.querySelector("location-search-field");
+  if (locationSearchField && typeof locationSearchField.clearLocationFields === "function") {
+    locationSearchField.clearLocationFields();
+  }
 };
 
 /**

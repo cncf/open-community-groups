@@ -122,7 +122,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Location search -#}
     <div class="col-span-full">
-      <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
+      <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
       {% if let Some(city) = group.city %}initial-venue-city="{{ city }}"{% endif %}
 
       {% if let Some(state) = group.state %}initial-state="{{ state }}"{% endif %}

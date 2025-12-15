@@ -359,7 +359,14 @@
         {# Venue Information section -#}
         <div id="venue-information-section"
              class="border-t border-stone-900/10 pt-12">
-          {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
+          {% call macros::form_title(
+          title = "Venue Information",
+          description = "Location details for in-person and hybrid events.",
+          button = "<button id='clear-location-fields'
+        type='button'
+        class='btn-primary-outline btn-mini whitespace-nowrap'
+        aria-label='Clear location details'>Clear location</button>"
+          ) -%}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
             {# Location search -#}

@@ -393,12 +393,33 @@
         {# Venue Information section -#}
         <div id="venue-information-section"
              class="border-t border-stone-900/10 pt-12">
-          {% call macros::form_title(title = "Venue Information", description = "Location details for in-person and hybrid events.") -%}
+          {% if event.is_past() %}
+            {% call macros::form_title(
+            title = "Venue Information",
+            description = "Location details for in-person and hybrid events.",
+            button = "<button id='clear-location-fields'
+        type='button'
+        class='btn-primary-outline btn-mini whitespace-nowrap'
+        aria-label='Clear location details'
+        disabled>Clear location</button>"
+            ) -%}
+          {% else %}
+            {% call macros::form_title(
+            title = "Venue Information",
+            description = "Location details for in-person and hybrid events.",
+            button = "<button id='clear-location-fields'
+        type='button'
+        class='btn-primary-outline btn-mini whitespace-nowrap'
+        aria-label='Clear location details'>Clear location</button>"
+            ) -%}
+          {% endif %}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
             {# Location search -#}
             <div class="col-span-full">
               <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
+              {% if event.is_past() %}disabled{% endif %}
+
               {% if let Some(venue_name) = event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}
 
               {% if let Some(venue_address) = event.venue_address %}initial-venue-address="{{ venue_address }}"{% endif %}
@@ -579,6 +600,19 @@
   const cancelButton = document.getElementById('cancel-button');
   const kindSelect = document.getElementById('kind_id');
   const onlineEventDetails = document.getElementById('online-event-details');
+  const clearLocationButton = document.getElementById('clear-location-fields');
+  const locationSearchField = document.querySelector('location-search-field');
+  const showLocationMapIfNeeded = () => {
+    if (locationSearchField && typeof locationSearchField.showMapPreview === 'function') {
+      locationSearchField.showMapPreview();
+    }
+  };
+
+  if (clearLocationButton) {
+    clearLocationButton.addEventListener('click', () => {
+      clearVenueFields();
+    });
+  }
 
   // Tab switching functionality
   function displayActiveSection(sectionName) {
@@ -603,6 +637,10 @@
         section.classList.add('hidden');
       }
     });
+
+    if (sectionName === 'date-venue') {
+      showLocationMapIfNeeded();
+    }
   }
 
   // Validate multiple forms
