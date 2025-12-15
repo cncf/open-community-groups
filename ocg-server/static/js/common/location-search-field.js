@@ -1074,7 +1074,7 @@ export class LocationSearchField extends LitWrapper {
     if (!this._leafletMap) {
       this._leafletMap = await loadMap(this._mapElementId, lat, lng, {
         zoom: 15,
-        interactive: false,
+        interactive: true,
         marker: false,
       });
     }
