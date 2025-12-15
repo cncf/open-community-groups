@@ -79,6 +79,7 @@ export class LocationSearchField extends LitWrapper {
     _searchResults: { type: Array, state: true },
     _searchQuery: { type: String, state: true },
     _highlightedIndex: { type: Number, state: true },
+    _searchError: { type: String, state: true },
     _abortController: { type: Object, state: true },
     _latitudeValue: { type: String, state: true },
     _longitudeValue: { type: String, state: true },
@@ -148,6 +149,7 @@ export class LocationSearchField extends LitWrapper {
     this._leafletMap = null;
     this._leafletMarker = null;
     this._mapPreviewSyncPromise = Promise.resolve();
+    this._searchError = null;
     this.disabled = false;
   }
 
@@ -244,6 +246,7 @@ export class LocationSearchField extends LitWrapper {
    */
   _clearSearch() {
     this._searchQuery = "";
+    this._searchError = null;
     this._hideDropdown();
     this.focusInput();
   }
@@ -287,6 +290,7 @@ export class LocationSearchField extends LitWrapper {
     }
     this._showDropdown = true;
     this._searchResults = [];
+    this._searchError = null;
     this._highlightedIndex = -1;
     this._isSearching = true;
     this._performSearch(this._searchQuery);
@@ -323,12 +327,14 @@ export class LocationSearchField extends LitWrapper {
 
       const results = await response.json();
       this._searchResults = results;
+      this._searchError = null;
     } catch (err) {
       if (err.name === "AbortError") {
         return;
       }
       console.error("Error searching locations:", err);
       this._searchResults = [];
+      this._searchError = err?.message || "Unable to search for locations right now.";
     } finally {
       this._isSearching = false;
       this._abortController = null;
@@ -750,21 +756,28 @@ export class LocationSearchField extends LitWrapper {
                 </div>
               </div>
             `
-          : this._searchResults.length === 0
+          : this._searchError
             ? html`
                 <div class="p-4 text-center text-stone-500">
-                  <p class="text-sm">No locations found for "${this._searchQuery}"</p>
+                  <p class="text-sm font-medium text-stone-600">Unable to load locations</p>
+                  <p class="text-sm">${this._searchError}</p>
                 </div>
               `
-            : html`
-                <div class="py-1">
-                  ${repeat(
-                    this._searchResults,
-                    (r) => r.place_id,
-                    (r, i) => this._renderResult(r, i),
-                  )}
-                </div>
-              `}
+            : this._searchResults.length === 0
+              ? html`
+                  <div class="p-4 text-center text-stone-500">
+                    <p class="text-sm">No locations found for "${this._searchQuery}"</p>
+                  </div>
+                `
+              : html`
+                  <div class="py-1">
+                    ${repeat(
+                      this._searchResults,
+                      (r) => r.place_id,
+                      (r, i) => this._renderResult(r, i),
+                    )}
+                  </div>
+                `}
       </div>
     `;
   }
