@@ -143,6 +143,8 @@ export class LocationSearchField extends LitWrapper {
     this._mapVisible = false;
     this._mapElementId = createMapElementId();
     this._mapZoom = DEFAULT_MAP_ZOOM;
+    this._mapBoundingBox = null;
+    this._shouldFitBounds = false;
     this._leafletMap = null;
     this._leafletMarker = null;
     this._mapPreviewSyncPromise = Promise.resolve();
@@ -357,8 +359,6 @@ export class LocationSearchField extends LitWrapper {
     const country = addr.country || "";
     const countryCode = (addr.country_code || "").toUpperCase();
 
-    console.log("Address", result);
-
     return {
       venueName,
       venueAddress: streetAddress,
@@ -427,6 +427,38 @@ export class LocationSearchField extends LitWrapper {
   }
 
   /**
+   * Normalize bounding box values from the selected result.
+   * @param {Array<string>|undefined} boundingbox
+   * @returns {Array<number>|null}
+   * @private
+   */
+  _normalizeBoundingBox(boundingbox) {
+    if (!Array.isArray(boundingbox) || boundingbox.length !== 4) {
+      return null;
+    }
+    const parsed = boundingbox.map((value) => Number.parseFloat(value));
+    if (parsed.some((value) => Number.isNaN(value))) {
+      return null;
+    }
+    return parsed;
+  }
+
+  /**
+   * Determine if the map preview should fit the bounding box.
+   * @param {Object} result - Selected Nominatim result object
+   * @returns {boolean}
+   * @private
+   */
+  _shouldFitBoundsForResult(result) {
+    if (!result || typeof result !== "object") {
+      return false;
+    }
+    const addresstype = (result.addresstype || "").toLowerCase();
+    const type = (result.type || "").toLowerCase();
+    return addresstype === "country" || type === "country";
+  }
+
+  /**
    * Choose a zoom level based on the current manual field values.
    * @returns {number}
    * @private
@@ -439,7 +471,7 @@ export class LocationSearchField extends LitWrapper {
     }
 
     if (normalize(this._venueCityValue)) {
-      return 12;
+      return 14;
     }
 
     if (normalize(this._stateValue)) {
@@ -477,6 +509,8 @@ export class LocationSearchField extends LitWrapper {
   _selectLocation(result) {
     const location = this._extractAddress(result);
     this._mapZoom = this._deriveZoomFromLocation(result);
+    this._mapBoundingBox = this._normalizeBoundingBox(result.boundingbox);
+    this._shouldFitBounds = this._shouldFitBoundsForResult(result);
 
     this._setInternalLocationValues(location);
 
@@ -554,6 +588,8 @@ export class LocationSearchField extends LitWrapper {
     this._leafletMarker = null;
     this._mapVisible = false;
     this._mapZoom = DEFAULT_MAP_ZOOM;
+    this._mapBoundingBox = null;
+    this._shouldFitBounds = false;
 
     this._clearSearch();
 
@@ -814,12 +850,12 @@ export class LocationSearchField extends LitWrapper {
   _hasInternalFields() {
     return Boolean(
       this.venueNameFieldName ||
-      this.venueAddressFieldName ||
-      this.venueCityFieldName ||
-      this.venueZipCodeFieldName ||
-      this.stateFieldName ||
-      this.countryNameFieldName ||
-      this.countryCodeFieldName,
+        this.venueAddressFieldName ||
+        this.venueCityFieldName ||
+        this.venueZipCodeFieldName ||
+        this.stateFieldName ||
+        this.countryNameFieldName ||
+        this.countryCodeFieldName,
     );
   }
 
@@ -1203,7 +1239,21 @@ export class LocationSearchField extends LitWrapper {
       }).addTo(this._leafletMap);
     }
 
-    this._leafletMap.setView([lat, lng], zoom, { animate: false });
+    const leaflet = window.L;
+    const canFitBounds =
+      this._shouldFitBounds &&
+      Array.isArray(this._mapBoundingBox) &&
+      this._mapBoundingBox.length === 4 &&
+      leaflet;
+
+    if (canFitBounds) {
+      const [south, north, west, east] = this._mapBoundingBox;
+      const bounds = leaflet.latLngBounds([south, west], [north, east]);
+      this._leafletMap.fitBounds(bounds, { animate: false });
+    } else {
+      this._leafletMap.setView([lat, lng], zoom, { animate: false });
+    }
+
     this._leafletMap.invalidateSize?.(false);
   }
 
