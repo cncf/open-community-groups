@@ -121,7 +121,12 @@
 
 {# Location section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {% call macros::form_title(title = "Location", description = "Optional location information for the group.") -%}
+  {% call macros::form_title(title = "Location", description = "Optional location information for the group.",
+  button = "<button id='clear-location-fields'
+        type='button'
+        class='btn-primary-outline btn-mini whitespace-nowrap'
+        aria-label='Clear location details'>Clear location</button>"
+  ) -%}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Location search -#}

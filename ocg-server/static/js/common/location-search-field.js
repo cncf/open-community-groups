@@ -519,6 +519,7 @@ export class LocationSearchField extends LitWrapper {
     this._shouldFitBounds = this._shouldFitBoundsForResult(result);
 
     this._setInternalLocationValues(location);
+    this.showMapPreview();
 
     if (this.venueNameFieldId) {
       setTextValue(this.venueNameFieldId, location.venueName);
