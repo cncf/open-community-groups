@@ -159,6 +159,7 @@ export class LocationSearchField extends LitWrapper {
 
     this._mapElementId = createMapElementId();
     this._leafletMap = null;
+    this._mapPreviewSyncPromise = Promise.resolve();
   }
 
   connectedCallback() {
@@ -312,7 +313,7 @@ export class LocationSearchField extends LitWrapper {
         q: query,
         format: "json",
         addressdetails: "1",
-        limit: "5",
+        limit: "10", // default limit
         dedupe: "1",
       });
 
@@ -1184,7 +1185,17 @@ export class LocationSearchField extends LitWrapper {
   /**
    * @private
    */
-  async _syncMapPreview() {
+  _syncMapPreview() {
+    this._mapPreviewSyncPromise = this._mapPreviewSyncPromise
+      .catch(() => {})
+      .then(() => this._syncMapPreviewInternal());
+    return this._mapPreviewSyncPromise;
+  }
+
+  /**
+   * @private
+   */
+  async _syncMapPreviewInternal() {
     if (!this.mapEnabled) return;
 
     if (!this._hasValidCoordinates()) {
