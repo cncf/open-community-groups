@@ -832,12 +832,12 @@ export class LocationSearchField extends LitWrapper {
   _hasInternalFields() {
     return Boolean(
       this.venueNameFieldName ||
-        this.venueAddressFieldName ||
-        this.venueCityFieldName ||
-        this.venueZipCodeFieldName ||
-        this.stateFieldName ||
-        this.countryNameFieldName ||
-        this.countryCodeFieldName,
+      this.venueAddressFieldName ||
+      this.venueCityFieldName ||
+      this.venueZipCodeFieldName ||
+      this.stateFieldName ||
+      this.countryNameFieldName ||
+      this.countryCodeFieldName,
     );
   }
 
