@@ -63,13 +63,17 @@ pub struct EventSummary {
     pub group_country_code: Option<String>,
     /// Full country name of the group's location.
     pub group_country_name: Option<String>,
+    /// Latitude of the group's location.
+    pub group_latitude: Option<f64>,
+    /// Longitude of the group's location.
+    pub group_longitude: Option<f64>,
     /// State or province where the group is located.
     pub group_state: Option<String>,
-    /// Latitude for map display.
+    /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// URL to the event or group's logo image.
     pub logo_url: Option<String>,
-    /// Longitude for map display.
+    /// Longitude of the event's location.
     pub longitude: Option<f64>,
     /// URL to join the meeting.
     pub meeting_join_url: Option<String>,
@@ -191,7 +195,11 @@ pub struct EventFull {
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
-    /// Latitude for map display.
+    /// Latitude of the group's location.
+    pub group_latitude: Option<f64>,
+    /// Longitude of the group's location.
+    pub group_longitude: Option<f64>,
+    /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Legacy event hosts.
     pub legacy_hosts: Option<Vec<LegacyUser>>,
@@ -199,7 +207,7 @@ pub struct EventFull {
     pub legacy_speakers: Option<Vec<LegacyUser>>,
     /// URL to the event logo.
     pub logo_url: Option<String>,
-    /// Longitude for map display.
+    /// Longitude of the event's location.
     pub longitude: Option<f64>,
     /// Error message if meeting sync failed.
     pub meeting_error: Option<String>,

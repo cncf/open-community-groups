@@ -972,12 +972,12 @@ select update_event(
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "meeting_recording_url": "https://youtube.com/recording",
         "tags": ["updated", "past", "event"],
-        "venue_name": "Updated Venue",
+        "banner_url": "https://example.com/banner.jpg",
+        "logo_url": "https://example.com/logo.png",
         "venue_address": "123 Updated St",
         "venue_city": "Updated City",
-        "venue_zip_code": "12345",
-        "banner_url": "https://example.com/banner.jpg",
-        "logo_url": "https://example.com/logo.png"
+        "venue_name": "Updated Venue",
+        "venue_zip_code": "12345"
     }'::jsonb
 );
 -- Verify allowed fields were updated
@@ -990,11 +990,7 @@ select is(
             'logo_url', logo_url,
             'meeting_recording_url', meeting_recording_url,
             'photos_urls', photos_urls,
-            'tags', tags,
-            'venue_address', venue_address,
-            'venue_city', venue_city,
-            'venue_name', venue_name,
-            'venue_zip_code', venue_zip_code
+            'tags', tags
         )
         from event
         where event_id = :'event8ID'::uuid
@@ -1006,11 +1002,7 @@ select is(
         "logo_url": "https://example.com/logo.png",
         "meeting_recording_url": "https://youtube.com/recording",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "tags": ["updated", "past", "event"],
-        "venue_address": "123 Updated St",
-        "venue_city": "Updated City",
-        "venue_name": "Updated Venue",
-        "venue_zip_code": "12345"
+        "tags": ["updated", "past", "event"]
     }'::jsonb,
     'Should update allowed fields on past events'
 );
@@ -1027,7 +1019,12 @@ select is(
             'meeting_requested', meeting_requested,
             'name', name,
             'starts_at', starts_at,
-            'timezone', timezone
+            'timezone', timezone,
+
+            'venue_address', venue_address,
+            'venue_city', venue_city,
+            'venue_name', venue_name,
+            'venue_zip_code', venue_zip_code
         )
         from event
         where event_id = :'event8ID'::uuid
@@ -1041,7 +1038,12 @@ select is(
         'meeting_requested', null,
         'name', 'Past Event',
         'starts_at', '2020-01-01 15:00:00+00'::timestamptz,
-        'timezone', 'America/New_York'
+        'timezone', 'America/New_York',
+
+        'venue_address', null,
+        'venue_city', null,
+        'venue_name', 'Original Venue',
+        'venue_zip_code', null
     ),
     'Should ignore restricted fields on past events despite being in payload'
 );

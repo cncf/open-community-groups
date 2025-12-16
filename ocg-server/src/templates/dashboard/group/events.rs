@@ -244,18 +244,6 @@ pub(crate) struct PastEventUpdate {
     /// Tags associated with the event.
     #[garde(custom(trimmed_non_empty_vec))]
     pub tags: Option<Vec<String>>,
-    /// Venue address.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub venue_address: Option<String>,
-    /// City where the venue is located.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub venue_city: Option<String>,
-    /// Name of the venue.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
-    pub venue_name: Option<String>,
-    /// Venue zip code.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
-    pub venue_zip_code: Option<String>,
 }
 
 /// Session details within an event.

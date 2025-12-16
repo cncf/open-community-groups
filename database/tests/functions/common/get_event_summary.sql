@@ -126,6 +126,7 @@ insert into event (
     venue_name,
     venue_zip_code,
     capacity,
+    location,
     logo_url
 ) values (
     :'eventID',
@@ -146,6 +147,7 @@ insert into event (
     'Convention Center',
     '10001',
     5,
+    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
     'https://example.com/event-logo.png'
 );
 
@@ -192,10 +194,12 @@ select is(
         "group_city": "New York",
         "group_country_code": "US",
         "group_country_name": "United States",
+        "group_latitude": 40.7128,
+        "group_longitude": -74.006,
         "group_state": "NY",
+        "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
-        "latitude": 40.7128,
-        "longitude": -74.006,
+        "longitude": -122.3321,
         "meeting_join_url": "https://meeting.example.com/summary",
         "meeting_password": "secret123",
         "starts_at": 1718442000,
