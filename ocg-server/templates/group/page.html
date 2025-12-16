@@ -6,7 +6,6 @@
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
-  <script type="module" src="/static/js/common/banner-image.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -207,21 +206,9 @@
         {# Group description -#}
         {% if let Some(description) = group.description -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10
-                        {% if let Some(banner_url) = group.banner_url -%}
-                          pb-5 lg:pb-9
-                        {% else -%}
-                          pb-4 lg:pb-10
-                        {% endif -%}">About this group</div>
-
-            {# Group banner -#}
-            {% if let Some(banner_url) = group.banner_url -%}
-              <div class="w-full md:max-w-2/3 lg:max-w-1/2 mb-8 h-24 md:h-30 lg:h-40">
-                <banner-image image-url="{{ banner_url }}" alt="Group banner"></banner-image>
-              </div>
-            {% endif -%}
-            {# End group banner -#}
-
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 lg:pb-10">
+              About this group
+            </div>
             <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
           </div>
         {% endif -%}
