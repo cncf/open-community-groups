@@ -2,34 +2,29 @@
 #
 # Configuration: Set these environment variables
 #
-#   Required:
-#     OCG_CONFIG  - Path to config directory
-#     OCG_DATA    - Path to PostgreSQL data directory
-#     OCG_PG_BIN  - Path to PostgreSQL binaries
-#
 #   Optional (with defaults):
+#     OCG_CONFIG        - Path to config directory (default: $HOME/.config/ocg)
 #     OCG_DB_HOST       - Database host or unix socket path (default: localhost)
 #     OCG_DB_NAME       - Main database name (default: ocg)
 #     OCG_DB_NAME_TESTS - Test database name (default: ocg_tests)
 #     OCG_DB_PORT       - Database port (default: 5432)
-#     OCG_DB_SSLMODE    - SSL mode (default: disable)
 #     OCG_DB_USER       - Database user (default: postgres)
+#     OCG_PG_BIN        - Path to PostgreSQL binaries (default: /opt/homebrew/opt/postgresql@17/bin)
 #
 # Please don't forget to set up the tern config files (tern.conf and tern-tests.conf) in
 # the config directory (OCG_CONFIG). Make sure the database connection settings match the
 # environment variables set here.
 
 # Configuration
-config_dir := env_var("OCG_CONFIG")
-data_dir := env_var("OCG_DATA")
+config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
 db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
 db_port := env("OCG_DB_PORT", "5432")
-db_sslmode := env("OCG_DB_SSLMODE", "disable")
 db_user := env("OCG_DB_USER", "postgres")
-pg_bin := env_var("OCG_PG_BIN")
-pg_conn := "-h " + db_host + " -U " + db_user
+pg_bin := env("OCG_PG_BIN", "/opt/homebrew/opt/postgresql@17/bin")
+pg_conn := "-h " + db_host + " -p " + db_port + " -U " + db_user
+db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_host }
 source_dir := justfile_directory()
 
 # Helper to run PostgreSQL commands with the configured binary path
@@ -62,10 +57,10 @@ db-drop:
 
 # Drop test database.
 db-drop-tests:
-    just pg dropdb {{ pg_conn }} --if-exists {{ db_name_tests }}
+    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_tests }}
 
 # Initialize PostgreSQL data directory.
-db-init:
+db-init data_dir:
     mkdir -p "{{ data_dir }}"
     just pg initdb -U {{ db_user }} "{{ data_dir }}"
 
@@ -84,16 +79,16 @@ db-recreate: db-drop db-create db-migrate
 db-recreate-tests: db-drop-tests db-create-tests db-migrate-tests
 
 # Start PostgreSQL server.
-db-server:
-    just pg postgres -D "{{ data_dir }}"
+db-server data_dir:
+    just pg postgres -D "{{ data_dir }}" -p {{ db_port }} {{ db_server_host_opt }}
 
 # Run database tests (recreates test db and runs pgTAP tests).
 db-tests: db-recreate-tests
-    pg_prove -h {{ db_host }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v "{{ source_dir }}"/database/tests/{schema/*.sql,functions/**/*.sql}
+    pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v $(find "{{ source_dir }}/database/tests/schema" "{{ source_dir }}/database/tests/functions" -type f -name '*.sql' | sort)
 
 # Run database tests on a specific file.
 db-tests-file file:
-    pg_prove -h {{ db_host }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v {{ file }}
+    pg_prove -h {{ db_host }} -p {{ db_port }} -d {{ db_name_tests }} -U {{ db_user }} --psql-bin {{ pg_bin }}/psql -v {{ file }}
 
 # Server
 
@@ -101,12 +96,15 @@ db-tests-file file:
 server:
     cargo run -- -c "{{ config_dir }}/server.yml"
 
-# Format and lint server code, including JavaScript and templates.
+# Build the server binary.
+server-build:
+    cargo build
+
+# Format and lint server code.
 server-fmt-and-lint:
     cargo fmt
+    cargo check
     cargo clippy --all-targets --all-features -- --deny warnings
-    prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js"
-    djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
 
 # Run server tests.
 server-tests:
@@ -115,3 +113,10 @@ server-tests:
 # Run the server with cargo watch for auto-reload.
 server-watch:
     cargo watch -x "run -- -c {{ config_dir }}/server.yml"
+
+# Frontend
+
+# Format and lint frontend code.
+frontend-fmt-and-lint:
+    prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js"
+    djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
