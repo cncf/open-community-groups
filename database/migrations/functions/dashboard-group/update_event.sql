@@ -62,11 +62,7 @@ begin
             logo_url = nullif(p_event->>'logo_url', ''),
             meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
             photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-            tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
-            venue_address = nullif(p_event->>'venue_address', ''),
-            venue_city = nullif(p_event->>'venue_city', ''),
-            venue_name = nullif(p_event->>'venue_name', ''),
-            venue_zip_code = nullif(p_event->>'venue_zip_code', '')
+            tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end
         where event_id = p_event_id
         and group_id = p_group_id
         and deleted = false

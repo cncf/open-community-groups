@@ -289,6 +289,8 @@ mod tests {
             group_city: Some("San Francisco".to_string()),
             group_country_code: Some("US".to_string()),
             group_country_name: Some("United States".to_string()),
+            group_latitude: Some(37.78),
+            group_longitude: Some(-122.42),
             group_state: Some("CA".to_string()),
             latitude: Some(37.78),
             logo_url: None,

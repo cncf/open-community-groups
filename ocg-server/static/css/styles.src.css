@@ -311,6 +311,10 @@ input:placeholder-shown {
 .leaflet-container a {
   color: inherit !important;
 }
+
+.leaflet-pane, .leaflet-bottom, .leaflet-top {
+  z-index: 1 !important;
+}
 /* End Leaflet */
 
 /* Marker cluster */

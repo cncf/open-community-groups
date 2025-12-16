@@ -110,62 +110,22 @@
 
 {# Location section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {% call macros::form_title(title = "Location", description = "Optional location information for the group.") -%}
+  {% call macros::form_title(
+  title = "Location",
+  description = "Optional location information for the group.",
+  button = "<button id='clear-location-fields'
+        type='button'
+        class='btn-primary-outline btn-mini whitespace-nowrap'
+        aria-label='Clear location details'>Clear location</button>"
+  ) -%}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {# City -#}
-    <div class="col-span-full lg:col-span-2">
-      <label for="city" class="form-label">City</label>
-      <div class="mt-2">
-        <input type="text"
-               name="city"
-               id="city"
-               maxlength="{{ crate::validation::MAX_LEN_S }}"
-               class="input-primary"
-               autocomplete="off"
-               autocorrect="off"
-               autocapitalize="off"
-               spellcheck="false">
-      </div>
-      <p class="form-legend">Primary city where the group is located.</p>
+    {# Location search -#}
+    <div class="col-span-full">
+      <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
+      </location-search-field>
     </div>
-    {# End City -#}
-
-    {# State -#}
-    <div class="col-span-full lg:col-span-2">
-      <label for="state" class="form-label">State/Province</label>
-      <div class="mt-2">
-        <input type="text"
-               name="state"
-               id="state"
-               maxlength="{{ crate::validation::MAX_LEN_S }}"
-               class="input-primary"
-               autocomplete="off"
-               autocorrect="off"
-               autocapitalize="off"
-               spellcheck="false">
-      </div>
-      <p class="form-legend">State, province, or region.</p>
-    </div>
-    {# End State -#}
-
-    {# Country -#}
-    <div class="col-span-full lg:col-span-2">
-      <label for="country_name" class="form-label">Country</label>
-      <div class="mt-2">
-        <input type="text"
-               name="country_name"
-               id="country_name"
-               maxlength="{{ crate::validation::MAX_LEN_S }}"
-               class="input-primary"
-               autocomplete="off"
-               autocorrect="off"
-               autocapitalize="off"
-               spellcheck="false">
-      </div>
-      <p class="form-legend">Country where the group is located.</p>
-    </div>
-    {# End Country -#}
+    {# End Location search -#}
   </div>
 </div>
 {# End location section -#}
@@ -345,6 +305,7 @@
   import {
     handleHtmxResponse
   } from '/static/js/common/alerts.js';
+  import '/static/js/common/location-search-field.js';
 
   const groupsForm = document.getElementById('groups-form');
   const cancelButton = document.getElementById('cancel-button');
@@ -365,6 +326,15 @@
           errorMessage: 'Something went wrong creating the group. Please try again later.'
         });
       }
+    });
+  }
+
+  const clearLocationButton = document.getElementById('clear-location-fields');
+  const locationSearchField = document.querySelector('location-search-field');
+
+  if (clearLocationButton && locationSearchField && typeof locationSearchField.clearLocationFields === 'function') {
+    clearLocationButton.addEventListener('click', () => {
+      locationSearchField.clearLocationFields();
     });
   }
 </script>

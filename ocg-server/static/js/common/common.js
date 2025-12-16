@@ -140,44 +140,43 @@ export const loadMap = async (divId, lat, long, options = {}) => {
     },
   ).addTo(map);
 
-  // SVG icon for markers
-  const svgIcon = {
-    html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker"></div>',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -25],
-  };
-
-  // Create icon for marker
-  const icon = L.divIcon({
-    ...svgIcon,
-    className: "marker-icon",
-  });
-
-  // Create marker
-  const marker = L.marker(L.latLng(lat, long), {
-    icon: icon,
-    interactive,
-    autoPanOnFocus: false,
-    bubblingMouseEvents: false,
-  });
-
-  marker.addTo(map);
-
-  if (options.popupContent) {
-    const popupOptions = {
-      autoPan: false,
-      closeButton: interactive,
-      closeOnClick: interactive,
-      className: options.popupClassName,
+  if (options.marker !== false) {
+    const svgIcon = {
+      html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 icon-marker"></div>',
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -25],
     };
-    if (!interactive) {
-      popupOptions.closeButton = false;
-      popupOptions.closeOnClick = false;
-    }
-    marker.bindPopup(options.popupContent, popupOptions);
-    if (options.openPopup !== false) {
-      marker.openPopup();
+
+    const icon = L.divIcon({
+      ...svgIcon,
+      className: "marker-icon",
+    });
+
+    const marker = L.marker(L.latLng(lat, long), {
+      icon: icon,
+      interactive,
+      autoPanOnFocus: false,
+      bubblingMouseEvents: false,
+    });
+
+    marker.addTo(map);
+
+    if (options.popupContent) {
+      const popupOptions = {
+        autoPan: false,
+        closeButton: interactive,
+        closeOnClick: interactive,
+        className: options.popupClassName,
+      };
+      if (!interactive) {
+        popupOptions.closeButton = false;
+        popupOptions.closeOnClick = false;
+      }
+      marker.bindPopup(options.popupContent, popupOptions);
+      if (options.openPopup !== false) {
+        marker.openPopup();
+      }
     }
   }
 
