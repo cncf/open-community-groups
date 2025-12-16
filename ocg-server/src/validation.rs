@@ -32,7 +32,7 @@ pub const MAX_LEN_XL: usize = 20000;
 pub const MAX_ITEMS: usize = 25;
 
 /// Maximum pagination limit for results per page.
-pub const MAX_PAGINATION_LIMIT: usize = 25;
+pub const MAX_PAGINATION_LIMIT: usize = 100;
 
 /// Minimum length for passwords.
 pub const MIN_PASSWORD_LEN: usize = 8;
