@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,7 @@ select plan(8);
 \set user7ID '00000000-0000-0000-0000-000000000017'
 \set user8ID '00000000-0000-0000-0000-000000000018'
 \set user9ID '00000000-0000-0000-0000-000000000019'
+\set userUnverifiedID '00000000-0000-0000-0000-000000000020'
 
 -- ============================================================================
 -- SEED DATA
@@ -68,16 +69,31 @@ insert into community (
 );
 
 -- User
-insert into "user" (user_id, username, email, auth_hash, community_id, name, photo_url)
-values 
-    (:'user1ID', 'johndoe', 'john.doe@example.com', 'hash1', :'communityID', 'John Doe', 'https://example.com/john.jpg'),
-    (:'user2ID', 'janedoe', 'jane.doe@example.com', 'hash2', :'communityID', 'Jane Doe', 'https://example.com/jane.jpg'),
-    (:'user3ID', 'johnsmith', 'john.smith@example.com', 'hash3', :'communityID', 'John Smith', null),
-    (:'user4ID', 'alice', 'alice@example.com', 'hash4', :'communityID', 'Alice Johnson', 'https://example.com/alice.jpg'),
-    (:'user5ID', 'bob', 'bob@example.com', 'hash5', :'communityID', null, null),
-    (:'user6ID', 'charlie', 'charlie@example.com', 'hash6', :'communityID', 'Charlie Brown', 'https://example.com/charlie.jpg'),
+insert into "user" (user_id, username, email, email_verified, auth_hash, community_id, name, photo_url)
+values
+    (:'user1ID', 'johndoe', 'john.doe@example.com', true, 'hash1', :'communityID', 'John Doe', 'https://example.com/john.jpg'),
+    (:'user2ID', 'janedoe', 'jane.doe@example.com', true, 'hash2', :'communityID', 'Jane Doe', 'https://example.com/jane.jpg'),
+    (:'user3ID', 'johnsmith', 'john.smith@example.com', true, 'hash3', :'communityID', 'John Smith', null),
+    (:'user4ID', 'alice', 'alice@example.com', true, 'hash4', :'communityID', 'Alice Johnson', 'https://example.com/alice.jpg'),
+    (:'user5ID', 'bob', 'bob@example.com', true, 'hash5', :'communityID', null, null),
+    (:'user6ID', 'charlie', 'charlie@example.com', true, 'hash6', :'communityID', 'Charlie Brown', 'https://example.com/charlie.jpg'),
     -- User in different community (should not appear in results)
-    (:'user7ID', 'johndoe', 'john.other@example.com', 'hash7', :'community2ID', 'John from Other', 'https://example.com/other.jpg');
+    (:'user7ID', 'johndoe', 'john.other@example.com', true, 'hash7', :'community2ID', 'John from Other', 'https://example.com/other.jpg'),
+    -- Users for testing special characters
+    (:'user8ID', 'user%test', 'usertest@example.com', true, 'hash14', :'communityID', 'User Percent Test', null),
+    (:'user9ID', 'user_special', 'userspecial@example.com', true, 'hash15', :'communityID', 'User Underscore', null),
+    -- User with unverified email (should not appear in results)
+    (:'userUnverifiedID', 'unverified', 'unverified@example.com', false, 'hash16', :'communityID', 'Unverified User', null);
+
+-- User (for testing max results limit)
+insert into "user" (username, email, email_verified, auth_hash, community_id, name)
+values
+    ('test1', 'test1@example.com', true, 'hash8', :'communityID', 'Test User 1'),
+    ('test2', 'test2@example.com', true, 'hash9', :'communityID', 'Test User 2'),
+    ('test3', 'test3@example.com', true, 'hash10', :'communityID', 'Test User 3'),
+    ('test4', 'test4@example.com', true, 'hash11', :'communityID', 'Test User 4'),
+    ('test5', 'test5@example.com', true, 'hash12', :'communityID', 'Test User 5'),
+    ('test6', 'test6@example.com', true, 'hash13', :'communityID', 'Test User 6');
 
 -- ============================================================================
 -- TESTS
@@ -132,15 +148,6 @@ select is(
 );
 
 -- Should cap results to maximum of 5
-insert into "user" (username, email, auth_hash, community_id, name)
-values 
-    ('test1', 'test1@example.com', 'hash8', :'communityID', 'Test User 1'),
-    ('test2', 'test2@example.com', 'hash9', :'communityID', 'Test User 2'),
-    ('test3', 'test3@example.com', 'hash10', :'communityID', 'Test User 3'),
-    ('test4', 'test4@example.com', 'hash11', :'communityID', 'Test User 4'),
-    ('test5', 'test5@example.com', 'hash12', :'communityID', 'Test User 5'),
-    ('test6', 'test6@example.com', 'hash13', :'communityID', 'Test User 6');
-
 select is(
     jsonb_array_length(search_user('00000000-0000-0000-0000-000000000001'::uuid, 'test')),
     5,
@@ -176,11 +183,6 @@ select is(
 );
 
 -- Should treat % and _ as literal characters, not wildcards
-insert into "user" (user_id, username, email, auth_hash, community_id, name)
-values 
-    (:'user8ID', 'user%test', 'usertest@example.com', 'hash14', :'communityID', 'User Percent Test'),
-    (:'user9ID', 'user_special', 'userspecial@example.com', 'hash15', :'communityID', 'User Underscore');
-
 select is(
     jsonb_array_length(search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user%')) = 1
     and jsonb_array_length(search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user_')) = 1
@@ -188,6 +190,13 @@ select is(
     and search_user('00000000-0000-0000-0000-000000000001'::uuid, 'user_') @> '[{"username": "user_special"}]'::jsonb,
     true,
     'Should treat % and _ as literal characters, not wildcards'
+);
+
+-- Should not return users with unverified email
+select is(
+    search_user('00000000-0000-0000-0000-000000000001'::uuid, 'unverified'),
+    '[]'::jsonb,
+    'Should not return users with unverified email'
 );
 
 -- ============================================================================
