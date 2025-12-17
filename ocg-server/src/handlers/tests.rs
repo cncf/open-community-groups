@@ -638,6 +638,17 @@ pub(crate) fn sample_template_user() -> TemplateUser {
     }
 }
 
+/// Sample template user with a specific user ID.
+pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
+    TemplateUser {
+        user_id,
+        username: "speaker".to_string(),
+
+        name: Some("Speaker".to_string()),
+        ..Default::default()
+    }
+}
+
 /// Builder for test router configuration.
 pub(crate) struct TestRouterBuilder {
     db: MockDB,

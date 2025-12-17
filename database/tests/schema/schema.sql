@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(259);
+select plan(264);
 
 -- ============================================================================
 -- TESTS
@@ -39,6 +39,7 @@ select has_table('legacy_event_speaker');
 select has_table('meeting');
 select has_table('meeting_provider');
 select has_table('notification_attachment');
+select has_table('notification_kind');
 select has_table('region');
 select has_table('session');
 select has_table('session_kind');
@@ -392,6 +393,13 @@ select columns_are('notification_attachment', array[
     'attachment_id'
 ]);
 
+-- Test: notification_kind columns should match expected
+select columns_are('notification_kind', array[
+    'notification_kind_id',
+
+    'name'
+]);
+
 -- Test: region columns should match expected
 select columns_are('region', array[
     'region_id',
@@ -456,6 +464,7 @@ select has_pk('legacy_event_speaker');
 select has_pk('meeting');
 select has_pk('meeting_provider');
 select has_pk('notification_attachment');
+select has_pk('notification_kind');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
@@ -640,6 +649,12 @@ select indexes_are('notification_attachment', array[
     'notification_attachment_attachment_id_idx'
 ]);
 
+-- Test: notification_kind indexes should match expected
+select indexes_are('notification_kind', array[
+    'notification_kind_name_key',
+    'notification_kind_pkey'
+]);
+
 -- Test: session indexes should match expected
 select indexes_are('session', array[
     'session_pkey',
@@ -786,6 +801,25 @@ select results_eq(
         ('zoom', 'Zoom')
     $$,
     'Meeting providers should exist'
+);
+
+-- Test: notification kinds should match expected values
+select results_eq(
+    'select name from notification_kind order by name',
+    $$ values
+        ('community-team-invitation'),
+        ('email-verification'),
+        ('event-canceled'),
+        ('event-custom'),
+        ('event-published'),
+        ('event-rescheduled'),
+        ('event-welcome'),
+        ('group-custom'),
+        ('group-team-invitation'),
+        ('group-welcome'),
+        ('speaker-welcome')
+    $$,
+    'Notification kinds should exist'
 );
 
 -- Test: session kinds should match expected values

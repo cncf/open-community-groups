@@ -76,8 +76,8 @@ begin
             e.event_id,
             e.group_id,
             e.starts_at,
-            g.location,
-            st_distance(g.location, v_user_location) as distance
+            coalesce(e.location, g.location) as location,
+            st_distance(coalesce(e.location, g.location), v_user_location) as distance
         from event e
         join "group" g using (group_id)
         join group_category gc using (group_category_id)
@@ -89,7 +89,7 @@ begin
         and e.canceled = false
         and
             case when v_bbox is not null then
-            st_intersects(g.location, v_bbox) else true end
+            st_intersects(coalesce(e.location, g.location), v_bbox) else true end
         and
             case when cardinality(v_event_category) > 0 then
             ec.slug = any(v_event_category) else true end
@@ -113,7 +113,7 @@ begin
             e.starts_at <= v_date_to else true end
         and
             case when v_max_distance is not null and v_user_location is not null then
-            st_dwithin(v_user_location, g.location, v_max_distance) else true end
+            st_dwithin(v_user_location, coalesce(e.location, g.location), v_max_distance) else true end
         and
             case when v_tsquery_with_prefix_matching is not null then
                 v_tsquery_with_prefix_matching @@ e.tsdoc

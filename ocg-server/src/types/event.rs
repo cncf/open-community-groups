@@ -1,6 +1,6 @@
 //! Event type definitions.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use anyhow::Result;
 use chrono::{DateTime, NaiveDate, Utc};
@@ -286,12 +286,71 @@ impl EventFull {
         build_location(&parts, max_len)
     }
 
+    /// Collect all unique speaker user IDs (event-level + session-level).
+    pub fn speakers_ids(&self) -> Vec<Uuid> {
+        // Event-level speakers
+        let mut ids: HashSet<Uuid> = self.speakers.iter().map(|s| s.user.user_id).collect();
+
+        // Session-level speakers
+        for sessions in self.sessions.values() {
+            for session in sessions {
+                for speaker in &session.speakers {
+                    ids.insert(speaker.user.user_id);
+                }
+            }
+        }
+
+        let mut ids: Vec<Uuid> = ids.into_iter().collect();
+        ids.sort();
+        ids
+    }
+
     /// Try to create an `EventFull` instance from a JSON string.
     #[instrument(skip_all, err)]
     pub fn try_from_json(data: &str) -> Result<Self> {
         let mut event: EventFull = serde_json::from_str(data)?;
         event.color = color(&event.name).to_string();
         Ok(event)
+    }
+}
+
+impl From<&EventFull> for EventSummary {
+    fn from(event: &EventFull) -> Self {
+        EventSummary {
+            canceled: event.canceled,
+            event_id: event.event_id,
+            group_category_name: event.group.category.name.clone(),
+            group_color: event.group.color.clone(),
+            group_name: event.group.name.clone(),
+            group_slug: event.group.slug.clone(),
+            kind: event.kind.clone(),
+            name: event.name.clone(),
+            published: event.published,
+            slug: event.slug.clone(),
+            timezone: event.timezone,
+
+            description_short: event.description_short.clone(),
+            ends_at: event.ends_at,
+            group_city: event.group.city.clone(),
+            group_country_code: event.group.country_code.clone(),
+            group_country_name: event.group.country_name.clone(),
+            group_latitude: event.group_latitude,
+            group_longitude: event.group_longitude,
+            group_state: event.group.state.clone(),
+            latitude: event.latitude,
+            logo_url: event.logo_url.clone(),
+            longitude: event.longitude,
+            meeting_join_url: event.meeting_join_url.clone(),
+            meeting_password: event.meeting_password.clone(),
+            meeting_provider: event.meeting_provider,
+            popover_html: None,
+            remaining_capacity: event.remaining_capacity,
+            starts_at: event.starts_at,
+            venue_address: event.venue_address.clone(),
+            venue_city: event.venue_city.clone(),
+            venue_name: event.venue_name.clone(),
+            zip_code: event.venue_zip_code.clone(),
+        }
     }
 }
 
@@ -451,6 +510,8 @@ pub struct Speaker {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+
     use chrono::{Duration, Utc};
 
     use super::*;
@@ -553,6 +614,122 @@ mod tests {
             ..Default::default()
         };
         assert!(event.is_past());
+    }
+
+    #[test]
+    fn event_full_speakers_ids_collects_both_event_and_session_level_speakers() {
+        let event_speaker_id = Uuid::from_u128(1);
+        let session_speaker_id = Uuid::from_u128(2);
+        let date = Utc::now().date_naive();
+
+        let event = EventFull {
+            speakers: vec![Speaker {
+                featured: false,
+                user: User {
+                    user_id: event_speaker_id,
+                    ..Default::default()
+                },
+            }],
+            sessions: BTreeMap::from([(
+                date,
+                vec![Session {
+                    speakers: vec![Speaker {
+                        featured: false,
+                        user: User {
+                            user_id: session_speaker_id,
+                            ..Default::default()
+                        },
+                    }],
+                    starts_at: Utc::now(),
+                    ..Default::default()
+                }],
+            )]),
+            ..Default::default()
+        };
+
+        let ids = event.speakers_ids();
+        assert_eq!(ids.len(), 2);
+        assert!(ids.contains(&event_speaker_id));
+        assert!(ids.contains(&session_speaker_id));
+    }
+
+    #[test]
+    fn event_full_speakers_ids_deduplicates_speakers() {
+        let shared_speaker_id = Uuid::from_u128(1);
+        let date = Utc::now().date_naive();
+
+        // Same speaker appears at both event and session level
+        let event = EventFull {
+            speakers: vec![Speaker {
+                featured: false,
+                user: User {
+                    user_id: shared_speaker_id,
+                    ..Default::default()
+                },
+            }],
+            sessions: BTreeMap::from([(
+                date,
+                vec![Session {
+                    speakers: vec![Speaker {
+                        featured: false,
+                        user: User {
+                            user_id: shared_speaker_id,
+                            ..Default::default()
+                        },
+                    }],
+                    starts_at: Utc::now(),
+                    ..Default::default()
+                }],
+            )]),
+            ..Default::default()
+        };
+
+        let ids = event.speakers_ids();
+        assert_eq!(ids.len(), 1);
+        assert_eq!(ids[0], shared_speaker_id);
+    }
+
+    #[test]
+    fn event_full_speakers_ids_returns_empty_when_no_speakers() {
+        let event = EventFull::default();
+        assert!(event.speakers_ids().is_empty());
+    }
+
+    #[test]
+    fn event_full_speakers_ids_returns_sorted_ids() {
+        let id_a = Uuid::from_u128(100);
+        let id_b = Uuid::from_u128(50);
+        let id_c = Uuid::from_u128(200);
+
+        let event = EventFull {
+            speakers: vec![
+                Speaker {
+                    featured: false,
+                    user: User {
+                        user_id: id_a,
+                        ..Default::default()
+                    },
+                },
+                Speaker {
+                    featured: false,
+                    user: User {
+                        user_id: id_b,
+                        ..Default::default()
+                    },
+                },
+                Speaker {
+                    featured: false,
+                    user: User {
+                        user_id: id_c,
+                        ..Default::default()
+                    },
+                },
+            ],
+            ..Default::default()
+        };
+
+        let ids = event.speakers_ids();
+        assert_eq!(ids, vec![id_b, id_a, id_c]); // Sorted by UUID value
     }
 
     #[test]

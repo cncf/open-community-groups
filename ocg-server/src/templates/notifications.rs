@@ -132,3 +132,15 @@ pub(crate) struct GroupWelcome {
     /// Theme configuration for the community.
     pub theme: Theme,
 }
+
+/// Template for speaker welcome notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/speaker_welcome.html")]
+pub(crate) struct SpeakerWelcome {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}

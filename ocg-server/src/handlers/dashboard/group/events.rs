@@ -1,6 +1,6 @@
 //! HTTP handlers for managing events in the group dashboard.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use askama::Template;
@@ -29,8 +29,9 @@ use crate::{
     },
     templates::{
         dashboard::group::events::{self, Event, PastEventUpdate},
-        notifications::{EventCanceled, EventPublished, EventRescheduled},
+        notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
     },
+    types::event::EventSummary,
     util::{build_event_calendar_attachment, build_event_page_link},
 };
 
@@ -166,33 +167,47 @@ pub(crate) async fn cancel(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load event summary before canceling
-    let mut event = db.get_event_summary(community_id, group_id, event_id).await?;
+    let event = db.get_event_summary(community_id, group_id, event_id).await?;
 
     // Mark event as canceled in database
     db.cancel_event(group_id, event_id).await?;
 
-    // Notify attendees about canceled event
+    // Notify attendees and speakers about canceled event
     let should_notify = matches!(
         (event.published, event.canceled, event.starts_at),
         (true, false, Some(starts_at)) if starts_at > Utc::now()
     );
     if should_notify {
-        let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
-        if !user_ids.is_empty() {
-            event.canceled = true; // Update local event to reflect canceled status
+        // Fetch event full and attendee IDs concurrently
+        let (event_full, attendee_ids) = tokio::try_join!(
+            db.get_event_full(community_id, group_id, event_id),
+            db.list_event_attendees_ids(group_id, event_id)
+        )?;
+
+        // Combine attendee and speaker IDs (deduplicated)
+        let speaker_ids = event_full.speakers_ids();
+        let recipients: Vec<Uuid> = attendee_ids
+            .into_iter()
+            .chain(speaker_ids)
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        if !recipients.is_empty() {
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-            let link = build_event_page_link(base_url, &event);
+            let event_summary = EventSummary::from(&event_full);
+            let link = build_event_page_link(base_url, &event_summary);
             let community = db.get_community(community_id).await?;
-            let calendar_ics = build_event_calendar_attachment(base_url, &event);
+            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
             let template_data = EventCanceled {
-                event,
+                event: event_summary,
                 link,
                 theme: community.theme,
             };
             let notification = NewNotification {
                 attachments: vec![calendar_ics],
                 kind: NotificationKind::EventCanceled,
-                recipients: user_ids,
+                recipients,
                 template_data: Some(serde_json::to_value(&template_data)?),
             };
             notifications_manager.enqueue(&notification).await?;
@@ -228,33 +243,68 @@ pub(crate) async fn publish(
     // Mark event as published in database
     db.publish_event(group_id, event_id, user.user_id).await?;
 
-    // Notify group members about published event
+    // Notify group members and speakers about published event
     let should_notify = matches!(
         (event.published, event.starts_at),
         (false, Some(starts_at)) if starts_at > Utc::now()
     );
     if should_notify {
-        let user_ids = db.list_group_members_ids(group_id).await?;
-        if !user_ids.is_empty() {
-            let (community, event) = tokio::try_join!(
-                db.get_community(community_id),
-                db.get_event_summary(community_id, group_id, event_id),
-            )?;
+        // Fetch event full and group member IDs concurrently
+        let (event_full, all_member_ids) = tokio::try_join!(
+            db.get_event_full(community_id, group_id, event_id),
+            db.list_group_members_ids(group_id)
+        )?;
+
+        // Extract speaker IDs
+        let speaker_ids = event_full.speakers_ids();
+        let has_speakers = !speaker_ids.is_empty();
+
+        // Filter out speakers from member IDs (they get a separate notification)
+        let member_ids: Vec<Uuid> = all_member_ids
+            .into_iter()
+            .filter(|id| !speaker_ids.contains(id))
+            .collect();
+        let has_members = !member_ids.is_empty();
+
+        if has_members || has_speakers {
+            // Prepare common data for notifications
+            let community = db.get_community(community_id).await?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-            let link = build_event_page_link(base_url, &event);
-            let calendar_ics = build_event_calendar_attachment(base_url, &event);
-            let template_data = EventPublished {
-                event,
-                link,
-                theme: community.theme,
-            };
-            let notification = NewNotification {
-                attachments: vec![calendar_ics],
-                kind: NotificationKind::EventPublished,
-                recipients: user_ids,
-                template_data: Some(serde_json::to_value(&template_data)?),
-            };
-            notifications_manager.enqueue(&notification).await?;
+            let event_summary = EventSummary::from(&event_full);
+            let link = build_event_page_link(base_url, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
+
+            // Notify group members about published event
+            if has_members {
+                let template_data = EventPublished {
+                    event: event_summary.clone(),
+                    link: link.clone(),
+                    theme: community.theme.clone(),
+                };
+                let notification = NewNotification {
+                    attachments: vec![calendar_ics.clone()],
+                    kind: NotificationKind::EventPublished,
+                    recipients: member_ids,
+                    template_data: Some(serde_json::to_value(&template_data)?),
+                };
+                notifications_manager.enqueue(&notification).await?;
+            }
+
+            // Notify speakers about being added to the event
+            if has_speakers {
+                let template_data = SpeakerWelcome {
+                    event: event_summary,
+                    link,
+                    theme: community.theme,
+                };
+                let notification = NewNotification {
+                    attachments: vec![calendar_ics],
+                    kind: NotificationKind::SpeakerWelcome,
+                    recipients: speaker_ids,
+                    template_data: Some(serde_json::to_value(&template_data)?),
+                };
+                notifications_manager.enqueue(&notification).await?;
+            }
         }
     }
 
@@ -344,7 +394,7 @@ pub(crate) async fn update(
     db.update_event(group_id, event_id, &event_json, &cfg_max_participants)
         .await?;
 
-    // Notify attendees if event was rescheduled
+    // Notify attendees and speakers if event was rescheduled
     let after = db.get_event_summary(community_id, group_id, event_id).await?;
     let should_notify = match (before.published, before.starts_at, after.starts_at) {
         (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
@@ -353,21 +403,36 @@ pub(crate) async fn update(
         _ => false,
     };
     if should_notify {
-        let user_ids = db.list_event_attendees_ids(group_id, event_id).await?;
-        if !user_ids.is_empty() {
+        // Fetch event full and attendee IDs concurrently
+        let (event_full, attendee_ids) = tokio::try_join!(
+            db.get_event_full(community_id, group_id, event_id),
+            db.list_event_attendees_ids(group_id, event_id)
+        )?;
+
+        // Combine attendee and speaker IDs (deduplicated)
+        let speaker_ids = event_full.speakers_ids();
+        let recipients: Vec<Uuid> = attendee_ids
+            .into_iter()
+            .chain(speaker_ids)
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        if !recipients.is_empty() {
             let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-            let link = build_event_page_link(base, &after);
+            let event_summary = EventSummary::from(&event_full);
+            let link = build_event_page_link(base, &event_summary);
             let community = db.get_community(community_id).await?;
-            let calendar_ics = build_event_calendar_attachment(base, &after);
+            let calendar_ics = build_event_calendar_attachment(base, &event_summary);
             let template_data = EventRescheduled {
-                event: after,
+                event: event_summary,
                 link,
                 theme: community.theme,
             };
             let notification = NewNotification {
                 attachments: vec![calendar_ics],
                 kind: NotificationKind::EventRescheduled,
-                recipients: user_ids,
+                recipients,
                 template_data: Some(serde_json::to_value(&template_data)?),
             };
             notifications_manager.enqueue(&notification).await?;
@@ -422,9 +487,9 @@ mod tests {
         },
         templates::{
             dashboard::group::events::PastEventUpdate,
-            notifications::{EventCanceled, EventPublished, EventRescheduled},
+            notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
         },
-        types::event::{EventFull, EventSummary},
+        types::event::{EventFull, EventSummary, Speaker},
     };
 
     #[tokio::test]
@@ -817,15 +882,23 @@ mod tests {
     #[tokio::test]
     async fn test_cancel_success() {
         // Setup identifiers and data structures
+        let attendee_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
-        let recipient_id = Uuid::new_v4();
         let session_id = session::Id::default();
+        let speaker_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
         let event_summary = sample_event_summary(event_id, group_id);
+        let event_full = EventFull {
+            speakers: vec![Speaker {
+                featured: false,
+                user: sample_template_user_with_id(speaker_id),
+            }],
+            ..sample_event_full(event_id, group_id)
+        };
         let community = sample_community(community_id);
         let community_for_notifications = community.clone();
         let community_for_db = community;
@@ -852,10 +925,14 @@ mod tests {
             .times(1)
             .withf(move |id, eid| *id == group_id && *eid == event_id)
             .returning(move |_, _| Ok(()));
+        db.expect_get_event_full()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event_full.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-            .returning(move |_, _| Ok(vec![recipient_id]));
+            .returning(move |_, _| Ok(vec![attendee_id]));
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -870,11 +947,13 @@ mod tests {
             .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::EventCanceled)
-                    && notification.recipients == vec![recipient_id]
+                    && notification.recipients.len() == 2
+                    && notification.recipients.contains(&attendee_id)
+                    && notification.recipients.contains(&speaker_id)
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventCanceled>(value.clone())
                             .map(|template| {
-                                template.link == "/group/def5678/event/ghi9abc"
+                                template.link == "/group/npq6789/event/abc1234"
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
@@ -905,6 +984,7 @@ mod tests {
         assert!(bytes.is_empty());
     }
 
+    #[allow(clippy::too_many_lines)]
     #[tokio::test]
     async fn test_publish_success() {
         // Setup identifiers and data structures
@@ -912,6 +992,7 @@ mod tests {
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let member_id = Uuid::new_v4();
+        let speaker_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -920,9 +1001,16 @@ mod tests {
             published: false,
             ..sample_event_summary(event_id, group_id)
         };
-        let published_event = sample_event_summary(event_id, group_id);
+        let event_full = EventFull {
+            speakers: vec![Speaker {
+                featured: false,
+                user: sample_template_user_with_id(speaker_id),
+            }],
+            ..sample_event_full(event_id, group_id)
+        };
         let community = sample_community(community_id);
-        let community_for_notifications = community.clone();
+        let community_for_member_notification = community.clone();
+        let community_for_speaker_notification = community.clone();
         let community_for_db = community;
 
         // Setup database mock
@@ -940,24 +1028,17 @@ mod tests {
             .withf(|host| host == "example.test")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_get_event_summary()
-            .times(2)
+            .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-            .returning({
-                let mut first_call = true;
-                move |_, _, _| {
-                    let result = if first_call {
-                        first_call = false;
-                        unpublished_event.clone()
-                    } else {
-                        published_event.clone()
-                    };
-                    Ok(result)
-                }
-            });
+            .returning(move |_, _, _| Ok(unpublished_event.clone()));
         db.expect_publish_event()
             .times(1)
             .withf(move |gid, eid, uid| *gid == group_id && *eid == event_id && *uid == user_id)
             .returning(move |_, _, _| Ok(()));
+        db.expect_get_event_full()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event_full.clone()));
         db.expect_list_group_members_ids()
             .times(1)
             .withf(move |gid| *gid == group_id)
@@ -980,9 +1061,192 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventPublished>(value.clone())
                             .map(|template| {
-                                template.link == "/group/def5678/event/ghi9abc"
-                                    && template.theme.primary_color
-                                        == community_for_notifications.theme.primary_color
+                                template.theme.primary_color
+                                    == community_for_member_notification.theme.primary_color
+                            })
+                            .unwrap_or(false)
+                    })
+            })
+            .returning(|_| Box::pin(async { Ok(()) }));
+        nm.expect_enqueue()
+            .times(1)
+            .withf(move |notification| {
+                matches!(notification.kind, NotificationKind::SpeakerWelcome)
+                    && notification.recipients == vec![speaker_id]
+                    && notification.template_data.as_ref().is_some_and(|value| {
+                        from_value::<SpeakerWelcome>(value.clone())
+                            .map(|template| {
+                                template.theme.primary_color
+                                    == community_for_speaker_notification.theme.primary_color
+                            })
+                            .unwrap_or(false)
+                    })
+            })
+            .returning(|_| Box::pin(async { Ok(()) }));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("PUT")
+            .uri(format!("/dashboard/group/events/{event_id}/publish"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-group-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_publish_already_published_no_notification() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        // Event is already published, so no notification should be sent
+        let already_published_event = EventSummary {
+            published: true,
+            ..sample_event_summary(event_id, group_id)
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(already_published_event.clone()));
+        db.expect_publish_event()
+            .times(1)
+            .withf(move |gid, eid, uid| *gid == group_id && *eid == event_id && *uid == user_id)
+            .returning(move |_, _, _| Ok(()));
+
+        // Setup notifications manager mock (no enqueue expected)
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("PUT")
+            .uri(format!("/dashboard/group/events/{event_id}/publish"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-group-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_publish_speakers_only() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let speaker_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let unpublished_event = EventSummary {
+            published: false,
+            ..sample_event_summary(event_id, group_id)
+        };
+        let event_full = EventFull {
+            speakers: vec![Speaker {
+                featured: false,
+                user: sample_template_user_with_id(speaker_id),
+            }],
+            ..sample_event_full(event_id, group_id)
+        };
+        let community = sample_community(community_id);
+        let community_for_speaker_notification = community.clone();
+        let community_for_db = community;
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(unpublished_event.clone()));
+        db.expect_publish_event()
+            .times(1)
+            .withf(move |gid, eid, uid| *gid == group_id && *eid == event_id && *uid == user_id)
+            .returning(move |_, _, _| Ok(()));
+        db.expect_get_event_full()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event_full.clone()));
+        // No group members
+        db.expect_list_group_members_ids()
+            .times(1)
+            .withf(move |gid| *gid == group_id)
+            .returning(move |_| Ok(vec![]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning({
+                let community = community_for_db;
+                move |_| Ok(community.clone())
+            });
+
+        // Setup notifications manager mock - only speaker notification expected
+        let mut nm = MockNotificationsManager::new();
+        nm.expect_enqueue()
+            .times(1)
+            .withf(move |notification| {
+                matches!(notification.kind, NotificationKind::SpeakerWelcome)
+                    && notification.recipients == vec![speaker_id]
+                    && notification.template_data.as_ref().is_some_and(|value| {
+                        from_value::<SpeakerWelcome>(value.clone())
+                            .map(|template| {
+                                template.theme.primary_color
+                                    == community_for_speaker_notification.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
@@ -1115,11 +1379,12 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn test_update_success() {
         // Setup identifiers and data structures
+        let attendee_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
-        let recipient_id = Uuid::new_v4();
         let session_id = session::Id::default();
+        let speaker_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
@@ -1127,6 +1392,13 @@ mod tests {
         let after = EventSummary {
             starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
             ..before.clone()
+        };
+        let event_full = EventFull {
+            speakers: vec![Speaker {
+                featured: false,
+                user: sample_template_user_with_id(speaker_id),
+            }],
+            ..sample_event_full(event_id, group_id)
         };
         let community = sample_community(community_id);
         let community_for_notifications = community.clone();
@@ -1172,10 +1444,14 @@ mod tests {
                     && cfg_max_participants.is_empty()
             })
             .returning(move |_, _, _, _| Ok(()));
+        db.expect_get_event_full()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event_full.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-            .returning(move |_, _| Ok(vec![recipient_id]));
+            .returning(move |_, _| Ok(vec![attendee_id]));
         db.expect_get_community()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -1190,11 +1466,13 @@ mod tests {
             .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::EventRescheduled)
-                    && notification.recipients == vec![recipient_id]
+                    && notification.recipients.len() == 2
+                    && notification.recipients.contains(&attendee_id)
+                    && notification.recipients.contains(&speaker_id)
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventRescheduled>(value.clone())
                             .map(|template| {
-                                template.link == "/group/def5678/event/ghi9abc"
+                                template.link == "/group/npq6789/event/abc1234"
                                     && template.theme.primary_color
                                         == community_for_notifications.theme.primary_color
                             })
@@ -1202,6 +1480,178 @@ mod tests {
                     })
             })
             .returning(|_| Box::pin(async { Ok(()) }));
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("PUT")
+            .uri(format!("/dashboard/group/events/{event_id}/update"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(body))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-group-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_update_no_notification_when_shift_too_small() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let before = sample_event_summary(event_id, group_id);
+        // Shift by only 10 minutes (below MIN_RESCHEDULE_SHIFT of 15 minutes)
+        let after = EventSummary {
+            starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(10)),
+            ..before.clone()
+        };
+        let event_form = sample_event_form();
+        let body = serde_qs::to_string(&event_form).unwrap();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary()
+            .times(2)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning({
+                let mut first_call = true;
+                move |_, _, _| {
+                    let result = if first_call {
+                        first_call = false;
+                        before.clone()
+                    } else {
+                        after.clone()
+                    };
+                    Ok(result)
+                }
+            });
+        db.expect_update_event()
+            .times(1)
+            .withf(move |gid, eid, event, cfg_max_participants| {
+                *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(|v| v.as_str()) == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+            })
+            .returning(move |_, _, _, _| Ok(()));
+
+        // Setup notifications manager mock (no enqueue expected - shift too small)
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("PUT")
+            .uri(format!("/dashboard/group/events/{event_id}/update"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(body))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-group-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_update_no_notification_when_unpublished() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        // Event is unpublished, so no reschedule notification should be sent
+        let before = EventSummary {
+            published: false,
+            ..sample_event_summary(event_id, group_id)
+        };
+        // Significant reschedule (30 minutes), but event is unpublished
+        let after = EventSummary {
+            starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
+            ..before.clone()
+        };
+        let event_form = sample_event_form();
+        let body = serde_qs::to_string(&event_form).unwrap();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id()
+            .times(1)
+            .withf(|host| host == "example.test")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary()
+            .times(2)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning({
+                let mut first_call = true;
+                move |_, _, _| {
+                    let result = if first_call {
+                        first_call = false;
+                        before.clone()
+                    } else {
+                        after.clone()
+                    };
+                    Ok(result)
+                }
+            });
+        db.expect_update_event()
+            .times(1)
+            .withf(move |gid, eid, event, cfg_max_participants| {
+                *gid == group_id
+                    && *eid == event_id
+                    && event.get("name").and_then(|v| v.as_str()) == Some(event_form.name.as_str())
+                    && cfg_max_participants.is_empty()
+            })
+            .returning(move |_, _, _, _| Ok(()));
+
+        // Setup notifications manager mock (no enqueue expected - event unpublished)
+        let nm = MockNotificationsManager::new();
 
         // Setup router and send request
         let router = TestRouterBuilder::new(db, nm).build().await;
