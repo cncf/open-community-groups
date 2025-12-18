@@ -135,9 +135,9 @@
             </li>
             {# End list view -#}
 
-            {# Calendar view -#}
-            {% if entity == Entity::Events -%}
-              <li class="group">
+            <li class="group">
+              {% if entity == Entity::Events -%}
+                {# Calendar view -#}
                 <input type="radio"
                        name="view_mode"
                        id="calendar"
@@ -145,29 +145,28 @@
                        class="hidden peer"
                        {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
                 <label for="calendar"
-                       class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
+                       class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
                   <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-calendar"></div>
                   <div class="text-[0.775rem] text-center text-nowrap ms-1">Calendar</div>
                 </label>
-              </li>
-            {% endif -%}
-            {# End calendar view -#}
+                {# End calendar view -#}
+              {% else -%}
+                {# Map view -#}
+                <input type="radio"
+                       name="view_mode"
+                       id="map"
+                       value="map"
+                       class="hidden peer"
+                       {% if view_mode == ViewMode::Map %}checked{% endif %}>
+                <label for="map"
+                       class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
+                  <div class="svg-icon h-3.5 w-3.5 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-map"></div>
+                  <div class="text-[0.775rem] text-center text-nowrap ms-1">Map</div>
+                </label>
+                {# End Map view -#}
+              {% endif -%}
 
-            {# Map view -#}
-            <li class="group">
-              <input type="radio"
-                     name="view_mode"
-                     id="map"
-                     value="map"
-                     class="hidden peer"
-                     {% if view_mode == ViewMode::Map %}checked{% endif %}>
-              <label for="map"
-                     class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
-                <div class="svg-icon h-3.5 w-3.5 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-map"></div>
-                <div class="text-[0.775rem] text-center text-nowrap ms-1">Map</div>
-              </label>
             </li>
-            {# End map view -#}
           </ul>
 
           {# Loading spinner -#}
