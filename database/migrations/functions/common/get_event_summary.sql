@@ -19,12 +19,6 @@ returns json as $$
 
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
-        'group_city', g.city,
-        'group_country_code', g.country_code,
-        'group_country_name', g.country_name,
-        'group_latitude', st_y(g.location::geometry),
-        'group_longitude', st_x(g.location::geometry),
-        'group_state', g.state,
         'latitude', st_y(e.location::geometry),
         'logo_url', e.logo_url,
         'longitude', st_x(e.location::geometry),
@@ -34,7 +28,10 @@ returns json as $$
         'starts_at', floor(extract(epoch from e.starts_at)),
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
+        'venue_country_code', e.venue_country_code,
+        'venue_country_name', e.venue_country_name,
         'venue_name', e.venue_name,
+        'venue_state', e.venue_state,
         'zip_code', e.venue_zip_code,
 
         'remaining_capacity',

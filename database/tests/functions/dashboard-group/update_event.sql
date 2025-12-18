@@ -438,7 +438,10 @@ select update_event(
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
+        "venue_country_code": "JP",
+        "venue_country_name": "Japan",
         "venue_name": "New Venue",
+        "venue_state": "TK",
         "venue_zip_code": "100-0001",
         "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
         "speakers": [
@@ -506,7 +509,10 @@ select is(
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
+        "venue_country_code": "JP",
+        "venue_country_name": "Japan",
         "venue_name": "New Venue",
+        "venue_state": "TK",
         "venue_zip_code": "100-0001",
         "sponsors": [
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum", "logo_url": "https://example.com/newsponsor.png", "name": "NewSponsor Inc", "website_url": "https://newsponsor.com"}

@@ -379,6 +379,7 @@ input:placeholder-shown {
 .icon-cancel { --icon-url: url('/static/images/icons/cancel.svg'); }
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
 .icon-eraser { --icon-url: url('/static/images/icons/eraser.svg'); }
+.icon-eye { --icon-url: url('/static/images/icons/eye.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
 .icon-check { --icon-url: url('/static/images/icons/check.svg'); }

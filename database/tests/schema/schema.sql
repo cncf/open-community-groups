@@ -156,7 +156,10 @@ select columns_are('event', array[
     'tags',
     'venue_address',
     'venue_city',
+    'venue_country_code',
+    'venue_country_name',
     'venue_name',
+    'venue_state',
     'venue_zip_code'
 ]);
 

@@ -139,7 +139,10 @@ with new_event as (
             "tags": ["technology", "conference", "networking"],
             "venue_address": "123 Main St",
             "venue_city": "San Francisco",
+            "venue_country_code": "US",
+            "venue_country_name": "United States",
             "venue_name": "Tech Center",
+            "venue_state": "CA",
             "venue_zip_code": "94105",
             "hosts": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"],
             "speakers": [
@@ -217,7 +220,10 @@ select ok(
         "tags": ["technology", "conference", "networking"],
         "venue_address": "123 Main St",
         "venue_city": "San Francisco",
+        "venue_country_code": "US",
+        "venue_country_name": "United States",
         "venue_name": "Tech Center",
+        "venue_state": "CA",
         "venue_zip_code": "94105",
         "sponsors": [
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},

@@ -286,12 +286,6 @@ mod tests {
             timezone: Los_Angeles,
             description_short: Some("Short description".to_string()),
             ends_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 21, 0, 0).unwrap()),
-            group_city: Some("San Francisco".to_string()),
-            group_country_code: Some("US".to_string()),
-            group_country_name: Some("United States".to_string()),
-            group_latitude: Some(37.78),
-            group_longitude: Some(-122.42),
-            group_state: Some("CA".to_string()),
             latitude: Some(37.78),
             logo_url: None,
             longitude: Some(-122.42),
@@ -303,7 +297,10 @@ mod tests {
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
             venue_address: Some("123 Main St".to_string()),
             venue_city: Some("San Francisco".to_string()),
+            venue_country_code: Some("US".to_string()),
+            venue_country_name: Some("United States".to_string()),
             venue_name: Some("Test Venue".to_string()),
+            venue_state: Some("CA".to_string()),
             zip_code: Some("94105".to_string()),
         }
     }

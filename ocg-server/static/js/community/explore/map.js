@@ -60,6 +60,8 @@ export class Map {
       maxZoom: 20,
       minZoom: 3,
       zoomControl: false,
+      maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
+      maxBoundsViscosity: 1.0,
     });
 
     // Add zoom control to the map on the top right
@@ -125,7 +127,13 @@ export class Map {
       showLoadingSpinner("loading-map");
 
       // Fetch data based on current map bounds
-      data = await this.fetchData(overwriteBounds);
+      try {
+        data = await this.fetchLocationData(overwriteBounds);
+      } catch (error) {
+        // If fetch fails (e.g., due to invalid bbox), hide loading and ignore error
+        hideLoadingSpinner("loading-map");
+        return;
+      }
     }
 
     if (data) {
@@ -156,7 +164,7 @@ export class Map {
    * @param {boolean} overwriteBounds - Whether to include bbox in request
    * @returns {Promise<object>} The fetched data containing items and optional bbox
    */
-  async fetchData(overwriteBounds) {
+  async fetchLocationData(overwriteBounds) {
     // Prepare query params
     const params = new URLSearchParams(location.search);
 
@@ -171,11 +179,13 @@ export class Map {
       // Get current bounds from map
       const bounds = this.map.getBounds();
 
-      // Add bounds to query params
-      params.append("bbox_sw_lat", bounds._southWest.lat);
-      params.append("bbox_sw_lon", bounds._southWest.lng);
-      params.append("bbox_ne_lat", bounds._northEast.lat);
-      params.append("bbox_ne_lon", bounds._northEast.lng);
+      // Add bounds to query params, normalizing coordinate values to stay within
+      // valid ranges. Latitude: -90 to 90, Longitude: -180 to 180. Leaflet can
+      // return values outside these ranges when wrapping around or at extreme zoom.
+      params.append("bbox_sw_lat", normalizeLatitude(bounds._southWest.lat));
+      params.append("bbox_sw_lon", normalizeLongitude(bounds._southWest.lng));
+      params.append("bbox_ne_lat", normalizeLatitude(bounds._northEast.lat));
+      params.append("bbox_ne_lon", normalizeLongitude(bounds._northEast.lng));
     }
 
     // Fetch data from the server
@@ -214,12 +224,15 @@ export class Map {
 
     // Add markers
     items.forEach((item) => {
-      // Skip items without coordinates
+      const latitude = item.latitude;
+      const longitude = item.longitude;
+
+      // Skip items without valid coordinates
       if (
-        typeof item.latitude == "undefined" ||
-        typeof item.longitude == "undefined" ||
-        item.latitude == 0 ||
-        item.longitude == 0
+        typeof latitude == "undefined" ||
+        typeof longitude == "undefined" ||
+        latitude == 0 ||
+        longitude == 0
       ) {
         return;
       }
@@ -231,7 +244,7 @@ export class Map {
       });
 
       // Create marker
-      const marker = L.marker(L.latLng(item.latitude, item.longitude), {
+      const marker = L.marker(L.latLng(latitude, longitude), {
         icon: icon,
         autoPanOnFocus: false,
         bubblingMouseEvents: true,
@@ -272,6 +285,32 @@ export class Map {
     // Hide loading spinner
     hideLoadingSpinner("loading-map");
   }
+}
+
+/**
+ * Normalizes a latitude value to be within the -90 to 90 range.
+ * @param {number} lat - Latitude value to normalize
+ * @returns {number} Normalized latitude value between -90 and 90
+ */
+function normalizeLatitude(lat) {
+  // Clamp latitude to valid range (map projections don't wrap vertically)
+  return Math.max(-90, Math.min(90, lat));
+}
+
+/**
+ * Normalizes a longitude value to be within the -180 to 180 range.
+ * Leaflet can return values outside this range when wrapping around the map.
+ * @param {number} lng - Longitude value to normalize
+ * @returns {number} Normalized longitude value between -180 and 180
+ */
+function normalizeLongitude(lng) {
+  // Normalize to -180 to 180 range using modulo operation
+  lng = ((lng + 180) % 360) - 180;
+  // Handle negative modulo results
+  if (lng < -180) {
+    lng += 360;
+  }
+  return lng;
 }
 
 /**

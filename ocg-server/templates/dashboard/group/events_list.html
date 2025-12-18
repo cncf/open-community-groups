@@ -94,11 +94,14 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    {% if event.published && !event.canceled -%}
-                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="block max-w-full truncate hover:underline">{{ event.name }}</a>
+                    {% if !event.canceled -%}
+                      <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                              hx-target="#dashboard-content"
+                              hx-indicator="#dashboard-spinner"
+                              hx-swap="innerHTML show:body:top"
+                              hx-disabled-elt="this"
+                              class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
+                              aria-label="Edit event: {{ event.name }}">{{ event.name }}</button>
                     {% else -%}
                       <div class="block max-w-full truncate">{{ event.name }}</div>
                     {% endif -%}
@@ -182,6 +185,27 @@
                     </button>
                   </div>
                   {# End update event button -#}
+
+                  {# View event button -#}
+                  <div>
+                    {% if event.published && !event.canceled -%}
+                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"
+                         aria-label="View event page: {{ event.name }}">
+                        <div class="svg-icon size-4 icon-eye"></div>
+                      </a>
+                    {% else -%}
+                      <button disabled
+                              class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
+                              title="Event must be published and not canceled"
+                              aria-label="View event page: {{ event.name }}">
+                        <div class="svg-icon size-4 icon-eye"></div>
+                      </button>
+                    {% endif -%}
+                  </div>
+                  {# End view event button -#}
 
                   <div class="group relative">
                     <button data-event-id="{{ event.event_id }}"
@@ -294,11 +318,14 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    {% if event.published && !event.canceled -%}
-                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         class="block max-w-full truncate hover:underline">{{ event.name }}</a>
+                    {% if !event.canceled -%}
+                      <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                              hx-target="#dashboard-content"
+                              hx-indicator="#dashboard-spinner"
+                              hx-swap="innerHTML show:body:top"
+                              hx-disabled-elt="this"
+                              class="block max-w-full truncate hover:underline text-left cursor-pointer bg-transparent border-0 p-0 font-medium text-stone-900"
+                              aria-label="Edit event: {{ event.name }}">{{ event.name }}</button>
                     {% else -%}
                       <div class="block max-w-full truncate">{{ event.name }}</div>
                     {% endif -%}
@@ -382,6 +409,27 @@
                     </button>
                   </div>
                   {# End update event button -#}
+
+                  {# View event button -#}
+                  <div>
+                    {% if event.published && !event.canceled -%}
+                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="btn-tertiary p-2 inline-flex items-center justify-center"
+                         aria-label="View event page: {{ event.name }}">
+                        <div class="svg-icon size-4 icon-eye"></div>
+                      </a>
+                    {% else -%}
+                      <button disabled
+                              class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
+                              title="Event must be published and not canceled"
+                              aria-label="View event page: {{ event.name }}">
+                        <div class="svg-icon size-4 icon-eye"></div>
+                      </button>
+                    {% endif -%}
+                  </div>
+                  {# End view event button -#}
 
                   <div class="group relative">
                     <button data-event-id="{{ event.event_id }}"

@@ -158,7 +158,10 @@ begin
         tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
         venue_address = nullif(p_event->>'venue_address', ''),
         venue_city = nullif(p_event->>'venue_city', ''),
+        venue_country_code = nullif(p_event->>'venue_country_code', ''),
+        venue_country_name = nullif(p_event->>'venue_country_name', ''),
         venue_name = nullif(p_event->>'venue_name', ''),
+        venue_state = nullif(p_event->>'venue_state', ''),
         venue_zip_code = nullif(p_event->>'venue_zip_code', '')
     where event_id = p_event_id
     and group_id = p_group_id

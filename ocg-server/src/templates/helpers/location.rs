@@ -4,13 +4,13 @@ use axum::http::HeaderMap;
 
 /// Constructs a formatted location string from available parts.
 ///
-/// Combines location components, preferring venue details over group defaults. Respects
-/// the maximum length constraint and gracefully handles missing information. Returns
-/// None if no location data is available.
+/// Combines location components into a human-readable string. Respects the maximum length
+/// constraint and gracefully handles missing information. Returns None if no location data
+/// is available.
 pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<String> {
     let mut location = String::new();
 
-    // Helper to push location parts to the final location string.
+    // Helper to push location parts to the final location string
     let mut push = |part: Option<&String>| -> bool {
         if let Some(part) = part {
             if location.len() + part.len() > max_len {
@@ -25,15 +25,13 @@ pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<St
         false
     };
 
-    // Attempt to add parts in the order we'd like them to appear.
-    push(parts.venue_name);
-    push(parts.venue_address);
-    if !push(parts.venue_city) {
-        push(parts.group_city);
-    }
-    push(parts.group_state);
-    if !push(parts.group_country_name) {
-        push(parts.group_country_code);
+    // Attempt to add parts in the order we'd like them to appear
+    push(parts.name);
+    push(parts.address);
+    push(parts.city);
+    push(parts.state);
+    if !push(parts.country_name) {
+        push(parts.country_code);
     }
 
     if !location.is_empty() {
@@ -44,78 +42,69 @@ pub(crate) fn build_location(parts: &LocationParts, max_len: usize) -> Option<St
 
 /// Builder for constructing location strings from various components.
 ///
-/// Provides a mechanism to combine venue and group location information into a
-/// human-readable location string with proper formatting.
+/// Provides a mechanism to combine location information into a human-readable location
+/// string with proper formatting.
 pub(crate) struct LocationParts<'a> {
-    /// City where the group is located (used when venue city is not available).
-    group_city: Option<&'a String>,
-    /// ISO country code of the group's location (e.g., "US", "GB").
-    group_country_code: Option<&'a String>,
-    /// Full country name of the group's location.
-    group_country_name: Option<&'a String>,
-    /// State or province where the group is located.
-    group_state: Option<&'a String>,
-    /// Street address of the event venue.
-    venue_address: Option<&'a String>,
-    /// City where the venue is located (takes precedence over group city).
-    venue_city: Option<&'a String>,
-    /// Name of the venue (e.g., "Community Center", "Conference Hall").
-    venue_name: Option<&'a String>,
+    /// Street address.
+    address: Option<&'a String>,
+    /// City name.
+    city: Option<&'a String>,
+    /// ISO country code (e.g., "US", "GB").
+    country_code: Option<&'a String>,
+    /// Full country name.
+    country_name: Option<&'a String>,
+    /// Location name (e.g., "Community Center", "Conference Hall").
+    name: Option<&'a String>,
+    /// State or province.
+    state: Option<&'a String>,
 }
 
 impl<'a> LocationParts<'a> {
     /// Creates a new empty `LocationParts` builder.
     pub(crate) fn new() -> Self {
         Self {
-            group_city: None,
-            group_country_code: None,
-            group_country_name: None,
-            group_state: None,
-            venue_address: None,
-            venue_city: None,
-            venue_name: None,
+            address: None,
+            city: None,
+            country_code: None,
+            country_name: None,
+            name: None,
+            state: None,
         }
     }
 
-    /// Sets the group's city for the location string.
-    pub(crate) fn group_city(mut self, group_city: Option<&'a String>) -> Self {
-        self.group_city = group_city;
+    /// Sets the street address.
+    pub(crate) fn address(mut self, address: Option<&'a String>) -> Self {
+        self.address = address;
         self
     }
 
-    /// Sets the group's country code (e.g., "US", "GB").
-    pub(crate) fn group_country_code(mut self, group_country_code: Option<&'a String>) -> Self {
-        self.group_country_code = group_country_code;
+    /// Sets the city name.
+    pub(crate) fn city(mut self, city: Option<&'a String>) -> Self {
+        self.city = city;
         self
     }
 
-    /// Sets the group's full country name.
-    pub(crate) fn group_country_name(mut self, group_country_name: Option<&'a String>) -> Self {
-        self.group_country_name = group_country_name;
+    /// Sets the country code (e.g., "US", "GB").
+    pub(crate) fn country_code(mut self, country_code: Option<&'a String>) -> Self {
+        self.country_code = country_code;
         self
     }
 
-    /// Sets the group's state or province.
-    pub(crate) fn group_state(mut self, group_state: Option<&'a String>) -> Self {
-        self.group_state = group_state;
+    /// Sets the full country name.
+    pub(crate) fn country_name(mut self, country_name: Option<&'a String>) -> Self {
+        self.country_name = country_name;
         self
     }
 
-    /// Sets the specific venue street address.
-    pub(crate) fn venue_address(mut self, venue_address: Option<&'a String>) -> Self {
-        self.venue_address = venue_address;
+    /// Sets the location name (e.g., "Community Center").
+    pub(crate) fn name(mut self, name: Option<&'a String>) -> Self {
+        self.name = name;
         self
     }
 
-    /// Sets the venue's city, which takes precedence over group city.
-    pub(crate) fn venue_city(mut self, venue_city: Option<&'a String>) -> Self {
-        self.venue_city = venue_city;
-        self
-    }
-
-    /// Sets the venue name (e.g., "Community Center").
-    pub(crate) fn venue_name(mut self, venue_name: Option<&'a String>) -> Self {
-        self.venue_name = venue_name;
+    /// Sets the state or province.
+    pub(crate) fn state(mut self, state: Option<&'a String>) -> Self {
+        self.state = state;
         self
     }
 }
@@ -149,162 +138,108 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_build_location_1() {
-        let group_country = "group country".to_string();
-        let group_state = "group state".to_string();
-        let venue_address = "venue address".to_string();
-        let venue_city = "venue city".to_string();
-        let venue_name = "venue name".to_string();
+    fn test_build_location_all_fields() {
+        let address = "123 Main St".to_string();
+        let city = "San Francisco".to_string();
+        let country_name = "United States".to_string();
+        let name = "Convention Center".to_string();
+        let state = "CA".to_string();
 
         let parts = LocationParts::new()
-            .group_country_name(Some(&group_country))
-            .group_state(Some(&group_state))
-            .venue_address(Some(&venue_address))
-            .venue_city(Some(&venue_city))
-            .venue_name(Some(&venue_name));
+            .address(Some(&address))
+            .city(Some(&city))
+            .country_name(Some(&country_name))
+            .name(Some(&name))
+            .state(Some(&state));
 
         assert_eq!(
             build_location(&parts, 100),
-            Some("venue name, venue address, venue city, group state, group country".to_string())
+            Some("Convention Center, 123 Main St, San Francisco, CA, United States".to_string())
         );
     }
 
     #[test]
-    fn test_build_location_2() {
-        let group_city = "group city".to_string();
-        let group_country = "group country".to_string();
-        let group_country_code = "group country code".to_string();
-        let group_state = "group state".to_string();
-        let venue_address = "venue address".to_string();
-        let venue_city = "venue city".to_string();
+    fn test_build_location_city_state_country() {
+        let city = "Boston".to_string();
+        let country_name = "United States".to_string();
+        let state = "MA".to_string();
 
         let parts = LocationParts::new()
-            .group_city(Some(&group_city))
-            .group_country_code(Some(&group_country_code))
-            .group_country_name(Some(&group_country))
-            .group_state(Some(&group_state))
-            .venue_address(Some(&venue_address))
-            .venue_city(Some(&venue_city));
+            .city(Some(&city))
+            .country_name(Some(&country_name))
+            .state(Some(&state));
 
         assert_eq!(
             build_location(&parts, 100),
-            Some("venue address, venue city, group state, group country".to_string())
+            Some("Boston, MA, United States".to_string())
         );
     }
 
     #[test]
-    fn test_build_location_3() {
-        let group_city = "group city".to_string();
-        let group_country = "group country".to_string();
-        let group_country_code = "group country code".to_string();
-        let group_state = "group state".to_string();
-        let venue_city = "venue city".to_string();
+    fn test_build_location_country_name_preferred_over_code() {
+        let country_code = "US".to_string();
+        let country_name = "United States".to_string();
 
         let parts = LocationParts::new()
-            .group_city(Some(&group_city))
-            .group_country_code(Some(&group_country_code))
-            .group_country_name(Some(&group_country))
-            .group_state(Some(&group_state))
-            .venue_city(Some(&venue_city));
+            .country_code(Some(&country_code))
+            .country_name(Some(&country_name));
 
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("venue city, group state, group country".to_string())
-        );
+        assert_eq!(build_location(&parts, 100), Some("United States".to_string()));
     }
 
     #[test]
-    fn test_build_location_4() {
-        let group_city = "group city".to_string();
-        let group_country = "group country".to_string();
-        let group_country_code = "group country code".to_string();
-        let group_state = "group state".to_string();
+    fn test_build_location_country_code_fallback() {
+        let country_code = "US".to_string();
 
-        let parts = LocationParts::new()
-            .group_city(Some(&group_city))
-            .group_country_code(Some(&group_country_code))
-            .group_country_name(Some(&group_country))
-            .group_state(Some(&group_state));
+        let parts = LocationParts::new().country_code(Some(&country_code));
 
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("group city, group state, group country".to_string())
-        );
+        assert_eq!(build_location(&parts, 100), Some("US".to_string()));
     }
 
     #[test]
-    fn test_build_location_5() {
-        let group_country = "group country".to_string();
-        let group_country_code = "group country code".to_string();
-        let group_state = "group state".to_string();
-
-        let parts = LocationParts::new()
-            .group_country_code(Some(&group_country_code))
-            .group_country_name(Some(&group_country))
-            .group_state(Some(&group_state));
-
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("group state, group country".to_string())
-        );
-    }
-
-    #[test]
-    fn test_build_location_6() {
-        let group_country = "group country".to_string();
-        let group_country_code = "group country code".to_string();
-
-        let parts = LocationParts::new()
-            .group_country_code(Some(&group_country_code))
-            .group_country_name(Some(&group_country));
-
-        assert_eq!(build_location(&parts, 100), Some("group country".to_string()));
-    }
-
-    #[test]
-    fn test_build_location_7() {
-        let group_country_code = "group country code".to_string();
-
-        let parts = LocationParts::new().group_country_code(Some(&group_country_code));
-
-        assert_eq!(
-            build_location(&parts, 100),
-            Some("group country code".to_string())
-        );
-    }
-
-    #[test]
-    fn test_build_location_8() {
+    fn test_build_location_empty() {
         let parts = LocationParts::new();
-
         assert_eq!(build_location(&parts, 100), None);
     }
 
     #[test]
-    fn test_build_location_9() {
-        let venue_name = "very long venue name".to_string();
+    fn test_build_location_max_length_exceeded() {
+        let name = "very long venue name".to_string();
 
-        let parts = LocationParts::new().venue_name(Some(&venue_name));
+        let parts = LocationParts::new().name(Some(&name));
 
         assert_eq!(build_location(&parts, 5), None);
     }
 
     #[test]
-    fn test_build_location_10() {
-        let venue_address = "very long street name".to_string();
-        let venue_city = "city".to_string();
-        let venue_name = "venue".to_string();
+    fn test_build_location_truncates_at_max_length() {
+        let address = "very long street name".to_string();
+        let city = "city".to_string();
+        let name = "venue".to_string();
 
         let parts = LocationParts::new()
-            .venue_address(Some(&venue_address))
-            .venue_city(Some(&venue_city))
-            .venue_name(Some(&venue_name));
+            .address(Some(&address))
+            .city(Some(&city))
+            .name(Some(&name));
 
         assert_eq!(build_location(&parts, 12), Some("venue, city".to_string()));
     }
 
     #[test]
-    fn test_extract_location_1() {
+    fn test_build_location_name_and_address_only() {
+        let address = "456 Oak Ave".to_string();
+        let name = "Tech Hub".to_string();
+
+        let parts = LocationParts::new().address(Some(&address)).name(Some(&name));
+
+        assert_eq!(
+            build_location(&parts, 100),
+            Some("Tech Hub, 456 Oak Ave".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_location_valid_headers() {
         let mut headers = HeaderMap::new();
         headers.insert("CloudFront-Viewer-Latitude", HeaderValue::from_static("10.123"));
         headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("-20.456"));
@@ -316,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_location_2() {
+    fn test_extract_location_missing_headers() {
         let headers = HeaderMap::new();
 
         let (latitude, longitude) = extract_location(&headers);
@@ -326,7 +261,7 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_location_3() {
+    fn test_extract_location_invalid_values() {
         let mut headers = HeaderMap::new();
         headers.insert("CloudFront-Viewer-Latitude", HeaderValue::from_static("invalid"));
         headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("10.0"));
