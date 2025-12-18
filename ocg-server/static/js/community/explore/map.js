@@ -224,19 +224,10 @@ export class Map {
 
     // Add markers
     items.forEach((item) => {
-      // Determine coordinates to use (with fallback for events)
-      let latitude, longitude;
-      if (this.entity === "events") {
-        // For events, use event coordinates if available, otherwise fall back to group
-        latitude = item.latitude && item.latitude !== 0 ? item.latitude : item.group_latitude;
-        longitude = item.longitude && item.longitude !== 0 ? item.longitude : item.group_longitude;
-      } else {
-        // For groups, use coordinates directly
-        latitude = item.latitude;
-        longitude = item.longitude;
-      }
+      const latitude = item.latitude;
+      const longitude = item.longitude;
 
-      // Skip items without valid resolved coordinates
+      // Skip items without valid coordinates
       if (
         typeof latitude == "undefined" ||
         typeof longitude == "undefined" ||

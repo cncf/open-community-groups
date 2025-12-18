@@ -336,12 +336,6 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
 
         description_short: Some("A brief summary of the sample event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(2)),
-        group_city: Some("Test City".to_string()),
-        group_country_code: Some("US".to_string()),
-        group_country_name: Some("United States".to_string()),
-        group_latitude: Some(42.0),
-        group_longitude: Some(-71.0),
-        group_state: Some("MA".to_string()),
         latitude: Some(42.3601),
         logo_url: Some("https://example.test/logo.png".to_string()),
         longitude: Some(-71.0589),

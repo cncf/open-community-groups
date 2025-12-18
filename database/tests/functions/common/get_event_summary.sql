@@ -58,11 +58,6 @@ insert into "group" (
     community_id,
     group_category_id,
     active,
-    city,
-    state,
-    country_code,
-    country_name,
-    location,
     logo_url
 ) values (
     :'groupID',
@@ -71,11 +66,6 @@ insert into "group" (
     :'communityID',
     :'categoryID',
     true,
-    'New York',
-    'NY',
-    'US',
-    'United States',
-    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     'https://example.com/group-logo.png'
 );
 
@@ -197,12 +187,6 @@ select is(
         "timezone": "America/New_York",
         "description_short": "Annual Kubernetes conference short summary",
         "ends_at": 1718470800,
-        "group_city": "New York",
-        "group_country_code": "US",
-        "group_country_name": "United States",
-        "group_latitude": 40.7128,
-        "group_longitude": -74.006,
-        "group_state": "NY",
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,

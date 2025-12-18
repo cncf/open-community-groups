@@ -57,18 +57,6 @@ pub struct EventSummary {
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
-    /// City where the group is located (may differ from venue city).
-    pub group_city: Option<String>,
-    /// ISO country code of the group's location.
-    pub group_country_code: Option<String>,
-    /// Full country name of the group's location.
-    pub group_country_name: Option<String>,
-    /// Latitude of the group's location.
-    pub group_latitude: Option<f64>,
-    /// Longitude of the group's location.
-    pub group_longitude: Option<f64>,
-    /// State or province where the group is located.
-    pub group_state: Option<String>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// URL to the event or group's logo image.
@@ -200,10 +188,6 @@ pub struct EventFull {
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
-    /// Latitude of the group's location.
-    pub group_latitude: Option<f64>,
-    /// Longitude of the group's location.
-    pub group_longitude: Option<f64>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Legacy event hosts.
@@ -341,12 +325,6 @@ impl From<&EventFull> for EventSummary {
 
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
-            group_city: event.group.city.clone(),
-            group_country_code: event.group.country_code.clone(),
-            group_country_name: event.group.country_name.clone(),
-            group_latitude: event.group_latitude,
-            group_longitude: event.group_longitude,
-            group_state: event.group.state.clone(),
             latitude: event.latitude,
             logo_url: event.logo_url.clone(),
             longitude: event.longitude,

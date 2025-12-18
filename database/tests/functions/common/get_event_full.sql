@@ -451,8 +451,6 @@ select is(
         "capacity": 500,
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
-        "group_latitude": 40.73061,
-        "group_longitude": -73.935242,
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,

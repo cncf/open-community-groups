@@ -21,8 +21,6 @@ returns json as $$
         'capacity', e.capacity,
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
-        'group_latitude', st_y(g.location::geometry),
-        'group_longitude', st_x(g.location::geometry),
         'latitude', st_y(e.location::geometry),
         'logo_url', e.logo_url,
         'longitude', st_x(e.location::geometry),
