@@ -92,8 +92,14 @@ pub struct EventSummary {
     pub venue_address: Option<String>,
     /// City where the event venue is located (for in-person events).
     pub venue_city: Option<String>,
+    /// ISO country code of the venue's location.
+    pub venue_country_code: Option<String>,
+    /// Full country name of the venue's location.
+    pub venue_country_name: Option<String>,
     /// Name of the venue.
     pub venue_name: Option<String>,
+    /// State or province where the venue is located.
+    pub venue_state: Option<String>,
     /// Venue zip code.
     pub zip_code: Option<String>,
 }
@@ -111,13 +117,12 @@ impl EventSummary {
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .group_city(self.group_city.as_ref())
-            .group_country_code(self.group_country_code.as_ref())
-            .group_country_name(self.group_country_name.as_ref())
-            .group_state(self.group_state.as_ref())
-            .venue_address(self.venue_address.as_ref())
-            .venue_city(self.venue_city.as_ref())
-            .venue_name(self.venue_name.as_ref());
+            .address(self.venue_address.as_ref())
+            .city(self.venue_city.as_ref())
+            .country_code(self.venue_country_code.as_ref())
+            .country_name(self.venue_country_name.as_ref())
+            .name(self.venue_name.as_ref())
+            .state(self.venue_state.as_ref());
 
         build_location(&parts, max_len)
     }
@@ -243,8 +248,14 @@ pub struct EventFull {
     pub venue_address: Option<String>,
     /// City where the event takes place.
     pub venue_city: Option<String>,
+    /// ISO country code of the venue's location.
+    pub venue_country_code: Option<String>,
+    /// Full country name of the venue's location.
+    pub venue_country_name: Option<String>,
     /// Name of the venue.
     pub venue_name: Option<String>,
+    /// State or province where the venue is located.
+    pub venue_state: Option<String>,
     /// Venue zip code.
     pub venue_zip_code: Option<String>,
 }
@@ -275,13 +286,12 @@ impl EventFull {
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .group_city(self.group.city.as_ref())
-            .group_country_code(self.group.country_code.as_ref())
-            .group_country_name(self.group.country_name.as_ref())
-            .group_state(self.group.state.as_ref())
-            .venue_address(self.venue_address.as_ref())
-            .venue_city(self.venue_city.as_ref())
-            .venue_name(self.venue_name.as_ref());
+            .address(self.venue_address.as_ref())
+            .city(self.venue_city.as_ref())
+            .country_code(self.venue_country_code.as_ref())
+            .country_name(self.venue_country_name.as_ref())
+            .name(self.venue_name.as_ref())
+            .state(self.venue_state.as_ref());
 
         build_location(&parts, max_len)
     }
@@ -348,7 +358,10 @@ impl From<&EventFull> for EventSummary {
             starts_at: event.starts_at,
             venue_address: event.venue_address.clone(),
             venue_city: event.venue_city.clone(),
+            venue_country_code: event.venue_country_code.clone(),
+            venue_country_name: event.venue_country_name.clone(),
             venue_name: event.venue_name.clone(),
+            venue_state: event.venue_state.clone(),
             zip_code: event.venue_zip_code.clone(),
         }
     }

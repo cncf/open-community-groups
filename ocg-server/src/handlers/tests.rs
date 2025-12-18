@@ -302,7 +302,10 @@ pub(crate) fn sample_event_full(event_id: Uuid, group_id: Uuid) -> EventFull {
         starts_at: Some(starts_at),
         venue_address: Some("123 Main St".to_string()),
         venue_city: Some("San Francisco".to_string()),
+        venue_country_code: Some("US".to_string()),
+        venue_country_name: Some("United States".to_string()),
         venue_name: Some("Main Venue".to_string()),
+        venue_state: Some("CA".to_string()),
         ..Default::default()
     }
 }
@@ -348,9 +351,12 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         popover_html: None,
         remaining_capacity: None,
         starts_at: Some(starts_at),
-        venue_city: Some("Boston".to_string()),
         venue_address: Some("456 Sample Rd".to_string()),
+        venue_city: Some("Boston".to_string()),
+        venue_country_code: Some("US".to_string()),
+        venue_country_name: Some("United States".to_string()),
         venue_name: Some("Sample Venue".to_string()),
+        venue_state: Some("MA".to_string()),
         zip_code: Some("02101".to_string()),
     }
 }

@@ -303,7 +303,10 @@ mod tests {
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
             venue_address: Some("123 Main St".to_string()),
             venue_city: Some("San Francisco".to_string()),
+            venue_country_code: Some("US".to_string()),
+            venue_country_name: Some("United States".to_string()),
             venue_name: Some("Test Venue".to_string()),
+            venue_state: Some("CA".to_string()),
             zip_code: Some("94105".to_string()),
         }
     }

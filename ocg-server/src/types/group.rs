@@ -66,10 +66,10 @@ impl GroupSummary {
     /// Builds a formatted location string for the group.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .group_city(self.city.as_ref())
-            .group_country_code(self.country_code.as_ref())
-            .group_country_name(self.country_name.as_ref())
-            .group_state(self.state.as_ref());
+            .city(self.city.as_ref())
+            .country_code(self.country_code.as_ref())
+            .country_name(self.country_name.as_ref())
+            .state(self.state.as_ref());
 
         build_location(&parts, max_len)
     }
@@ -177,10 +177,10 @@ impl GroupFull {
     #[allow(dead_code)]
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
-            .group_city(self.city.as_ref())
-            .group_country_code(self.country_code.as_ref())
-            .group_country_name(self.country_name.as_ref())
-            .group_state(self.state.as_ref());
+            .city(self.city.as_ref())
+            .country_code(self.country_code.as_ref())
+            .country_name(self.country_name.as_ref())
+            .state(self.state.as_ref());
 
         build_location(&parts, max_len)
     }

@@ -34,7 +34,10 @@ returns json as $$
         'starts_at', floor(extract(epoch from e.starts_at)),
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
+        'venue_country_code', e.venue_country_code,
+        'venue_country_name', e.venue_country_name,
         'venue_name', e.venue_name,
+        'venue_state', e.venue_state,
         'zip_code', e.venue_zip_code,
 
         'remaining_capacity',

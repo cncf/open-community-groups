@@ -104,7 +104,10 @@ begin
                 tags,
                 venue_address,
                 venue_city,
+                venue_country_code,
+                venue_country_name,
                 venue_name,
+                venue_state,
                 venue_zip_code
             ) values (
                 p_group_id,
@@ -141,7 +144,10 @@ begin
                 case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end,
                 p_event->>'venue_address',
                 p_event->>'venue_city',
+                p_event->>'venue_country_code',
+                p_event->>'venue_country_name',
                 p_event->>'venue_name',
+                p_event->>'venue_state',
                 p_event->>'venue_zip_code'
             )
             returning event_id into v_event_id;

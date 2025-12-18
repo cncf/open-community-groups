@@ -42,7 +42,10 @@ returns json as $$
         'tags', e.tags,
         'venue_address', e.venue_address,
         'venue_city', e.venue_city,
+        'venue_country_code', e.venue_country_code,
+        'venue_country_name', e.venue_country_name,
         'venue_name', e.venue_name,
+        'venue_state', e.venue_state,
         'venue_zip_code', e.venue_zip_code,
 
         'group', get_group_summary(g.community_id, g.group_id),
