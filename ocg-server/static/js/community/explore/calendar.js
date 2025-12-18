@@ -113,7 +113,13 @@ export class Calendar {
       showLoadingSpinner("loading-calendar");
 
       // Fetch events
-      events = await this.fetchEvents();
+      try {
+        events = await this.fetchEvents();
+      } catch (error) {
+        // If fetch fails, hide loading and ignore error
+        hideLoadingSpinner("loading-calendar");
+        return;
+      }
     }
 
     // Toggle placeholder visibility and calendar opacity

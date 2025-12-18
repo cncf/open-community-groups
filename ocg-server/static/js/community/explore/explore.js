@@ -1,3 +1,5 @@
+import { handleHtmxResponse } from "/static/js/common/alerts.js";
+
 /**
  * Updates the results container in the DOM with new content.
  * @param {string} content - The HTML content to insert into the results container
@@ -14,18 +16,35 @@ export const updateResults = (content) => {
  * @param {string} entity - The type of entity to fetch ('events' or 'groups')
  * @param {string} params - URL search parameters as a string
  * @returns {Promise<object>} The JSON response data
+ * @throws {Error} When the request fails or the server responds with an error
  */
 export async function fetchData(entity, params) {
   const url = `/explore/${entity}/search?${params}`;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
+  const baseMessage = "Something went wrong loading results. Please try again later.";
 
-    const json = await response.json();
-    return json;
+  /** @type {Response} */
+  let response;
+  try {
+    response = await fetch(url, { headers: { Accept: "application/json" } });
   } catch (error) {
-    // TODO - Handle error
+    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: baseMessage });
+    throw error;
+  }
+
+  if (!response.ok) {
+    const responseText = await response.text().catch(() => "");
+    handleHtmxResponse({
+      xhr: { status: response.status, responseText },
+      successMessage: "",
+      errorMessage: baseMessage,
+    });
+    throw new Error(`Failed to fetch ${entity} data (status ${response.status})`);
+  }
+
+  try {
+    return await response.json();
+  } catch (error) {
+    handleHtmxResponse({ xhr: null, successMessage: "", errorMessage: baseMessage });
+    throw error;
   }
 }
