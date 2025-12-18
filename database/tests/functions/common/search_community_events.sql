@@ -82,29 +82,37 @@ insert into event (
     venue_name,
     venue_address,
     logo_url,
-    canceled
+    canceled,
+
+    location
 ) values
     (:'event1ID', 'Kubernetes Workshop', 'kubernetes-workshop', 'Learn Kubernetes', 'K8s intro workshop', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
      '2026-02-01 10:00:00+00', '2026-02-01 12:00:00+00', array['kubernetes', 'cloud'],
-     'San Francisco', 'Tech Hub', '123 Market St', 'https://example.com/k8s-workshop.png', false),
+     'San Francisco', 'Tech Hub', '123 Market St', 'https://example.com/k8s-workshop.png', false,
+     null),
     (:'event2ID', 'Docker Training', 'docker-training', 'Docker fundamentals', 'Docker basics', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
      '2026-02-02 10:00:00+00', '2026-02-02 13:00:00+00', array['docker', 'containers'],
-     'New York', 'Online', null, 'https://example.com/docker-training.png', false),
+     'New York', 'Online', null, 'https://example.com/docker-training.png', false,
+     null),
     (:'event3ID', 'Cloud Summit', 'cloud-summit', 'Annual cloud conference', 'Cloud conf 2026', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
      '2026-02-03 10:00:00+00', '2026-02-03 17:00:00+00', array['cloud', 'aws'],
-     'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png', false),
+     'London', 'Convention Center', '456 Oxford St', 'https://example.com/cloud-summit.png', false,
+     null),
     -- Canceled event (should be filtered out from search results)
     (:'event4ID', 'Canceled Tech Conference', 'canceled-tech-conf', 'This event was canceled', 'Canceled conf', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      '2026-01-20 09:00:00+00', '2026-01-20 18:00:00+00', array['tech', 'conference'],
-     'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true),
+     'Boston', 'Convention Center', '789 Congress St', 'https://example.com/canceled-conf.png', true,
+     null),
+    -- Event with its own location (different from group location - group is in New York, event is in San Francisco)
     (:'event5ID', 'Cloud Innovation Summit', 'cloud-innovation-summit', 'Cloud innovations', 'Cloud summit', 'UTC',
      :'eventCategory1ID', 'in-person', :'group2ID', true,
      '2026-02-04 10:00:00+00', '2026-02-04 17:00:00+00', array['cloud', 'innovation'],
-     'New York', 'Innovation Center', '123 Tech Ave', 'https://example.com/cloud-innovation.png', false);
+     'San Francisco', 'Innovation Center', '123 Tech Ave', 'https://example.com/cloud-innovation.png', false,
+     ST_GeogFromText('POINT(-122.4194 37.7749)'));
 
 -- ============================================================================
 -- TESTS
@@ -194,7 +202,7 @@ select is(
     'Should filter events by date_from'
 );
 
--- Should filter events by distance
+-- Should filter events by distance (event location is used when available, otherwise group location)
 select is(
     (select events from search_community_events(
         :'communityID'::uuid,
@@ -203,9 +211,10 @@ select is(
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
-    'Should filter events by distance'
+    'Should filter events by distance (event location is used when available, otherwise group location)'
 );
 
 -- Should paginate results correctly
@@ -234,11 +243,11 @@ select is(
     'Should filter events by group'
 );
 
--- Should return bbox covering all group locations when include_bbox is true
+-- Should return bbox covering all event locations (or group locations if event location is not set)
 select is(
     (select bbox from search_community_events(:'communityID'::uuid, '{"include_bbox":true}'::jsonb))::jsonb,
-    '{"ne_lat": 40.73061, "ne_lon": -73.935242, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
-    'Should return bbox covering all group locations when include_bbox is true'
+    '{"ne_lat": 37.7749, "ne_lon": -122.4194, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
+    'Should return bbox covering all event locations (or group locations if event location is not set)'
 );
 
 -- ============================================================================
