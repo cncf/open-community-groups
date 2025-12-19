@@ -24,7 +24,7 @@
   {# End header filters -#}
 
   {# Entity selector -#}
-  {% call macros::entity_radio(selected = entity) -%}
+  {% call macros::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref()) -%}
   {# End entity selector -#}
 
   <form id="{{ entity }}-form-mobile"
@@ -64,7 +64,7 @@
     {# End header filters -#}
 
     {# Entity selector -#}
-    {% call macros::entity_radio(selected = entity) -%}
+    {% call macros::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref()) -%}
     {# End entity selector -#}
 
     <form id="{{ entity }}-form"
