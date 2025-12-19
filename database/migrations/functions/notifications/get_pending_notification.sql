@@ -18,9 +18,10 @@ returns table (
         n.kind,
         n.notification_id,
 
-        n.template_data
+        ntd.data as template_data
     from notification n
     join "user" u using (user_id)
+    left join notification_template_data ntd using (notification_template_data_id)
     where n.processed = false
     and (u.email_verified = true or n.kind = 'email-verification')
     order by n.created_at asc
