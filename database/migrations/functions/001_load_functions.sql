@@ -89,6 +89,8 @@
 {{ template "meetings/update_meeting.sql" }}
 {{ template "meetings/update_meeting_recording_url.sql" }}
 
+{{ template "notifications/get_pending_notification.sql" }}
+
 ---- create above / drop below ----
 
 -- Nothing to do
