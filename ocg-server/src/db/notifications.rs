@@ -170,30 +170,7 @@ impl DBNotifications for PgDB {
         };
 
         // Get pending notification (if any)
-        let Some(row) = tx
-            .query_opt(
-                r#"
-                select
-                    n.kind,
-                    n.notification_id,
-                    n.template_data,
-                    u.email,
-                    (
-                        select array_agg(attachment_id order by attachment_id)
-                        from notification_attachment
-                        where notification_id = n.notification_id
-                    ) as attachment_ids
-                from notification n
-                join "user" u using (user_id)
-                where processed = false
-                order by notification_id asc
-                limit 1
-                for update of n skip locked;
-                "#,
-                &[],
-            )
-            .await?
-        else {
+        let Some(row) = tx.query_opt("select * from get_pending_notification();", &[]).await? else {
             return Ok(None);
         };
 
