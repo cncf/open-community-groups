@@ -159,3 +159,35 @@ export const showConfirmAlert = (message, buttonId, confirmText) => {
     }
   });
 };
+
+/**
+ * Displays a confirmation dialog and resolves to whether user confirmed.
+ * @param {Object} options
+ * @param {string} options.title - Confirmation title.
+ * @param {string} options.message - Confirmation message.
+ * @param {string} options.confirmText - Confirm button label.
+ * @param {string} [options.cancelText] - Cancel button label.
+ * @param {Object} [options.overrideOptions] - Optional SweetAlert2 overrides.
+ * @returns {Promise<boolean>} True when user confirms.
+ */
+export const showConfirmDialog = ({
+  title,
+  message,
+  confirmText,
+  cancelText = "Cancel",
+  overrideOptions = {},
+}) => {
+  const baseOptions = {
+    title,
+    text: message,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    cancelButtonText: cancelText,
+    ...getCommonAlertOptions(),
+    position: "center",
+    backdrop: true,
+  };
+
+  return Swal.fire({ ...baseOptions, ...overrideOptions }).then((result) => result.isConfirmed);
+};

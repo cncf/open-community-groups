@@ -82,7 +82,7 @@
                       <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
                       <span class="text-sm">Capacity: {{ capacity }}</span>
                       {% if let Some(remaining_capacity) = event.remaining_capacity %}
-                        {% if *remaining_capacity > 0 %}
+                        {% if *remaining_capacity > 0 && !event.is_past() %}
                           <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
                         {% endif %}
                       {% endif %}
