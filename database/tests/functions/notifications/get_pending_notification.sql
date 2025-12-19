@@ -19,6 +19,9 @@ select plan(13);
 \set notificationUnverifiedEventPublishedID '00000000-0000-0000-0000-000000000105'
 \set notificationUnverifiedGroupWelcomeID '00000000-0000-0000-0000-000000000106'
 \set notificationWithAttachmentsID '00000000-0000-0000-0000-000000000107'
+\set templateEmailVerificationID '00000000-0000-0000-0000-000000000301'
+\set templateEventPublishedID '00000000-0000-0000-0000-000000000302'
+\set templateGroupWelcomeID '00000000-0000-0000-0000-000000000303'
 \set userUnverifiedID '00000000-0000-0000-0000-000000000201'
 \set userVerifiedID '00000000-0000-0000-0000-000000000202'
 
@@ -52,11 +55,17 @@ insert into "user" (user_id, community_id, email, email_verified, username, auth
     (:'userVerifiedID', :'communityID', 'verified@example.com', true, 'verified', 'hash1'),
     (:'userUnverifiedID', :'communityID', 'unverified@example.com', false, 'unverified', 'hash2');
 
+-- Notification templates
+insert into notification_template_data (notification_template_data_id, data, hash) values
+    (:'templateEmailVerificationID', '{"link": "https://example.com/verify"}'::jsonb, 'hash_email_verification'),
+    (:'templateEventPublishedID', '{"event": "test"}'::jsonb, 'hash_event_published'),
+    (:'templateGroupWelcomeID', '{"group": "test"}'::jsonb, 'hash_group_welcome');
+
 -- Notifications for verified user (with explicit created_at for FIFO ordering)
-insert into notification (notification_id, user_id, kind, template_data, created_at) values
-    (:'notificationEmailVerificationID', :'userVerifiedID', 'email-verification', '{"link": "https://example.com/verify"}'::jsonb, '2025-01-01 00:00:01'),
-    (:'notificationEventPublishedID', :'userVerifiedID', 'event-published', '{"event": "test"}'::jsonb, '2025-01-01 00:00:02'),
-    (:'notificationGroupWelcomeID', :'userVerifiedID', 'group-welcome', '{"group": "test"}'::jsonb, '2025-01-01 00:00:03');
+insert into notification (notification_id, user_id, kind, notification_template_data_id, created_at) values
+    (:'notificationEmailVerificationID', :'userVerifiedID', 'email-verification', :'templateEmailVerificationID', '2025-01-01 00:00:01'),
+    (:'notificationEventPublishedID', :'userVerifiedID', 'event-published', :'templateEventPublishedID', '2025-01-01 00:00:02'),
+    (:'notificationGroupWelcomeID', :'userVerifiedID', 'group-welcome', :'templateGroupWelcomeID', '2025-01-01 00:00:03');
 
 -- Processed notification (should be skipped)
 insert into notification (notification_id, user_id, kind, processed, processed_at, created_at) values
@@ -141,8 +150,8 @@ select is(
 );
 
 -- Should return email verification notification for unverified user
-insert into notification (notification_id, user_id, kind, template_data, created_at) values
-    ('00000000-0000-0000-0000-000000000901', :'userUnverifiedID', 'email-verification', '{"link": "https://example.com/verify"}'::jsonb, '2025-01-01 00:00:08');
+insert into notification (notification_id, user_id, kind, notification_template_data_id, created_at) values
+    ('00000000-0000-0000-0000-000000000901', :'userUnverifiedID', 'email-verification', :'templateEmailVerificationID', '2025-01-01 00:00:08');
 select is(
     (select notification_id from get_pending_notification()),
     '00000000-0000-0000-0000-000000000901'::uuid,
