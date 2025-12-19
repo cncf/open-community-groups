@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(264);
+select plan(273);
 
 -- ============================================================================
 -- TESTS
@@ -38,8 +38,10 @@ select has_table('legacy_event_host');
 select has_table('legacy_event_speaker');
 select has_table('meeting');
 select has_table('meeting_provider');
+select has_table('notification');
 select has_table('notification_attachment');
 select has_table('notification_kind');
+select has_table('notification_template_data');
 select has_table('region');
 select has_table('session');
 select has_table('session_kind');
@@ -390,6 +392,19 @@ select columns_are('legacy_event_speaker', array[
     'title'
 ]);
 
+-- Test: notification columns should match expected
+select columns_are('notification', array[
+    'notification_id',
+    'created_at',
+    'kind',
+    'processed',
+    'user_id',
+
+    'error',
+    'notification_template_data_id',
+    'processed_at'
+]);
+
 -- Test: notification_attachment columns should match expected
 select columns_are('notification_attachment', array[
     'notification_id',
@@ -401,6 +416,14 @@ select columns_are('notification_kind', array[
     'notification_kind_id',
 
     'name'
+]);
+
+-- Test: notification_template_data columns should match expected
+select columns_are('notification_template_data', array[
+    'notification_template_data_id',
+    'created_at',
+    'data',
+    'hash'
 ]);
 
 -- Test: region columns should match expected
@@ -466,8 +489,10 @@ select has_pk('legacy_event_host');
 select has_pk('legacy_event_speaker');
 select has_pk('meeting');
 select has_pk('meeting_provider');
+select has_pk('notification');
 select has_pk('notification_attachment');
 select has_pk('notification_kind');
+select has_pk('notification_template_data');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
@@ -512,6 +537,7 @@ select col_is_fk('legacy_event_speaker', 'event_id', 'event');
 select col_is_fk('meeting', 'event_id', 'event');
 select col_is_fk('meeting', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('meeting', 'session_id', 'session');
+select col_is_fk('notification', 'notification_template_data_id', 'notification_template_data');
 select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
 select col_is_fk('region', 'community_id', 'community');
@@ -646,6 +672,14 @@ select indexes_are('meeting_provider', array[
     'meeting_provider_pkey'
 ]);
 
+-- Test: notification indexes should match expected
+select indexes_are('notification', array[
+    'notification_pkey',
+    'notification_kind_idx',
+    'notification_not_processed_idx',
+    'notification_user_id_idx'
+]);
+
 -- Test: notification_attachment indexes should match expected
 select indexes_are('notification_attachment', array[
     'notification_attachment_pkey',
@@ -656,6 +690,12 @@ select indexes_are('notification_attachment', array[
 select indexes_are('notification_kind', array[
     'notification_kind_name_key',
     'notification_kind_pkey'
+]);
+
+-- Test: notification_template_data indexes should match expected
+select indexes_are('notification_template_data', array[
+    'notification_template_data_hash_idx',
+    'notification_template_data_pkey'
 ]);
 
 -- Test: session indexes should match expected

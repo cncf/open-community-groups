@@ -62,17 +62,41 @@ impl DBNotifications for PgDB {
         // Insert notification records, expanding recipients (one record per recipient)
         let mut db = self.pool.get().await?;
         let tx = db.transaction().await?;
+
+        // Insert template (if present) using hash-based deduplication
+        let notification_template_data_id: Option<Uuid> =
+            if let Some(template_data) = &notification.template_data {
+                let template_data_json = serde_json::to_string(template_data)?;
+                let hash = compute_hash(template_data_json.as_bytes());
+                Some(
+                    tx.query_one(
+                        "
+                        insert into notification_template_data (data, hash)
+                        values ($1, $2)
+                        on conflict (hash) do update set hash = notification_template_data.hash
+                        returning notification_template_data_id;
+                        ",
+                        &[template_data, &hash],
+                    )
+                    .await?
+                    .get("notification_template_data_id"),
+                )
+            } else {
+                None
+            };
+
+        // Insert notifications referencing the template
         let rows = tx
             .query(
                 "
-                insert into notification (kind, user_id, template_data)
-                select $1::text, unnest($2::uuid[]), $3::jsonb
+                insert into notification (kind, notification_template_data_id, user_id)
+                select $1::text, $2::uuid, unnest($3::uuid[])
                 returning notification_id;
                 ",
                 &[
                     &notification.kind.to_string(),
+                    &notification_template_data_id,
                     &notification.recipients,
-                    &notification.template_data,
                 ],
             )
             .await?;
