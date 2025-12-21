@@ -92,6 +92,18 @@ pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> as
     Ok(n.to_formatted_string(&Locale::en))
 }
 
+/// Returns the maximum of two values.
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn max_value<T: Ord + Copy>(a: &T, _: &dyn askama::Values, b: T) -> askama::Result<T> {
+    Ok((*a).max(b))
+}
+
+/// Returns the minimum of two values.
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn min_value<T: Ord + Copy>(a: &T, _: &dyn askama::Values, b: T) -> askama::Result<T> {
+    Ok((*a).min(b))
+}
+
 // Tests.
 
 #[cfg(test)]

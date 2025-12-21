@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -25,17 +25,50 @@ use crate::{
     templates::{dashboard::group::members, notifications::GroupCustom},
 };
 
+/// Number of members to display per page.
+const MEMBERS_PER_PAGE: usize = 50;
+
+/// Query parameters for members list pagination.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct MembersQuery {
+    /// Page number (1-indexed), defaults to 1.
+    #[serde(default = "default_page")]
+    pub page: usize,
+}
+
+fn default_page() -> usize {
+    1
+}
+
 // Pages handlers.
 
-/// Displays the list of group members.
+/// Displays the list of group members with pagination.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    Query(query): Query<MembersQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Get all members
+    let all_members = db.list_group_members(group_id).await?;
+    let total_members = all_members.len();
+    
+    // Calculate pagination
+    let total_pages = (total_members + MEMBERS_PER_PAGE - 1) / MEMBERS_PER_PAGE;
+    let current_page = query.page.max(1).min(total_pages.max(1));
+    
+    // Get members for current page
+    let start_idx = (current_page - 1) * MEMBERS_PER_PAGE;
+    let end_idx = (start_idx + MEMBERS_PER_PAGE).min(total_members);
+    let members = all_members[start_idx..end_idx].to_vec();
+    
     // Prepare template
-    let members = db.list_group_members(group_id).await?;
-    let template = members::ListPage { members };
+    let template = members::ListPage {
+        members,
+        current_page,
+        total_pages,
+        total_members,
+    };
 
     Ok(Html(template.render()?))
 }

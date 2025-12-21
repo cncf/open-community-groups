@@ -16,6 +16,12 @@ use crate::templates::{filters, helpers::user_initials};
 pub(crate) struct ListPage {
     /// List of members in the group.
     pub members: Vec<GroupMember>,
+    /// Current page number (1-indexed).
+    pub current_page: usize,
+    /// Total number of pages.
+    pub total_pages: usize,
+    /// Total number of members.
+    pub total_members: usize,
 }
 
 // Types.
