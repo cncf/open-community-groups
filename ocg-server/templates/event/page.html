@@ -6,6 +6,7 @@
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
+  <script type="module" src="/static/js/common/share-buttons.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -91,6 +92,12 @@
                   {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5")) -%}
                 </div>
                 {# End event details and date -#}
+
+                {# Share buttons -#}
+                <div class="hidden md:block mt-4 md:mt-0">
+                  <share-buttons compact></share-buttons>
+                </div>
+                {# End share buttons -#}
 
                 {# Social networks (mobile only) -#}
                 {% if has_social_links -%}

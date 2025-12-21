@@ -6,6 +6,7 @@
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
+  <script type="module" src="/static/js/common/share-buttons.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -75,6 +76,12 @@
                   </div>
                 </div>
                 {# End members count and founded date -#}
+
+                {# Share buttons -#}
+                <div class="hidden md:block mt-4 md:mt-0">
+                  <share-buttons compact></share-buttons>
+                </div>
+                {# End share buttons -#}
 
                 {# Social networks (mobile only) -#}
                 {% if has_social_links -%}
