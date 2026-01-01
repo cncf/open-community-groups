@@ -50,7 +50,7 @@ percent-encoding = "2.3.2"
 postgres-openssl = "0.5.2"
 quick-xml = "0.38.4"
 qrcode = { version = "0.14.1", features = ["svg"] }
-reqwest = { version = "0.12.24", features = ["json"] }
+reqwest = { version = "0.13.1", features = ["json"] }
 rust-embed = "8.9.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_html_form = "0.2.8"
