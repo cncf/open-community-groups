@@ -608,7 +608,7 @@ dependencies = [
  "mime",
  "pin-project-lite",
  "serde_core",
- "serde_html_form",
+ "serde_html_form 0.2.8",
  "serde_path_to_error",
  "tower-layer",
  "tower-service",
@@ -3201,7 +3201,7 @@ dependencies = [
  "reqwest",
  "rust-embed",
  "serde",
- "serde_html_form",
+ "serde_html_form 0.3.2",
  "serde_json",
  "serde_qs",
  "serde_with",
@@ -4987,6 +4987,19 @@ name = "serde_html_form"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2f2d7ff8a2140333718bb329f5c40fc5f0865b84c426183ce14c97d2ab8154f"
+dependencies = [
+ "form_urlencoded",
+ "indexmap 2.5.0",
+ "itoa",
+ "ryu",
+ "serde_core",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2acf96b1d9364968fce46ebb548f1c0e1d7eceae27bdff73865d42e6c7369d94"
 dependencies = [
  "form_urlencoded",
  "indexmap 2.5.0",
