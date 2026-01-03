@@ -20,12 +20,16 @@ config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
 db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
+db_name_e2e := env("OCG_DB_NAME_E2E", "ocg_e2e")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
+db_password := env("OCG_DB_PASSWORD", "")
 pg_bin := env("OCG_PG_BIN", "/opt/homebrew/opt/postgresql@17/bin")
 pg_conn := "-h " + db_host + " -p " + db_port + " -U " + db_user
 db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_host }
 source_dir := justfile_directory()
+e2e_tern_conf := env("OCG_E2E_TERN_CONF", "/tmp/ocg-tern-e2e.conf")
+e2e_server_config := env("OCG_E2E_SERVER_CONFIG", "/tmp/ocg-e2e.yml")
 
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
@@ -120,3 +124,73 @@ server-watch:
 frontend-fmt-and-lint:
     prettier --config ocg-server/static/js/.prettierrc.yaml --write "ocg-server/static/js/**/*.js"
     djlint --check --configuration ocg-server/templates/.djlintrc ocg-server/templates
+
+# E2E
+
+[private]
+e2e-write-tern-config:
+    printf '%s\n' \
+    "[database]" \
+    "host = {{ db_host }}" \
+    "port = {{ db_port }}" \
+    "database = {{ db_name_e2e }}" \
+    "user = {{ db_user }}" \
+    "password = {{ db_password }}" \
+    > "{{ e2e_tern_conf }}"
+
+[private]
+e2e-write-server-config:
+    printf '%s\n' \
+    "db:" \
+    "  host: {{ db_host }}" \
+    "  port: {{ db_port }}" \
+    "  dbname: {{ db_name_e2e }}" \
+    "  user: {{ db_user }}" \
+    "  password: \"{{ db_password }}\"" \
+    "email:" \
+    "  from_address: noreply@test.com" \
+    "  from_name: Test" \
+    "  smtp:" \
+    "    host: localhost" \
+    "    port: 1025" \
+    "    username: \"\"" \
+    "    password: \"\"" \
+    "images:" \
+    "  provider: db" \
+    "server:" \
+    "  addr: 127.0.0.1:9000" \
+    "  base_url: http://localhost:9000" \
+    "  disable_referer_checks: false" \
+    "  login:" \
+    "    email: false" \
+    "    github: false" \
+    "    linuxfoundation: false" \
+    "  oauth2: {}" \
+    "  oidc: {}" \
+    > "{{ e2e_server_config }}"
+
+e2e-install:
+    yarn install
+    yarn playwright install --with-deps
+
+e2e-tests:
+    yarn test:e2e
+
+e2e-tests-headed:
+    yarn test:e2e:headed
+
+e2e-tests-ui:
+    yarn test:e2e:ui
+
+e2e-db-setup: e2e-write-tern-config
+    just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_e2e }}
+    just pg createdb {{ pg_conn }} {{ db_name_e2e }}
+    PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS pgcrypto"
+    PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -c "CREATE EXTENSION IF NOT EXISTS postgis"
+    cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ e2e_tern_conf }}" ./migrate.sh
+    PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
+
+e2e-full: e2e-db-setup e2e-install e2e-write-server-config
+    cargo run -- -c "{{ e2e_server_config }}" &
+    i=0; while [ $i -lt 30 ]; do curl -sf http://localhost:9000/health-check > /dev/null && break; i=$((i+1)); sleep 2; done
+    yarn test:e2e
