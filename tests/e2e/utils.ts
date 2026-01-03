@@ -6,7 +6,7 @@ export const TEST_GROUP_SLUG = process.env.OCG_E2E_GROUP_SLUG || "test-group";
 export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "test-event";
 export const TEST_GROUP_NAME = "E2E Test Group";
 export const TEST_EVENT_NAME = "E2E Test Event";
-export const TEST_SEARCH_QUERY = "E2E";
+export const TEST_SEARCH_QUERY = "Test";
 export const TEST_COMMUNITY_TITLE = "E2E Test Community";
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 const SHOULD_USE_HOST_HEADER = process.env.OCG_E2E_USE_HOST_HEADER === "true";

@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  TEST_COMMUNITY_HOST,
   TEST_COMMUNITY_TITLE,
   TEST_EVENT_NAME,
   TEST_EVENT_SLUG,
   TEST_GROUP_NAME,
   TEST_GROUP_SLUG,
   TEST_SEARCH_QUERY,
+  TEST_COMMUNITY_HOST,
   navigateToEvent,
   navigateToExplore,
   navigateToGroup,
