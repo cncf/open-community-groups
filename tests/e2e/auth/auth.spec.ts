@@ -182,6 +182,67 @@ const waitForEmailVerificationCode = async (email: string) => {
   throw new Error(`Timed out waiting for verification code for ${email}`);
 };
 
+/** Returns the configured psql executable path for E2E DB access. */
+const getPsqlPath = () => {
+  const pgBin = process.env.OCG_PG_BIN;
+
+  return pgBin ? `${pgBin}/psql` : "psql";
+};
+
+/** Reads the email verification code for a newly created user from the E2E DB. */
+const readEmailVerificationCode = (email: string) => {
+  const escapedEmail = email.replace(/'/g, "''");
+  const sql = `
+    select evc.email_verification_code_id
+    from email_verification_code evc
+    join "user" u on u.user_id = evc.user_id
+    where u.email = '${escapedEmail}'
+  `;
+
+  const output = execFileSync(
+    getPsqlPath(),
+    [
+      "-h",
+      process.env.OCG_DB_HOST || "localhost",
+      "-p",
+      process.env.OCG_DB_PORT || "5432",
+      "-U",
+      process.env.OCG_DB_USER || "postgres",
+      "-d",
+      process.env.OCG_DB_NAME_E2E || "ocg_e2e",
+      "-tA",
+      "-c",
+      sql,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PGPASSWORD: process.env.OCG_DB_PASSWORD || "",
+      },
+    },
+  ).trim();
+
+  return output || null;
+};
+
+/** Waits until sign-up persistence creates an email verification code. */
+const waitForEmailVerificationCode = async (email: string) => {
+  const timeoutAt = Date.now() + 10_000;
+
+  while (Date.now() < timeoutAt) {
+    const code = readEmailVerificationCode(email);
+
+    if (code) {
+      return code;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  throw new Error(`Timed out waiting for verification code for ${email}`);
+};
+
 /** Completes the sign-up form using email and password credentials. */
 const signUpWithEmail = async (page: Page, user: AuthUser) => {
   await navigateToPath(page, "/sign-up");

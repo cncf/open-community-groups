@@ -20,6 +20,7 @@ config_dir := env("OCG_CONFIG", env_var("HOME") / ".config/ocg")
 db_host := env("OCG_DB_HOST", "localhost")
 db_name := env("OCG_DB_NAME", "ocg")
 db_name_tests := env("OCG_DB_NAME_TESTS", "ocg_tests")
+db_name_e2e := env("OCG_DB_NAME_E2E", "ocg_e2e")
 db_port := env("OCG_DB_PORT", "5432")
 db_user := env("OCG_DB_USER", "postgres")
 db_password := env("OCG_DB_PASSWORD", "")
@@ -27,6 +28,18 @@ pg_bin := env("OCG_PG_BIN", "/opt/homebrew/opt/postgresql@17/bin")
 pg_conn := "-h " + db_host + " -p " + db_port + " -U " + db_user
 db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_host }
 source_dir := justfile_directory()
+e2e_tern_conf := env("OCG_E2E_TERN_CONF", "/tmp/ocg-tern-e2e.conf")
+e2e_server_config := env("OCG_E2E_SERVER_CONFIG", "/tmp/ocg-e2e.yml")
+e2e_base_url := env("OCG_E2E_BASE_URL", "http://localhost:9000")
+e2e_server_addr := env("OCG_E2E_SERVER_ADDR", "127.0.0.1:9000")
+e2e_server_base_url := env("OCG_E2E_SERVER_BASE_URL", e2e_base_url)
+e2e_login_github := env("OCG_E2E_GITHUB_ENABLED", "true")
+e2e_linuxfoundation_enabled := env("OCG_E2E_LINUXFOUNDATION_ENABLED", "true")
+e2e_github_auth_url := env("OCG_E2E_GITHUB_AUTH_URL", "https://example.test/oauth/authorize")
+e2e_github_token_url := env("OCG_E2E_GITHUB_TOKEN_URL", "https://example.test/oauth/token")
+e2e_github_client_id := env("OCG_E2E_GITHUB_CLIENT_ID", "e2e-client")
+e2e_github_client_secret := env("OCG_E2E_GITHUB_CLIENT_SECRET", "e2e-secret")
+e2e_github_redirect_uri := env("OCG_E2E_GITHUB_REDIRECT_URI", e2e_server_base_url + "/log-in/oauth2/github/callback")
 
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
