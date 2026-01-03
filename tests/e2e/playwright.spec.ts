@@ -12,6 +12,7 @@ import {
   navigateToExplore,
   navigateToGroup,
   navigateToHome,
+  navigateToPath,
   setHostHeader,
 } from "./utils";
 
@@ -36,7 +37,7 @@ test.describe("public pages", () => {
       page.getByRole("heading", { level: 1, name: TEST_COMMUNITY_TITLE })
     ).toBeVisible();
 
-    await page.goto("/explore?entity=groups");
+    await navigateToPath(page, "/explore?entity=groups");
     await expect(page.getByPlaceholder("Search groups")).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 1, name: TEST_COMMUNITY_TITLE })
@@ -58,7 +59,8 @@ test.describe("public pages", () => {
   });
 
   test("search returns matching groups", async ({ page }) => {
-    await page.goto(
+    await navigateToPath(
+      page,
       `/explore?entity=groups&ts_query=${encodeURIComponent(TEST_SEARCH_QUERY)}`
     );
     await expect(page.getByRole("link", { name: TEST_GROUP_NAME })).toBeVisible();
