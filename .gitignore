@@ -7,6 +7,7 @@ ocg-server/dist
 ocg-server/static/css/styles.css
 node_modules/
 yarn.lock
+package-lock.json
 test-results/
 playwright-report/
 playwright/.cache/
