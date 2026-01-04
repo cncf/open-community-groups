@@ -84,6 +84,7 @@ tests/e2e/
 ├── public/public.spec.ts      # Public pages suite
 ├── auth/auth.spec.ts          # Email/password authentication suite
 ├── auth/oauth.spec.ts         # OAuth redirect smoke tests
+├── dashboard/access-control.spec.ts  # Dashboard auth gate checks
 ├── tsconfig.json              # TypeScript configuration
 └── README.md                  # This file
 ```
@@ -120,6 +121,7 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 
 ✅ Email sign up requires verification before log in
 ✅ GitHub login redirects to authorization url
+✅ Dashboard routes require login
 
 ### Future Test Coverage
 
