@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 
 export const TEST_COMMUNITY_HOST =
@@ -22,6 +23,28 @@ const buildBaseUrl = () => {
 const EFFECTIVE_BASE_URL = buildBaseUrl();
 
 const buildUrl = (path: string) => new URL(path, EFFECTIVE_BASE_URL).toString();
+
+export type AuthUser = {
+  name: string;
+  email: string;
+  username: string;
+  password: string;
+};
+
+/**
+ * Builds unique credentials for sign-up and login flows.
+ */
+export const buildAuthUser = (): AuthUser => {
+  const suffix = randomUUID().replace(/-/g, "").slice(0, 8);
+  const username = `e2e${suffix}`;
+
+  return {
+    name: `E2E User ${suffix}`,
+    email: `${username}@example.com`,
+    username,
+    password: "Password123!",
+  };
+};
 
 /**
  * Sets the Host header to route requests to a specific community.

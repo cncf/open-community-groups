@@ -162,7 +162,7 @@ e2e-write-server-config:
     "  base_url: http://localhost:9000" \
     "  disable_referer_checks: false" \
     "  login:" \
-    "    email: false" \
+    "    email: true" \
     "    github: false" \
     "    linuxfoundation: false" \
     "  oauth2: {}" \

@@ -79,11 +79,12 @@ yarn test:e2e:webkit
 
 ```
 tests/e2e/
-├── playwright.config.ts  # Playwright configuration
-├── utils.ts              # Helper functions and constants
-├── playwright.spec.ts    # Test suite (public pages)
-├── tsconfig.json         # TypeScript configuration
-└── README.md            # This file
+├── playwright.config.ts       # Playwright configuration
+├── utils.ts                   # Helper functions and constants
+├── public/public.spec.ts      # Public pages suite
+├── auth/auth.spec.ts          # Email/password authentication suite
+├── tsconfig.json              # TypeScript configuration
+└── README.md                  # This file
 ```
 
 ## Test Data
@@ -113,6 +114,10 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 ✅ Group page displays group information
 ✅ Event page displays event information
 ✅ Search returns matching groups
+
+### Current Tests (Authentication)
+
+✅ Email sign up requires verification before log in
 
 ### Future Test Coverage
 
@@ -162,6 +167,13 @@ Example:
 // navigateToHome() automatically converts:
 // http://localhost:9000/ → http://test-community.localhost:9000/
 ```
+
+## Authentication Notes
+
+Email/password tests require `login.email` enabled in the server config. The
+`just e2e-write-server-config` task enables this by default.
+Avoid `OCG_E2E_USE_HOST_HEADER` for auth flows because cookies are scoped to the
+URL host, not the overridden `Host` header.
 
 ## Troubleshooting
 
