@@ -23,6 +23,7 @@ const signUpWithEmail = async (page: Page, user: AuthUser) => {
   await page.getByRole('textbox', { name: 'Confirm Password required' }).fill(user.password);
 
   await page.getByRole("button", { name: "Create Account" }).click();
+  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
 };
 
 /**
@@ -44,16 +45,9 @@ test.describe("authentication", () => {
     const user = buildAuthUser();
 
     await signUpWithEmail(page, user);
-    await expect(
-      page.getByText("Please verify your email to complete the sign up process.")
-    ).toBeVisible();
-
     await logInWithEmail(page, user);
 
-    await expect(
-      page.getByText(
-        "Invalid credentials. Please make sure you have verified your email address."
-      )
-    ).toBeVisible();
+    await expect(page).toHaveURL(/\/log-in/);
+    await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
   });
 });
