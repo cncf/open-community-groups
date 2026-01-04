@@ -24,6 +24,11 @@ const EFFECTIVE_BASE_URL = buildBaseUrl();
 
 const buildUrl = (path: string) => new URL(path, EFFECTIVE_BASE_URL).toString();
 
+/**
+ * Builds a fully-qualified URL for the configured test community.
+ */
+export const buildE2eUrl = (path: string) => buildUrl(path);
+
 export type AuthUser = {
   name: string;
   email: string;

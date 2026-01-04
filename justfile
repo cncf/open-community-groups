@@ -30,6 +30,13 @@ db_server_host_opt := if db_host =~ '^/' { "-k " + db_host } else { "-h " + db_h
 source_dir := justfile_directory()
 e2e_tern_conf := env("OCG_E2E_TERN_CONF", "/tmp/ocg-tern-e2e.conf")
 e2e_server_config := env("OCG_E2E_SERVER_CONFIG", "/tmp/ocg-e2e.yml")
+e2e_login_github := env("OCG_E2E_GITHUB_ENABLED", "true")
+e2e_login_linuxfoundation := env("OCG_E2E_LINUXFOUNDATION_ENABLED", "false")
+e2e_github_auth_url := env("OCG_E2E_GITHUB_AUTH_URL", "https://example.test/oauth/authorize")
+e2e_github_token_url := env("OCG_E2E_GITHUB_TOKEN_URL", "https://example.test/oauth/token")
+e2e_github_client_id := env("OCG_E2E_GITHUB_CLIENT_ID", "e2e-client")
+e2e_github_client_secret := env("OCG_E2E_GITHUB_CLIENT_SECRET", "e2e-secret")
+e2e_github_redirect_uri := env("OCG_E2E_GITHUB_REDIRECT_URI", "http://test-community.localhost:9000/log-in/oauth2/github/callback")
 
 # Helper to run PostgreSQL commands with the configured binary path
 [private]
@@ -163,9 +170,18 @@ e2e-write-server-config:
     "  disable_referer_checks: false" \
     "  login:" \
     "    email: true" \
-    "    github: false" \
-    "    linuxfoundation: false" \
-    "  oauth2: {}" \
+    "    github: {{ e2e_login_github }}" \
+    "    linuxfoundation: {{ e2e_login_linuxfoundation }}" \
+    "  oauth2:" \
+    "    github:" \
+    "      auth_url: {{ e2e_github_auth_url }}" \
+    "      client_id: {{ e2e_github_client_id }}" \
+    "      client_secret: {{ e2e_github_client_secret }}" \
+    "      redirect_uri: {{ e2e_github_redirect_uri }}" \
+    "      scopes:" \
+    "        - read:user" \
+    "        - user:email" \
+    "      token_url: {{ e2e_github_token_url }}" \
     "  oidc: {}" \
     > "{{ e2e_server_config }}"
 

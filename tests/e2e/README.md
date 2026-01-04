@@ -83,6 +83,7 @@ tests/e2e/
 ├── utils.ts                   # Helper functions and constants
 ├── public/public.spec.ts      # Public pages suite
 ├── auth/auth.spec.ts          # Email/password authentication suite
+├── auth/oauth.spec.ts         # OAuth redirect smoke tests
 ├── tsconfig.json              # TypeScript configuration
 └── README.md                  # This file
 ```
@@ -118,6 +119,7 @@ Test data is defined in `/database/tests/data/e2e.sql` and includes:
 ### Current Tests (Authentication)
 
 ✅ Email sign up requires verification before log in
+✅ GitHub login redirects to authorization url
 
 ### Future Test Coverage
 
@@ -143,6 +145,13 @@ Configure test behavior via environment variables:
 - `OCG_E2E_EVENT_SLUG` - Test event slug (default: `test-event`)
 - `OCG_E2E_START_SERVER` - Auto-start server if not running (default: `false`)
 - `OCG_E2E_SERVER_CMD` - Custom server start command
+- `OCG_E2E_GITHUB_ENABLED` - Enable GitHub login in e2e config (default: `true`)
+- `OCG_E2E_GITHUB_AUTH_URL` - GitHub auth url for redirects (default: `https://example.test/oauth/authorize`)
+- `OCG_E2E_GITHUB_TOKEN_URL` - GitHub token url (default: `https://example.test/oauth/token`)
+- `OCG_E2E_GITHUB_CLIENT_ID` - GitHub OAuth client id (default: `e2e-client`)
+- `OCG_E2E_GITHUB_CLIENT_SECRET` - GitHub OAuth client secret (default: `e2e-secret`)
+- `OCG_E2E_GITHUB_REDIRECT_URI` - GitHub OAuth redirect uri (default: `http://test-community.localhost:9000/log-in/oauth2/github/callback`)
+- `OCG_E2E_LINUXFOUNDATION_ENABLED` - Enable Linux Foundation SSO tests (default: `false`)
 
 ### Database Configuration
 
@@ -174,6 +183,10 @@ Email/password tests require `login.email` enabled in the server config. The
 `just e2e-write-server-config` task enables this by default.
 Avoid `OCG_E2E_USE_HOST_HEADER` for auth flows because cookies are scoped to the
 URL host, not the overridden `Host` header.
+GitHub redirect tests use dummy OAuth values by default and do not contact an
+external provider.
+Linux Foundation SSO tests are skipped unless a reachable OIDC issuer is
+configured.
 
 ## Troubleshooting
 
