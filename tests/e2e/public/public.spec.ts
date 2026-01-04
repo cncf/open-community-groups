@@ -14,7 +14,7 @@ import {
   navigateToHome,
   navigateToPath,
   setHostHeader,
-} from "./utils";
+} from "../utils";
 
 test.describe("public pages", () => {
   test.beforeEach(async ({ page }) => {
