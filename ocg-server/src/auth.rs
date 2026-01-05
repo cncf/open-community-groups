@@ -10,7 +10,7 @@ use axum_login::{
     tower_sessions::{self, session, session_store},
 };
 use garde::Validate;
-use oauth2::{TokenResponse, reqwest};
+use oauth2::{TokenResponse, reqwest as oauth2_reqwest};
 use openidconnect::{self as oidc, LocalizedClaim};
 use password_auth::verify_password;
 use reqwest::header::HeaderMap;
@@ -121,7 +121,7 @@ pub(crate) struct AuthnBackend {
     /// Database handle.
     db: DynDB,
     /// HTTP client for making requests to `OAuth2` and `Oidc` providers.
-    http_client: reqwest::Client,
+    http_client: oauth2_reqwest::Client,
     /// Registered `OAuth2` providers.
     pub oauth2_providers: OAuth2Providers,
     /// Registered `Oidc` providers.
@@ -132,7 +132,8 @@ impl AuthnBackend {
     /// Create a new `AuthnBackend` instance.
     #[allow(unused_mut)]
     pub async fn new(db: DynDB, oauth2_cfg: &OAuth2Config, oidc_cfg: &OidcConfig) -> Result<Self> {
-        let mut builder = reqwest::ClientBuilder::new().redirect(reqwest::redirect::Policy::none());
+        let mut builder =
+            oauth2_reqwest::ClientBuilder::new().redirect(oauth2_reqwest::redirect::Policy::none());
         #[cfg(test)]
         {
             // macOS sandbox testing workaround
@@ -274,7 +275,7 @@ impl AuthnBackend {
     /// Set up `Oidc` providers from configuration.
     async fn setup_oidc_providers(
         oidc_cfg: &OidcConfig,
-        http_client: reqwest::Client,
+        http_client: oauth2_reqwest::Client,
     ) -> Result<OidcProviders> {
         let mut providers: OidcProviders = HashMap::new();
 
