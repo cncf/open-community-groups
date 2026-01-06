@@ -1,7 +1,7 @@
-{% import "dashboard/dashboard_macros.html" as dashboard_macros -%}
-{% import "common.html" as common -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/badges.html" as badges -%}
 
-{{ dashboard_macros::form_title(title = "Community Invitations",
+{{ dashboard::form_title(title = "Community Invitations",
 description = "Manage invitations to join communities.") -}}
 
 {# Community Invitations -#}
@@ -101,7 +101,7 @@ description = "Manage invitations to join communities.") -}}
 {# End Community Invitations -#}
 
 {# Groups Invitations -#}
-{{ dashboard_macros::form_title(title = "Group Invitations",
+{{ dashboard::form_title(title = "Group Invitations",
 description = "Manage invitations to join groups.") -}}
 
 <div class="mt-10">
@@ -135,7 +135,7 @@ description = "Manage invitations to join groups.") -}}
               {# End group -#}
 
               {# Role -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ common::badge(content = invitation.role) -}}</td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ badges::common_badge(content = invitation.role) -}}</td>
               {# End role -#}
 
               {# Created at date -#}

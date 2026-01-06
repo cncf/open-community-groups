@@ -1,5 +1,5 @@
 {% extends "notifications/base.html" -%}
-{% import "notifications/email_macros.html" as macros %}
+{% import "macros/email.html" as email -%}
 
 {% block subject -%}
   You have been invited to join the {{ group.name }} team
@@ -19,7 +19,7 @@
     invitation from your dashboard.
   </p>
 
-  {{ macros::email_button(link = link, text = "Review invitation") }}
+  {{ email::button(link = link, text = "Review invitation") }}
 {% endblock content -%}
 
 {% block footer -%}

@@ -1,0 +1,42 @@
+{# Alert -#}
+{% macro alert(title, content) -%}
+  <div class="p-10 md:p-14">
+    <div class="border border-primary-300 p-10 text-sm text-stone-800 rounded-lg bg-primary-50 text-center"
+         role="alert">
+      <div class="text-xl mb-6">{{ title }}</div>
+      {{ content }}
+    </div>
+  </div>
+{% endmacro alert -%}
+{# End alert -#}
+
+{# Placeholder -#}
+{% macro placeholder(title, content) -%}
+  <div class="border-2 border-dashed border-stone-300 p-10 text-sm text-stone-800 rounded-lg bg-stone-50 text-center"
+       role="alert">
+    <div class="text-xl mb-6 text-stone-600">{{ title }}</div>
+    <p class="text-stone-600">{{ content }}</p>
+  </div>
+{% endmacro placeholder -%}
+{# End placeholder -#}
+
+{# Alerts #}
+{# djlint:off #}
+{% macro alerts(messages) -%}
+  <script type="module">
+    import { showErrorAlert, showSuccessAlert } from '/static/js/common/alerts.js';
+
+    {% for message in messages -%}
+      {% match message.level -%}
+        {% when Level::Success -%}
+          showSuccessAlert('{{ message }}');
+        {% when Level::Error -%}
+          showErrorAlert('{{ message }}');
+        {% when _ -%}
+          {# Do nothing #}
+      {% endmatch -%}
+    {% endfor -%}
+</script>
+{% endmacro alerts -%}
+{# djlint:on #}
+{# End alerts #}

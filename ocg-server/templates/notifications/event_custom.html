@@ -1,5 +1,5 @@
 {% extends "notifications/base.html" -%}
-{% import "notifications/email_macros.html" as macros %}
+{% import "macros/email.html" as email -%}
 
 {% block subject -%}
   {{ title }}
@@ -18,7 +18,7 @@
   </p>
   <p class="default big mb-15">{{ title }}</p>
   <p class="default mb-30">{{ body }}</p>
-  {{ macros::email_button(link = link, text = "View event page") }}
+  {{ email::button(link = link, text = "View event page") }}
 {% endblock content -%}
 
 {% block footer -%}

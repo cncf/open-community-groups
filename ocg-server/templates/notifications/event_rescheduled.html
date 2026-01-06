@@ -1,5 +1,5 @@
 {% extends "notifications/base.html" -%}
-{% import "notifications/email_macros.html" as macros %}
+{% import "macros/email.html" as email -%}
 
 {% block subject -%}
   Event rescheduled: {{ event.name }}
@@ -39,7 +39,7 @@
     {% endif -%}
   </p>
 
-  {{ macros::email_button(link = link, text = "View updated event") }}
+  {{ email::button(link = link, text = "View updated event") }}
 
   <p class="default mt-30 mb-15">
     Please find attached an .ics file containing the updated event details.

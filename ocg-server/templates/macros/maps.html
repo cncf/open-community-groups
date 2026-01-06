@@ -1,0 +1,115 @@
+{# djlint:off #}
+{# Map with modal -#}
+{% macro map_with_modal(base_id, lat, lng, overlay_text = "", small_overlay_text = "", modal_title = "") -%}
+  <div id="{{ base_id }}-map"
+        class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+        role="button"
+        tabindex="0"
+        aria-label="Open full map view"></div>
+  {% if let Some(text) = &overlay_text -%}
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+      {{ text }}
+    </div>
+  {% endif -%}
+  {% if let Some(text) = &small_overlay_text -%}
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
+      {{ text }}
+    </div>
+  {% endif -%}
+
+  <div id="{{ base_id }}-map-modal"
+       tabindex="-1"
+       aria-hidden="true"
+       aria-modal="true"
+       role="dialog"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1200] justify-center items-center w-full md:inset-0 h-full max-h-full flex">
+    <div id="backdrop-{{ base_id }}-map-modal"
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
+    <div class="relative p-4 w-full max-w-4xl max-h-full">
+      <div class="relative bg-white rounded-lg shadow">
+        <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          <h3 id="{{ base_id }}-map-modal-title"
+              class="text-xl font-semibold text-stone-900">{{ modal_title }} location</h3>
+          <button id="close-{{ base_id }}-map-modal"
+                  type="button"
+                  class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+            <span class="sr-only">Close modal</span>
+          </button>
+        </div>
+        <div class="p-4 md:p-6">
+          <div class="relative">
+            <div id="{{ base_id }}-map-modal-map"
+                 class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
+            </div>
+            {% if let Some(text) = &overlay_text -%}
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+                {{ text }}
+              </div>
+            {% endif -%}
+            {% if let Some(text) = &small_overlay_text -%}
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none md:block xl:hidden">
+                {{ text }}
+              </div>
+            {% endif -%}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      loadMap,
+      toggleModalVisibility
+    } from "/static/js/common/common.js";
+
+    const mapContainer = document.getElementById('{{ base_id }}-map');
+    const modalId = '{{ base_id }}-map-modal';
+    const modalMapId = '{{ base_id }}-map-modal-map';
+    const closeButtonId = 'close-{{ base_id }}-map-modal';
+    const backdropId = 'backdrop-{{ base_id }}-map-modal';
+    let modalMapLoaded = false;
+
+    const ensureModalMap = () => {
+      if (modalMapLoaded) {
+        return;
+      }
+      modalMapLoaded = true;
+      requestAnimationFrame(() => {
+        loadMap(modalMapId, {{ lat }}, {{ lng }});
+      });
+    };
+
+    const openModal = () => {
+      toggleModalVisibility(modalId);
+      ensureModalMap();
+    };
+
+    loadMap('{{ base_id }}-map', {{ lat }}, {{ lng }}, {
+      interactive: false
+    });
+
+    if (mapContainer) {
+      mapContainer.addEventListener('click', openModal);
+      mapContainer.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openModal();
+        }
+      });
+    }
+
+    const closeButton = document.getElementById(closeButtonId);
+    if (closeButton) {
+      closeButton.addEventListener('click', () => toggleModalVisibility(modalId));
+    }
+
+    const backdrop = document.getElementById(backdropId);
+    if (backdrop) {
+      backdrop.addEventListener('click', () => toggleModalVisibility(modalId));
+    }
+</script>
+{% endmacro map_with_modal -%}
+{# End map with modal -#}
+{# djlint:on #}

@@ -1,4 +1,4 @@
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
 
 {# Group card -#}
 <a class="p-5 md:p-7 group select-none"
@@ -8,8 +8,8 @@
   <div class="flex flex-1 flex-row items-stretch">
     <div class="group-hover:opacity-75 transition-opacity">
       {# Group icon -#}
-      {{ common::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name) ) -}}
-      {{ common::logo(logo_url = group.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group.color) -}}
+      {{ ui::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name) ) -}}
+      {{ ui::logo(logo_url = group.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group.color) -}}
       {# End group icon -#}
     </div>
 

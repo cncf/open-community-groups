@@ -1,4 +1,4 @@
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
 
 {# Header -#}
 <header id="header" class="w-full" role="banner">
@@ -59,7 +59,7 @@
              class="relative">
           <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-primary-500 text-primary-700 size-[38px] p-0.5 overflow-hidden"
                   disabled>
-            {{ common::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "5", htmx = false) -}}
+            {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "5", htmx = false) -}}
             <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
           </button>
         </div>
@@ -169,7 +169,7 @@
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
                   <div class="ms-2 text-xs/6">Community Dashboard</div>
-                  <div class="ms-auto hx-spinner">{{ common::spinner(size = "size-4") -}}</div>
+                  <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
             </li>
@@ -185,7 +185,7 @@
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
                   <div class="ms-2 text-xs/6">Group Dashboard</div>
-                  <div class="ms-auto hx-spinner">{{ common::spinner(size = "size-4") -}}</div>
+                  <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
             </li>
@@ -200,7 +200,7 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-user-small bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">User Dashboard</div>
-                <div class="ms-auto hx-spinner">{{ common::spinner(size = "size-4") -}}</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
           </li>

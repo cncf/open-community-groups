@@ -1,5 +1,6 @@
 {% extends "common/base.html" -%}
-{% import "common.html" as common -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/search.html" as search -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
@@ -25,7 +26,7 @@
 
         {# Search bar -#}
         <div>
-          {{ common::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) -}}
+          {{ search::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) -}}
           <script type="module">
             import {
               loadExplorePage
@@ -129,7 +130,7 @@
             {% endfor -%}
           </div>
         {% else -%}
-          {{ common::placeholder(title = "Groups coming soon",
+          {{ feedback::placeholder(title = "Groups coming soon",
                     content = "Community organizers are still setting this up, check back soon for new groups.") -}}
         {% endif -%}
         {# End groups cards -#}
@@ -187,7 +188,7 @@
         </div>
       {% else -%}
         {% let base_title = title -%}
-        {{ common::placeholder(title = "No " ~ base_title,
+        {{ feedback::placeholder(title = "No " ~ base_title,
                 content = "We don't have any " ~ base_title ~ " yet, check back soon for fresh listings.") -}}
       {% endif -%}
       {# End cards list -#}

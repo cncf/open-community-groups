@@ -1,5 +1,5 @@
-{% import "dashboard/dashboard_macros.html" as dashboard_macros -%}
-{% import "common.html" as common -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/ui.html" as ui -%}
 
 {# Update user details form -#}
 <form id="user-details-form"
@@ -11,7 +11,7 @@
   <div class="space-y-12">
     {# Personal Details section -#}
     <div class="border-b border-stone-900/10 pb-12">
-      {{ dashboard_macros::form_title(title = "Personal Details", description = "Your basic profile information.") -}}
+      {{ dashboard::form_title(title = "Personal Details", description = "Your basic profile information.") -}}
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Name -#}
         <div class="col-span-3">
@@ -127,7 +127,7 @@
 
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard_macros::form_title(title = "Location", description = "Optional location information.") -}}
+    {{ dashboard::form_title(title = "Location", description = "Optional location information.") -}}
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# City -#}
       <div class="col-span-3">
@@ -172,7 +172,7 @@
 
   {# Social links section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard_macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
+    {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Website URL -#}
       <div class="col-span-full lg:col-span-3">
@@ -247,7 +247,7 @@
 
   <div class="mt-6">
     <button type="submit" class="btn-primary relative">
-      {{ common::btn_spinner(id = "user-details-spinner", spinner_type = "2") -}}
+      {{ ui::btn_spinner(id = "user-details-spinner", spinner_type = "2") -}}
       Save
     </button>
   </div>
@@ -268,7 +268,7 @@
         hx-disabled-elt="button[type=submit]">
     <div class="space-y-12">
       <div>
-        {{ dashboard_macros::form_title(title = "Update password", description = "After updating your password all your current sessions will be terminated and you will need to log back in.") -}}
+        {{ dashboard::form_title(title = "Update password", description = "After updating your password all your current sessions will be terminated and you will need to log back in.") -}}
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           <div class="col-span-3">
@@ -321,7 +321,7 @@
 
       <div class="mt-6 items-center">
         <button type="submit" class="btn-primary relative">
-          {{ common::btn_spinner(id = "password-update-spinner", spinner_type = "2") -}}
+          {{ ui::btn_spinner(id = "password-update-spinner", spinner_type = "2") -}}
           Save
         </button>
       </div>

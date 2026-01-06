@@ -1,7 +1,7 @@
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Page title #}
-{{ macros::form_title(title = "Analytics",
+{{ dashboard::form_title(title = "Analytics",
 description = "Group statistics and growth trends.") }}
 {# End page title #}
 
@@ -28,54 +28,54 @@ description = "Group statistics and growth trends.") }}
 {# Charts sections #}
 <div class="space-y-12 mt-10">
   <div>
-    {{ macros::form_title(title = "Members") }}
+    {{ dashboard::form_title(title = "Members") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ macros::group_analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, min_points = 1) -}}
+          {{ dashboard::group_analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, min_points = 1) -}}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ macros::group_analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month) -}}
+          {{ dashboard::group_analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month) -}}
         </div>
       </div>
     </div>
   </div>
 
   <div>
-    {{ macros::form_title(title = "Events") }}
+    {{ dashboard::form_title(title = "Events") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ macros::group_analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, min_points = 1) -}}
+          {{ dashboard::group_analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, min_points = 1) -}}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ macros::group_analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month) -}}
+          {{ dashboard::group_analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month) -}}
         </div>
       </div>
     </div>
   </div>
 
   <div>
-    {{ macros::form_title(title = "Attendees") }}
+    {{ dashboard::form_title(title = "Attendees") }}
     <div class="mt-6 grid grid-cols-1 gap-6">
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ macros::group_analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, min_points = 1) -}}
+          {{ dashboard::group_analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, min_points = 1) -}}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ macros::group_analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month) -}}
+          {{ dashboard::group_analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month) -}}
         </div>
       </div>
     </div>

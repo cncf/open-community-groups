@@ -1,8 +1,7 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Groups list header with title -#}
-{{ macros::form_title(title = "Groups") -}}
+{{ dashboard::form_title(title = "Groups") -}}
 
 <div class="flex justify-between my-10">
   <div class="flex items-center gap-x-6">

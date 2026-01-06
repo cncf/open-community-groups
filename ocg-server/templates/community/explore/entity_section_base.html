@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
-{% import "community/explore/filters.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/explore.html" as explore -%}
 
 {% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
 {% let entity = results_section.entity() -%}
@@ -24,7 +24,7 @@
   {# End header filters -#}
 
   {# Entity selector -#}
-  {{ macros::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
+  {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
   {# End entity selector -#}
 
   <form id="{{ entity }}-form-mobile"
@@ -64,7 +64,7 @@
     {# End header filters -#}
 
     {# Entity selector -#}
-    {{ macros::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
+    {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
     {# End entity selector -#}
 
     <form id="{{ entity }}-form"
@@ -170,7 +170,7 @@
 
           {# Loading spinner -#}
           <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
-            {{ common::spinner(htmx = false) -}}
+            {{ ui::spinner(htmx = false) -}}
           </div>
           {# End loading spinner -#}
         </div>

@@ -1,4 +1,5 @@
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
 
 {# Event card -#}
 <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
@@ -8,10 +9,10 @@
   <div class="flex flex-1 flex-row items-stretch">
     {# Event icon -#}
     <div class="card-logo group-hover:opacity-75 transition-opacity relative">
-      {{ common::logo(logo_url = event.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = event.group_color, name = Some(event.group_name) ) -}}
-      {{ common::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -}}
+      {{ ui::logo(logo_url = event.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = event.group_color, name = Some(event.group_name) ) -}}
+      {{ ui::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -}}
       {# Sold out badge -#}
-      {{ common::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[42px] md:top-[55px] right-[-10px] md:right-[56px]") ) -}}
+      {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[42px] md:top-[55px] right-[-10px] md:right-[56px]") ) -}}
       {# End sold out badge -#}
     </div>
     {# End event icon -#}
@@ -50,10 +51,10 @@
             {% if event.kind != EventKind::Virtual -%}
               {% if let Some(location) = &self.event.location(36) -%}
                 <div class="hidden truncate me-2 xl:block">
-                  {{ common::icon_text(icon_name = "location", text = self.event.location(57).expect("location to exist")) -}}
+                  {{ ui::icon_text(icon_name = "location", text = self.event.location(57).expect("location to exist")) -}}
                 </div>
                 <div class="block truncate me-2 xl:hidden">
-                  {{ common::icon_text(icon_name = "location", text = location) -}}
+                  {{ ui::icon_text(icon_name = "location", text = location) -}}
                 </div>
               {% endif -%}
             {% else -%}
@@ -61,17 +62,17 @@
                 <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
               </div>
             {% endif -%}
-            {{ common::event_badge(kind = event.kind) -}}
+            {{ badges::event_badge(kind = event.kind) -}}
           </div>
           {# End event location -#}
 
           {# Event date -#}
           <div class="flex items-center pt-0.75">
             {% if let Some(starts_at) = &event.starts_at -%}
-              {{ common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
+              {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
             {% endif -%}
             {% if event.canceled -%}
-              {{ common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
+              {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
             {% endif -%}
           </div>
           {# End event date -#}
@@ -86,24 +87,24 @@
     <div class="card-meta mt-3 h-[21px]">
       {% if event.kind != EventKind::Virtual -%}
         {% if let Some(location) = &self.event.location(25) -%}
-          {{ common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
+          {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
         {% endif -%}
       {% else -%}
         <div class="icon-text me-2">
           <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
         </div>
       {% endif -%}
-      {{ common::event_badge(kind = event.kind) -}}
+      {{ badges::event_badge(kind = event.kind) -}}
     </div>
     {# End event location -#}
 
     {# Event date -#}
     <div class="flex items-center pt-1">
       {% if let Some(starts_at) = &event.starts_at -%}
-        {{ common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
+        {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
       {% endif -%}
       {% if event.canceled -%}
-        {{ common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
+        {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
       {% endif -%}
     </div>
     {# End event date -#}

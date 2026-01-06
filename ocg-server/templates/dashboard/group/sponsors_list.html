@@ -1,9 +1,8 @@
-{% import "dashboard/dashboard_macros.html" as macros -%}
-{% import "common.html" as common -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Sponsors header with title and add button -#}
 <div class="flex items-center">
-  <div>{{ macros::form_title(title = "Sponsors") -}}</div>
+  <div>{{ dashboard::form_title(title = "Sponsors") -}}</div>
   <div class="ms-auto">
     <button id="add-sponsor-button"
             hx-get="/dashboard/group/sponsors/add"

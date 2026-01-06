@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Community settings update form -#}
 <form id="settings-form"
@@ -11,7 +11,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {{ macros::form_title(title = "General Settings", description = "Configure core community information and basic settings.") -}}
+      {{ dashboard::form_title(title = "General Settings", description = "Configure core community information and basic settings.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Display name -#}
@@ -88,7 +88,7 @@
 
     {# Branding section -#}
     <div class="border-b border-stone-900/10 pb-12">
-      {{ macros::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
+      {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Header logo URL -#}
@@ -132,7 +132,7 @@
 
 {# Social links section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {{ macros::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
+  {{ dashboard::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Website URL -#}
@@ -310,7 +310,7 @@
 
 {# Advertisement section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {{ macros::form_title(title = "Advertisement", description = "Optional advertisement banner configuration.") -}}
+  {{ dashboard::form_title(title = "Advertisement", description = "Optional advertisement banner configuration.") -}}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
@@ -342,7 +342,7 @@
 
 {# Additional content section -#}
 <div class="pb-12">
-  {{ macros::form_title(title = "Additional Content", description = "Extra community features and custom content.") -}}
+  {{ dashboard::form_title(title = "Additional Content", description = "Extra community features and custom content.") -}}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# New group details -#}
@@ -383,7 +383,7 @@
 <div class="mt-6 flex items-center justify-end gap-x-6">
   {# Save button -#}
   <button type="submit" class="btn-primary relative">
-    {{ common::btn_spinner(id = "community-settings-spinner", spinner_type = "2") -}}
+    {{ ui::btn_spinner(id = "community-settings-spinner", spinner_type = "2") -}}
     Update Settings
   </button>
   {# End save button -#}

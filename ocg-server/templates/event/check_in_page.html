@@ -1,5 +1,6 @@
 {% extends "common/base.html" -%}
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
 
 {% block content -%}
   <div class="flex items-center justify-center w-full">
@@ -12,9 +13,9 @@
             {{ event.group_name }}
           </p>
           <div class="mt-4 flex items-center justify-center gap-3">
-            {{ common::event_badge(kind = event.kind, extra_styles = Some("px-3 py-1 text-xs") ) -}}
+            {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-3 py-1 text-xs") ) -}}
             {% if event.canceled -%}
-              {{ common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-3 py-1 text-xs") ) -}}
+              {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-3 py-1 text-xs") ) -}}
             {% endif -%}
           </div>
         </div>
@@ -153,7 +154,7 @@
               <button id="event-check-in-submit"
                       type="submit"
                       class="btn-primary w-1/2 justify-center relative">
-                {{ common::btn_spinner(id = "check-in-submit-spinner", spinner_type = "2") -}}
+                {{ ui::btn_spinner(id = "check-in-submit-spinner", spinner_type = "2") -}}
                 Check in now
               </button>
             </form>

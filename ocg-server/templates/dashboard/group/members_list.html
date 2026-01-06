@@ -1,8 +1,8 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Members header -#}
-{{ macros::form_title(title = "Members") -}}
+{{ dashboard::form_title(title = "Members") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="flex text-sm text-stone-600">
@@ -160,7 +160,7 @@
           <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
             <button id="cancel-notification" type="button" class="btn-primary-outline">Cancel</button>
             <button id="submit-notification" type="submit" class="btn-primary relative">
-              {{ common::btn_spinner(id = "notification-spinner", spinner_type = "2") -}}
+              {{ ui::btn_spinner(id = "notification-spinner", spinner_type = "2") -}}
               Send email
             </button>
           </div>

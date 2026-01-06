@@ -1,5 +1,5 @@
 {% extends "community/explore/entity_section_base.html" -%}
-{% import "common.html" as common -%}
+{% import "macros/search.html" as search -%}
 
 {# Filters -#}
 {% block filters_desktop -%}
@@ -14,14 +14,14 @@
 {# Current page status -#}
 {% block current_page -%}
   {% if results_section.groups.len() > 0 -%}
-    {{ common::current_page(total = results_section.total, items_number = results_section.groups.len() , offset_value = filters.offset) -}}
+    {{ search::current_page(total = results_section.total, items_number = results_section.groups.len() , offset_value = filters.offset) -}}
   {% endif -%}
 {% endblock current_page -%}
 {# End current page status -#}
 
 {# Search bar -#}
 {% block search_bar -%}
-  {{ common::search_bar(placeholder = "Search groups", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -}}
+  {{ search::search_bar(placeholder = "Search groups", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -}}
   <script type="module">
     import {
       cleanInputField,

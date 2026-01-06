@@ -1,5 +1,4 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Events update form -#}
 <div class="space-y-12">
@@ -213,7 +212,7 @@
 
         {# Additional Information section -#}
         <div class="border-t border-stone-900/10 pt-12">
-          {{ macros::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
+          {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
             {# Capacity -#}
@@ -387,7 +386,7 @@
           <div id="venue-information-section"
                class="border-t border-stone-900/10 pt-12">
             {% if event.is_past() %}
-              {{ macros::form_title(title = "Venue Information",
+              {{ dashboard::form_title(title = "Venue Information",
                             description = "Location details for in-person and hybrid events.",
                             button = "<button id='clear-location-fields'
                       type='button'
@@ -395,7 +394,7 @@
                       aria-label='Clear location details'
                       disabled>Clear location</button>") -}}
             {% else %}
-              {{ macros::form_title(title = "Venue Information",
+              {{ dashboard::form_title(title = "Venue Information",
                             description = "Location details for in-person and hybrid events.",
                             button = "<button id='clear-location-fields'
                       type='button'
@@ -435,7 +434,7 @@
           {# Online Event Details section -#}
           <div id="online-event-details-section"
                class="border-t border-stone-900/10 pt-12">
-            {{ macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
+            {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
             <div class="mt-10 max-w-5xl">
               {% if meetings_enabled %}
                 <online-event-details id="online-event-details" kind="{{ event.kind }}"
