@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::BBox,
+    router::serde_qs_config,
     templates::{
         PageId,
         auth::User,
@@ -275,7 +276,7 @@ impl EventsFilters {
     /// Create a new `EventsFilters` instance from the raw query string and headers.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: EventsFilters = serde_html_form::from_str(raw_query)?;
+        let mut filters: EventsFilters = serde_qs_config().deserialize_str(raw_query)?;
         filters.validate()?;
 
         // Clean up entries that are empty strings
@@ -353,7 +354,7 @@ impl ToRawQuery for EventsFilters {
             filters.sort_direction = None;
         }
 
-        serde_html_form::to_string(&filters).map_err(anyhow::Error::from)
+        serde_qs::to_string(&filters).map_err(anyhow::Error::from)
     }
 }
 
@@ -434,7 +435,7 @@ impl GroupsFilters {
     /// provided.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: GroupsFilters = serde_html_form::from_str(raw_query)?;
+        let mut filters: GroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
         filters.validate()?;
 
         // Clean up entries that are empty strings
@@ -470,7 +471,7 @@ impl ToRawQuery for GroupsFilters {
             filters.sort_by = None;
         }
 
-        serde_html_form::to_string(&filters).map_err(anyhow::Error::from)
+        serde_qs::to_string(&filters).map_err(anyhow::Error::from)
     }
 }
 
@@ -493,7 +494,7 @@ impl Pagination for GroupsFilters {
 pub(crate) enum FilterError {
     /// Error parsing the query string.
     #[error("parse error: {0}")]
-    Parse(#[from] serde_html_form::de::Error),
+    Parse(#[from] serde_qs::Error),
 
     /// Validation error.
     #[error("validation error: {0}")]
@@ -579,14 +580,14 @@ mod tests {
 
     #[test]
     fn test_events_filters_new_list_cleans_empty_entries() {
-        // Prepare headers and raw query
+        // Prepare headers and raw query (using bracket notation for arrays)
         let raw_query = [
-            "event_category=",
-            "event_category=conference",
-            "group_category=",
-            "group_category=rust",
-            "region=",
-            "region=europe",
+            "event_category[0]=",
+            "event_category[1]=conference",
+            "group_category[0]=",
+            "group_category[1]=rust",
+            "region[0]=",
+            "region[1]=europe",
             "view_mode=list",
         ]
         .join("&");
@@ -747,12 +748,12 @@ mod tests {
         // Generate raw query
         let query = filters.to_raw_query().expect("raw query to be generated");
 
-        // Check query contains expected parameters
+        // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
         assert!(query.contains("date_from=2030-01-01"));
         assert!(query.contains("date_to=2030-06-01"));
-        assert!(query.contains("event_category=conference"));
+        assert!(query.contains("event_category[0]=conference"));
         assert!(query.contains("include_bbox=false"));
-        assert!(query.contains("kind=hybrid"));
+        assert!(query.contains("kind[0]=hybrid"));
         assert!(query.contains("limit=40"));
         assert!(query.contains("offset=15"));
         assert!(query.contains("sort_by=distance"));
@@ -786,8 +787,8 @@ mod tests {
         // Generate raw query
         let query = filters.to_raw_query().expect("raw query to be generated");
 
-        // Check query contains expected parameters
-        assert!(query.contains("event_category=meetup"));
+        // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
+        assert!(query.contains("event_category[0]=meetup"));
         assert!(query.contains("include_bbox=true"));
         assert!(query.contains("limit=20"));
         assert!(query.contains("offset=5"));
@@ -802,12 +803,12 @@ mod tests {
 
     #[test]
     fn test_groups_filters_new_list_cleans_empty_entries() {
-        // Prepare headers and raw query
+        // Prepare headers and raw query (using bracket notation for arrays)
         let raw_query = [
-            "group_category=",
-            "group_category=rust",
-            "region=",
-            "region=europe",
+            "group_category[0]=",
+            "group_category[1]=rust",
+            "region[0]=",
+            "region[1]=europe",
             "view_mode=list",
         ]
         .join("&");
@@ -897,13 +898,13 @@ mod tests {
         // Generate raw query
         let query = filters.to_raw_query().expect("raw query to be generated");
 
-        // Check query contains expected parameters
+        // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
         assert!(query.contains("distance=25.5"));
-        assert!(query.contains("group_category=rust"));
+        assert!(query.contains("group_category[0]=rust"));
         assert!(query.contains("include_bbox=false"));
         assert!(query.contains("limit=40"));
         assert!(query.contains("offset=15"));
-        assert!(query.contains("region=europe"));
+        assert!(query.contains("region[0]=europe"));
         assert!(query.contains("sort_by=distance"));
         assert!(query.contains("ts_query=community"));
         assert!(query.contains("view_mode=list"));
@@ -931,12 +932,12 @@ mod tests {
         // Generate raw query
         let query = filters.to_raw_query().expect("raw query to be generated");
 
-        // Check query contains expected parameters
-        assert!(query.contains("group_category=dev"));
+        // Check query contains expected parameters (serde_qs uses bracket notation for arrays)
+        assert!(query.contains("group_category[0]=dev"));
         assert!(query.contains("include_bbox=true"));
         assert!(query.contains("limit=20"));
         assert!(query.contains("offset=5"));
-        assert!(query.contains("region=emea"));
+        assert!(query.contains("region[0]=emea"));
         assert!(query.contains("ts_query=rust"));
         assert!(query.contains("view_mode=list"));
         assert!(!query.contains("latitude"));

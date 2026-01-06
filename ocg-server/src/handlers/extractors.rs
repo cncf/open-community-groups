@@ -238,7 +238,7 @@ mod tests {
         config::{HttpServerConfig, OAuth2ProviderConfig},
         db::{DynDB, mock::MockDB},
         handlers::auth::SELECTED_GROUP_ID_KEY,
-        router,
+        router::{self, serde_qs_config},
         services::{
             images::{DynImageStorage, MockImageStorage},
             notifications::{DynNotificationsManager, MockNotificationsManager},
@@ -890,7 +890,7 @@ mod tests {
             image_storage,
             meetings_cfg: None,
             notifications_manager: nm,
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
             server_cfg: HttpServerConfig::default(),
         }
     }

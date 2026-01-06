@@ -712,7 +712,7 @@ mod tests {
             extractors::{OAuth2, Oidc},
             tests::*,
         },
-        router::{CACHE_CONTROL_NO_CACHE, State},
+        router::{CACHE_CONTROL_NO_CACHE, State, serde_qs_config},
         services::{
             images::MockImageStorage,
             notifications::{MockNotificationsManager, NotificationKind},
@@ -2331,7 +2331,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2390,7 +2390,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2440,7 +2440,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2504,7 +2504,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2568,7 +2568,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2632,7 +2632,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2697,7 +2697,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2762,7 +2762,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
@@ -2827,7 +2827,7 @@ mod tests {
             image_storage: Arc::new(MockImageStorage::new()),
             meetings_cfg: None,
             notifications_manager: nm.clone(),
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
