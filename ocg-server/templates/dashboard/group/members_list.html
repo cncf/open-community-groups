@@ -2,7 +2,7 @@
 {% import "dashboard/dashboard_macros.html" as macros -%}
 
 {# Members header -#}
-{% call macros::form_title(title = "Members") -%}
+{{ macros::form_title(title = "Members") -}}
 
 <div class="flex justify-between items-end my-5">
   <div class="flex text-sm text-stone-600">
@@ -57,14 +57,14 @@
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-5">
                 <avatar-image
-                {% if let Some(photo_url) = member.photo_url -%}
+                {% if let Some(photo_url) = &member.photo_url -%}
                   image-url="{{ photo_url }}"
                 {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
                 </avatar-image>
                 <div class="min-w-0">
                   <div class="font-medium text-stone-900 truncate mb-1">
-                    {{ member.name|display_some_or(member.username) }}
+                    {{ member.name|assigned_or(member.username) }}
                   </div>
                   {% if member.name.is_some() -%}
                     <div class="text-xs text-stone-600 truncate">{{ member.username }}</div>
@@ -77,8 +77,8 @@
             {# Position -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex flex-col space-y-1">
-                <div class="font-medium text-stone-900 truncate">{{ member.company|display_some_or("-") }}</div>
-                {% if let Some(title) = member.title -%}
+                <div class="font-medium text-stone-900 truncate">{{ member.company.as_deref()|assigned_or("-") }}</div>
+                {% if let Some(title) = &member.title -%}
                   <div class="text-xs text-stone-600 truncate">{{ title }}</div>
                 {% endif -%}
               </div>
@@ -162,7 +162,7 @@
           <div class="flex justify-end gap-3 pt-6 border-t border-stone-200">
             <button id="cancel-notification" type="button" class="btn-primary-outline">Cancel</button>
             <button id="submit-notification" type="submit" class="btn-primary relative">
-              {% call common::btn_spinner(id = "notification-spinner", spinner_type = "2") -%}
+              {{ common::btn_spinner(id = "notification-spinner", spinner_type = "2") -}}
               Send email
             </button>
           </div>

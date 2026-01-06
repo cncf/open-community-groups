@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
 {% extends "common/base.html" -%}
+{% import "common.html" as common -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
@@ -25,7 +25,7 @@
 
         {# Search bar -#}
         <div>
-          {% call common::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) -%}
+          {{ common::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) -}}
           <script type="module">
             import {
               loadExplorePage
@@ -60,7 +60,7 @@
       </div>
 
       {# Jumbotron background image -#}
-      {% if let Some(jumbotron_image_url) = community.jumbotron_image_url -%}
+      {% if let Some(jumbotron_image_url) = &community.jumbotron_image_url -%}
         <div class="absolute bottom-[-16px] right-[20px] sm:right-[30px] max-w-[calc(100%_-_40px)] max-h-[75%] w-[300px] h-[80px] bg-right-bottom bg-no-repeat bg-contain sm:w-[350px] md:w-[480px] lg:w-[620px] xl:w-[700px] sm:h-[95px] md:h-[130px] lg:h-[165px] xl:h-[186px] sm:bottom-[-18px] md:bottom-[-26px] lg:bottom-[-33px] xl:bottom-[-37px]"
              style="background-image: url('{{ jumbotron_image_url }}')"></div>
       {% endif -%}
@@ -80,17 +80,17 @@
 
     <div class="pt-3 xl:pt-8">
       {# Events in-person -#}
-      {% call events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -%}
+      {{ events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -}}
       {# End events in-person -#}
 
       {# Events online -#}
-      {% call events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -%}
+      {{ events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -}}
       {# End events online -#}
 
       {# Banner -#}
-      {% if let Some(ad_banner_url) = community.ad_banner_url -%}
+      {% if let Some(ad_banner_url) = &community.ad_banner_url -%}
         <div class="hidden pb-2 lg:pb-8 xl:pb-16 md:flex">
-          {% if let Some(ad_banner_link_url) = community.ad_banner_link_url -%}
+          {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url -%}
             <a rel="noopener noreferrer"
                href="{{ ad_banner_link_url }}"
                target="_blank"
@@ -104,7 +104,7 @@
                    src="{{ ad_banner_url }}"
                    title="Banner">
             </div>
-            {% if let Some(ad_banner_link_url) = community.ad_banner_link_url -%}
+            {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url -%}
             </a>
           {% endif -%}
         </div>
@@ -129,10 +129,8 @@
             {% endfor -%}
           </div>
         {% else -%}
-          {% call common::placeholder(
-          title = "Groups coming soon",
-          content = "Community organizers are still setting this up, check back soon for new groups."
-          ) -%}
+          {{ common::placeholder(title = "Groups coming soon",
+                    content = "Community organizers are still setting this up, check back soon for new groups.") -}}
         {% endif -%}
         {# End groups cards -#}
         {# See all groups mobile button -#}
@@ -147,7 +145,7 @@
   {# End main content -#}
 
   {# Gallery -#}
-  {% if let Some(photos_urls) = community.photos_urls -%}
+  {% if let Some(photos_urls) = &community.photos_urls -%}
     {% if !photos_urls.is_empty() -%}
       <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
         <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6 lg:px-8">
@@ -189,10 +187,8 @@
         </div>
       {% else -%}
         {% let base_title = title -%}
-        {% call common::placeholder(
-        title = "No " ~ base_title,
-        content = "We don't have any " ~ base_title ~ " yet, check back soon for fresh listings."
-        ) -%}
+        {{ common::placeholder(title = "No " ~ base_title,
+                content = "We don't have any " ~ base_title ~ " yet, check back soon for fresh listings.") -}}
       {% endif -%}
       {# End cards list -#}
 

@@ -1,7 +1,7 @@
 {# Attend button section -#}
 <div id="attendance-container"
-     {% if let Some(starts_at) = event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
-     {% if let Some(remaining_capacity) = event.remaining_capacity %}
+     {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
+     {% if let Some(remaining_capacity) = &event.remaining_capacity %}
        data-remaining-capacity="{{ remaining_capacity }}"
      {% endif %}
      data-is-live="{{ event.is_live() }}"
@@ -13,7 +13,7 @@
           disabled
           class="group relative is-loading btn-primary-outline w-52 h-10 sm:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "common.html" as common -%}
-    {% call common::spinner(size = "size-4") -%}
+    {{ common::spinner(size = "size-4") -}}
     <span class="ms-2">Checking...</span>
   </button>
 
@@ -35,7 +35,7 @@
   </button>
 
   <!-- Join meeting button (hidden initially, shown for attendees when live) -->
-  {% if let Some(meeting_join_url) = event.meeting_join_url %}
+  {% if let Some(meeting_join_url) = &event.meeting_join_url %}
     <a id="join-meeting-btn"
        href="{{ meeting_join_url }}"
        data-join-link

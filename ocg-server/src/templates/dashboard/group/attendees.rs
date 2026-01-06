@@ -8,10 +8,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{
-    templates::{filters, helpers::user_initials},
-    types::event::EventSummary,
-};
+use crate::{templates::helpers::user_initials, types::event::EventSummary};
 
 // Pages templates.
 

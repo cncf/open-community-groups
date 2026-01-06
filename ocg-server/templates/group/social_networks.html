@@ -1,34 +1,34 @@
-{% if let Some(website_url) = group.website_url -%}
-  {% call common::social_link(url = website_url, icon_name = "website", platform_name = "Website") -%}
+{% if let Some(website_url) = &group.website_url -%}
+  {{ common::social_link(url = website_url, icon_name = "website", platform_name = "Website") -}}
 {% endif -%}
-{% if let Some(twitter_url) = group.twitter_url -%}
-  {% call common::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -%}
+{% if let Some(twitter_url) = &group.twitter_url -%}
+  {{ common::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -}}
 {% endif -%}
-{% if let Some(facebook_url) = group.facebook_url -%}
-  {% call common::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -%}
+{% if let Some(facebook_url) = &group.facebook_url -%}
+  {{ common::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -}}
 {% endif -%}
-{% if let Some(linkedin_url) = group.linkedin_url -%}
-  {% call common::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn") -%}
+{% if let Some(linkedin_url) = &group.linkedin_url -%}
+  {{ common::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn") -}}
 {% endif -%}
-{% if let Some(github_url) = group.github_url -%}
-  {% call common::social_link(url = github_url, icon_name = "github", platform_name = "GitHub") -%}
+{% if let Some(github_url) = &group.github_url -%}
+  {{ common::social_link(url = github_url, icon_name = "github", platform_name = "GitHub") -}}
 {% endif -%}
-{% if let Some(instagram_url) = group.instagram_url -%}
-  {% call common::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram") -%}
+{% if let Some(instagram_url) = &group.instagram_url -%}
+  {{ common::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram") -}}
 {% endif -%}
-{% if let Some(youtube_url) = group.youtube_url -%}
-  {% call common::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube") -%}
+{% if let Some(youtube_url) = &group.youtube_url -%}
+  {{ common::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube") -}}
 {% endif -%}
-{% if let Some(slack_url) = group.slack_url -%}
-  {% call common::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -%}
+{% if let Some(slack_url) = &group.slack_url -%}
+  {{ common::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -}}
 {% endif -%}
-{% if let Some(wechat_url) = group.wechat_url -%}
-  {% call common::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -%}
+{% if let Some(wechat_url) = &group.wechat_url -%}
+  {{ common::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -}}
 {% endif -%}
-{% if let Some(flickr_url) = group.flickr_url -%}
-  {% call common::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -%}
+{% if let Some(flickr_url) = &group.flickr_url -%}
+  {{ common::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -}}
 {% endif -%}
-{% if let Some(extra_links) = group.extra_links -%}
+{% if let Some(extra_links) = &group.extra_links -%}
   {% for (name, url) in extra_links -%}
     <a href="{{ url }}"
        target="_blank"

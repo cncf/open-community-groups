@@ -12,16 +12,16 @@
   <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
     <div class="font-semibold text-stone-900 text-sm lg:text-lg">User Dashboard</div>
     <div id="dashboard-spinner" class="group hx-spinner -mt-0.5 relative">
-      {% call common::spinner(size = "size-5") -%}
+      {{ common::spinner(size = "size-5") -}}
     </div>
   </div>
 
   <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
     {# User -#}
     <div class="leading-10 grid gap-y-0.5">
-      {% call dashboard_macros::menu_title(text = "User", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account(), href = "/dashboard/user?tab=account") -%}
-      {% call dashboard_macros::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations(), href = "/dashboard/user?tab=invitations") -%}
+      {{ dashboard_macros::menu_title(text = "User", extra_styles = "py-1.5") -}}
+      {{ dashboard_macros::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
+      {{ dashboard_macros::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations") -}}
     </div>
     {# End User -#}
   </div>
@@ -37,7 +37,7 @@
   </div>
   {# Messages -#}
   {% if !messages.is_empty() -%}
-    {% call common::alerts(messages) -%}
+    {{ common::alerts(messages) -}}
   {% endif -%}
   {# End messages -#}
 {% endblock dashboard_main -%}

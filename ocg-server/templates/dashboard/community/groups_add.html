@@ -10,7 +10,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "Group Details", description = "Please add as many details about this group as possible.") -%}
+      {{ macros::form_title(title = "Group Details", description = "Please add as many details about this group as possible.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Group name -#}
@@ -103,14 +103,12 @@
 
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {% call macros::form_title(
-    title = "Location",
-    description = "Optional location information for the group.",
-    button = "<button id='clear-location-fields'
-        type='button'
-        class='btn-primary-outline btn-mini whitespace-nowrap'
-        aria-label='Clear location details'>Clear location</button>"
-    ) -%}
+    {{ macros::form_title(title = "Location",
+        description = "Optional location information for the group.",
+        button = "<button id='clear-location-fields'
+            type='button'
+            class='btn-primary-outline btn-mini whitespace-nowrap'
+            aria-label='Clear location details'>Clear location</button>") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Location search -#}
@@ -125,7 +123,7 @@
 
   {# Social links section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {% call macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
+    {{ macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Website URL -#}
@@ -261,7 +259,7 @@
 
   {# Tags section -#}
   <div class="pb-12">
-    {% call macros::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -%}
+    {{ macros::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Tags -#}
@@ -286,7 +284,7 @@
 
     {# Save button -#}
     <button type="submit"  class="btn-primary relative">
-      {% call common::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -%}
+      {{ common::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -}}
       Create Group
     </button>
     {# End save button -#}

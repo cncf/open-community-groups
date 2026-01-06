@@ -2,13 +2,13 @@
 {% import "dashboard/dashboard_macros.html" as macros -%}
 
 {# Attendees header -#}
-{% call macros::form_title(title = "Attendees") -%}
+{{ macros::form_title(title = "Attendees") -}}
 
 <div class="mt-10 mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
   <div class="flex-1 min-w-0">
     <label for="group-event-selector-button" class="form-label mb-2">Event</label>
     <event-selector button-id="group-event-selector-button" group-id="{{ group_id }}" mode="attendees" target-selector="#dashboard-content"
-    {% if let Some(selected_event) = event -%}
+    {% if let Some(selected_event) = &event -%}
       selected-event-id="{{ selected_event.event_id }}" selected-event="{{ selected_event|json }}"
     {% endif -%}
     ></event-selector>
@@ -33,9 +33,9 @@
             {% if event.is_none() -%}
               disabled title="Select an event to view its QR code."
             {% endif -%}
-            {% if let Some(selected_event) = event -%}
+            {% if let Some(selected_event) = &event -%}
               data-event-id="{{ selected_event.event_id }}" data-event-name="{{ selected_event.name }}" data-group-name="{{ selected_event.group_name }}" data-event-slug="{{ selected_event.slug }}" data-check-in-url="/check-in/{{ selected_event.event_id }}" data-qr-code-url="/dashboard/group/check-in/{{ selected_event.event_id }}/qr-code"
-              {% if let Some(start_time) = selected_event.starts_at -%}
+              {% if let Some(start_time) = &selected_event.starts_at -%}
                 data-event-start="{{ start_time.with_timezone(selected_event.timezone).format("%b %e · %I:%M %p %Z") }}"
               {% endif -%}
             {% endif -%}>Show QR Code</button>
@@ -45,7 +45,7 @@
             {% if event.is_none() || attendees.is_empty() -%}
               disabled title="Select an event with attendees to send emails."
             {% endif -%}
-            {% if let Some(selected_event) = event -%}
+            {% if let Some(selected_event) = &event -%}
               data-event-id="{{ selected_event.event_id }}"
             {% endif -%}>Send email</button>
   </div>
@@ -66,7 +66,7 @@
       </tr>
     </thead>
     <tbody id="attendees-list" role="rowgroup">
-      {% if let Some(event) = event -%}
+      {% if let Some(event) = &event -%}
         {% if attendees.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             {# Mobile: 3 columns (Attendee, Position, Checked In) -#}
@@ -85,14 +85,14 @@
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center space-x-5">
                   <avatar-image
-                  {% if let Some(photo_url) = attendee.photo_url -%}
+                  {% if let Some(photo_url) = &attendee.photo_url -%}
                     image-url="{{ photo_url }}"
                   {% endif -%}
                   size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
                   </avatar-image>
                   <div class="min-w-0">
                     <div class="font-medium text-stone-900 truncate mb-1">
-                      {{ attendee.name|display_some_or(attendee.username) }}
+                      {{ attendee.name|assigned_or(attendee.username) }}
                     </div>
                     {% if attendee.name.is_some() -%}
                       <div class="text-xs text-stone-600 truncate">{{ attendee.username }}</div>
@@ -105,8 +105,8 @@
               {# Position -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex flex-col space-y-1">
-                  <div class="font-medium text-stone-900 truncate">{{ attendee.company|display_some_or("-") }}</div>
-                  {% if let Some(title) = attendee.title -%}
+                  <div class="font-medium text-stone-900 truncate">{{ attendee.company|assigned_or("-") }}</div>
+                  {% if let Some(title) = &attendee.title -%}
                     <div class="text-xs text-stone-600 truncate">{{ title }}</div>
                   {% endif -%}
                 </div>
@@ -216,7 +216,7 @@
             <button id="submit-attendee-notification"
                     type="submit"
                     class="btn-primary relative">
-              {% call common::btn_spinner(id = "attendee-notification-spinner", spinner_type = "2") -%}
+              {{ common::btn_spinner(id = "attendee-notification-spinner", spinner_type = "2") -}}
               Send email
             </button>
           </div>

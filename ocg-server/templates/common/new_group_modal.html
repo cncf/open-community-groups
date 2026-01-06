@@ -1,5 +1,5 @@
 {# New group modal -#}
-{% if let Some(new_group_details) = self.community.new_group_details -%}
+{% if let Some(new_group_details) = &self.community.new_group_details -%}
   <div id="new-group-modal"
        tabindex="-1"
        aria-hidden="true"

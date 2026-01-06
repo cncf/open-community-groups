@@ -14,7 +14,7 @@
           {# GitHub login -#}
           {% if login.github -%}
             <div class="w-full">
-              <a href="/log-in/oauth2/github{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+              <a href="/log-in/oauth2/github{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
                  class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
                 <div class="svg-icon size-4 icon-github group-hover:bg-white transition-colors"></div>
                 <span>GitHub</span>
@@ -26,7 +26,7 @@
           {# Linux Foundation SSO login -#}
           {% if login.linuxfoundation -%}
             <div class="w-full">
-              <a href="/log-in/oidc/linuxfoundation{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+              <a href="/log-in/oidc/linuxfoundation{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
                  class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
                 <div class="svg-icon size-4 icon-lfx group-hover:bg-white transition-colors"></div>
                 <span>Linux Foundation SSO</span>
@@ -45,7 +45,7 @@
             </div>
           {% endif -%}
 
-          <form action="/log-in{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+          <form action="/log-in{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
                 method="post"
                 role="form"
                 aria-labelledby="login-form-title">
@@ -102,7 +102,7 @@
         {# Sign up link -#}
         <div class="mt-6 text-center text-sm text-stone-600">
           Don't have an account?
-          <a href="/sign-up{%- if let Some(next_url) = next_url -%}?next_url={{ next_url }}{%- endif -%}"
+          <a href="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
              class="text-primary-500 hover:text-primary-700 font-medium transition-colors">Sign up</a>
         </div>
         {# End sign up link -#}

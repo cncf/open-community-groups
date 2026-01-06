@@ -11,7 +11,7 @@
   <div class="space-y-12">
     {# Personal Details section -#}
     <div class="border-b border-stone-900/10 pb-12">
-      {% call dashboard_macros::form_title(title = "Personal Details", description = "Your basic profile information.") -%}
+      {{ dashboard_macros::form_title(title = "Personal Details", description = "Your basic profile information.") -}}
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Name -#}
         <div class="col-span-3">
@@ -43,7 +43,7 @@
               <option value="">Select a timezone</option>
               {% for timezone in timezones %}
                 <option value="{{ timezone }}"
-                        {% if let Some(user_timezone) = user.timezone %}
+                        {% if let Some(user_timezone) = &user.timezone %}
                           {% if timezone.as_str() == user_timezone.as_str() %}selected{% endif %}
                         {% endif %}>{{ timezone }}</option>
               {% endfor %}
@@ -61,7 +61,7 @@
                    name="company"
                    id="company"
                    maxlength="{{ crate::validation::MAX_LEN_S }}"
-                   value="{%- if let Some(company) = user.company -%}{{ company }}{%- endif -%}"
+                   value="{%- if let Some(company) = &user.company -%}{{ company }}{%- endif -%}"
                    class="input-primary"
                    autocomplete="off"
                    autocorrect="off"
@@ -80,7 +80,7 @@
                    name="title"
                    id="title"
                    maxlength="{{ crate::validation::MAX_LEN_S }}"
-                   value="{%- if let Some(title) = user.title -%}{{ title }}{%- endif -%}"
+                   value="{%- if let Some(title) = &user.title -%}{{ title }}{%- endif -%}"
                    class="input-primary"
                    autocomplete="off"
                    autocorrect="off"
@@ -93,7 +93,7 @@
 
         {# Photo URL -#}
         <div class="col-span-full">
-          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar">
+          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = &user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar">
         </image-field>
       </div>
       {# End photo URL -#}
@@ -106,7 +106,7 @@
                     name="bio"
                     rows="6"
                     maxlength="{{ crate::validation::MAX_LEN_M }}"
-                    class="input-primary">{% if let Some(bio) = user.bio -%}{{ bio }}{% endif %}</textarea>
+                    class="input-primary">{% if let Some(bio) = &user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
         <p class="form-legend">A description about yourself and your background.</p>
       </div>
@@ -116,7 +116,7 @@
       <div class="col-span-3">
         <label for="interests" class="form-label">Interests (topics and technologies you're interested in)</label>
         <div class="mt-2">
-          <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = user.interests -%}{{ interests|json }}{%- endif -%}">
+          <multiple-inputs field-name="interests" input-type="text" label="Interest" items="{%- if let Some(interests) = &user.interests -%}{{ interests|json }}{%- endif -%}">
           </multiple-inputs>
         </div>
       </div>
@@ -127,7 +127,7 @@
 
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {% call dashboard_macros::form_title(title = "Location", description = "Optional location information.") -%}
+    {{ dashboard_macros::form_title(title = "Location", description = "Optional location information.") -}}
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# City -#}
       <div class="col-span-3">
@@ -137,7 +137,7 @@
                  name="city"
                  id="city"
                  maxlength="{{ crate::validation::MAX_LEN_S }}"
-                 value="{%- if let Some(city) = user.city -%}{{ city }}{%- endif -%}"
+                 value="{%- if let Some(city) = &user.city -%}{{ city }}{%- endif -%}"
                  class="input-primary"
                  autocomplete="off"
                  autocorrect="off"
@@ -156,7 +156,7 @@
                  name="country"
                  id="country"
                  maxlength="{{ crate::validation::MAX_LEN_S }}"
-                 value="{%- if let Some(country) = user.country -%}{{ country }}{%- endif -%}"
+                 value="{%- if let Some(country) = &user.country -%}{{ country }}{%- endif -%}"
                  class="input-primary"
                  autocomplete="off"
                  autocorrect="off"
@@ -172,7 +172,7 @@
 
   {# Social links section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {% call dashboard_macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
+    {{ dashboard_macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Website URL -#}
       <div class="col-span-full lg:col-span-3">
@@ -184,7 +184,7 @@
           <input type="url"
                  name="website_url"
                  id="website_url"
-                 value="{%- if let Some(website_url) = user.website_url -%}{{ website_url }}{%- endif -%}"
+                 value="{%- if let Some(website_url) = &user.website_url -%}{{ website_url }}{%- endif -%}"
                  class="input-primary ps-10"
                  placeholder="https://example.com">
         </div>
@@ -201,7 +201,7 @@
           <input type="url"
                  name="linkedin_url"
                  id="linkedin_url"
-                 value="{%- if let Some(linkedin_url) = user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"
+                 value="{%- if let Some(linkedin_url) = &user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"
                  class="input-primary ps-10"
                  placeholder="https://linkedin.com/in/username">
         </div>
@@ -218,7 +218,7 @@
           <input type="url"
                  name="twitter_url"
                  id="twitter_url"
-                 value="{%- if let Some(twitter_url) = user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
+                 value="{%- if let Some(twitter_url) = &user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
                  class="input-primary ps-10"
                  placeholder="https://x.com/username">
         </div>
@@ -235,7 +235,7 @@
           <input type="url"
                  name="facebook_url"
                  id="facebook_url"
-                 value="{%- if let Some(facebook_url) = user.facebook_url -%}{{ facebook_url }}{%- endif -%}"
+                 value="{%- if let Some(facebook_url) = &user.facebook_url -%}{{ facebook_url }}{%- endif -%}"
                  class="input-primary ps-10"
                  placeholder="https://facebook.com/username">
         </div>
@@ -247,7 +247,7 @@
 
   <div class="mt-6">
     <button type="submit" class="btn-primary relative">
-      {% call common::btn_spinner(id = "user-details-spinner", spinner_type = "2") -%}
+      {{ common::btn_spinner(id = "user-details-spinner", spinner_type = "2") -}}
       Save
     </button>
   </div>
@@ -268,7 +268,7 @@
         hx-disabled-elt="button[type=submit]">
     <div class="space-y-12">
       <div>
-        {% call dashboard_macros::form_title(title = "Update password", description = "After updating your password all your current sessions will be terminated and you will need to log back in.") -%}
+        {{ dashboard_macros::form_title(title = "Update password", description = "After updating your password all your current sessions will be terminated and you will need to log back in.") -}}
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           <div class="col-span-3">
@@ -321,7 +321,7 @@
 
       <div class="mt-6 items-center">
         <button type="submit" class="btn-primary relative">
-          {% call common::btn_spinner(id = "password-update-spinner", spinner_type = "2") -%}
+          {{ common::btn_spinner(id = "password-update-spinner", spinner_type = "2") -}}
           Save
         </button>
       </div>

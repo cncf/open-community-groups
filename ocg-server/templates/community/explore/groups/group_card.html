@@ -8,8 +8,8 @@
   <div class="flex flex-1 flex-row items-stretch">
     <div class="group-hover:opacity-75 transition-opacity">
       {# Group icon -#}
-      {% call common::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name)) -%}
-      {% call common::logo(logo_url = group.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group.color) -%}
+      {{ common::logo(logo_url = group.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = group.color, name = Some(group.name) ) -}}
+      {{ common::logo(logo_url = group.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = group.color) -}}
       {# End group icon -#}
     </div>
 
@@ -35,7 +35,7 @@
           {# End group name -#}
         </div>
 
-        {% if let Some(description_short) = group.description_short -%}
+        {% if let Some(description_short) = &group.description_short -%}
           {# Group description -#}
           <div class="hidden relative text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2 h-[36px] md:my-2 md:block">
             {{ description_short|demoji }}
@@ -46,7 +46,7 @@
         <div class="hidden md:block">
           {# Group location -#}
           <div class="flex flex-row items-center leading-4 pt-1 lg:pt-2 h-[28px]">
-            {% if let Some(location) = self.group.location(48) -%}
+            {% if let Some(location) = &self.group.location(48) -%}
               <div class="svg-icon mt-0.5 w-3 h-3 me-2 bg-stone-700 icon-location"></div>
               <div class="hidden truncate text-stone-700 text-xs uppercase xl:block">
                 {{ self.group.location(67).expect("location to exist") }}
@@ -75,7 +75,7 @@
     <div class="flex flex-row items-center mt-3 h-[21px]">
       <div class="svg-icon mt-0.5 w-3 h-3 me-2 bg-stone-700 icon-location"></div>
       <div class="block truncate text-stone-700 text-xs uppercase xl:hidden">
-        {% if let Some(location) = self.group.location(40) -%}
+        {% if let Some(location) = &self.group.location(40) -%}
           {{ location }}
         {% else -%}
           No location provided
@@ -95,7 +95,7 @@
   </div>
   {# End mobile content -#}
 
-  {% if let Some(description_short) = group.description_short -%}
+  {% if let Some(description_short) = &group.description_short -%}
     {# Mobile group description -#}
     <div class="block md:hidden">
       <p class="text-xs text-stone-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>

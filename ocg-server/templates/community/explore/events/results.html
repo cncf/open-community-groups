@@ -12,7 +12,7 @@
 
     <div class="flex items-center">
       {# Loading spinner -#}
-      <div id="loading-calendar" class="me-3 w-6 group">{% call common::spinner(htmx = false) -%}</div>
+      <div id="loading-calendar" class="me-3 w-6 group">{{ common::spinner(htmx = false) -}}</div>
       {# End loading spinner -#}
 
       {# Today button -#}
@@ -42,7 +42,7 @@
     {# Placeholder calendar -#}
     {% if events.len() == 0 -%}
       <div class="absolute mt-10 z-[10]">
-        {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -%}
+        {{ common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
       </div>
     {% endif -%}
     {# End placeholder calendar -#}
@@ -53,7 +53,7 @@
       <div id="main-loading-calendar"
            role="status"
            class="absolute inset-0 flex items-center justify-center hidden">
-        {% call common::main_loading() -%}
+        {{ common::main_loading() -}}
         <span class="sr-only">Loading...</span>
       </div>
       {# End main loading spinner -#}
@@ -102,7 +102,7 @@
             {% if events.len() > 0 %}border-b{% endif %}">
   {# Placeholder cards -#}
   {% if events.len() == 0 -%}
-    {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -%}
+    {{ common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
   {% endif -%}
   {# End placeholder cards -#}
 
@@ -120,7 +120,7 @@
     updateResults
   } from '/static/js/community/explore/explore.js';
 
-  updateResults('{% call common::current_page(total, events.len(), offset) %}');
+  updateResults('{{ common::current_page(total, events.len(), offset) }}');
 </script>
 {# End list view -#}
 
@@ -130,14 +130,14 @@
   <div class="relative w-full border border-stone-200 h-[600px] md:h-[820px] overflow-hidden">
     {# Loading spinner -#}
     <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">
-      {% call common::spinner(htmx = false) -%}
+      {{ common::spinner(htmx = false) -}}
     </div>
     {# End loading spinner -#}
 
     {# Placeholder map -#}
     {% if events.len() == 0 -%}
       <div class="absolute mt-10 z-[425]">
-        {% call common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -%}
+        {{ common::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
       </div>
     {% endif -%}
     {# End placeholder map -#}
@@ -149,7 +149,7 @@
       <div id="main-loading-map"
            role="status"
            class="absolute inset-0 flex items-center justify-center hidden">
-        {% call common::main_loading() -%}
+        {{ common::main_loading() -}}
         <span class="sr-only">Loading...</span>
       </div>
       {# End main loading spinner -#}

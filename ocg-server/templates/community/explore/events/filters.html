@@ -86,8 +86,8 @@
       <div class="font-semibold leading-4 md:leading-8 text-[0.775rem] text-stone-700">Date</div>
     </div>
     <div class="flex flex-wrap gap-3 items-center mt-3">
-      {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) -%}
-      {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) -%}
+      {{ macros::date_input(name = "date_from", label = "from", value = filters.date_from) -}}
+      {{ macros::date_input(name = "date_to", label = "to", value = filters.date_to) -}}
     </div>
   </div>
   {# End date -#}
@@ -95,10 +95,10 @@
   {# Date on calendar view -#}
   <input type="hidden"
          name="date_from"
-         value="{%- if let Some(date_from) = filters.date_from -%} {{ date_from }} {%- endif -%}">
+         value="{%- if let Some(date_from) = &filters.date_from -%} {{ date_from }} {%- endif -%}">
   <input type="hidden"
          name="date_to"
-         value="{%- if let Some(date_to) = filters.date_to -%} {{ date_to }} {%- endif -%}">
+         value="{%- if let Some(date_to) = &filters.date_to -%} {{ date_to }} {%- endif -%}">
   {# End date on calendar view -#}
 {% endif -%}
 {# Apply filters -#}

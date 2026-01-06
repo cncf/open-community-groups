@@ -15,21 +15,21 @@
     <strong>{{ event.group_name }}</strong> has been rescheduled.
     <br />
     <br />
-    {% if let Some(starts_at) = event.starts_at -%}
+    {% if let Some(starts_at) = &event.starts_at -%}
       New date: {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
       <br />
     {% endif -%}
-    {% if let Some(location) = self.event.location(90) -%}
+    {% if let Some(location) = &self.event.location(90) -%}
       Location: {{ location }}
       <br />
     {% endif -%}
-    {% if let Some(meeting_join_url) = event.meeting_join_url -%}
+    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
       Meeting link:
       <a href="{{ meeting_join_url }}"
          target="_blank"
          rel="noopener noreferrer">{{ meeting_join_url }}</a>
       <br />
-      {% if let Some(meeting_password) = event.meeting_password -%}
+      {% if let Some(meeting_password) = &event.meeting_password -%}
         Meeting password:
         <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
           {{ meeting_password }}
@@ -39,7 +39,7 @@
     {% endif -%}
   </p>
 
-  {% call macros::email_button(link = link, text = "View updated event") %}
+  {{ macros::email_button(link = link, text = "View updated event") }}
 
   <p class="default mt-30 mb-15">
     Please find attached an .ics file containing the updated event details.

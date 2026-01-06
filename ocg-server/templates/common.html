@@ -120,7 +120,7 @@
 {# Current page -#}
 {% macro current_page(total, items_number, offset_value) -%}
   {%- if items_number + 0 > 0 -%}
-    {%- if let Some(offset) = offset_value -%}
+    {%- if let Some(offset) = &offset_value -%}
       {{ offset + 1 }} - {{ items_number + offset }}
     {%- else -%}
       1 - {{ items_number }}
@@ -132,8 +132,8 @@
 
 {# Logo -#}
 {% macro logo(logo_url, classes, size, color, border = true, name = None) -%}
-  {% if let Some(logo_url) = logo_url -%}
-    {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", *size * 2) ) -%}
+  {% if let Some(logo_url) = &logo_url -%}
+    {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) -%}
 
     <div class="md:my-auto bg-white overflow-hidden bg-no-repeat bg-center bg-contain
                 {% if border -%}
@@ -216,7 +216,7 @@
   <div id="{{ id }}"
        class="absolute inset-0 bg-inherit {%- if htmx %} hx-spinner{%- endif -%}">
     <div class="flex items-center justify-center h-full w-full">
-      {% call spinner(size = size, spinner_type = spinner_type) -%}
+      {{ spinner(size = size, spinner_type = spinner_type) -}}
     </div>
   </div>
 {% endmacro btn_spinner -%}
@@ -259,7 +259,7 @@
   {% if canceled -%}
     <span class="event-badge canceled {{ extra_styles_ }}">Canceled</span>
   {% else -%}
-    {% call badge(content = kind, extra_styles = extra_styles) -%}
+    {{ badge(content = kind, extra_styles = extra_styles) -}}
   {% endif -%}
 {% endmacro event_badge -%}
 {# End event badge -#}
@@ -292,7 +292,7 @@
   {% let inner_classes_ = inner_classes.unwrap_or("") -%}
   {% let orientation_ = orientation.to_string() -%}
 
-  {% if let Some(remaining_capacity_) = remaining_capacity -%}
+  {% if let Some(remaining_capacity_) = &remaining_capacity -%}
     {% if *remaining_capacity_ == 0 -%}
       <div class="absolute overflow-hidden inset-0 {{ outer_classes_ }}">
         <div class="pointer-events-none absolute z-10 w-[80px] md:w-[100px] {{ inner_classes_ }}">
@@ -346,7 +346,7 @@
 
 {# Sponsor badge -#}
 {% macro sponsor_badge(name, logo_url, website_url, level = "", with_level = false) -%}
-  {% if let Some(website_url) = website_url -%}
+  {% if let Some(website_url) = &website_url -%}
     <a href="{{ website_url }}"
        target="_blank"
        rel="noopener noreferrer"
@@ -371,7 +371,7 @@
           <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">{{ level }}</div>
         {% endif -%}
       </div>
-      {% if let Some(website_url) = website_url -%}
+      {% if let Some(website_url) = &website_url -%}
       </a>
     {% else -%}
     </div>
@@ -387,12 +387,12 @@
         role="button"
         tabindex="0"
         aria-label="Open full map view"></div>
-  {% if let Some(text) = overlay_text -%}
+  {% if let Some(text) = &overlay_text -%}
     <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
       {{ text }}
     </div>
   {% endif -%}
-  {% if let Some(text) = small_overlay_text -%}
+  {% if let Some(text) = &small_overlay_text -%}
     <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
       {{ text }}
     </div>
@@ -423,12 +423,12 @@
             <div id="{{ base_id }}-map-modal-map"
                  class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
             </div>
-            {% if let Some(text) = overlay_text -%}
+            {% if let Some(text) = &overlay_text -%}
               <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
                 {{ text }}
               </div>
             {% endif -%}
-            {% if let Some(text) = small_overlay_text -%}
+            {% if let Some(text) = &small_overlay_text -%}
               <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none md:block xl:hidden">
                 {{ text }}
               </div>

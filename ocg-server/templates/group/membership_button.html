@@ -6,7 +6,7 @@
           disabled
           class="group relative is-loading btn-primary-outline w-40 h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center">
     {% import "common.html" as common -%}
-    {% call common::spinner(size = "size-4") -%}
+    {{ common::spinner(size = "size-4") -}}
     <span class="ms-2">Checking...</span>
   </button>
 

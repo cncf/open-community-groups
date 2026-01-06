@@ -7,9 +7,9 @@
    hx-target="body">
   <div class="relative group-hover:opacity-75 transition-opacity">
     {# Event icon -#}
-    {% call common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name)) -%}
+    {{ common::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = event.group_color, name = Some(event.group_name) ) -}}
     {# End event icon -#}
-    {% call common::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[43px] md:top-[55px] right-[29px] md:right-[36px]")) -%}
+    {{ common::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[43px] md:top-[55px] right-[29px] md:right-[36px]") ) -}}
   </div>
 
   <div class="card-content">
@@ -33,29 +33,29 @@
         <div class="card-meta">
           {% match event.kind -%}
           {% when EventKind::InPerson -%}
-          {% if let Some(location) = self.event.location(25) -%}
-            {% call common::icon_text(icon_name = "location", text = location) -%}
+          {% if let Some(location) = &self.event.location(25) -%}
+            {{ common::icon_text(icon_name = "location", text = location) -}}
           {% endif -%}
           {% when EventKind::Hybrid -%}
           <div class="flex items-center">
-            {% if let Some(location) = self.event.location(16) -%}
-              {% call common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2")) -%}
+            {% if let Some(location) = &self.event.location(16) -%}
+              {{ common::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
             {% endif -%}
-            {% call common::event_badge(kind = event.kind) -%}
+            {{ common::event_badge(kind = event.kind) -}}
           </div>
           {% when EventKind::Virtual -%}
           <div class="flex items-center">
             <div class="svg-icon w-3 h-3 bg-stone-700 icon-location me-2"></div>
-            {% call common::event_badge(kind = event.kind) -%}
+            {{ common::event_badge(kind = event.kind) -}}
           </div>
         {% endmatch -%}
       </div>
       {# End event location -#}
 
       {# Event date -#}
-      {% if let Some(starts_at) = event.starts_at -%}
+      {% if let Some(starts_at) = &event.starts_at -%}
         <div class="card-meta">
-          {% call common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z"), icon_extra_styles = Some("-top-px")) -%}
+          {{ common::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%B %e · %l:%M %p %Z"), icon_extra_styles = Some("-top-px")) -}}
         </div>
       {% endif -%}
       {# End event date -#}
