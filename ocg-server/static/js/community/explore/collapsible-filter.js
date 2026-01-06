@@ -253,7 +253,7 @@ export class CollapsibleFilter extends LitWrapper {
               >
                 <input
                   type="checkbox"
-                  name=${this.name}
+                  name="${this.name}[]"
                   value=${opt.value}
                   .checked=${this.selected.includes(opt.value)}
                   @change=${() => this._onSelect(opt.value)}

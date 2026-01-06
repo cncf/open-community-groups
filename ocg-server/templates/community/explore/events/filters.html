@@ -10,7 +10,7 @@
     <li>
       <label class="group items-center w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none flex flex-row {%+ if filters.kind.contains(&EventKind::InPerson) %}border-primary-500{%+ else %}border-stone-200{%- endif %} hover:bg-stone-50 transition-colors">
         <input type="checkbox"
-               name="kind"
+               name="kind[]"
                value="in-person"
                class="hidden peer"
                {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
@@ -25,13 +25,13 @@
       <label class="group flex flex-row items-center w-full px-2 py-1 border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-stone-50 border-stone-200 opacity-30 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%+ else %}border-stone-200{%- endif %} cursor-pointer hover:bg-stone-50 bg-white transition-colors{%- endif %}">
         {% if view_mode == ViewMode::Map -%}
           <input type="checkbox"
-                 name="kind"
+                 name="kind[]"
                  value="virtual"
                  class="virtual-kind hidden peer"
                  disabled>
         {% else -%}
           <input type="checkbox"
-                 name="kind"
+                 name="kind[]"
                  value="virtual"
                  class="virtual-kind hidden peer"
                  {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
@@ -48,7 +48,7 @@
     <li>
       <label class="group items-center w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none flex flex-row {%+ if filters.kind.contains(&EventKind::Hybrid) %}border-primary-500{%+ else %}border-stone-200{%- endif %} hover:bg-stone-50 transition-colors">
         <input type="checkbox"
-               name="kind"
+               name="kind[]"
                value="hybrid"
                class="hidden peer"
                {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
