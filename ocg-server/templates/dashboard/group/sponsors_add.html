@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Add Sponsor form -#}
 <form id="sponsor-form"
@@ -10,7 +10,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "Sponsor Details", description = "Please provide the sponsor information.") -%}
+      {{ dashboard::form_title(title = "Sponsor Details", description = "Please provide the sponsor information.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
         {# Sponsor name -#}
@@ -67,7 +67,7 @@
 
     {# Save button -#}
     <button type="submit" class="btn-primary relative">
-      {% call common::btn_spinner(id = "group-sponsor-create-spinner", spinner_type = "2") -%}
+      {{ ui::btn_spinner(id = "group-sponsor-create-spinner", spinner_type = "2") -}}
       Add Sponsor
     </button>
     {# End save button -#}

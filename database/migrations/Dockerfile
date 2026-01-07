@@ -1,10 +1,10 @@
 # Build tern
-FROM golang:1.25.4-alpine3.22 AS tern
+FROM golang:1.25.5-alpine3.23 AS tern
 RUN apk --no-cache add git
 RUN go install github.com/jackc/tern@latest
 
 # Build final image
-FROM alpine:3.22.2
+FROM alpine:3.23.2
 RUN addgroup -S ocg && adduser -S ocg -G ocg
 USER ocg
 WORKDIR /home/ocg

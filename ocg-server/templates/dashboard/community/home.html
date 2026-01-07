@@ -1,6 +1,7 @@
 {% extends "dashboard/dashboard_base.html" -%}
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as dashboard_macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/markdown-editor.js"></script>
@@ -15,35 +16,34 @@
   <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
     <div class="font-semibold text-stone-900 text-sm lg:text-lg">Community Dashboard</div>
     <div id="dashboard-spinner" class="group hx-spinner -mt-0.5 relative">
-      {% call common::spinner(size = "size-5") -%}
+      {{ ui::spinner(size = "size-5") -}}
     </div>
   </div>
 
   <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
     {# Settings -#}
     <div class="leading-10 grid gap-y-0.5">
-      {% call dashboard_macros::menu_title(text = "Community", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings(), href = "/dashboard/community?tab=settings") -%}
-      {% call dashboard_macros::menu_item(name = "Team", icon = "team", is_active = content.is_team(), href = "/dashboard/community?tab=team") -%}
+      {{ dashboard::menu_title(text = "Community", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/community?tab=settings") -}}
+      {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/community?tab=team") -}}
     </div>
     {# End team -#}
 
     {# Analytics -#}
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {% call dashboard_macros::menu_title(text = "Analytics", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(
-      name = "Analytics",
-      icon = "charts",
-      is_active = content.is_analytics(),
+      {{ dashboard::menu_title(text = "Analytics", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "Analytics",
+            icon = "charts",
+            is_active = content.is_analytics() ,
       href = "/dashboard/community?tab=analytics"
-      ) -%}
+      ) -}}
     </div>
     {# End analytics -#}
 
     {# Groups -#}
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {% call dashboard_macros::menu_title(text = "Groups", extra_styles = "py-1.5") -%}
-      {% call dashboard_macros::menu_item(name = "Groups", icon = "groups", is_active = content.is_groups(), href = "/dashboard/community?tab=groups") -%}
+      {{ dashboard::menu_title(text = "Groups", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/community?tab=groups") -}}
     </div>
     {# End groups -#}
   </div>
@@ -61,7 +61,7 @@
   </div>
   {# Messages -#}
   {% if !messages.is_empty() -%}
-    {% call common::alerts(messages) -%}
+    {{ feedback::alerts(messages) -}}
   {% endif -%}
   {# End messages -#}
 {% endblock dashboard_main -%}

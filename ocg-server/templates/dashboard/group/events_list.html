@@ -1,9 +1,9 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Events list header with title -#}
 <div class="flex justify-between mb-10">
-  {% call macros::form_title(title = "Events") -%}
+  {{ dashboard::form_title(title = "Events") -}}
 
   {# Add event button -#}
   <div>
@@ -110,7 +110,7 @@
                     {# Mobile type and date -#}
                     <div class="block xl:hidden text-xs text-stone-500">
                       <div class="max-w-full truncate">{{ event.kind }}</div>
-                      {% if let Some(start_time) = event.starts_at -%}
+                      {% if let Some(start_time) = &event.starts_at -%}
                         <div class="max-w-full truncate">
                           {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
                         </div>
@@ -125,7 +125,7 @@
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
                 {# TODO - fix comparison #}
                 {% if event.kind.to_string() != "virtual" -%}
-                  {% if let Some(location) = event.location(90) -%}
+                  {% if let Some(location) = &event.location(90) -%}
                     <div class="max-w-full truncate">{{ location }}</div>
                   {% else -%}
                     <span class="text-stone-400">-</span>
@@ -138,7 +138,7 @@
 
               {# Date & Time -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
-                {% if let Some(start_time) = event.starts_at -%}
+                {% if let Some(start_time) = &event.starts_at -%}
                   <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
                   <div class="max-w-full truncate text-xs text-stone-400">
                     {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
@@ -151,18 +151,18 @@
 
               {# Event Type -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {% call common::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -%}
+                {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
               </td>
               {# End event type -#}
 
               {# Status -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
                 {% if event.canceled -%}
-                  {% call common::status_badge(label = "Canceled", canceled = true, published = false) -%}
+                  {{ badges::status_badge(label = "Canceled", canceled = true, published = false) -}}
                 {% else if event.published -%}
-                  {% call common::status_badge(label = "Published", canceled = false, published = true) -%}
+                  {{ badges::status_badge(label = "Published", canceled = false, published = true) -}}
                 {% else -%}
-                  {% call common::status_badge(label = "Draft", canceled = false, published = false) -%}
+                  {{ badges::status_badge(label = "Draft", canceled = false, published = false) -}}
                 {% endif -%}
               </td>
               {# End status -#}
@@ -334,7 +334,7 @@
                     {# Mobile type and date -#}
                     <div class="block xl:hidden text-xs text-stone-500">
                       <div class="max-w-full truncate">{{ event.kind }}</div>
-                      {% if let Some(start_time) = event.starts_at -%}
+                      {% if let Some(start_time) = &event.starts_at -%}
                         <div class="max-w-full truncate">
                           {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
                         </div>
@@ -349,7 +349,7 @@
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
                 {# TODO - fix comparison #}
                 {% if event.kind.to_string() != "virtual" -%}
-                  {% if let Some(location) = event.location(90) -%}
+                  {% if let Some(location) = &event.location(90) -%}
                     <div class="max-w-full truncate">{{ location }}</div>
                   {% else -%}
                     <span class="text-stone-400">-</span>
@@ -362,7 +362,7 @@
 
               {# Date & Time -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[150px] max-w-[200px]">
-                {% if let Some(start_time) = event.starts_at -%}
+                {% if let Some(start_time) = &event.starts_at -%}
                   <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
                   <div class="max-w-full truncate text-xs text-stone-400">
                     {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
@@ -375,18 +375,18 @@
 
               {# Event Type -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
-                {% call common::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5")) -%}
+                {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-2.5 py-0.5") ) -}}
               </td>
               {# End event type -#}
 
               {# Status -#}
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
                 {% if event.canceled -%}
-                  {% call common::status_badge(label = "Canceled", canceled = true, published = false) -%}
+                  {{ badges::status_badge(label = "Canceled", canceled = true, published = false) -}}
                 {% else if event.published -%}
-                  {% call common::status_badge(label = "Published", canceled = false, published = true) -%}
+                  {{ badges::status_badge(label = "Published", canceled = false, published = true) -}}
                 {% else -%}
-                  {% call common::status_badge(label = "Draft", canceled = false, published = false) -%}
+                  {{ badges::status_badge(label = "Draft", canceled = false, published = false) -}}
                 {% endif -%}
               </td>
               {# End status -#}

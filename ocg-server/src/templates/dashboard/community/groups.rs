@@ -9,7 +9,6 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::filters,
     types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
         MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, image_url_opt, image_url_vec, trimmed_non_empty,

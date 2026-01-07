@@ -220,7 +220,7 @@ export const getDefaultDateRange = () => {
  * Unchecks all 'kind' filter options.
  */
 export const unckeckAllKinds = () => {
-  const kinds = document.querySelectorAll("input[name=kind]:checked");
+  const kinds = document.querySelectorAll("input[name='kind[]']:checked");
   if (kinds) {
     kinds.forEach((el) => {
       el.checked = false;

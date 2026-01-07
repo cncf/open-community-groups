@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
-{% import "community/explore/filters.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/explore.html" as explore -%}
 
 {% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
 {% let entity = results_section.entity() -%}
@@ -24,7 +24,7 @@
   {# End header filters -#}
 
   {# Entity selector -#}
-  {% call macros::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref()) -%}
+  {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
   {# End entity selector -#}
 
   <form id="{{ entity }}-form-mobile"
@@ -35,8 +35,8 @@
         hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
         hx-boost="true"
         hx-ext="no-empty-vals">
-    {% block filters -%}
-    {% endblock filters -%}
+    {% block filters_mobile -%}
+    {% endblock filters_mobile -%}
   </form>
   {# End filters content -#}
 
@@ -64,7 +64,7 @@
     {# End header filters -#}
 
     {# Entity selector -#}
-    {% call macros::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref()) -%}
+    {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
     {# End entity selector -#}
 
     <form id="{{ entity }}-form"
@@ -75,8 +75,8 @@
           hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
           hx-boost="true"
           hx-ext="no-empty-vals">
-      {% block filters -%}
-      {% endblock filters -%}
+      {% block filters_desktop -%}
+      {% endblock filters_desktop -%}
     </form>
   </div>
   {# End desktop filters -#}
@@ -170,7 +170,7 @@
 
           {# Loading spinner -#}
           <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
-            {% call common::spinner(htmx = false) -%}
+            {{ ui::spinner(htmx = false) -}}
           </div>
           {# End loading spinner -#}
         </div>
@@ -187,7 +187,7 @@
             <select id="sort_by"
                     name="sort_by"
                     class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
-              {% if let Some(sort_by) = filters.sort_by -%}
+              {% if let Some(sort_by) = &filters.sort_by -%}
                 <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
                 {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
                   <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>

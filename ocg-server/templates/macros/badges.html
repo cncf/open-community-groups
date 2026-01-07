@@ -1,0 +1,92 @@
+{# Common badge -#}
+{% macro common_badge(content, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <span class="event-badge {{ extra_styles_ }}">{{ content }}</span>
+{% endmacro common_badge -%}
+{# End common badge -#}
+
+{# Event badge -#}
+{% macro event_badge(kind, canceled = false, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  {% if canceled -%}
+    <span class="event-badge canceled {{ extra_styles_ }}">Canceled</span>
+  {% else -%}
+    {{ common_badge(content = kind, extra_styles = extra_styles) -}}
+  {% endif -%}
+{% endmacro event_badge -%}
+{# End event badge -#}
+
+{# Status badge -#}
+{% macro status_badge(label, canceled = false, published = false, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  {% if canceled -%}
+    <span class="event-badge bg-red-100 border-red-800 text-red-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
+  {% else if published -%}
+    <span class="event-badge bg-green-100 border-green-800 text-green-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
+  {% else -%}
+    <span class="event-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
+  {% endif -%}
+{% endmacro status_badge -%}
+{# End status badge -#}
+
+{# Sold out overlay badge -#}
+{% macro sold_out_overlay(remaining_capacity, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
+  {% let outer_classes_ = outer_classes.unwrap_or("") -%}
+  {% let inner_classes_ = inner_classes.unwrap_or("") -%}
+  {% let orientation_ = orientation.to_string() -%}
+
+  {% if let Some(remaining_capacity_) = &remaining_capacity -%}
+    {% if *remaining_capacity_ == 0 -%}
+      <div class="absolute overflow-hidden inset-0 {{ outer_classes_ }}">
+        <div class="pointer-events-none absolute z-10 w-[80px] md:w-[100px] {{ inner_classes_ }}">
+          <span class="block bg-red-500/90 text-white text-shadow-xs text-[0.45rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-[0.1em] text-center text-nowrap shadow-sm transform
+                       {% if orientation_ == "top-right" -%}
+                         rotate-45 origin-top-right
+                       {% else -%}
+                         -rotate-45 origin-top-left
+                       {% endif -%}
+                       caps">{{ label }}</span>
+        </div>
+      </div>
+    {% endif -%}
+  {% endif -%}
+{% endmacro sold_out_overlay -%}
+{# End sold out overlay badge -#}
+
+{# Sponsor badge -#}
+{% macro sponsor_badge(name, logo_url, website_url, level = "", with_level = false) -%}
+  {% if let Some(website_url) = &website_url -%}
+    <a href="{{ website_url }}"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+    {% else -%}
+      <div class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full">
+      {% endif -%}
+      <div class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden">
+        <img src="{{ logo_url }}"
+             alt="{{ name }} logo"
+             class="size-13 md:size-16 object-contain"
+             width="auto"
+             height="auto"
+             loading="lazy" />
+        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+          <div class="svg-icon size-6 bg-amber-500 icon-handshake"></div>
+        </div>
+      </div>
+      <div class="leading-tight min-w-0">
+        <div class="text-sm md:text-base font-semibold text-stone-900 truncate">{{ name }}</div>
+        {% if with_level -%}
+          <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">{{ level }}</div>
+        {% endif -%}
+      </div>
+      {% if let Some(website_url) = &website_url -%}
+      </a>
+    {% else -%}
+    </div>
+  {% endif -%}
+{% endmacro sponsor_badge -%}
+{# End sponsor badge -#}

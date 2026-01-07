@@ -15,7 +15,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: 1.91.1
+          toolchain: 1.92.0
           components: clippy, rustfmt
       - name: Install Tailwind CSS
         run: |

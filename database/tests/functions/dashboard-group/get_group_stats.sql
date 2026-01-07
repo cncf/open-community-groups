@@ -83,9 +83,12 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'group1ID', :'communityID', :'groupCategoryID', 'Group One', 'group-one', '2024-01-01 00:00:00+00', true, false),
-    (:'group2ID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two', '2024-02-01 00:00:00+00', true, false),
-    (:'group3ID', :'community2ID', :'groupCategory2ID', 'Other Community Group', 'other-group', '2024-03-01 00:00:00+00', true, false);
+    (:'group1ID', :'communityID', :'groupCategoryID', 'Group One', 'group-one',
+        '2025-09-01 00:00:00+00', true, false),
+    (:'group2ID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two',
+        '2025-10-01 00:00:00+00', true, false),
+    (:'group3ID', :'community2ID', :'groupCategory2ID', 'Other Community Group', 'other-group',
+        '2025-11-01 00:00:00+00', true, false);
 
 -- Users
 insert into "user" (user_id, community_id, auth_hash, email, username) values
@@ -96,9 +99,9 @@ insert into "user" (user_id, community_id, auth_hash, email, username) values
 
 -- Members
 insert into group_member (group_id, user_id, created_at) values
-    (:'group1ID', :'user1ID', '2024-01-05 00:00:00+00'),
-    (:'group1ID', :'user2ID', '2024-03-10 00:00:00+00'),
-    (:'group2ID', :'user3ID', '2024-04-01 00:00:00+00');
+    (:'group1ID', :'user1ID', '2025-10-05 00:00:00+00'),
+    (:'group1ID', :'user2ID', '2025-12-10 00:00:00+00'),
+    (:'group2ID', :'user3ID', '2025-12-15 00:00:00+00');
 
 -- Events
 insert into event (
@@ -115,16 +118,19 @@ insert into event (
     deleted,
     starts_at
 ) values
-    (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event One', 'event-one', 'First event', 'UTC', true, false, false, '2024-02-15 00:00:00+00'),
-    (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two', 'Second event', 'UTC', true, false, false, '2024-04-15 00:00:00+00'),
-    (:'event3ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Other Group Event', 'other-event', 'Other group event', 'UTC', true, false, false, '2024-05-15 00:00:00+00');
+    (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event One', 'event-one',
+        'First event', 'UTC', true, false, false, '2025-11-15 00:00:00+00'),
+    (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two',
+        'Second event', 'UTC', true, false, false, '2026-01-15 00:00:00+00'),
+    (:'event3ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Other Group Event', 'other-event',
+        'Other group event', 'UTC', true, false, false, '2026-01-20 00:00:00+00');
 
 -- Attendees
 insert into event_attendee (event_id, user_id, created_at) values
-    (:'event1ID', :'user1ID', '2024-02-01 00:00:00+00'),
-    (:'event1ID', :'user2ID', '2024-02-05 00:00:00+00'),
-    (:'event2ID', :'user1ID', '2024-04-10 00:00:00+00'),
-    (:'event3ID', :'user4ID', '2024-05-20 00:00:00+00');
+    (:'event1ID', :'user1ID', '2025-11-01 00:00:00+00'),
+    (:'event1ID', :'user2ID', '2025-11-05 00:00:00+00'),
+    (:'event2ID', :'user1ID', '2026-01-10 00:00:00+00'),
+    (:'event3ID', :'user4ID', '2026-01-20 00:00:00+00');
 
 -- ============================================================================
 -- TESTS
@@ -138,34 +144,34 @@ select is(
         "members": {
             "total": 2,
             "running_total": [
-                [1704067200000, 1],
-                [1709251200000, 2]
+                [1759276800000, 1],
+                [1764547200000, 2]
             ],
             "per_month": [
-                ["2024-01", 1],
-                ["2024-03", 1]
+                ["2025-10", 1],
+                ["2025-12", 1]
             ]
         },
         "events": {
             "total": 2,
             "running_total": [
-                [1706745600000, 1],
-                [1711929600000, 2]
+                [1761955200000, 1],
+                [1767225600000, 2]
             ],
             "per_month": [
-                ["2024-02", 1],
-                ["2024-04", 1]
+                ["2025-11", 1],
+                ["2026-01", 1]
             ]
         },
         "attendees": {
             "total": 3,
             "running_total": [
-                [1706745600000, 2],
-                [1711929600000, 3]
+                [1761955200000, 2],
+                [1767225600000, 3]
             ],
             "per_month": [
-                ["2024-02", 2],
-                ["2024-04", 1]
+                ["2025-11", 2],
+                ["2026-01", 1]
             ]
         }
     }

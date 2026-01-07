@@ -81,7 +81,7 @@ pub(crate) async fn setup(
         image_storage,
         meetings_cfg,
         notifications_manager,
-        serde_qs_de: serde_qs::Config::new(3, false),
+        serde_qs_de: serde_qs_config(),
         server_cfg: server_cfg.clone(),
     };
 
@@ -373,6 +373,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         }
         None => StatusCode::NOT_FOUND.into_response(),
     }
+}
+
+/// Returns the standard `serde_qs` configuration for query string parsing.
+pub(crate) fn serde_qs_config() -> serde_qs::Config {
+    serde_qs::Config::new(3, false)
 }
 
 // Tests.

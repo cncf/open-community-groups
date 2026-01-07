@@ -1,5 +1,8 @@
 {% extends "common/base.html" -%}
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/maps.html" as maps -%}
+{% import "macros/social.html" as social -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
@@ -20,7 +23,7 @@
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full relative overflow-hidden">
       {# Sold out badge -#}
-      {% call common::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]"), orientation = "top-right") -%}
+      {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]") , orientation = "top-right") -}}
       {# End sold out badge -#}
 
       <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
@@ -30,7 +33,7 @@
           <div class="flex flex-1 flex-row items-stretch md:gap-6">
             {# Event logo -#}
             <div class="relative">
-              {% call common::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = event.color, name = Some(event.group.name)) -%}
+              {{ ui::logo(logo_url = event.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = event.color, name = Some(event.group.name) ) -}}
             </div>
             {# End event logo -#}
 
@@ -57,15 +60,15 @@
                 <div class="hidden md:flex flex-col items-end gap-2">
                   {# Event status badge -#}
                   {% if event.canceled -%}
-                    {% call common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5")) -%}
+                    {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-2.5 py-0.5") ) -}}
                   {% endif -%}
                   {# End event status badge -#}
 
                   {# Social networks -#}
                   {% if has_social_links -%}
                     <div class="flex flex-wrap gap-2">
-                      {% if let Some(meetup_url) = event.meetup_url -%}
-                        {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
+                      {% if let Some(meetup_url) = &event.meetup_url -%}
+                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
                       {% endif -%}
                     </div>
                   {% endif -%}
@@ -77,18 +80,18 @@
               <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
                 {# Event details and date -#}
                 <div class="flex items-center gap-4 text-stone-600">
-                  {% if let Some(capacity) = event.capacity -%}
+                  {% if let Some(capacity) = &event.capacity -%}
                     <div class="flex items-center">
                       <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
                       <span class="text-sm">Capacity: {{ capacity }}</span>
-                      {% if let Some(remaining_capacity) = event.remaining_capacity %}
+                      {% if let Some(remaining_capacity) = &event.remaining_capacity %}
                         {% if *remaining_capacity > 0 %}
                           <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
                         {% endif %}
                       {% endif %}
                     </div>
                   {% endif -%}
-                  {% call common::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5")) -%}
+                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}
                 </div>
                 {# End event details and date -#}
 
@@ -96,8 +99,8 @@
                 {% if has_social_links -%}
                   <div class="md:hidden mt-4 md:mb-0">
                     <div class="flex flex-wrap gap-2">
-                      {% if let Some(meetup_url) = event.meetup_url -%}
-                        {% call common::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -%}
+                      {% if let Some(meetup_url) = &event.meetup_url -%}
+                        {{ social::social_link(url = meetup_url, icon_name = "meetup", platform_name = "Meetup") -}}
                       {% endif -%}
                     </div>
                   </div>
@@ -130,7 +133,7 @@
                     <div class="flex items-start gap-3">
                       <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
                       <div>
-                        {% if let Some(starts_at) = event.starts_at -%}
+                        {% if let Some(starts_at) = &event.starts_at -%}
                           <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
                             {{ starts_at.with_timezone(event.timezone).format("%B %e, %G") }}
                           </div>
@@ -143,7 +146,7 @@
                       </div>
                     </div>
 
-                    {% if let Some(meeting_join_url) = event.meeting_join_url -%}
+                    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
                       <div data-join-link class="hidden">
                         <a href="{{ meeting_join_url }}"
                            target="_blank"
@@ -167,7 +170,7 @@
                     {# Use event-specific location #}
                     {% let location_text = self.event.location(70) -%}
                     {% let location_text_small = self.event.location(35) -%}
-                    {% call common::map_with_modal(base_id = "event", lat = event.latitude.unwrap(), lng = event.longitude.unwrap(), overlay_text = location_text, small_overlay_text = location_text_small, modal_title = event.name|demoji) -%}
+                    {{ maps::map_with_modal(base_id = "event", lat = event.latitude.unwrap() , lng = event.longitude.unwrap(), overlay_text = location_text, small_overlay_text = location_text_small, modal_title = event.name|demoji) -}}
                   {% else -%}
                     {% let location_text = self.event.location(70) -%}
                     {% let location_text_small = self.event.location(35) -%}
@@ -175,12 +178,12 @@
                       <div class="relative min-h-25 h-full w-full">
                         <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                         </div>
-                        {% if let Some(text) = location_text %}
+                        {% if let Some(text) = &location_text %}
                           <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
                             {{ text }}
                           </div>
                         {% endif %}
-                        {% if let Some(text) = location_text_small %}
+                        {% if let Some(text) = &location_text_small %}
                           <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
                             {{ text }}
                           </div>
@@ -242,7 +245,7 @@
                   {% endif -%}
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                  {% if let Some(meeting_join_url) = meeting_join_url -%}
+                  {% if let Some(meeting_join_url) = &meeting_join_url -%}
                     <div data-join-link-always>
                       <a href="{{ meeting_join_url }}"
                          target="_blank"
@@ -253,7 +256,7 @@
                       </a>
                     </div>
                   {% endif -%}
-                  {% if let Some(meeting_recording_url) = meeting_recording_url -%}
+                  {% if let Some(meeting_recording_url) = &meeting_recording_url -%}
                     <a href="{{ meeting_recording_url }}"
                        target="_blank"
                        rel="noopener noreferrer"
@@ -270,7 +273,7 @@
         {# End event description -#}
 
         {# Tags if available -#}
-        {% if let Some(tags) = event.tags -%}
+        {% if let Some(tags) = &event.tags -%}
           {% if !tags.is_empty() -%}
             <div>
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Topics</div>
@@ -294,9 +297,7 @@
             {% if days_count == 1 -%}
               {% for day in event.sessions -%}
                 <ol class="relative border-s border-stone-200">
-                  {% for session in day.1 %}
-                    {% call session_item(session = session, is_last = loop.last) -%}
-                  {% endfor %}
+                  {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
                 </ol>
               {% endfor -%}
             {% else -%}
@@ -305,7 +306,7 @@
                 {% for day in event.sessions -%}
                   <li>
                     <button type="button"
-                            data-day-tab="day-{{ loop.index }}"
+                            data-day-tab="day-{{ loop.index0 }}"
                             data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
                             class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
                       <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
@@ -316,15 +317,13 @@
               </ul>
 
               {% for day in event.sessions -%}
-                <div data-day-content="day-{{ loop.index }}"
+                <div data-day-content="day-{{ loop.index0 }}"
                      {% if !loop.first -%}
                        hidden
                      {% endif -%}
                      class="pt-10">
                   <ol class="relative border-s border-stone-200">
-                    {% for session in day.1 %}
-                      {% call session_item(session = session, is_last = loop.last) -%}
-                    {% endfor %}
+                    {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
                   </ol>
                 </div>
               {% endfor -%}
@@ -349,7 +348,7 @@
         {# End sessions section -#}
 
         {# Hosts section (legacy data) - Full width -#}
-        {% if let Some(legacy_hosts) = event.legacy_hosts -%}
+        {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
           {% if !legacy_hosts.is_empty() -%}
             <div>
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Hosts</div>
@@ -409,7 +408,7 @@
         {# End event speakers section -#}
 
         {# Speakers section (legacy data) - Full width - no featured on LegacyUser -#}
-        {% if let Some(legacy_speakers) = event.legacy_speakers -%}
+        {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
             <div>
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
@@ -446,7 +445,7 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in event.sponsors -%}
-                {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url, level = sponsor.level, with_level = true) -%}
+                {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url, level = sponsor.level, with_level = true) -}}
               {% endfor -%}
             </div>
           </div>
@@ -454,7 +453,7 @@
         {# End sponsors section -#}
 
         {# Gallery -#}
-        {% if let Some(photos_urls) = event.photos_urls -%}
+        {% if let Some(photos_urls) = &event.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
@@ -488,7 +487,7 @@
   <li class="{% if !is_last %}mb-5 {% endif %}ms-4">
     <div class="absolute size-3 bg-stone-300 rounded-full mt-1 -start-1.5 border border-white"></div>
     <div class="mb-2 text-sm text-stone-500/75">
-      {% if let Some(ends_at) = session.ends_at -%}
+      {% if let Some(ends_at) = &session.ends_at -%}
         {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p") }} - {{ ends_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}
       {% else -%}
         {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}
@@ -496,12 +495,12 @@
     </div>
     <div class="flex flex-col sm:flex-row items-start gap-2">
       <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
-      {% call common::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5")) -%}
+      {{ badges::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5") ) -}}
     </div>
-    {% if let Some(location) = session.location -%}
+    {% if let Some(location) = &session.location -%}
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
     {% endif -%}
-    {% if let Some(description) = session.description -%}
+    {% if let Some(description) = &session.description -%}
       <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
     {% endif -%}
     {% if session.meeting_join_url.is_some() || session.meeting_recording_url.is_some() -%}
@@ -511,7 +510,7 @@
            data-has-recording="{{ has_recording_session }}"
            class="hidden mt-3">
         <div class="flex flex-wrap items-center gap-3">
-          {% if let Some(meeting_join_url) = session.meeting_join_url -%}
+          {% if let Some(meeting_join_url) = &session.meeting_join_url -%}
             <a href="{{ meeting_join_url }}"
                data-join-link-always
                target="_blank"
@@ -521,7 +520,7 @@
               <span>Join session</span>
             </a>
           {% endif -%}
-          {% if let Some(meeting_recording_url) = session.meeting_recording_url -%}
+          {% if let Some(meeting_recording_url) = &session.meeting_recording_url -%}
             <a href="{{ meeting_recording_url }}"
                target="_blank"
                rel="noopener noreferrer"

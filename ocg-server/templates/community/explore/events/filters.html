@@ -1,4 +1,4 @@
-{% import "community/explore/filters.html" as macros -%}
+{% import "macros/explore.html" as explore -%}
 
 {% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
 
@@ -10,7 +10,7 @@
     <li>
       <label class="group items-center w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none flex flex-row {%+ if filters.kind.contains(&EventKind::InPerson) %}border-primary-500{%+ else %}border-stone-200{%- endif %} hover:bg-stone-50 transition-colors">
         <input type="checkbox"
-               name="kind"
+               name="kind[]"
                value="in-person"
                class="hidden peer"
                {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
@@ -25,13 +25,13 @@
       <label class="group flex flex-row items-center w-full px-2 py-1 border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-stone-50 border-stone-200 opacity-30 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%+ else %}border-stone-200{%- endif %} cursor-pointer hover:bg-stone-50 bg-white transition-colors{%- endif %}">
         {% if view_mode == ViewMode::Map -%}
           <input type="checkbox"
-                 name="kind"
+                 name="kind[]"
                  value="virtual"
                  class="virtual-kind hidden peer"
                  disabled>
         {% else -%}
           <input type="checkbox"
-                 name="kind"
+                 name="kind[]"
                  value="virtual"
                  class="virtual-kind hidden peer"
                  {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
@@ -48,7 +48,7 @@
     <li>
       <label class="group items-center w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none flex flex-row {%+ if filters.kind.contains(&EventKind::Hybrid) %}border-primary-500{%+ else %}border-stone-200{%- endif %} hover:bg-stone-50 transition-colors">
         <input type="checkbox"
-               name="kind"
+               name="kind[]"
                value="hybrid"
                class="hidden peer"
                {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
@@ -86,8 +86,8 @@
       <div class="font-semibold leading-4 md:leading-8 text-[0.775rem] text-stone-700">Date</div>
     </div>
     <div class="flex flex-wrap gap-3 items-center mt-3">
-      {% call macros::date_input(name = "date_from", label = "from", value = filters.date_from) -%}
-      {% call macros::date_input(name = "date_to", label = "to", value = filters.date_to) -%}
+      {{ explore::date_input(name = "date_from", label = "from", value = filters.date_from) -}}
+      {{ explore::date_input(name = "date_to", label = "to", value = filters.date_to) -}}
     </div>
   </div>
   {# End date -#}
@@ -95,10 +95,10 @@
   {# Date on calendar view -#}
   <input type="hidden"
          name="date_from"
-         value="{%- if let Some(date_from) = filters.date_from -%} {{ date_from }} {%- endif -%}">
+         value="{%- if let Some(date_from) = &filters.date_from -%} {{ date_from }} {%- endif -%}">
   <input type="hidden"
          name="date_to"
-         value="{%- if let Some(date_to) = filters.date_to -%} {{ date_to }} {%- endif -%}">
+         value="{%- if let Some(date_to) = &filters.date_to -%} {{ date_to }} {%- endif -%}">
   {# End date on calendar view -#}
 {% endif -%}
 {# Apply filters -#}

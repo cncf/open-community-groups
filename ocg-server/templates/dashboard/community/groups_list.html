@@ -1,8 +1,7 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Groups list header with title -#}
-{% call macros::form_title(title = "Groups") -%}
+{{ dashboard::form_title(title = "Groups") -}}
 
 <div class="flex justify-between my-10">
   <div class="flex items-center gap-x-6">
@@ -19,7 +18,7 @@
         <input id="search_groups"
                name="ts_query"
                type="text"
-               value="{{ ts_query|display_some }}"
+               value="{{ ts_query|assigned_or("") }}"
                class="input-primary peer ps-9 w-96"
                placeholder="Search groups"
                autocomplete="off"
@@ -125,7 +124,7 @@
                   {# Mobile category and location -#}
                   <div class="block xl:hidden text-xs text-stone-500">
                     <div class="max-w-full truncate">{{ group.category.name }}</div>
-                    {% if let Some(location) = group.location(40) -%}
+                    {% if let Some(location) = &group.location(40) -%}
                       <div class="max-w-full truncate">{{ location }}</div>
                     {% endif -%}
                   </div>
@@ -136,7 +135,7 @@
 
             {# Location -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
-              {% if let Some(location) = group.location(50) -%}
+              {% if let Some(location) = &group.location(50) -%}
                 <div class="max-w-full truncate">{{ location }}</div>
               {% else -%}
                 <span class="text-stone-400">-</span>

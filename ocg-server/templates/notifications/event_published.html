@@ -1,5 +1,5 @@
 {% extends "notifications/base.html" -%}
-{% import "notifications/email_macros.html" as macros %}
+{% import "macros/email.html" as email -%}
 
 {% block subject -%}
   New event: {{ event.name }}
@@ -15,17 +15,17 @@
     <strong>{{ event.group_name }}</strong> on <strong>Open Community Groups</strong>.
     <br />
     <br />
-    {% if let Some(starts_at) = event.starts_at -%}
+    {% if let Some(starts_at) = &event.starts_at -%}
       Date: {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
       <br />
     {% endif -%}
-    {% if let Some(location) = self.event.location(90) -%}
+    {% if let Some(location) = &self.event.location(90) -%}
       Location: {{ location }}
       <br />
     {% endif -%}
   </p>
 
-  {% call macros::email_button(link = link, text = "View event") %}
+  {{ email::button(link = link, text = "View event") }}
 
   <p class="default mt-30 mb-15">
     Please find attached an .ics file containing the event details

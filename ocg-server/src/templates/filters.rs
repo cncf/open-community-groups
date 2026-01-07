@@ -4,6 +4,9 @@
 //! transform data during rendering. These filters extend Askama's built-in
 //! functionality with application-specific formatting needs.
 
+// Askama custom filter functions should return Result types.
+#![allow(clippy::unnecessary_wraps)]
+
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use num_format::{Locale, ToFormattedString};
@@ -11,84 +14,43 @@ use tracing::error;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Removes all emoji characters from a string.
-#[allow(clippy::unnecessary_wraps)]
+#[askama::filter_fn]
 pub(crate) fn demoji(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
     Ok(s.graphemes(true).filter(|gc| emojis::get(gc).is_none()).collect())
 }
 
-/// Display the value if present, otherwise return an empty string.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
-pub(crate) fn display_some<T>(value: &Option<T>, _: &dyn askama::Values) -> askama::Result<String>
-where
-    T: std::fmt::Display,
-{
-    match value {
-        Some(value) => Ok(value.to_string()),
-        None => Ok(String::new()),
-    }
-}
-
-/// Display the formatted datetime if present, otherwise return an empty string.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option, dead_code)]
-pub(crate) fn display_some_datetime(
-    value: &Option<DateTime<Utc>>,
-    _: &dyn askama::Values,
-    format: &str,
-) -> askama::Result<String> {
-    match value {
-        Some(value) => Ok(value.format(format).to_string()),
-        None => Ok(String::new()),
-    }
-}
-
 /// Display the formatted datetime in the provided timezone if present, otherwise
 /// return an empty string.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+#[askama::filter_fn]
+#[allow(clippy::ref_option)]
 pub(crate) fn display_some_datetime_tz(
     value: &Option<DateTime<Utc>>,
     _: &dyn askama::Values,
     format: &str,
     timezone: Tz,
 ) -> askama::Result<String> {
-    match value {
-        Some(value) => Ok(value.with_timezone(&timezone).format(format).to_string()),
-        None => Ok(String::new()),
-    }
-}
-
-/// Display the value if present, otherwise return the provided alternative value.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
-pub(crate) fn display_some_or<T, U>(
-    value: &Option<T>,
-    _: &dyn askama::Values,
-    alternative: U,
-) -> askama::Result<String>
-where
-    T: std::fmt::Display,
-    U: std::fmt::Display,
-{
-    match value {
-        Some(value) => Ok(value.to_string()),
-        None => Ok(alternative.to_string()),
-    }
+    Ok(match value.as_ref() {
+        Some(value) => value.with_timezone(&timezone).format(format).to_string(),
+        None => String::new(),
+    })
 }
 
 /// Convert a markdown string to HTML using GitHub Flavored Markdown options.
-#[allow(clippy::unnecessary_wraps, clippy::ref_option)]
+#[askama::filter_fn]
 pub(crate) fn md_to_html(s: &str, _: &dyn askama::Values) -> askama::Result<String> {
     let options = markdown::Options::gfm();
-    match markdown::to_html_with_options(s, &options) {
-        Ok(html) => Ok(html),
+    Ok(match markdown::to_html_with_options(s, &options) {
+        Ok(html) => html,
         Err(e) => {
             error!("error converting markdown to html: {}", e);
-            Ok("error converting markdown to html".to_string())
+            "error converting markdown to html".to_string()
         }
-    }
+    })
 }
 
 /// Formats numbers with thousands separators.
-#[allow(clippy::unnecessary_wraps)]
-pub(crate) fn num_fmt<T: ToFormattedString>(n: &T, _: &dyn askama::Values) -> askama::Result<String> {
+#[askama::filter_fn]
+pub(crate) fn num_fmt(n: &i64, _: &dyn askama::Values) -> askama::Result<String> {
     Ok(n.to_formatted_string(&Locale::en))
 }
 
@@ -102,91 +64,94 @@ mod tests {
 
     #[test]
     fn test_demoji() {
+        let values = askama::NO_VALUES;
+
         // Basic emoji removal
-        assert_eq!(demoji("🙂Hi👋", &()).unwrap(), "Hi");
+        assert_eq!(demoji::default().execute("🙂Hi👋", values).unwrap(), "Hi");
 
         // Multiple emojis
-        assert_eq!(demoji("🎉Test🎊String🎈", &()).unwrap(), "TestString");
+        assert_eq!(
+            demoji::default().execute("🎉Test🎊String🎈", values).unwrap(),
+            "TestString"
+        );
 
         // No emojis
-        assert_eq!(demoji("Hello World", &()).unwrap(), "Hello World");
+        assert_eq!(
+            demoji::default().execute("Hello World", values).unwrap(),
+            "Hello World"
+        );
 
         // Only emojis
-        assert_eq!(demoji("😀😃😄😁", &()).unwrap(), "");
+        assert_eq!(demoji::default().execute("😀😃😄😁", values).unwrap(), "");
 
         // Mixed with special characters
         assert_eq!(
-            demoji("Hello! 👋 How are you? 😊", &()).unwrap(),
+            demoji::default()
+                .execute("Hello! 👋 How are you? 😊", values)
+                .unwrap(),
             "Hello!  How are you? "
         );
 
         // Complex emojis (multi-codepoint)
-        assert_eq!(demoji("👨‍👩‍👧‍👦Family", &()).unwrap(), "Family");
-    }
-
-    #[test]
-    fn test_display_some() {
-        assert_eq!(display_some(&Some(42), &()).unwrap(), "42");
-        assert_eq!(display_some(&None::<i32>, &()).unwrap(), "");
-    }
-
-    #[test]
-    fn test_display_some_datetime() {
-        let datetime = Utc.with_ymd_and_hms(2024, 5, 10, 12, 30, 45).unwrap();
-        let format = "%Y-%m-%d %H:%M";
-
-        let formatted = display_some_datetime(&Some(datetime), &(), format).unwrap();
-        assert_eq!(formatted, "2024-05-10 12:30");
-
-        let empty = display_some_datetime(&None, &(), "%Y").unwrap();
-        assert_eq!(empty, "");
+        assert_eq!(demoji::default().execute("👨‍👩‍👧‍👦Family", values).unwrap(), "Family");
     }
 
     #[test]
     fn test_display_some_datetime_tz() {
-        let datetime = Utc.with_ymd_and_hms(2024, 1, 5, 18, 15, 0).unwrap();
-        let format = "%Y-%m-%d %H:%M";
+        let values = askama::NO_VALUES;
+        let datetime = Some(Utc.with_ymd_and_hms(2024, 1, 5, 18, 15, 0).unwrap());
         let timezone = chrono_tz::America::New_York;
 
-        let formatted = display_some_datetime_tz(&Some(datetime), &(), format, timezone).unwrap();
+        let formatted = display_some_datetime_tz::default()
+            .with_format("%Y-%m-%d %H:%M")
+            .with_timezone(timezone)
+            .execute(&datetime, values)
+            .unwrap();
         assert_eq!(formatted, "2024-01-05 13:15");
 
-        let empty = display_some_datetime_tz(&None, &(), "%Y-%m-%d", timezone).unwrap();
+        let empty = display_some_datetime_tz::default()
+            .with_format("%Y-%m-%d")
+            .with_timezone(timezone)
+            .execute(&None, values)
+            .unwrap();
         assert_eq!(empty, "");
     }
 
     #[test]
-    fn test_display_some_or() {
-        let value = display_some_or(&Some("value"), &(), "alternative").unwrap();
-        assert_eq!(value, "value");
-
-        let alternative = display_some_or(&None::<&str>, &(), "alternative").unwrap();
-        assert_eq!(alternative, "alternative");
-    }
-
-    #[test]
     fn test_md_to_html() {
-        assert_eq!(md_to_html("# Title", &()).unwrap(), "<h1>Title</h1>");
-        assert_eq!(md_to_html("Plain text", &()).unwrap(), "<p>Plain text</p>");
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            md_to_html::default().execute("# Title", values).unwrap(),
+            "<h1>Title</h1>"
+        );
+        assert_eq!(
+            md_to_html::default().execute("Plain text", values).unwrap(),
+            "<p>Plain text</p>"
+        );
     }
 
     #[test]
     fn test_num_fmt() {
+        let values = askama::NO_VALUES;
+
         // Basic formatting
-        assert_eq!(num_fmt(&123_456_789, &()).unwrap(), "123,456,789");
+        assert_eq!(
+            num_fmt::default().execute(&123_456_789, values).unwrap(),
+            "123,456,789"
+        );
 
         // Small numbers
-        assert_eq!(num_fmt(&999, &()).unwrap(), "999");
-        assert_eq!(num_fmt(&1_000, &()).unwrap(), "1,000");
+        assert_eq!(num_fmt::default().execute(&999, values).unwrap(), "999");
+        assert_eq!(num_fmt::default().execute(&1_000, values).unwrap(), "1,000");
 
         // Zero
-        assert_eq!(num_fmt(&0, &()).unwrap(), "0");
+        assert_eq!(num_fmt::default().execute(&0, values).unwrap(), "0");
 
         // Large numbers
-        assert_eq!(num_fmt(&1_234_567_890, &()).unwrap(), "1,234,567,890");
-
-        // Different integer types
-        assert_eq!(num_fmt(&1_234u32, &()).unwrap(), "1,234");
-        assert_eq!(num_fmt(&1_234i64, &()).unwrap(), "1,234");
+        assert_eq!(
+            num_fmt::default().execute(&1_234_567_890, values).unwrap(),
+            "1,234,567,890"
+        );
     }
 }

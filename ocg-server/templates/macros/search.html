@@ -1,0 +1,109 @@
+{# Search bar -#}
+{% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) -%}
+  {% let value_ = value.clone().unwrap_or("".to_string()) -%}
+
+  <div class="flex items-center {{ container_styles }}">
+    <div class="relative {{ input_styles }}
+                {% if with_help -%}
+                  md:-ml-[0.75rem]{%- endif -%}">
+      <input type="text"
+             id="ts_query"
+             name="ts_query"
+             value="{{ value_ }}"
+             class="peer w-[100%] rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-18"
+             placeholder="{{ placeholder }}"
+             autocomplete="off" />
+      <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
+        <button id="clean-search"
+                class="mr-2 mt-[2px] block peer-placeholder-shown:hidden">
+          <div class="svg-icon h-5 w-5 bg-stone-400 hover:bg-stone-700 transition-colors icon-close"></div>
+        </button>
+      </div>
+      <div class="absolute right-[6px] top-[5px]">
+        <button id="search-btn"
+                class="btn-secondary group p-1.5 h-[30px] w-[30px] mt-[3px] mr-[3px]">
+          <div class="svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white transition-colors icon-magnifying-glass">
+          </div>
+        </button>
+      </div>
+
+      {% if with_help -%}
+        <div class="absolute hidden -right-[1.5rem] top-0 md:block">
+          <button id="open-search-tips-modal">
+            <div class="svg-icon w-4 h-4 bg-stone-300 hover:bg-stone-700 transition-colors icon-question-mark"></div>
+          </button>
+        </div>
+
+        {# Search tips modal -#}
+        <div id="search-tips"
+             tabindex="-1"
+             aria-hidden="true"
+             class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
+          <div id="overlay-search-tips"
+               class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+          <div class="relative p-4 w-full max-w-2xl max-h-full">
+            <div class="relative bg-white rounded-lg shadow">
+              {# Modal header -#}
+              <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+                <h3 class="text-xl font-semibold text-stone-900">Search tips</h3>
+                <button id="close-search-tips-modal"
+                        type="button"
+                        class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                  <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+                  <span class="sr-only">Close modal</span>
+                </button>
+              </div>
+              {# End modal header -#}
+              {# Modal content -#}
+              <div class="p-4 md:p-5 space-y-4">
+                <ul class="list-disc text-sm ps-8 pe-4 py-6 leading-8">
+                  <li>Use multiple words to refine your search. Example: budapest meeting</li>
+                  <li>Use - to exclude words from your search. Example: austin -virtual</li>
+                  <li>Put a phrase inside double quotes for an exact match. Example: "Community Group"</li>
+                  <li>Use or to combine multiple searches. Example: webAssembly or wasm</li>
+                </ul>
+              </div>
+              {# End modal content -#}
+            </div>
+          </div>
+        </div>
+        {# End search tips modal -#}
+
+        <script type="module">
+          import {
+            toggleModalVisibility
+          } from '/static/js/common/common.js';
+
+          const openSearchTipsModal = document.getElementById('open-search-tips-modal');
+          if (openSearchTipsModal) {
+            openSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          }
+
+          const overlaySearchTips = document.getElementById('overlay-search-tips');
+          if (overlaySearchTips) {
+            overlaySearchTips.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          }
+
+          const closeSearchTipsModal = document.getElementById('close-search-tips-modal');
+          if (closeSearchTipsModal) {
+            closeSearchTipsModal.addEventListener('click', () => toggleModalVisibility('search-tips'));
+          }
+        </script>
+      {% endif -%}
+    </div>
+  </div>
+{% endmacro search_bar -%}
+{# End search bar -#}
+
+{# Current page -#}
+{% macro current_page(total, items_number, offset_value) -%}
+  {%- if items_number + 0 > 0 -%}
+    {%- if let Some(offset) = &offset_value -%}
+      {{ offset + 1 }} - {{ items_number + offset }}
+    {%- else -%}
+      1 - {{ items_number }}
+    {%- endif -%}
+    {{ "" }} of {{ total }} results
+  {%- endif -%}
+{%- endmacro current_page -%}
+{# End current page -#}

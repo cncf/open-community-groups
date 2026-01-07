@@ -23,11 +23,11 @@
       {% match entity -%}
       {% when Entity::Groups -%}
       {# Groups section -#}
-      {% if let Some(groups_section) = groups_section %}{{ groups_section|safe }}{% endif %}
+      {% if let Some(groups_section) = &groups_section %}{{ groups_section|safe }}{% endif %}
       {# End groups section -#}
       {% when Entity::Events -%}
       {# Events section -#}
-      {% if let Some(events_section) = events_section %}{{ events_section|safe }}{% endif %}
+      {% if let Some(events_section) = &events_section %}{{ events_section|safe }}{% endif %}
       {# End events section -#}
     {% endmatch -%}
   </div>

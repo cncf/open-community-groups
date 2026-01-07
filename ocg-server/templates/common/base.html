@@ -13,7 +13,7 @@
     <meta property="og:url" content="cncf.ocgroups.dev/">
     <meta property="og:description"
           content="{{ community.display_name }} community groups">
-    {% if let Some(og_image_url) = community.og_image_url -%}
+    {% if let Some(og_image_url) = &community.og_image_url -%}
       <meta property="og:image" content="{{ og_image_url }}">
     {% endif -%}
     {#- End OG tags  #}
@@ -26,12 +26,12 @@
           content="{{ community.display_name }} community groups">
     <meta name="twitter:description"
           content="{{ community.display_name }} community groups">
-    {% if let Some(og_image_url) = community.og_image_url -%}
+    {% if let Some(og_image_url) = &community.og_image_url -%}
       <meta name="twitter:image" content="{{ og_image_url }}">
     {% endif -%}
     {#- End Twitter tags #}
 
-    {% if let Some(favicon_url) = community.favicon_url -%}
+    {% if let Some(favicon_url) = &community.favicon_url -%}
       <link rel="icon" href="{{ favicon_url }}" sizes="any">
 
     {% endif -%}

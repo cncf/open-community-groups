@@ -340,7 +340,7 @@ mod tests {
         config::HttpServerConfig,
         db::{DynDB, mock::MockDB},
         handlers::tests::{TestRouterBuilder, sample_auth_user, sample_session_record},
-        router::State as RouterState,
+        router::{State as RouterState, serde_qs_config},
         services::{
             images::{DynImageStorage, Image, MockImageStorage},
             notifications::{DynNotificationsManager, MockNotificationsManager},
@@ -798,7 +798,7 @@ mod tests {
             image_storage,
             meetings_cfg: None,
             notifications_manager,
-            serde_qs_de: serde_qs::Config::new(3, false),
+            serde_qs_de: serde_qs_config(),
             server_cfg: HttpServerConfig {
                 base_url: "https://example.test".to_string(),
                 ..HttpServerConfig::default()

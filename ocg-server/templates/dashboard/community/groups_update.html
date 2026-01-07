@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Groups update form -#}
 <form id="groups-form"
@@ -10,7 +10,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "Group Details", description = "Please update as many details about this group as possible.") -%}
+      {{ dashboard::form_title(title = "Group Details", description = "Please update as many details about this group as possible.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Group name -#}
@@ -63,7 +63,7 @@
               <option value="">Select a region (optional)</option>
               {% for region in regions %}
                 <option value="{{ region.region_id }}"
-                        {% if let Some(group_region) = group.region %}
+                        {% if let Some(group_region) = &group.region %}
                           {% if region.region_id == group_region.region_id %}selected{% endif %}
                         {% endif %}>{{ region.name }}</option>
               {% endfor %}
@@ -75,7 +75,7 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-4">
-          <image-field label="Logo" name="logo_url" value="{%- if let Some(logo_url) = group.logo_url -%}{{ logo_url }}{%- endif -%}" image-kind="avatar">
+          <image-field label="Logo" name="logo_url" value="{%- if let Some(logo_url) = &group.logo_url -%}{{ logo_url }}{%- endif -%}" image-kind="avatar">
         </image-field>
       </div>
       {# End Logo URL -#}
@@ -88,7 +88,7 @@
                     name="description_short"
                     rows="2"
                     class="input-primary"
-                    maxlength="{{ crate::validation::MAX_LEN_M }}">{% if let Some(description_short) = group.description_short %}{{ description_short }}{% endif %}</textarea>
+                    maxlength="{{ crate::validation::MAX_LEN_M }}">{% if let Some(description_short) = &group.description_short %}{{ description_short }}{% endif %}</textarea>
         </div>
         <p class="form-legend">Brief description for group listings and previews.</p>
       </div>
@@ -100,7 +100,7 @@
           Description <span class="asterisk">*</span>
         </label>
         <div class="mt-2">
-          <markdown-editor id="description" name="description" content="{%- if let Some(description) = group.description -%}{{ description }}{%- endif -%}" required></markdown-editor>
+          <markdown-editor id="description" name="description" content="{%- if let Some(description) = &group.description -%}{{ description }}{%- endif -%}" required></markdown-editor>
         </div>
         <p class="form-legend">Brief description of the group and its purpose.</p>
       </div>
@@ -110,30 +110,28 @@
 
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {% call macros::form_title(
-    title = "Location",
-    description = "Optional location information for the group.",
-    button = "<button id='clear-location-fields'
-        type='button'
-        class='btn-primary-outline btn-mini whitespace-nowrap'
-        aria-label='Clear location details'>Clear location</button>"
-    ) -%}
+    {{ dashboard::form_title(title = "Location",
+        description = "Optional location information for the group.",
+        button = "<button id='clear-location-fields'
+            type='button'
+            class='btn-primary-outline btn-mini whitespace-nowrap'
+            aria-label='Clear location details'>Clear location</button>") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Location search -#}
       <div class="col-span-full">
         <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
-        {% if let Some(city) = group.city %}initial-venue-city="{{ city }}"{% endif %}
+        {% if let Some(city) = &group.city %}initial-venue-city="{{ city }}"{% endif %}
 
-        {% if let Some(state) = group.state %}initial-state="{{ state }}"{% endif %}
+        {% if let Some(state) = &group.state %}initial-state="{{ state }}"{% endif %}
 
-        {% if let Some(country_name) = group.country_name %}initial-country-name="{{ country_name }}"{% endif %}
+        {% if let Some(country_name) = &group.country_name %}initial-country-name="{{ country_name }}"{% endif %}
 
-        {% if let Some(country_code) = group.country_code %}initial-country-code="{{ country_code }}"{% endif %}
+        {% if let Some(country_code) = &group.country_code %}initial-country-code="{{ country_code }}"{% endif %}
 
-        {% if let Some(lat) = group.latitude %}initial-latitude="{{ lat }}"{% endif %}
+        {% if let Some(lat) = &group.latitude %}initial-latitude="{{ lat }}"{% endif %}
 
-        {% if let Some(lng) = group.longitude %}initial-longitude="{{ lng }}"{% endif %}
+        {% if let Some(lng) = &group.longitude %}initial-longitude="{{ lng }}"{% endif %}
         >
         </location-search-field>
       </div>
@@ -144,7 +142,7 @@
 
   {# Social links section -#}
   <div class="border-b border-stone-900/10 pb-12">
-    {% call macros::form_title(title = "Social links", description = "Optional social media profiles and website links.") -%}
+    {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Website URL -#}
@@ -159,7 +157,7 @@
                  id="website_url"
                  class="input-primary ps-10"
                  placeholder="https://example.com"
-                 {% if let Some(website_url) = group.website_url %}value="{{ website_url }}"{% endif %}>
+                 {% if let Some(website_url) = &group.website_url %}value="{{ website_url }}"{% endif %}>
         </div>
       </div>
       {# End Website URL -#}
@@ -176,7 +174,7 @@
                  id="github_url"
                  class="input-primary ps-10"
                  placeholder="https://github.com/organization"
-                 {% if let Some(github_url) = group.github_url %}value="{{ github_url }}"{% endif %}>
+                 {% if let Some(github_url) = &group.github_url %}value="{{ github_url }}"{% endif %}>
         </div>
       </div>
       {# End GitHub URL -#}
@@ -193,7 +191,7 @@
                  id="twitter_url"
                  class="input-primary ps-10"
                  placeholder="https://x.com/username"
-                 {% if let Some(twitter_url) = group.twitter_url %}value="{{ twitter_url }}"{% endif %}>
+                 {% if let Some(twitter_url) = &group.twitter_url %}value="{{ twitter_url }}"{% endif %}>
         </div>
       </div>
       {# End Twitter URL -#}
@@ -210,7 +208,7 @@
                  id="facebook_url"
                  class="input-primary ps-10"
                  placeholder="https://facebook.com/page"
-                 {% if let Some(facebook_url) = group.facebook_url %}value="{{ facebook_url }}"{% endif %}>
+                 {% if let Some(facebook_url) = &group.facebook_url %}value="{{ facebook_url }}"{% endif %}>
         </div>
       </div>
       {# End Facebook URL -#}
@@ -227,7 +225,7 @@
                  id="linkedin_url"
                  class="input-primary ps-10"
                  placeholder="https://linkedin.com/company/name"
-                 {% if let Some(linkedin_url) = group.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+                 {% if let Some(linkedin_url) = &group.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
         </div>
       </div>
       {# End LinkedIn URL -#}
@@ -244,7 +242,7 @@
                  id="instagram_url"
                  class="input-primary ps-10"
                  placeholder="https://instagram.com/username"
-                 {% if let Some(instagram_url) = group.instagram_url %}value="{{ instagram_url }}"{% endif %}>
+                 {% if let Some(instagram_url) = &group.instagram_url %}value="{{ instagram_url }}"{% endif %}>
         </div>
       </div>
       {# End Instagram URL -#}
@@ -261,7 +259,7 @@
                  id="slack_url"
                  class="input-primary ps-10"
                  placeholder="https://workspace.slack.com"
-                 {% if let Some(slack_url) = group.slack_url %}value="{{ slack_url }}"{% endif %}>
+                 {% if let Some(slack_url) = &group.slack_url %}value="{{ slack_url }}"{% endif %}>
         </div>
       </div>
       {# End Slack URL -#}
@@ -278,7 +276,7 @@
                  id="youtube_url"
                  class="input-primary ps-10"
                  placeholder="https://youtube.com/channel/id"
-                 {% if let Some(youtube_url) = group.youtube_url %}value="{{ youtube_url }}"{% endif %}>
+                 {% if let Some(youtube_url) = &group.youtube_url %}value="{{ youtube_url }}"{% endif %}>
         </div>
       </div>
       {# End YouTube URL -#}
@@ -288,12 +286,12 @@
 
   {# Tags section -#}
   <div class="pb-12">
-    {% call macros::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -%}
+    {{ dashboard::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Tags -#}
       <div class="col-span-3">
-        <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = group.tags -%}{{ tags|json }}{%- endif -%}" label="Tag">
+        <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = &group.tags -%}{{ tags|json }}{%- endif -%}" label="Tag">
         </multiple-inputs>
       </div>
       {# End Tags -#}
@@ -313,7 +311,7 @@
 
     {# Save button -#}
     <button type="submit" class="btn-primary relative">
-      {% call common::btn_spinner(id = "community-groups-update-spinner", spinner_type = "2") -%}
+      {{ ui::btn_spinner(id = "community-groups-update-spinner", spinner_type = "2") -}}
       Update Group
     </button>
     {# End save button -#}

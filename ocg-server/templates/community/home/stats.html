@@ -2,25 +2,25 @@
 {# Desktop -#}
 <div class="hidden lg:flex w-full flex flex-row justify-around items-center border border-stone-200 rounded-lg p-10 mx-auto mt-16 mb-6">
   {# Group stats -#}
-  {% call stat_block(kind = "groups", title = "Groups", value = groups) -%}
+  {{ stat_block(kind = "groups", title = "Groups", value = groups) -}}
   {# End group stats -#}
 
   <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
 
   {# Members stats -#}
-  {% call stat_block(kind = "members", title = "Members", value = groups_members) -%}
+  {{ stat_block(kind = "members", title = "Members", value = groups_members) -}}
   {# End members stats -#}
 
   <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
 
   {# Events stats -#}
-  {% call stat_block(kind = "events", title = "Events", value = events) -%}
+  {{ stat_block(kind = "events", title = "Events", value = events) -}}
   {# End events stats -#}
 
   <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
 
   {# Attendees stats -#}
-  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees) -%}
+  {{ stat_block(kind = "attendees", title = "Attendees", value = events_attendees) -}}
   {# End attendees stats -#}
 </div>
 {# End desktop -#}
@@ -28,19 +28,19 @@
 {# Mobile -#}
 <div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full border border-stone-200 rounded-lg py-6 mx-auto mt-6">
   {# Group stats -#}
-  {% call stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center w-[130px] -ms-4")) -%}
+  {{ stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center w-[130px] -ms-4") ) -}}
   {# End group stats -#}
 
   {# Members stats -#}
-  {% call stat_block(kind = "members", title = "Members", value = groups_members, extra_styles=Some("place-self-center w-[130px]")) -%}
+  {{ stat_block(kind = "members", title = "Members", value = groups_members, extra_styles=Some("place-self-center w-[130px]") ) -}}
   {# End members stats -#}
 
   {# Events stats -#}
-  {% call stat_block(kind = "events", title = "Events", value = events, extra_styles=Some("place-self-center w-[130px] -ms-4")) -%}
+  {{ stat_block(kind = "events", title = "Events", value = events, extra_styles=Some("place-self-center w-[130px] -ms-4") ) -}}
   {# End events stats -#}
 
   {# Attendees stats -#}
-  {% call stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles=Some("place-self-center w-[130px]")) -%}
+  {{ stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles=Some("place-self-center w-[130px]") ) -}}
   {# End attendees stats -#}
 </div>
 
@@ -64,7 +64,7 @@
         {# End title -#}
 
         {# Value -#}
-        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ *value|num_fmt }}</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ value|num_fmt }}</div>
         {# End value -#}
       </div>
     </div>

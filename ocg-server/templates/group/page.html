@@ -1,5 +1,8 @@
-{% import "common.html" as common -%}
 {% extends "common/base.html" -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/maps.html" as maps -%}
+{% import "macros/social.html" as social -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
@@ -26,7 +29,7 @@
           {# Main flex container for logo, name/region, and social networks -#}
           <div class="flex flex-1 flex-row items-stretch gap-6">
             {# Group logo -#}
-            {% call common::logo(logo_url = group.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = group.color, name = Some(group.name)) -%}
+            {{ ui::logo(logo_url = group.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = group.color, name = Some(group.name) ) -}}
             {# End group logo -#}
 
             <div class="flex-1 flex flex-col justify-between">
@@ -107,12 +110,12 @@
                 {% let next_event = upcoming_events.first() -%}
 
                 <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400">
-                  {% if let Some(next_event_card) = next_event -%}
-                    {% if let Some(starts_at) = next_event_card.event.starts_at -%}
+                  {% if let Some(next_event_card) = &next_event -%}
+                    {% if let Some(starts_at) = &next_event_card.event.starts_at -%}
                       <div class="flex items-start gap-3">
                         <div class="svg-icon size-4 xl:size-5 bg-stone-800 icon-date mt-1 sm:mt-1.5 xl:mt-2"></div>
                         <div class="flex-grow">
-                          {% if let Some(starts_at) = next_event_card.event.starts_at -%}
+                          {% if let Some(starts_at) = &next_event_card.event.starts_at -%}
                             <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">
                               {{ starts_at.with_timezone(next_event_card.event.timezone).format("%B %e, %G") }}
                             </div>
@@ -170,11 +173,11 @@
               <div class="flex flex-col p-4 h-full">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
                 <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
-                  {% if let Some(lat) = group.latitude %}
-                    {% if let Some(lng) = group.longitude %}
+                  {% if let Some(lat) = &group.latitude %}
+                    {% if let Some(lng) = &group.longitude %}
                       {% let location_text = self.group.location(70) -%}
                       {% let location_text_small = self.group.location(35) -%}
-                      {% call common::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -%}
+                      {{ maps::map_with_modal(base_id = "group", lat = lat, lng = lng, overlay_text = location_text, small_overlay_text = location_text_small, modal_title = group.name|demoji) -}}
                     {% else -%}
                       <div class="relative flex min-h-25 h-full w-full items-center justify-center p-4 text-center text-sm text-stone-500">
                         <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
@@ -204,7 +207,7 @@
         {# End next event and location -#}
 
         {# Group description -#}
-        {% if let Some(description) = group.description -%}
+        {% if let Some(description) = &group.description -%}
           <div>
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 lg:pb-10">
               About this group
@@ -215,7 +218,7 @@
         {# End group description -#}
 
         {# Tags if available -#}
-        {% if let Some(tags) = group.tags -%}
+        {% if let Some(tags) = &group.tags -%}
           {% if !tags.is_empty() -%}
             <div>
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Topics</div>
@@ -237,7 +240,7 @@
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
               {% for event in upcoming_events -%}
-                {% if loop.index <= 6 -%}
+                {% if loop.index0 < 6 -%}
                   {{ event|safe }}
                 {% endif -%}
               {% endfor -%}
@@ -252,7 +255,7 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Past Events</div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
               {% for event in past_events -%}
-                {% if loop.index <= 6 -%}
+                {% if loop.index0 < 6 -%}
                   {{ event|safe }}
                 {% endif -%}
               {% endfor -%}
@@ -282,7 +285,7 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in group.sponsors -%}
-                {% call common::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -%}
+                {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -}}
               {% endfor -%}
             </div>
           </div>
@@ -290,7 +293,7 @@
         {# End sponsors section -#}
 
         {# Photo gallery -#}
-        {% if let Some(photos_urls) = group.photos_urls -%}
+        {% if let Some(photos_urls) = &group.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>

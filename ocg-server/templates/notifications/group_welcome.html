@@ -1,5 +1,5 @@
 {% extends "notifications/base.html" -%}
-{% import "notifications/email_macros.html" as macros %}
+{% import "macros/email.html" as email -%}
 
 {% block subject -%}
   Welcome to {{ group.name }}
@@ -15,7 +15,7 @@
     <strong>Open Community Groups</strong>!
     <br />
     <br />
-    {% if let Some(location) = self.group.location(90) -%}
+    {% if let Some(location) = &self.group.location(90) -%}
       Location: {{ location }}
       <br />
       <br />
@@ -24,7 +24,7 @@
     participate.
   </p>
 
-  {% call macros::email_button(link = link, text = "Visit group page") %}
+  {{ email::button(link = link, text = "Visit group page") }}
 
   <p class="default mt-30 mb-15">Thanks for being part of the community!</p>
 {% endblock content -%}

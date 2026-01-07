@@ -1,9 +1,8 @@
-{% import "dashboard/dashboard_macros.html" as macros -%}
-{% import "common.html" as common -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Sponsors header with title and add button -#}
 <div class="flex items-center">
-  <div>{% call macros::form_title(title = "Sponsors") -%}</div>
+  <div>{{ dashboard::form_title(title = "Sponsors") -}}</div>
   <div class="ms-auto">
     <button id="add-sponsor-button"
             hx-get="/dashboard/group/sponsors/add"
@@ -68,7 +67,7 @@
 
             {# Website -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[180px]">
-              {% if let Some(website) = sponsor.website_url -%}
+              {% if let Some(website) = &sponsor.website_url -%}
                 <a href="{{ website }}"
                    target="_blank"
                    rel="noopener"

@@ -1,5 +1,5 @@
 {% extends "notifications/base.html" -%}
-{% import "notifications/email_macros.html" as macros %}
+{% import "macros/email.html" as email -%}
 
 {% block subject -%}
   Event canceled: {{ event.name }}
@@ -16,7 +16,7 @@
     <strong>{{ event.group_name }}</strong> has been <strong>canceled</strong>.
   </p>
 
-  {% call macros::email_button(link = link, text = "View event details") %}
+  {{ email::button(link = link, text = "View event details") }}
 
   <p class="default mt-30 mb-15">
     Please find attached an .ics file containing the updated event details.

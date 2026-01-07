@@ -1,5 +1,5 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Community settings update form -#}
 <form id="settings-form"
@@ -11,7 +11,7 @@
       hx-disabled-elt="button[type=submit], #cancel-button">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "General Settings", description = "Configure core community information and basic settings.") -%}
+      {{ dashboard::form_title(title = "General Settings", description = "Configure core community information and basic settings.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Display name -#}
@@ -88,7 +88,7 @@
 
     {# Branding section -#}
     <div class="border-b border-stone-900/10 pb-12">
-      {% call macros::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -%}
+      {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Header logo URL -#}
@@ -100,14 +100,14 @@
 
       {# Footer logo URL -#}
       <div class="col-span-full">
-        <image-field label="Footer Logo" name="footer_logo_url" image-kind="logo" value="{%- if let Some(footer_logo_url) = community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900" help-prefix-text="Maximum height 96px.">
+        <image-field label="Footer Logo" name="footer_logo_url" image-kind="logo" value="{%- if let Some(footer_logo_url) = &community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900" help-prefix-text="Maximum height 96px.">
       </image-field>
     </div>
     {# End footer logo URL -#}
 
     {# Jumbotron image -#}
     <div class="col-span-full">
-      <image-field label="Jumbotron Background Image" name="jumbotron_image_url" image-kind="banner" value="{%- if let Some(jumbotron_image_url) = community.jumbotron_image_url -%}{{ jumbotron_image_url }}{%- endif -%}" help-prefix-text="Maximum size recommended 1400 * 400.">
+      <image-field label="Jumbotron Background Image" name="jumbotron_image_url" image-kind="banner" value="{%- if let Some(jumbotron_image_url) = &community.jumbotron_image_url -%}{{ jumbotron_image_url }}{%- endif -%}" help-prefix-text="Maximum size recommended 1400 * 400.">
     </image-field>
     <p class="form-legend">URL to the background image shown in the community home page jumbotron.</p>
   </div>
@@ -118,7 +118,7 @@
     <label for="copyright_notice" class="form-label">Copyright Notice</label>
     <div class="mt-2">
       <markdown-editor id="copyright_notice" name="copyright_notice" mini
-      {% if let Some(copyright_notice) = community.copyright_notice -%}
+      {% if let Some(copyright_notice) = &community.copyright_notice -%}
         content="{{ copyright_notice }}"
       {% endif -%}
       ></markdown-editor>
@@ -132,7 +132,7 @@
 
 {# Social links section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {% call macros::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -%}
+  {{ dashboard::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Website URL -#}
@@ -147,7 +147,7 @@
                id="website_url"
                class="input-primary ps-10"
                placeholder="https://example.com"
-               {% if let Some(website_url) = community.website_url %}value="{{ website_url }}"{% endif %}>
+               {% if let Some(website_url) = &community.website_url %}value="{{ website_url }}"{% endif %}>
       </div>
     </div>
     {# End website URL -#}
@@ -164,7 +164,7 @@
                id="github_url"
                class="input-primary ps-10"
                placeholder="https://github.com/organization"
-               {% if let Some(github_url) = community.github_url %}value="{{ github_url }}"{% endif %}>
+               {% if let Some(github_url) = &community.github_url %}value="{{ github_url }}"{% endif %}>
       </div>
     </div>
     {# End GitHub URL -#}
@@ -181,7 +181,7 @@
                id="twitter_url"
                class="input-primary ps-10"
                placeholder="https://x.com/username"
-               {% if let Some(twitter_url) = community.twitter_url %}value="{{ twitter_url }}"{% endif %}>
+               {% if let Some(twitter_url) = &community.twitter_url %}value="{{ twitter_url }}"{% endif %}>
       </div>
     </div>
     {# End Twitter URL -#}
@@ -198,7 +198,7 @@
                id="facebook_url"
                class="input-primary ps-10"
                placeholder="https://facebook.com/page"
-               {% if let Some(facebook_url) = community.facebook_url %}value="{{ facebook_url }}"{% endif %}>
+               {% if let Some(facebook_url) = &community.facebook_url %}value="{{ facebook_url }}"{% endif %}>
       </div>
     </div>
     {# End Facebook URL -#}
@@ -215,7 +215,7 @@
                id="linkedin_url"
                class="input-primary ps-10"
                placeholder="https://linkedin.com/company/name"
-               {% if let Some(linkedin_url) = community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+               {% if let Some(linkedin_url) = &community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
       </div>
     </div>
     {# End LinkedIn URL -#}
@@ -232,7 +232,7 @@
                id="instagram_url"
                class="input-primary ps-10"
                placeholder="https://instagram.com/username"
-               {% if let Some(instagram_url) = community.instagram_url %}value="{{ instagram_url }}"{% endif %}>
+               {% if let Some(instagram_url) = &community.instagram_url %}value="{{ instagram_url }}"{% endif %}>
       </div>
     </div>
     {# End Instagram URL -#}
@@ -249,7 +249,7 @@
                id="slack_url"
                class="input-primary ps-10"
                placeholder="https://workspace.slack.com"
-               {% if let Some(slack_url) = community.slack_url %}value="{{ slack_url }}"{% endif %}>
+               {% if let Some(slack_url) = &community.slack_url %}value="{{ slack_url }}"{% endif %}>
       </div>
     </div>
     {# End Slack URL -#}
@@ -266,7 +266,7 @@
                id="youtube_url"
                class="input-primary ps-10"
                placeholder="https://youtube.com/channel/id"
-               {% if let Some(youtube_url) = community.youtube_url %}value="{{ youtube_url }}"{% endif %}>
+               {% if let Some(youtube_url) = &community.youtube_url %}value="{{ youtube_url }}"{% endif %}>
       </div>
     </div>
     {# End YouTube URL -#}
@@ -283,7 +283,7 @@
                id="wechat_url"
                class="input-primary ps-10"
                placeholder="https://wechat.com/account"
-               {% if let Some(wechat_url) = community.wechat_url %}value="{{ wechat_url }}"{% endif %}>
+               {% if let Some(wechat_url) = &community.wechat_url %}value="{{ wechat_url }}"{% endif %}>
       </div>
     </div>
     {# End WeChat URL -#}
@@ -300,7 +300,7 @@
                id="flickr_url"
                class="input-primary ps-10"
                placeholder="https://flickr.com/photos/account"
-               {% if let Some(flickr_url) = community.flickr_url %}value="{{ flickr_url }}"{% endif %}>
+               {% if let Some(flickr_url) = &community.flickr_url %}value="{{ flickr_url }}"{% endif %}>
       </div>
     </div>
     {# End Flickr URL -#}
@@ -310,12 +310,12 @@
 
 {# Advertisement section -#}
 <div class="border-b border-stone-900/10 pb-12">
-  {% call macros::form_title(title = "Advertisement", description = "Optional advertisement banner configuration.") -%}
+  {{ dashboard::form_title(title = "Advertisement", description = "Optional advertisement banner configuration.") -}}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
     <div class="col-span-full">
-      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 1700 * 210.">
+      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 1700 * 210.">
     </image-field>
   </div>
   {# End ad banner -#}
@@ -329,7 +329,7 @@
              id="ad_banner_link_url"
              class="input-primary"
              placeholder="https://example.com/landing-page"
-             {% if let Some(ad_banner_link_url) = community.ad_banner_link_url %}
+             {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url %}
                value="{{ ad_banner_link_url }}"
              {% endif %}>
     </div>
@@ -342,7 +342,7 @@
 
 {# Additional content section -#}
 <div class="pb-12">
-  {% call macros::form_title(title = "Additional Content", description = "Extra community features and custom content.") -%}
+  {{ dashboard::form_title(title = "Additional Content", description = "Extra community features and custom content.") -}}
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# New group details -#}
@@ -350,7 +350,7 @@
       <label for="new_group_details" class="form-label">New Group Details</label>
       <div class="mt-2">
         <markdown-editor id="new_group_details" name="new_group_details" mini
-        {% if let Some(new_group_details) = community.new_group_details -%}
+        {% if let Some(new_group_details) = &community.new_group_details -%}
           content="{{ new_group_details }}"
         {% endif -%}
         ></markdown-editor>
@@ -383,7 +383,7 @@
 <div class="mt-6 flex items-center justify-end gap-x-6">
   {# Save button -#}
   <button type="submit" class="btn-primary relative">
-    {% call common::btn_spinner(id = "community-settings-spinner", spinner_type = "2") -%}
+    {{ ui::btn_spinner(id = "community-settings-spinner", spinner_type = "2") -}}
     Update Settings
   </button>
   {# End save button -#}

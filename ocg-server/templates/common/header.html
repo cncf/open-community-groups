@@ -1,4 +1,4 @@
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
 
 {# Header -#}
 <header id="header" class="w-full" role="banner">
@@ -27,9 +27,9 @@
 
       {# Desktop links -#}
       <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
-        {% call link(content = "Home", href = "/", current_path = path) -%}
-        {% call link(content = "Explore", href = "/explore", current_path = path) -%}
-        {% if let Some(new_group_details) = self.community.new_group_details -%}
+        {{ link(content = "Home", href = "/", current_path = path) -}}
+        {{ link(content = "Explore", href = "/explore", current_path = path) -}}
+        {% if let Some(new_group_details) = &self.community.new_group_details -%}
           <button id="open-new-group-btn"
                   class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors">
             New group
@@ -59,12 +59,12 @@
              class="relative">
           <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-primary-500 text-primary-700 size-[38px] p-0.5 overflow-hidden"
                   disabled>
-            {% call common::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "5", htmx = false) -%}
+            {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "5", htmx = false) -}}
             <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
           </button>
         </div>
       {% else -%}
-        {% call user_menu(user) -%}
+        {{ user_menu(user) -}}
       {% endif -%}
     </div>
     {# End desktop user menu -#}
@@ -116,9 +116,9 @@
         <ul class="text-stone-700 my-2" role="none">
           <li class="border-b border-stone-200 mb-2 pb-2" role="none">
             <div class="flex flex-col px-4 py-2">
-              <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user.username|display_some }}</div>
-              <div class="text-xs/4 truncate">{{ user.name|display_some }}</div>
-              {% if let Some(auth_provider) = user.auth_provider -%}
+              <div class="font-medium text-sm/6 truncate text-stone-700 mb-3">{{ user.username|assigned_or("") }}</div>
+              <div class="text-xs/4 truncate">{{ user.name|assigned_or("") }}</div>
+              {% if let Some(auth_provider) = &user.auth_provider -%}
                 {% if auth_provider == "linuxfoundation" -%}
                   <a class="text-xs/6 text-stone-500 flex items-center mt-3"
                      href="https://openprofile.dev"
@@ -169,7 +169,7 @@
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-buildings bg-stone-600"></div>
                   <div class="ms-2 text-xs/6">Community Dashboard</div>
-                  <div class="ms-auto hx-spinner">{% call common::spinner(size = "size-4") -%}</div>
+                  <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
             </li>
@@ -185,7 +185,7 @@
                 <div class="flex items-center">
                   <div class="svg-icon size-4 icon-groups bg-stone-600"></div>
                   <div class="ms-2 text-xs/6">Group Dashboard</div>
-                  <div class="ms-auto hx-spinner">{% call common::spinner(size = "size-4") -%}</div>
+                  <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
                 </div>
               </a>
             </li>
@@ -200,7 +200,7 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-user-small bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">User Dashboard</div>
-                <div class="ms-auto hx-spinner">{% call common::spinner(size = "size-4") -%}</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
           </li>

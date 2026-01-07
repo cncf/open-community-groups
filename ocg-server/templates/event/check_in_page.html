@@ -1,5 +1,6 @@
 {% extends "common/base.html" -%}
-{% import "common.html" as common -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
 
 {% block content -%}
   <div class="flex items-center justify-center w-full">
@@ -12,9 +13,9 @@
             {{ event.group_name }}
           </p>
           <div class="mt-4 flex items-center justify-center gap-3">
-            {% call common::event_badge(kind = event.kind, extra_styles = Some("px-3 py-1 text-xs")) -%}
+            {{ badges::event_badge(kind = event.kind, extra_styles = Some("px-3 py-1 text-xs") ) -}}
             {% if event.canceled -%}
-              {% call common::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-3 py-1 text-xs")) -%}
+              {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("px-3 py-1 text-xs") ) -}}
             {% endif -%}
           </div>
         </div>
@@ -64,7 +65,7 @@
                     <div>
                       <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Opens</p>
                       <p class="text-base font-semibold text-stone-900 break-words">
-                        {% if let Some(starts_at) = event.starts_at -%}
+                        {% if let Some(starts_at) = &event.starts_at -%}
                           2 hours before starts event date ({{ starts_at.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }})
                         {% else -%}
                           2 hours before the published start time.
@@ -74,7 +75,7 @@
                     <div>
                       <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Closes</p>
                       <p class="text-base font-semibold text-stone-900 break-words">
-                        {% if let Some(ends_at) = event.ends_at -%}
+                        {% if let Some(ends_at) = &event.ends_at -%}
                           {{ ends_at.with_timezone(event.timezone).format("%b %e · 11:59 PM %Z") }}
                         {% else -%}
                           At the end of the day on which the event finishes.
@@ -113,7 +114,7 @@
               <div>
                 <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Date</p>
                 <p class="text-base font-semibold text-stone-900 break-words">
-                  {% if let Some(starts_at) = event.starts_at -%}
+                  {% if let Some(starts_at) = &event.starts_at -%}
                     {{ starts_at.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}
                   {% else -%}
                     Start time will be announced soon.
@@ -127,7 +128,7 @@
                 {% if event.kind == EventKind::Virtual -%}
                   Virtual event
                 {% else -%}
-                  {% if let Some(location) = self.event.location(90) -%}
+                  {% if let Some(location) = &self.event.location(90) -%}
                     {{ location }}
                   {% else -%}
                     Venue details will be shared soon.
@@ -153,7 +154,7 @@
               <button id="event-check-in-submit"
                       type="submit"
                       class="btn-primary w-1/2 justify-center relative">
-                {% call common::btn_spinner(id = "check-in-submit-spinner", spinner_type = "2") -%}
+                {{ ui::btn_spinner(id = "check-in-submit-spinner", spinner_type = "2") -}}
                 Check in now
               </button>
             </form>

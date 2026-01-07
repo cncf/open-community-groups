@@ -7,7 +7,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    templates::{filters, helpers::user_initials},
+    templates::helpers::user_initials,
     types::group::{GroupRole, GroupRoleSummary},
 };
 

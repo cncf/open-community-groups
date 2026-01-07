@@ -1,5 +1,4 @@
-{% import "common.html" as common -%}
-{% import "dashboard/dashboard_macros.html" as macros -%}
+{% import "macros/dashboard.html" as dashboard -%}
 
 {# Events update form -#}
 <div class="space-y-12">
@@ -178,7 +177,7 @@
 
               {# Logo URL -#}
               <div class="col-span-full lg:col-span-3">
-                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" value="{%- if let Some(logo_url) = event.logo_url -%}{{ logo_url }}{%- endif -%}">
+                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" value="{%- if let Some(logo_url) = &event.logo_url -%}{{ logo_url }}{%- endif -%}">
               </image-field>
             </div>
             {# End Logo URL -#}
@@ -191,7 +190,7 @@
                           name="description_short"
                           rows="2"
                           class="input-primary"
-                          maxlength="{{ crate::validation::MAX_LEN_M }}">{% if let Some(description_short) = event.description_short %}{{ description_short }}{% endif %}</textarea>
+                          maxlength="{{ crate::validation::MAX_LEN_M }}">{% if let Some(description_short) = &event.description_short %}{{ description_short }}{% endif %}</textarea>
               </div>
               <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
             </div>
@@ -213,7 +212,7 @@
 
         {# Additional Information section -#}
         <div class="border-t border-stone-900/10 pt-12">
-          {% call macros::form_title(title = "Additional Information", description = "Optional event settings and external links.") -%}
+          {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
             {# Capacity -#}
@@ -232,7 +231,7 @@
                        class="input-primary
                               {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
                        placeholder="100"
-                       {% if let Some(capacity) = event.capacity %}value="{{ capacity }}"{% endif %}
+                       {% if let Some(capacity) = &event.capacity %}value="{{ capacity }}"{% endif %}
                        {% if event.is_past() %}disabled{% endif %}>
               </div>
               <p class="form-legend">
@@ -255,14 +254,14 @@
                        type="checkbox"
                        class="sr-only peer
                               {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
-                       {% if let Some(registration_required) = event.registration_required %}
+                       {% if let Some(registration_required) = &event.registration_required %}
                          {% if registration_required %}checked{% endif %}
                        {% endif %}
                        {% if event.is_past() %}disabled{% endif %}>
                 <input type="hidden"
                        id="registration_required"
                        name="registration_required"
-                       value="{%- if let Some(registration_required) = event.registration_required -%} {{ registration_required }} {%- else -%} false {%- endif -%}">
+                       value="{%- if let Some(registration_required) = &event.registration_required -%} {{ registration_required }} {%- else -%} false {%- endif -%}">
                 <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
                 </div>
                 <span class="ms-3 text-sm font-medium text-stone-900">Registration Required</span>
@@ -283,7 +282,7 @@
                        class="input-primary
                               {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
                        placeholder="https://meetup.com/group/events/123456"
-                       {% if let Some(meetup_url) = event.meetup_url %}value="{{ meetup_url }}"{% endif %}
+                       {% if let Some(meetup_url) = &event.meetup_url %}value="{{ meetup_url }}"{% endif %}
                        {% if event.is_past() %}disabled{% endif %}>
               </div>
               <p class="form-legend">Link to the Meetup.com event page.</p>
@@ -294,7 +293,7 @@
 
             {# Photos -#}
             <div class="col-span-full">
-              <gallery-field field-name="photos_urls" images="{%- if let Some(photos_urls) = event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}" legend="Optional photos related to the event." max-images="0" label="Photos"></gallery-field>
+              <gallery-field field-name="photos_urls" images="{%- if let Some(photos_urls) = &event.photos_urls -%}{{ photos_urls|json }}{%- endif -%}" legend="Optional photos related to the event." max-images="0" label="Photos"></gallery-field>
             </div>
             {# End Photos -#}
 
@@ -302,7 +301,7 @@
             <div class="col-span-3">
               <label for="tags" class="form-label">Tags</label>
               <div class="mt-2">
-                <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = event.tags -%}{{ tags|json }}{%- endif -%}" label="Tag" legend="Optional tags to help categorize and find the event.">
+                <multiple-inputs field-name="tags" input-type="text" items=" {%- if let Some(tags) = &event.tags -%}{{ tags|json }}{%- endif -%}" label="Tag" legend="Optional tags to help categorize and find the event.">
                 </multiple-inputs>
               </div>
             </div>
@@ -387,24 +386,20 @@
           <div id="venue-information-section"
                class="border-t border-stone-900/10 pt-12">
             {% if event.is_past() %}
-              {% call macros::form_title(
-              title = "Venue Information",
-              description = "Location details for in-person and hybrid events.",
-              button = "<button id='clear-location-fields'
-        type='button'
-        class='btn-primary-outline btn-mini whitespace-nowrap'
-        aria-label='Clear location details'
-        disabled>Clear location</button>"
-              ) -%}
+              {{ dashboard::form_title(title = "Venue Information",
+                            description = "Location details for in-person and hybrid events.",
+                            button = "<button id='clear-location-fields'
+                      type='button'
+                      class='btn-primary-outline btn-mini whitespace-nowrap'
+                      aria-label='Clear location details'
+                      disabled>Clear location</button>") -}}
             {% else %}
-              {% call macros::form_title(
-              title = "Venue Information",
-              description = "Location details for in-person and hybrid events.",
-              button = "<button id='clear-location-fields'
-        type='button'
-        class='btn-primary-outline btn-mini whitespace-nowrap'
-        aria-label='Clear location details'>Clear location</button>"
-              ) -%}
+              {{ dashboard::form_title(title = "Venue Information",
+                            description = "Location details for in-person and hybrid events.",
+                            button = "<button id='clear-location-fields'
+                      type='button'
+                      class='btn-primary-outline btn-mini whitespace-nowrap'
+                      aria-label='Clear location details'>Clear location</button>") -}}
             {% endif %}
 
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
@@ -413,19 +408,21 @@
                 <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
                 {% if event.is_past() %}disabled{% endif %}
 
-                {% if let Some(venue_name) = event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}
+                {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}
 
-                {% if let Some(venue_address) = event.venue_address %}initial-venue-address="{{ venue_address }}"{% endif %}
+                {% if let Some(venue_address) = &event.venue_address %}
+                  initial-venue-address="{{ venue_address }}"
+                {% endif %}
 
-                {% if let Some(venue_city) = event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}
+                {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}
 
-                {% if let Some(venue_zip_code) = event.venue_zip_code %}
+                {% if let Some(venue_zip_code) = &event.venue_zip_code %}
                   initial-venue-zip-code="{{ venue_zip_code }}"
                 {% endif %}
 
-                {% if let Some(lat) = event.latitude %}initial-latitude="{{ lat }}"{% endif %}
+                {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}
 
-                {% if let Some(lng) = event.longitude %}initial-longitude="{{ lng }}"{% endif %}
+                {% if let Some(lng) = &event.longitude %}initial-longitude="{{ lng }}"{% endif %}
                 >
                 </location-search-field>
               </div>
@@ -437,33 +434,33 @@
           {# Online Event Details section -#}
           <div id="online-event-details-section"
                class="border-t border-stone-900/10 pt-12">
-            {% call macros::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -%}
+            {{ dashboard::form_title(title = "Online Event Details", description = "Meeting information for virtual and hybrid events.") -}}
             <div class="mt-10 max-w-5xl">
               {% if meetings_enabled %}
                 <online-event-details id="online-event-details" kind="{{ event.kind }}"
-                {% if let Some(meeting_join_url) = event.meeting_join_url %}
+                {% if let Some(meeting_join_url) = &event.meeting_join_url %}
                   meeting-join-url="{{ meeting_join_url }}"
                 {% endif %}
 
-                {% if let Some(meeting_recording_url) = event.meeting_recording_url %}
+                {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}
                   meeting-recording-url="{{ meeting_recording_url }}"
                 {% endif %}
 
                 {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}
 
-                {% if let Some(meeting_in_sync) = event.meeting_in_sync %}
+                {% if let Some(meeting_in_sync) = &event.meeting_in_sync %}
 
                   {% if meeting_in_sync %}meeting-in-sync="true"{% endif %}
 
                 {% endif %}
 
-                {% if let Some(meeting_password) = event.meeting_password %}
+                {% if let Some(meeting_password) = &event.meeting_password %}
                   meeting-password="{{ meeting_password }}"
                 {% endif %}
 
-                {% if let Some(meeting_error) = event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
+                {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
 
-                {% if let Some(meeting_hosts) = event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
+                {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
                 meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
                 {% if event.is_past() %}disabled{% endif %}
                 ></online-event-details>
@@ -478,7 +475,7 @@
                                name="meeting_join_url"
                                class="input-primary"
                                placeholder="https://meet.example.com/123456789"
-                               {% if let Some(meeting_join_url) = event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}
+                               {% if let Some(meeting_join_url) = &event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}
                                {% if event.is_past() %}disabled{% endif %}>
                       </div>
                       <p class="form-legend">Teams, Meet, or any other video link.</p>
@@ -491,7 +488,7 @@
                                name="meeting_recording_url"
                                class="input-primary"
                                placeholder="https://youtube.com/watch?v=..."
-                               {% if let Some(meeting_recording_url) = event.meeting_recording_url %}
+                               {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}
                                  value="{{ meeting_recording_url }}"
                                {% endif %}>
                       </div>
