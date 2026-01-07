@@ -471,7 +471,7 @@ class EventSelector extends LitWrapper {
    */
   async _requestEvents(config) {
     const params = new URLSearchParams();
-    params.append("group", config.groupId);
+    params.append("group[]", config.groupId);
     params.set("limit", "10");
     if (config.dateFrom) {
       params.set("date_from", config.dateFrom);
