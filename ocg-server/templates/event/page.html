@@ -21,12 +21,34 @@
   </div>
   {# End site title -#}
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full relative overflow-hidden">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full relative overflow-hidden">
+      {# Breadcrumb -#}
+      <nav class="border-b border-stone-200 px-4 sm:px-6 lg:px-8 py-3">
+        <ol class="flex items-center gap-2 text-sm text-stone-500">
+          <li>
+            <a href="/"
+               class="hover:text-stone-700 hover:underline"
+               hx-boost="true"
+               hx-target="body">Home</a>
+          </li>
+          <li class="text-stone-300">/</li>
+          <li>
+            <a href="/group/{{ event.group.slug }}"
+               class="hover:text-stone-700 hover:underline"
+               hx-boost="true"
+               hx-target="body">{{ event.group.name }}</a>
+          </li>
+          <li class="text-stone-300">/</li>
+          <li class="text-stone-700 font-medium truncate max-w-[200px]">{{ event.name|demoji }}</li>
+        </ol>
+      </nav>
+      {# End breadcrumb -#}
+
       {# Sold out badge -#}
       {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]") , orientation = "top-right") -}}
       {# End sold out badge -#}
 
-      <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
+      <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
         {# Event header with name and group -#}
         <div>
           {# Main flex container for logo, name/group, and social networks -#}
