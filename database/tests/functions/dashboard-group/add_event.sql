@@ -448,7 +448,7 @@ select throws_like(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
     )$$,
-    '%event_ends_at_after_starts_at_check%',
+    '%event_check%',
     'Should throw error when event ends_at is before starts_at'
 );
 
@@ -458,7 +458,7 @@ select throws_like(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
-    '%session_ends_at_after_starts_at_check%',
+    '%session_check%',
     'Should throw error when session ends_at is before starts_at'
 );
 
@@ -468,7 +468,7 @@ select throws_like(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
     )$$,
-    '%event_ends_at_after_starts_at_check%',
+    '%event_check%',
     'Should throw error when event ends_at is set without starts_at'
 );
 

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(273);
+select plan(310);
 
 -- ============================================================================
 -- TESTS
@@ -15,10 +15,12 @@ select has_extension('postgis');
 
 -- Test: check expected tables exist
 select has_table('attachment');
+select has_table('auth_session');
 select has_table('community');
 select has_table('community_site_layout');
 select has_table('community_team');
 select has_table('custom_notification');
+select has_table('email_verification_code');
 select has_table('event');
 select has_table('event_attendee');
 select has_table('event_category');
@@ -56,6 +58,13 @@ select columns_are('attachment', array[
     'data',
     'file_name',
     'hash'
+]);
+
+-- Test: auth_session columns should match expected
+select columns_are('auth_session', array[
+    'auth_session_id',
+    'data',
+    'expires_at'
 ]);
 
 -- Test: community columns should match expected
@@ -116,6 +125,13 @@ select columns_are('custom_notification', array[
     'group_id',
     'subject',
     'body'
+]);
+
+-- Test: email_verification_code columns should match expected
+select columns_are('email_verification_code', array[
+    'email_verification_code_id',
+    'created_at',
+    'user_id'
 ]);
 
 -- Test: event columns should match expected
@@ -466,10 +482,12 @@ select columns_are('user', array[
 
 -- Test: check tables have expected primary keys
 select has_pk('attachment');
+select has_pk('auth_session');
 select has_pk('community');
 select has_pk('community_site_layout');
 select has_pk('community_team');
 select has_pk('custom_notification');
+select has_pk('email_verification_code');
 select has_pk('event');
 select has_pk('event_attendee');
 select has_pk('event_category');
@@ -506,6 +524,7 @@ select col_is_fk('community_team', 'user_id', 'user');
 select col_is_fk('custom_notification', 'created_by', 'user');
 select col_is_fk('custom_notification', 'event_id', 'event');
 select col_is_fk('custom_notification', 'group_id', 'group');
+select col_is_fk('email_verification_code', 'user_id', 'user');
 select col_is_fk('event', 'event_category_id', 'event_category');
 select col_is_fk('event', 'event_kind_id', 'event_kind');
 select col_is_fk('event', 'group_id', 'group');
@@ -537,7 +556,9 @@ select col_is_fk('legacy_event_speaker', 'event_id', 'event');
 select col_is_fk('meeting', 'event_id', 'event');
 select col_is_fk('meeting', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('meeting', 'session_id', 'session');
+select col_is_fk('notification', 'kind', 'notification_kind');
 select col_is_fk('notification', 'notification_template_data_id', 'notification_template_data');
+select col_is_fk('notification', 'user_id', 'user');
 select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
 select col_is_fk('region', 'community_id', 'community');
@@ -548,11 +569,15 @@ select col_is_fk('session_speaker', 'session_id', 'session');
 select col_is_fk('session_speaker', 'user_id', 'user');
 select col_is_fk('user', 'community_id', 'community');
 
--- Check tables have expected indexes
 -- Test: attachment indexes should match expected
 select indexes_are('attachment', array[
     'attachment_pkey',
     'attachment_hash_idx'
+]);
+
+-- Test: auth_session indexes should match expected
+select indexes_are('auth_session', array[
+    'auth_session_pkey'
 ]);
 
 -- Test: community indexes should match expected
@@ -564,12 +589,31 @@ select indexes_are('community', array[
     'community_community_site_layout_id_idx'
 ]);
 
+-- Test: community_site_layout indexes should match expected
+select indexes_are('community_site_layout', array[
+    'community_site_layout_pkey'
+]);
+
+-- Test: community_team indexes should match expected
+select indexes_are('community_team', array[
+    'community_team_pkey',
+    'community_team_community_id_idx',
+    'community_team_user_id_idx'
+]);
+
 -- Test: custom_notification indexes should match expected
 select indexes_are('custom_notification', array[
     'custom_notification_created_by_idx',
     'custom_notification_event_id_idx',
     'custom_notification_group_id_idx',
     'custom_notification_pkey'
+]);
+
+-- Test: email_verification_code indexes should match expected
+select indexes_are('email_verification_code', array[
+    'email_verification_code_pkey',
+    'email_verification_code_user_id_idx',
+    'email_verification_code_user_id_key'
 ]);
 
 -- Test: event indexes should match expected
@@ -596,6 +640,27 @@ select indexes_are('event_attendee', array[
     'event_attendee_event_id_created_at_idx'
 ]);
 
+-- Test: event_category indexes should match expected
+select indexes_are('event_category', array[
+    'event_category_pkey',
+    'event_category_name_community_id_key',
+    'event_category_slug_community_id_key',
+    'event_category_community_id_idx'
+]);
+
+-- Test: event_host indexes should match expected
+select indexes_are('event_host', array[
+    'event_host_pkey',
+    'event_host_event_id_idx',
+    'event_host_user_id_idx'
+]);
+
+-- Test: event_kind indexes should match expected
+select indexes_are('event_kind', array[
+    'event_kind_pkey',
+    'event_kind_display_name_key'
+]);
+
 -- Test: group indexes should match expected
 select indexes_are('group', array[
     'group_pkey',
@@ -610,12 +675,37 @@ select indexes_are('group', array[
     'group_tsdoc_idx'
 ]);
 
+-- Test: group_category indexes should match expected
+select indexes_are('group_category', array[
+    'group_category_pkey',
+    'group_category_name_community_id_key',
+    'group_category_normalized_name_community_id_key',
+    'group_category_community_id_idx'
+]);
+
 -- Test: group_member indexes should match expected
 select indexes_are('group_member', array[
     'group_member_pkey',
     'group_member_group_id_idx',
     'group_member_user_id_idx',
     'group_member_group_id_created_at_idx'
+]);
+
+-- Test: group_role indexes should match expected
+select indexes_are('group_role', array[
+    'group_role_pkey',
+    'group_role_display_name_key'
+]);
+
+-- Test: group_site_layout indexes should match expected
+select indexes_are('group_site_layout', array[
+    'group_site_layout_pkey'
+]);
+
+-- Test: group_sponsor indexes should match expected
+select indexes_are('group_sponsor', array[
+    'group_sponsor_pkey',
+    'group_sponsor_group_id_idx'
 ]);
 
 -- Test: event_speaker indexes should match expected
@@ -698,6 +788,14 @@ select indexes_are('notification_template_data', array[
     'notification_template_data_pkey'
 ]);
 
+-- Test: region indexes should match expected
+select indexes_are('region', array[
+    'region_pkey',
+    'region_name_community_id_key',
+    'region_normalized_name_community_id_key',
+    'region_community_id_idx'
+]);
+
 -- Test: session indexes should match expected
 select indexes_are('session', array[
     'session_pkey',
@@ -711,6 +809,12 @@ select indexes_are('session_speaker', array[
     'session_speaker_pkey',
     'session_speaker_session_id_idx',
     'session_speaker_user_id_idx'
+]);
+
+-- Test: session_kind indexes should match expected
+select indexes_are('session_kind', array[
+    'session_kind_pkey',
+    'session_kind_display_name_key'
 ]);
 
 -- Test: user indexes should match expected
@@ -736,19 +840,7 @@ select has_function('add_group_sponsor');
 select has_function('add_group_team_member');
 select has_function('attend_event');
 select has_function('cancel_event');
-select has_function('check_community_team_community');
-select has_function('check_event_attendee_community');
-select has_function('check_event_category_community');
-select has_function('check_event_host_community');
-select has_function('check_event_speaker_community');
-select has_function('check_event_sponsor_group');
-select has_function('check_group_category_community');
-select has_function('check_group_member_community');
-select has_function('check_group_region_community');
-select has_function('check_group_team_community');
 select has_function('check_in_event');
-select has_function('check_session_speaker_community');
-select has_function('check_session_within_event_bounds');
 select has_function('delete_community_team_member');
 select has_function('delete_event');
 select has_function('delete_group');
@@ -812,6 +904,20 @@ select has_function('user_owns_community');
 select has_function('user_owns_group');
 select has_function('verify_email');
 
+-- Test: check expected trigger functions exist
+select has_function('check_community_team_community');
+select has_function('check_event_attendee_community');
+select has_function('check_event_category_community');
+select has_function('check_event_host_community');
+select has_function('check_event_speaker_community');
+select has_function('check_event_sponsor_group');
+select has_function('check_group_category_community');
+select has_function('check_group_member_community');
+select has_function('check_group_region_community');
+select has_function('check_group_team_community');
+select has_function('check_session_speaker_community');
+select has_function('check_session_within_event_bounds');
+
 -- Test: check expected triggers exist
 select has_trigger('community_team', 'community_team_community_check');
 select has_trigger('event', 'event_category_community_check');
@@ -825,6 +931,28 @@ select has_trigger('group_member', 'group_member_community_check');
 select has_trigger('group_team', 'group_team_community_check');
 select has_trigger('session', 'session_within_event_bounds_check');
 select has_trigger('session_speaker', 'session_speaker_community_check');
+
+-- Test: custom_notification table expected constraints exist
+select has_check('custom_notification');
+
+-- Test: event table expected constraints exist
+select has_check('event', 'event_check');
+select has_check('event', 'event_check1');
+select has_check('event', 'event_check2');
+select has_check('event', 'event_meeting_capacity_required_chk');
+select has_check('event', 'event_meeting_conflict_chk');
+select has_check('event', 'event_meeting_kind_chk');
+select has_check('event', 'event_meeting_provider_required_chk');
+select has_check('event', 'event_meeting_requested_times_chk');
+
+-- Test: group table expected constraints exist
+select has_check('group', 'group_check');
+
+-- Test: session table expected constraints exist
+select has_check('session', 'session_check');
+select has_check('session', 'session_meeting_conflict_chk');
+select has_check('session', 'session_meeting_provider_required_chk');
+select has_check('session', 'session_meeting_requested_times_chk');
 
 -- Test: event kinds should match expected values
 select results_eq(
@@ -881,6 +1009,15 @@ select results_eq(
     'select * from community_site_layout',
     $$ values ('default') $$,
     'Community site layout should have default'
+);
+
+-- Test: group role should match expected values
+select results_eq(
+    'select * from group_role order by group_role_id',
+    $$ values
+        ('organizer', 'Organizer')
+    $$,
+    'Group roles should exist'
 );
 
 -- Test: group site layout should match expected
