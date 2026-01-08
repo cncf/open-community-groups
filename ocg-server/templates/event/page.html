@@ -20,6 +20,7 @@
     </h1>
   </div>
   {# End site title -#}
+
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full relative overflow-hidden">
       {# Breadcrumb -#}
@@ -57,8 +58,12 @@
           </li>
         </ol>
       </nav>
-      {# End breadcrumb -#}
+    </div>
+  </div>
+  {# End breadcrumb -#}
 
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full relative overflow-hidden">
       {# Sold out badge -#}
       {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]") , orientation = "top-right") -}}
       {# End sold out badge -#}
