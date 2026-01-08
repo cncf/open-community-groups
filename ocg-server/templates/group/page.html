@@ -101,10 +101,10 @@
         {# End group header -#}
 
         {# Next event and location -#}
-        <div>
-          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8 mt-3 lg:mt-0">
+        <div class="-mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-5 sm:py-7 lg:py-10 border-t border-b border-stone-200 bg-stone-50/50 bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed [--pattern-fg:var(--color-gray-950)]/5">
+          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8">
             {# Next event section -#}
-            <div class="border border-stone-200 rounded-lg">
+            <div class="border border-stone-200 rounded-lg bg-white">
               <div class="p-4">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Next event</div>
                 {% let next_event = upcoming_events.first() -%}
@@ -168,7 +168,7 @@
             </div>
 
             {# Location and event section -#}
-            <div class="border border-stone-200 rounded-lg flex flex-col">
+            <div class="border border-stone-200 rounded-lg flex flex-col bg-white">
               {# Location details -#}
               <div class="flex flex-col p-4 h-full">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
@@ -209,7 +209,7 @@
         {# Group description -#}
         {% if let Some(description) = &group.description -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 lg:pb-10">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-4 lg:pb-10">
               About this group
             </div>
             <div class="text-stone-500 text-sm/6 markdown">{{ description|md_to_html|safe }}</div>
