@@ -25,15 +25,24 @@
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full">
       {# Breadcrumb -#}
       <nav class="border-b border-stone-200 px-4 sm:px-6 lg:px-8 py-3">
-        <ol class="flex items-center gap-2 text-sm text-stone-500">
-          <li>
+        <ol class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-stone-500">
+          <li class="flex-shrink-0">
             <a href="/"
-               class="hover:text-stone-700 hover:underline"
+               class="flex items-center gap-1.5 hover:text-stone-700 hover:underline"
                hx-boost="true"
-               hx-target="body">Home</a>
+               hx-target="body">
+              <div class="svg-icon size-3 bg-stone-500 icon-home"></div>
+              Home
+            </a>
           </li>
-          <li class="text-stone-300">/</li>
-          <li class="text-stone-700 font-medium truncate max-w-[200px]">{{ group.name|demoji }}</li>
+          <li class="hidden sm:block flex-shrink-0">
+            <div class="svg-icon size-3 bg-stone-300 icon-arrow-right"></div>
+          </li>
+          <li class="flex items-center gap-1.5 min-w-0 pl-1 sm:pl-0">
+            <span class="text-stone-300 sm:hidden">└</span>
+            <div class="svg-icon size-3 bg-stone-700 icon-groups flex-shrink-0"></div>
+            <span class="truncate text-stone-700 font-medium">{{ group.name|demoji }}</span>
+          </li>
         </ol>
       </nav>
       {# End breadcrumb -#}
