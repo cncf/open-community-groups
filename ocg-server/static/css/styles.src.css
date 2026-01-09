@@ -76,11 +76,11 @@
   }
 
   .icon-text img {
-    @apply -mt-0.5 w-3 h-3 text-stone-500 flex-shrink-0;
+    @apply -mt-0.5 w-3 h-3 text-stone-500 shrink-0;
   }
 
   .icon-text span {
-    @apply text-sm text-stone-700 truncate;
+    @apply text-[0.825rem] text-stone-700 truncate;
   }
 
   .custom-badge {
@@ -124,7 +124,7 @@
   }
 
   .card-header span {
-    @apply text-xs font-semibold tracking-wider uppercase;
+    @apply text-[0.7rem] md:text-xs font-semibold tracking-wider uppercase;
   }
 
   .card-title {
