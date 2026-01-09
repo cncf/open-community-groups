@@ -415,6 +415,7 @@ input:placeholder-shown {
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
 .icon-lines { --icon-url: url('/static/images/icons/lines.svg'); }
+.icon-tree-list { --icon-url: url('/static/images/icons/tree_list.svg'); }
 .icon-link { --icon-url: url('/static/images/icons/link.svg'); }
 .icon-linkedin { --icon-url: url('/static/images/icons/linkedin.svg'); }
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
@@ -456,6 +457,10 @@ input:placeholder-shown {
 .icon-youtube { --icon-url: url('/static/images/icons/youtube.svg'); }
 /* End icons */
 
+/* Breadcrumb item width (uses CSS variable set at runtime) */
+.breadcrumb-item {
+  max-width: calc(100% / var(--breadcrumb-count, 1));
+}
 
 /* Font family */
 
