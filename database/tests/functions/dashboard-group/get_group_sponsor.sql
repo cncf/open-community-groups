@@ -22,20 +22,14 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-berlin',
     'Cloud Native Berlin',
-    'berlin.cloudnative.org',
-    'Cloud Native Berlin Community',
     'Community for cloud native technologies in Berlin',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Group Category (required by group)

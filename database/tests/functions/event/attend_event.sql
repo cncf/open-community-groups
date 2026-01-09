@@ -29,8 +29,8 @@ select plan(9);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme) values
-(:'communityID', 'test-community', 'Test Community', 'test.community.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url)
+values (:'communityID', 'test-community', 'Test Community', 'Desc', 'https://example.com/logo.png');
 
 -- Group category
 insert into group_category (group_category_id, name, community_id)
@@ -41,10 +41,10 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'General', 'general', :'communityID');
 
 -- Users
-insert into "user" (user_id, username, email, community_id, auth_hash)
+insert into "user" (user_id, auth_hash, email, username)
 values
-    (:'user1ID', 'u1', 'u1@test.com', :'communityID', 'h'),
-    (:'user2ID', 'u2', 'u2@test.com', :'communityID', 'h');
+    (:'user1ID', 'h', 'u1@test.com', 'u1'),
+    (:'user2ID', 'h', 'u2@test.com', 'u2');
 
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)

@@ -26,25 +26,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Test Community Title',
-    'A test community',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url)
+values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test community', 'https://example.com/logo.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -59,12 +42,12 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'Tech Talks', 'tech-talks', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, bio, name, photo_url, company, title, created_at)
+insert into "user" (user_id, auth_hash, email, username, created_at, bio, company, name, photo_url, title)
 values
-    (:'user1ID', 'host1@example.com', 'host1', false, 'test_hash', :'communityID', 'Conference opening speaker', 'John Doe', 'https://example.com/john.png', 'Tech Corp', 'CTO', '2024-01-01 00:00:00'),
-    (:'user2ID', 'host2@example.com', 'host2', false, 'test_hash', :'communityID', 'Community host and emcee', 'Jane Smith', 'https://example.com/jane.png', 'Dev Inc', 'Lead Dev', '2024-01-01 00:00:00'),
-    (:'user3ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Community programs lead', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', '2024-01-01 00:00:00'),
-    (:'user4ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Operations and logistics manager', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', '2024-01-01 00:00:00');
+    (:'user1ID', 'test_hash', 'host1@example.com', 'host1', '2024-01-01 00:00:00', 'Conference opening speaker', 'Tech Corp', 'John Doe', 'https://example.com/john.png', 'CTO'),
+    (:'user2ID', 'test_hash', 'host2@example.com', 'host2', '2024-01-01 00:00:00', 'Community host and emcee', 'Dev Inc', 'Jane Smith', 'https://example.com/jane.png', 'Lead Dev'),
+    (:'user3ID', 'test_hash', 'organizer1@example.com', 'organizer1', '2024-01-01 00:00:00', 'Community programs lead', 'Cloud Co', 'Alice Johnson', 'https://example.com/alice.png', 'Manager'),
+    (:'user4ID', 'test_hash', 'organizer2@example.com', 'organizer2', '2024-01-01 00:00:00', 'Operations and logistics manager', 'StartUp', 'Bob Wilson', 'https://example.com/bob.png', 'Engineer');
 
 -- Event
 insert into event (

@@ -15,17 +15,17 @@ use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::{
-        dashboard::community::groups::MAX_GROUPS_LISTED, error::HandlerError, extractors::CommunityId,
+        dashboard::community::groups::MAX_GROUPS_LISTED, error::HandlerError, extractors::SelectedCommunityId,
     },
     templates::{
         PageId,
         auth::User,
-        community::explore::GroupsFilters,
         dashboard::community::{
             analytics, groups,
             home::{Content, Page, Tab},
             settings, team,
         },
+        site::explore::GroupsFilters,
     },
 };
 
@@ -37,15 +37,16 @@ use crate::{
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community information
-    let community = db.get_community(community_id).await?;
+    // Get community and site information
+    let (community, site_settings) =
+        tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -56,12 +57,13 @@ pub(crate) async fn page(
         Tab::Groups => {
             let ts_query = query.get("ts_query").cloned();
             let filters = GroupsFilters {
+                community: vec![community_id],
                 limit: Some(MAX_GROUPS_LISTED),
                 sort_by: Some("name".to_string()),
                 ts_query: ts_query.clone(),
                 ..GroupsFilters::default()
             };
-            let groups = db.search_community_groups(community_id, &filters).await?.groups;
+            let groups = db.search_groups(&filters).await?.groups;
             Content::Groups(groups::ListPage { groups, ts_query })
         }
         Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
@@ -79,11 +81,12 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
-        community,
+        community: Some(community),
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::CommunityDashboard,
         path: "/dashboard/community".to_string(),
+        site_settings,
         user: User::from_session(auth_session).await?,
     };
 
@@ -108,7 +111,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        db::{common::SearchCommunityGroupsOutput, mock::MockDB},
+        db::{common::SearchGroupsOutput, mock::MockDB},
         handlers::{dashboard::community::groups::MAX_GROUPS_LISTED, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
@@ -121,7 +124,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let stats = sample_community_stats();
 
         // Setup database mock
@@ -138,10 +141,6 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -150,6 +149,9 @@ mod tests {
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(stats.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -188,12 +190,12 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let ts_query = "rust".to_string();
-        let groups_output = SearchCommunityGroupsOutput {
+        let groups_output = SearchGroupsOutput {
             total: 0,
             bbox: None,
-            ..sample_search_community_groups_output(group_id)
+            ..sample_search_groups_output(group_id)
         };
 
         // Setup database mock
@@ -210,26 +212,25 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
-        db.expect_search_community_groups()
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+        db.expect_search_groups()
             .times(1)
             .withf({
                 let ts_query = ts_query.clone();
-                move |id, filters| {
-                    *id == community_id
+                move |filters| {
+                    filters.community == vec![community_id]
                         && filters.limit == Some(MAX_GROUPS_LISTED)
                         && filters.sort_by.as_deref() == Some("name")
                         && filters.ts_query.as_deref() == Some(ts_query.as_str())
                 }
             })
-            .returning(move |_, _| Ok(groups_output.clone()));
+            .returning(move |_| Ok(groups_output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -267,7 +268,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -283,14 +284,13 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -328,7 +328,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let members = vec![
             sample_community_team_member(true),
             sample_community_team_member(false),
@@ -348,10 +348,6 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -360,6 +356,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(members.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -397,7 +396,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -413,10 +412,6 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)

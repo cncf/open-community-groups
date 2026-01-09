@@ -16,13 +16,8 @@ use uuid::Uuid;
 use crate::{
     auth::User as AuthUser,
     config::HttpServerConfig,
-    db::{
-        BBox, DynDB,
-        common::{SearchCommunityEventsOutput, SearchCommunityGroupsOutput},
-        dashboard::common::User as DashboardUser,
-        mock::MockDB,
-    },
-    handlers::auth::SELECTED_GROUP_ID_KEY,
+    db::{BBox, DynDB, common::SearchGroupsOutput, dashboard::common::User as DashboardUser, mock::MockDB},
+    handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
         images::{DynImageStorage, MockImageStorage},
@@ -30,7 +25,6 @@ use crate::{
     },
     templates::{
         common::User as TemplateUser,
-        community::explore::{self, FilterOption},
         dashboard::{
             community::{
                 analytics::{AttendeesStats, CommunityStats, EventsStats, GroupsStats, MembersStats},
@@ -51,11 +45,13 @@ use crate::{
         },
     },
     types::{
-        community::{Community, Theme},
+        community::Community,
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
             GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
+            UserGroupsByCommunity,
         },
+        site::{SiteSettings, Theme},
     },
 };
 
@@ -122,14 +118,8 @@ pub(crate) fn sample_community(community_id: Uuid) -> Community {
         created_at: 0,
         description: "Test community".to_string(),
         display_name: "Test".to_string(),
-        header_logo_url: "/static/images/placeholder_cncf.png".to_string(),
-        host: "example.test".to_string(),
+        logo_url: "/static/images/placeholder_cncf.png".to_string(),
         name: "test".to_string(),
-        theme: Theme {
-            palette: BTreeMap::new(),
-            primary_color: "#000000".to_string(),
-        },
-        title: "Test Community".to_string(),
         ..Default::default()
     }
 }
@@ -355,28 +345,6 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
     }
 }
 
-/// Sample filters options used by explore tests.
-pub(crate) fn sample_filters_options() -> explore::FiltersOptions {
-    explore::FiltersOptions {
-        distance: vec![FilterOption {
-            name: "5 km".to_string(),
-            value: "5".to_string(),
-        }],
-        event_category: vec![FilterOption {
-            name: "Category".to_string(),
-            value: "category".to_string(),
-        }],
-        group_category: vec![FilterOption {
-            name: "Category".to_string(),
-            value: "category".to_string(),
-        }],
-        region: vec![FilterOption {
-            name: "Region".to_string(),
-            value: "region".to_string(),
-        }],
-    }
-}
-
 /// Sample group category reused across tests.
 pub(crate) fn sample_group_category() -> GroupCategory {
     GroupCategory {
@@ -550,18 +518,9 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
     }
 }
 
-/// Sample search output for community events.
-pub(crate) fn sample_search_community_events_output(event_id: Uuid) -> SearchCommunityEventsOutput {
-    SearchCommunityEventsOutput {
-        events: vec![sample_event_summary(event_id, Uuid::new_v4())],
-        bbox: Some(sample_bbox()),
-        total: 1,
-    }
-}
-
-/// Sample search output for community groups.
-pub(crate) fn sample_search_community_groups_output(group_id: Uuid) -> SearchCommunityGroupsOutput {
-    SearchCommunityGroupsOutput {
+/// Sample search output for groups.
+pub(crate) fn sample_search_groups_output(group_id: Uuid) -> SearchGroupsOutput {
+    SearchGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
         bbox: Some(sample_bbox()),
         total: 1,
@@ -581,6 +540,7 @@ pub(crate) fn sample_session_record(
     session_id: session::Id,
     user_id: Uuid,
     auth_hash: &str,
+    selected_community_id: Option<Uuid>,
     selected_group_id: Option<Uuid>,
 ) -> session::Record {
     let mut data = HashMap::new();
@@ -591,6 +551,9 @@ pub(crate) fn sample_session_record(
             "auth_hash": auth_hash.as_bytes(),
         }),
     );
+    if let Some(community_id) = selected_community_id {
+        data.insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
+    }
     if let Some(group_id) = selected_group_id {
         data.insert(SELECTED_GROUP_ID_KEY.to_string(), json!(group_id));
     }
@@ -599,6 +562,20 @@ pub(crate) fn sample_session_record(
         data,
         expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
         id: session_id,
+    }
+}
+
+/// Sample site settings used across tests.
+pub(crate) fn sample_site_settings() -> SiteSettings {
+    SiteSettings {
+        description: "Test site".to_string(),
+        site_id: Uuid::new_v4(),
+        theme: Theme {
+            palette: BTreeMap::new(),
+            primary_color: "#000000".to_string(),
+        },
+        title: "Test Site".to_string(),
+        ..Default::default()
     }
 }
 
@@ -647,6 +624,18 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
         name: Some("Speaker".to_string()),
         ..Default::default()
     }
+}
+
+/// Sample user groups by community used in dashboard group tests.
+pub(crate) fn sample_user_groups_by_community(
+    community_id: Uuid,
+    group_id: Uuid,
+) -> Vec<UserGroupsByCommunity> {
+    vec![UserGroupsByCommunity {
+        community_id,
+        community_name: "Test Community".to_string(),
+        groups: vec![sample_group_summary(group_id)],
+    }]
 }
 
 /// Builder for test router configuration.

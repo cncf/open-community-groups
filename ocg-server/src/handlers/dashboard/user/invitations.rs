@@ -12,7 +12,7 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{error::HandlerError, extractors::SelectedCommunityId},
     templates::dashboard::user::invitations,
 };
 
@@ -22,7 +22,7 @@ use crate::{
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     auth_session: AuthSession,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -48,7 +48,7 @@ pub(crate) async fn list_page(
 pub(crate) async fn accept_community_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -67,7 +67,7 @@ pub(crate) async fn accept_community_team_invitation(
 pub(crate) async fn accept_group_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<uuid::Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -87,7 +87,7 @@ pub(crate) async fn accept_group_team_invitation(
 pub(crate) async fn reject_community_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -127,7 +127,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -146,7 +146,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let community_invitations = vec![sample_community_invitation()];
         let group_invitations = vec![sample_group_invitation(Uuid::new_v4())];
 
@@ -160,10 +160,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_list_user_community_team_invitations()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -181,7 +177,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user/invitations")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -209,7 +204,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let community_invitations = vec![sample_community_invitation()];
 
         // Setup database mock
@@ -222,10 +217,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_list_user_community_team_invitations()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -243,7 +234,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user/invitations")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -263,7 +253,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -275,10 +265,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_accept_community_team_invitation()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -298,7 +284,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/user/invitations/community/accept")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -323,7 +308,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -335,10 +320,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_accept_group_team_invitation()
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -358,7 +339,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/user/invitations/group/{group_id}/accept"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -382,7 +362,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -394,10 +374,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_delete_community_team_member()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -417,7 +393,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/user/invitations/community/reject")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -441,7 +416,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -472,7 +447,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/user/invitations/group/{group_id}/reject"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

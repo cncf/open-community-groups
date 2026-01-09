@@ -7,7 +7,7 @@ use axum::{
 };
 use tokio_postgres::error::SqlState;
 
-use crate::templates::community::explore::FilterError;
+use crate::templates::site::explore::FilterError;
 
 /// Represents all possible errors that can occur in a handler.
 #[derive(thiserror::Error, Debug)]

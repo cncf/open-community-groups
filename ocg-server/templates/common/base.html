@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
-    <title>{{ community.display_name }} community groups</title>
+    {# Page title: use community display name if available, otherwise use site title -#}
+    <title>{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}</title>
     <meta name="description"
-          content="{{ community.display_name }} community groups">
+          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
     <meta name="keywords" content="community, groups, events">
 
     {#- OG tags #}
     <meta property="og:type" content="website">
     <meta property="og:title"
-          content="{{ community.display_name }} community groups">
+          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
     <meta property="og:url" content="cncf.ocgroups.dev/">
     <meta property="og:description"
-          content="{{ community.display_name }} community groups">
-    {% if let Some(og_image_url) = &community.og_image_url -%}
+          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+    {% if let Some(og_image_url) = &site_settings.og_image_url -%}
       <meta property="og:image" content="{{ og_image_url }}">
     {% endif -%}
     {#- End OG tags  #}
@@ -23,15 +24,15 @@
     <meta property="twitter:domain" content="demo-cncf.ocgroups.dev">
     <meta property="twitter:url" content="cncf.ocgroups.dev">
     <meta name="twitter:title"
-          content="{{ community.display_name }} community groups">
+          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
     <meta name="twitter:description"
-          content="{{ community.display_name }} community groups">
-    {% if let Some(og_image_url) = &community.og_image_url -%}
+          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+    {% if let Some(og_image_url) = &site_settings.og_image_url -%}
       <meta name="twitter:image" content="{{ og_image_url }}">
     {% endif -%}
     {#- End Twitter tags #}
 
-    {% if let Some(favicon_url) = &community.favicon_url -%}
+    {% if let Some(favicon_url) = &site_settings.favicon_url -%}
       <link rel="icon" href="{{ favicon_url }}" sizes="any">
 
     {% endif -%}
@@ -40,7 +41,7 @@
 
     <style>
       :root {
-        --ocg-primary: {{ community.theme.primary_color }};
+        --ocg-primary: {{ site_settings.theme.primary_color }};
       }
     </style>
 
@@ -50,10 +51,10 @@
           href="/static/vendor/css/leaflet.markercluster.v1.5.3.min.css" />
     <link rel="stylesheet" href="/static/vendor/css/easymde.v2.20.0.min.css" />
     <link rel="stylesheet" href="/static/css/styles.css" />
-    {% if !community.theme.palette.is_empty() -%}
+    {% if !site_settings.theme.palette.is_empty() -%}
       <style>
         :root {
-        {% for (color_name, color_value) in community.theme.palette -%}
+        {% for (color_name, color_value) in site_settings.theme.palette -%}
           --color-primary-{{ color_name }}: {{ color_value }};
         {% endfor -%}
         }

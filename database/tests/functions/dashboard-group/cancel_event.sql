@@ -28,20 +28,14 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'test-community',
     'Test Community',
-    'test.localhost',
-    'Test Community',
     'A test community',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Group Category
@@ -73,13 +67,11 @@ insert into "group" (
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     username
 ) values (
     :'userID',
     'x',
-    :'communityID',
     'user@test.local',
     'user'
 );

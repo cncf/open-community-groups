@@ -23,54 +23,25 @@ select plan(3);
 -- ============================================================================
 
 -- Communities
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values
-    (:'communityID', 'event-summary-community', 'Event Summary', 'summary.example.test', 'Event Summary', 'Community for summary tests', 'https://example.test/logo.png', '{}'::jsonb),
-    (:'community2ID', 'other-community', 'Other Community', 'other.example.test', 'Other', 'Another community', 'https://example.test/other.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url) values
+    (:'communityID', 'event-summary-community', 'Event Summary', 'Community for summary tests', 'https://example.test/logo.png'),
+    (:'community2ID', 'other-community', 'Other Community', 'Another community', 'https://example.test/other.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name, created_at)
 values (:'groupCategoryID', :'communityID', 'Event Category', '2025-01-01 00:00:00');
 
 -- Group
-insert into "group" (
-    group_id,
-    community_id,
-    group_category_id,
-    group_site_layout_id,
-    name,
-    slug
-) values (
-    :'groupID',
-    :'communityID',
-    :'groupCategoryID',
-    'default',
-    'Summary Group',
-    'summary-group'
-);
+insert into "group" (group_id, community_id, group_category_id, group_site_layout_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'default', 'Summary Group', 'summary-group');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name, slug)
 values (:'eventCategoryID', :'communityID', 'Summary Events', 'summary-events');
 
 -- User
-insert into "user" (user_id, auth_hash, community_id, email, email_verified, username)
-values (
-    :'userID',
-    'test_hash',
-    :'communityID',
-    'summary-user@example.test',
-    true,
-    'summary-user'
-);
+insert into "user" (user_id, auth_hash, email, username, email_verified)
+values (:'userID', 'test_hash', 'summary-user@example.test', 'summary-user', true);
 
 -- Event
 insert into event (

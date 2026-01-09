@@ -25,14 +25,14 @@ pub(crate) trait DBAuth {
     /// Retrieves a session by its ID.
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>>;
 
-    /// Retrieves a user by their email address and community ID.
-    async fn get_user_by_email(&self, community_id: &Uuid, email: &str) -> Result<Option<User>>;
+    /// Retrieves a user by their email address.
+    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>>;
 
     /// Retrieves a user by their unique ID.
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
 
-    /// Retrieves a user by their username and community ID.
-    async fn get_user_by_username(&self, community_id: &Uuid, username: &str) -> Result<Option<User>>;
+    /// Retrieves a user by their username.
+    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
 
     /// Retrieves the password hash for a user.
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
@@ -40,7 +40,6 @@ pub(crate) trait DBAuth {
     /// Registers a new user in the database.
     async fn sign_up_user(
         &self,
-        community_id: &Uuid,
         user_summary: &UserSummary,
         email_verified: bool,
     ) -> Result<(User, Option<Uuid>)>;
@@ -131,7 +130,7 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, email), err)]
-    async fn get_user_by_email(&self, community_id: &Uuid, email: &str) -> Result<Option<User>> {
+    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>> {
         trace!("db: get user (by email)");
 
         let db = self.pool.get().await?;
@@ -142,14 +141,13 @@ impl DBAuth for PgDB {
                     (
                         select user_id
                         from "user"
-                        where community_id = $1::uuid
-                        and email = $2::text
+                        where email = $1::text
                         and email_verified = true
                     ),
                     false
                 );
                 "#,
-                &[&community_id, &email],
+                &[&email],
             )
             .await?
             .get::<_, Option<serde_json::Value>>(0)
@@ -187,7 +185,7 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self, username), err)]
-    async fn get_user_by_username(&self, community_id: &Uuid, username: &str) -> Result<Option<User>> {
+    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
         trace!("db: get user (by username)");
 
         let db = self.pool.get().await?;
@@ -197,15 +195,14 @@ impl DBAuth for PgDB {
                 select get_user_by_id(
                     (
                         select user_id from "user"
-                        where community_id = $1::uuid
-                        and username = $2::text
+                        where username = $1::text
                         and email_verified = true
                         and password is not null
                     ),
                     true
                 );
                 "#,
-                &[&community_id, &username],
+                &[&username],
             )
             .await?
             .get::<_, Option<serde_json::Value>>(0)
@@ -234,7 +231,6 @@ impl DBAuth for PgDB {
     #[instrument(skip(self, user_summary), err)]
     async fn sign_up_user(
         &self,
-        community_id: &Uuid,
         user_summary: &UserSummary,
         email_verified: bool,
     ) -> Result<(User, Option<Uuid>)> {
@@ -243,8 +239,8 @@ impl DBAuth for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select * from sign_up_user($1::uuid, $2::jsonb, $3::boolean);",
-                &[community_id, &Json(user_summary), &email_verified],
+                "select * from sign_up_user($1::jsonb, $2::boolean);",
+                &[&Json(user_summary), &email_verified],
             )
             .await?;
 

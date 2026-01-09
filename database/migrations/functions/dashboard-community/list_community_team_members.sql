@@ -13,7 +13,7 @@ returns json as $$
             u.photo_url,
             u.title
         from community_team ct
-        join "user" u on u.user_id = ct.user_id and u.community_id = ct.community_id
+        join "user" u on u.user_id = ct.user_id
         where ct.community_id = p_community_id
         order by coalesce(lower(u.name), lower(u.username)) asc
     ) member;

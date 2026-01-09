@@ -20,29 +20,22 @@ select plan(2);
 -- Community
 insert into community (
     community_id,
-    display_name,
-    host,
     name,
-    title,
+    display_name,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
-    'Cloud Native Seattle',
-    'seattle.cloudnative.org',
     'cloud-native-seattle',
-    'Cloud Native Seattle Community',
+    'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Users
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     company,
     email,
     name,
@@ -51,8 +44,8 @@ insert into "user" (
     email_verified,
     photo_url
 ) values
-    (:'user1ID', gen_random_bytes(32), :'communityID', 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://example.com/a.png'),
-    (:'user2ID', gen_random_bytes(32), :'communityID', null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://example.com/b.png');
+    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://example.com/a.png'),
+    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://example.com/b.png');
 
 -- Team
 insert into community_team (accepted, community_id, user_id) values

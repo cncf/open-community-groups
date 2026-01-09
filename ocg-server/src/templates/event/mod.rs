@@ -7,6 +7,7 @@ use crate::{
     types::{
         community::Community,
         event::{EventFull, EventKind, EventSummary},
+        site::SiteSettings,
     },
 };
 
@@ -18,13 +19,15 @@ use crate::{
 #[template(path = "event/page.html")]
 pub(crate) struct Page {
     /// Community information.
-    pub community: Community,
+    pub community: Option<Community>,
     /// Detailed information about the event.
     pub event: EventFull,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 }
@@ -37,13 +40,15 @@ pub(crate) struct CheckInPage {
     /// Whether the check-in window is open.
     pub check_in_window_open: bool,
     /// Community information.
-    pub community: Community,
+    pub community: Option<Community>,
     /// Event summary being checked into.
     pub event: EventSummary,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
     /// Whether the user is an attendee of the event.

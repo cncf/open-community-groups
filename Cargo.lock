@@ -3221,6 +3221,7 @@ dependencies = [
  "sha2",
  "strum",
  "subtle",
+ "tap",
  "thiserror 2.0.17",
  "time",
  "tokio",

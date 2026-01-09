@@ -24,9 +24,9 @@ select plan(3);
 -- ============================================================================
 
 -- Communities
-insert into community (community_id, display_name, host, name, title, description, header_logo_url, theme) values
-    (:'communityID', 'C1', 'c1.example.com', 'c1', 'C1', 'd', 'https://e/logo.png', '{}'::jsonb),
-    (:'community2ID', 'C2', 'c2.example.com', 'c2', 'C2', 'd', 'https://e/logo.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url) values
+    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png'),
+    (:'community2ID', 'c2', 'C2', 'd', 'https://e/logo.png');
 
 -- Categories
 insert into group_category (group_category_id, community_id, name) values
@@ -40,9 +40,9 @@ insert into "group" (group_id, community_id, group_category_id, name, slug) valu
     (:'group3ID', :'community2ID', :'category2ID', 'G3', 'g3');
 
 -- Users
-insert into "user" (user_id, auth_hash, community_id, email, name, username, email_verified) values
-    (:'userID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), :'community2ID', 'bob@example.com', 'Bob', 'bob', true);
+insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
+    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, 'Bob');
 
 -- Pending group invitations (two in main community, one in other community)
 insert into group_team (group_id, user_id, role, accepted, created_at) values

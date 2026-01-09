@@ -17,7 +17,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::group::team,
@@ -50,7 +50,7 @@ pub(crate) async fn list_page(
 /// Adds a user to the group team.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -62,8 +62,8 @@ pub(crate) async fn add(
         .await?;
 
     // Enqueue invitation email notification
-    let (community, group) = tokio::try_join!(
-        db.get_community(community_id),
+    let (site_settings, group) = tokio::try_join!(
+        db.get_site_settings(),
         db.get_group_summary(community_id, group_id)
     )?;
     let template_data = GroupTeamInvitation {
@@ -72,7 +72,7 @@ pub(crate) async fn add(
             "{}/dashboard/user?tab=invitations",
             server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
         ),
-        theme: community.theme,
+        theme: site_settings.theme,
     };
     let notification = NewNotification {
         attachments: vec![],
@@ -150,7 +150,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -172,11 +172,18 @@ mod tests {
     #[tokio::test]
     async fn test_list_page_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let member = sample_team_member(true);
         let role = sample_group_role_summary();
 
@@ -190,6 +197,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_team_members()
             .times(1)
             .withf(move |id| *id == group_id)
@@ -206,7 +217,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/team")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -236,7 +246,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let form = NewTeamMember {
             role: GroupRole::Organizer,
             user_id: new_member_id,
@@ -244,9 +260,8 @@ mod tests {
         let body = format!("role={}&user_id={}", form.role, form.user_id);
         let group_summary = sample_group_summary(group_id);
         let group_summary_for_db = group_summary.clone();
-        let community = sample_community(community_id);
-        let community_for_notifications = community.clone();
-        let community_for_db = community;
+        let site_settings = sample_site_settings();
+        let site_settings_for_notifications = site_settings.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -258,10 +273,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_add_group_team_member()
             .times(1)
             .withf(move |id, uid, role| {
@@ -272,13 +287,9 @@ mod tests {
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(group_summary_for_db.clone()));
-        db.expect_get_community()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning({
-                let community = community_for_db;
-                move |_| Ok(community.clone())
-            });
+            .returning(move || Ok(site_settings.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -293,7 +304,7 @@ mod tests {
                                 template.group.group_id == group_summary.group_id
                                     && template.link == "/dashboard/user?tab=invitations"
                                     && template.theme.primary_color
-                                        == community_for_notifications.theme.primary_color
+                                        == site_settings_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
@@ -305,7 +316,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/dashboard/group/team/add")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(body))
@@ -326,12 +336,19 @@ mod tests {
     #[tokio::test]
     async fn test_delete_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let member_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -343,6 +360,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_delete_group_team_member()
             .times(1)
             .withf(move |id, uid| *id == group_id && *uid == member_id)
@@ -356,7 +377,6 @@ mod tests {
         let request = Request::builder()
             .method("DELETE")
             .uri(format!("/dashboard/group/team/{member_id}/delete"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -376,12 +396,19 @@ mod tests {
     #[tokio::test]
     async fn test_update_role_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let member_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let form = super::NewTeamRole {
             role: GroupRole::Organizer,
         };
@@ -397,6 +424,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_update_group_team_member_role()
             .times(1)
             .withf(move |id, uid, role| *id == group_id && *uid == member_id && role == &GroupRole::Organizer)
@@ -410,7 +441,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/team/{member_id}/role"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(body))

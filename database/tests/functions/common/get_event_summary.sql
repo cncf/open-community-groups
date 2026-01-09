@@ -26,20 +26,14 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Group Category
@@ -76,7 +70,6 @@ insert into "user" (
     username,
     email_verified,
     auth_hash,
-    community_id,
     created_at
 ) values (
     :'attendee1ID',
@@ -84,7 +77,6 @@ insert into "user" (
     'attendee1',
     true,
     'attendee-hash',
-    :'communityID',
     '2024-01-01 00:00:00+00'
 ), (
     :'attendee2ID',
@@ -92,7 +84,6 @@ insert into "user" (
     'attendee2',
     true,
     'attendee-hash',
-    :'communityID',
     '2024-01-01 00:00:00+00'
 );
 

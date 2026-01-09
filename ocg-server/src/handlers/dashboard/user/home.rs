@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{error::HandlerError, extractors::SelectedCommunityId},
     templates::{
         PageId,
         auth::{self, User, UserDetails},
@@ -31,7 +31,7 @@ use crate::{
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -41,8 +41,9 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community information
-    let community = db.get_community(community_id).await?;
+    // Get community and site information
+    let (community, site_settings) =
+        tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -68,11 +69,12 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
-        community,
+        community: Some(community),
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
+        site_settings,
         user: User::from_session(auth_session).await?,
     };
 
@@ -89,7 +91,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -108,7 +110,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -120,10 +122,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -131,6 +129,9 @@ mod tests {
         db.expect_list_timezones()
             .times(1)
             .returning(|| Ok(vec!["UTC".to_string(), "America/New_York".to_string()]));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -140,7 +141,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -169,7 +169,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let community_invitations = vec![sample_community_invitation()];
         let group_invitations = vec![sample_group_invitation(group_id)];
 
@@ -183,10 +183,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -199,6 +195,9 @@ mod tests {
             .times(1)
             .withf(move |id, uid| *id == community_id && *uid == user_id)
             .returning(move |_, _| Ok(group_invitations.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -208,7 +207,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user?tab=invitations")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -236,7 +234,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -249,10 +247,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash_for_user))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -266,7 +260,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

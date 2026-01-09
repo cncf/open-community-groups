@@ -12,8 +12,8 @@ use crate::{db::PgDB, templates::dashboard::community::groups::Group};
 /// Common database operations for dashboards.
 #[async_trait]
 pub(crate) trait DBDashboardCommon {
-    /// Searches for users by query within a community.
-    async fn search_user(&self, community_id: Uuid, query: &str) -> Result<Vec<User>>;
+    /// Searches for users by query.
+    async fn search_user(&self, query: &str) -> Result<Vec<User>>;
 
     /// Updates an existing group.
     async fn update_group(&self, community_id: Uuid, group_id: Uuid, group: &Group) -> Result<()>;
@@ -23,13 +23,11 @@ pub(crate) trait DBDashboardCommon {
 impl DBDashboardCommon for PgDB {
     /// [`DBDashboardCommon::search_user`]
     #[instrument(skip(self), err)]
-    async fn search_user(&self, community_id: Uuid, query: &str) -> Result<Vec<User>> {
+    async fn search_user(&self, query: &str) -> Result<Vec<User>> {
         trace!("db: search user");
 
         let db = self.pool.get().await?;
-        let row = db
-            .query_one("select search_user($1::uuid, $2::text)", &[&community_id, &query])
-            .await?;
+        let row = db.query_one("select search_user($1::text)", &[&query]).await?;
         let users = serde_json::from_value(row.get::<_, serde_json::Value>(0))?;
 
         Ok(users)

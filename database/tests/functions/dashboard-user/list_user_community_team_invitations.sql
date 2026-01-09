@@ -20,19 +20,15 @@ select plan(2);
 -- ============================================================================
 
 -- Communities
-insert into community (
-    community_id, name, display_name, host, description, header_logo_url, theme, title
-) values
-    (:'community1ID', 'c1', 'C1', 'c1.example.com', 'd', 'https://e/logo.png', '{}'::jsonb, 'C1'),
-    (:'community2ID', 'c2', 'C2', 'c2.example.com', 'd', 'https://e/logo.png', '{}'::jsonb, 'C2');
+insert into community (community_id, name, display_name, description, logo_url) values
+    (:'community1ID', 'c1', 'C1', 'd', 'https://e/logo.png'),
+    (:'community2ID', 'c2', 'C2', 'd', 'https://e/logo.png');
 
 -- Users
-insert into "user" (
-    user_id, auth_hash, community_id, email, email_verified, name, username
-) values
-    (:'user1ID', gen_random_bytes(32), :'community1ID', 'u1@example.com', true, 'U1', 'u1'),
-    (:'user2ID', gen_random_bytes(32), :'community1ID', 'u2@example.com', true, 'U2', 'u2'),
-    (:'user3ID', gen_random_bytes(32), :'community2ID', 'u3@example.com', true, 'U3', 'u3');
+insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
+    (:'user1ID', gen_random_bytes(32), 'u1@example.com', 'u1', true, 'U1'),
+    (:'user2ID', gen_random_bytes(32), 'u2@example.com', 'u2', true, 'U2'),
+    (:'user3ID', gen_random_bytes(32), 'u3@example.com', 'u3', true, 'U3');
 
 -- Invitations
 insert into community_team (

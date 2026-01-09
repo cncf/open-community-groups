@@ -12,7 +12,7 @@ use crate::{
     config::LoginOptions,
     handlers::auth::AUTH_PROVIDER_KEY,
     templates::{PageId, filters, helpers::user_initials},
-    types::community::Community,
+    types::{community::Community, site::SiteSettings},
     validation::{
         MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty,
         trimmed_non_empty_opt, trimmed_non_empty_vec,
@@ -25,8 +25,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "auth/log_in.html")]
 pub(crate) struct LogInPage {
-    /// Community information.
-    pub community: Community,
+    /// Community context (None for global site pages).
+    pub community: Option<Community>,
     /// Login options.
     pub login: LoginOptions,
     /// Flash or status messages to display.
@@ -35,6 +35,8 @@ pub(crate) struct LogInPage {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 
@@ -46,8 +48,8 @@ pub(crate) struct LogInPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "auth/sign_up.html")]
 pub(crate) struct SignUpPage {
-    /// Community information.
-    pub community: Community,
+    /// Community context (None for global site pages).
+    pub community: Option<Community>,
     /// Login options.
     pub login: LoginOptions,
     /// Flash or status messages to display.
@@ -56,6 +58,8 @@ pub(crate) struct SignUpPage {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 

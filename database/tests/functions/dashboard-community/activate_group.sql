@@ -23,20 +23,14 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-nyc',
     'Cloud Native NYC',
-    'nyc.cloudnative.org',
-    'Cloud Native NYC Community',
     'A community for cloud native technologies and practices in NYC',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Group Category

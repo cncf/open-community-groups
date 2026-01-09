@@ -23,7 +23,7 @@ use crate::{
     },
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
-        group::{GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary},
+        group::{GroupRole, GroupRoleSummary, GroupSponsor, UserGroupsByCommunity},
     },
 };
 
@@ -92,8 +92,8 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
-    /// Lists all groups where the user is a team member.
-    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
+    /// Lists all groups where the user is a team member, grouped by community.
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>>;
 
     /// Publishes an event (sets published=true and records publication metadata).
     async fn publish_event(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
@@ -426,14 +426,14 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_user_groups`]
     #[instrument(skip(self), err)]
-    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>> {
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>> {
         trace!("db: list user groups");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_user_groups($1::uuid)::text", &[&user_id])
             .await?;
-        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let groups = UserGroupsByCommunity::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }

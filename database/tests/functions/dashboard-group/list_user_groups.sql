@@ -3,21 +3,25 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set category1ID '00000000-0000-0000-0000-000000000021'
+\set category2ID '00000000-0000-0000-0000-000000000022'
 \set community1ID '00000000-0000-0000-0000-000000000001'
+\set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityAdminUserID '00000000-0000-0000-0000-000000000013'
 \set dualRoleUserID '00000000-0000-0000-0000-000000000014'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
+\set group5ID '00000000-0000-0000-0000-000000000035'
 \set groupMemberUserID '00000000-0000-0000-0000-000000000011'
+\set multiCommunityUserID '00000000-0000-0000-0000-000000000015'
 \set regularUserID '00000000-0000-0000-0000-000000000012'
 
 -- ============================================================================
@@ -27,38 +31,28 @@ select plan(4);
 -- Community
 insert into community (
     community_id,
-    display_name,
-    host,
     name,
-    title,
+    display_name,
     description,
-    header_logo_url,
-    theme
-) values (
-    :'community1ID',
-    'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'cloud-native-seattle',
-    'Cloud Native Seattle Community',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+    logo_url
+) values
+    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png'),
+    (:'community2ID', 'devops-nyc', 'DevOps NYC', 'DevOps practitioners in New York City', 'https://example.com/logo2.png');
 
 -- User
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     name,
     username,
     email_verified
 ) values
-    (:'groupMemberUserID', gen_random_bytes(32), :'community1ID', 'groupmember@example.com', 'Group Member User', 'groupmember', true),
-    (:'regularUserID', gen_random_bytes(32), :'community1ID', 'regular@example.com', 'Regular User', 'regularuser', true),
-    (:'communityAdminUserID', gen_random_bytes(32), :'community1ID', 'communityadmin@example.com', 'Community Admin User', 'communityadmin', true),
-    (:'dualRoleUserID', gen_random_bytes(32), :'community1ID', 'dualrole@example.com', 'Dual Role User', 'dualrole', true);
+    (:'communityAdminUserID', gen_random_bytes(32), 'communityadmin@example.com', 'Community Admin User', 'communityadmin', true),
+    (:'dualRoleUserID', gen_random_bytes(32), 'dualrole@example.com', 'Dual Role User', 'dualrole', true),
+    (:'groupMemberUserID', gen_random_bytes(32), 'groupmember@example.com', 'Group Member User', 'groupmember', true),
+    (:'multiCommunityUserID', gen_random_bytes(32), 'multicommunity@example.com', 'Multi Community User', 'multicommunity', true),
+    (:'regularUserID', gen_random_bytes(32), 'regular@example.com', 'Regular User', 'regularuser', true);
 
 -- Group Category
 insert into group_category (
@@ -66,12 +60,9 @@ insert into group_category (
     community_id,
     name,
     "order"
-) values (
-    :'category1ID',
-    :'community1ID',
-    'Test Category',
-    1
-);
+) values
+    (:'category1ID', :'community1ID', 'Test Category', 1),
+    (:'category2ID', :'community2ID', 'DevOps Category', 1);
 
 -- Group
 insert into "group" (
@@ -88,7 +79,8 @@ insert into "group" (
     (:'group1ID', :'community1ID', :'category1ID', 'Group A', 'abc1234', '2024-01-01 10:00:00+00', 'Test City', 'US', 'United States'),
     (:'group2ID', :'community1ID', :'category1ID', 'Group B', 'def5678', '2024-01-02 10:00:00+00', 'Test City', 'US', 'United States'),
     (:'group3ID', :'community1ID', :'category1ID', 'Group C', 'ghi9abc', '2024-01-03 10:00:00+00', 'Test City', 'US', 'United States'),
-    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'jkl2def', '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States');
+    (:'group4ID', :'community1ID', :'category1ID', 'Group D (Deleted)', 'jkl2def', '2024-01-04 10:00:00+00', 'Test City', 'US', 'United States'),
+    (:'group5ID', :'community2ID', :'category2ID', 'NYC DevOps Meetup', 'mno3ghi', '2024-01-05 10:00:00+00', 'New York', 'US', 'United States');
 
 -- Mark group4 as deleted (must also set active = false per check constraint)
 update "group" set deleted = true, active = false where group_id = :'group4ID';
@@ -96,7 +88,9 @@ update "group" set deleted = true, active = false where group_id = :'group4ID';
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted) values
     (:'group1ID', :'groupMemberUserID', 'organizer', true),
-    (:'group2ID', :'groupMemberUserID', 'organizer', true);
+    (:'group1ID', :'multiCommunityUserID', 'organizer', true),
+    (:'group2ID', :'groupMemberUserID', 'organizer', true),
+    (:'group5ID', :'multiCommunityUserID', 'organizer', true);
 
 -- Community Team
 insert into community_team (accepted, community_id, user_id) values
@@ -125,36 +119,42 @@ select is(
     list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
         {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704103200,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "name": "Group A",
-            "slug": "abc1234",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704189600,
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "name": "Group B",
-            "slug": "def5678",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "community_name": "cloud-native-seattle",
+            "groups": [
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704103200,
+                    "group_id": "00000000-0000-0000-0000-000000000031",
+                    "name": "Group A",
+                    "slug": "abc1234",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                },
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704189600,
+                    "group_id": "00000000-0000-0000-0000-000000000032",
+                    "name": "Group B",
+                    "slug": "def5678",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                }
+            ]
         }
     ]'::jsonb,
     'Group team member (not in community team) should see only groups A and B where they are members'
@@ -165,52 +165,58 @@ select is(
     list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
     '[
         {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704103200,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "name": "Group A",
-            "slug": "abc1234",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704189600,
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "name": "Group B",
-            "slug": "def5678",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704276000,
-            "group_id": "00000000-0000-0000-0000-000000000033",
-            "name": "Group C",
-            "slug": "ghi9abc",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "community_name": "cloud-native-seattle",
+            "groups": [
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704103200,
+                    "group_id": "00000000-0000-0000-0000-000000000031",
+                    "name": "Group A",
+                    "slug": "abc1234",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                },
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704189600,
+                    "group_id": "00000000-0000-0000-0000-000000000032",
+                    "name": "Group B",
+                    "slug": "def5678",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                },
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704276000,
+                    "group_id": "00000000-0000-0000-0000-000000000033",
+                    "name": "Group C",
+                    "slug": "ghi9abc",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                }
+            ]
         }
     ]'::jsonb,
     'Community team member (not in any group teams) should see all three non-deleted groups (A, B, C)'
@@ -221,55 +227,113 @@ select is(
     list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
     '[
         {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704103200,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "name": "Group A",
-            "slug": "abc1234",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704189600,
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "name": "Group B",
-            "slug": "def5678",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000021",
-                "name": "Test Category",
-                "normalized_name": "test-category",
-                "order": 1
-            },
-            "created_at": 1704276000,
-            "group_id": "00000000-0000-0000-0000-000000000033",
-            "name": "Group C",
-            "slug": "ghi9abc",
-            "city": "Test City",
-            "country_code": "US",
-            "country_name": "United States"
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "community_name": "cloud-native-seattle",
+            "groups": [
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704103200,
+                    "group_id": "00000000-0000-0000-0000-000000000031",
+                    "name": "Group A",
+                    "slug": "abc1234",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                },
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704189600,
+                    "group_id": "00000000-0000-0000-0000-000000000032",
+                    "name": "Group B",
+                    "slug": "def5678",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                },
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704276000,
+                    "group_id": "00000000-0000-0000-0000-000000000033",
+                    "name": "Group C",
+                    "slug": "ghi9abc",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                }
+            ]
         }
     ]'::jsonb,
     'User with both community and group team memberships should see all groups without duplicates (Group B not duplicated)'
+);
+
+-- Should see groups from multiple communities sorted by community name
+select is(
+    list_user_groups(:'multiCommunityUserID'::uuid)::jsonb,
+    '[
+        {
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "community_name": "cloud-native-seattle",
+            "groups": [
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000021",
+                        "name": "Test Category",
+                        "normalized_name": "test-category",
+                        "order": 1
+                    },
+                    "created_at": 1704103200,
+                    "group_id": "00000000-0000-0000-0000-000000000031",
+                    "name": "Group A",
+                    "slug": "abc1234",
+                    "city": "Test City",
+                    "country_code": "US",
+                    "country_name": "United States"
+                }
+            ]
+        },
+        {
+            "community_id": "00000000-0000-0000-0000-000000000002",
+            "community_name": "devops-nyc",
+            "groups": [
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "00000000-0000-0000-0000-000000000022",
+                        "name": "DevOps Category",
+                        "normalized_name": "devops-category",
+                        "order": 1
+                    },
+                    "created_at": 1704448800,
+                    "group_id": "00000000-0000-0000-0000-000000000035",
+                    "name": "NYC DevOps Meetup",
+                    "slug": "mno3ghi",
+                    "city": "New York",
+                    "country_code": "US",
+                    "country_name": "United States"
+                }
+            ]
+        }
+    ]'::jsonb,
+    'User with group team memberships in multiple communities should see groups from both communities sorted by community name'
 );
 
 -- ============================================================================

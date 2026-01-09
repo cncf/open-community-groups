@@ -24,19 +24,8 @@ select plan(4);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    display_name,
-    host,
-    name,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID', 'C1', 'c1.example.com', 'c1', 'C1', 'd',
-    'https://e/logo.png', '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url)
+values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -51,17 +40,10 @@ insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users (u1 verified, u2 unverified)
-insert into "user" (
-    user_id,
-    auth_hash,
-    community_id,
-    email,
-    name,
-    username,
-    email_verified
-) values
-    (:'user1ID', gen_random_bytes(32), :'communityID', 'u1@example.com', 'U1', 'u1', true),
-    (:'user2ID', gen_random_bytes(32), :'communityID', 'u2@example.com', 'U2', 'u2', false);
+insert into "user" (user_id, auth_hash, email, username, email_verified, name)
+values
+    (:'user1ID', gen_random_bytes(32), 'u1@example.com', 'u1', true, 'U1'),
+    (:'user2ID', gen_random_bytes(32), 'u2@example.com', 'u2', false, 'U2');
 
 -- Event
 insert into event (
@@ -96,14 +78,8 @@ select is(
 
 -- Should return attendees ordered by user_id asc
 -- Add a second verified user with lower id and ensure order asc
-insert into "user" (
-    user_id,
-    auth_hash,
-    community_id,
-    email,
-    username,
-    email_verified
-) values (:'user0ID', gen_random_bytes(32), :'communityID', 'u0@example.com', 'u0', true);
+insert into "user" (user_id, auth_hash, email, username, email_verified)
+values (:'user0ID', gen_random_bytes(32), 'u0@example.com', 'u0', true);
 insert into event_attendee (event_id, user_id) values (:'eventID', :'user0ID');
 select is(
     list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid)::jsonb,

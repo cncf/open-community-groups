@@ -37,14 +37,12 @@ returns json as $$
             select 1
             from community_team ct
             where ct.user_id = u.user_id
-            and ct.community_id = u.community_id
             and ct.accepted = true
         ),
         'belongs_to_community_team', exists (
             select 1
             from community_team ct
             where ct.user_id = u.user_id
-            and ct.community_id = u.community_id
             and ct.accepted = true
         )
     ))

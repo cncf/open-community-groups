@@ -120,7 +120,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -136,11 +136,18 @@ mod tests {
     #[tokio::test]
     async fn test_add_page_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -152,6 +159,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -161,7 +172,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/sponsors/add")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -185,11 +195,18 @@ mod tests {
     #[tokio::test]
     async fn test_list_page_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let sponsor = sample_group_sponsor();
 
         // Setup database mock
@@ -202,6 +219,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_sponsors()
             .times(1)
             .withf(move |id| *id == group_id)
@@ -215,7 +236,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/sponsors")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -239,12 +259,19 @@ mod tests {
     #[tokio::test]
     async fn test_update_page_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let group_sponsor_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let mut sponsor = sample_group_sponsor();
         sponsor.group_sponsor_id = group_sponsor_id;
 
@@ -258,6 +285,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_sponsor()
             .times(1)
             .withf(move |id, sponsor_id| *id == group_id && *sponsor_id == group_sponsor_id)
@@ -271,7 +302,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/update"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -295,11 +325,18 @@ mod tests {
     #[tokio::test]
     async fn test_add_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let form = sample_sponsor_form();
         let body = to_string(&form).unwrap();
 
@@ -313,6 +350,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_add_group_sponsor()
             .times(1)
             .withf(move |id, sponsor| {
@@ -328,7 +369,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/dashboard/group/sponsors/add")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(body))
@@ -349,12 +389,19 @@ mod tests {
     #[tokio::test]
     async fn test_delete_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let group_sponsor_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -366,6 +413,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_delete_group_sponsor()
             .times(1)
             .withf(move |id, sponsor_id| *id == group_id && *sponsor_id == group_sponsor_id)
@@ -379,7 +430,6 @@ mod tests {
         let request = Request::builder()
             .method("DELETE")
             .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/delete"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -399,12 +449,19 @@ mod tests {
     #[tokio::test]
     async fn test_update_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let group_sponsor_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let form = sample_sponsor_form();
         let body = to_string(&form).unwrap();
 
@@ -418,6 +475,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_update_group_sponsor()
             .times(1)
             .withf(move |id, sponsor_id, sponsor| {
@@ -433,7 +494,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/sponsors/{group_sponsor_id}/update"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(body))

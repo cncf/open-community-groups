@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(310);
+select plan(302);
 
 -- ============================================================================
 -- TESTS
@@ -48,6 +48,7 @@ select has_table('region');
 select has_table('session');
 select has_table('session_kind');
 select has_table('session_speaker');
+select has_table('site');
 select has_table('user');
 
 -- Test: attachment columns should match expected
@@ -75,23 +76,16 @@ select columns_are('community', array[
     'created_at',
     'description',
     'display_name',
-    'header_logo_url',
-    'host',
+    'logo_url',
     'name',
-    'theme',
-    'title',
 
     'ad_banner_link_url',
     'ad_banner_url',
-    'copyright_notice',
     'extra_links',
     'facebook_url',
-    'favicon_url',
     'flickr_url',
-    'footer_logo_url',
     'github_url',
     'instagram_url',
-    'jumbotron_image_url',
     'linkedin_url',
     'new_group_details',
     'og_image_url',
@@ -453,11 +447,25 @@ select columns_are('region', array[
     'order'
 ]);
 
+-- Test: site columns should match expected
+select columns_are('site', array[
+    'site_id',
+    'created_at',
+    'description',
+    'theme',
+    'title',
+
+    'copyright_notice',
+    'favicon_url',
+    'footer_logo_url',
+    'header_logo_url',
+    'og_image_url'
+]);
+
 -- Test: user columns should match expected
 select columns_are('user', array[
     'user_id',
     'auth_hash',
-    'community_id',
     'created_at',
     'email',
     'email_verified',
@@ -515,6 +523,7 @@ select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
 select has_pk('session_speaker');
+select has_pk('site');
 select has_pk('user');
 
 -- Test: check tables have expected foreign keys
@@ -567,7 +576,6 @@ select col_is_fk('session', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('session', 'session_kind_id', 'session_kind');
 select col_is_fk('session_speaker', 'session_id', 'session');
 select col_is_fk('session_speaker', 'user_id', 'user');
-select col_is_fk('user', 'community_id', 'community');
 
 -- Test: attachment indexes should match expected
 select indexes_are('attachment', array[
@@ -583,10 +591,9 @@ select indexes_are('auth_session', array[
 -- Test: community indexes should match expected
 select indexes_are('community', array[
     'community_pkey',
+    'community_community_site_layout_id_idx',
     'community_display_name_key',
-    'community_host_key',
-    'community_name_key',
-    'community_community_site_layout_id_idx'
+    'community_name_key'
 ]);
 
 -- Test: community_site_layout indexes should match expected
@@ -817,16 +824,20 @@ select indexes_are('session_kind', array[
     'session_kind_display_name_key'
 ]);
 
+-- Test: site indexes should match expected
+select indexes_are('site', array[
+    'site_pkey'
+]);
+
 -- Test: user indexes should match expected
 select indexes_are('user', array[
     'user_pkey',
+    'user_email_key',
+    'user_email_lower_idx',
     'user_legacy_id_key',
-    'user_email_community_id_key',
-    'user_username_community_id_key',
-    'user_community_id_idx',
-    'user_username_lower_idx',
     'user_name_lower_idx',
-    'user_email_lower_idx'
+    'user_username_key',
+    'user_username_lower_idx'
 ]);
 
 -- Test: check expected functions exist
@@ -848,8 +859,8 @@ select has_function('delete_group_sponsor');
 select has_function('delete_group_team_member');
 select has_function('generate_slug');
 select has_function('get_community');
-select has_function('get_community_filters_options');
 select has_function('get_community_home_stats');
+select has_function('get_community_id_by_name');
 select has_function('get_community_recently_added_groups');
 select has_function('get_community_stats');
 select has_function('get_community_upcoming_events');
@@ -857,12 +868,14 @@ select has_function('get_event_full');
 select has_function('get_event_full_by_slug');
 select has_function('get_event_summary');
 select has_function('get_event_summary_by_id');
+select has_function('get_filters_options');
 select has_function('get_group_full');
 select has_function('get_group_full_by_slug');
 select has_function('get_group_past_events');
 select has_function('get_group_sponsor');
 select has_function('get_group_summary');
 select has_function('get_group_upcoming_events');
+select has_function('get_site_settings');
 select has_function('get_user_by_id');
 select has_function('i_array_to_string');
 select has_function('is_event_attendee');
@@ -881,15 +894,16 @@ select has_function('list_group_members_ids');
 select has_function('list_group_roles');
 select has_function('list_group_sponsors');
 select has_function('list_group_team_members');
+select has_function('list_communities');
 select has_function('list_regions');
 select has_function('list_session_kinds');
 select has_function('list_user_community_team_invitations');
 select has_function('list_user_group_team_invitations');
 select has_function('list_user_groups');
 select has_function('publish_event');
-select has_function('search_community_events');
-select has_function('search_community_groups');
 select has_function('search_event_attendees');
+select has_function('search_events');
+select has_function('search_groups');
 select has_function('search_user');
 select has_function('sign_up_user');
 select has_function('unpublish_event');
@@ -905,32 +919,18 @@ select has_function('user_owns_group');
 select has_function('verify_email');
 
 -- Test: check expected trigger functions exist
-select has_function('check_community_team_community');
-select has_function('check_event_attendee_community');
 select has_function('check_event_category_community');
-select has_function('check_event_host_community');
-select has_function('check_event_speaker_community');
 select has_function('check_event_sponsor_group');
 select has_function('check_group_category_community');
-select has_function('check_group_member_community');
 select has_function('check_group_region_community');
-select has_function('check_group_team_community');
-select has_function('check_session_speaker_community');
 select has_function('check_session_within_event_bounds');
 
 -- Test: check expected triggers exist
-select has_trigger('community_team', 'community_team_community_check');
 select has_trigger('event', 'event_category_community_check');
-select has_trigger('event_attendee', 'event_attendee_community_check');
-select has_trigger('event_host', 'event_host_community_check');
-select has_trigger('event_speaker', 'event_speaker_community_check');
 select has_trigger('event_sponsor', 'event_sponsor_group_check');
 select has_trigger('group', 'group_category_community_check');
 select has_trigger('group', 'group_region_community_check');
-select has_trigger('group_member', 'group_member_community_check');
-select has_trigger('group_team', 'group_team_community_check');
 select has_trigger('session', 'session_within_event_bounds_check');
-select has_trigger('session_speaker', 'session_speaker_community_check');
 
 -- Test: custom_notification table expected constraints exist
 select has_check('custom_notification');

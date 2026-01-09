@@ -22,35 +22,18 @@ select plan(5);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'test.community.org',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url)
+values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png');
 
 -- Group category
 insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
 -- Users
-insert into "user" (user_id, username, email, community_id, auth_hash)
-values 
-    (:'user1ID', 'testuser1', 'user1@test.com', :'communityID', 'hash1'),
-    (:'user2ID', 'testuser2', 'user2@test.com', :'communityID', 'hash2');
+insert into "user" (user_id, auth_hash, email, username)
+values
+    (:'user1ID', 'hash1', 'user1@test.com', 'testuser1'),
+    (:'user2ID', 'hash2', 'user2@test.com', 'testuser2');
 
 -- Groups
 insert into "group" (

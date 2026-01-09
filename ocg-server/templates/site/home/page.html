@@ -1,0 +1,111 @@
+{% extends "common/base.html" -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/search.html" as search -%}
+
+{% block jumbotron -%}
+  {# Jumbotron -#}
+  <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">
+    <section>
+      <div class="relative z-10 max-w-screen-xl pb-7 lg:pb-14">
+        {# Site title -#}
+        <h1 class="text-center mb-8 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+          {{ site_settings.title }}
+        </h1>
+        {# End site title -#}
+
+        {# Site description -#}
+        {% if !site_settings.description.is_empty() -%}
+        <div class="mb-8 font-normal text-stone-600 jumbotron-description">
+          {{ site_settings.description|md_to_html|safe }}
+        </div>
+        {% endif -%}
+        {# End site description -#}
+
+        {# Search bar -#}
+        <div>
+          {{ search::search_bar(placeholder = "Search groups and events", input_styles = "w-[100%] lg:w-[50%]", container_styles = "mb-6", with_help = false) -}}
+          <script type="module">
+            import {
+              loadExplorePage
+            } from '/static/js/community/home/home.js';
+            import {
+              cleanInputField,
+              searchOnEnter
+            } from '/static/js/community/explore/filters.js';
+
+            const searchHomeBtn = document.getElementById('search-btn');
+            if (searchHomeBtn) {
+              searchHomeBtn.addEventListener('click', loadExplorePage);
+            }
+
+            const searchInput = document.getElementById('ts_query');
+            if (searchInput) {
+              searchInput.addEventListener('keydown', () => searchOnEnter(event));
+            }
+
+            const cleanSearch = document.getElementById('clean-search');
+            if (cleanSearch) {
+              cleanSearch.addEventListener('click', () => cleanInputField('ts_query'));
+            }
+          </script>
+        </div>
+        {# End search bar -#}
+
+        <a href="/explore"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-primary-anchor">Explore all</a>
+      </div>
+    </section>
+  </div>
+  {# End jumbotron -#}
+{% endblock jumbotron -%}
+
+{% block content -%}
+  {# Main content -#}
+  <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-10">
+    {# Stats -#}
+    <div class="grid grid-cols-2 gap-6 md:grid-cols-4 pb-10 xl:pb-16">
+      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
+        <span class="text-3xl font-bold text-primary-600">{{ stats.communities }}</span>
+        <span class="text-sm text-stone-600 mt-1">Communities</span>
+      </div>
+      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
+        <span class="text-3xl font-bold text-primary-600">{{ stats.groups }}</span>
+        <span class="text-sm text-stone-600 mt-1">Groups</span>
+      </div>
+      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
+        <span class="text-3xl font-bold text-primary-600">{{ stats.events }}</span>
+        <span class="text-sm text-stone-600 mt-1">Events</span>
+      </div>
+      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
+        <span class="text-3xl font-bold text-primary-600">{{ stats.groups_members }}</span>
+        <span class="text-sm text-stone-600 mt-1">Members</span>
+      </div>
+    </div>
+    {# End stats -#}
+
+    {# Communities list -#}
+    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 mb-6">Communities</div>
+    {% if communities.len() > 0 -%}
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {% for community in communities -%}
+          <a href="/{{ community.name }}"
+             class="block p-6 bg-white rounded-lg shadow-sm border border-stone-100 hover:shadow-md transition-shadow">
+            <div class="flex items-center gap-4">
+              <img class="w-12 h-12 object-contain"
+                   src="{{ community.logo_url }}"
+                   alt="{{ community.display_name }} logo" />
+              <h3 class="font-semibold text-lg">{{ community.display_name }}</h3>
+            </div>
+          </a>
+        {% endfor -%}
+      </div>
+    {% else -%}
+      {{ feedback::placeholder(title = "No communities yet",
+                content = "Communities are being set up, check back soon.") -}}
+    {% endif -%}
+    {# End communities list -#}
+  </div>
+  {# End main content -#}
+{% endblock content -%}

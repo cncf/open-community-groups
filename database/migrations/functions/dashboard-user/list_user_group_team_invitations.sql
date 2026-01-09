@@ -12,11 +12,9 @@ create or replace function list_user_group_team_invitations(
             extract(epoch from gt.created_at)::bigint as created_at
         from group_team gt
         join "group" g using (group_id)
-        join "user" u on u.user_id = gt.user_id
         where g.community_id = p_community_id
           and gt.user_id = p_user_id
           and gt.accepted = false
-          and u.community_id = p_community_id
         order by gt.created_at desc
     ) invitation;
 $$ language sql;

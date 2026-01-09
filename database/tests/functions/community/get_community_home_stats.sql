@@ -32,20 +32,14 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Group Category
@@ -60,11 +54,11 @@ values
     (:'group3ID', 'Deleted Group', 'deleted-group', :'communityID', :'categoryID', false, true);
 
 -- User
-insert into "user" (user_id, email, username, name, email_verified, auth_hash, community_id, created_at)
+insert into "user" (user_id, email, username, name, email_verified, auth_hash, created_at)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-member', 'Alice Johnson', false, 'test_hash', :'communityID', '2024-01-01 00:00:00'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-member', 'Bob Wilson', false, 'test_hash', :'communityID', '2024-01-01 00:00:00'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', 'Charlie Brown', false, 'test_hash', :'communityID', '2024-01-01 00:00:00');
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-member', 'Alice Johnson', false, 'test_hash', '2024-01-01 00:00:00'),
+    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-member', 'Bob Wilson', false, 'test_hash', '2024-01-01 00:00:00'),
+    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', 'Charlie Brown', false, 'test_hash', '2024-01-01 00:00:00');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)

@@ -40,24 +40,6 @@
         <input type="hidden" name="name" value="{{ community.name }}">
         {# End hidden name field -#}
 
-        {# Title -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="title" class="form-label">
-            Title <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="title"
-                   id="title"
-                   maxlength="{{ crate::validation::MAX_LEN_M }}"
-                   class="input-primary"
-                   value="{{ community.title }}"
-                   required>
-          </div>
-          <p class="form-legend">Main name shown prominently on the community site header and pages.</p>
-        </div>
-        {# End title -#}
-
         {# Description -#}
         <div class="col-span-full">
           <label for="description" class="form-label">
@@ -72,12 +54,6 @@
         </div>
         {# End description -#}
 
-        {# Hidden primary color field -#}
-        <input type="hidden"
-               name="primary_color"
-               value="{{ community.theme.primary_color }}">
-        {# End hidden primary color field -#}
-
         {# Hidden layout field -#}
         <input type="hidden"
                name="community_site_layout_id"
@@ -91,44 +67,15 @@
       {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Header logo URL -#}
+        {# Logo URL -#}
         <div class="col-span-full">
-          <image-field label="Header Logo" name="header_logo_url" value="{{ community.header_logo_url }}" image-kind="logo" required help-prefix-text="Maximum height 80px.">
-        </image-field>
+          <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="logo" required help-prefix-text="Maximum height 80px.">
+          </image-field>
+        </div>
+        {# End logo URL -#}
       </div>
-      {# End header logo URL -#}
-
-      {# Footer logo URL -#}
-      <div class="col-span-full">
-        <image-field label="Footer Logo" name="footer_logo_url" image-kind="logo" value="{%- if let Some(footer_logo_url) = &community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900" help-prefix-text="Maximum height 96px.">
-      </image-field>
     </div>
-    {# End footer logo URL -#}
-
-    {# Jumbotron image -#}
-    <div class="col-span-full">
-      <image-field label="Jumbotron Background Image" name="jumbotron_image_url" image-kind="banner" value="{%- if let Some(jumbotron_image_url) = &community.jumbotron_image_url -%}{{ jumbotron_image_url }}{%- endif -%}" help-prefix-text="Maximum size recommended 1400 * 400.">
-    </image-field>
-    <p class="form-legend">URL to the background image shown in the community home page jumbotron.</p>
-  </div>
-  {# End jumbotron image -#}
-
-  {# Copyright notice -#}
-  <div class="col-span-full">
-    <label for="copyright_notice" class="form-label">Copyright Notice</label>
-    <div class="mt-2">
-      <markdown-editor id="copyright_notice" name="copyright_notice" mini
-      {% if let Some(copyright_notice) = &community.copyright_notice -%}
-        content="{{ copyright_notice }}"
-      {% endif -%}
-      ></markdown-editor>
-    </div>
-    <p class="form-legend">Copyright text displayed in the footer.</p>
-  </div>
-  {# End copyright notice -#}
-</div>
-</div>
-{# End branding section -#}
+    {# End branding section -#}
 
 {# Social links section -#}
 <div class="border-b border-stone-900/10 pb-12">

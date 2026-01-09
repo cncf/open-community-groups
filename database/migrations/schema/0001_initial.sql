@@ -26,6 +26,25 @@ returns text language sql as $$
 $$;
 
 -- =============================================================================
+-- SITE TABLES
+-- =============================================================================
+
+-- Global site settings. There should only be one row in this table.
+create table site (
+    site_id uuid primary key default gen_random_uuid(),
+    created_at timestamptz default current_timestamp not null,
+    description text not null check (btrim(description) <> ''),
+    theme jsonb not null,
+    title text not null check (btrim(title) <> ''),
+
+    copyright_notice text check (btrim(copyright_notice) <> ''),
+    favicon_url text check (btrim(favicon_url) <> ''),
+    footer_logo_url text check (btrim(footer_logo_url) <> ''),
+    header_logo_url text check (btrim(header_logo_url) <> ''),
+    og_image_url text check (btrim(og_image_url) <> '')
+);
+
+-- =============================================================================
 -- COMMUNITY TABLES
 -- =============================================================================
 
@@ -36,8 +55,7 @@ create table community_site_layout (
 
 insert into community_site_layout values ('default');
 
--- Central community table - each community is a separate tenant with its own
--- users, groups, and events. Multi-tenancy is implemented via host-based routing.
+-- Central community table - each community has its own groups and events.
 create table community (
     community_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
@@ -45,23 +63,16 @@ create table community (
     created_at timestamptz default current_timestamp not null,
     description text not null check (btrim(description) <> ''),
     display_name text not null unique check (btrim(display_name) <> ''),
-    header_logo_url text not null check (btrim(header_logo_url) <> ''),
-    host text not null unique check (btrim(host) <> ''),
+    logo_url text not null check (btrim(logo_url) <> ''),
     name text not null unique check (btrim(name) <> ''),
-    theme jsonb not null,
-    title text not null check (btrim(title) <> ''),
 
     ad_banner_link_url text check (btrim(ad_banner_link_url) <> ''),
     ad_banner_url text check (btrim(ad_banner_url) <> ''),
-    copyright_notice text check (btrim(copyright_notice) <> ''),
     extra_links jsonb,
     facebook_url text check (btrim(facebook_url) <> ''),
-    favicon_url text check (btrim(favicon_url) <> ''),
     flickr_url text check (btrim(flickr_url) <> ''),
-    footer_logo_url text check (btrim(footer_logo_url) <> ''),
     github_url text check (btrim(github_url) <> ''),
     instagram_url text check (btrim(instagram_url) <> ''),
-    jumbotron_image_url text check (btrim(jumbotron_image_url) <> ''),
     linkedin_url text check (btrim(linkedin_url) <> ''),
     new_group_details text check (btrim(new_group_details) <> ''),
     og_image_url text check (btrim(og_image_url) <> ''),
@@ -79,16 +90,14 @@ create index community_community_site_layout_id_idx on community (community_site
 -- USER TABLES
 -- =============================================================================
 
--- Users are scoped to communities (multi-tenant). Authentication can be via
--- password or external providers.
+-- Users table. Authentication can be via password or external providers.
 create table "user" (
     user_id uuid primary key default gen_random_uuid(),
     auth_hash text not null check (btrim(auth_hash) <> ''),
-    community_id uuid not null references community,
     created_at timestamptz default current_timestamp not null,
-    email text not null check (btrim(email) <> ''),
+    email text not null unique check (btrim(email) <> ''),
     email_verified boolean not null default false,
-    username text not null check (btrim(username) <> ''),
+    username text not null unique check (btrim(username) <> ''),
 
     bio text check (btrim(bio) <> ''),
     city text check (btrim(city) <> ''),
@@ -104,13 +113,9 @@ create table "user" (
     timezone text check (btrim(timezone) <> ''),
     title text check (btrim(title) <> ''),
     twitter_url text check (btrim(twitter_url) <> ''),
-    website_url text check (btrim(website_url) <> ''),
-
-    unique (email, community_id),
-    unique (username, community_id)
+    website_url text check (btrim(website_url) <> '')
 );
 
-create index user_community_id_idx on "user" (community_id);
 create index user_username_lower_idx on "user" (lower(username));
 create index user_name_lower_idx on "user" (lower(name));
 create index user_email_lower_idx on "user" (lower(email));
@@ -744,88 +749,6 @@ begin
 end;
 $$ language plpgsql;
 
--- Trigger function to validate event host belongs to the event's community.
-create or replace function check_event_host_community()
-returns trigger as $$
-declare
-    v_event_community_id uuid;
-    v_user_community_id uuid;
-begin
-    -- Get event's community
-    select g.community_id into v_event_community_id
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = NEW.event_id;
-
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from v_event_community_id then
-        raise exception 'user not found in community';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger function to validate event speaker belongs to the event's community.
-create or replace function check_event_speaker_community()
-returns trigger as $$
-declare
-    v_event_community_id uuid;
-    v_user_community_id uuid;
-begin
-    -- Get event's community
-    select g.community_id into v_event_community_id
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = NEW.event_id;
-
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from v_event_community_id then
-        raise exception 'user not found in community';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger function to validate session speaker belongs to the session's event's community.
-create or replace function check_session_speaker_community()
-returns trigger as $$
-declare
-    v_session_community_id uuid;
-    v_user_community_id uuid;
-begin
-    -- Get session's event's community
-    select g.community_id into v_session_community_id
-    from session s
-    join event e using (event_id)
-    join "group" g using (group_id)
-    where s.session_id = NEW.session_id;
-
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from v_session_community_id then
-        raise exception 'user not found in community';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
 -- Trigger function to validate event sponsor belongs to the event's group.
 create or replace function check_event_sponsor_group()
 returns trigger as $$
@@ -846,105 +769,6 @@ begin
     -- Validate groups match
     if v_sponsor_group_id is distinct from v_event_group_id then
         raise exception 'sponsor not found in group';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger function to validate group member belongs to the group's community.
-create or replace function check_group_member_community()
-returns trigger as $$
-declare
-    v_group_community_id uuid;
-    v_user_community_id uuid;
-begin
-    -- Get group's community
-    select community_id into v_group_community_id
-    from "group"
-    where group_id = NEW.group_id;
-
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from v_group_community_id then
-        raise exception 'user not found in community';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger function to validate event attendee belongs to the event's community.
-create or replace function check_event_attendee_community()
-returns trigger as $$
-declare
-    v_event_community_id uuid;
-    v_user_community_id uuid;
-begin
-    -- Get event's community
-    select g.community_id into v_event_community_id
-    from event e
-    join "group" g using (group_id)
-    where e.event_id = NEW.event_id;
-
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from v_event_community_id then
-        raise exception 'user not found in community';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger function to validate group team member belongs to the group's community.
-create or replace function check_group_team_community()
-returns trigger as $$
-declare
-    v_group_community_id uuid;
-    v_user_community_id uuid;
-begin
-    -- Get group's community
-    select community_id into v_group_community_id
-    from "group"
-    where group_id = NEW.group_id;
-
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from v_group_community_id then
-        raise exception 'user not found in community';
-    end if;
-
-    return NEW;
-end;
-$$ language plpgsql;
-
--- Trigger function to validate community team member belongs to the community.
-create or replace function check_community_team_community()
-returns trigger as $$
-declare
-    v_user_community_id uuid;
-begin
-    -- Get user's community
-    select community_id into v_user_community_id
-    from "user"
-    where user_id = NEW.user_id;
-
-    -- Validate communities match
-    if v_user_community_id is distinct from NEW.community_id then
-        raise exception 'user not found in community';
     end if;
 
     return NEW;
@@ -1032,53 +856,11 @@ create trigger session_within_event_bounds_check
     for each row
     execute function check_session_within_event_bounds();
 
--- Trigger on event_host INSERT/UPDATE.
-create trigger event_host_community_check
-    before insert or update on event_host
-    for each row
-    execute function check_event_host_community();
-
--- Trigger on event_speaker INSERT/UPDATE.
-create trigger event_speaker_community_check
-    before insert or update on event_speaker
-    for each row
-    execute function check_event_speaker_community();
-
--- Trigger on session_speaker INSERT/UPDATE.
-create trigger session_speaker_community_check
-    before insert or update on session_speaker
-    for each row
-    execute function check_session_speaker_community();
-
 -- Trigger on event_sponsor INSERT/UPDATE.
 create trigger event_sponsor_group_check
     before insert or update on event_sponsor
     for each row
     execute function check_event_sponsor_group();
-
--- Trigger on group_member INSERT/UPDATE.
-create trigger group_member_community_check
-    before insert or update on group_member
-    for each row
-    execute function check_group_member_community();
-
--- Trigger on event_attendee INSERT/UPDATE.
-create trigger event_attendee_community_check
-    before insert or update on event_attendee
-    for each row
-    execute function check_event_attendee_community();
-
--- Trigger on group_team INSERT/UPDATE.
-create trigger group_team_community_check
-    before insert or update on group_team
-    for each row
-    execute function check_group_team_community();
-
--- Trigger on community_team INSERT/UPDATE.
-create trigger community_team_community_check
-    before insert or update on community_team
-    for each row
-    execute function check_community_team_community();
 
 -- Trigger on event INSERT/UPDATE.
 create trigger event_category_community_check

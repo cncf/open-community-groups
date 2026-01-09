@@ -9,6 +9,7 @@ use crate::{
         community::Community,
         event::{EventKind, EventSummary},
         group::GroupFull,
+        site::SiteSettings,
     },
 };
 
@@ -20,7 +21,7 @@ use crate::{
 #[template(path = "group/page.html")]
 pub(crate) struct Page {
     /// Community information.
-    pub community: Community,
+    pub community: Option<Community>,
     /// Detailed information about the group.
     pub group: GroupFull,
     /// Identifier for the current page.
@@ -29,6 +30,8 @@ pub(crate) struct Page {
     pub past_events: Vec<PastEventCard>,
     /// Current URL path.
     pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
     /// Authenticated user information.

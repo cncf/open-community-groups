@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(24);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,27 +29,21 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Users
-insert into "user" (user_id, community_id, email, username, auth_hash, name) values
-    (:'user1ID', :'communityID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
-    (:'user2ID', :'communityID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
-    (:'user3ID', :'communityID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
+insert into "user" (user_id, email, username, auth_hash, name) values
+    (:'user1ID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
+    (:'user2ID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
+    (:'user3ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -339,26 +333,6 @@ select is(
         }
     }'::jsonb,
     'Should set meeting flags and hosts for event and session when requested'
-);
-
--- Should throw error for invalid host user_id
-select throws_ok(
-    $$select add_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Test Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
-    )$$,
-    'user not found in community',
-    'Should throw error when host user_id does not exist in community'
-);
-
--- Should throw error for invalid speaker user_id
-select throws_ok(
-    $$select add_event(
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Test Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
-    )$$,
-    'user not found in community',
-    'Should throw error when speaker user_id does not exist in community'
 );
 
 -- Should throw error when capacity exceeds max_participants with meeting_requested

@@ -13,13 +13,13 @@
 
 {% block content -%}
   {% let has_social_links = event.meetup_url.is_some() -%}
-  {# Community title -#}
+  {# Site title -#}
   <div class="text-center pt-2 xl:pt-5">
     <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
-      {{ community.title }}
+      {{ site_settings.title }}
     </h1>
   </div>
-  {# End community title -#}
+  {# End site title -#}
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full relative overflow-hidden">
       {# Sold out badge -#}

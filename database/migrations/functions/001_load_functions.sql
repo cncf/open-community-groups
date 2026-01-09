@@ -10,11 +10,11 @@
 {{ template "common/get_event_full.sql" }}
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_group_full.sql" }}
-{{ template "common/search_community_events.sql" }}
-{{ template "common/search_community_groups.sql" }}
+{{ template "common/search_events.sql" }}
+{{ template "common/search_groups.sql" }}
 
 {{ template "community/get_community.sql" }}
-{{ template "community/get_community_filters_options.sql" }}
+{{ template "community/get_community_id_by_name.sql" }}
 {{ template "community/get_community_home_stats.sql" }}
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_upcoming_events.sql" }}
@@ -90,6 +90,11 @@
 {{ template "meetings/update_meeting_recording_url.sql" }}
 
 {{ template "notifications/get_pending_notification.sql" }}
+
+{{ template "site/get_filters_options.sql" }}
+{{ template "site/get_site_home_stats.sql" }}
+{{ template "site/get_site_settings.sql" }}
+{{ template "site/list_communities.sql" }}
 
 ---- create above / drop below ----
 

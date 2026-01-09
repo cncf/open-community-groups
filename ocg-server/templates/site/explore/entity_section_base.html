@@ -1,0 +1,281 @@
+{% import "macros/ui.html" as ui -%}
+{% import "macros/explore.html" as explore -%}
+
+{% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
+{% let entity = results_section.entity() -%}
+
+{# Mobile filters -#}
+<div id="drawer-filters"
+     class="fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border-r border-stone-200 shadow-lg"
+     tabindex="-1"
+     aria-labelledby="drawer-label">
+  {# Close button -#}
+  <button id="close-filters"
+          type="button"
+          class="group bg-transparent hover:bg-stone-200 transition-colors rounded-full text-sm w-8 h-8 absolute top-4 end-2.5 flex items-center justify-center">
+    <div class="svg-icon h-4 w-4 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
+    <span class="sr-only">Close menu</span>
+  </button>
+  {# End close button -#}
+
+  {# Filters content -#}
+  {# Header Filters -#}
+  {% include "site/explore/filters_header.html" -%}
+  {# End header filters -#}
+
+  {# Entity selector -#}
+  {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
+  {# End entity selector -#}
+
+  <form id="{{ entity }}-form-mobile"
+        class="filters-form"
+        hx-get='/explore/{{ entity }}-section'
+        hx-trigger="change"
+        hx-target="#entity-section"
+        hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+        hx-boost="true"
+        hx-ext="no-empty-vals">
+    {% block filters_mobile -%}
+    {% endblock filters_mobile -%}
+  </form>
+  {# End filters content -#}
+
+  {# Reset button -#}
+  <div class="text-end p-5 border-t border-stone-200">
+    <button class="bg-white items-center py-1 px-3 text-xs text-center text-primary-500 rounded-full border border-primary-500 hover:border-primary-700 hover:text-primary-700 hover:bg-stone-100 transition-colors focus:ring-4 focus:ring-stone-400 reset-filters">
+      Reset
+    </button>
+  </div>
+  {# End reset button -#}
+</div>
+
+{# Overlay -#}
+<div id="drawer-backdrop"
+     class="hidden bg-stone-950 opacity-[.35] fixed inset-0 z-[1050]"></div>
+{# End overlay -#}
+{# End mobile filters -#}
+
+<div class="flex items-start">
+  {# Desktop filters -#}
+  <div id="explore-filters"
+       class="relative hidden w-[28%] xl:w-1/4 lg:block bg-white border border-stone-200 rounded-lg">
+    {# Header Filters -#}
+    {% include "site/explore/filters_header.html" -%}
+    {# End header filters -#}
+
+    {# Entity selector -#}
+    {{ explore::entity_radio(selected = entity, ts_query = filters.ts_query.as_ref() ) -}}
+    {# End entity selector -#}
+
+    <form id="{{ entity }}-form"
+          class="filters-form"
+          hx-get='/explore/{{ entity }}-section'
+          hx-trigger="change"
+          hx-target="#entity-section"
+          hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+          hx-boost="true"
+          hx-ext="no-empty-vals">
+      {% block filters_desktop -%}
+      {% endblock filters_desktop -%}
+    </form>
+  </div>
+  {# End desktop filters -#}
+
+  <div id="explore-cards"
+       class="relative w-full lg:w-[72%] xl:w-3/4 lg:pl-6 xl:pl-10 self-stretch">
+    <div class="relative flex flex-col bg-white border border-stone-200 rounded-lg pt-5 md:pt-7 h-full">
+      <div class="flex items-center mb-6 md:mb-10 px-5 md:px-7">
+        {# Mobile filters button -#}
+        <div class="flex lg:hidden">
+          <button id="open-filters"
+                  class="h-10 w-10 mr-3 inline-flex justify-center items-center bg-primary-500 text-lg rounded-full p-2 md:mr-5 hover:bg-primary-700 transition-colors">
+            <div class="svg-icon h-4 w-4 bg-white icon-filter"></div>
+          </button>
+        </div>
+        {# End mobile filters button -#}
+
+        <div class="grow flex items-center justify-center">
+          {# Searchbar -#}
+          <div class="w-full">
+            {% block search_bar -%}
+            {% endblock search_bar -%}
+          </div>
+          {# End searchbar -#}
+        </div>
+      </div>
+      <div class="flex flex-row items-center justify-between px-5 md:px-7 h-[30px]">
+        {# Current page results -#}
+        <div class="flex-1">
+          {% if view_mode == ViewMode::List -%}
+            <div id="results"
+                 class="flex font-semibold text-xs md:text-sm text-black w-[175px]">
+              {% block current_page -%}
+              {% endblock current_page -%}
+            </div>
+          {% endif -%}
+        </div>
+        {# End current page results -#}
+
+        {# View mode -#}
+        <div class="hidden flex-row flex-1 items-center md:flex">
+          <ul class="flex items-center justify-center">
+            {# List view -#}
+            <li class="group">
+              <input type="radio"
+                     name="view_mode"
+                     id="list"
+                     value="list"
+                     class="hidden peer"
+                     {% if view_mode == ViewMode::List %}checked{% endif %}>
+              <label for="list"
+                     class="w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
+                <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-list"></div>
+                <div class="text-[0.775rem] text-center text-nowrap ms-1">List</div>
+              </label>
+            </li>
+            {# End list view -#}
+
+            <li class="group">
+              {% if entity == Entity::Events -%}
+                {# Calendar view -#}
+                <input type="radio"
+                       name="view_mode"
+                       id="calendar"
+                       value="calendar"
+                       class="hidden peer"
+                       {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
+                <label for="calendar"
+                       class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
+                  <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-calendar"></div>
+                  <div class="text-[0.775rem] text-center text-nowrap ms-1">Calendar</div>
+                </label>
+                {# End calendar view -#}
+              {% else -%}
+                {# Map view -#}
+                <input type="radio"
+                       name="view_mode"
+                       id="map"
+                       value="map"
+                       class="hidden peer"
+                       {% if view_mode == ViewMode::Map %}checked{% endif %}>
+                <label for="map"
+                       class="w-[90px] xl:w-[115px] relative -ms-[1px] inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:border-primary-500 hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-primary-500 hover:bg-stone-50 transition-colors">
+                  <div class="svg-icon h-3.5 w-3.5 bg-stone-500 group-has-[input:checked]:bg-primary-500 icon-map"></div>
+                  <div class="text-[0.775rem] text-center text-nowrap ms-1">Map</div>
+                </label>
+                {# End Map view -#}
+              {% endif -%}
+            </li>
+          </ul>
+
+          {# Loading spinner -#}
+          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
+            {{ ui::spinner(htmx = false) -}}
+          </div>
+          {# End loading spinner -#}
+        </div>
+        {# End view mode -#}
+
+        {# Sort by -#}
+        <div class="flex flex-1 flex-row items-center justify-end mb-3 mt-3 sm:mb-0 sm:mt-0">
+          {% if view_mode == ViewMode::List -%}
+            <label for="sort_by"
+                   class="font-semibold text-[0.775rem] text-nowrap text-black leading-6 me-2 xl:me-3">
+              Sort by
+            </label>
+
+            <select id="sort_by"
+                    name="sort_by"
+                    class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+              {% if let Some(sort_by) = &filters.sort_by -%}
+                <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
+                {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
+                  <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
+                {% endif -%}
+                {% if entity == Entity::Groups -%}
+                  <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
+                {% endif -%}
+              {% else -%}
+                <option value="date" selected>Date</option>
+                {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
+                  <option value="distance">Distance</option>
+                {% endif -%}
+                {% if entity == Entity::Groups -%}
+                  <option value="name">Name</option>
+                {% endif -%}
+              {% endif -%}
+            </select>
+          {% endif -%}
+        </div>
+        {# End sort by -#}
+      </div>
+
+      {# Content: cards -#}
+      <div id="cards-list" class="flex flex-col justify-between grow">
+        {% block content -%}
+        {% endblock content -%}
+      </div>
+      {# End content: cards -#}
+    </div>
+  </div>
+</div>
+<script type="module">
+  import {
+    closeFiltersDrawer,
+    getFirstAndLastDayOfMonth,
+    openFiltersDrawer,
+    resetFilters,
+    resetDateFiltersOnCalendarViewMode,
+    triggerChangeOnForm,
+    unckeckAllKinds,
+    updateDateInput
+  } from '/static/js/community/explore/filters.js';
+  import {
+    showLoadingSpinner
+  } from '/static/js/common/common.js';
+
+  const openFiltersBtn = document.getElementById('open-filters');
+  if (openFiltersBtn) {
+    openFiltersBtn.addEventListener('click', openFiltersDrawer);
+  }
+
+  const closeFiltersBtn = document.getElementById('close-filters');
+  if (closeFiltersBtn) {
+    closeFiltersBtn.addEventListener('click', closeFiltersDrawer);
+  }
+
+  const backdropFilters = document.getElementById('drawer-backdrop');
+  if (backdropFilters) {
+    backdropFilters.addEventListener('click', closeFiltersDrawer);
+  }
+
+  const inputs = document.querySelectorAll('input[name="view_mode"]');
+  inputs.forEach(input => {
+    input.addEventListener('change', () => {
+      if (input.value === 'calendar') {
+        updateDateInput();
+      } else {
+        resetDateFiltersOnCalendarViewMode();
+      }
+      unckeckAllKinds();
+      triggerChangeOnForm('{{ entity }}-form');
+    });
+  });
+
+  const select = document.getElementById('sort_by');
+  // Sort by is only available in list view
+  if (select) {
+    select.addEventListener('change', () => triggerChangeOnForm('{{ entity }}-form'));
+  }
+
+  const resetButtons = document.querySelectorAll('.reset-filters');
+  resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ entity }}-form')));
+
+  const forms = document.querySelectorAll('.filters-form');
+  forms.forEach(form => {
+    form.addEventListener('htmx:trigger', () => {
+      showLoadingSpinner("loading-filters");
+      showLoadingSpinner("loading-filters-mobile");
+    });
+  });
+</script>

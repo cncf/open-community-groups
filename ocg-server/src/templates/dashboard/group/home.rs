@@ -13,7 +13,7 @@ use crate::{
         filters,
         helpers::user_initials,
     },
-    types::{community::Community, group::GroupSummary},
+    types::{community::Community, group::GroupSummary, site::SiteSettings},
 };
 
 /// Home page template for the group dashboard.
@@ -22,10 +22,10 @@ use crate::{
 #[template(path = "dashboard/group/home.html")]
 pub(crate) struct Page {
     /// Community information.
-    pub community: Community,
+    pub community: Option<Community>,
     /// Main content section for the page.
     pub content: Content,
-    /// List of groups the user belongs to.
+    /// List of groups the user belongs to (flattened from hierarchical structure).
     pub groups: Vec<GroupSummary>,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
@@ -33,8 +33,12 @@ pub(crate) struct Page {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Currently selected community ID.
+    pub selected_community_id: Uuid,
     /// Currently selected group ID.
     pub selected_group_id: Uuid,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 }

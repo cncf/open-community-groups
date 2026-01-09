@@ -23,9 +23,9 @@ select plan(4);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme) values
-    (:'communityID', 'cncf-sea', 'CNCF Seattle', 'sea.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb),
-    (:'community2ID', 'cncf-ny', 'CNCF NY', 'ny.example.org', 'Title', 'Desc', 'https://example.com/logo.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url) values
+    (:'communityID', 'cncf-sea', 'CNCF Seattle', 'Desc', 'https://example.com/logo.png'),
+    (:'community2ID', 'cncf-ny', 'CNCF NY', 'Desc', 'https://example.com/logo.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -40,11 +40,11 @@ insert into "group" (group_id, name, slug, community_id, group_category_id, logo
 values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'https://example.com/group.png', true);
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, name)
+insert into "user" (user_id, auth_hash, email, username, name)
 values
-    (:'user1ID', 'att1@example.com', 'att1', false, 'h1', :'communityID', 'Att One'),
-    (:'user2ID', 'att2@example.com', 'att2', false, 'h2', :'communityID', 'Att Two'),
-    ('00000000-0000-0000-0000-000000000053', 'att3@example.com', 'att3', false, 'h3', :'communityID', 'Att Three');
+    (:'user1ID', 'h1', 'att1@example.com', 'att1', 'Att One'),
+    (:'user2ID', 'h2', 'att2@example.com', 'att2', 'Att Two'),
+    ('00000000-0000-0000-0000-000000000053', 'h3', 'att3@example.com', 'att3', 'Att Three');
 
 -- Event
 insert into event (

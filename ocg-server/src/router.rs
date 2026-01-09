@@ -28,7 +28,7 @@ use crate::{
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        community, dashboard, event, group, images, meetings,
+        community, dashboard, event, group, images, meetings, site,
     },
     services::{images::DynImageStorage, notifications::DynNotificationsManager},
 };
@@ -64,6 +64,7 @@ pub(crate) struct State {
 ///
 /// Sets up all routes, middleware layers, and shared state. Optionally adds basic
 /// authentication if configured.
+#[allow(clippy::too_many_lines)]
 #[instrument(skip_all)]
 pub(crate) async fn setup(
     db: DynDB,
@@ -94,11 +95,26 @@ pub(crate) async fn setup(
     let user_dashboard_router = setup_user_dashboard_router();
 
     // Setup router
+    // Routes that require login are placed before the login_required middleware layer.
     let mut router = Router::new()
+        // Protected community-prefixed routes
         .route(
-            "/check-in/{event_id}",
+            "/{community}/check-in/{event_id}",
             get(event::check_in_page).post(event::check_in),
         )
+        .route("/{community}/event/{event_id}/attend", post(event::attend_event))
+        .route(
+            "/{community}/event/{event_id}/attendance",
+            get(event::attendance_status),
+        )
+        .route("/{community}/event/{event_id}/leave", delete(event::leave_event))
+        .route("/{community}/group/{group_id}/join", post(group::join_group))
+        .route("/{community}/group/{group_id}/leave", delete(group::leave_group))
+        .route(
+            "/{community}/group/{group_id}/membership",
+            get(group::membership_status),
+        )
+        // Protected dashboard routes
         .route(
             "/dashboard/account/update/details",
             put(auth::update_user_details),
@@ -110,37 +126,38 @@ pub(crate) async fn setup(
         .nest("/dashboard/community", community_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
         .nest("/dashboard/user", user_dashboard_router)
-        .route("/event/{event_id}/attend", post(event::attend_event))
-        .route("/event/{event_id}/attendance", get(event::attendance_status))
-        .route("/event/{event_id}/leave", delete(event::leave_event))
-        .route("/group/{group_id}/join", post(group::join_group))
-        .route("/group/{group_id}/leave", delete(group::leave_group))
-        .route("/group/{group_id}/membership", get(group::membership_status))
+        // Protected image upload
         .route("/images", post(images::upload))
         .route_layer(login_required!(
             AuthnBackend,
             login_url = LOG_IN_URL,
             redirect_field = "next_url"
         ))
-        .route("/", get(community::home::page))
-        .route("/explore", get(community::explore::page))
-        .route("/explore/events-section", get(community::explore::events_section))
+        // Global site routes (no community prefix)
+        .route("/", get(site::home::page))
+        .route("/explore", get(site::explore::page))
+        .route("/explore/events-section", get(site::explore::events_section))
         .route(
             "/explore/events-results-section",
-            get(community::explore::events_results_section),
+            get(site::explore::events_results_section),
         )
-        .route("/explore/groups-section", get(community::explore::groups_section))
+        .route("/explore/groups-section", get(site::explore::groups_section))
         .route(
             "/explore/groups-results-section",
-            get(community::explore::groups_results_section),
+            get(site::explore::groups_results_section),
         )
-        .route("/explore/events/search", get(community::explore::search_events))
-        .route("/explore/groups/search", get(community::explore::search_groups))
+        .route("/explore/events/search", get(site::explore::search_events))
+        .route("/explore/groups/search", get(site::explore::search_groups))
         .route("/health-check", get(health_check))
-        .route("/group/{group_slug}", get(group::page))
-        .route("/group/{group_slug}/event/{event_slug}", get(event::page))
         .route("/images/{file_name}", get(images::serve))
-        .route("/log-in", get(auth::log_in_page));
+        .route("/log-in", get(auth::log_in_page))
+        // Community-prefixed public routes
+        .route("/{community}", get(community::page))
+        .route("/{community}/group/{group_slug}", get(group::page))
+        .route(
+            "/{community}/group/{group_slug}/event/{event_slug}",
+            get(event::page),
+        );
 
     // Setup some routes based on the login options enabled
     if server_cfg.login.email {
@@ -186,7 +203,10 @@ pub(crate) async fn setup(
 /// Sets up the community dashboard router and its routes.
 fn setup_community_dashboard_router(state: State) -> Router<State> {
     // Setup authorization middleware
-    let check_user_owns_community = middleware::from_fn_with_state(state, auth::user_owns_community);
+    let check_user_owns_selected_community =
+        middleware::from_fn_with_state(state.clone(), auth::user_owns_selected_community);
+    let check_user_owns_path_community =
+        middleware::from_fn_with_state(state, auth::user_owns_path_community);
 
     // Setup router
     Router::new()
@@ -224,14 +244,20 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
             delete(dashboard::community::team::delete),
         )
         .route("/users/search", get(dashboard::common::search_user))
-        .route_layer(check_user_owns_community)
+        .route_layer(check_user_owns_selected_community)
+        .route(
+            "/{community}/select",
+            put(dashboard::community::select_community).route_layer(check_user_owns_path_community),
+        )
 }
 
 /// Sets up the group dashboard router and its routes.
 fn setup_group_dashboard_router(state: State) -> Router<State> {
     // Setup authorization middleware
     let check_user_belongs_to_any_group_team = middleware::from_fn(auth::user_belongs_to_any_group_team);
-    let check_user_owns_group = middleware::from_fn_with_state(state, auth::user_owns_group);
+    let check_user_owns_selected_group =
+        middleware::from_fn_with_state(state.clone(), auth::user_owns_selected_group);
+    let check_user_owns_path_group = middleware::from_fn_with_state(state, auth::user_owns_path_group);
 
     // Setup router
     Router::new()
@@ -298,12 +324,13 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         .route("/team/add", post(dashboard::group::team::add))
         .route("/team/{user_id}/delete", delete(dashboard::group::team::delete))
         .route("/team/{user_id}/role", put(dashboard::group::team::update_role))
+        .route("/users/search", get(dashboard::common::search_user))
+        .route_layer(check_user_owns_selected_group)
+        .route_layer(check_user_belongs_to_any_group_team)
         .route(
             "/{group_id}/select",
-            put(dashboard::group::select_group).route_layer(check_user_owns_group),
+            put(dashboard::group::select_group).route_layer(check_user_owns_path_group),
         )
-        .route("/users/search", get(dashboard::common::search_user))
-        .route_layer(check_user_belongs_to_any_group_team)
 }
 
 /// Sets up the user dashboard router and its routes.

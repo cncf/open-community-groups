@@ -30,20 +30,14 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/logo.png'
 );
 
 -- Region
@@ -55,12 +49,12 @@ insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, bio, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, bio, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', :'communityID', 'Community meetup organizer', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', :'communityID', 'Cloud native program lead', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', :'communityID', null, 'Charlie Brown', null, null, null, null, null, null, null),
-    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', :'communityID', null, 'Diana Prince', null, null, null, null, null, null, null);
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
+    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
+    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, 'Charlie Brown', null, null, null, null, null, null, null),
+    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, 'Diana Prince', null, null, null, null, null, null, null);
 
 -- Group
 insert into "group" (

@@ -35,32 +35,11 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url
 ) values
-    (
-        :'communityID',
-        'test-community',
-        'Test Community',
-        'test.example.org',
-        'Test Community',
-        'Community used for group stats tests',
-        'https://example.com/logo.png',
-        '{}'::jsonb
-    ),
-    (
-        :'community2ID',
-        'other-community',
-        'Other Community',
-        'other.example.org',
-        'Other Community',
-        'Separate community for isolation testing',
-        'https://example.com/logo2.png',
-        '{}'::jsonb
-    );
+    (:'communityID', 'test-community', 'Test Community', 'Community used for group stats tests', 'https://example.com/logo.png'),
+    (:'community2ID', 'other-community', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png');
 
 -- Group categories
 insert into group_category (group_category_id, community_id, name) values
@@ -91,11 +70,11 @@ insert into "group" (
         '2025-11-01 00:00:00+00', true, false);
 
 -- Users
-insert into "user" (user_id, community_id, auth_hash, email, username) values
-    (:'user1ID', :'communityID', 'hash-1', 'user1@example.com', 'user1'),
-    (:'user2ID', :'communityID', 'hash-2', 'user2@example.com', 'user2'),
-    (:'user3ID', :'communityID', 'hash-3', 'user3@example.com', 'user3'),
-    (:'user4ID', :'community2ID', 'hash-4', 'user4@example.com', 'user4');
+insert into "user" (user_id, auth_hash, email, username) values
+    (:'user1ID', 'hash-1', 'user1@example.com', 'user1'),
+    (:'user2ID', 'hash-2', 'user2@example.com', 'user2'),
+    (:'user3ID', 'hash-3', 'user3@example.com', 'user3'),
+    (:'user4ID', 'hash-4', 'user4@example.com', 'user4');
 
 -- Members
 insert into group_member (group_id, user_id, created_at) values

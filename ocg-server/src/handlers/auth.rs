@@ -28,7 +28,9 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, OAuth2, Oidc, ValidatedForm, ValidatedFormQs},
+        extractors::{
+            CommunityId, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
+        },
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -56,6 +58,9 @@ pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
 
+/// Key used to store the selected community ID in the session.
+pub(crate) const SELECTED_COMMUNITY_ID_KEY: &str = "selected_community_id";
+
 /// Key used to store the selected group ID in the session.
 pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 
@@ -69,7 +74,6 @@ pub(crate) const SIGN_UP_URL: &str = "/sign-up";
 pub(crate) async fn log_in_page(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
@@ -79,8 +83,8 @@ pub(crate) async fn log_in_page(
         return Ok(Redirect::to("/").into_response());
     }
 
-    // Get community information
-    let community = db.get_community(community_id).await?;
+    // Get site settings
+    let site_settings = db.get_site_settings().await?;
 
     // Sanitize and encode the next url (if any)
     let next_url =
@@ -88,11 +92,12 @@ pub(crate) async fn log_in_page(
 
     // Prepare template
     let template = templates::auth::LogInPage {
-        community,
+        community: None,
         login: server_cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::LogIn,
         path: LOG_IN_URL.to_string(),
+        site_settings,
         user: User::default(),
 
         next_url,
@@ -106,7 +111,6 @@ pub(crate) async fn log_in_page(
 pub(crate) async fn sign_up_page(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
@@ -116,8 +120,8 @@ pub(crate) async fn sign_up_page(
         return Ok(Redirect::to("/").into_response());
     }
 
-    // Get community information
-    let community = db.get_community(community_id).await?;
+    // Get site settings
+    let site_settings = db.get_site_settings().await?;
 
     // Sanitize and encode the next url (if any)
     let next_url =
@@ -125,11 +129,12 @@ pub(crate) async fn sign_up_page(
 
     // Prepare template
     let template = templates::auth::SignUpPage {
-        community,
+        community: None,
         login: server_cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::SignUp,
         path: SIGN_UP_URL.to_string(),
+        site_settings,
         user: User::default(),
 
         next_url,
@@ -157,7 +162,6 @@ pub(crate) async fn log_in(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
-    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     Form(login_form): Form<LoginForm>,
@@ -174,9 +178,8 @@ pub(crate) async fn log_in(
 
     // Authenticate user
     let creds = PasswordCredentials {
-        community_id,
-        username: login_form.username,
         password: login_form.password,
+        username: login_form.username,
     };
     let Some(user) = auth_session
         .authenticate(Credentials::Password(creds))
@@ -194,10 +197,15 @@ pub(crate) async fn log_in(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Use the first group as the selected group in the session
-    let groups = db.list_user_groups(&user.user_id).await?;
-    if !groups.is_empty() {
-        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    // Use the first community and group as selected in the session
+    let groups_by_community = db.list_user_groups(&user.user_id).await?;
+    if let Some(first_community) = groups_by_community.first() {
+        session
+            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+            .await?;
+        if let Some(first_group) = first_community.groups.first() {
+            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
+        }
     }
 
     let next_url = next_url.as_deref().unwrap_or("/");
@@ -222,7 +230,6 @@ pub(crate) async fn oauth2_callback(
     messages: Messages,
     session: Session,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path(provider): Path<OAuth2Provider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -247,11 +254,7 @@ pub(crate) async fn oauth2_callback(
     let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
-    let creds = OAuth2Credentials {
-        code,
-        community_id,
-        provider,
-    };
+    let creds = OAuth2Credentials { code, provider };
     let user = match auth_session.authenticate(Credentials::OAuth2(creds)).await {
         Ok(Some(user)) => user,
         Ok(None) => {
@@ -270,10 +273,15 @@ pub(crate) async fn oauth2_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Use the first group as the selected group in the session
-    let groups = db.list_user_groups(&user.user_id).await?;
-    if !groups.is_empty() {
-        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    // Use the first community and group as selected in the session
+    let groups_by_community = db.list_user_groups(&user.user_id).await?;
+    if let Some(first_community) = groups_by_community.first() {
+        session
+            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+            .await?;
+        if let Some(first_group) = first_community.groups.first() {
+            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
+        }
     }
 
     let next_url = next_url.as_deref().unwrap_or("/");
@@ -312,7 +320,6 @@ pub(crate) async fn oidc_callback(
     messages: Messages,
     session: Session,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path(provider): Path<OidcProvider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -345,7 +352,6 @@ pub(crate) async fn oidc_callback(
     // Authenticate user
     let creds = OidcCredentials {
         code,
-        community_id,
         nonce,
         provider: provider.clone(),
     };
@@ -367,10 +373,15 @@ pub(crate) async fn oidc_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Use the first group as the selected group in the session
-    let groups = db.list_user_groups(&user.user_id).await?;
-    if !groups.is_empty() {
-        session.insert(SELECTED_GROUP_ID_KEY, groups[0].group_id).await?;
+    // Use the first community and group as selected in the session
+    let groups_by_community = db.list_user_groups(&user.user_id).await?;
+    if let Some(first_community) = groups_by_community.first() {
+        session
+            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+            .await?;
+        if let Some(first_group) = first_community.groups.first() {
+            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
+        }
     }
 
     // Track auth provider in the session
@@ -414,7 +425,6 @@ pub(crate) async fn oidc_redirect(
 #[instrument(skip_all)]
 pub(crate) async fn sign_up(
     messages: Messages,
-    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
@@ -439,8 +449,7 @@ pub(crate) async fn sign_up(
     user_summary.password = Some(password_auth::generate_hash(&password));
 
     // Sign up the user
-    let Ok((user, email_verification_code)) = db.sign_up_user(&community_id, &user_summary, false).await
-    else {
+    let Ok((user, email_verification_code)) = db.sign_up_user(&user_summary, false).await else {
         // Redirect to the sign up page on error
         messages.error("Something went wrong while signing up. Please try again later.");
         return Ok(Redirect::to(SIGN_UP_URL).into_response());
@@ -448,13 +457,13 @@ pub(crate) async fn sign_up(
 
     // Enqueue email verification notification
     if let Some(code) = email_verification_code {
-        let community = db.get_community(community_id).await?;
+        let site_settings = db.get_site_settings().await?;
         let template_data = EmailVerification {
             link: format!(
                 "{}/verify-email/{code}",
                 server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
             ),
-            theme: community.theme,
+            theme: site_settings.theme,
         };
         let notification = NewNotification {
             attachments: vec![],
@@ -625,9 +634,9 @@ pub(crate) async fn user_belongs_to_any_group_team(
     next.run(request).await.into_response()
 }
 
-/// Check if the user owns the community.
+/// Check if the user owns the community (from path).
 #[instrument(skip_all)]
-pub(crate) async fn user_owns_community(
+pub(crate) async fn user_owns_path_community(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     auth_session: AuthSession,
@@ -640,21 +649,21 @@ pub(crate) async fn user_owns_community(
     };
 
     // Check if the user owns the community
-    let Ok(user_owns_community) = db.user_owns_community(&community_id, &user.user_id).await else {
+    let Ok(owns) = db.user_owns_community(&community_id, &user.user_id).await else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !user_owns_community {
+    if !owns {
         return StatusCode::FORBIDDEN.into_response();
     }
 
     next.run(request).await.into_response()
 }
 
-/// Check if the user owns the group.
+/// Check if the user owns the group (from path).
 #[instrument(skip_all)]
-pub(crate) async fn user_owns_group(
+pub(crate) async fn user_owns_path_group(
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     Path(group_id): Path<Uuid>,
     auth_session: AuthSession,
     request: Request,
@@ -666,10 +675,61 @@ pub(crate) async fn user_owns_group(
     };
 
     // Check if the user owns the group
-    let Ok(user_owns_group) = db.user_owns_group(&community_id, &group_id, &user.user_id).await else {
+    let Ok(owns) = db.user_owns_group(&community_id, &group_id, &user.user_id).await else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !user_owns_group {
+    if !owns {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
+}
+
+/// Check if the user owns the selected community (from session).
+#[instrument(skip_all)]
+pub(crate) async fn user_owns_selected_community(
+    State(db): State<DynDB>,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if the user owns the community
+    let Ok(owns) = db.user_owns_community(&community_id, &user.user_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !owns {
+        return StatusCode::FORBIDDEN.into_response();
+    }
+
+    next.run(request).await.into_response()
+}
+
+/// Check if the user owns the selected group (from session).
+#[instrument(skip_all)]
+pub(crate) async fn user_owns_selected_group(
+    State(db): State<DynDB>,
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    auth_session: AuthSession,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    // Check if user is logged in
+    let Some(user) = auth_session.user else {
+        return StatusCode::FORBIDDEN.into_response();
+    };
+
+    // Check if the user owns the group
+    let Ok(owns) = db.user_owns_group(&community_id, &group_id, &user.user_id).await else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+    if !owns {
         return StatusCode::FORBIDDEN.into_response();
     }
 
@@ -724,19 +784,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_log_in_page_success() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -746,7 +798,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(LOG_IN_URL)
-            .header(HOST, "example.test")
             .body(Body::empty())
             .unwrap();
         let response = router.oneshot(request).await.unwrap();
@@ -769,11 +820,10 @@ mod tests {
     #[tokio::test]
     async fn test_log_in_page_redirects_when_authenticated() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -785,10 +835,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -798,7 +844,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(LOG_IN_URL)
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -817,19 +862,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_sign_up_page_success() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -839,7 +876,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(SIGN_UP_URL)
-            .header(HOST, "example.test")
             .body(Body::empty())
             .unwrap();
         let response = router.oneshot(request).await.unwrap();
@@ -862,11 +898,10 @@ mod tests {
     #[tokio::test]
     async fn test_sign_up_page_redirects_when_authenticated() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -878,10 +913,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -891,7 +922,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(SIGN_UP_URL)
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -914,7 +944,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -973,14 +1003,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_user_by_username()
             .times(1)
-            .withf(move |cid, username| *cid == community_id && username == "test-user")
-            .returning(move |_, _| {
+            .withf(move |username| username == "test-user")
+            .returning(move |_| {
                 let mut user = sample_auth_user(user_id, &auth_hash);
                 user.password = Some(password_hash.clone());
                 Ok(Some(user))
@@ -996,7 +1022,7 @@ mod tests {
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
-            .returning(move |_| Ok(vec![sample_group_summary(group_id)]));
+            .returning(move |_| Ok(sample_user_groups_by_community(community_id, group_id)));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -1013,7 +1039,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/log-in?next_url=%2Fdashboard")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from("username=test-user&password=secret-password"))
@@ -1035,7 +1060,6 @@ mod tests {
     #[tokio::test]
     async fn test_log_in_invalid_credentials() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1045,14 +1069,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_user_by_username()
             .times(1)
-            .withf(move |cid, username| *cid == community_id && username == "test-user")
-            .returning(|_, _| Ok(None));
+            .withf(move |username| username == "test-user")
+            .returning(|_| Ok(None));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
@@ -1078,7 +1098,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/log-in")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from("username=test-user&password=wrong"))
@@ -1099,7 +1118,6 @@ mod tests {
     #[tokio::test]
     async fn test_log_in_validation_error() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1109,10 +1127,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_user_by_username().times(0);
         db.expect_update_session()
             .times(1)
@@ -1134,7 +1148,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/log-in")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from("username=+++&password=secret"))
@@ -1158,7 +1171,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1242,7 +1255,6 @@ mod tests {
     #[tokio::test]
     async fn test_oauth2_callback_missing_state() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1252,10 +1264,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_update_session()
             .times(1)
             .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
@@ -1288,7 +1296,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/log-in/oauth2/github/callback?code=test-code&state=test-state")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -1308,7 +1315,6 @@ mod tests {
     #[tokio::test]
     async fn test_oauth2_callback_state_mismatch() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let mut session_record = empty_session_record(session_id);
         session_record
@@ -1321,10 +1327,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_update_session()
             .times(1)
             .withf(move |record| message_matches(record, "OAuth2 authorization failed"))
@@ -1357,7 +1359,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/log-in/oauth2/github/callback?code=test-code&state=state-in-request")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -1427,7 +1428,6 @@ mod tests {
     #[tokio::test]
     async fn test_oidc_callback_missing_nonce() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let mut session_record = empty_session_record(session_id);
         session_record
@@ -1440,10 +1440,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_update_session()
             .times(1)
             .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
@@ -1465,7 +1461,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -1485,7 +1480,6 @@ mod tests {
     #[tokio::test]
     async fn test_oidc_callback_missing_state() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1495,10 +1489,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_update_session()
             .times(1)
             .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
@@ -1520,7 +1510,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=test-state")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -1540,7 +1529,6 @@ mod tests {
     #[tokio::test]
     async fn test_oidc_callback_state_mismatch() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let mut session_record = empty_session_record(session_id);
         session_record
@@ -1556,10 +1544,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_update_session()
             .times(1)
             .withf(move |record| message_matches(record, "OpenID Connect authorization failed"))
@@ -1581,7 +1565,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-request")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -1670,16 +1653,12 @@ mod tests {
     #[tokio::test]
     async fn test_sign_up_success() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
         let email_verification_code = Uuid::new_v4();
         let user = sample_auth_user(Uuid::new_v4(), "hash");
         let user_for_notifications = user.clone();
         let user_for_db = user;
-        let community = sample_community(community_id);
-        let community_for_notifications = community.clone();
-        let community_for_db = community;
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1687,28 +1666,20 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+        let site_settings = sample_site_settings();
+        let site_settings_for_notifications = site_settings.clone();
         db.expect_sign_up_user()
             .times(1)
-            .withf(move |cid, summary, verify| {
-                *cid == community_id
-                    && !matches!(summary.password.as_deref(), Some("secret-password"))
-                    && !verify
+            .withf(move |summary, verify| {
+                !matches!(summary.password.as_deref(), Some("secret-password")) && !verify
             })
             .returning({
                 let user = user_for_db;
-                move |_, _, _| Ok((user.clone(), Some(email_verification_code)))
+                move |_, _| Ok((user.clone(), Some(email_verification_code)))
             });
-        db.expect_get_community()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning({
-                let community = community_for_db;
-                move |_| Ok(community.clone())
-            });
+            .returning(move || Ok(site_settings.clone()));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
@@ -1732,7 +1703,7 @@ mod tests {
                                 template.link
                                     == format!("https://app.example/verify-email/{email_verification_code}")
                                     && template.theme.primary_color
-                                        == community_for_notifications.theme.primary_color
+                                        == site_settings_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
@@ -1758,7 +1729,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up?next_url=%2Fwelcome")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(form))
@@ -1779,7 +1749,6 @@ mod tests {
     #[tokio::test]
     async fn test_sign_up_missing_password() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1789,10 +1758,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_sign_up_user().times(0);
 
         // Setup notifications manager mock
@@ -1812,7 +1777,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(form))
@@ -1829,7 +1793,6 @@ mod tests {
     #[tokio::test]
     async fn test_sign_up_db_error() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1839,13 +1802,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_sign_up_user()
             .times(1)
-            .returning(|_, _, _| Err(anyhow!("db error")));
+            .returning(|_, _| Err(anyhow!("db error")));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
@@ -1873,7 +1832,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(form))
@@ -1894,7 +1852,6 @@ mod tests {
     #[tokio::test]
     async fn test_sign_up_validation_error() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let session_record = empty_session_record(session_id);
 
@@ -1904,10 +1861,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == session_id)
             .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_sign_up_user().times(0);
         db.expect_update_session()
             .times(1)
@@ -1936,7 +1889,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/sign-up")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(form))
@@ -1960,7 +1912,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2013,7 +1965,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2054,7 +2006,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
         let existing_password_hash = password_auth::generate_hash("current-password");
 
         // Setup database mock
@@ -2109,7 +2061,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
         let existing_password_hash = password_auth::generate_hash("current-password");
 
         // Setup database mock
@@ -2308,7 +2260,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2363,7 +2315,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2473,7 +2425,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2485,9 +2437,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
@@ -2508,16 +2460,18 @@ mod tests {
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(state.clone(), user_owns_community))
+            .route("/{community}/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                user_owns_path_community,
+            ))
             .layer(auth_layer)
             .with_state(state);
 
         // Execute request
         let request = Request::builder()
             .method("GET")
-            .uri("/protected")
-            .header(HOST, "example.test")
+            .uri("/test-community/protected")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2537,7 +2491,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2549,9 +2503,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
@@ -2572,16 +2526,18 @@ mod tests {
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(state.clone(), user_owns_community))
+            .route("/{community}/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                user_owns_path_community,
+            ))
             .layer(auth_layer)
             .with_state(state);
 
         // Execute request
         let request = Request::builder()
             .method("GET")
-            .uri("/protected")
-            .header(HOST, "example.test")
+            .uri("/test-community/protected")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2601,7 +2557,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2613,9 +2569,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
@@ -2636,16 +2592,18 @@ mod tests {
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
-            .route("/protected", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(state.clone(), user_owns_community))
+            .route("/{community}/protected", get(|| async { StatusCode::OK }))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                user_owns_path_community,
+            ))
             .layer(auth_layer)
             .with_state(state);
 
         // Execute request
         let request = Request::builder()
             .method("GET")
-            .uri("/protected")
-            .header(HOST, "example.test")
+            .uri("/test-community/protected")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2659,14 +2617,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_owns_group_allows_request() {
+    async fn test_user_owns_path_group_allows_request() {
         // Setup identifiers and data structures
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2678,10 +2636,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_group()
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -2702,7 +2656,10 @@ mod tests {
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(state.clone(), user_owns_group))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                user_owns_path_group,
+            ))
             .layer(auth_layer)
             .with_state(state);
 
@@ -2710,7 +2667,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(format!("/groups/{group_id}"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2724,14 +2680,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_owns_group_forbidden_when_not_owner() {
+    async fn test_user_owns_path_group_forbidden_when_not_owner() {
         // Setup identifiers and data structures
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2743,10 +2699,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_group()
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -2767,7 +2719,10 @@ mod tests {
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(state.clone(), user_owns_group))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                user_owns_path_group,
+            ))
             .layer(auth_layer)
             .with_state(state);
 
@@ -2775,7 +2730,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(format!("/groups/{group_id}"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2789,14 +2743,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_user_owns_group_returns_error_on_db_failure() {
+    async fn test_user_owns_path_group_returns_error_on_db_failure() {
         // Setup identifiers and data structures
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -2808,10 +2762,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_group()
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -2832,7 +2782,10 @@ mod tests {
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
             .route("/groups/{group_id}", get(|| async { StatusCode::OK }))
-            .layer(middleware::from_fn_with_state(state.clone(), user_owns_group))
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                user_owns_path_group,
+            ))
             .layer(auth_layer)
             .with_state(state);
 
@@ -2840,7 +2793,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(format!("/groups/{group_id}"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

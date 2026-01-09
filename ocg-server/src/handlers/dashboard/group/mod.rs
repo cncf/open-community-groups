@@ -37,10 +37,7 @@ pub(crate) async fn select_group(
 mod tests {
     use axum::{
         body::{Body, to_bytes},
-        http::{
-            HeaderValue, Request, StatusCode,
-            header::{COOKIE, HOST},
-        },
+        http::{HeaderValue, Request, StatusCode, header::COOKIE},
     };
     use axum_login::tower_sessions::session;
     use serde_json::json;
@@ -61,7 +58,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -73,10 +70,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_group()
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
@@ -100,7 +93,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri(format!("/dashboard/group/{group_id}/select"))
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

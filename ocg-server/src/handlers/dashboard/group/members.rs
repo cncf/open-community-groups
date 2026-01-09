@@ -19,7 +19,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{dashboard::group::members, notifications::GroupCustom},
@@ -46,7 +46,7 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn send_group_custom_notification(
     auth_session: AuthSession,
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -56,9 +56,9 @@ pub(crate) async fn send_group_custom_notification(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Get community and group data
-    let (community, group, group_members_ids) = tokio::try_join!(
-        db.get_community(community_id),
+    // Get group data and site settings
+    let (site_settings, group, group_members_ids) = tokio::try_join!(
+        db.get_site_settings(),
         db.get_group_summary(community_id, group_id),
         db.list_group_members_ids(group_id),
     )?;
@@ -75,7 +75,7 @@ pub(crate) async fn send_group_custom_notification(
         body: notification.body.clone(),
         group,
         link,
-        theme: community.theme,
+        theme: site_settings.theme,
         title: notification.title.clone(),
     };
     let new_notification = NewNotification {
@@ -121,7 +121,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -140,11 +140,18 @@ mod tests {
     #[tokio::test]
     async fn test_list_page_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let member = sample_group_member();
 
         // Setup database mock
@@ -157,6 +164,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_members()
             .times(1)
             .withf(move |id| *id == group_id)
@@ -170,7 +181,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/members")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -194,11 +204,18 @@ mod tests {
     #[tokio::test]
     async fn test_list_page_db_error() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_session()
@@ -209,6 +226,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_members()
             .times(1)
             .withf(move |id| *id == group_id)
@@ -222,7 +243,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/members")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -245,10 +265,15 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
-        let community = sample_community(community_id);
-        let community_for_notifications = community.clone();
-        let community_for_db = community;
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+        let site_settings = sample_site_settings();
+        let site_settings_for_notifications = site_settings.clone();
         let group_summary = sample_group_summary(group_id);
         let expected_link = format!("/group/{}", group_summary.slug);
         let group_for_notifications = group_summary.clone();
@@ -277,21 +302,17 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_list_group_members_ids()
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id1, member_id2]));
-        db.expect_get_community()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning({
-                let community = community_for_db;
-                move |_| Ok(community.clone())
-            });
+            .returning(move || Ok(site_settings.clone()));
         db.expect_get_group_summary()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -322,7 +343,7 @@ mod tests {
                                     && template.group.name == group_for_notifications.name
                                     && template.link == expected_link
                                     && template.theme.primary_color
-                                        == community_for_notifications.theme.primary_color
+                                        == site_settings_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
@@ -334,7 +355,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/dashboard/group/notifications")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(form_data))
@@ -354,11 +374,16 @@ mod tests {
         let group_id = Uuid::new_v4();
         let group_for_db = sample_group_summary(group_id);
         let community_id = Uuid::new_v4();
-        let community_for_db = sample_community(community_id);
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let form_data = serde_qs::to_string(&GroupCustomNotification {
             title: "Subject".to_string(),
             body: "Body".to_string(),
@@ -375,17 +400,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning({
-                let community = community_for_db.clone();
-                move |_| Ok(community.clone())
-            });
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_summary()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -394,6 +412,9 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![]));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -403,7 +424,6 @@ mod tests {
         let request = Request::builder()
             .method("POST")
             .uri("/dashboard/group/notifications")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(form_data))
