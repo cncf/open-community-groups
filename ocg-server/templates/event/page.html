@@ -221,12 +221,12 @@
                         <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                         </div>
                         {% if let Some(text) = &location_text %}
-                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none hidden sm:block md:hidden xl:block">
                             {{ text }}
                           </div>
                         {% endif %}
                         {% if let Some(text) = &location_text_small %}
-                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
+                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none block sm:hidden md:block xl:hidden">
                             {{ text }}
                           </div>
                         {% endif %}
