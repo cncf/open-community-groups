@@ -282,7 +282,7 @@
         {% if !past_events.is_empty() -%}
           <div>
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Past Events</div>
-            <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 xl:grid-cols-3">
+            <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2">
               {% for event in past_events -%}
                 {% if loop.index0 < 6 -%}
                   {{ event|safe }}
