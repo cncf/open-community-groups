@@ -2,7 +2,7 @@
 {% macro common_badge(content, extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
-  <span class="event-badge {{ extra_styles_ }}">{{ content }}</span>
+  <span class="custom-badge {{ extra_styles_ }}">{{ content }}</span>
 {% endmacro common_badge -%}
 {# End common badge -#}
 
@@ -11,7 +11,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   {% if canceled -%}
-    <span class="event-badge canceled {{ extra_styles_ }}">Canceled</span>
+    <span class="custom-badge canceled {{ extra_styles_ }}">Canceled</span>
   {% else -%}
     {{ common_badge(content = kind, extra_styles = extra_styles) -}}
   {% endif -%}
@@ -23,11 +23,11 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   {% if canceled -%}
-    <span class="event-badge bg-red-100 border-red-800 text-red-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
+    <span class="custom-badge bg-red-100 border-red-800 text-red-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
   {% else if published -%}
-    <span class="event-badge bg-green-100 border-green-800 text-green-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
+    <span class="custom-badge bg-green-100 border-green-800 text-green-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
   {% else -%}
-    <span class="event-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
+    <span class="custom-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}">{{ label }}</span>
   {% endif -%}
 {% endmacro status_badge -%}
 {# End status badge -#}

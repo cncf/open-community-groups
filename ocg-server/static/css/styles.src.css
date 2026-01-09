@@ -83,11 +83,11 @@
     @apply text-xs text-stone-700 uppercase truncate;
   }
 
-  .event-badge {
+  .custom-badge {
     @apply -mt-px border border-stone-200 text-stone-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full;
   }
 
-  .event-badge.canceled {
+  .custom-badge.canceled {
     @apply border-red-300 text-red-500;
   }
 

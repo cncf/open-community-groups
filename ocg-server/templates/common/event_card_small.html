@@ -36,18 +36,21 @@
           {% when EventKind::InPerson -%}
           {% if let Some(location) = &self.event.location(25) -%}
             {{ ui::icon_text(icon_name = "location", text = location) -}}
+          {%- else -%}
+            {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("me-2") ) -}}
           {% endif -%}
           {% when EventKind::Hybrid -%}
           <div class="flex items-center">
             {% if let Some(location) = &self.event.location(16) -%}
               {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
+              {{ badges::event_badge(kind = event.kind) -}}
+            {%- else -%}
+              {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("me-2") ) -}}
             {% endif -%}
-            {{ badges::event_badge(kind = event.kind) -}}
           </div>
           {% when EventKind::Virtual -%}
           <div class="flex items-center">
-            <div class="svg-icon w-3 h-3 bg-stone-700 icon-location me-2"></div>
-            {{ badges::event_badge(kind = event.kind) -}}
+            {{ ui::icon_text(icon_name = "location", text = "Virtual", extra_styles = Some("me-2") ) -}}
           </div>
         {% endmatch -%}
       </div>

@@ -39,7 +39,7 @@
 
         {# Event description on desktop -#}
         {% if let Some(description_short) = &event.description_short -%}
-          <div class="hidden h-[36px] md:my-2 md:block">
+          <div class="hidden h-9 md:my-2 md:block">
             <p class="text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2">{{ description_short|demoji }}</p>
           </div>
         {% endif -%}
@@ -47,7 +47,7 @@
 
         <div class="hidden md:block">
           {# Event location -#}
-          <div class="card-meta h-[28px]">
+          <div class="card-meta h-7">
             {% if event.kind != EventKind::Virtual -%}
               {% if let Some(location) = &self.event.location(36) -%}
                 <div class="hidden truncate me-2 xl:block">
@@ -56,13 +56,13 @@
                 <div class="block truncate me-2 xl:hidden">
                   {{ ui::icon_text(icon_name = "location", text = location) -}}
                 </div>
+              {%- else -%}
+                {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
               {% endif -%}
+              {{ badges::event_badge(kind = event.kind, extra_styles = Some("ms-2") ) -}}
             {% else -%}
-              <div class="icon-text me-2">
-                <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
-              </div>
+              {{ ui::icon_text(icon_name = "location", text = "Virtual") -}}
             {% endif -%}
-            {{ badges::event_badge(kind = event.kind) -}}
           </div>
           {# End event location -#}
 
@@ -88,13 +88,13 @@
       {% if event.kind != EventKind::Virtual -%}
         {% if let Some(location) = &self.event.location(25) -%}
           {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
+          {{ badges::event_badge(kind = event.kind) -}}
+        {%- else -%}
+          {{ ui::icon_text(icon_name = "location", text = "No location provided", extra_styles = Some("me-2") ) -}}
         {% endif -%}
       {% else -%}
-        <div class="icon-text me-2">
-          <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
-        </div>
+        {{ ui::icon_text(icon_name = "location", text = "Virtual", extra_styles = Some("me-2") ) -}}
       {% endif -%}
-      {{ badges::event_badge(kind = event.kind) -}}
     </div>
     {# End event location -#}
 
