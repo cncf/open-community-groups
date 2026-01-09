@@ -37,9 +37,7 @@
       {# Event description -#}
       {% if let Some(description_short) = &event.description_short -%}
         <div class="hidden md:block">
-          <p class="text-sm text-stone-500 leading-relaxed mt-2 line-clamp-2">
-            {{ description_short|demoji }}
-          </p>
+          <p class="text-sm text-stone-500 leading-relaxed mt-2 line-clamp-2">{{ description_short|demoji }}</p>
         </div>
       {% endif -%}
       {# End event description -#}
@@ -97,7 +95,7 @@
         {# Event date - Mobile -#}
         <div class="flex md:hidden items-center gap-2">
           {% if let Some(starts_at) = &event.starts_at -%}
-            {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%a, %b %e · %I:%M %p")) -}}
+            {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%a, %b %e · %I:%M %p %Z")) -}}
           {% endif -%}
           {% if event.canceled -%}
             {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
