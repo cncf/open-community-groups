@@ -263,7 +263,7 @@
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-4 lg:pb-10">
             About this event
           </div>
-          <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
+          <div class="text-stone-500 text-sm/6 markdown px-4">{{ event.description|md_to_html|safe }}</div>
           {% if event.meeting_join_url.is_some() || event.meeting_recording_url.is_some() -%}
             {% let meeting_join_url = event.meeting_join_url -%}
             {% let meeting_recording_url = event.meeting_recording_url -%}
