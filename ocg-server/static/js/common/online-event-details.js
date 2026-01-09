@@ -719,11 +719,11 @@ export class OnlineEventDetails extends LitWrapper {
           : ""}
         ${this.meetingJoinUrl
           ? html`
-              <div class="text-sm text-stone-700 break-words">
+              <div class="text-sm text-stone-700 wrap-break-word">
                 <span class="font-medium">Join link:</span>
                 <a
                   href="${this.meetingJoinUrl}"
-                  class="text-primary-500 hover:text-primary-600 break-words"
+                  class="text-primary-500 hover:text-primary-600 wrap-break-word"
                   target="_blank"
                   rel="noopener noreferrer"
                   >${this.meetingJoinUrl}</a

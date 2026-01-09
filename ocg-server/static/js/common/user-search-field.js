@@ -268,7 +268,7 @@ export class UserSearchField extends LitWrapper {
         <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
           <button
             type="button"
-            class="cursor-pointer mt-[2px]"
+            class="cursor-pointer mt-0.5"
             @click=${this._clearSearch}
             ?disabled=${this.disabled}
           >

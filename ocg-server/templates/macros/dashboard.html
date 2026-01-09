@@ -19,7 +19,7 @@
           <div class="text-sm/8 ms-3">{{ name }}</div>
         </div>
         {% if items_count + 0 > 0 -%}
-          <div class="text-[0.65rem]/4 font-bold text-primary-500 border border-primary-500 bg-white rounded-full px-2 pt-0.25 ms-3">
+          <div class="text-[0.65rem]/4 font-bold text-primary-500 border border-primary-500 bg-white rounded-full px-2 pt-px ms-3">
             {{ items_count }}
           </div>
         {% endif -%}
@@ -50,7 +50,7 @@
             <div class="text-sm/8 ms-3">{{ name }}</div>
           </div>
           {% if items_count + 0 > 0 -%}
-            <div class="text-[0.65rem]/4 font-bold text-primary-500 border border-primary-500 bg-white rounded-full px-2 pt-0.25 ms-3">
+            <div class="text-[0.65rem]/4 font-bold text-primary-500 border border-primary-500 bg-white rounded-full px-2 pt-px ms-3">
               {{ items_count }}
             </div>
           {% endif -%}
@@ -82,7 +82,7 @@
 {# Group analytics chart container #}
 {% macro group_analytics_chart(chart_id, data, min_points = 0) -%}
   {% if data.len() > min_points + 0 -%}
-    <div id="{{ chart_id }}" class="h-[320px]">
+    <div id="{{ chart_id }}" class="h-80">
       <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
       </svg-spinner>
     </div>
@@ -93,7 +93,7 @@
 {# End group analytics chart container #}
 
 {# Community analytics chart container #}
-{% macro community_analytics_chart(chart_id, class = "h-[320px]") -%}
+{% macro community_analytics_chart(chart_id, class = "h-80") -%}
   <div id="{{ chart_id }}" class="{{ class }}">
     <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
     </svg-spinner>

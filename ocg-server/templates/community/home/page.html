@@ -11,7 +11,7 @@
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">
     <section>
-      <div class="relative z-10 max-w-screen-xl {%- if has_jumbotron_image %} pb-10 lg:pb-20 {%- else %} pb-7 lg:pb-14 {%- endif -%}">
+      <div class="relative z-10 max-w-7xl {%- if has_jumbotron_image %} pb-10 lg:pb-20 {%- else %} pb-7 lg:pb-14 {%- endif -%}">
         {# Community title -#}
         <h1 class="text-center mb-8 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ community.title }}
@@ -98,7 +98,7 @@
                aria-label="Open external link">
             {% endif -%}
             <div class="mx-auto my-4 lg:my-8 border-4 border-stone-100 w-[85%] lg:[w-80%] xl:w-[70%]">
-              <img class="h-auto max-w-[100%]"
+              <img class="h-auto max-w-full"
                    height="auto"
                    width="auto"
                    alt="Decorator"
@@ -149,7 +149,7 @@
   {% if let Some(photos_urls) = &community.photos_urls -%}
     {% if !photos_urls.is_empty() -%}
       <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
-        <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6 lg:px-8">
+        <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-8">
           <!-- Title -->
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
           <!-- End title -->
