@@ -121,7 +121,7 @@ export class BreadcrumbNav extends LitWrapper {
           aria-current="page"
         >
           <span class="shrink-0 text-stone-600">
-            <div class="svg-icon size-5 bg-current icon-${item.icon}"></div>
+            <div class="svg-icon size-4 bg-current icon-${item.icon}"></div>
           </span>
           <span class="text-stone-900 font-medium truncate flex-1">${item.label}</span>
         </div>
@@ -139,7 +139,7 @@ export class BreadcrumbNav extends LitWrapper {
         @click="${this._closeDropdown}"
       >
         <span class="shrink-0 text-stone-400 group-hover:text-stone-600 transition-colors">
-          <div class="svg-icon size-5 bg-current icon-${item.icon}"></div>
+          <div class="svg-icon size-4 bg-current icon-${item.icon}"></div>
         </span>
         <span class="text-stone-600 group-hover:text-stone-900 truncate flex-1 transition-colors">
           ${item.label}
@@ -223,7 +223,7 @@ export class BreadcrumbNav extends LitWrapper {
               <div
                 id="${this._dropdownId}"
                 data-breadcrumb-dropdown
-                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-2 w-full bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto ${this
+                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto ${this
                   ._isOpen
                   ? "opacity-100 scale-y-100 translate-y-0"
                   : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"}"
