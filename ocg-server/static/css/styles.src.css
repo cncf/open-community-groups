@@ -124,7 +124,7 @@
   }
 
   .card-header span {
-    @apply text-xs font-semibold tracking-wide uppercase;
+    @apply text-xs font-semibold tracking-wider uppercase;
   }
 
   .card-title {
