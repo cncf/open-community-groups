@@ -26,7 +26,7 @@
       {# Breadcrumb -#}
       <nav class="border-b border-stone-200 px-4 sm:px-6 lg:px-8 py-3">
         <ol class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-stone-500">
-          <li class="flex-shrink-0">
+          <li class="shrink-0">
             <a href="/"
                class="flex items-center gap-1.5 hover:text-stone-700 hover:underline"
                hx-boost="true"
@@ -35,7 +35,7 @@
               Home
             </a>
           </li>
-          <li class="hidden sm:block flex-shrink-0">
+          <li class="hidden sm:block shrink-0">
             <div class="svg-icon size-3 bg-stone-300 icon-arrow-right"></div>
           </li>
           <li class="min-w-0 pl-1 sm:pl-0 flex items-center gap-1.5">
@@ -44,16 +44,16 @@
                class="flex items-center gap-1.5 hover:text-stone-700 hover:underline min-w-0"
                hx-boost="true"
                hx-target="body">
-              <div class="svg-icon size-3 bg-stone-500 icon-groups flex-shrink-0"></div>
+              <div class="svg-icon size-3 bg-stone-500 icon-groups shrink-0"></div>
               <span class="truncate">{{ event.group.name }}</span>
             </a>
           </li>
-          <li class="hidden sm:block flex-shrink-0">
+          <li class="hidden sm:block shrink-0">
             <div class="svg-icon size-3 bg-stone-300 icon-arrow-right"></div>
           </li>
           <li class="flex items-center gap-1.5 min-w-0 pl-5 sm:pl-0">
             <span class="text-stone-300 sm:hidden">└</span>
-            <div class="svg-icon size-3 bg-stone-700 icon-date flex-shrink-0"></div>
+            <div class="svg-icon size-3 bg-stone-700 icon-date shrink-0"></div>
             <span class="text-stone-700 font-medium truncate">{{ event.name|demoji }}</span>
           </li>
         </ol>
@@ -193,7 +193,7 @@
                         <a href="{{ meeting_join_url }}"
                            target="_blank"
                            rel="noopener noreferrer"
-                           class="group btn-secondary-anchor p-1.5 size-[40px] sm:size-[30px] flex items-center justify-center"
+                           class="group btn-secondary-anchor p-1.5 size-10 sm:size-[30px] flex items-center justify-center"
                            aria-label="Meeting link">
                           <div class="svg-icon size-3 bg-primary-500 group-hover:bg-white icon-meeting"></div>
                         </a>
@@ -206,7 +206,7 @@
             {# Location -#}
             <div class="border border-stone-200 rounded-lg p-4 bg-white">
               <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
-              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
+              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-25">
                 {% if event.kind != EventKind::Virtual %}
                   {% if event.latitude.is_some() && event.longitude.is_some() %}
                     {# Use event-specific location #}
@@ -344,7 +344,7 @@
               {% endfor -%}
             {% else -%}
               {# Multi-day agenda: tabs with one day per tab -#}
-              <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-[0.25rem]">
+              <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1">
                 {% for day in event.sessions -%}
                   <li>
                     <button type="button"

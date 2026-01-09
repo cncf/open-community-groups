@@ -15,8 +15,8 @@
   </div>
 </div>
 
-<div class="flex items-end justify-between mb-5">
-  <div class="flex text-sm text-stone-600">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between mb-5">
+  <div class="flex text-sm text-stone-600 mb-4 lg:mb-0">
     <div>Total attendees:</div>
     <div class="font-semibold ms-1 text-end">
       {% if attendees.is_empty() -%}
@@ -26,7 +26,7 @@
       {% endif -%}
     </div>
   </div>
-  <div class="flex-shrink-0 w-full lg:w-auto mb-1.5 flex flex-col gap-3 lg:flex-row">
+  <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
     <button id="open-event-qr-code-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto"
@@ -265,17 +265,17 @@
             <div class="mt-7">
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Group</p>
               <p id="event-qr-code-group-name"
-                 class="text-base font-semibold text-stone-900 break-words line-clamp-2"></p>
+                 class="text-base font-semibold text-stone-900 wrap-break-word line-clamp-2"></p>
             </div>
             <div>
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Event</p>
               <p id="event-qr-code-name"
-                 class="text-base font-semibold text-stone-900 break-words line-clamp-3"></p>
+                 class="text-base font-semibold text-stone-900 wrap-break-word line-clamp-3"></p>
             </div>
             <div>
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Date</p>
               <p id="event-qr-code-start"
-                 class="text-base font-medium text-stone-700 break-words"></p>
+                 class="text-base font-medium text-stone-700 wrap-break-word"></p>
             </div>
             <div>
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Check-in link</p>
