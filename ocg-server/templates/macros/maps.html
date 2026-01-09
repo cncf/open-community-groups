@@ -7,12 +7,12 @@
         tabindex="0"
         aria-label="Open full map view"></div>
   {% if let Some(text) = &overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none hidden sm:block md:hidden xl:block">
       {{ text }}
     </div>
   {% endif -%}
   {% if let Some(text) = &small_overlay_text -%}
-    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
+    <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none block sm:hidden md:block xl:hidden">
       {{ text }}
     </div>
   {% endif -%}
@@ -43,12 +43,12 @@
                  class="w-full h-[500px] md:h-[600px] rounded-lg overflow-hidden border border-stone-200">
             </div>
             {% if let Some(text) = &overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none hidden sm:block md:hidden xl:block">
                 {{ text }}
               </div>
             {% endif -%}
             {% if let Some(text) = &small_overlay_text -%}
-              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none md:block xl:hidden">
+              <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none md:block xl:hidden">
                 {{ text }}
               </div>
             {% endif -%}
