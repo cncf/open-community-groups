@@ -76,11 +76,11 @@
   }
 
   .icon-text img {
-    @apply -mt-0.5 w-3 h-3;
+    @apply -mt-0.5 w-3 h-3 text-stone-500 flex-shrink-0;
   }
 
   .icon-text span {
-    @apply text-xs text-stone-700 uppercase truncate;
+    @apply text-sm text-stone-700 truncate;
   }
 
   .custom-badge {
