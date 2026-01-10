@@ -81,7 +81,7 @@ pub(crate) async fn join_group(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
-    Path((_, group_id)): Path<(String, Uuid)>,
+    Path((community_name, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -96,7 +96,7 @@ pub(crate) async fn join_group(
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let template_data = GroupWelcome {
-        link: format!("{}/group/{}", base_url, group.slug),
+        link: format!("{}/{}/group/{}", base_url, community_name, group.slug),
         group,
         theme: site_settings.theme,
     };
@@ -351,7 +351,7 @@ mod tests {
                         serde_json::from_value::<GroupWelcome>(data.clone())
                             .map(|welcome| {
                                 welcome.group.group_id == group_id
-                                    && welcome.link == "/group/npq6789"
+                                    && welcome.link == "/test-community/group/npq6789"
                                     && welcome.theme.primary_color
                                         == site_settings_for_notifications.theme.primary_color
                             })

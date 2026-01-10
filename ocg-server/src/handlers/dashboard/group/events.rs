@@ -194,11 +194,12 @@ pub(crate) async fn cancel(
             .collect();
 
         if !recipients.is_empty() {
+            let (community, site_settings) =
+                tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base_url, &event_summary);
-            let site_settings = db.get_site_settings().await?;
-            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
+            let link = build_event_page_link(base_url, &community.name, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base_url, &community.name, &event_summary);
             let template_data = EventCanceled {
                 event: event_summary,
                 link,
@@ -268,11 +269,12 @@ pub(crate) async fn publish(
 
         if has_members || has_speakers {
             // Prepare common data for notifications
-            let site_settings = db.get_site_settings().await?;
+            let (community, site_settings) =
+                tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base_url, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
+            let link = build_event_page_link(base_url, &community.name, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base_url, &community.name, &event_summary);
 
             // Notify group members about published event
             if has_members {
@@ -419,11 +421,12 @@ pub(crate) async fn update(
             .collect();
 
         if !recipients.is_empty() {
+            let (community, site_settings) =
+                tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
             let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base, &event_summary);
-            let site_settings = db.get_site_settings().await?;
-            let calendar_ics = build_event_calendar_attachment(base, &event_summary);
+            let link = build_event_page_link(base, &community.name, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base, &community.name, &event_summary);
             let template_data = EventRescheduled {
                 event: event_summary,
                 link,
@@ -983,6 +986,10 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -999,7 +1006,7 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventCanceled>(value.clone())
                             .map(|template| {
-                                template.link == "/group/npq6789/event/abc1234"
+                                template.link == "/test/group/npq6789/event/abc1234"
                                     && template.theme.primary_color
                                         == site_settings_for_notifications.theme.primary_color
                             })
@@ -1093,6 +1100,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1282,6 +1293,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1527,6 +1542,10 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id]));
+        db.expect_get_community()
+            .times(1)
+            .withf(move |cid| *cid == community_id)
+            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1543,7 +1562,7 @@ mod tests {
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventRescheduled>(value.clone())
                             .map(|template| {
-                                template.link == "/group/npq6789/event/abc1234"
+                                template.link == "/test/group/npq6789/event/abc1234"
                                     && template.theme.primary_color
                                         == site_settings_for_notifications.theme.primary_color
                             })

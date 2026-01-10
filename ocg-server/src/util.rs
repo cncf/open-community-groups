@@ -7,7 +7,11 @@ use sha2::{Digest, Sha256};
 use crate::{services::notifications::Attachment, types::event::EventSummary};
 
 /// Build an iCalendar (ICS) attachment for the specified event.
-pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSummary) -> Attachment {
+pub(crate) fn build_event_calendar_attachment(
+    base_url: &str,
+    community_name: &str,
+    event: &EventSummary,
+) -> Attachment {
     // Prepare some event data
     let description = build_event_calendar_description(event);
     let location = event.location(512);
@@ -21,7 +25,10 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
         .uid(&uid)
         .timestamp(Utc::now())
         .created(Utc::now())
-        .append_property(Property::new("URL", build_event_page_link(base_url, event)));
+        .append_property(Property::new(
+            "URL",
+            build_event_page_link(base_url, community_name, event),
+        ));
     if !description.is_empty() {
         ical_event.description(&description);
     }
@@ -87,10 +94,13 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
     }
 }
 
-/// Build the event page link based on the base URL and event and group slugs.
-pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
+/// Build the event page link based on the base URL, community name, and event and group slugs.
+pub(crate) fn build_event_page_link(base_url: &str, community_name: &str, event: &EventSummary) -> String {
     let base = base_url.strip_suffix('/').unwrap_or(base_url);
-    format!("{}/group/{}/event/{}", base, event.group_slug, event.slug)
+    format!(
+        "{}/{}/group/{}/event/{}",
+        base, community_name, event.group_slug, event.slug
+    )
 }
 
 /// Computes the SHA-256 hash of the provided bytes and returns a hex string.
@@ -168,11 +178,12 @@ mod tests {
     use super::*;
 
     const BASE_URL: &str = "https://example.test";
+    const COMMUNITY_NAME: &str = "test-community";
 
     #[test]
     fn test_build_event_calendar_attachment_confirmed() {
         let event = sample_event(false);
-        let attachment = build_event_calendar_attachment(BASE_URL, &event);
+        let attachment = build_event_calendar_attachment(BASE_URL, COMMUNITY_NAME, &event);
         let data = String::from_utf8(attachment.data).unwrap();
         let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
@@ -194,7 +205,9 @@ mod tests {
         assert!(unfolded.contains("STATUS:CONFIRMED"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
-        assert!(unfolded.contains("URL:https://example.test/group/test-group/event/test-event"));
+        assert!(
+            unfolded.contains("URL:https://example.test/test-community/group/test-group/event/test-event")
+        );
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
         assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
         assert!(unfolded.contains("X-APPLE-RADIUS=100"));
@@ -206,7 +219,7 @@ mod tests {
     #[test]
     fn test_build_event_calendar_attachment_canceled() {
         let event = sample_event(true);
-        let attachment = build_event_calendar_attachment(BASE_URL, &event);
+        let attachment = build_event_calendar_attachment(BASE_URL, COMMUNITY_NAME, &event);
         let data = String::from_utf8(attachment.data).unwrap();
         let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
@@ -227,7 +240,9 @@ mod tests {
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CANCELLED"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
-        assert!(unfolded.contains("URL:https://example.test/group/test-group/event/test-event"));
+        assert!(
+            unfolded.contains("URL:https://example.test/test-community/group/test-group/event/test-event")
+        );
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
         assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));

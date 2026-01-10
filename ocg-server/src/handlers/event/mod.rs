@@ -106,7 +106,7 @@ pub(crate) async fn attend_event(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
-    Path((_, event_id)): Path<(String, Uuid)>,
+    Path((community_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -120,8 +120,8 @@ pub(crate) async fn attend_event(
         db.get_event_summary_by_id(community_id, event_id),
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event);
+    let link = build_event_page_link(base_url, &community_name, &event);
+    let calendar_ics = build_event_calendar_attachment(base_url, &community_name, &event);
     let template_data = EventWelcome {
         link,
         event,
@@ -432,7 +432,7 @@ mod tests {
                     && notification.recipients == vec![user_id]
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventWelcome>(value.clone())
-                            .map(|template| template.link == "/group/def5678/event/ghi9abc")
+                            .map(|template| template.link == "/test-community/group/def5678/event/ghi9abc")
                             .unwrap_or(false)
                     })
             })
