@@ -51,12 +51,9 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community, site settings, and user groups information
-    let (community, groups_by_community, site_settings) = tokio::try_join!(
-        db.get_community(community_id),
-        db.list_user_groups(&user.user_id),
-        db.get_site_settings()
-    )?;
+    // Get site settings and user groups information
+    let (groups_by_community, site_settings) =
+        tokio::try_join!(db.list_user_groups(&user.user_id), db.get_site_settings())?;
 
     // Flatten groups for template (backward compatibility)
     let groups: Vec<_> = groups_by_community.into_iter().flat_map(|c| c.groups).collect();
@@ -121,7 +118,6 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
-        community: Some(community),
         content,
         groups,
         messages: messages.into_iter().collect(),
@@ -172,7 +168,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let stats = sample_group_stats();
 
@@ -190,10 +185,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
@@ -250,7 +241,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let attendees = vec![sample_attendee()];
         let event_summary = sample_event_summary(event_id, group_id);
@@ -269,10 +259,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
@@ -333,7 +319,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let group_events = sample_group_events(event_id, group_id);
 
@@ -351,10 +336,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
@@ -410,7 +391,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let member = sample_group_member();
 
@@ -428,10 +408,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
@@ -487,7 +463,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let group_full = sample_group_full(group_id);
         let category = sample_group_category();
@@ -507,10 +482,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
@@ -574,7 +545,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let sponsor = sample_group_sponsor();
 
@@ -592,10 +562,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)
@@ -651,7 +617,6 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let community = sample_community(community_id);
         let groups = sample_user_groups_by_community(community_id, group_id);
         let team_member = sample_team_member(true);
         let role = sample_group_role_summary();
@@ -670,10 +635,6 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(community.clone()));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)

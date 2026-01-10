@@ -41,15 +41,13 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
-    let (community, group, past_events, site_settings, upcoming_events) = tokio::try_join!(
-        db.get_community(community_id),
+    let (group, past_events, site_settings, upcoming_events) = tokio::try_join!(
         db.get_group_full_by_slug(community_id, &group_slug),
         db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 9),
         db.get_site_settings(),
         db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
     )?;
     let template = Page {
-        community: Some(community),
         group,
         page_id: PageId::Group,
         past_events: past_events
@@ -186,10 +184,6 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
@@ -256,10 +250,6 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")

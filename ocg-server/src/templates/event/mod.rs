@@ -5,7 +5,6 @@ use askama::Template;
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
-        community::Community,
         event::{EventFull, EventKind, EventSummary},
         site::SiteSettings,
     },
@@ -18,8 +17,6 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/page.html")]
 pub(crate) struct Page {
-    /// Community information.
-    pub community: Option<Community>,
     /// Detailed information about the event.
     pub event: EventFull,
     /// Identifier for the current page.
@@ -39,8 +36,6 @@ pub(crate) struct Page {
 pub(crate) struct CheckInPage {
     /// Whether the check-in window is open.
     pub check_in_window_open: bool,
-    /// Community information.
-    pub community: Option<Community>,
     /// Event summary being checked into.
     pub event: EventSummary,
     /// Identifier for the current page.

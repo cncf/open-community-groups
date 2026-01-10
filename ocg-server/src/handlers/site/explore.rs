@@ -49,7 +49,6 @@ pub(crate) async fn page(
     let site_settings = db.get_site_settings().await?;
     let entity: explore::Entity = query.get("entity").into();
     let mut template = explore::Page {
-        community: None,
         entity: entity.clone(),
         page_id: PageId::SiteExplore,
         path: uri.path().to_string(),

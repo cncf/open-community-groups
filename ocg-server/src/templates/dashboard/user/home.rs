@@ -12,7 +12,7 @@ use crate::{
         filters,
         helpers::user_initials,
     },
-    types::{community::Community, site::SiteSettings},
+    types::site::SiteSettings,
 };
 
 /// Home page template for the user dashboard.
@@ -20,8 +20,6 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/user/home.html")]
 pub(crate) struct Page {
-    /// Community information.
-    pub community: Option<Community>,
     /// Main content section for the page.
     pub content: Content,
     /// Flash or status messages to display.

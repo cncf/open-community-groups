@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
-        community::Community,
         event::{EventKind, EventSummary},
         group::GroupFull,
         site::SiteSettings,
@@ -20,8 +19,6 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "group/page.html")]
 pub(crate) struct Page {
-    /// Community information.
-    pub community: Option<Community>,
     /// Detailed information about the group.
     pub group: GroupFull,
     /// Identifier for the current page.

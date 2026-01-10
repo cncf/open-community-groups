@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
-        community::{Community, CommunitySummary},
+        community::CommunitySummary,
         site::{SiteHomeStats, SiteSettings},
     },
 };
@@ -15,8 +15,6 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "site/home/page.html")]
 pub struct Page {
-    /// Community context (None for global site pages).
-    pub community: Option<Community>,
     /// List of communities to display.
     pub communities: Vec<CommunitySummary>,
     /// Identifier for the current page.

@@ -53,15 +53,46 @@
         </div>
         {# End search bar -#}
 
-        <a href="/explore"
-           hx-boost="true"
-           hx-target="body"
-           class="btn-primary-anchor">Explore all</a>
+        <div class="flex flex-wrap gap-4">
+          <a href="/explore"
+             hx-boost="true"
+             hx-target="body"
+             class="btn-primary-anchor">Explore all</a>
+          {% if let Some(c) = &community -%}
+            {% if c.new_group_details.is_some() -%}
+              <button id="open-new-group-btn"
+                      class="btn-secondary cursor-pointer">
+                New group
+              </button>
+            {% endif -%}
+          {% endif -%}
+        </div>
       </div>
 
     </section>
   </div>
   {# End jumbotron -#}
+
+  {# New group modal -#}
+  {% include "common/new_group_modal.html" -%}
+  {# End new group modal -#}
+
+  {# New group button script -#}
+  {% if let Some(c) = &community -%}
+    {% if c.new_group_details.is_some() -%}
+      <script type="module">
+        import {
+          toggleModalVisibility
+        } from '/static/js/common/common.js';
+
+        const openNewGroupBtn = document.getElementById('open-new-group-btn');
+        if (openNewGroupBtn) {
+          openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+        }
+      </script>
+    {% endif -%}
+  {% endif -%}
+  {# End new group button script -#}
 {% endblock jumbotron -%}
 
 {% block content -%}
@@ -155,6 +186,54 @@
     {% endif -%}
   {% endif -%}
   {# End gallery -#}
+
+  {# Community social links and extra links -#}
+  {% if let Some(c) = &community -%}
+    {% let has_social_links = c.twitter_url.is_some() || c.github_url.is_some() || c.linkedin_url.is_some() || c.instagram_url.is_some() || c.wechat_url.is_some() || c.youtube_url.is_some() || c.flickr_url.is_some() || c.facebook_url.is_some() || c.slack_url.is_some() -%}
+    {% let has_extra_links = c.extra_links.is_some() -%}
+    {% if has_social_links || has_extra_links -%}
+      <div class="bg-stone-900 text-white py-8 lg:py-12">
+        <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {# Social network links -#}
+          {% if has_social_links -%}
+            <nav class="flex flex-wrap justify-center gap-4 mb-8"
+                 aria-label="Social media links">
+              {{ social_icon_link(kind = "twitter", url = &c.twitter_url) -}}
+              {{ social_icon_link(kind = "github", url = &c.github_url) -}}
+              {{ social_icon_link(kind = "linkedin", url = &c.linkedin_url) -}}
+              {{ social_icon_link(kind = "instagram", url = &c.instagram_url) -}}
+              {{ social_icon_link(kind = "wechat", url = &c.wechat_url) -}}
+              {{ social_icon_link(kind = "youtube", url = &c.youtube_url) -}}
+              {{ social_icon_link(kind = "flickr", url = &c.flickr_url) -}}
+              {{ social_icon_link(kind = "facebook", url = &c.facebook_url) -}}
+              {{ social_icon_link(kind = "slack", url = &c.slack_url) -}}
+            </nav>
+          {% endif -%}
+          {# End social network links -#}
+
+          {# Extra links -#}
+          {% if let Some(extra_links) = &c.extra_links -%}
+            <div class="text-center">
+              <div class="font-bold text-sm uppercase text-stone-300 mb-2">Quick links</div>
+              <div class="text-sm/6 md:text-base">
+                {% for (name, url) in extra_links -%}
+                  {% if !loop.first -%}
+                    <span class="px-2 text-stone-300 md:px-3">·</span>
+                  {% endif -%}
+                  <a href="{{ url }}"
+                     class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
+                     target='{%- if url.starts_with("/") -%}_self{%- else -%}_blank{%- endif -%}'
+                     rel="noopener noreferrer">{{ name }}</a>
+                {% endfor -%}
+              </div>
+            </div>
+          {% endif -%}
+          {# End extra links -#}
+        </div>
+      </div>
+    {% endif -%}
+  {% endif -%}
+  {# End community social links and extra links -#}
 {% endblock content -%}
 
 {# Events list -#}
@@ -201,3 +280,17 @@
   </div>
 {% endmacro events_list -%}
 {# End events list -#}
+
+{# Social icon link -#}
+{% macro social_icon_link(kind, url) -%}
+  {% if let Some(url) = &url -%}
+    <a href="{{ url }}"
+       class="content-center"
+       target="_blank"
+       rel="noopener noreferrer"
+       aria-label="{{ kind | title }} (opens in new window)">
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 transition-colors icon-{{ kind }}"></div>
+    </a>
+  {% endif -%}
+{% endmacro social_icon_link -%}
+{# End social icon link -#}

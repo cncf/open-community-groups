@@ -41,9 +41,8 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community and site information
-    let (community, site_settings) =
-        tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
+    // Get site information
+    let site_settings = db.get_site_settings().await?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -69,7 +68,6 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
-        community: Some(community),
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::UserDashboard,
@@ -122,10 +120,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_list_timezones()
             .times(1)
             .returning(|| Ok(vec!["UTC".to_string(), "America/New_York".to_string()]));
@@ -183,10 +177,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_list_user_community_team_invitations()
             .times(1)
             .withf(move |id, uid| *id == community_id && *uid == user_id)
@@ -247,10 +237,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash_for_user))));
-        db.expect_get_community()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Err(anyhow!("db error")));
+            .returning(|| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

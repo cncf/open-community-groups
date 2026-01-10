@@ -81,7 +81,6 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
-        community: Some(community),
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::CommunityDashboard,

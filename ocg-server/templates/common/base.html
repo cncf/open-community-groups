@@ -1,37 +1,16 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
-    {# Page title: use community display name if available, otherwise use site title -#}
-    <title>
-      {% if let Some(c) = &community %}
-        {{ c.display_name }}
-      {% else %}
-        {{ site_settings.title }}
-      {% endif %}
-    </title>
-    <meta name="description"
-          content="{% if let Some(c) = &community %}
-                     {{ c.display_name }}
-                   {% else %}
-                     {{ site_settings.title }}
-                   {% endif %}">
+    {# Page title -#}
+    <title>{{ site_settings.title }}</title>
+    <meta name="description" content="{{ site_settings.title }}">
     <meta name="keywords" content="community, groups, events">
 
     {#- OG tags #}
     <meta property="og:type" content="website">
-    <meta property="og:title"
-          content="{% if let Some(c) = &community %}
-                     {{ c.display_name }}
-                   {% else %}
-                     {{ site_settings.title }}
-                   {% endif %}">
+    <meta property="og:title" content="{{ site_settings.title }}">
     <meta property="og:url" content="cncf.ocgroups.dev/">
-    <meta property="og:description"
-          content="{% if let Some(c) = &community %}
-                     {{ c.display_name }}
-                   {% else %}
-                     {{ site_settings.title }}
-                   {% endif %}">
+    <meta property="og:description" content="{{ site_settings.title }}">
     {% if let Some(og_image_url) = &site_settings.og_image_url -%}
       <meta property="og:image" content="{{ og_image_url }}">
     {% endif -%}
@@ -41,18 +20,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta property="twitter:domain" content="demo-cncf.ocgroups.dev">
     <meta property="twitter:url" content="cncf.ocgroups.dev">
-    <meta name="twitter:title"
-          content="{% if let Some(c) = &community %}
-                     {{ c.display_name }}
-                   {% else %}
-                     {{ site_settings.title }}
-                   {% endif %}">
-    <meta name="twitter:description"
-          content="{% if let Some(c) = &community %}
-                     {{ c.display_name }}
-                   {% else %}
-                     {{ site_settings.title }}
-                   {% endif %}">
+    <meta name="twitter:title" content="{{ site_settings.title }}">
+    <meta name="twitter:description" content="{{ site_settings.title }}">
     {% if let Some(og_image_url) = &site_settings.og_image_url -%}
       <meta name="twitter:image" content="{{ og_image_url }}">
     {% endif -%}
@@ -137,9 +106,6 @@
         {# Header -#}
         {% if !path.starts_with("/dashboard") -%}
           <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
-          {# New group modal -#}
-          {% include "common/new_group_modal.html" -%}
-          {# End new group modal -#}
         {% endif -%}
         {# End header -#}
 

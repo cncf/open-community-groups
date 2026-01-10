@@ -21,7 +21,6 @@ use crate::{
         helpers::{location::extract_location, user_initials},
     },
     types::{
-        community::Community,
         event::{EventKind, EventSummary},
         group::GroupSummary,
         site::SiteSettings,
@@ -41,8 +40,7 @@ use crate::templates::community::{EventCard as HomeEventCard, GroupCard as HomeG
 /// Template for the explore page.
 ///
 /// This is the root template that renders the explore page with either events or groups
-/// content based on the selected entity. The community is optional to support both global
-/// and community-specific explore pages.
+/// content based on the selected entity.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "site/explore/page.html")]
 pub(crate) struct Page {
@@ -57,8 +55,6 @@ pub(crate) struct Page {
     /// Authenticated user information.
     pub user: User,
 
-    /// Community information (None for global explore page).
-    pub community: Option<Community>,
     /// Events section data, populated when exploring events.
     pub events_section: Option<EventsSection>,
     /// Groups section data, populated when exploring groups.

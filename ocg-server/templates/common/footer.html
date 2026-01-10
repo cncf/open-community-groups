@@ -12,55 +12,12 @@
                  width="auto"
                  height="48"
                  src="{{ footer_logo_url }}"
-                 alt="{% if let Some(c) = &community %}
-                        {{ c.display_name }}
-                      {% else %}
-                        {{ site_settings.title }}
-                      {% endif %}
-                      footer logo" />
+                 alt="{{ site_settings.title }} footer logo" />
           </div>
         {% endif -%}
         {# End footer logo -#}
-
-        {# Social network links -#}
-        {% if let Some(c) = &community -%}
-          <nav class="flex flex-wrap justify-center gap-4 md:gap-0 md:justify-self-end mt-6 md:mt-0"
-               aria-label="Social media links">
-            {{ social_icon_link(kind = "twitter", url = &c.twitter_url) -}}
-            {{ social_icon_link(kind = "github", url = &c.github_url) -}}
-            {{ social_icon_link(kind = "linkedin", url = &c.linkedin_url) -}}
-            {{ social_icon_link(kind = "instagram", url = &c.instagram_url) -}}
-            {{ social_icon_link(kind = "wechat", url = &c.wechat_url) -}}
-            {{ social_icon_link(kind = "youtube", url = &c.youtube_url) -}}
-            {{ social_icon_link(kind = "flickr", url = &c.flickr_url) -}}
-            {{ social_icon_link(kind = "facebook", url = &c.facebook_url) -}}
-            {{ social_icon_link(kind = "slack", url = &c.slack_url) -}}
-          </nav>
-        {% endif -%}
-        {# End social network links -#}
       </div>
     </div>
-
-    {# Extra links -#}
-    {% if let Some(c) = &community -%}
-      {% if let Some(extra_links) = &c.extra_links -%}
-        <div class="font-bold text-sm uppercase text-stone-300">Quick links</div>
-        <div class="pb-8 pt-2 text-sm/6 md:text-base">
-          {% for (name, url) in extra_links -%}
-            {# Extra link -#}
-            {% if !loop.first -%}
-              <span class="px-2 text-stone-300 md:px-3">·</span>
-            {% endif -%}
-            <a href="{{ url }}"
-               class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
-               target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
-               rel="noopener noreferrer">{{ name }}</a>
-            {# End extra link -#}
-          {% endfor -%}
-        </div>
-      {% endif -%}
-    {% endif -%}
-    {# End extra links -#}
 
     {# Copyright section -#}
     <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300">
@@ -78,17 +35,3 @@
   </div>
 </footer>
 {# End footer -#}
-
-{# Icon link -#}
-{% macro social_icon_link(kind, url) -%}
-  {% if let Some(url) = &url -%}
-    <a href="{{ url }}"
-       class="ms-0 md:ms-6 content-center"
-       target="_blank"
-       rel="noopener noreferrer"
-       aria-label="{{ kind | title }} (opens in new window)">
-      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 transition-colors icon-{{ kind }}"></div>
-    </a>
-  {% endif -%}
-{% endmacro social_icon_link -%}
-{# End icon link -#}

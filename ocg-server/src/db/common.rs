@@ -60,17 +60,29 @@ impl DBCommon for PgDB {
     /// [`DBCommon::get_community`]
     #[instrument(skip(self), err)]
     async fn get_community(&self, community_id: Uuid) -> Result<Community> {
-        trace!("db: get community");
+        #[cfg_attr(
+            not(test),
+            cached(
+                time = 3600,
+                key = "Uuid",
+                convert = r#"{ community_id }"#,
+                sync_writes = "by_key",
+                result = true
+            )
+        )]
+        async fn inner(db: Client, community_id: Uuid) -> Result<Community> {
+            trace!("db: get community");
 
-        self.pool
-            .get()
-            .await?
-            .query_one("select get_community($1::uuid)::text", &[&community_id])
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(serde_json::from_str)
-            .map_err(Into::into)
+            db.query_one("select get_community($1::uuid)::text", &[&community_id])
+                .await?
+                .get::<_, String>(0)
+                .as_str()
+                .pipe(serde_json::from_str)
+                .map_err(Into::into)
+        }
+
+        let db = self.pool.get().await?;
+        inner(db, community_id).await
     }
 
     /// [`DBCommon::get_event_full`]

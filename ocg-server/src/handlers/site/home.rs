@@ -25,7 +25,6 @@ pub(crate) async fn page(State(db): State<DynDB>, uri: Uri) -> Result<impl IntoR
         db.list_communities()
     )?;
     let template = home::Page {
-        community: None,
         communities,
         page_id: PageId::SiteHome,
         path: uri.path().to_string(),

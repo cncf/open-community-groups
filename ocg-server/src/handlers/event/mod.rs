@@ -40,13 +40,11 @@ pub(crate) async fn page(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (community, event, site_settings) = tokio::try_join!(
-        db.get_community(community_id),
+    let (event, site_settings) = tokio::try_join!(
         db.get_event_full_by_slug(community_id, &group_slug, &event_slug),
         db.get_site_settings()
     )?;
     let template = Page {
-        community: Some(community),
         event,
         page_id: PageId::Event,
         path: uri.path().to_string(),
@@ -72,9 +70,8 @@ pub(crate) async fn check_in_page(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
 
-    // Get community, site settings, and event details
-    let (community, event, site_settings, (user_is_attendee, user_is_checked_in), check_in_window_open) = tokio::try_join!(
-        db.get_community(community_id),
+    // Get site settings and event details
+    let (event, site_settings, (user_is_attendee, user_is_checked_in), check_in_window_open) = tokio::try_join!(
         db.get_event_summary_by_id(community_id, event_id),
         db.get_site_settings(),
         db.is_event_attendee(community_id, event_id, user.user_id),
@@ -83,7 +80,6 @@ pub(crate) async fn check_in_page(
 
     let template = CheckInPage {
         check_in_window_open,
-        community: Some(community),
         event,
         page_id: PageId::CheckIn,
         path: uri.path().to_string(),
@@ -230,10 +226,6 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_event_full_by_slug()
             .times(1)
             .withf(move |id, group_slug, event_slug| {
@@ -282,10 +274,6 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_event_full_by_slug()
             .times(1)
             .withf(move |id, group_slug, event_slug| {
@@ -338,10 +326,6 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_event_summary_by_id()
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)

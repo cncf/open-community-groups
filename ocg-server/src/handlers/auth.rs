@@ -92,7 +92,6 @@ pub(crate) async fn log_in_page(
 
     // Prepare template
     let template = templates::auth::LogInPage {
-        community: None,
         login: server_cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::LogIn,
@@ -129,7 +128,6 @@ pub(crate) async fn sign_up_page(
 
     // Prepare template
     let template = templates::auth::SignUpPage {
-        community: None,
         login: server_cfg.login.clone(),
         messages: messages.into_iter().collect(),
         page_id: PageId::SignUp,
