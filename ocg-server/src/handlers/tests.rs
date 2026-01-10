@@ -45,7 +45,7 @@ use crate::{
         },
     },
     types::{
-        community::Community,
+        community::{Community, UserCommunitySummary},
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
             GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
@@ -624,6 +624,14 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
         name: Some("Speaker".to_string()),
         ..Default::default()
     }
+}
+
+/// Sample user communities used in dashboard community tests.
+pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<UserCommunitySummary> {
+    vec![UserCommunitySummary {
+        community_id,
+        community_name: "test-community".to_string(),
+    }]
 }
 
 /// Sample user groups by community used in dashboard group tests.

@@ -13,7 +13,10 @@ use crate::{
         filters,
         helpers::user_initials,
     },
-    types::{group::GroupSummary, site::SiteSettings},
+    types::{
+        group::{GroupSummary, UserGroupsByCommunity},
+        site::SiteSettings,
+    },
 };
 
 /// Home page template for the group dashboard.
@@ -23,8 +26,10 @@ use crate::{
 pub(crate) struct Page {
     /// Main content section for the page.
     pub content: Content,
-    /// List of groups the user belongs to (flattened from hierarchical structure).
+    /// Flattened list of groups for backward compatibility with existing template.
     pub groups: Vec<GroupSummary>,
+    /// Groups organized by community.
+    pub groups_by_community: Vec<UserGroupsByCommunity>,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.

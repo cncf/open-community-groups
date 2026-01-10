@@ -77,3 +77,12 @@ pub struct CommunitySummary {
     /// Unique identifier used in URLs and database references.
     pub name: String,
 }
+
+/// Summary community information for dashboard selectors.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UserCommunitySummary {
+    /// Unique identifier for the community.
+    pub community_id: Uuid,
+    /// Community name used in URLs and database references.
+    pub community_name: String,
+}

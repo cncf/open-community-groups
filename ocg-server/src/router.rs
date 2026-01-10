@@ -331,6 +331,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/{group_id}/select",
             put(dashboard::group::select_group).route_layer(check_user_owns_path_group),
         )
+        .route(
+            "/community/{community_id}/select",
+            put(dashboard::group::select_community),
+        )
 }
 
 /// Sets up the user dashboard router and its routes.

@@ -55,8 +55,8 @@ pub(crate) async fn page(
     let (groups_by_community, site_settings) =
         tokio::try_join!(db.list_user_groups(&user.user_id), db.get_site_settings())?;
 
-    // Flatten groups for template (backward compatibility)
-    let groups: Vec<_> = groups_by_community.into_iter().flat_map(|c| c.groups).collect();
+    // Flatten groups for backward compatibility with existing template
+    let groups: Vec<_> = groups_by_community.iter().flat_map(|c| c.groups.clone()).collect();
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -120,6 +120,7 @@ pub(crate) async fn page(
     let page = Page {
         content,
         groups,
+        groups_by_community,
         messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),

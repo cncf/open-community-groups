@@ -1,11 +1,21 @@
 //! HTTP handlers for the group dashboard.
 
-use axum::{extract::Path, http::StatusCode, response::IntoResponse};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+};
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::handlers::{auth::SELECTED_GROUP_ID_KEY, error::HandlerError};
+use crate::{
+    db::DynDB,
+    handlers::{
+        auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+        error::HandlerError,
+    },
+};
 
 pub(crate) mod analytics;
 pub(crate) mod attendees;
@@ -15,6 +25,39 @@ pub(crate) mod members;
 pub(crate) mod settings;
 pub(crate) mod sponsors;
 pub(crate) mod team;
+
+/// Sets the selected community and auto-selects the first group in session.
+#[instrument(skip_all, err)]
+pub(crate) async fn select_community(
+    session: Session,
+    State(db): State<DynDB>,
+    Path(community_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session
+    let user_id: Uuid = session
+        .get("user_id")
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("user not logged in"))?;
+
+    // Get user's groups and find the first group in the selected community
+    let groups_by_community = db.list_user_groups(&user_id).await?;
+    let first_group_id = groups_by_community
+        .iter()
+        .find(|c| c.community_id == community_id)
+        .and_then(|c| c.groups.first())
+        .map(|g| g.group_id);
+
+    // Update the selected community and group in the session
+    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    if let Some(group_id) = first_group_id {
+        session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
+    }
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Location", r#"{"path":"/dashboard/group", "target":"body"}"#)],
+    ))
+}
 
 /// Sets the selected group in the session for the current user.
 #[instrument(skip_all, err)]

@@ -184,6 +184,10 @@ mock! {
             &self,
             community_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupRegion>>;
+        async fn list_user_communities(
+            &self,
+            user_id: &Uuid,
+        ) -> Result<Vec<crate::types::community::UserCommunitySummary>>;
         async fn update_community(
             &self,
             community_id: Uuid,

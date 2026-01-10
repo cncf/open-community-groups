@@ -32,6 +32,7 @@
 {{ template "dashboard-community/list_community_team_members.sql" }}
 {{ template "dashboard-community/list_group_categories.sql" }}
 {{ template "dashboard-community/list_regions.sql" }}
+{{ template "dashboard-community/list_user_communities.sql" }}
 {{ template "dashboard-community/update_community.sql" }}
 
 {{ template "dashboard-group/add_event.sql" }}

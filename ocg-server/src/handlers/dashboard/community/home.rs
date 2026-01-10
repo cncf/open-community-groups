@@ -44,9 +44,15 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community and site information
-    let (community, site_settings) =
-        tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
+    // Get user_id from session
+    let user_id = auth_session.user.as_ref().expect("user to be logged in").user_id;
+
+    // Get community, communities and site information
+    let (community, communities, site_settings) = tokio::try_join!(
+        db.get_community(community_id),
+        db.list_user_communities(&user_id),
+        db.get_site_settings()
+    )?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -81,10 +87,12 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
+        communities,
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::CommunityDashboard,
         path: "/dashboard/community".to_string(),
+        selected_community_id: community_id,
         site_settings,
         user: User::from_session(auth_session).await?,
     };
@@ -144,6 +152,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
         db.expect_get_community_stats()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -215,6 +227,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
@@ -287,6 +303,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
@@ -351,6 +371,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
+        db.expect_list_user_communities()
+            .times(1)
+            .withf(move |uid| uid == &user_id)
+            .returning(move |_| Ok(sample_user_communities(community_id)));
         db.expect_list_community_team_members()
             .times(1)
             .withf(move |id| *id == community_id)
