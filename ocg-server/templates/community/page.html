@@ -1,6 +1,7 @@
 {% extends "common/base.html" -%}
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/search.html" as search -%}
+{% import "macros/ui.html" as ui -%}
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/images-gallery.js"></script>
@@ -10,7 +11,7 @@
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">
     <section>
-      <div class="relative z-10 max-w-screen-xl pb-7 lg:pb-14">
+      <div class="relative z-10 max-w-7xl pb-7 lg:pb-14">
         {# Site title -#}
         <h1 class="text-center mb-8 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ site_settings.title }}
@@ -104,11 +105,11 @@
 
     <div class="pt-3 xl:pt-8">
       {# Events in-person -#}
-      {{ events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -}}
+      {{ ui::events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -}}
       {# End events in-person -#}
 
       {# Events online -#}
-      {{ events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -}}
+      {{ ui::events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -}}
       {# End events online -#}
 
       {# Banner -#}
@@ -122,7 +123,7 @@
                  aria-label="Open external link">
               {% endif -%}
               <div class="mx-auto my-4 lg:my-8 border-4 border-stone-100 w-[85%] lg:[w-80%] xl:w-[70%]">
-                <img class="h-auto max-w-[100%]"
+                <img class="h-auto max-w-full"
                      height="auto"
                      width="auto"
                      alt="Decorator"
@@ -149,9 +150,11 @@
       <div class="mt-5 mb-3 lg:mt-10 lg:mb-10">
         {# Groups cards -#}
         {% if recently_added_groups.len() > 0 -%}
-          <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
+          <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
             {% for group in recently_added_groups -%}
-              {{ group|safe }}
+              {% if loop.index0 < 8 -%}
+                {{ group|safe }}
+              {% endif -%}
             {% endfor -%}
           </div>
         {% else -%}
@@ -175,7 +178,7 @@
     {% if let Some(photos_urls) = &c.photos_urls -%}
       {% if !photos_urls.is_empty() -%}
         <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
-          <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6 lg:px-8">
+          <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6">
             <!-- Title -->
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
             <!-- End title -->
@@ -198,15 +201,15 @@
           {% if has_social_links -%}
             <nav class="flex flex-wrap justify-center gap-4 mb-8"
                  aria-label="Social media links">
-              {{ social_icon_link(kind = "twitter", url = &c.twitter_url) -}}
-              {{ social_icon_link(kind = "github", url = &c.github_url) -}}
-              {{ social_icon_link(kind = "linkedin", url = &c.linkedin_url) -}}
-              {{ social_icon_link(kind = "instagram", url = &c.instagram_url) -}}
-              {{ social_icon_link(kind = "wechat", url = &c.wechat_url) -}}
-              {{ social_icon_link(kind = "youtube", url = &c.youtube_url) -}}
-              {{ social_icon_link(kind = "flickr", url = &c.flickr_url) -}}
-              {{ social_icon_link(kind = "facebook", url = &c.facebook_url) -}}
-              {{ social_icon_link(kind = "slack", url = &c.slack_url) -}}
+              {{ ui::social_icon_link(kind = "twitter", url = &c.twitter_url) -}}
+              {{ ui::social_icon_link(kind = "github", url = &c.github_url) -}}
+              {{ ui::social_icon_link(kind = "linkedin", url = &c.linkedin_url) -}}
+              {{ ui::social_icon_link(kind = "instagram", url = &c.instagram_url) -}}
+              {{ ui::social_icon_link(kind = "wechat", url = &c.wechat_url) -}}
+              {{ ui::social_icon_link(kind = "youtube", url = &c.youtube_url) -}}
+              {{ ui::social_icon_link(kind = "flickr", url = &c.flickr_url) -}}
+              {{ ui::social_icon_link(kind = "facebook", url = &c.facebook_url) -}}
+              {{ ui::social_icon_link(kind = "slack", url = &c.slack_url) -}}
             </nav>
           {% endif -%}
           {# End social network links -#}
@@ -235,62 +238,3 @@
   {% endif -%}
   {# End community social links and extra links -#}
 {% endblock content -%}
-
-{# Events list -#}
-{% macro events_list(title, link, events) -%}
-  <div class="my-5 pb-0 lg:pb-1 xl:pb-5 lg:my-6 xl:my-8">
-    <div class="flex items-center justify-between mb-3 lg:mb-6">
-      {# Title -#}
-      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
-      {# End title -#}
-
-      {# See all events on desktop -#}
-      <div class="hidden justify-self-end md:flex">
-        <a href="{{ link }}"
-           hx-boost="true"
-           hx-target="body"
-           class="btn-secondary-anchor ms-4">See all events</a>
-      </div>
-      {# End see all events on desktop -#}
-    </div>
-    <div class="my-5 xl:my-10">
-      {# Cards list -#}
-      {% if events.len() > 0 -%}
-        <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 xl:grid-cols-3 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+9)]:hidden xl:[&>a:nth-child(n+9)]:flex">
-          {% for event in events -%}
-            {{ event|safe }}
-          {% endfor -%}
-        </div>
-      {% else -%}
-        {% let base_title = title -%}
-        {{ feedback::placeholder(title = "No " ~ base_title,
-                content = "We don't have any " ~ base_title ~ " yet, check back soon for fresh listings.") -}}
-      {% endif -%}
-      {# End cards list -#}
-
-      {# See all events on mobile -#}
-      <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-        <a href="{{ link }}"
-           hx-boost="true"
-           hx-target="body"
-           class="btn-secondary-anchor">See all events</a>
-      </div>
-      {# See all events on mobile -#}
-    </div>
-  </div>
-{% endmacro events_list -%}
-{# End events list -#}
-
-{# Social icon link -#}
-{% macro social_icon_link(kind, url) -%}
-  {% if let Some(url) = &url -%}
-    <a href="{{ url }}"
-       class="content-center"
-       target="_blank"
-       rel="noopener noreferrer"
-       aria-label="{{ kind | title }} (opens in new window)">
-      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 transition-colors icon-{{ kind }}"></div>
-    </a>
-  {% endif -%}
-{% endmacro social_icon_link -%}
-{# End social icon link -#}
