@@ -2,18 +2,36 @@
 <html lang="en" class="h-full min-h-screen">
   <head>
     {# Page title: use community display name if available, otherwise use site title -#}
-    <title>{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}</title>
+    <title>
+      {% if let Some(c) = &community %}
+        {{ c.display_name }}
+      {% else %}
+        {{ site_settings.title }}
+      {% endif %}
+    </title>
     <meta name="description"
-          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+          content="{% if let Some(c) = &community %}
+                     {{ c.display_name }}
+                   {% else %}
+                     {{ site_settings.title }}
+                   {% endif %}">
     <meta name="keywords" content="community, groups, events">
 
     {#- OG tags #}
     <meta property="og:type" content="website">
     <meta property="og:title"
-          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+          content="{% if let Some(c) = &community %}
+                     {{ c.display_name }}
+                   {% else %}
+                     {{ site_settings.title }}
+                   {% endif %}">
     <meta property="og:url" content="cncf.ocgroups.dev/">
     <meta property="og:description"
-          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+          content="{% if let Some(c) = &community %}
+                     {{ c.display_name }}
+                   {% else %}
+                     {{ site_settings.title }}
+                   {% endif %}">
     {% if let Some(og_image_url) = &site_settings.og_image_url -%}
       <meta property="og:image" content="{{ og_image_url }}">
     {% endif -%}
@@ -24,9 +42,17 @@
     <meta property="twitter:domain" content="demo-cncf.ocgroups.dev">
     <meta property="twitter:url" content="cncf.ocgroups.dev">
     <meta name="twitter:title"
-          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+          content="{% if let Some(c) = &community %}
+                     {{ c.display_name }}
+                   {% else %}
+                     {{ site_settings.title }}
+                   {% endif %}">
     <meta name="twitter:description"
-          content="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %}">
+          content="{% if let Some(c) = &community %}
+                     {{ c.display_name }}
+                   {% else %}
+                     {{ site_settings.title }}
+                   {% endif %}">
     {% if let Some(og_image_url) = &site_settings.og_image_url -%}
       <meta name="twitter:image" content="{{ og_image_url }}">
     {% endif -%}

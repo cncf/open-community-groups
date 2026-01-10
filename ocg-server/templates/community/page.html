@@ -81,27 +81,29 @@
       {# End events online -#}
 
       {# Banner -#}
-      {% if let Some(c) = &community -%}{% if let Some(ad_banner_url) = &c.ad_banner_url -%}
-        <div class="hidden pb-2 lg:pb-8 xl:pb-16 md:flex">
-          {% if let Some(ad_banner_link_url) = &c.ad_banner_link_url -%}
-            <a rel="noopener noreferrer"
-               href="{{ ad_banner_link_url }}"
-               target="_blank"
-               aria-label="Open external link">
-            {% endif -%}
-            <div class="mx-auto my-4 lg:my-8 border-4 border-stone-100 w-[85%] lg:[w-80%] xl:w-[70%]">
-              <img class="h-auto max-w-[100%]"
-                   height="auto"
-                   width="auto"
-                   alt="Decorator"
-                   src="{{ ad_banner_url }}"
-                   title="Banner">
-            </div>
+      {% if let Some(c) = &community -%}
+        {% if let Some(ad_banner_url) = &c.ad_banner_url -%}
+          <div class="hidden pb-2 lg:pb-8 xl:pb-16 md:flex">
             {% if let Some(ad_banner_link_url) = &c.ad_banner_link_url -%}
-            </a>
-          {% endif -%}
-        </div>
-      {% endif -%}{% endif -%}
+              <a rel="noopener noreferrer"
+                 href="{{ ad_banner_link_url }}"
+                 target="_blank"
+                 aria-label="Open external link">
+              {% endif -%}
+              <div class="mx-auto my-4 lg:my-8 border-4 border-stone-100 w-[85%] lg:[w-80%] xl:w-[70%]">
+                <img class="h-auto max-w-[100%]"
+                     height="auto"
+                     width="auto"
+                     alt="Decorator"
+                     src="{{ ad_banner_url }}"
+                     title="Banner">
+              </div>
+              {% if let Some(ad_banner_link_url) = &c.ad_banner_link_url -%}
+              </a>
+            {% endif -%}
+          </div>
+        {% endif -%}
+      {% endif -%}
       {# End banner -#}
 
       {# Latest groups added -#}
@@ -138,16 +140,20 @@
   {# End main content -#}
 
   {# Gallery -#}
-  {% if let Some(c) = &community -%}{% if let Some(photos_urls) = &c.photos_urls -%}{% if !photos_urls.is_empty() -%}
-      <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
-        <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6 lg:px-8">
-          <!-- Title -->
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
-          <!-- End title -->
-          <images-gallery title="Gallery" altImage="Community {{ c.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+  {% if let Some(c) = &community -%}
+    {% if let Some(photos_urls) = &c.photos_urls -%}
+      {% if !photos_urls.is_empty() -%}
+        <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
+          <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6 lg:px-8">
+            <!-- Title -->
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
+            <!-- End title -->
+            <images-gallery title="Gallery" altImage="Community {{ c.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+          </div>
         </div>
-      </div>
-  {% endif -%}{% endif -%}{% endif -%}
+      {% endif -%}
+    {% endif -%}
+  {% endif -%}
   {# End gallery -#}
 {% endblock content -%}
 

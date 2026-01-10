@@ -12,7 +12,12 @@
                  width="auto"
                  height="48"
                  src="{{ footer_logo_url }}"
-                 alt="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %} footer logo" />
+                 alt="{% if let Some(c) = &community %}
+                        {{ c.display_name }}
+                      {% else %}
+                        {{ site_settings.title }}
+                      {% endif %}
+                      footer logo" />
           </div>
         {% endif -%}
         {# End footer logo -#}
@@ -37,22 +42,24 @@
     </div>
 
     {# Extra links -#}
-    {% if let Some(c) = &community -%}{% if let Some(extra_links) = &c.extra_links -%}
-    <div class="font-bold text-sm uppercase text-stone-300">Quick links</div>
-    <div class="pb-8 pt-2 text-sm/6 md:text-base">
-      {% for (name, url) in extra_links -%}
-        {# Extra link -#}
-        {% if !loop.first -%}
-          <span class="px-2 text-stone-300 md:px-3">·</span>
-        {% endif -%}
-        <a href="{{ url }}"
-           class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
-           target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
-           rel="noopener noreferrer">{{ name }}</a>
-        {# End extra link -#}
-      {% endfor -%}
-    </div>
-    {% endif -%}{% endif -%}
+    {% if let Some(c) = &community -%}
+      {% if let Some(extra_links) = &c.extra_links -%}
+        <div class="font-bold text-sm uppercase text-stone-300">Quick links</div>
+        <div class="pb-8 pt-2 text-sm/6 md:text-base">
+          {% for (name, url) in extra_links -%}
+            {# Extra link -#}
+            {% if !loop.first -%}
+              <span class="px-2 text-stone-300 md:px-3">·</span>
+            {% endif -%}
+            <a href="{{ url }}"
+               class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
+               target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
+               rel="noopener noreferrer">{{ name }}</a>
+            {# End extra link -#}
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    {% endif -%}
     {# End extra links -#}
 
     {# Copyright section -#}

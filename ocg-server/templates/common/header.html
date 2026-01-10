@@ -14,7 +14,12 @@
                height="40"
                width="auto"
                src="{% if let Some(c) = &community %}{{ c.logo_url }}{% else %}{% if let Some(url) = &site_settings.header_logo_url %}{{ url }}{% endif %}{% endif %}"
-               alt="{% if let Some(c) = &community %}{{ c.display_name }}{% else %}{{ site_settings.title }}{% endif %} logo" />
+               alt="{% if let Some(c) = &community %}
+                      {{ c.display_name }}
+                    {% else %}
+                      {{ site_settings.title }}
+                    {% endif %}
+                    logo" />
           {# Beta badge -#}
           <div>
             <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 font-semibold">
@@ -29,22 +34,24 @@
       <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
         {{ link(content = "Home", href = "/", current_path = path) -}}
         {{ link(content = "Explore", href = "/explore", current_path = path) -}}
-        {% if let Some(c) = &community -%}{% if c.new_group_details.is_some() -%}
-        <button id="open-new-group-btn"
-                class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors">
-          New group
-        </button>
-        <script type="module">
-          import {
-            toggleModalVisibility
-          } from '/static/js/common/common.js';
+        {% if let Some(c) = &community -%}
+          {% if c.new_group_details.is_some() -%}
+            <button id="open-new-group-btn"
+                    class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors">
+              New group
+            </button>
+            <script type="module">
+              import {
+                toggleModalVisibility
+              } from '/static/js/common/common.js';
 
-          const openNewGroupBtn = document.getElementById('open-new-group-btn');
-          if (openNewGroupBtn) {
-            openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
-          }
-        </script>
-        {% endif -%}{% endif -%}
+              const openNewGroupBtn = document.getElementById('open-new-group-btn');
+              if (openNewGroupBtn) {
+                openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
+              }
+            </script>
+          {% endif -%}
+        {% endif -%}
       </div>
       {# End desktop links -#}
     </div>

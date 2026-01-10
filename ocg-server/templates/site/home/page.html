@@ -15,9 +15,9 @@
 
         {# Site description -#}
         {% if !site_settings.description.is_empty() -%}
-        <div class="mb-8 font-normal text-stone-600 jumbotron-description">
-          {{ site_settings.description|md_to_html|safe }}
-        </div>
+          <div class="mb-8 font-normal text-stone-600 jumbotron-description">
+            {{ site_settings.description|md_to_html|safe }}
+          </div>
         {% endif -%}
         {# End site description -#}
 
@@ -103,7 +103,7 @@
       </div>
     {% else -%}
       {{ feedback::placeholder(title = "No communities yet",
-                content = "Communities are being set up, check back soon.") -}}
+            content = "Communities are being set up, check back soon.") -}}
     {% endif -%}
     {# End communities list -#}
   </div>
