@@ -32,6 +32,8 @@ pub struct Community {
     pub ad_banner_link_url: Option<String>,
     /// URL to the advertisement banner image.
     pub ad_banner_url: Option<String>,
+    /// URL to the community banner image.
+    pub banner_url: Option<String>,
     /// Additional custom links displayed in the community navigation.
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Link to the community's Facebook page.

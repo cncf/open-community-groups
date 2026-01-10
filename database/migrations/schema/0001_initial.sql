@@ -68,6 +68,7 @@ create table community (
 
     ad_banner_link_url text check (btrim(ad_banner_link_url) <> ''),
     ad_banner_url text check (btrim(ad_banner_url) <> ''),
+    banner_url text check (btrim(banner_url) <> ''),
     extra_links jsonb,
     facebook_url text check (btrim(facebook_url) <> ''),
     flickr_url text check (btrim(flickr_url) <> ''),

@@ -13,6 +13,7 @@ returns json as $$
 
         'ad_banner_link_url', ad_banner_link_url,
         'ad_banner_url', ad_banner_url,
+        'banner_url', banner_url,
         'extra_links', extra_links,
         'facebook_url', facebook_url,
         'flickr_url', flickr_url,

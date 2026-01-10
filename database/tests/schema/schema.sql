@@ -81,6 +81,7 @@ select columns_are('community', array[
 
     'ad_banner_link_url',
     'ad_banner_url',
+    'banner_url',
     'extra_links',
     'facebook_url',
     'flickr_url',
