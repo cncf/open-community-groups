@@ -61,8 +61,8 @@ insert into community_team (accepted, community_id, user_id) values
 select is(
     list_user_communities(:'user1ID'::uuid)::jsonb,
     '[
-        {"community_id": "00000000-0000-0000-0000-000000000001", "community_name": "alpha-community"},
-        {"community_id": "00000000-0000-0000-0000-000000000002", "community_name": "beta-community"}
+        {"community_id": "00000000-0000-0000-0000-000000000001", "community_name": "alpha-community", "display_name": "Alpha Community"},
+        {"community_id": "00000000-0000-0000-0000-000000000002", "community_name": "beta-community", "display_name": "Beta Community"}
     ]'::jsonb,
     'Should return communities in alphabetical order for user in multiple communities'
 );
@@ -71,7 +71,7 @@ select is(
 select is(
     list_user_communities(:'user2ID'::uuid)::jsonb,
     '[
-        {"community_id": "00000000-0000-0000-0000-000000000001", "community_name": "alpha-community"}
+        {"community_id": "00000000-0000-0000-0000-000000000001", "community_name": "alpha-community", "display_name": "Alpha Community"}
     ]'::jsonb,
     'Should return single community for user in one community'
 );

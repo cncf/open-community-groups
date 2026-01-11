@@ -24,6 +24,10 @@ pub(crate) enum HandlerError {
     #[error("deserialization error: {0}")]
     Deserialization(String),
 
+    /// Forbidden access error.
+    #[error("forbidden")]
+    Forbidden,
+
     /// Any other error, wrapped in `anyhow::Error` for flexibility.
     #[error(transparent)]
     Other(anyhow::Error),
@@ -53,6 +57,7 @@ impl IntoResponse for HandlerError {
             HandlerError::Database(msg) | HandlerError::Deserialization(msg) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, msg).into_response()
             }
+            HandlerError::Forbidden => StatusCode::FORBIDDEN.into_response(),
             HandlerError::Validation(report) => {
                 (StatusCode::UNPROCESSABLE_ENTITY, report.to_string()).into_response()
             }

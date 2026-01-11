@@ -4,7 +4,8 @@ returns json as $$
     select coalesce(json_agg(
         json_build_object(
             'community_id', c.community_id,
-            'community_name', c.name
+            'community_name', c.name,
+            'display_name', c.display_name
         )
         order by c.name asc
     ), '[]')

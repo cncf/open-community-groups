@@ -195,16 +195,8 @@ pub(crate) async fn log_in(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Use the first community and group as selected in the session
-    let groups_by_community = db.list_user_groups(&user.user_id).await?;
-    if let Some(first_community) = groups_by_community.first() {
-        session
-            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
-            .await?;
-        if let Some(first_group) = first_community.groups.first() {
-            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
-        }
-    }
+    // Select the first community and group as selected in the session
+    select_first_community_and_group(&db, &session, &user.user_id).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -271,16 +263,8 @@ pub(crate) async fn oauth2_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Use the first community and group as selected in the session
-    let groups_by_community = db.list_user_groups(&user.user_id).await?;
-    if let Some(first_community) = groups_by_community.first() {
-        session
-            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
-            .await?;
-        if let Some(first_group) = first_community.groups.first() {
-            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
-        }
-    }
+    // Select the first community and group as selected in the session
+    select_first_community_and_group(&db, &session, &user.user_id).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -371,16 +355,8 @@ pub(crate) async fn oidc_callback(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Use the first community and group as selected in the session
-    let groups_by_community = db.list_user_groups(&user.user_id).await?;
-    if let Some(first_community) = groups_by_community.first() {
-        session
-            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
-            .await?;
-        if let Some(first_group) = first_community.groups.first() {
-            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
-        }
-    }
+    // Select the first community and group as selected in the session
+    select_first_community_and_group(&db, &session, &user.user_id).await?;
 
     // Track auth provider in the session
     session.insert(AUTH_PROVIDER_KEY, provider).await?;
@@ -577,6 +553,32 @@ fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
         return None;
     }
     Some(value.to_string())
+}
+
+/// Selects the first available community and group for the user in the session.
+async fn select_first_community_and_group(
+    db: &DynDB,
+    session: &Session,
+    user_id: &Uuid,
+) -> Result<(), HandlerError> {
+    let groups_by_community = db.list_user_groups(user_id).await?;
+    if let Some(first_community) = groups_by_community.first() {
+        session
+            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+            .await?;
+        if let Some(first_group) = first_community.groups.first() {
+            session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
+        }
+    } else {
+        // User might be a community team member without groups
+        let communities = db.list_user_communities(user_id).await?;
+        if let Some(first_community) = communities.first() {
+            session
+                .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+                .await?;
+        }
+    }
+    Ok(())
 }
 
 // Types.

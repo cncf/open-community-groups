@@ -631,6 +631,7 @@ pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<UserCommunitySu
     vec![UserCommunitySummary {
         community_id,
         community_name: "test-community".to_string(),
+        display_name: "Test Community".to_string(),
     }]
 }
 

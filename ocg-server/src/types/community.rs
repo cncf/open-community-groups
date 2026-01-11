@@ -85,4 +85,6 @@ pub struct UserCommunitySummary {
     pub community_id: Uuid,
     /// Community name used in URLs and database references.
     pub community_name: String,
+    /// Human-readable name shown in the UI.
+    pub display_name: String,
 }

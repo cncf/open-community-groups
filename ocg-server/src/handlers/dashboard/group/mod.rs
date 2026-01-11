@@ -39,18 +39,22 @@ pub(crate) async fn select_community(
         .await?
         .ok_or_else(|| anyhow::anyhow!("user not logged in"))?;
 
-    // Get user's groups and find the first group in the selected community
+    // Get user's groups and find groups in the selected community
     let groups_by_community = db.list_user_groups(&user_id).await?;
-    let first_group_id = groups_by_community
-        .iter()
-        .find(|c| c.community_id == community_id)
-        .and_then(|c| c.groups.first())
-        .map(|g| g.group_id);
+    let community_groups = groups_by_community.iter().find(|c| c.community_id == community_id);
+
+    // If user has no groups in this community, check if they're a community team member
+    if community_groups.is_none() {
+        let communities = db.list_user_communities(&user_id).await?;
+        if !communities.iter().any(|c| c.community_id == community_id) {
+            return Err(HandlerError::Forbidden);
+        }
+    }
 
     // Update the selected community and group in the session
     session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
-    if let Some(group_id) = first_group_id {
-        session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
+    if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
+        session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
     }
 
     Ok((
