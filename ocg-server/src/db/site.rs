@@ -2,7 +2,6 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tap::Pipe;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -40,42 +39,35 @@ impl DBSite for PgDB {
     async fn get_filters_options(&self, community_id: Option<Uuid>) -> Result<FiltersOptions> {
         trace!("db: get filters options");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one("select get_filters_options($1::uuid)::text", &[&community_id])
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(FiltersOptions::try_from_json)
+            .await?;
+        let filters_options = FiltersOptions::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(filters_options)
     }
 
     #[instrument(skip(self), err)]
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats> {
         trace!("db: get site home stats");
 
-        self.pool
-            .get()
-            .await?
-            .query_one("select get_site_home_stats()::text", &[])
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(SiteHomeStats::try_from_json)
+        let db = self.pool.get().await?;
+        let row = db.query_one("select get_site_home_stats()::text", &[]).await?;
+        let stats = SiteHomeStats::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(stats)
     }
 
     #[instrument(skip(self), err)]
     async fn get_site_settings(&self) -> Result<SiteSettings> {
         trace!("db: get site settings");
 
-        self.pool
-            .get()
-            .await?
-            .query_one("select get_site_settings()::text", &[])
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(SiteSettings::try_from_json)
+        let db = self.pool.get().await?;
+        let row = db.query_one("select get_site_settings()::text", &[]).await?;
+        let settings = SiteSettings::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(settings)
     }
 
     #[instrument(skip(self), err)]
@@ -83,12 +75,8 @@ impl DBSite for PgDB {
         trace!("db: list communities");
 
         let db = self.pool.get().await?;
-        let communities: Vec<CommunitySummary> = db
-            .query_one("select list_communities()::text;", &[])
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(serde_json::from_str)?;
+        let row = db.query_one("select list_communities()::text;", &[]).await?;
+        let communities: Vec<CommunitySummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(communities)
     }

@@ -2,7 +2,6 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use tap::Pipe;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -42,17 +41,16 @@ impl DBCommunity for PgDB {
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
         trace!("db: get community home stats");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_community_site_stats($1::uuid)::text",
                 &[&community_id],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(community::Stats::try_from_json)
+            .await?;
+        let stats = community::Stats::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(stats)
     }
 
     /// [`DB::get_community_id_by_name`]
@@ -74,17 +72,16 @@ impl DBCommunity for PgDB {
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>> {
         trace!("db: get community recently added groups");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_community_recently_added_groups($1::uuid)::text",
                 &[&community_id],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(GroupSummary::try_from_json_array)
+            .await?;
+        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(groups)
     }
 
     /// [`DB::get_community_upcoming_events`]
@@ -97,16 +94,15 @@ impl DBCommunity for PgDB {
         trace!("db: get community upcoming events");
 
         let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_community_upcoming_events($1::uuid, $2::text[])::text",
                 &[&community_id, &event_kinds],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(EventSummary::try_from_json_array)
+            .await?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(events)
     }
 }

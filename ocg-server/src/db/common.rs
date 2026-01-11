@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use cached::proc_macro::cached;
 use deadpool_postgres::Client;
 use serde::{Deserialize, Serialize};
-use tap::Pipe;
 use tokio_postgres::types::Json;
 use tracing::{instrument, trace};
 use uuid::Uuid;
@@ -73,12 +72,12 @@ impl DBCommon for PgDB {
         async fn inner(db: Client, community_id: Uuid) -> Result<Community> {
             trace!("db: get community");
 
-            db.query_one("select get_community($1::uuid)::text", &[&community_id])
-                .await?
-                .get::<_, String>(0)
-                .as_str()
-                .pipe(serde_json::from_str)
-                .map_err(Into::into)
+            let row = db
+                .query_one("select get_community($1::uuid)::text", &[&community_id])
+                .await?;
+            let community: Community = serde_json::from_str(&row.get::<_, String>(0))?;
+
+            Ok(community)
         }
 
         let db = self.pool.get().await?;
@@ -90,17 +89,16 @@ impl DBCommon for PgDB {
     async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull> {
         trace!("db: get event full");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_event_full($1::uuid, $2::uuid, $3::uuid)::text",
                 &[&community_id, &group_id, &event_id],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(EventFull::try_from_json)
+            .await?;
+        let event = EventFull::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(event)
     }
 
     /// [`DBCommon::get_event_summary`]
@@ -113,17 +111,16 @@ impl DBCommon for PgDB {
     ) -> Result<EventSummary> {
         trace!("db: get event summary");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_event_summary($1::uuid, $2::uuid, $3::uuid)::text",
                 &[&community_id, &group_id, &event_id],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(EventSummary::try_from_json)
+            .await?;
+        let event = EventSummary::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(event)
     }
 
     /// [`DBCommon::get_group_full`]
@@ -131,17 +128,16 @@ impl DBCommon for PgDB {
     async fn get_group_full(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupFull> {
         trace!("db: get group full");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_group_full($1::uuid, $2::uuid)::text",
                 &[&community_id, &group_id],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(GroupFull::try_from_json)
+            .await?;
+        let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(group)
     }
 
     /// [`DBCommon::get_group_summary`]
@@ -149,17 +145,16 @@ impl DBCommon for PgDB {
     async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary> {
         trace!("db: get group summary");
 
-        self.pool
-            .get()
-            .await?
+        let db = self.pool.get().await?;
+        let row = db
             .query_one(
                 "select get_group_summary($1::uuid, $2::uuid)::text",
                 &[&community_id, &group_id],
             )
-            .await?
-            .get::<_, String>(0)
-            .as_str()
-            .pipe(GroupSummary::try_from_json)
+            .await?;
+        let group = GroupSummary::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(group)
     }
 
     /// [`DBCommon::list_timezones`]
