@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedCommunityId},
+    handlers::error::HandlerError,
     templates::{
         PageId,
         auth::{self, User, UserDetails},
@@ -31,7 +31,6 @@ use crate::{
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -56,8 +55,8 @@ pub(crate) async fn page(
         }
         Tab::Invitations => {
             let (community_invitations, group_invitations) = tokio::try_join!(
-                db.list_user_community_team_invitations(community_id, user.user_id),
-                db.list_user_group_team_invitations(community_id, user.user_id)
+                db.list_user_community_team_invitations(user.user_id),
+                db.list_user_group_team_invitations(user.user_id)
             )?;
             Content::Invitations(invitations::ListPage {
                 community_invitations,
@@ -104,11 +103,10 @@ mod tests {
     #[tokio::test]
     async fn test_page_account_tab_success() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -163,8 +161,8 @@ mod tests {
         let user_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-        let community_invitations = vec![sample_community_invitation()];
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let community_invitations = vec![sample_community_invitation(community_id)];
         let group_invitations = vec![sample_group_invitation(group_id)];
 
         // Setup database mock
@@ -179,12 +177,12 @@ mod tests {
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_user_community_team_invitations()
             .times(1)
-            .withf(move |id, uid| *id == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(community_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(community_invitations.clone()));
         db.expect_list_user_group_team_invitations()
             .times(1)
-            .withf(move |id, uid| *id == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(group_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(group_invitations.clone()));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
@@ -220,11 +218,10 @@ mod tests {
     #[tokio::test]
     async fn test_page_db_error() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();

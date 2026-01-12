@@ -344,11 +344,11 @@ fn setup_user_dashboard_router() -> Router<State> {
         .route("/", get(dashboard::user::home::page))
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
-            "/invitations/community/accept",
+            "/invitations/community/{community_id}/accept",
             put(dashboard::user::invitations::accept_community_team_invitation),
         )
         .route(
-            "/invitations/community/reject",
+            "/invitations/community/{community_id}/reject",
             put(dashboard::user::invitations::reject_community_team_invitation),
         )
         .route(

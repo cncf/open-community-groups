@@ -8,12 +8,10 @@ use axum::{
 };
 use axum_messages::Messages;
 use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession,
-    db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedCommunityId},
-    templates::dashboard::user::invitations,
+    auth::AuthSession, db::DynDB, handlers::error::HandlerError, templates::dashboard::user::invitations,
 };
 
 // Pages handlers.
@@ -22,7 +20,6 @@ use crate::{
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     auth_session: AuthSession,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -30,8 +27,8 @@ pub(crate) async fn list_page(
 
     // Prepare template fetching both lists concurrently
     let (community_invitations, group_invitations) = tokio::try_join!(
-        db.list_user_community_team_invitations(community_id, user.user_id),
-        db.list_user_group_team_invitations(community_id, user.user_id)
+        db.list_user_community_team_invitations(user.user_id),
+        db.list_user_group_team_invitations(user.user_id)
     )?;
     let template = invitations::ListPage {
         community_invitations,
@@ -48,13 +45,13 @@ pub(crate) async fn list_page(
 pub(crate) async fn accept_community_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
+    Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Accept community team invitation.
+    // Accept community team invitation
     db.accept_community_team_invitation(community_id, user.user_id)
         .await?;
     messages.success("Team invitation accepted.");
@@ -67,16 +64,14 @@ pub(crate) async fn accept_community_team_invitation(
 pub(crate) async fn accept_group_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
-    Path(group_id): Path<uuid::Uuid>,
+    Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
     // Mark invitation as accepted
-    db.accept_group_team_invitation(community_id, group_id, user.user_id)
-        .await?;
+    db.accept_group_team_invitation(group_id, user.user_id).await?;
     messages.success("Team invitation accepted.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
@@ -87,13 +82,13 @@ pub(crate) async fn accept_group_team_invitation(
 pub(crate) async fn reject_community_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
+    Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Delete community team member.
+    // Delete community team member
     db.delete_community_team_member(community_id, user.user_id).await?;
     messages.success("Team invitation rejected.");
 
@@ -106,7 +101,7 @@ pub(crate) async fn reject_group_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
-    Path(group_id): Path<uuid::Uuid>,
+    Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -146,8 +141,8 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-        let community_invitations = vec![sample_community_invitation()];
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let community_invitations = vec![sample_community_invitation(community_id)];
         let group_invitations = vec![sample_group_invitation(Uuid::new_v4())];
 
         // Setup database mock
@@ -162,12 +157,12 @@ mod tests {
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_user_community_team_invitations()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(community_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(community_invitations.clone()));
         db.expect_list_user_group_team_invitations()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(group_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(group_invitations.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -204,8 +199,8 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-        let community_invitations = vec![sample_community_invitation()];
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let community_invitations = vec![sample_community_invitation(community_id)];
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -219,12 +214,12 @@ mod tests {
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_list_user_community_team_invitations()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(community_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(community_invitations.clone()));
         db.expect_list_user_group_team_invitations()
             .times(1)
-            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
-            .returning(move |_, _| Err(anyhow!("db error")));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -253,7 +248,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -283,7 +278,9 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
-            .uri("/dashboard/user/invitations/community/accept")
+            .uri(format!(
+                "/dashboard/user/invitations/community/{community_id}/accept"
+            ))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -303,12 +300,11 @@ mod tests {
     #[tokio::test]
     async fn test_accept_group_team_invitation_success() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -322,8 +318,8 @@ mod tests {
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
         db.expect_accept_group_team_invitation()
             .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(()));
+            .withf(move |gid, uid| *gid == group_id && *uid == user_id)
+            .returning(|_, _| Ok(()));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
@@ -362,7 +358,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -392,7 +388,9 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("PUT")
-            .uri("/dashboard/user/invitations/community/reject")
+            .uri(format!(
+                "/dashboard/user/invitations/community/{community_id}/reject"
+            ))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

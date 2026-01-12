@@ -317,20 +317,17 @@ mock! {
         ) -> Result<()>;
         async fn accept_group_team_invitation(
             &self,
-            community_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn list_user_community_team_invitations(
             &self,
-            community_id: Uuid,
             user_id: Uuid,
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::CommunityTeamInvitation,
         >>;
         async fn list_user_group_team_invitations(
             &self,
-            community_id: Uuid,
             user_id: Uuid,
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::GroupTeamInvitation,

@@ -125,8 +125,9 @@ pub(crate) fn sample_community(community_id: Uuid) -> Community {
 }
 
 /// Sample community invitation for dashboard user tests.
-pub(crate) fn sample_community_invitation() -> CommunityTeamInvitation {
+pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamInvitation {
     CommunityTeamInvitation {
+        community_id,
         community_name: "test-community".to_string(),
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
     }
@@ -400,10 +401,11 @@ pub(crate) fn sample_group_full(group_id: Uuid) -> GroupFull {
 /// Sample group team invitation used by user dashboard tests.
 pub(crate) fn sample_group_invitation(group_id: Uuid) -> GroupTeamInvitation {
     GroupTeamInvitation {
-        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 0, 0, 0).unwrap(),
+        community_name: "test-community".to_string(),
         group_id,
         group_name: "Test Group".to_string(),
         role: GroupRole::Organizer,
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 0, 0, 0).unwrap(),
     }
 }
 

@@ -37,7 +37,7 @@ values (:'groupID', :'userID', 'organizer', false);
 
 -- Should flip accepted to true when accepting pending invite
 select lives_ok(
-    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
     'Should succeed for pending invite'
 );
 select results_eq(
@@ -48,7 +48,7 @@ select results_eq(
 
 -- Should raise error when no pending invitation exists
 select throws_ok(
-    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
+    $$ select accept_group_team_invitation('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid) $$,
     'no pending group invitation found',
     'Second accept should fail since invite is no longer pending'
 );
