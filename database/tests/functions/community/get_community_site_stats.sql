@@ -106,7 +106,7 @@ values
 
 -- Should return correct community statistics as JSON
 select is(
-    get_community_home_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
+    get_community_site_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '{
         "events": 1,
         "groups": 2,
@@ -118,7 +118,7 @@ select is(
 
 -- Should return zeros for non-existing community
 select is(
-    get_community_home_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    get_community_site_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
     '{
         "events": 0,
         "groups": 0,
@@ -136,7 +136,7 @@ select is(
 -- - 5 event attendees: 2 in published event, 3 in excluded events (should be excluded)
 -- Expected: groups=2, events=1, groups_members=3, events_attendees=2
 select is(
-    (get_community_home_stats(:'communityID'::uuid)::jsonb),
+    (get_community_site_stats(:'communityID'::uuid)::jsonb),
     '{
         "events": 1,
         "groups": 2,

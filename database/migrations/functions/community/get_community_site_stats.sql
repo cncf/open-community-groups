@@ -1,5 +1,5 @@
 -- Returns some stats for the community home page.
-create or replace function get_community_home_stats(p_community_id uuid)
+create or replace function get_community_site_stats(p_community_id uuid)
 returns json as $$
     select json_build_object(
         'groups', (
