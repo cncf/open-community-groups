@@ -513,14 +513,18 @@ pub(crate) enum FilterError {
 /// This struct provides the lists of available options for some filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
-    /// Available event categories.
-    pub event_category: Vec<FilterOption>,
-    /// Available group categories.
-    pub group_category: Vec<FilterOption>,
     /// Available distance options (e.g., 5km, 10km, 25km).
     pub distance: Vec<FilterOption>,
+
+    /// Available event categories.
+    #[serde(default)]
+    pub event_category: Option<Vec<FilterOption>>,
+    /// Available group categories.
+    #[serde(default)]
+    pub group_category: Option<Vec<FilterOption>>,
     /// Available geographic regions.
-    pub region: Vec<FilterOption>,
+    #[serde(default)]
+    pub region: Option<Vec<FilterOption>>,
 }
 
 impl FiltersOptions {
