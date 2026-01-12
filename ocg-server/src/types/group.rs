@@ -101,10 +101,8 @@ impl GroupSummary {
 /// Groups organized by community, used for displaying user's groups in dashboard.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UserGroupsByCommunity {
-    /// Unique identifier for the community.
-    pub community_id: Uuid,
-    /// Display name of the community.
-    pub community_name: String,
+    /// Community information.
+    pub community: CommunitySummary,
     /// Groups belonging to this community.
     pub groups: Vec<GroupSummary>,
 }

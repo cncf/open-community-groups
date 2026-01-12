@@ -45,7 +45,7 @@ use crate::{
         },
     },
     types::{
-        community::{Community, UserCommunitySummary},
+        community::{Community, CommunitySummary, UserCommunitySummary},
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
             GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
@@ -645,8 +645,13 @@ pub(crate) fn sample_user_groups_by_community(
     group_id: Uuid,
 ) -> Vec<UserGroupsByCommunity> {
     vec![UserGroupsByCommunity {
-        community_id,
-        community_name: "Test Community".to_string(),
+        community: CommunitySummary {
+            banner_url: "https://example.com/banner.png".to_string(),
+            community_id,
+            display_name: "Test Community".to_string(),
+            logo_url: "https://example.com/logo.png".to_string(),
+            name: "test-community".to_string(),
+        },
         groups: vec![sample_group_summary(group_id)],
     }]
 }

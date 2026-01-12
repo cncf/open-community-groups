@@ -58,7 +58,7 @@ pub(crate) async fn page(
     // Filter groups to only show those from the selected community
     let groups: Vec<_> = groups_by_community
         .iter()
-        .find(|c| c.community_id == community_id)
+        .find(|c| c.community.community_id == community_id)
         .map(|c| c.groups.clone())
         .unwrap_or_default();
 

@@ -39,8 +39,7 @@ returns json as $$
     )
     select coalesce(json_agg(
         json_build_object(
-            'community_id', community_id,
-            'community_name', community_name,
+            'community', get_community_summary(community_id),
             'groups', groups
         )
         order by community_name asc

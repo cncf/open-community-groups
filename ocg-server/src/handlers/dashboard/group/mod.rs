@@ -41,7 +41,9 @@ pub(crate) async fn select_community(
 
     // Get user's groups and find groups in the selected community
     let groups_by_community = db.list_user_groups(&user_id).await?;
-    let community_groups = groups_by_community.iter().find(|c| c.community_id == community_id);
+    let community_groups = groups_by_community
+        .iter()
+        .find(|c| c.community.community_id == community_id);
 
     // If user has no groups in this community, check if they're a community team member
     if community_groups.is_none() {

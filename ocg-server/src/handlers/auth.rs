@@ -562,7 +562,7 @@ async fn select_first_community_and_group(
     let groups_by_community = db.list_user_groups(user_id).await?;
     if let Some(first_community) = groups_by_community.first() {
         session
-            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+            .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community.community_id)
             .await?;
         if let Some(first_group) = first_community.groups.first() {
             session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;

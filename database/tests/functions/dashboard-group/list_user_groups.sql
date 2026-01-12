@@ -120,8 +120,13 @@ select is(
     list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
         {
-            "community_id": "00000000-0000-0000-0000-000000000001",
-            "community_name": "cloud-native-seattle",
+            "community": {
+                "banner_url": "https://example.com/banner.png",
+                "community_id": "00000000-0000-0000-0000-000000000001",
+                "display_name": "Cloud Native Seattle",
+                "logo_url": "https://example.com/logo.png",
+                "name": "cloud-native-seattle"
+            },
             "groups": [
                 {
                     "active": true,
@@ -166,8 +171,13 @@ select is(
     list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
     '[
         {
-            "community_id": "00000000-0000-0000-0000-000000000001",
-            "community_name": "cloud-native-seattle",
+            "community": {
+                "banner_url": "https://example.com/banner.png",
+                "community_id": "00000000-0000-0000-0000-000000000001",
+                "display_name": "Cloud Native Seattle",
+                "logo_url": "https://example.com/logo.png",
+                "name": "cloud-native-seattle"
+            },
             "groups": [
                 {
                     "active": true,
@@ -228,8 +238,13 @@ select is(
     list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
     '[
         {
-            "community_id": "00000000-0000-0000-0000-000000000001",
-            "community_name": "cloud-native-seattle",
+            "community": {
+                "banner_url": "https://example.com/banner.png",
+                "community_id": "00000000-0000-0000-0000-000000000001",
+                "display_name": "Cloud Native Seattle",
+                "logo_url": "https://example.com/logo.png",
+                "name": "cloud-native-seattle"
+            },
             "groups": [
                 {
                     "active": true,
@@ -290,8 +305,13 @@ select is(
     list_user_groups(:'multiCommunityUserID'::uuid)::jsonb,
     '[
         {
-            "community_id": "00000000-0000-0000-0000-000000000001",
-            "community_name": "cloud-native-seattle",
+            "community": {
+                "banner_url": "https://example.com/banner.png",
+                "community_id": "00000000-0000-0000-0000-000000000001",
+                "display_name": "Cloud Native Seattle",
+                "logo_url": "https://example.com/logo.png",
+                "name": "cloud-native-seattle"
+            },
             "groups": [
                 {
                     "active": true,
@@ -312,8 +332,13 @@ select is(
             ]
         },
         {
-            "community_id": "00000000-0000-0000-0000-000000000002",
-            "community_name": "devops-nyc",
+            "community": {
+                "banner_url": "https://example.com/banner2.png",
+                "community_id": "00000000-0000-0000-0000-000000000002",
+                "display_name": "DevOps NYC",
+                "logo_url": "https://example.com/logo2.png",
+                "name": "devops-nyc"
+            },
             "groups": [
                 {
                     "active": true,
