@@ -2,27 +2,26 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
- * GroupSelector renders a searchable dropdown to pick a single group.
+ * CommunitySelector renders a searchable dropdown to pick a single community.
  *
- * Keyboard interactions follow the ARIA combobox pattern. Down, Up, Home and
- * End move the highlight, Enter selects the highlighted item and Escape closes
- * the menu. Typing in the search field filters results with a debounce to
- * reduce re-render pressure while the user is typing.
+ * Keyboard interactions follow the ARIA combobox pattern. Down and Up move the
+ * highlight, Enter selects the highlighted item and Escape closes the menu.
+ * Typing in the search field filters results with a debounce to reduce
+ * re-render pressure while the user is typing.
  *
- * @property {Array<object>} groupsByCommunity List of communities with their
- *   groups, each having community.community_id and groups array
+ * @property {Array<object>} communities List of communities with community_id,
+ *   community_name and display_name keys
  * @property {string} selectedCommunityId Currently selected community identifier
- * @property {string} selectedGroupId Currently selected group identifier
- * @property {number} searchDelay Debounced search delay in milliseconds
+ * @property {string} selectEndpoint API endpoint for selecting community
  */
-export class GroupSelector extends LitWrapper {
+export class CommunitySelector extends LitWrapper {
   static properties = {
-    groupsByCommunity: {
-      attribute: "groups-by-community",
+    communities: {
+      attribute: "communities",
       type: Array,
     },
     selectedCommunityId: { type: String, attribute: "selected-community-id" },
-    selectedGroupId: { type: String, attribute: "selected-group-id" },
+    selectEndpoint: { type: String, attribute: "select-endpoint" },
     _isOpen: { state: true },
     _query: { state: true },
     _isSubmitting: { state: true },
@@ -31,44 +30,50 @@ export class GroupSelector extends LitWrapper {
 
   constructor() {
     super();
-    this.groupsByCommunity = [];
+    this.communities = [];
     this.selectedCommunityId = "";
-    this.selectedGroupId = "";
+    this.selectEndpoint = "/dashboard/community";
     this._isOpen = false;
     this._query = "";
     this._isSubmitting = false;
     this._activeIndex = null;
     this._searchTimeoutId = 0;
+    this._pendingQuery = "";
     this._documentClickHandler = null;
+    this._keydownHandler = (event) => this._handleKeydown(event);
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener("keydown", this._handleKeydown.bind(this));
+    this.addEventListener("keydown", this._keydownHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.removeEventListener("keydown", this._keydownHandler);
     this._removeDocumentListener();
     if (this._searchTimeoutId) {
       window.clearTimeout(this._searchTimeoutId);
+      this._searchTimeoutId = 0;
     }
   }
 
   /**
-   * Gets groups for the selected community from groupsByCommunity data.
-   * @returns {Array<object>} Groups for the selected community
+   * Normalizes communities data to handle both flat and nested structures.
+   * @returns {Array<object>} Normalized communities with community_id, display_name,
+   *   community_name
    */
-  get _groups() {
-    if (!this.groupsByCommunity || this.groupsByCommunity.length === 0) {
-      return [];
-    }
-    const targetId = this.selectedCommunityId ? String(this.selectedCommunityId) : "";
-    const communityEntry = this.groupsByCommunity.find((item) => {
-      const communityId = item.community?.community_id ?? item.community_id;
-      return String(communityId) === targetId;
+  get _normalizedCommunities() {
+    return this.communities.map((item) => {
+      if (item.community && typeof item.community === "object") {
+        return {
+          community_id: item.community.community_id,
+          display_name: item.community.display_name,
+          community_name: item.community.name,
+        };
+      }
+      return item;
     });
-    return communityEntry?.groups ?? [];
   }
 
   /**
@@ -77,67 +82,62 @@ export class GroupSelector extends LitWrapper {
    */
   _handleSearchInput(event) {
     const value = event.target.value || "";
-    this._query = value;
+    this._pendingQuery = value;
     if (this._searchTimeoutId) {
       window.clearTimeout(this._searchTimeoutId);
     }
     this._searchTimeoutId = window.setTimeout(() => {
       this._activeIndex = null;
-      this.requestUpdate();
+      this._query = this._pendingQuery;
+      this._searchTimeoutId = 0;
     }, 200);
   }
 
   /**
-   * Gets filtered groups based on current query.
+   * Gets filtered communities based on current query.
    */
-  get _filteredGroups() {
+  get _filteredCommunities() {
     const normalized = (this._query || "").trim().toLowerCase();
     if (!normalized) {
-      return this._groups;
+      return this._normalizedCommunities;
     }
-    return this._groups.filter((group) => {
-      return (group.name || "").toLowerCase().includes(normalized);
+    return this._normalizedCommunities.filter((community) => {
+      const name = (community.display_name || community.community_name || "").toLowerCase();
+      return name.includes(normalized);
     });
   }
 
   /**
-   * Triggers dashboard group selection via HTMX or falls back to reloading.
-   * @param {string|number} groupId Identifier of the group to select
+   * Triggers dashboard community selection via HTMX or falls back to reloading.
+   * @param {string|number} communityId Identifier of the community to select
    * @returns {XMLHttpRequest|null} Active HTMX request when available
    */
-  _selectDashboardGroup(groupId) {
-    const url = `/dashboard/group/${groupId}/select`;
+  _selectDashboardCommunity(communityId) {
+    const url = `${this.selectEndpoint}/${communityId}/select`;
 
     if (typeof window !== "undefined" && window.htmx && typeof window.htmx.ajax === "function") {
       const request = window.htmx.ajax("PUT", url, {
-        target: "#dashboard-content",
+        target: "body",
         indicator: "#dashboard-spinner",
       });
       return request ?? null;
-    }
-
-    if (typeof window !== "undefined") {
-      window.location.assign("/dashboard/group");
     }
     return null;
   }
 
   /**
-   * Handles clicks on a group option and closes the dropdown.
+   * Handles clicks on a community option and closes the dropdown.
    * @param {MouseEvent} event Option click event
-   * @param {object} group Associated group data
+   * @param {object} community Associated community data
    */
-  _handleGroupClick(event, group) {
-    if (this._isSelected(group) || this._isSubmitting) {
+  _handleCommunityClick(event, community) {
+    if (this._isSelected(community) || this._isSubmitting) {
       event.preventDefault();
       return;
     }
     event.preventDefault();
     this._isSubmitting = true;
-    this._selectDashboardGroup(group.group_id, {
-      target: "#dashboard-content",
-      indicator: "#dashboard-spinner",
-    });
+    this._selectDashboardCommunity(community.community_id);
     this._closeDropdown();
   }
 
@@ -159,15 +159,16 @@ export class GroupSelector extends LitWrapper {
    * Opens the dropdown and resets search.
    */
   _openDropdown() {
-    if (this._groups.length === 0 || this._isSubmitting) {
+    if (this._normalizedCommunities.length === 0 || this._isSubmitting) {
       return;
     }
     this._isOpen = true;
     this._query = "";
+    this._pendingQuery = "";
     this._activeIndex = null;
     this._addDocumentListener();
     this.updateComplete.then(() => {
-      const input = this.querySelector("#group-search-input");
+      const input = this.querySelector("#community-search-input");
       if (input) {
         input.focus();
       }
@@ -180,7 +181,12 @@ export class GroupSelector extends LitWrapper {
   _closeDropdown() {
     this._isOpen = false;
     this._query = "";
+    this._pendingQuery = "";
     this._activeIndex = null;
+    if (this._searchTimeoutId) {
+      window.clearTimeout(this._searchTimeoutId);
+      this._searchTimeoutId = 0;
+    }
     this._removeDocumentListener();
   }
 
@@ -219,7 +225,7 @@ export class GroupSelector extends LitWrapper {
       return;
     }
 
-    if (!this._isOpen || this._filteredGroups.length === 0) {
+    if (!this._isOpen || this._filteredCommunities.length === 0) {
       if (this._isOpen && event.key === "Escape") {
         event.preventDefault();
         this._closeDropdown();
@@ -233,7 +239,7 @@ export class GroupSelector extends LitWrapper {
         if (this._activeIndex === null) {
           this._activeIndex = 0;
         } else {
-          this._activeIndex = (this._activeIndex + 1) % this._filteredGroups.length;
+          this._activeIndex = (this._activeIndex + 1) % this._filteredCommunities.length;
         }
         break;
       case "ArrowUp":
@@ -242,15 +248,15 @@ export class GroupSelector extends LitWrapper {
           this._activeIndex = 0;
         } else {
           this._activeIndex =
-            (this._activeIndex - 1 + this._filteredGroups.length) % this._filteredGroups.length;
+            (this._activeIndex - 1 + this._filteredCommunities.length) % this._filteredCommunities.length;
         }
         break;
       case "Enter":
         event.preventDefault();
         if (this._activeIndex !== null) {
-          const group = this._filteredGroups[this._activeIndex];
-          if (group && !this._isSelected(group)) {
-            this._handleGroupClick(event, group);
+          const community = this._filteredCommunities[this._activeIndex];
+          if (community && !this._isSelected(community)) {
+            this._handleCommunityClick(event, community);
           }
         }
         break;
@@ -264,35 +270,35 @@ export class GroupSelector extends LitWrapper {
   }
 
   /**
-   * Returns the selected group object, or null when none is selected.
+   * Returns the selected community object, or null when none is selected.
    * @returns {object|null}
    */
-  _findSelectedGroup() {
-    const groups = this._groups;
-    if (!groups || groups.length === 0) {
+  _findSelectedCommunity() {
+    const communities = this._normalizedCommunities;
+    if (!communities || communities.length === 0) {
       return null;
     }
-    const targetId = this.selectedGroupId != null ? String(this.selectedGroupId) : "";
-    return groups.find((group) => String(group.group_id) === targetId) || null;
+    const targetId = this.selectedCommunityId != null ? String(this.selectedCommunityId) : "";
+    return communities.find((community) => String(community.community_id) === targetId) || null;
   }
 
   /**
-   * Checks whether the provided group matches the selected identifier.
-   * @param {object} group Group metadata
+   * Checks whether the provided community matches the selected identifier.
+   * @param {object} community Community metadata
    * @returns {boolean}
    */
-  _isSelected(group) {
-    return String(group.group_id) === String(this.selectedGroupId || "");
+  _isSelected(community) {
+    return String(community.community_id) === String(this.selectedCommunityId || "");
   }
 
   render() {
-    const selectedGroup = this._findSelectedGroup();
-    const isDisabled = this._groups.length === 0 || this._isSubmitting;
+    const selectedCommunity = this._findSelectedCommunity();
+    const isDisabled = this._normalizedCommunities.length <= 1 || this._isSubmitting;
 
     return html`
       <div class="relative">
         <button
-          id="group-selector-button"
+          id="community-selector-button"
           type="button"
           class="select select-primary relative text-left pe-9 ${isDisabled
             ? "opacity-60 cursor-not-allowed"
@@ -304,7 +310,9 @@ export class GroupSelector extends LitWrapper {
         >
           <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
-              ${selectedGroup ? selectedGroup.name : "Select a group"}
+              ${selectedCommunity
+                ? selectedCommunity.display_name || selectedCommunity.community_name
+                : "Select a community"}
             </div>
           </div>
           <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
@@ -324,10 +332,10 @@ export class GroupSelector extends LitWrapper {
                 <div class="svg-icon size-4 icon-search bg-stone-300"></div>
               </div>
               <input
-                id="group-search-input"
+                id="community-search-input"
                 type="search"
                 class="input-primary w-full ps-9"
-                placeholder="Search groups"
+                placeholder="Search communities"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
@@ -338,14 +346,18 @@ export class GroupSelector extends LitWrapper {
             </div>
           </div>
 
-          ${this._filteredGroups.length > 0
+          ${this._filteredCommunities.length > 0
             ? html`
-                <ul id="group-selector-list" class="max-h-48 overflow-y-auto text-stone-700" role="listbox">
+                <ul
+                  id="community-selector-list"
+                  class="max-h-48 overflow-y-auto text-stone-700"
+                  role="listbox"
+                >
                   ${repeat(
-                    this._filteredGroups,
-                    (group) => group.group_id,
-                    (group, index) => {
-                      const isSelected = this._isSelected(group);
+                    this._filteredCommunities,
+                    (community) => community.community_id,
+                    (community, index) => {
+                      const isSelected = this._isSelected(community);
                       const isActive = this._activeIndex === index;
                       const isDisabled = isSelected || this._isSubmitting;
 
@@ -361,16 +373,18 @@ export class GroupSelector extends LitWrapper {
                       return html`
                         <li role="presentation" data-index=${index}>
                           <button
-                            id="group-option-${group.group_id}"
+                            id="community-option-${community.community_id}"
                             type="button"
-                            class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                            class="community-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
                             role="option"
-                            data-group-id=${group.group_id}
+                            data-community-id=${community.community_id}
                             ?disabled=${isDisabled}
-                            @click=${(event) => this._handleGroupClick(event, group)}
+                            @click=${(event) => this._handleCommunityClick(event, community)}
                             @mouseover=${() => (this._activeIndex = index)}
                           >
-                            <div class="text-xs/4 text-stone-900 line-clamp-2">${group.name}</div>
+                            <div class="text-xs/4 text-stone-900 line-clamp-2">
+                              ${community.display_name || community.community_name}
+                            </div>
                           </button>
                         </li>
                       `;
@@ -378,11 +392,11 @@ export class GroupSelector extends LitWrapper {
                   )}
                 </ul>
               `
-            : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`}
+            : html`<div class="px-4 py-3 text-sm text-stone-500">No communities found.</div>`}
         </div>
       </div>
     `;
   }
 }
 
-customElements.define("group-selector", GroupSelector);
+customElements.define("community-selector", CommunitySelector);
