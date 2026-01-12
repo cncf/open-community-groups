@@ -28,9 +28,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{
-            CommunityId, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
-        },
+        extractors::{OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
@@ -638,7 +636,7 @@ pub(crate) async fn user_belongs_to_any_group_team(
 #[instrument(skip_all)]
 pub(crate) async fn user_owns_path_community(
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    Path(community_id): Path<Uuid>,
     auth_session: AuthSession,
     request: Request,
     next: Next,
@@ -2437,10 +2435,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id_by_name()
-            .times(1)
-            .withf(|name| name == "test-community")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -2460,7 +2454,7 @@ mod tests {
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
-            .route("/{community}/protected", get(|| async { StatusCode::OK }))
+            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
                 state.clone(),
                 user_owns_path_community,
@@ -2471,7 +2465,7 @@ mod tests {
         // Execute request
         let request = Request::builder()
             .method("GET")
-            .uri("/test-community/protected")
+            .uri(format!("/{community_id}/protected"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2503,10 +2497,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id_by_name()
-            .times(1)
-            .withf(|name| name == "test-community")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -2526,7 +2516,7 @@ mod tests {
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
-            .route("/{community}/protected", get(|| async { StatusCode::OK }))
+            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
                 state.clone(),
                 user_owns_path_community,
@@ -2537,7 +2527,7 @@ mod tests {
         // Execute request
         let request = Request::builder()
             .method("GET")
-            .uri("/test-community/protected")
+            .uri(format!("/{community_id}/protected"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -2569,10 +2559,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id_by_name()
-            .times(1)
-            .withf(|name| name == "test-community")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -2592,7 +2578,7 @@ mod tests {
         };
         let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
         let router = Router::new()
-            .route("/{community}/protected", get(|| async { StatusCode::OK }))
+            .route("/{community_id}/protected", get(|| async { StatusCode::OK }))
             .layer(middleware::from_fn_with_state(
                 state.clone(),
                 user_owns_path_community,
@@ -2603,7 +2589,7 @@ mod tests {
         // Execute request
         let request = Request::builder()
             .method("GET")
-            .uri("/test-community/protected")
+            .uri(format!("/{community_id}/protected"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

@@ -246,7 +246,7 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
         .route("/users/search", get(dashboard::common::search_user))
         .route_layer(check_user_owns_selected_community)
         .route(
-            "/{community}/select",
+            "/{community_id}/select",
             put(dashboard::community::select_community).route_layer(check_user_owns_path_community),
         )
 }
