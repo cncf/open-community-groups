@@ -142,38 +142,6 @@
       </div>
       {# End Website URL -#}
 
-      {# GitHub URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="github_url" class="form-label">GitHub</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-github bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="github_url"
-                 id="github_url"
-                 class="input-primary ps-10"
-                 placeholder="https://github.com/organization">
-        </div>
-      </div>
-      {# End GitHub URL -#}
-
-      {# Twitter URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="twitter_url"
-                 id="twitter_url"
-                 class="input-primary ps-10"
-                 placeholder="https://x.com/username">
-        </div>
-      </div>
-      {# End Twitter URL -#}
-
       {# Facebook URL -#}
       <div class="col-span-full lg:col-span-3">
         <label for="facebook_url" class="form-label">Facebook</label>
@@ -190,21 +158,37 @@
       </div>
       {# End Facebook URL -#}
 
-      {# LinkedIn URL -#}
+      {# Flickr URL -#}
       <div class="col-span-full lg:col-span-3">
-        <label for="linkedin_url" class="form-label">LinkedIn</label>
+        <label for="flickr_url" class="form-label">Flickr</label>
         <div class="mt-2 relative">
           <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+            <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
           </div>
           <input type="url"
-                 name="linkedin_url"
-                 id="linkedin_url"
+                 name="flickr_url"
+                 id="flickr_url"
                  class="input-primary ps-10"
-                 placeholder="https://linkedin.com/company/name">
+                 placeholder="https://flickr.com/photos/account">
         </div>
       </div>
-      {# End LinkedIn URL -#}
+      {# End Flickr URL -#}
+
+      {# GitHub URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="github_url" class="form-label">GitHub</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-github bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="github_url"
+                 id="github_url"
+                 class="input-primary ps-10"
+                 placeholder="https://github.com/organization">
+        </div>
+      </div>
+      {# End GitHub URL -#}
 
       {# Instagram URL -#}
       <div class="col-span-full lg:col-span-3">
@@ -222,6 +206,22 @@
       </div>
       {# End Instagram URL -#}
 
+      {# LinkedIn URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="linkedin_url" class="form-label">LinkedIn</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="linkedin_url"
+                 id="linkedin_url"
+                 class="input-primary ps-10"
+                 placeholder="https://linkedin.com/company/name">
+        </div>
+      </div>
+      {# End LinkedIn URL -#}
+
       {# Slack URL -#}
       <div class="col-span-full lg:col-span-3">
         <label for="slack_url" class="form-label">Slack</label>
@@ -237,6 +237,38 @@
         </div>
       </div>
       {# End Slack URL -#}
+
+      {# Twitter URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="twitter_url"
+                 id="twitter_url"
+                 class="input-primary ps-10"
+                 placeholder="https://x.com/username">
+        </div>
+      </div>
+      {# End Twitter URL -#}
+
+      {# WeChat URL -#}
+      <div class="col-span-full lg:col-span-3">
+        <label for="wechat_url" class="form-label">WeChat</label>
+        <div class="mt-2 relative">
+          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+            <div class="svg-icon size-4 icon-wechat bg-stone-300"></div>
+          </div>
+          <input type="url"
+                 name="wechat_url"
+                 id="wechat_url"
+                 class="input-primary ps-10"
+                 placeholder="https://wechat.com/account">
+        </div>
+      </div>
+      {# End WeChat URL -#}
 
       {# YouTube URL -#}
       <div class="col-span-full lg:col-span-3">
@@ -257,9 +289,9 @@
   </div>
   {# End social links section -#}
 
-  {# Tags section -#}
+  {# Additional content section -#}
   <div class="pb-12">
-    {{ dashboard::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -}}
+    {{ dashboard::form_title(title = "Additional Content", description = "Optional tags, photos, and custom links.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Tags -#}
@@ -268,9 +300,27 @@
         </multiple-inputs>
       </div>
       {# End Tags -#}
+
+      {# Photo gallery -#}
+      <div class="col-span-full">
+        <gallery-field field-name="photos_urls" images="[]" max-images="0" label="Photos"></gallery-field>
+        <p class="form-legend">Photos that will be displayed in the group gallery.</p>
+      </div>
+      {# End photo gallery -#}
+
+      {# Extra links -#}
+      <div class="col-span-full">
+        <label class="form-label">Extra Links</label>
+        <div class="mt-2">
+          <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{}" label="Link">
+          </key-value-inputs>
+        </div>
+        <p class="form-legend">Additional custom links displayed in the group page.</p>
+      </div>
+      {# End extra links -#}
     </div>
   </div>
-  {# End tags section -#}
+  {# End additional content section -#}
 
   <div class="mt-6 flex items-center justify-end gap-x-6">
     {# Cancel button -#}
