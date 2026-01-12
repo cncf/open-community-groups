@@ -34,8 +34,8 @@ select plan(42);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url)
-values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_url)
+values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner.png');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, name) values
@@ -351,7 +351,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
     )),
     '{
         "canceled": false,
@@ -455,7 +455,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'
     )),
     '{
         "canceled": false,

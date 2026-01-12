@@ -30,13 +30,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'https://example.com/banner.png'
 );
 
 -- Users
@@ -91,7 +93,7 @@ select ok(
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug'
     )) = '{
         "canceled": false,
         "category_name": "Conference",
@@ -182,7 +184,7 @@ select ok(
         :'communityID'::uuid,
         :'groupID'::uuid,
         :'event_id'::uuid
-    )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug') = '{
+    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug') = '{
         "canceled": false,
         "category_name": "Conference",
         "description": "Premier conference for cloud native technologies and community collaboration",

@@ -31,6 +31,9 @@ pub(crate) struct UpdatePage {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct CommunityUpdate {
+    /// URL to the community banner image.
+    #[garde(custom(image_url))]
+    pub banner_url: String,
     /// Brief description of the community's purpose or focus.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
     pub description: String,

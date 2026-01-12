@@ -36,10 +36,11 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values
-    (:'communityID', 'test-community', 'Test Community', 'Community used for group stats tests', 'https://example.com/logo.png'),
-    (:'community2ID', 'other-community', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png');
+    (:'communityID', 'test-community', 'Test Community', 'Community used for group stats tests', 'https://example.com/logo.png', 'https://example.com/banner.png'),
+    (:'community2ID', 'other-community', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png', 'https://example.com/banner2.png');
 
 -- Group categories
 insert into group_category (group_category_id, community_id, name) values

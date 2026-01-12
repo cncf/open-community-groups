@@ -113,6 +113,7 @@ pub(crate) fn sample_bbox() -> BBox {
 pub(crate) fn sample_community(community_id: Uuid) -> Community {
     Community {
         active: true,
+        banner_url: "https://example.test/banner.png".to_string(),
         community_id,
         community_site_layout_id: "default".to_string(),
         created_at: 0,
@@ -150,6 +151,7 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
 /// Sample community update payload for dashboard community settings tests.
 pub(crate) fn sample_community_update() -> CommunityUpdate {
     CommunityUpdate {
+        banner_url: "https://example.test/banner.png".to_string(),
         description: "Updated description".to_string(),
         display_name: "Test".to_string(),
         header_logo_url: "https://example.test/logo.png".to_string(),

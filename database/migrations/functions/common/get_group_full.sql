@@ -54,6 +54,7 @@ returns json as $$
         'website_url', g.website_url,
         'youtube_url', g.youtube_url,
 
+        'community', get_community_summary(g.community_id),
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,

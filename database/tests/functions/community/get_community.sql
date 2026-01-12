@@ -74,13 +74,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'community2ID',
     'cloud-native-portland',
     'Cloud Native Portland',
     'A growing community for cloud native technologies in Portland',
-    'https://portland.cloudnative.org/logo.png'
+    'https://portland.cloudnative.org/logo.png',
+    'https://portland.cloudnative.org/banner.png'
 );
 
 -- ============================================================================
@@ -122,6 +124,7 @@ select is(
     get_community(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
         "active": true,
+        "banner_url": "https://portland.cloudnative.org/banner.png",
         "community_site_layout_id": "default",
         "description": "A growing community for cloud native technologies in Portland",
         "display_name": "Cloud Native Portland",

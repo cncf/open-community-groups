@@ -85,6 +85,7 @@ select is(
     (select get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
+        "banner_url": "https://original.com/community-banner.png",
         "community_site_layout_id": "default",
         "description": "Updated description for Seattle cloud native community",
         "display_name": "Cloud Native Seattle Updated",
@@ -156,7 +157,6 @@ select update_community(
     '{
         "ad_banner_url": "",
         "ad_banner_link_url": "",
-        "banner_url": "",
         "facebook_url": "",
         "flickr_url": "",
         "github_url": "",
@@ -172,14 +172,13 @@ select update_community(
 );
 
 select is(
-    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'community_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
+    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'banner_url' - 'community_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
      from (
         select * from community where community_id = '00000000-0000-0000-0000-000000000001'::uuid
      ) t),
     '{
         "ad_banner_url": null,
         "ad_banner_link_url": null,
-        "banner_url": null,
         "facebook_url": null,
         "flickr_url": null,
         "github_url": null,

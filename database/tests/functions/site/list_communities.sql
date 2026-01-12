@@ -23,11 +23,12 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values
-    (:'community1ID', 'alpha-community', 'Alpha Community', 'First community', 'https://example.com/alpha-logo.png'),
-    (:'community2ID', 'beta-community', 'Beta Community', 'Second community', 'https://example.com/beta-logo.png'),
-    (:'community3ID', 'gamma-community', 'Gamma Community', 'Third community', 'https://example.com/gamma-logo.png');
+    (:'community1ID', 'alpha-community', 'Alpha Community', 'First community', 'https://example.com/alpha-logo.png', 'https://example.com/alpha-banner.png'),
+    (:'community2ID', 'beta-community', 'Beta Community', 'Second community', 'https://example.com/beta-logo.png', 'https://example.com/beta-banner.png'),
+    (:'community3ID', 'gamma-community', 'Gamma Community', 'Third community', 'https://example.com/gamma-logo.png', 'https://example.com/gamma-banner.png');
 
 -- ============================================================================
 -- TESTS
@@ -38,18 +39,21 @@ select is(
     list_communities()::jsonb,
     '[
         {
+            "banner_url": "https://example.com/alpha-banner.png",
             "community_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Alpha Community",
             "logo_url": "https://example.com/alpha-logo.png",
             "name": "alpha-community"
         },
         {
+            "banner_url": "https://example.com/beta-banner.png",
             "community_id": "00000000-0000-0000-0000-000000000002",
             "display_name": "Beta Community",
             "logo_url": "https://example.com/beta-logo.png",
             "name": "beta-community"
         },
         {
+            "banner_url": "https://example.com/gamma-banner.png",
             "community_id": "00000000-0000-0000-0000-000000000003",
             "display_name": "Gamma Community",
             "logo_url": "https://example.com/gamma-logo.png",
@@ -65,12 +69,14 @@ select is(
     list_communities()::jsonb,
     '[
         {
+            "banner_url": "https://example.com/alpha-banner.png",
             "community_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Alpha Community",
             "logo_url": "https://example.com/alpha-logo.png",
             "name": "alpha-community"
         },
         {
+            "banner_url": "https://example.com/gamma-banner.png",
             "community_id": "00000000-0000-0000-0000-000000000003",
             "display_name": "Gamma Community",
             "logo_url": "https://example.com/gamma-logo.png",

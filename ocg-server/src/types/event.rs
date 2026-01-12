@@ -19,7 +19,7 @@ use crate::{
             location::{LocationParts, build_location},
         },
     },
-    types::group::GroupSummary,
+    types::{community::CommunitySummary, group::GroupSummary},
 };
 
 // Event types: summary, detailed, and full.
@@ -147,6 +147,8 @@ pub struct EventFull {
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
+    /// Community this event belongs to.
+    pub community: CommunitySummary,
     /// When the event was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,

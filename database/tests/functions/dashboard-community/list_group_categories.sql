@@ -26,10 +26,11 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values
-    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png'),
-    (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png');
+    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png', 'https://example.com/banner1.png'),
+    (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', 'https://example.com/banner2.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id, "order")
@@ -72,13 +73,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'community3ID'::uuid,
     'golang-austin',
     'Golang Austin',
     'Go programming language enthusiasts in Austin',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'https://example.com/banner.png'
 );
 
 select is(

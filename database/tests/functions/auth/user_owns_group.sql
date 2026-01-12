@@ -31,13 +31,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'community1ID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'Seattle community for cloud native technologies',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'https://example.com/banner.png'
 );
 
 -- Second community
@@ -46,13 +48,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'community2ID',
     'cloud-native-portland',
     'Cloud Native Portland',
     'Portland community for cloud native technologies',
-    'https://example.com/logo2.png'
+    'https://example.com/logo2.png',
+    'https://example.com/banner2.png'
 );
 
 -- Users

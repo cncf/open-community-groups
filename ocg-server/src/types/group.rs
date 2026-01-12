@@ -9,12 +9,15 @@ use serde_with::skip_serializing_none;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::{
-    common::User,
-    helpers::{
-        color,
-        location::{LocationParts, build_location},
+use crate::{
+    templates::{
+        common::User,
+        helpers::{
+            color,
+            location::{LocationParts, build_location},
+        },
     },
+    types::community::CommunitySummary,
 };
 
 // Group types: summary, detailed, and full.
@@ -134,6 +137,8 @@ pub struct GroupFull {
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
+    /// Community this group belongs to.
+    pub community: CommunitySummary,
     /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,

@@ -23,13 +23,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-berlin',
     'Cloud Native Berlin',
     'Community for cloud native technologies in Berlin',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'https://example.com/banner.png'
 );
 
 -- Group Category (required by group)

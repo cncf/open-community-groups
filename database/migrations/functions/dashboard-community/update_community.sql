@@ -6,6 +6,7 @@ create or replace function update_community(
 begin
     update community
     set
+        banner_url = coalesce(p_data->>'banner_url', banner_url),
         description = coalesce(p_data->>'description', description),
         display_name = coalesce(p_data->>'display_name', display_name),
         logo_url = coalesce(p_data->>'logo_url', logo_url),
@@ -13,7 +14,6 @@ begin
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),
         ad_banner_url = nullif(p_data->>'ad_banner_url', ''),
-        banner_url = nullif(p_data->>'banner_url', ''),
         extra_links = nullif(p_data->'extra_links', 'null'::jsonb),
         facebook_url = nullif(p_data->>'facebook_url', ''),
         flickr_url = nullif(p_data->>'flickr_url', ''),

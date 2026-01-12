@@ -21,12 +21,12 @@ select plan(4);
 -- ============================================================================
 
 -- Community 1
-insert into community (community_id, name, display_name, description, logo_url)
-values (:'community1ID', 'community-1', 'Community 1', 'Test community 1', 'https://example.com/logo.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_url)
+values (:'community1ID', 'community-1', 'Community 1', 'Test community 1', 'https://example.com/logo.png', 'https://example.com/banner.png');
 
 -- Community 2
-insert into community (community_id, name, display_name, description, logo_url)
-values (:'community2ID', 'community-2', 'Community 2', 'Test community 2', 'https://example.com/logo.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_url)
+values (:'community2ID', 'community-2', 'Community 2', 'Test community 2', 'https://example.com/logo.png', 'https://example.com/banner.png');
 
 -- Group Category (belongs to community 1)
 insert into group_category (group_category_id, name, community_id)

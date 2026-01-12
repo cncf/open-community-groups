@@ -29,13 +29,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'community1ID',
     'test-community',
     'Test Community',
     'A test community for testing purposes',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'https://example.com/banner.png'
 );
 
 -- Event Category

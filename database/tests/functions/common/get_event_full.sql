@@ -40,13 +40,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'https://example.com/banner.png'
 );
 
 -- Group Category
@@ -467,6 +469,13 @@ select is(
         "venue_state": "NY",
         "venue_zip_code": "10001",
         "remaining_capacity": 498,
+        "community": {
+            "banner_url": "https://example.com/banner.png",
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "display_name": "Cloud Native Seattle",
+            "logo_url": "https://example.com/logo.png",
+            "name": "cloud-native-seattle"
+        },
         "group": {
             "city": "New York",
             "name": "Seattle Kubernetes Meetup",

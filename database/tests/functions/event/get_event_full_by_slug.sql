@@ -26,8 +26,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url)
-values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test community', 'https://example.com/logo.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_url)
+values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -157,6 +157,13 @@ select is(
         "name": "Tech Conference 2024",
         "slug": "def5678",
         "tags": ["technology", "conference", "workshops"],
+        "community": {
+            "banner_url": "https://example.com/banner.png",
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "display_name": "Cloud Native Seattle",
+            "logo_url": "https://example.com/logo.png",
+            "name": "cloud-native-seattle"
+        },
         "group": {
             "active": true,
             "name": "Test Group",

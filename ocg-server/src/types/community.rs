@@ -13,6 +13,8 @@ use uuid::Uuid;
 pub struct Community {
     /// Whether the community is active.
     pub active: bool,
+    /// URL to the community banner image.
+    pub banner_url: String,
     /// Unique identifier for the community.
     pub community_id: Uuid,
     /// Layout identifier for the community site.
@@ -32,8 +34,6 @@ pub struct Community {
     pub ad_banner_link_url: Option<String>,
     /// URL to the advertisement banner image.
     pub ad_banner_url: Option<String>,
-    /// URL to the community banner image.
-    pub banner_url: Option<String>,
     /// Additional custom links displayed in the community navigation.
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Link to the community's Facebook page.
@@ -65,9 +65,10 @@ pub struct Community {
 }
 
 /// Summary of a community used for listing communities.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CommunitySummary {
+    /// URL to the community banner image.
+    pub banner_url: String,
     /// Unique identifier for the community.
     pub community_id: Uuid,
     /// Human-readable name shown in the UI (e.g., "CNCF").

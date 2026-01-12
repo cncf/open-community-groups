@@ -59,6 +59,7 @@ insert into community_site_layout values ('default');
 create table community (
     community_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
+    banner_url text not null check (btrim(banner_url) <> ''),
     community_site_layout_id text not null references community_site_layout default 'default',
     created_at timestamptz default current_timestamp not null,
     description text not null check (btrim(description) <> ''),
@@ -68,7 +69,6 @@ create table community (
 
     ad_banner_link_url text check (btrim(ad_banner_link_url) <> ''),
     ad_banner_url text check (btrim(ad_banner_url) <> ''),
-    banner_url text check (btrim(banner_url) <> ''),
     extra_links jsonb,
     facebook_url text check (btrim(facebook_url) <> ''),
     flickr_url text check (btrim(flickr_url) <> ''),

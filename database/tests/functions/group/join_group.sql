@@ -22,8 +22,8 @@ select plan(5);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_url)
+values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner.png');
 
 -- Group category
 insert into group_category (group_category_id, name, community_id)

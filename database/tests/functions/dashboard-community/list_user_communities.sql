@@ -25,10 +25,11 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values
-    (:'community1ID', 'alpha-community', 'Alpha Community', 'First community', 'https://example.com/alpha.png'),
-    (:'community2ID', 'beta-community', 'Beta Community', 'Second community', 'https://example.com/beta.png');
+    (:'community1ID', 'alpha-community', 'Alpha Community', 'First community', 'https://example.com/alpha.png', 'https://example.com/alpha-banner.png'),
+    (:'community2ID', 'beta-community', 'Beta Community', 'Second community', 'https://example.com/beta.png', 'https://example.com/beta-banner.png');
 
 -- Users
 insert into "user" (

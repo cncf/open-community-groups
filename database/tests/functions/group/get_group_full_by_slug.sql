@@ -22,8 +22,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url)
-values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_url)
+values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', 'https://example.com/banner.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -118,6 +118,13 @@ select is(
         "sponsors": [],
         "longitude": -74.006,
         "banner_url": "https://example.com/k8s-banner.png",
+        "community": {
+            "banner_url": "https://example.com/banner.png",
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "display_name": "Cloud Native Seattle",
+            "logo_url": "https://example.com/logo.png",
+            "name": "cloud-native-seattle"
+        },
         "github_url": "https://github.com/k8snyc",
         "organizers": [
             {

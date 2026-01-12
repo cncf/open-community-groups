@@ -23,13 +23,15 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url
+    logo_url,
+    banner_url
 ) values (
     :'communityID',
     'c1',
     'C1',
     'Community 1',
-    'https://e/logo.png'
+    'https://e/logo.png',
+    'https://e/banner.png'
 );
 
 -- Users

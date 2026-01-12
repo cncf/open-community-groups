@@ -46,6 +46,7 @@ returns json as $$
         'venue_state', e.venue_state,
         'venue_zip_code', e.venue_zip_code,
 
+        'community', get_community_summary(g.community_id),
         'group', get_group_summary(g.community_id, g.group_id),
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
