@@ -2,7 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
- * BreadcrumbNav - Responsive breadcrumb navigation component.
+ * BreadcrumbNav - Responsive breadcrumb navigation component with optional banner.
  *
  * Attributes:
  * - items: JSON array of breadcrumb items
@@ -10,18 +10,23 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  *   - href: string (optional) - Link URL (omit for current page)
  *   - icon: string (required) - Icon name without 'icon-' prefix
  *   - current: boolean (optional) - Mark as current page
+ * - banner-url: string (optional) - URL to banner image displayed above breadcrumb
  *
  * Example:
- * <breadcrumb-nav items='[
- *   {"label": "Home", "href": "/", "icon": "home"},
- *   {"label": "Group", "href": "/group/slug", "icon": "groups"},
- *   {"label": "Event", "icon": "date", "current": true}
- * ]'></breadcrumb-nav>
+ * <breadcrumb-nav
+ *   banner-url="/path/to/banner.jpg"
+ *   items='[
+ *     {"label": "Home", "href": "/", "icon": "home"},
+ *     {"label": "Group", "href": "/group/slug", "icon": "groups"},
+ *     {"label": "Event", "icon": "date", "current": true}
+ *   ]'>
+ * </breadcrumb-nav>
  */
 export class BreadcrumbNav extends LitWrapper {
   static get properties() {
     return {
       items: { type: Array },
+      bannerUrl: { type: String, attribute: "banner-url" },
       _isOpen: { type: Boolean, state: true },
     };
   }
@@ -29,6 +34,7 @@ export class BreadcrumbNav extends LitWrapper {
   constructor() {
     super();
     this.items = [];
+    this.bannerUrl = null;
     this._isOpen = false;
     this._dropdownId = `breadcrumb-dropdown-${Math.random().toString(36).slice(2, 9)}`;
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
@@ -199,7 +205,14 @@ export class BreadcrumbNav extends LitWrapper {
 
     return html`
       <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8 -mb-2 md:-mb-4">
-        <div class="bg-white border border-stone-200 rounded-lg">
+        <div class="bg-white border border-stone-200 rounded-lg overflow-hidden">
+          ${this.bannerUrl
+            ? html`
+                <div class="h-[9rem] w-full">
+                  <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
+                </div>
+              `
+            : ""}
           <nav class="px-4 sm:px-6 lg:px-8 py-3" aria-label="Breadcrumb">
             <!-- Mobile breadcrumb dropdown -->
             <div class="relative sm:hidden">
