@@ -73,6 +73,7 @@ select is(
         {
             "active": true,
             "city": "London",
+            "community_name": "cloud-native-seattle",
             "name": "Test Group 3",
             "slug": "ghi9abc",
             "group_id": "00000000-0000-0000-0000-000000000033",
@@ -94,6 +95,7 @@ select is(
         {
             "active": true,
             "city": "San Francisco",
+            "community_name": "cloud-native-seattle",
             "name": "Test Group 2",
             "slug": "def5678",
             "state": "CA",
@@ -116,6 +118,7 @@ select is(
         {
             "active": true,
             "city": "New York",
+            "community_name": "cloud-native-seattle",
             "name": "Test Group 1",
             "slug": "abc1234",
             "state": "NY",

@@ -30,6 +30,8 @@ use crate::{
 pub struct EventSummary {
     /// Whether the event has been canceled.
     pub canceled: bool,
+    /// Name of the community this event belongs to.
+    pub community_name: String,
     /// Unique identifier for the event.
     pub event_id: Uuid,
     /// Category of the hosting group.
@@ -314,6 +316,7 @@ impl From<&EventFull> for EventSummary {
     fn from(event: &EventFull) -> Self {
         EventSummary {
             canceled: event.canceled,
+            community_name: event.community.name.clone(),
             event_id: event.event_id,
             group_category_name: event.group.category.name.clone(),
             group_color: event.group.color.clone(),

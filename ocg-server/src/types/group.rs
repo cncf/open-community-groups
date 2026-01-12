@@ -33,6 +33,8 @@ pub struct GroupSummary {
     /// Color associated with this group, used for visual styling.
     #[serde(default)]
     pub color: String,
+    /// Name of the community this group belongs to.
+    pub community_name: String,
     /// UTC timestamp when the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,

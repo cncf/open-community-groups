@@ -7,6 +7,7 @@ create or replace function get_event_summary(
 returns json as $$
     select json_strip_nulls(json_build_object(
         'canceled', e.canceled,
+        'community_name', c.name,
         'event_id', e.event_id,
         'group_category_name', gc.name,
         'group_name', g.name,
@@ -42,6 +43,7 @@ returns json as $$
     )) as json_data
     from event e
     join "group" g using (group_id)
+    join community c on c.community_id = g.community_id
     join group_category gc on g.group_category_id = gc.group_category_id
     left join meeting m_event on m_event.event_id = e.event_id
     left join (

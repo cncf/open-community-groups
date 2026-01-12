@@ -100,6 +100,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704362400,
             "group_id": "00000000-0000-0000-0000-000000000034",
             "name": "Tech Innovators",
@@ -125,6 +126,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704276000,
             "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Kubernetes Meetup",
@@ -150,6 +152,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704189600,
             "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Docker Users",
@@ -175,6 +178,7 @@ select is(
                 "name": "Business",
                 "normalized_name": "business"
             },
+            "community_name": "test-community",
             "created_at": 1704103200,
             "group_id": "00000000-0000-0000-0000-000000000033",
             "name": "Business Leaders",
@@ -218,6 +222,7 @@ select is(
                 "name": "Business",
                 "normalized_name": "business"
             },
+            "community_name": "test-community",
             "created_at": 1704103200,
             "group_id": "00000000-0000-0000-0000-000000000033",
             "name": "Business Leaders",
@@ -247,6 +252,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704362400,
             "group_id": "00000000-0000-0000-0000-000000000034",
             "name": "Tech Innovators",
@@ -272,6 +278,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704276000,
             "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Kubernetes Meetup",
@@ -297,6 +304,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704189600,
             "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Docker Users",
@@ -332,6 +340,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704189600,
             "group_id": "00000000-0000-0000-0000-000000000032",
             "name": "Docker Users",
@@ -372,6 +381,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704362400,
             "group_id": "00000000-0000-0000-0000-000000000034",
             "name": "Tech Innovators",
@@ -407,6 +417,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "test-community",
             "created_at": 1704276000,
             "group_id": "00000000-0000-0000-0000-000000000031",
             "name": "Kubernetes Meetup",

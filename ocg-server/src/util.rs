@@ -289,6 +289,7 @@ mod tests {
     fn sample_event(canceled: bool) -> EventSummary {
         EventSummary {
             canceled,
+            community_name: "test-community".to_string(),
             event_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
             group_category_name: "Community".to_string(),
             group_color: "#ff4081".to_string(),

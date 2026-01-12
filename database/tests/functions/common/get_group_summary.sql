@@ -139,6 +139,7 @@ select is(
             "name": "Technology",
             "normalized_name": "technology"
         },
+        "community_name": "cloud-native-seattle",
         "created_at": 1705312800,
         "group_id": "00000000-0000-0000-0000-000000000021",
         "name": "Seattle Kubernetes Meetup",

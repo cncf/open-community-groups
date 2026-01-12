@@ -487,6 +487,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_name": "cloud-native-seattle",
             "group_id": "00000000-0000-0000-0000-000000000021",
             "latitude": 40.73061,
             "longitude": -73.935242,
