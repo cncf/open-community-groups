@@ -76,7 +76,7 @@ mock! {
         async fn get_community_full(
             &self,
             community_id: Uuid,
-        ) -> Result<crate::types::community::Community>;
+        ) -> Result<crate::types::community::CommunityFull>;
         async fn get_event_full(
             &self,
             community_id: Uuid,

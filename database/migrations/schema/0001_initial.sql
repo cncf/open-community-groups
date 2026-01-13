@@ -45,49 +45,6 @@ create table site (
 );
 
 -- =============================================================================
--- COMMUNITY TABLES
--- =============================================================================
-
--- Site layout configurations for communities.
-create table community_site_layout (
-    community_site_layout_id text primary key
-);
-
-insert into community_site_layout values ('default');
-
--- Central community table - each community has its own groups and events.
-create table community (
-    community_id uuid primary key default gen_random_uuid(),
-    active boolean default true not null,
-    banner_url text not null check (btrim(banner_url) <> ''),
-    community_site_layout_id text not null references community_site_layout default 'default',
-    created_at timestamptz default current_timestamp not null,
-    description text not null check (btrim(description) <> ''),
-    display_name text not null unique check (btrim(display_name) <> ''),
-    logo_url text not null check (btrim(logo_url) <> ''),
-    name text not null unique check (btrim(name) <> ''),
-
-    ad_banner_link_url text check (btrim(ad_banner_link_url) <> ''),
-    ad_banner_url text check (btrim(ad_banner_url) <> ''),
-    extra_links jsonb,
-    facebook_url text check (btrim(facebook_url) <> ''),
-    flickr_url text check (btrim(flickr_url) <> ''),
-    github_url text check (btrim(github_url) <> ''),
-    instagram_url text check (btrim(instagram_url) <> ''),
-    linkedin_url text check (btrim(linkedin_url) <> ''),
-    new_group_details text check (btrim(new_group_details) <> ''),
-    og_image_url text check (btrim(og_image_url) <> ''),
-    photos_urls text[],
-    slack_url text check (btrim(slack_url) <> ''),
-    twitter_url text check (btrim(twitter_url) <> ''),
-    website_url text check (btrim(website_url) <> ''),
-    wechat_url text check (btrim(wechat_url) <> ''),
-    youtube_url text check (btrim(youtube_url) <> '')
-);
-
-create index community_community_site_layout_id_idx on community (community_site_layout_id);
-
--- =============================================================================
 -- USER TABLES
 -- =============================================================================
 
@@ -120,6 +77,49 @@ create table "user" (
 create index user_username_lower_idx on "user" (lower(username));
 create index user_name_lower_idx on "user" (lower(name));
 create index user_email_lower_idx on "user" (lower(email));
+
+-- =============================================================================
+-- COMMUNITY TABLES
+-- =============================================================================
+
+-- Site layout configurations for communities.
+create table community_site_layout (
+    community_site_layout_id text primary key
+);
+
+insert into community_site_layout values ('default');
+
+-- Communities table.
+create table community (
+    community_id uuid primary key default gen_random_uuid(),
+    active boolean default true not null,
+    banner_url text not null check (btrim(banner_url) <> ''),
+    community_site_layout_id text not null references community_site_layout default 'default',
+    created_at timestamptz default current_timestamp not null,
+    description text not null check (btrim(description) <> ''),
+    display_name text not null unique check (btrim(display_name) <> ''),
+    logo_url text not null check (btrim(logo_url) <> ''),
+    name text not null unique check (btrim(name) <> ''),
+
+    ad_banner_link_url text check (btrim(ad_banner_link_url) <> ''),
+    ad_banner_url text check (btrim(ad_banner_url) <> ''),
+    extra_links jsonb,
+    facebook_url text check (btrim(facebook_url) <> ''),
+    flickr_url text check (btrim(flickr_url) <> ''),
+    github_url text check (btrim(github_url) <> ''),
+    instagram_url text check (btrim(instagram_url) <> ''),
+    linkedin_url text check (btrim(linkedin_url) <> ''),
+    new_group_details text check (btrim(new_group_details) <> ''),
+    og_image_url text check (btrim(og_image_url) <> ''),
+    photos_urls text[],
+    slack_url text check (btrim(slack_url) <> ''),
+    twitter_url text check (btrim(twitter_url) <> ''),
+    website_url text check (btrim(website_url) <> ''),
+    wechat_url text check (btrim(wechat_url) <> ''),
+    youtube_url text check (btrim(youtube_url) <> '')
+);
+
+create index community_community_site_layout_id_idx on community (community_site_layout_id);
 
 -- Community team members.
 create table community_team (
@@ -259,6 +259,19 @@ create table group_role (
 
 insert into group_role values ('organizer', 'Organizer');
 
+-- Sponsors supporting groups with different sponsorship levels.
+create table group_sponsor (
+    group_sponsor_id uuid primary key default gen_random_uuid(),
+    created_at timestamptz default current_timestamp not null,
+    group_id uuid not null references "group",
+    logo_url text not null check (btrim(logo_url) <> ''),
+    name text not null check (btrim(name) <> ''),
+
+    website_url text check (btrim(website_url) <> '')
+);
+
+create index group_sponsor_group_id_idx on group_sponsor (group_id);
+
 -- Group managing team.
 create table group_team (
     group_id uuid not null references "group",
@@ -275,19 +288,6 @@ create table group_team (
 create index group_team_group_id_idx on group_team (group_id);
 create index group_team_user_id_idx on group_team (user_id);
 create index group_team_role_idx on group_team (role);
-
--- Sponsors supporting groups with different sponsorship levels.
-create table group_sponsor (
-    group_sponsor_id uuid primary key default gen_random_uuid(),
-    created_at timestamptz default current_timestamp not null,
-    group_id uuid not null references "group",
-    logo_url text not null check (btrim(logo_url) <> ''),
-    name text not null check (btrim(name) <> ''),
-
-    website_url text check (btrim(website_url) <> '')
-);
-
-create index group_sponsor_group_id_idx on group_sponsor (group_id);
 
 -- =============================================================================
 -- EVENT TABLES

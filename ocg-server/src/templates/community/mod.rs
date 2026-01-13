@@ -11,7 +11,7 @@ use tracing::instrument;
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
-        community::Community,
+        community::CommunityFull,
         event::{EventKind, EventSummary},
         group::GroupSummary,
         site::SiteSettings,
@@ -25,7 +25,7 @@ use crate::{
 #[template(path = "community/page.html")]
 pub(crate) struct Page {
     /// Community information.
-    pub community: Option<Community>,
+    pub community: Option<CommunityFull>,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.

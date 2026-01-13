@@ -1,6 +1,5 @@
 -- Returns the filters options used in the explore page. When a community_id is
--- provided, community-specific filters (event_category, group_category, region)
--- are included. When NULL, only the distance filter is returned.
+-- provided, community-specific filters are included.
 create or replace function get_filters_options(p_community_id uuid default null)
 returns json as $$
     select json_strip_nulls(json_build_object(

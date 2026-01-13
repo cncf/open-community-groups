@@ -45,7 +45,7 @@ use crate::{
         },
     },
     types::{
-        community::{Community, CommunitySummary},
+        community::{CommunityFull, CommunitySummary},
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
             GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
@@ -110,8 +110,8 @@ pub(crate) fn sample_bbox() -> BBox {
 }
 
 /// Sample community used across tests.
-pub(crate) fn sample_community(community_id: Uuid) -> Community {
-    Community {
+pub(crate) fn sample_community(community_id: Uuid) -> CommunityFull {
+    CommunityFull {
         active: true,
         banner_url: "https://example.test/banner.png".to_string(),
         community_id,

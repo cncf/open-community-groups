@@ -7,10 +7,10 @@ use uuid::Uuid;
 
 // Community types.
 
-/// Community information used in some community pages.
+/// Full community information.
 #[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Community {
+pub struct CommunityFull {
     /// Whether the community is active.
     pub active: bool,
     /// URL to the community banner image.

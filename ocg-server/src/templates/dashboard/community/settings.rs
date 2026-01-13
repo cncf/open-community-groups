@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 use crate::{
-    types::community::Community,
+    types::community::CommunityFull,
     validation::{
         MAX_LEN_L, MAX_LEN_M, MAX_LEN_XL, hex_color, image_url, image_url_opt, image_url_vec,
         trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
@@ -22,7 +22,7 @@ use crate::{
 #[template(path = "dashboard/community/settings_update.html")]
 pub(crate) struct UpdatePage {
     /// Community information.
-    pub community: Community,
+    pub community: CommunityFull,
 }
 
 // Types.
