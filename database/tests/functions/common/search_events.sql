@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -206,6 +206,32 @@ select is(
     (select total from search_events(jsonb_build_object('community', jsonb_build_array('non-existent-community')))),
     0::bigint,
     'Should return zero total for non-existing community'
+);
+
+-- Should return all events when community filter is empty array
+select is(
+    (select events from search_events(jsonb_build_object('community', jsonb_build_array())))::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+    ),
+    'Should return all events when community filter is empty array'
+);
+
+-- Should return all events when group filter is empty array
+select is(
+    (select events from search_events(jsonb_build_object('group', jsonb_build_array())))::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+    ),
+    'Should return all events when group filter is empty array'
 );
 
 -- Should filter events by kind

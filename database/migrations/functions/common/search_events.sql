@@ -32,7 +32,7 @@ begin
             4326
         );
     end if;
-    if p_filters ? 'community' then
+    if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
         select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
         from jsonb_array_elements_text(p_filters->'community') e
         join community c on c.name = e;
@@ -41,7 +41,7 @@ begin
         select array_agg(lower(e::text)) into v_event_category
         from jsonb_array_elements_text(p_filters->'event_category') e;
     end if;
-    if p_filters ? 'group' then
+    if p_filters ? 'group' and jsonb_array_length(p_filters->'group') > 0 then
         select coalesce(array_agg(g.group_id), array[]::uuid[]) into v_group_ids
         from jsonb_array_elements_text(p_filters->'group') e
         join "group" g on g.slug = e;

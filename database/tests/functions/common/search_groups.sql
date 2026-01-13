@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -143,6 +143,19 @@ select is(
     (select total from search_groups(jsonb_build_object('community', jsonb_build_array('non-existent-community')))),
     0::bigint,
     'Should return zero total for non-existing community'
+);
+
+-- Should return all groups when community filter is empty array
+select is(
+    (select groups from search_groups(jsonb_build_object('community', jsonb_build_array())))::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+    ),
+    'Should return all groups when community filter is empty array'
 );
 
 -- Should filter groups by category

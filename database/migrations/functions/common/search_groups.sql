@@ -23,7 +23,7 @@ begin
             4326
         );
     end if;
-    if p_filters ? 'community' then
+    if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
         select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
         from jsonb_array_elements_text(p_filters->'community') e
         join community c on c.name = e;
