@@ -11,6 +11,7 @@ import {
   createStackedMonthlyChart,
   createStackedAreaChart,
   loadEChartsScript,
+  deferUntilHtmxSettled,
   hasChartData,
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
@@ -523,7 +524,9 @@ export const initAnalyticsCharts = async (stats) => {
     return;
   }
 
-  await loadEChartsScript();
-  const palette = getThemePalette();
-  setupAnalyticsTabs(stats, palette);
+  return deferUntilHtmxSettled(async () => {
+    await loadEChartsScript();
+    const palette = getThemePalette();
+    setupAnalyticsTabs(stats, palette);
+  });
 };
