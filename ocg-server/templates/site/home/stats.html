@@ -1,0 +1,127 @@
+{# Stats -#}
+{# Desktop -#}
+<div class="hidden lg:flex w-full flex flex-row justify-around items-center border border-stone-200 bg-white rounded-lg p-10 mx-auto my-10">
+  {# Communities stats -#}
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-community"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Communities</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.communities }}</div>
+      </div>
+    </div>
+  </div>
+  {# End communities stats -#}
+
+  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+
+  {# Groups stats -#}
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-groups"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Groups</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.groups }}</div>
+      </div>
+    </div>
+  </div>
+  {# End groups stats -#}
+
+  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+
+  {# Events stats -#}
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-events"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Events</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.events }}</div>
+      </div>
+    </div>
+  </div>
+  {# End events stats -#}
+
+  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+
+  {# Members stats -#}
+  <div>
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-members"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Members</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.groups_members }}</div>
+      </div>
+    </div>
+  </div>
+  {# End members stats -#}
+</div>
+{# End desktop -#}
+
+{# Mobile -#}
+<div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full border border-stone-200 rounded-lg py-6 mx-auto my-6">
+  {# Communities stats -#}
+  <div class="place-self-center w-[130px] -ms-4">
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-communities"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Communities</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.communities }}</div>
+      </div>
+    </div>
+  </div>
+  {# End communities stats -#}
+
+  {# Groups stats -#}
+  <div class="place-self-center w-[130px]">
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-groups"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Groups</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.groups }}</div>
+      </div>
+    </div>
+  </div>
+  {# End groups stats -#}
+
+  {# Events stats -#}
+  <div class="place-self-center w-[130px] -ms-4">
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-events"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Events</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.events }}</div>
+      </div>
+    </div>
+  </div>
+  {# End events stats -#}
+
+  {# Members stats -#}
+  <div class="place-self-center w-[130px]">
+    <div class="flex items-center justify-center">
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-members"></div>
+      </div>
+      <div class="ms-3 md:ms-5">
+        <div class="text-xs text-stone-500 font-medium uppercase">Members</div>
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ stats.groups_members }}</div>
+      </div>
+    </div>
+  </div>
+  {# End members stats -#}
+</div>
+{# End mobile -#}
+{# End stats -#}

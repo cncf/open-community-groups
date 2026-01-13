@@ -1,6 +1,7 @@
 {% extends "common/base.html" -%}
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/search.html" as search -%}
+{% import "macros/ui.html" as ui -%}
 
 {% block jumbotron -%}
   {# Jumbotron -#}
@@ -64,40 +65,16 @@
 {% block content -%}
   {# Main content -#}
   <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-10">
-    {# Stats -#}
-    <div class="grid grid-cols-2 gap-6 md:grid-cols-4 pb-10 xl:pb-16">
-      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
-        <span class="text-3xl font-bold text-primary-600">{{ stats.communities }}</span>
-        <span class="text-sm text-stone-600 mt-1">Communities</span>
-      </div>
-      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
-        <span class="text-3xl font-bold text-primary-600">{{ stats.groups }}</span>
-        <span class="text-sm text-stone-600 mt-1">Groups</span>
-      </div>
-      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
-        <span class="text-3xl font-bold text-primary-600">{{ stats.events }}</span>
-        <span class="text-sm text-stone-600 mt-1">Events</span>
-      </div>
-      <div class="flex flex-col items-center p-4 bg-white rounded-lg shadow-sm border border-stone-100">
-        <span class="text-3xl font-bold text-primary-600">{{ stats.groups_members }}</span>
-        <span class="text-sm text-stone-600 mt-1">Members</span>
-      </div>
-    </div>
-    {# End stats -#}
-
     {# Communities list -#}
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 mb-6">Communities</div>
     {% if communities.len() > 0 -%}
-      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div class="flex flex-col gap-6">
         {% for community in communities -%}
           <a href="/{{ community.name }}"
-             class="block p-6 bg-white rounded-lg shadow-sm border border-stone-100 hover:shadow-md transition-shadow">
-            <div class="flex items-center gap-4">
-              <img class="w-12 h-12 object-contain"
-                   src="{{ community.logo_url }}"
-                   alt="{{ community.display_name }} logo" />
-              <h3 class="font-semibold text-lg">{{ community.display_name }}</h3>
-            </div>
+             class="block h-24 bg-white rounded-lg shadow-sm border border-stone-100 hover:shadow-md transition-shadow overflow-hidden">
+            <img class="w-full h-full object-cover"
+                 src="{{ community.banner_url }}"
+                 alt="{{ community.display_name }} banner" />
           </a>
         {% endfor -%}
       </div>
@@ -106,6 +83,54 @@
             content = "Communities are being set up, check back soon.") -}}
     {% endif -%}
     {# End communities list -#}
+
+    {# Stats -#}
+    {% include "site/home/stats.html" %}
+    {# End stats -#}
+
+    {# Events -#}
+    <div class="pt-3 xl:pt-8">
+      {# Events in-person -#}
+      {{ ui::events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind=in-person", events = upcoming_in_person_events) -}}
+      {# End events in-person -#}
+
+      {# Events online -#}
+      {{ ui::events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind=virtual", events = upcoming_virtual_events) -}}
+      {# End events online -#}
+
+      {# Latest groups added -#}
+      <div class="flex items-center justify-between mb-2 md:mb-6">
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
+        {# See all groups on desktop -#}
+        <div class="hidden justify-self-end md:flex">
+          <a href="/explore?entity=groups" class="btn-secondary-anchor ms-4">See all groups</a>
+        </div>
+        {# End see all groups on desktop -#}
+      </div>
+      <div class="mt-5 mb-3 lg:mt-10 lg:mb-10">
+        {# Groups cards -#}
+        {% if recently_added_groups.len() > 0 -%}
+          <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+            {% for group in recently_added_groups -%}
+              {% if loop.index0 < 8 -%}
+                {{ group|safe }}
+              {% endif -%}
+            {% endfor -%}
+          </div>
+        {% else -%}
+          {{ feedback::placeholder(title = "Groups coming soon",
+                    content = "Community organizers are still setting this up, check back soon for new groups.") -}}
+        {% endif -%}
+        {# End groups cards -#}
+        {# See all groups mobile button -#}
+        <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+          <a href="/explore?entity=groups" class="btn-secondary-anchor">See all groups</a>
+        </div>
+        {# End see all groups mobile button -#}
+      </div>
+      {# End latest groups added -#}
+    </div>
+    {# End events -#}
   </div>
   {# End main content -#}
 {% endblock content -%}

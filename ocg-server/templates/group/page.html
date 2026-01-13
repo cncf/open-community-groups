@@ -15,14 +15,6 @@
 {% block content -%}
   {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
 
-  {# Site title -#}
-  <div class="text-center pt-2 xl:pt-5">
-    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
-      {{ site_settings.title }}
-    </h1>
-  </div>
-  {# End site title -#}
-
   {# Breadcrumb -#}
   <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
