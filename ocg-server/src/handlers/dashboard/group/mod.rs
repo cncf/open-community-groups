@@ -43,7 +43,7 @@ pub(crate) async fn select_community(
     let community_groups = groups_by_community
         .iter()
         .find(|c| c.community.community_id == community_id)
-        .ok_or(HandlerError::Forbidden)?;
+        .ok_or_else(|| anyhow::anyhow!("community not found in user's groups (invariant violation)"))?;
 
     // Get the first group (list_user_groups guarantees non-empty groups per community)
     let first_group_id = community_groups
