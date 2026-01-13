@@ -186,7 +186,6 @@ mod tests {
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let update = sample_community_update();
         let expected_display_name = update.display_name.clone();
-        let expected_primary_color = update.primary_color.clone();
         let body = serde_qs::to_string(&update).unwrap();
 
         // Setup database mock
@@ -205,11 +204,7 @@ mod tests {
             .returning(|_, _| Ok(true));
         db.expect_update_community()
             .times(1)
-            .withf(move |cid, update| {
-                *cid == community_id
-                    && update.display_name == expected_display_name
-                    && update.primary_color == expected_primary_color
-            })
+            .withf(move |cid, update| *cid == community_id && update.display_name == expected_display_name)
             .returning(|_, _| Ok(()));
 
         // Setup notifications manager mock

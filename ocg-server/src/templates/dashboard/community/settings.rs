@@ -10,8 +10,8 @@ use serde_with::skip_serializing_none;
 use crate::{
     types::community::CommunityFull,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_XL, hex_color, image_url, image_url_opt, image_url_vec,
-        trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_XL, image_url, image_url_opt, image_url_vec, trimmed_non_empty,
+        trimmed_non_empty_opt, url_map_values,
     },
 };
 
@@ -40,18 +40,12 @@ pub(crate) struct CommunityUpdate {
     /// Human-readable name shown in the UI (e.g., "CNCF").
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub display_name: String,
-    /// URL to the logo image shown in the page header.
+    /// URL to the logo image.
     #[garde(custom(image_url))]
-    pub header_logo_url: String,
+    pub logo_url: String,
     /// Unique identifier used in URLs and database references.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub name: String,
-    /// Primary color for the theme.
-    #[garde(custom(hex_color))]
-    pub primary_color: String,
-    /// Title highlighted in the community site and other pages.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub title: String,
 
     /// Target URL when users click on the advertisement banner.
     #[garde(url, length(max = MAX_LEN_L))]
@@ -59,24 +53,15 @@ pub(crate) struct CommunityUpdate {
     /// URL to the advertisement banner image.
     #[garde(custom(image_url_opt))]
     pub ad_banner_url: Option<String>,
-    /// Copyright text displayed in the footer.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
-    pub copyright_notice: Option<String>,
     /// Additional custom links displayed in the community navigation.
     #[garde(custom(url_map_values))]
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Link to the community's Facebook page.
     #[garde(url, length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
-    /// URL to the small icon displayed in browser tabs and bookmarks.
-    #[garde(custom(image_url_opt))]
-    pub favicon_url: Option<String>,
     /// Link to the community's Flickr photo collection.
     #[garde(url, length(max = MAX_LEN_L))]
     pub flickr_url: Option<String>,
-    /// URL to the logo image shown in the page footer.
-    #[garde(custom(image_url_opt))]
-    pub footer_logo_url: Option<String>,
     /// Link to the community's GitHub organization or repository.
     #[garde(url, length(max = MAX_LEN_L))]
     pub github_url: Option<String>,
@@ -89,9 +74,6 @@ pub(crate) struct CommunityUpdate {
     /// Instructions for creating new groups.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_XL))]
     pub new_group_details: Option<String>,
-    /// URL to the Open Graph image used for link previews.
-    #[garde(url, length(max = MAX_LEN_L))]
-    pub og_image_url: Option<String>,
     /// Collection of photo URLs for community galleries or slideshows.
     #[garde(custom(image_url_vec))]
     pub photos_urls: Option<Vec<String>>,
