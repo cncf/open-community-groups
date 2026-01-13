@@ -119,9 +119,16 @@ pub(crate) async fn events_results_section(
 /// Prepares the events section template.
 #[instrument(skip(db), err)]
 async fn prepare_events_section(db: &DynDB, filters: &EventsFilters) -> Result<explore::EventsSection> {
+    // Pass community_id to get_filters_options only when exactly one is selected
+    let community_id = if filters.community.len() == 1 {
+        Some(filters.community[0])
+    } else {
+        None
+    };
+
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(None),
+        db.get_filters_options(community_id),
         prepare_events_result_section(db, filters)
     )?;
     let template = explore::EventsSection {
@@ -209,9 +216,16 @@ pub(crate) async fn groups_results_section(
 /// Prepares groups section template.
 #[instrument(skip(db), err)]
 async fn prepare_groups_section(db: &DynDB, filters: &GroupsFilters) -> Result<explore::GroupsSection> {
+    // Pass community_id to get_filters_options only when exactly one is selected
+    let community_id = if filters.community.len() == 1 {
+        Some(filters.community[0])
+    } else {
+        None
+    };
+
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(None),
+        db.get_filters_options(community_id),
         prepare_groups_result_section(db, filters)
     )?;
     let template = explore::GroupsSection {
@@ -416,6 +430,41 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_events_section_with_single_community() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_filters_options()
+            .times(1)
+            .withf(move |c| c == &Some(community_id))
+            .returning(|_| Ok(sample_filters_options()));
+        db.expect_search_events()
+            .times(1)
+            .returning(move |_| Ok(sample_search_events_output(event_id)));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/explore/events-section?community[0]={community_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_groups_results_section_success() {
         // Setup identifiers and data structures
         let group_id = Uuid::new_v4();
@@ -502,6 +551,41 @@ mod tests {
             parts.headers.get("HX-Push-Url").unwrap().to_str().unwrap(),
             expected_groups_push_url(&raw_query)
         );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_groups_section_with_single_community() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_filters_options()
+            .times(1)
+            .withf(move |c| c == &Some(community_id))
+            .returning(|_| Ok(sample_filters_options()));
+        db.expect_search_groups()
+            .times(1)
+            .returning(move |_| Ok(sample_search_groups_output(group_id)));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/explore/groups-section?community[0]={community_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
         assert!(!bytes.is_empty());
     }
 
