@@ -513,6 +513,7 @@ mock! {
         async fn get_filters_options(
             &self,
             community_name: Option<String>,
+            entity: Option<crate::templates::site::explore::Entity>,
         ) -> Result<crate::templates::site::explore::FiltersOptions>;
         async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
         async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;

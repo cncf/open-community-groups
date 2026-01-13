@@ -128,7 +128,7 @@ async fn prepare_events_section(db: &DynDB, filters: &EventsFilters) -> Result<e
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name),
+        db.get_filters_options(community_name, Some(explore::Entity::Events)),
         prepare_events_result_section(db, filters)
     )?;
     let template = explore::EventsSection {
@@ -225,7 +225,7 @@ async fn prepare_groups_section(db: &DynDB, filters: &GroupsFilters) -> Result<e
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name),
+        db.get_filters_options(community_name, Some(explore::Entity::Groups)),
         prepare_groups_result_section(db, filters)
     )?;
     let template = explore::GroupsSection {
@@ -391,8 +391,8 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_filters_options()
             .times(1)
-            .withf(Option::is_none)
-            .returning(|_| Ok(sample_filters_options()));
+            .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Events))
+            .returning(|_, _| Ok(sample_filters_options()));
         db.expect_search_events()
             .times(1)
             .returning(move |_| Ok(sample_search_events_output(event_id)));
@@ -438,8 +438,8 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_filters_options()
             .times(1)
-            .withf(move |c| c == &Some("test-community".to_string()))
-            .returning(|_| Ok(sample_filters_options()));
+            .withf(|c, e| c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Events))
+            .returning(|_, _| Ok(sample_filters_options()));
         db.expect_search_events()
             .times(1)
             .returning(move |_| Ok(sample_search_events_output(event_id)));
@@ -515,8 +515,8 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_filters_options()
             .times(1)
-            .withf(Option::is_none)
-            .returning(|_| Ok(sample_filters_options()));
+            .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Groups))
+            .returning(|_, _| Ok(sample_filters_options()));
         db.expect_search_groups()
             .times(1)
             .returning(move |_| Ok(sample_search_groups_output(group_id)));
@@ -562,8 +562,8 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_filters_options()
             .times(1)
-            .withf(move |c| c == &Some("test-community".to_string()))
-            .returning(|_| Ok(sample_filters_options()));
+            .withf(|c, e| c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Groups))
+            .returning(|_, _| Ok(sample_filters_options()));
         db.expect_search_groups()
             .times(1)
             .returning(move |_| Ok(sample_search_groups_output(group_id)));
@@ -680,8 +680,8 @@ mod tests {
             .returning(|| Ok(sample_site_settings()));
         db.expect_get_filters_options()
             .times(1)
-            .withf(Option::is_none)
-            .returning(|_| Ok(sample_filters_options()));
+            .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Events))
+            .returning(|_, _| Ok(sample_filters_options()));
         db.expect_search_events()
             .times(1)
             .returning(move |_| Ok(sample_search_events_output(event_id)));
@@ -725,8 +725,8 @@ mod tests {
             .returning(|| Ok(sample_site_settings()));
         db.expect_get_filters_options()
             .times(1)
-            .withf(Option::is_none)
-            .returning(|_| Ok(sample_filters_options()));
+            .withf(|c, e| c.is_none() && e == &Some(explore::Entity::Groups))
+            .returning(|_, _| Ok(sample_filters_options()));
         db.expect_search_groups()
             .times(1)
             .returning(move |_| Ok(sample_search_groups_output(group_id)));

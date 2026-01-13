@@ -1,13 +1,18 @@
 -- Returns the filters options used in the explore page. When a community name
--- is provided, community-specific filters are included.
-create or replace function get_filters_options(p_community_name text default null)
+-- is provided, community-specific filters are included. When the entity kind
+-- is 'events' and a community name is provided, groups are also included.
+create or replace function get_filters_options(
+    p_community_name text default null,
+    p_entity_kind text default null
+)
 returns json as $$
     select json_strip_nulls(json_build_object(
         -- Global filters
         'communities', (
-            select coalesce(json_agg(
-                get_community_summary(community_id) order by display_name
-            ), '[]')
+            select coalesce(json_agg(json_build_object(
+                'name', display_name,
+                'value', name
+            ) order by display_name), '[]')
             from community
             where active = true
         ),
@@ -60,6 +65,20 @@ returns json as $$
                 where c.name = p_community_name
                 order by gc."order" asc nulls last
             ) as group_categories
+        ) end,
+        'groups', case when p_community_name is not null and p_entity_kind = 'events' then (
+            select coalesce(json_agg(json_build_object(
+                'name', name,
+                'value', slug
+            )), '[]')
+            from (
+                select g.name, g.slug
+                from "group" g
+                join community c using (community_id)
+                where c.name = p_community_name
+                and g.active = true
+                order by g.name
+            ) as groups
         ) end,
         'region', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
