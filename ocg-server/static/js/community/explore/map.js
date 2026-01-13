@@ -268,9 +268,9 @@ export class Map {
       marker.on("click", () => {
         let url;
         if (this.entity === "events") {
-          url = `/group/${item.group_slug}/event/${item.slug}`;
+          url = `/${item.community_name}/group/${item.group_slug}/event/${item.slug}`;
         } else if (this.entity === "groups") {
-          url = `/group/${item.slug}`;
+          url = `/${item.community_name}/group/${item.slug}`;
         }
         navigateWithHtmx(url);
       });

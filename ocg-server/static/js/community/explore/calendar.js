@@ -64,7 +64,7 @@ export class Calendar {
       eventClick: (info) => {
         const event = info.event.extendedProps.event;
         if (event.group_slug && event.slug) {
-          navigateWithHtmx(`/group/${event.group_slug}/event/${event.slug}`);
+          navigateWithHtmx(`/${event.community_name}/group/${event.group_slug}/event/${event.slug}`);
         }
       },
 

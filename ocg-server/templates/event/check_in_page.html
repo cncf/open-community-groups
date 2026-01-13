@@ -157,13 +157,13 @@
               </button>
             </form>
             <a id="view-event-details-button"
-               href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+               href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
                class="btn-primary-outline-anchor w-1/2 justify-center relative hidden"
                hx-boost="true"
                hx-target="body">View event details</a>
           {% else %}
             <a id="view-event-details-button"
-               href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+               href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
                class="btn-primary-outline-anchor w-1/2 justify-center relative"
                hx-boost="true"
                hx-target="body">View event details</a>

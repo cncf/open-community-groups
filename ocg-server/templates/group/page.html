@@ -24,7 +24,7 @@
   {# End site title -#}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
@@ -130,7 +130,7 @@
                                 {{ starts_at.with_timezone(next_event_card.event.timezone).format("%I:%M %p %Z") }}
                               </div>
                               <div class="flex justify-end">
-                                <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
+                                <a href="/{{ group.community.name }}/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
                                    class="btn-secondary-anchor btn-mini ml-auto"
                                    hx-boost="true"
                                    hx-target="body">See details</a>
@@ -147,7 +147,7 @@
                             {{ next_event_card.event.name|demoji }}
                           </div>
                           <div class="flex items-center justify-end mt-1.5 w-full">
-                            <a href="/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
+                            <a href="/{{ group.community.name }}/group/{{ next_event_card.event.group_slug }}/event/{{ next_event_card.event.slug }}"
                                class="btn-secondary-anchor btn-mini ml-auto"
                                hx-boost="true"
                                hx-target="body">See details</a>

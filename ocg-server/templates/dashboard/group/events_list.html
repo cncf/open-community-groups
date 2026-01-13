@@ -189,7 +189,7 @@
                   {# View event button -#}
                   <div>
                     {% if event.published && !event.canceled -%}
-                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                      <a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
                          class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"
@@ -413,7 +413,7 @@
                   {# View event button -#}
                   <div>
                     {% if event.published && !event.canceled -%}
-                      <a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+                      <a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
                          class="btn-tertiary p-2 inline-flex items-center justify-center"

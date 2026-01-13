@@ -2,7 +2,7 @@
 {% import "macros/badges.html" as badges -%}
 
 {# Event card -#}
-<a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+<a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
    hx-boost="true"
    hx-target="body"
    class="group select-none cursor-pointer h-full">
