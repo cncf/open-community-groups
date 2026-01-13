@@ -66,13 +66,13 @@ begin
         from "group" g
         join group_category gc using (group_category_id)
         left join region r using (region_id)
-        where
-            case when cardinality(v_community_ids) > 0 then
-            g.community_id = any(v_community_ids) else true end
-        and g.active = true
+        where g.active = true
         and
             case when v_bbox is not null then
             st_intersects(g.location, v_bbox) else true end
+        and
+            case when cardinality(v_community_ids) > 0 then
+            g.community_id = any(v_community_ids) else true end
         and
             case when cardinality(v_group_category) > 0 then
             gc.normalized_name = any(v_group_category) else true end

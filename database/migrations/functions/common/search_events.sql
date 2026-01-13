@@ -89,15 +89,15 @@ begin
         join group_category gc using (group_category_id)
         join event_category ec using (event_category_id)
         left join region r using (region_id)
-        where
-            case when cardinality(v_community_ids) > 0 then
-            g.community_id = any(v_community_ids) else true end
-        and g.active = true
+        where g.active = true
         and e.published = true
         and e.canceled = false
         and
             case when v_bbox is not null then
             st_intersects(coalesce(e.location, g.location), v_bbox) else true end
+        and
+            case when cardinality(v_community_ids) > 0 then
+            g.community_id = any(v_community_ids) else true end
         and
             case when cardinality(v_event_category) > 0 then
             ec.slug = any(v_event_category) else true end

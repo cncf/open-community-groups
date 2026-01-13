@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,11 +11,14 @@ select plan(9);
 
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
+\set category3ID '00000000-0000-0000-0000-000000000013'
 \set community1ID '00000000-0000-0000-0000-000000000001'
+\set community2ID '00000000-0000-0000-0000-000000000002'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
+\set group5ID '00000000-0000-0000-0000-000000000035'
 \set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 
@@ -31,20 +34,30 @@ insert into community (
     description,
     logo_url,
     banner_url
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    'https://example.com/banner.png'
-);
+) values
+    (
+        :'community1ID',
+        'test-community',
+        'Test Community',
+        'A test community',
+        'https://example.com/logo.png',
+        'https://example.com/banner.png'
+    ),
+    (
+        :'community2ID',
+        'other-community',
+        'Other Community',
+        'Another test community',
+        'https://example.com/logo2.png',
+        'https://example.com/banner2.png'
+    );
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
 values
     (:'category1ID', 'Technology', :'community1ID'),
-    (:'category2ID', 'Business', :'community1ID');
+    (:'category2ID', 'Business', :'community1ID'),
+    (:'category3ID', 'Technology', :'community2ID');
 
 -- Region
 insert into region (region_id, name, community_id)
@@ -83,7 +96,11 @@ insert into "group" (
     (:'group4ID', 'Tech Innovators', 'jkl2def', :'community1ID', :'category1ID',
      array['innovation', 'tech'], 'Austin', 'TX', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group.',
-     'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00');
+     'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00'),
+    (:'group5ID', 'Python Developers', 'mno3ghi', :'community2ID', :'category3ID',
+     array['python', 'programming'], 'Chicago', 'IL', 'US', 'United States', null,
+     ST_GeogFromText('POINT(-87.6298 41.8781)'), 'Chicago Python community meetup',
+     'https://example.com/python-logo.png', '2024-01-05 10:00:00+00');
 
 -- ============================================================================
 -- TESTS
@@ -91,108 +108,27 @@ insert into "group" (
 
 -- Should return all active groups without filters
 select is(
-    (select groups from search_groups(jsonb_build_object('community', jsonb_build_array(:'community1ID'))))::jsonb,
-    '[
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704362400,
-            "group_id": "00000000-0000-0000-0000-000000000034",
-            "name": "Tech Innovators",
-            "slug": "jkl2def",
-            "city": "Austin",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "This is a placeholder group.",
-            "latitude": 30.2672,
-            "logo_url": "https://example.com/tech-logo.png",
-            "longitude": -97.7431,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "TX"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704276000,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "name": "Kubernetes Meetup",
-            "slug": "abc1234",
-            "city": "San Francisco",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "SF Bay Area Kubernetes enthusiasts",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/k8s-logo.png",
-            "longitude": -122.4194,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "CA"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704189600,
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "name": "Docker Users",
-            "slug": "def5678",
-            "city": "New York",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "NYC Docker community meetup group",
-            "latitude": 40.7128,
-            "logo_url": "https://example.com/docker-logo.png",
-            "longitude": -74.006,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "NY"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000012",
-                "name": "Business",
-                "normalized_name": "business"
-            },
-            "community_name": "test-community",
-            "created_at": 1704103200,
-            "group_id": "00000000-0000-0000-0000-000000000033",
-            "name": "Business Leaders",
-            "slug": "ghi9abc",
-            "city": "London",
-            "country_code": "GB",
-            "country_name": "United Kingdom",
-            "description_short": "London business leadership forum",
-            "latitude": 51.5074,
-            "logo_url": "https://example.com/business-logo.png",
-            "longitude": -0.1278
-        }
-    ]'::jsonb,
+    (select groups from search_groups('{}'::jsonb))::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+    ),
     'Should return all active groups without filters'
+);
+
+-- Should filter groups by community
+select is(
+    (select groups from search_groups(jsonb_build_object('community', jsonb_build_array(:'community1ID'))))::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+    ),
+    'Should filter groups by community'
 );
 
 -- Should return correct total count
@@ -209,161 +145,42 @@ select is(
     'Should return zero total for non-existing community'
 );
 
--- Category filter should return Business Leaders JSON
+-- Should filter groups by category
 select is(
     (select groups from search_groups(
         jsonb_build_object('community', jsonb_build_array(:'community1ID'), 'group_category', jsonb_build_array('business'))
     ))::jsonb,
-    '[
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000012",
-                "name": "Business",
-                "normalized_name": "business"
-            },
-            "community_name": "test-community",
-            "created_at": 1704103200,
-            "group_id": "00000000-0000-0000-0000-000000000033",
-            "name": "Business Leaders",
-            "slug": "ghi9abc",
-            "city": "London",
-            "country_code": "GB",
-            "country_name": "United Kingdom",
-            "description_short": "London business leadership forum",
-            "latitude": 51.5074,
-            "logo_url": "https://example.com/business-logo.png",
-            "longitude": -0.1278
-        }
-    ]'::jsonb,
-    'Category filter should return expected group JSON'
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+    ),
+    'Should filter groups by category'
 );
 
--- Region filter should return expected groups JSON
+-- Should filter groups by region
 select is(
     (select groups from search_groups(
         jsonb_build_object('community', jsonb_build_array(:'community1ID'), 'region', jsonb_build_array('north-america'))
     ))::jsonb,
-    '[
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704362400,
-            "group_id": "00000000-0000-0000-0000-000000000034",
-            "name": "Tech Innovators",
-            "slug": "jkl2def",
-            "city": "Austin",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "This is a placeholder group.",
-            "latitude": 30.2672,
-            "logo_url": "https://example.com/tech-logo.png",
-            "longitude": -97.7431,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "TX"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704276000,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "name": "Kubernetes Meetup",
-            "slug": "abc1234",
-            "city": "San Francisco",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "SF Bay Area Kubernetes enthusiasts",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/k8s-logo.png",
-            "longitude": -122.4194,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "CA"
-        },
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704189600,
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "name": "Docker Users",
-            "slug": "def5678",
-            "city": "New York",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "NYC Docker community meetup group",
-            "latitude": 40.7128,
-            "logo_url": "https://example.com/docker-logo.png",
-            "longitude": -74.006,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "NY"
-        }
-    ]'::jsonb,
-    'Region filter should return expected groups JSON'
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb
+    ),
+    'Should filter groups by region'
 );
 
--- Text search filter should return Docker Users JSON
+-- Should filter groups by text search query
 select is(
     (select groups from search_groups(
         jsonb_build_object('community', jsonb_build_array(:'community1ID'), 'ts_query', 'Docker')
     ))::jsonb,
-    '[
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704189600,
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "name": "Docker Users",
-            "slug": "def5678",
-            "city": "New York",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "NYC Docker community meetup group",
-            "latitude": 40.7128,
-            "logo_url": "https://example.com/docker-logo.png",
-            "longitude": -74.006,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "NY"
-        }
-    ]'::jsonb,
-    'Text search filter should return expected group JSON'
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb
+    ),
+    'Should filter groups by text search query'
 );
 
--- Distance filter near Austin should return Tech Innovators
+-- Should filter groups by distance
 select is(
     (select groups from search_groups(
         jsonb_build_object(
@@ -372,72 +189,22 @@ select is(
             'longitude', -97.7431,
             'distance', 1000
         )
-     ))::jsonb,
-    '[
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704362400,
-            "group_id": "00000000-0000-0000-0000-000000000034",
-            "name": "Tech Innovators",
-            "slug": "jkl2def",
-            "city": "Austin",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "This is a placeholder group.",
-            "latitude": 30.2672,
-            "logo_url": "https://example.com/tech-logo.png",
-            "longitude": -97.7431,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "TX"
-        }
-    ]'::jsonb,
-    'Distance filter should return expected group JSON'
+    ))::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
+    ),
+    'Should filter groups by distance'
 );
 
--- Pagination should return the second group JSON
+-- Should paginate results correctly
 select is(
     (select groups from search_groups(
         jsonb_build_object('community', jsonb_build_array(:'community1ID'), 'limit', 1, 'offset', 1)
     ))::jsonb,
-    '[
-        {
-            "active": true,
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            },
-            "community_name": "test-community",
-            "created_at": 1704276000,
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "name": "Kubernetes Meetup",
-            "slug": "abc1234",
-            "city": "San Francisco",
-            "country_code": "US",
-            "country_name": "United States",
-            "description_short": "SF Bay Area Kubernetes enthusiasts",
-            "latitude": 37.7749,
-            "logo_url": "https://example.com/k8s-logo.png",
-            "longitude": -122.4194,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "state": "CA"
-        }
-    ]'::jsonb,
-    'Pagination should return expected group JSON'
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb
+    ),
+    'Should paginate results correctly'
 );
 
 -- Include bbox option should return expected bbox
