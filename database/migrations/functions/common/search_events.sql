@@ -41,13 +41,14 @@ begin
         select array_agg(lower(e::text)) into v_event_category
         from jsonb_array_elements_text(p_filters->'event_category') e;
     end if;
+    if p_filters ? 'group' then
+        select coalesce(array_agg(g.group_id), array[]::uuid[]) into v_group_ids
+        from jsonb_array_elements_text(p_filters->'group') e
+        join "group" g on g.slug = e;
+    end if;
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category
         from jsonb_array_elements_text(p_filters->'group_category') e;
-    end if;
-    if p_filters ? 'group' then
-        select array_agg(e::uuid) into v_group_ids
-        from jsonb_array_elements_text(p_filters->'group') e;
     end if;
     if p_filters ? 'kind' then
         select array_agg(e::text) into v_kind

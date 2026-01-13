@@ -280,7 +280,7 @@ select is(
         from search_events(
             jsonb_build_object(
                 'community', jsonb_build_array('test-community'),
-                'group', jsonb_build_array(:'group1ID')
+                'group', jsonb_build_array('test-group')
             )
         )
     )::jsonb,

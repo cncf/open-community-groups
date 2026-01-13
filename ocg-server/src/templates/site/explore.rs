@@ -9,7 +9,6 @@ use minify_html::{Cfg as MinifyCfg, minify};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use tracing::{instrument, trace};
-use uuid::Uuid;
 
 use crate::{
     db::BBox,
@@ -208,10 +207,10 @@ pub(crate) struct EventsFilters {
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
     pub event_category: Vec<String>,
-    /// Selected groups to filter by.
+    /// Selected groups to filter by (slugs).
     #[serde(default)]
-    #[garde(length(max = MAX_ITEMS))]
-    pub group: Vec<Uuid>,
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
+    pub group: Vec<String>,
     /// Selected group categories to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
@@ -284,6 +283,7 @@ impl EventsFilters {
 
         // Clean up entries that are empty strings
         filters.event_category.retain(|c| !c.is_empty());
+        filters.group.retain(|g| !g.is_empty());
         filters.group_category.retain(|c| !c.is_empty());
         filters.region.retain(|r| !r.is_empty());
 
