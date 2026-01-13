@@ -3,6 +3,14 @@
 create or replace function get_filters_options(p_community_id uuid default null)
 returns json as $$
     select json_strip_nulls(json_build_object(
+        -- Global filters
+        'communities', (
+            select coalesce(json_agg(
+                get_community_summary(community_id) order by display_name
+            ), '[]')
+            from community
+            where active = true
+        ),
         'distance', json_build_array(
             json_build_object(
                 'name', '10 km',
@@ -25,6 +33,8 @@ returns json as $$
                 'value', '1000000'
             )
         ),
+
+        -- Community-specific filters
         'event_category', case when p_community_id is not null then (
             select coalesce(json_agg(json_build_object(
                 'name', name,

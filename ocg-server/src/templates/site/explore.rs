@@ -22,6 +22,7 @@ use crate::{
         helpers::{location::extract_location, user_initials},
     },
     types::{
+        community::CommunitySummary,
         event::{EventKind, EventSummary},
         group::GroupSummary,
         site::SiteSettings,
@@ -512,6 +513,8 @@ pub(crate) enum FilterError {
 /// This struct provides the lists of available options for some filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
+    /// Available communities.
+    pub communities: Vec<CommunitySummary>,
     /// Available distance options (e.g., 5km, 10km, 25km).
     pub distance: Vec<FilterOption>,
 
