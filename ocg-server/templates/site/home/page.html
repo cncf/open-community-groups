@@ -64,11 +64,11 @@
 
 {% block content -%}
   {# Main content -#}
-  <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-10">
+  <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-20">
     {# Communities list -#}
     <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 mb-6">Communities</div>
     {% if communities.len() > 0 -%}
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-6 pb-16">
         {% for community in communities -%}
           <a href="/{{ community.name }}"
              class="block h-24 bg-white rounded-lg shadow-sm border border-stone-100 hover:shadow-md transition-shadow overflow-hidden">
