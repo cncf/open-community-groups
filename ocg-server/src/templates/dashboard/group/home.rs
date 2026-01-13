@@ -26,7 +26,7 @@ use crate::{
 pub(crate) struct Page {
     /// Main content section for the page.
     pub content: Content,
-    /// Flattened list of groups for backward compatibility with existing template.
+    /// List of groups the user is a team member of.
     pub groups: Vec<GroupSummary>,
     /// Groups organized by community.
     pub groups_by_community: Vec<UserGroupsByCommunity>,
