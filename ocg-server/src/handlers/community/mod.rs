@@ -47,7 +47,7 @@ pub(crate) async fn page(
     )?;
     let template = community::Page {
         community: Some(community),
-        page_id: PageId::CommunityHome,
+        page_id: PageId::Community,
         path: uri.path().to_string(),
         recently_added_groups: recently_added_groups
             .into_iter()

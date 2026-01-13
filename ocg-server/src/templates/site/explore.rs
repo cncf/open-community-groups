@@ -17,6 +17,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
+        community::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
         filters,
         helpers::{location::extract_location, user_initials},
     },
@@ -32,8 +33,6 @@ use crate::{
 };
 
 use super::pagination::{NavigationLinks, Pagination, ToRawQuery};
-
-use crate::templates::community::{EventCard as HomeEventCard, GroupCard as HomeGroupCard};
 
 // Pages and sections templates.
 

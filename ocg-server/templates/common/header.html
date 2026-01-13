@@ -37,7 +37,7 @@
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end">
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::CommunityHome || page_id == PageId::Group || page_id == PageId::Event -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"

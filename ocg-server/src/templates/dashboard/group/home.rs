@@ -26,8 +26,6 @@ use crate::{
 pub(crate) struct Page {
     /// Main content section for the page.
     pub content: Content,
-    /// List of groups the user is a team member of.
-    pub groups: Vec<GroupSummary>,
     /// Groups organized by community.
     pub groups_by_community: Vec<UserGroupsByCommunity>,
     /// Flash or status messages to display.
@@ -44,6 +42,16 @@ pub(crate) struct Page {
     pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
+}
+
+impl Page {
+    /// Returns groups for the currently selected community.
+    fn selected_community_groups(&self) -> &[GroupSummary] {
+        self.groups_by_community
+            .iter()
+            .find(|c| c.community.community_id == self.selected_community_id)
+            .map_or(&[], |c| c.groups.as_slice())
+    }
 }
 
 /// Content section for the group dashboard home page.

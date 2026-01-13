@@ -33,7 +33,7 @@ pub(crate) mod site;
 pub(crate) enum PageId {
     CheckIn,
     CommunityDashboard,
-    CommunityHome,
+    Community,
     Event,
     Group,
     GroupDashboard,

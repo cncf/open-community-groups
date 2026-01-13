@@ -55,13 +55,6 @@ pub(crate) async fn page(
     let (groups_by_community, site_settings) =
         tokio::try_join!(db.list_user_groups(&user.user_id), db.get_site_settings())?;
 
-    // Filter groups to only show those from the selected community
-    let groups: Vec<_> = groups_by_community
-        .iter()
-        .find(|c| c.community.community_id == community_id)
-        .map(|c| c.groups.clone())
-        .unwrap_or_default();
-
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Analytics => {
@@ -123,7 +116,6 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         content,
-        groups,
         groups_by_community,
         messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
