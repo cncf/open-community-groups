@@ -41,6 +41,7 @@ use crate::{
                 analytics::{GroupAttendeesStats, GroupEventsStats, GroupMembersStats, GroupStats},
                 attendees::Attendee,
                 events::{Event as GroupEventForm, GroupEvents},
+                home::UserGroupsByCommunity,
                 members::GroupMember,
                 settings::GroupUpdate,
                 sponsors::Sponsor,
@@ -54,7 +55,6 @@ use crate::{
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
             GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
-            UserGroupsByCommunity,
         },
         site::{SiteSettings, Theme},
     },

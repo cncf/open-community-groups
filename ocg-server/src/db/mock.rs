@@ -278,7 +278,7 @@ mock! {
         async fn list_user_groups(
             &self,
             user_id: &Uuid,
-        ) -> Result<Vec<crate::types::group::UserGroupsByCommunity>>;
+        ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByCommunity>>;
         async fn publish_event(
             &self,
             group_id: Uuid,

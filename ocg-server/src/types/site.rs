@@ -1,4 +1,4 @@
-//! Site-related types used across the application.
+//! Global site types used across the application.
 
 use std::collections::BTreeMap;
 

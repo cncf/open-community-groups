@@ -17,13 +17,14 @@ use crate::{
         analytics::GroupStats,
         attendees::{Attendee, AttendeesFilters},
         events::{Event, GroupEvents},
+        home::UserGroupsByCommunity,
         members::GroupMember,
         sponsors::Sponsor,
         team::GroupTeamMember,
     },
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
-        group::{GroupRole, GroupRoleSummary, GroupSponsor, UserGroupsByCommunity},
+        group::{GroupRole, GroupRoleSummary, GroupSponsor},
     },
 };
 

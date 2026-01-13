@@ -100,32 +100,6 @@ impl GroupSummary {
     }
 }
 
-/// Groups organized by community, used for displaying user's groups in dashboard.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct UserGroupsByCommunity {
-    /// Community information.
-    pub community: CommunitySummary,
-    /// Groups belonging to this community.
-    pub groups: Vec<GroupSummary>,
-}
-
-impl UserGroupsByCommunity {
-    /// Try to create a vector of `UserGroupsByCommunity` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let mut communities: Vec<Self> = serde_json::from_str(data)?;
-
-        // Apply color to each group summary
-        for community in &mut communities {
-            for group in &mut community.groups {
-                group.color = color(&group.name).to_string();
-            }
-        }
-
-        Ok(communities)
-    }
-}
-
 /// Full group information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
