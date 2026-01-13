@@ -2,11 +2,7 @@
 create or replace function list_user_communities(p_user_id uuid)
 returns json as $$
     select coalesce(json_agg(
-        json_build_object(
-            'community_id', c.community_id,
-            'community_name', c.name,
-            'display_name', c.display_name
-        )
+        get_community_summary(c.community_id)
         order by c.name asc
     ), '[]')
     from community c

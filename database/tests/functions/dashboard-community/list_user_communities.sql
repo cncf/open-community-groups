@@ -61,19 +61,14 @@ insert into community_team (accepted, community_id, user_id) values
 -- Should return communities for user who is team member of multiple communities
 select is(
     list_user_communities(:'user1ID'::uuid)::jsonb,
-    '[
-        {"community_id": "00000000-0000-0000-0000-000000000001", "community_name": "alpha-community", "display_name": "Alpha Community"},
-        {"community_id": "00000000-0000-0000-0000-000000000002", "community_name": "beta-community", "display_name": "Beta Community"}
-    ]'::jsonb,
+    (select json_agg(get_community_summary(community_id) order by name) from community)::jsonb,
     'Should return communities in alphabetical order for user in multiple communities'
 );
 
 -- Should return single community for user who is team member of one community
 select is(
     list_user_communities(:'user2ID'::uuid)::jsonb,
-    '[
-        {"community_id": "00000000-0000-0000-0000-000000000001", "community_name": "alpha-community", "display_name": "Alpha Community"}
-    ]'::jsonb,
+    json_build_array(get_community_summary(:'community1ID'::uuid))::jsonb,
     'Should return single community for user in one community'
 );
 

@@ -16,7 +16,7 @@ use crate::{
         analytics::CommunityStats, groups::Group, settings::CommunityUpdate, team::CommunityTeamMember,
     },
     types::{
-        community::UserCommunitySummary,
+        community::CommunitySummary,
         group::{GroupCategory, GroupRegion},
     },
 };
@@ -55,7 +55,7 @@ pub(crate) trait DBDashboardCommunity {
     async fn list_regions(&self, community_id: Uuid) -> Result<Vec<GroupRegion>>;
 
     /// Lists all communities where the user is a team member.
-    async fn list_user_communities(&self, user_id: &Uuid) -> Result<Vec<UserCommunitySummary>>;
+    async fn list_user_communities(&self, user_id: &Uuid) -> Result<Vec<CommunitySummary>>;
 
     /// Updates a community's settings.
     async fn update_community(&self, community_id: Uuid, community: &CommunityUpdate) -> Result<()>;
@@ -227,14 +227,14 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::list_user_communities`]
     #[instrument(skip(self), err)]
-    async fn list_user_communities(&self, user_id: &Uuid) -> Result<Vec<UserCommunitySummary>> {
+    async fn list_user_communities(&self, user_id: &Uuid) -> Result<Vec<CommunitySummary>> {
         trace!("db: list user communities");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_user_communities($1::uuid)::text", &[&user_id])
             .await?;
-        let communities: Vec<UserCommunitySummary> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let communities: Vec<CommunitySummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(communities)
     }

@@ -13,7 +13,7 @@ use crate::{
         filters,
         helpers::user_initials,
     },
-    types::{community::UserCommunitySummary, site::SiteSettings},
+    types::{community::CommunitySummary, site::SiteSettings},
 };
 
 /// Home page template for the community dashboard.
@@ -22,7 +22,7 @@ use crate::{
 #[template(path = "dashboard/community/home.html")]
 pub(crate) struct Page {
     /// List of communities the user is a team member of.
-    pub communities: Vec<UserCommunitySummary>,
+    pub communities: Vec<CommunitySummary>,
     /// Main content section for the page.
     pub content: Content,
     /// Flash or status messages to display.

@@ -187,7 +187,7 @@ mock! {
         async fn list_user_communities(
             &self,
             user_id: &Uuid,
-        ) -> Result<Vec<crate::types::community::UserCommunitySummary>>;
+        ) -> Result<Vec<crate::types::community::CommunitySummary>>;
         async fn update_community(
             &self,
             community_id: Uuid,
