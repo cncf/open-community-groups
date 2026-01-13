@@ -267,12 +267,10 @@ description = "Community statistics and growth trends.") }}
 {# djlint:off #}
 <script type="module">
   import { initAnalyticsCharts } from '/static/js/dashboard/community/analytics.js';
-  import { loadEChartsScript } from '/static/js/dashboard/common.js';
 
   const stats = {{ stats | json | safe }};
-  loadEChartsScript()
-    .then(() => initAnalyticsCharts(stats))
-    .catch((error) => console.error('Failed to load ECharts:', error));
+  initAnalyticsCharts(stats)
+    .catch((error) => console.error('Failed to initialize analytics charts:', error));
 </script>
 {# djlint:on #}
 {# End initialize charts with server data #}
