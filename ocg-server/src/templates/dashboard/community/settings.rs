@@ -83,7 +83,7 @@ pub(crate) struct CommunityUpdate {
     /// Link to the community's Instagram profile.
     #[garde(url, length(max = MAX_LEN_L))]
     pub instagram_url: Option<String>,
-    /// URL to the jumbotron background image for the community home page.
+    /// URL to the jumbotron background image for the community page.
     #[garde(custom(image_url_opt))]
     pub jumbotron_image_url: Option<String>,
     /// Link to the community's `LinkedIn` page.

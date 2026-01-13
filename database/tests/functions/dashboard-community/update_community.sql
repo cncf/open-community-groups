@@ -82,7 +82,7 @@ select update_community(
 );
 
 select is(
-    (select get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
+    (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
         "banner_url": "https://original.com/community-banner.png",
@@ -123,7 +123,7 @@ select update_community(
 );
 
 select is(
-    (select get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
+    (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
         "ad_banner_link_url": "https://new.com/link",

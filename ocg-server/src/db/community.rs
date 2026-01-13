@@ -17,7 +17,7 @@ use crate::{
 /// Database trait defining all data access operations for the community site.
 #[async_trait]
 pub(crate) trait DBCommunity {
-    /// Retrieves statistical data for the community home page.
+    /// Retrieves statistical data for the community page.
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats>;
 
     /// Resolves a community ID from the provided community name.
@@ -39,7 +39,7 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_site_stats`]
     #[instrument(skip(self), err)]
     async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
-        trace!("db: get community home stats");
+        trace!("db: get community site stats");
 
         let db = self.pool.get().await?;
         let row = db

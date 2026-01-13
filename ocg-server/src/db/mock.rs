@@ -73,7 +73,7 @@ mock! {
 
     #[async_trait]
     impl crate::db::common::DBCommon for DB {
-        async fn get_community(
+        async fn get_community_full(
             &self,
             community_id: Uuid,
         ) -> Result<crate::types::community::Community>;

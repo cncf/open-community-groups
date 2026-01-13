@@ -25,7 +25,7 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBCommon {
     /// Retrieves community information by its unique identifier.
-    async fn get_community(&self, community_id: Uuid) -> Result<Community>;
+    async fn get_community_full(&self, community_id: Uuid) -> Result<Community>;
 
     /// Gets full event details.
     async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull>;
@@ -56,9 +56,9 @@ pub(crate) trait DBCommon {
 
 #[async_trait]
 impl DBCommon for PgDB {
-    /// [`DBCommon::get_community`]
+    /// [`DBCommon::get_community_full`]
     #[instrument(skip(self), err)]
-    async fn get_community(&self, community_id: Uuid) -> Result<Community> {
+    async fn get_community_full(&self, community_id: Uuid) -> Result<Community> {
         #[cfg_attr(
             not(test),
             cached(
@@ -70,10 +70,10 @@ impl DBCommon for PgDB {
             )
         )]
         async fn inner(db: Client, community_id: Uuid) -> Result<Community> {
-            trace!("db: get community");
+            trace!("db: get community full");
 
             let row = db
-                .query_one("select get_community($1::uuid)::text", &[&community_id])
+                .query_one("select get_community_full($1::uuid)::text", &[&community_id])
                 .await?;
             let community: Community = serde_json::from_str(&row.get::<_, String>(0))?;
 

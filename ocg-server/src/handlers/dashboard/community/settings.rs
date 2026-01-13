@@ -27,7 +27,7 @@ pub(crate) async fn update_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let community = db.get_community(community_id).await?;
+    let community = db.get_community_full(community_id).await?;
     let template = settings::UpdatePage { community };
 
     Ok(Html(template.render()?))
@@ -93,7 +93,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(community.clone()));
@@ -150,7 +150,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Err(anyhow!("db error")));

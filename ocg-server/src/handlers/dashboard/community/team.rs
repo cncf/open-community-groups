@@ -58,7 +58,7 @@ pub(crate) async fn add(
 
     // Enqueue invitation email notification
     let (community, site_settings) =
-        tokio::try_join!(db.get_community(community_id), db.get_site_settings())?;
+        tokio::try_join!(db.get_community_full(community_id), db.get_site_settings())?;
     let template_data = CommunityTeamInvitation {
         community_name: community.display_name,
         link: format!(
@@ -278,7 +278,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == new_member_id)
             .returning(move |_, _| Ok(()));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(community_for_db.clone()));

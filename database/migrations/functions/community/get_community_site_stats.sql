@@ -1,4 +1,4 @@
--- Returns some stats for the community home page.
+-- Returns some stats for the community site page.
 create or replace function get_community_site_stats(p_community_id uuid)
 returns json as $$
     select json_build_object(

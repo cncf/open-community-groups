@@ -49,7 +49,7 @@ pub(crate) async fn page(
 
     // Get community, communities and site information
     let (community, communities, site_settings) = tokio::try_join!(
-        db.get_community(community_id),
+        db.get_community_full(community_id),
         db.list_user_communities(&user_id),
         db.get_site_settings()
     )?;
@@ -148,7 +148,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
@@ -223,7 +223,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
@@ -299,7 +299,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
@@ -367,7 +367,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
@@ -435,7 +435,7 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Err(anyhow!("db error")));

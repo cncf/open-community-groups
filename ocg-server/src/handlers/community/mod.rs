@@ -22,7 +22,7 @@ use crate::{
 
 // Pages handlers.
 
-/// Handler that renders the community home page.
+/// Handler that renders the community page.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     State(db): State<DynDB>,
@@ -38,7 +38,7 @@ pub(crate) async fn page(
         upcoming_virtual_events,
         stats,
     ) = tokio::try_join!(
-        db.get_community(community_id),
+        db.get_community_full(community_id),
         db.get_community_recently_added_groups(community_id),
         db.get_site_settings(),
         db.get_community_upcoming_events(community_id, vec![EventKind::InPerson, EventKind::Hybrid]),
@@ -101,7 +101,7 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));
@@ -167,7 +167,7 @@ mod tests {
             .times(1)
             .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
             .returning(move |_| Ok(sample_community(community_id)));

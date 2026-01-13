@@ -91,7 +91,7 @@ insert into community (
 
 -- Should return correct data for community with all fields populated
 select is(
-    get_community(:'community1ID'::uuid)::jsonb - 'community_id' - 'created_at',
+    get_community_full(:'community1ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
         "active": true,
         "ad_banner_link_url": "https://example.com/banner-link",
@@ -121,7 +121,7 @@ select is(
 
 -- Should return correct data for community with only required fields
 select is(
-    get_community(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
+    get_community_full(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
         "active": true,
         "banner_url": "https://portland.cloudnative.org/banner.png",
@@ -136,7 +136,7 @@ select is(
 
 -- Should return null for non-existent ID
 select ok(
-    get_community(:'nonExistentCommunityID'::uuid) is null,
+    get_community_full(:'nonExistentCommunityID'::uuid) is null,
     'Should return null for non-existent ID'
 );
 

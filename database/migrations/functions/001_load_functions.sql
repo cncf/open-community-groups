@@ -6,6 +6,7 @@
 {{ template "auth/verify_email.sql" }}
 
 {{ template "common/generate_slug.sql" }}
+{{ template "common/get_community_full.sql" }}
 {{ template "common/get_community_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_full.sql" }}
@@ -13,8 +14,6 @@
 {{ template "common/get_group_full.sql" }}
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
-
-{{ template "community/get_community.sql" }}
 {{ template "community/get_community_id_by_name.sql" }}
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_site_stats.sql" }}

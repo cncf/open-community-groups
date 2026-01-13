@@ -20,7 +20,7 @@ use crate::{
 
 // Pages and sections templates.
 
-/// Template for the community home page.
+/// Template for the community page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "community/page.html")]
 pub(crate) struct Page {

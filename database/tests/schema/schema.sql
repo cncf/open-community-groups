@@ -859,7 +859,7 @@ select has_function('delete_group');
 select has_function('delete_group_sponsor');
 select has_function('delete_group_team_member');
 select has_function('generate_slug');
-select has_function('get_community');
+select has_function('get_community_full');
 select has_function('get_community_id_by_name');
 select has_function('get_community_recently_added_groups');
 select has_function('get_community_site_stats');
