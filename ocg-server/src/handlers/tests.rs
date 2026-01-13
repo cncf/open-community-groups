@@ -16,7 +16,12 @@ use uuid::Uuid;
 use crate::{
     auth::User as AuthUser,
     config::HttpServerConfig,
-    db::{BBox, DynDB, common::SearchGroupsOutput, dashboard::common::User as DashboardUser, mock::MockDB},
+    db::{
+        BBox, DynDB,
+        common::{SearchEventsOutput, SearchGroupsOutput},
+        dashboard::common::User as DashboardUser,
+        mock::MockDB,
+    },
     handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
@@ -360,6 +365,11 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
     }
 }
 
+/// Sample filters options for explore page tests.
+pub(crate) fn sample_filters_options() -> crate::templates::site::explore::FiltersOptions {
+    crate::templates::site::explore::FiltersOptions::default()
+}
+
 /// Sample group category reused across tests.
 pub(crate) fn sample_group_category() -> GroupCategory {
     GroupCategory {
@@ -535,6 +545,15 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
     }
 }
 
+/// Sample search output for events.
+pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput {
+    SearchEventsOutput {
+        events: vec![sample_event_summary(event_id, Uuid::new_v4())],
+        bbox: Some(sample_bbox()),
+        total: 1,
+    }
+}
+
 /// Sample search output for groups.
 pub(crate) fn sample_search_groups_output(group_id: Uuid) -> SearchGroupsOutput {
     SearchGroupsOutput {
@@ -580,6 +599,11 @@ pub(crate) fn sample_session_record(
         expiry_date: OffsetDateTime::now_utc().saturating_add(TimeDuration::days(1)),
         id: session_id,
     }
+}
+
+/// Sample site home stats for home page tests.
+pub(crate) fn sample_site_home_stats() -> crate::types::site::SiteHomeStats {
+    crate::types::site::SiteHomeStats::default()
 }
 
 /// Sample site settings used across tests.
