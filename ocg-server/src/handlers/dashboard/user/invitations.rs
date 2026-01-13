@@ -7,11 +7,18 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
+use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthSession, db::DynDB, handlers::error::HandlerError, templates::dashboard::user::invitations,
+    auth::AuthSession,
+    db::DynDB,
+    handlers::{
+        auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
+        error::HandlerError,
+    },
+    templates::dashboard::user::invitations,
 };
 
 // Pages handlers.
@@ -45,6 +52,7 @@ pub(crate) async fn list_page(
 pub(crate) async fn accept_community_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
+    session: Session,
     State(db): State<DynDB>,
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -56,6 +64,11 @@ pub(crate) async fn accept_community_team_invitation(
         .await?;
     messages.success("Team invitation accepted.");
 
+    // Select first community and group if none selected
+    if session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?.is_none() {
+        select_first_community_and_group(&db, &session, &user.user_id).await?;
+    }
+
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
@@ -64,6 +77,7 @@ pub(crate) async fn accept_community_team_invitation(
 pub(crate) async fn accept_group_team_invitation(
     auth_session: AuthSession,
     messages: Messages,
+    session: Session,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -73,6 +87,11 @@ pub(crate) async fn accept_group_team_invitation(
     // Mark invitation as accepted
     db.accept_group_team_invitation(group_id, user.user_id).await?;
     messages.success("Team invitation accepted.");
+
+    // Select first community and group if none selected
+    if session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await?.is_none() {
+        select_first_community_and_group(&db, &session, &user.user_id).await?;
+    }
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
@@ -129,8 +148,15 @@ mod tests {
     use tower::ServiceExt;
     use uuid::Uuid;
 
+    use serde_json::json;
+
     use crate::{
-        db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
+        db::mock::MockDB,
+        handlers::{
+            auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+            tests::*,
+        },
+        router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
     };
 
@@ -245,10 +271,12 @@ mod tests {
     async fn test_accept_community_team_invitation_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let groups = sample_user_groups_by_community(community_id, group_id);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -264,10 +292,23 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(()));
+        db.expect_list_user_groups()
+            .times(1)
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(groups.clone()));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
-                record.id == session_id && message_matches(record, "Team invitation accepted.")
+                record.id == session_id
+                    && message_matches(record, "Team invitation accepted.")
+                    && record
+                        .data
+                        .get(SELECTED_COMMUNITY_ID_KEY)
+                        .is_some_and(|value| value == &json!(community_id))
+                    && record
+                        .data
+                        .get(SELECTED_GROUP_ID_KEY)
+                        .is_some_and(|value| value == &json!(group_id))
             })
             .returning(|_| Ok(()));
 
@@ -300,11 +341,13 @@ mod tests {
     #[tokio::test]
     async fn test_accept_group_team_invitation_success() {
         // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let groups = sample_user_groups_by_community(community_id, group_id);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -320,10 +363,23 @@ mod tests {
             .times(1)
             .withf(move |gid, uid| *gid == group_id && *uid == user_id)
             .returning(|_, _| Ok(()));
+        db.expect_list_user_groups()
+            .times(1)
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(groups.clone()));
         db.expect_update_session()
             .times(1)
             .withf(move |record| {
-                record.id == session_id && message_matches(record, "Team invitation accepted.")
+                record.id == session_id
+                    && message_matches(record, "Team invitation accepted.")
+                    && record
+                        .data
+                        .get(SELECTED_COMMUNITY_ID_KEY)
+                        .is_some_and(|value| value == &json!(community_id))
+                    && record
+                        .data
+                        .get(SELECTED_GROUP_ID_KEY)
+                        .is_some_and(|value| value == &json!(group_id))
             })
             .returning(|_| Ok(()));
 

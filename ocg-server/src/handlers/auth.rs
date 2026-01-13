@@ -554,7 +554,7 @@ fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
 }
 
 /// Selects the first available community and group for the user in the session.
-async fn select_first_community_and_group(
+pub(crate) async fn select_first_community_and_group(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
