@@ -18,6 +18,7 @@ returns json as $$
         'name', g.name,
         'slug', g.slug,
 
+        'banner_url', g.banner_url,
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,

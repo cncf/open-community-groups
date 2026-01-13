@@ -507,6 +507,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         name: "Test Group".to_string(),
         slug: "npq6789".to_string(),
 
+        banner_url: Some("https://example.test/banner.png".to_string()),
         city: Some("San Francisco".to_string()),
         country_code: Some("US".to_string()),
         country_name: Some("United States".to_string()),

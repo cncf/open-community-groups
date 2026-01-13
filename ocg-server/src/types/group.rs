@@ -45,6 +45,8 @@ pub struct GroupSummary {
     /// URL-friendly identifier for this group.
     pub slug: String,
 
+    /// URL to the group's banner image.
+    pub banner_url: Option<String>,
     /// City where the group is located.
     pub city: Option<String>,
     /// ISO country code of the group's location.
