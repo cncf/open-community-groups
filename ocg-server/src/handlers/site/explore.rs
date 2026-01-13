@@ -119,16 +119,16 @@ pub(crate) async fn events_results_section(
 /// Prepares the events section template.
 #[instrument(skip(db), err)]
 async fn prepare_events_section(db: &DynDB, filters: &EventsFilters) -> Result<explore::EventsSection> {
-    // Pass community_id to get_filters_options only when exactly one is selected
-    let community_id = if filters.community.len() == 1 {
-        Some(filters.community[0])
+    // Pass community_name to get_filters_options only when exactly one is selected
+    let community_name = if filters.community.len() == 1 {
+        Some(filters.community[0].clone())
     } else {
         None
     };
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_id),
+        db.get_filters_options(community_name),
         prepare_events_result_section(db, filters)
     )?;
     let template = explore::EventsSection {
@@ -216,16 +216,16 @@ pub(crate) async fn groups_results_section(
 /// Prepares groups section template.
 #[instrument(skip(db), err)]
 async fn prepare_groups_section(db: &DynDB, filters: &GroupsFilters) -> Result<explore::GroupsSection> {
-    // Pass community_id to get_filters_options only when exactly one is selected
-    let community_id = if filters.community.len() == 1 {
-        Some(filters.community[0])
+    // Pass community_name to get_filters_options only when exactly one is selected
+    let community_name = if filters.community.len() == 1 {
+        Some(filters.community[0].clone())
     } else {
         None
     };
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_id),
+        db.get_filters_options(community_name),
         prepare_groups_result_section(db, filters)
     )?;
     let template = explore::GroupsSection {
@@ -432,14 +432,13 @@ mod tests {
     #[tokio::test]
     async fn test_events_section_with_single_community() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_filters_options()
             .times(1)
-            .withf(move |c| c == &Some(community_id))
+            .withf(move |c| c == &Some("test-community".to_string()))
             .returning(|_| Ok(sample_filters_options()));
         db.expect_search_events()
             .times(1)
@@ -452,7 +451,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri(format!("/explore/events-section?community[0]={community_id}"))
+            .uri("/explore/events-section?community[0]=test-community")
             .body(Body::empty())
             .unwrap();
         let response = router.oneshot(request).await.unwrap();
@@ -557,14 +556,13 @@ mod tests {
     #[tokio::test]
     async fn test_groups_section_with_single_community() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_filters_options()
             .times(1)
-            .withf(move |c| c == &Some(community_id))
+            .withf(move |c| c == &Some("test-community".to_string()))
             .returning(|_| Ok(sample_filters_options()));
         db.expect_search_groups()
             .times(1)
@@ -577,7 +575,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri(format!("/explore/groups-section?community[0]={community_id}"))
+            .uri("/explore/groups-section?community[0]=test-community")
             .body(Body::empty())
             .unwrap();
         let response = router.oneshot(request).await.unwrap();

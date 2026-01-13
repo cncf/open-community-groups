@@ -512,7 +512,7 @@ mock! {
     impl crate::db::site::DBSite for DB {
         async fn get_filters_options(
             &self,
-            community_id: Option<Uuid>,
+            community_name: Option<String>,
         ) -> Result<crate::templates::site::explore::FiltersOptions>;
         async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
         async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;

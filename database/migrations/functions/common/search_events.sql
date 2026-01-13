@@ -33,8 +33,9 @@ begin
         );
     end if;
     if p_filters ? 'community' then
-        select array_agg(e::uuid) into v_community_ids
-        from jsonb_array_elements_text(p_filters->'community') e;
+        select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
+        from jsonb_array_elements_text(p_filters->'community') e
+        join community c on c.name = e;
     end if;
     if p_filters ? 'event_category' then
         select array_agg(lower(e::text)) into v_event_category
@@ -96,7 +97,7 @@ begin
             case when v_bbox is not null then
             st_intersects(coalesce(e.location, g.location), v_bbox) else true end
         and
-            case when cardinality(v_community_ids) > 0 then
+            case when v_community_ids is not null then
             g.community_id = any(v_community_ids) else true end
         and
             case when cardinality(v_event_category) > 0 then

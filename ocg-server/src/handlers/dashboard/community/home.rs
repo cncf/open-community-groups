@@ -63,7 +63,7 @@ pub(crate) async fn page(
         Tab::Groups => {
             let ts_query = query.get("ts_query").cloned();
             let filters = GroupsFilters {
-                community: vec![community_id],
+                community: vec![community.name.clone()],
                 limit: Some(MAX_GROUPS_LISTED),
                 sort_by: Some("name".to_string()),
                 ts_query: ts_query.clone(),
@@ -239,7 +239,7 @@ mod tests {
             .withf({
                 let ts_query = ts_query.clone();
                 move |filters| {
-                    filters.community == vec![community_id]
+                    filters.community == vec!["test".to_string()]
                         && filters.limit == Some(MAX_GROUPS_LISTED)
                         && filters.sort_by.as_deref() == Some("name")
                         && filters.ts_query.as_deref() == Some(ts_query.as_str())

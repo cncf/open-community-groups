@@ -37,9 +37,10 @@ pub(crate) async fn list_page(
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
+    let community = db.get_community_summary(community_id).await?;
     let ts_query = query.get("ts_query").cloned();
     let filters = explore::GroupsFilters {
-        community: vec![community_id],
+        community: vec![community.name],
         limit: Some(MAX_GROUPS_LISTED),
         sort_by: Some(String::from("name")),
         ts_query: ts_query.clone(),
@@ -226,12 +227,16 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
+        db.expect_get_community_summary()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_search_groups()
             .times(1)
             .withf({
                 let ts_query = ts_query.clone();
                 move |filters| {
-                    filters.community == vec![community_id]
+                    filters.community == vec!["test".to_string()]
                         && filters.limit == Some(super::MAX_GROUPS_LISTED)
                         && filters.sort_by.as_deref() == Some("name")
                         && filters.ts_query.as_deref() == Some(ts_query.as_str())
@@ -291,10 +296,15 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
+        db.expect_get_community_summary()
+            .times(1)
+            .withf(move |id| *id == community_id)
+            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_search_groups()
             .times(1)
             .withf(move |filters| {
-                filters.community == vec![community_id] && filters.limit == Some(super::MAX_GROUPS_LISTED)
+                filters.community == vec!["test".to_string()]
+                    && filters.limit == Some(super::MAX_GROUPS_LISTED)
             })
             .returning(move |_| Err(anyhow!("db error")));
 

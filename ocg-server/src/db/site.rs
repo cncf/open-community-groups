@@ -3,7 +3,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use tracing::{instrument, trace};
-use uuid::Uuid;
 
 use crate::{
     db::PgDB,
@@ -18,9 +17,9 @@ use crate::{
 #[async_trait]
 #[allow(dead_code)]
 pub(crate) trait DBSite {
-    /// Retrieves filters options for the explore page. When a `community_id` is
+    /// Retrieves filters options for the explore page. When a `community_name` is
     /// provided, community-specific filters are included.
-    async fn get_filters_options(&self, community_id: Option<Uuid>) -> Result<FiltersOptions>;
+    async fn get_filters_options(&self, community_name: Option<String>) -> Result<FiltersOptions>;
 
     /// Retrieves the site home stats.
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats>;
@@ -36,12 +35,12 @@ pub(crate) trait DBSite {
 #[async_trait]
 impl DBSite for PgDB {
     #[instrument(skip(self), err)]
-    async fn get_filters_options(&self, community_id: Option<Uuid>) -> Result<FiltersOptions> {
+    async fn get_filters_options(&self, community_name: Option<String>) -> Result<FiltersOptions> {
         trace!("db: get filters options");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_filters_options($1::uuid)::text", &[&community_id])
+            .query_one("select get_filters_options($1::text)::text", &[&community_name])
             .await?;
         let filters_options = FiltersOptions::try_from_json(&row.get::<_, String>(0))?;
 

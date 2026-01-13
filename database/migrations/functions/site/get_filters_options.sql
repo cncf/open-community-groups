@@ -1,6 +1,6 @@
--- Returns the filters options used in the explore page. When a community_id is
--- provided, community-specific filters are included.
-create or replace function get_filters_options(p_community_id uuid default null)
+-- Returns the filters options used in the explore page. When a community name
+-- is provided, community-specific filters are included.
+create or replace function get_filters_options(p_community_name text default null)
 returns json as $$
     select json_strip_nulls(json_build_object(
         -- Global filters
@@ -35,40 +35,43 @@ returns json as $$
         ),
 
         -- Community-specific filters
-        'event_category', case when p_community_id is not null then (
+        'event_category', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
                 'name', name,
                 'value', slug
             )), '[]')
             from (
-                select name, slug
-                from event_category
-                where community_id = p_community_id
-                order by "order" asc nulls last
+                select ec.name, ec.slug
+                from event_category ec
+                join community c using (community_id)
+                where c.name = p_community_name
+                order by ec."order" asc nulls last
             ) as event_categories
         ) end,
-        'group_category', case when p_community_id is not null then (
+        'group_category', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
                 'name', name,
                 'value', normalized_name
             )), '[]')
             from (
-                select name, normalized_name
-                from group_category
-                where community_id = p_community_id
-                order by "order" asc nulls last
+                select gc.name, gc.normalized_name
+                from group_category gc
+                join community c using (community_id)
+                where c.name = p_community_name
+                order by gc."order" asc nulls last
             ) as group_categories
         ) end,
-        'region', case when p_community_id is not null then (
+        'region', case when p_community_name is not null then (
             select coalesce(json_agg(json_build_object(
                 'name', name,
                 'value', normalized_name
             )), '[]')
             from (
-                select name, normalized_name
-                from region
-                where community_id = p_community_id
-                order by "order" asc nulls last
+                select r.name, r.normalized_name
+                from region r
+                join community c using (community_id)
+                where c.name = p_community_name
+                order by r."order" asc nulls last
             ) as regions
         ) end
     ));

@@ -86,9 +86,9 @@ select is(
     'Should return communities and distance options when no community_id is provided'
 );
 
--- Should return all filter options when a valid community_id is provided
+-- Should return all filter options when a valid community name is provided
 select is(
-    get_filters_options('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
+    get_filters_options('cloud-native-seattle')::jsonb,
     '{
         "communities": [
             {
@@ -127,12 +127,12 @@ select is(
             {"name": "Europe", "value": "europe"}
         ]
     }'::jsonb,
-    'Should return all filter options when a valid community_id is provided'
+    'Should return all filter options when a valid community_name is provided'
 );
 
 -- Should return communities, distance and empty arrays for non-existing community
 select is(
-    get_filters_options('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    get_filters_options('non-existent-community')::jsonb,
     '{
         "communities": [
             {

@@ -200,10 +200,10 @@ impl From<Option<&String>> for Entity {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct EventsFilters {
-    /// Community IDs to filter by.
+    /// Community names to filter by.
     #[serde(default)]
-    #[garde(length(max = MAX_ITEMS))]
-    pub community: Vec<Uuid>,
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
+    pub community: Vec<String>,
     /// Selected event categories to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
@@ -383,10 +383,10 @@ impl Pagination for EventsFilters {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct GroupsFilters {
-    /// Community IDs to filter by.
+    /// Community names to filter by.
     #[serde(default)]
-    #[garde(length(max = MAX_ITEMS))]
-    pub community: Vec<Uuid>,
+    #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
+    pub community: Vec<String>,
     /// Selected group categories to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
