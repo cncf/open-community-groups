@@ -15,7 +15,7 @@ use crate::{
     db::{BBox, PgDB, Total},
     templates::site::explore,
     types::{
-        community::CommunityFull,
+        community::{CommunityFull, CommunitySummary},
         event::{EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
     },
@@ -26,6 +26,9 @@ use crate::{
 pub(crate) trait DBCommon {
     /// Retrieves community information by its unique identifier.
     async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull>;
+
+    /// Retrieves community summary by its unique identifier.
+    async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary>;
 
     /// Gets full event details.
     async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull>;
@@ -82,6 +85,20 @@ impl DBCommon for PgDB {
 
         let db = self.pool.get().await?;
         inner(db, community_id).await
+    }
+
+    /// [`DBCommon::get_community_summary`]
+    #[instrument(skip(self), err)]
+    async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary> {
+        trace!("db: get community summary");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select get_community_summary($1::uuid)::text", &[&community_id])
+            .await?;
+        let community: CommunitySummary = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(community)
     }
 
     /// [`DBCommon::get_event_full`]

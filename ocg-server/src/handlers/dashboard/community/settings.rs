@@ -77,7 +77,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
-        let community = sample_community(community_id);
+        let community = sample_community_full(community_id);
 
         // Setup database mock
         let mut db = MockDB::new();

@@ -110,7 +110,7 @@ pub(crate) fn sample_bbox() -> BBox {
 }
 
 /// Sample community used across tests.
-pub(crate) fn sample_community(community_id: Uuid) -> CommunityFull {
+pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
     CommunityFull {
         active: true,
         banner_url: "https://example.test/banner.png".to_string(),
@@ -122,6 +122,17 @@ pub(crate) fn sample_community(community_id: Uuid) -> CommunityFull {
         logo_url: "/static/images/placeholder_cncf.png".to_string(),
         name: "test".to_string(),
         ..Default::default()
+    }
+}
+
+/// Sample community summary used across tests.
+pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
+    CommunitySummary {
+        banner_url: "https://example.test/banner.png".to_string(),
+        community_id,
+        display_name: "Test".to_string(),
+        logo_url: "/static/images/placeholder_cncf.png".to_string(),
+        name: "test".to_string(),
     }
 }
 

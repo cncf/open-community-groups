@@ -195,7 +195,7 @@ pub(crate) async fn cancel(
 
         if !recipients.is_empty() {
             let (community, site_settings) =
-                tokio::try_join!(db.get_community_full(community_id), db.get_site_settings())?;
+                tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
             let link = build_event_page_link(base_url, &community.name, &event_summary);
@@ -270,7 +270,7 @@ pub(crate) async fn publish(
         if has_members || has_speakers {
             // Prepare common data for notifications
             let (community, site_settings) =
-                tokio::try_join!(db.get_community_full(community_id), db.get_site_settings())?;
+                tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
             let link = build_event_page_link(base_url, &community.name, &event_summary);
@@ -422,7 +422,7 @@ pub(crate) async fn update(
 
         if !recipients.is_empty() {
             let (community, site_settings) =
-                tokio::try_join!(db.get_community_full(community_id), db.get_site_settings())?;
+                tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
             let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
             let link = build_event_page_link(base, &community.name, &event_summary);
@@ -986,10 +986,10 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id]));
-        db.expect_get_community_full()
+        db.expect_get_community_summary()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1100,10 +1100,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id]));
-        db.expect_get_community_full()
+        db.expect_get_community_summary()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1293,10 +1293,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![]));
-        db.expect_get_community_full()
+        db.expect_get_community_summary()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1542,10 +1542,10 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id]));
-        db.expect_get_community_full()
+        db.expect_get_community_summary()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));

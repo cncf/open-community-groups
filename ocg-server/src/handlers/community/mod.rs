@@ -104,7 +104,7 @@ mod tests {
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(move |_| Ok(sample_community_full(community_id)));
         db.expect_get_community_recently_added_groups()
             .times(1)
             .withf(move |id| *id == community_id)
@@ -170,7 +170,7 @@ mod tests {
         db.expect_get_community_full()
             .times(1)
             .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
+            .returning(move |_| Ok(sample_community_full(community_id)));
         db.expect_get_community_recently_added_groups()
             .times(1)
             .withf(move |id| *id == community_id)
