@@ -10,7 +10,6 @@ begin
         description = coalesce(p_data->>'description', description),
         display_name = coalesce(p_data->>'display_name', display_name),
         logo_url = coalesce(p_data->>'logo_url', logo_url),
-        name = coalesce(p_data->>'name', name),
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),
         ad_banner_url = nullif(p_data->>'ad_banner_url', ''),

@@ -43,9 +43,6 @@ pub(crate) struct CommunityUpdate {
     /// URL to the logo image.
     #[garde(custom(image_url))]
     pub logo_url: String,
-    /// Unique identifier used in URLs and database references.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
-    pub name: String,
 
     /// Target URL when users click on the advertisement banner.
     #[garde(url, length(max = MAX_LEN_L))]

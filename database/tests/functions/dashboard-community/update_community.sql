@@ -76,8 +76,7 @@ select update_community(
     '{
         "description": "Updated description for Seattle cloud native community",
         "display_name": "Cloud Native Seattle Updated",
-        "logo_url": "https://updated.com/logo.png",
-        "name": "cloud-native-seattle-updated"
+        "logo_url": "https://updated.com/logo.png"
     }'::jsonb
 );
 
@@ -90,7 +89,7 @@ select is(
         "description": "Updated description for Seattle cloud native community",
         "display_name": "Cloud Native Seattle Updated",
         "logo_url": "https://updated.com/logo.png",
-        "name": "cloud-native-seattle-updated"
+        "name": "cloud-native-seattle"
     }'::jsonb,
     'Should update required fields and set optional fields to null when not provided'
 );
@@ -102,7 +101,6 @@ select update_community(
         "description": "Comprehensive cloud native community in Seattle",
         "display_name": "Cloud Native Seattle Complete",
         "logo_url": "https://new.com/logo.png",
-        "name": "cloud-native-seattle-complete",
         "ad_banner_url": "https://new.com/banner.png",
         "ad_banner_link_url": "https://new.com/link",
         "banner_url": "https://new.com/community-banner.png",
@@ -139,7 +137,7 @@ select is(
         "instagram_url": "https://instagram.com/new",
         "linkedin_url": "https://linkedin.com/new",
         "logo_url": "https://new.com/logo.png",
-        "name": "cloud-native-seattle-complete",
+        "name": "cloud-native-seattle",
         "new_group_details": "New groups welcome!",
         "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
         "slack_url": "https://new.slack.com",

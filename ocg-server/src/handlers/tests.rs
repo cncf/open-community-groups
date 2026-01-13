@@ -171,7 +171,6 @@ pub(crate) fn sample_community_update() -> CommunityUpdate {
         description: "Updated description".to_string(),
         display_name: "Test".to_string(),
         logo_url: "https://example.test/logo.png".to_string(),
-        name: "test".to_string(),
         ..Default::default()
     }
 }
