@@ -61,10 +61,7 @@
              class="btn-primary-anchor">Explore all</a>
           {% if let Some(c) = &community -%}
             {% if c.new_group_details.is_some() -%}
-              <button id="open-new-group-btn"
-                      class="btn-secondary cursor-pointer">
-                New group
-              </button>
+              <button id="open-new-group-btn" class="btn-secondary cursor-pointer">New group</button>
             {% endif -%}
           {% endif -%}
         </div>
