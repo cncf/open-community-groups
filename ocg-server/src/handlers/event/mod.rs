@@ -102,7 +102,7 @@ pub(crate) async fn attend_event(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
-    Path((community_name, event_id)): Path<(String, Uuid)>,
+    Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -116,8 +116,8 @@ pub(crate) async fn attend_event(
         db.get_event_summary_by_id(community_id, event_id),
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &community_name, &event);
-    let calendar_ics = build_event_calendar_attachment(base_url, &community_name, &event);
+    let link = build_event_page_link(base_url, &event.community_name, &event);
+    let calendar_ics = build_event_calendar_attachment(base_url, &event.community_name, &event);
     let template_data = EventWelcome {
         link,
         event,

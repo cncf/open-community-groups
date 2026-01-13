@@ -47,7 +47,7 @@ pub(crate) async fn page(
     // Get user_id from session
     let user_id = auth_session.user.as_ref().expect("user to be logged in").user_id;
 
-    // Get community, communities and site information
+    // Get selected community, user communities and site settings
     let (community, communities, site_settings) = tokio::try_join!(
         db.get_community_full(community_id),
         db.list_user_communities(&user_id),

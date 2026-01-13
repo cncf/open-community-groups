@@ -40,7 +40,7 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get site information
+    // Get site settings
     let site_settings = db.get_site_settings().await?;
 
     // Prepare content for the selected tab
