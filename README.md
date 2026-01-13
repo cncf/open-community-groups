@@ -11,10 +11,11 @@
 
 ## Features
 
-### Community
+### Communities
 
+- Support for multiple communities
 - Dedicated site for each community
-- Dashboard with analytics charts and metrics
+- Dashboard with analytics charts and metrics per community
 
 ### Groups
 
@@ -22,7 +23,7 @@
 - Create and organize groups by categories and regions
 - Customize with logos, banners, and photo galleries
 - Manage members, teams, and sponsors
-- Dashboard with analytics charts and metrics
+- Dashboard with analytics charts and metrics per group
 - Connect via social links
 
 ### Events

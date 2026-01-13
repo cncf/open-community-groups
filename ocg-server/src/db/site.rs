@@ -1,4 +1,4 @@
-//! Database operations for site-related functionality.
+//! This module defines some database functionality for the global site.
 
 use anyhow::Result;
 use async_trait::async_trait;

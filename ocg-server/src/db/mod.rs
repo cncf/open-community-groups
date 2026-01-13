@@ -48,7 +48,7 @@ pub(crate) mod mock;
 /// Module containing database functionality for managing notifications.
 pub(crate) mod notifications;
 
-/// Module containing database functionality for site settings.
+/// Module containing database functionality for global site.
 pub(crate) mod site;
 
 /// Error message when a transaction client is not found.

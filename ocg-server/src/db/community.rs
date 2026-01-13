@@ -17,14 +17,14 @@ use crate::{
 /// Database trait defining all data access operations for the community site.
 #[async_trait]
 pub(crate) trait DBCommunity {
-    /// Retrieves statistical data for the community page.
-    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats>;
-
     /// Resolves a community ID from the provided community name.
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
 
     /// Retrieves the most recently added groups in the community.
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
+
+    /// Retrieves statistical data for the community page.
+    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats>;
 
     /// Retrieves upcoming events for the community.
     async fn get_community_upcoming_events(
@@ -36,23 +36,6 @@ pub(crate) trait DBCommunity {
 
 #[async_trait]
 impl DBCommunity for PgDB {
-    /// [`DB::get_community_site_stats`]
-    #[instrument(skip(self), err)]
-    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
-        trace!("db: get community site stats");
-
-        let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_community_site_stats($1::uuid)::text",
-                &[&community_id],
-            )
-            .await?;
-        let stats = community::Stats::try_from_json(&row.get::<_, String>(0))?;
-
-        Ok(stats)
-    }
-
     /// [`DB::get_community_id_by_name`]
     #[instrument(skip(self), err)]
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
@@ -82,6 +65,23 @@ impl DBCommunity for PgDB {
         let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
+    }
+
+    /// [`DB::get_community_site_stats`]
+    #[instrument(skip(self), err)]
+    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
+        trace!("db: get community site stats");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_community_site_stats($1::uuid)::text",
+                &[&community_id],
+            )
+            .await?;
+        let stats = community::Stats::try_from_json(&row.get::<_, String>(0))?;
+
+        Ok(stats)
     }
 
     /// [`DB::get_community_upcoming_events`]

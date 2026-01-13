@@ -62,29 +62,15 @@ impl DBCommon for PgDB {
     /// [`DBCommon::get_community_full`]
     #[instrument(skip(self), err)]
     async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull> {
-        #[cfg_attr(
-            not(test),
-            cached(
-                time = 3600,
-                key = "Uuid",
-                convert = r#"{ community_id }"#,
-                sync_writes = "by_key",
-                result = true
-            )
-        )]
-        async fn inner(db: Client, community_id: Uuid) -> Result<CommunityFull> {
-            trace!("db: get community full");
-
-            let row = db
-                .query_one("select get_community_full($1::uuid)::text", &[&community_id])
-                .await?;
-            let community: CommunityFull = serde_json::from_str(&row.get::<_, String>(0))?;
-
-            Ok(community)
-        }
+        trace!("db: get community full");
 
         let db = self.pool.get().await?;
-        inner(db, community_id).await
+        let row = db
+            .query_one("select get_community_full($1::uuid)::text", &[&community_id])
+            .await?;
+        let community: CommunityFull = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(community)
     }
 
     /// [`DBCommon::get_community_summary`]
