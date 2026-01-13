@@ -34,7 +34,7 @@
               disabled title="Select an event to view its QR code."
             {% endif -%}
             {% if let Some(selected_event) = &event -%}
-              data-event-id="{{ selected_event.event_id }}" data-event-name="{{ selected_event.name }}" data-group-name="{{ selected_event.group_name }}" data-event-slug="{{ selected_event.slug }}" data-check-in-url="/check-in/{{ selected_event.event_id }}" data-qr-code-url="/dashboard/group/check-in/{{ selected_event.event_id }}/qr-code"
+              data-event-id="{{ selected_event.event_id }}" data-event-name="{{ selected_event.name }}" data-group-name="{{ selected_event.group_name }}" data-event-slug="{{ selected_event.slug }}" data-check-in-url="/{{ selected_event.community_name }}/check-in/{{ selected_event.event_id }}" data-qr-code-url="/dashboard/group/check-in/{{ selected_event.event_id }}/qr-code"
               {% if let Some(start_time) = &selected_event.starts_at -%}
                 data-event-start="{{ start_time.with_timezone(selected_event.timezone).format("%b %e · %I:%M %p %Z") }}"
               {% endif -%}

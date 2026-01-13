@@ -142,7 +142,7 @@
 
             <form id="event-check-in-form"
                   class="flex w-full justify-center"
-                  hx-post="/check-in/{{ event.event_id }}"
+                  hx-post="/{{ event.community_name }}/check-in/{{ event.event_id }}"
                   hx-swap="none"
                   hx-indicator="#check-in-submit-spinner"
                   hx-disabled-elt="#event-check-in-submit"
