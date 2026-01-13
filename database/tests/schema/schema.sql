@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(302);
+select plan(303);
 
 -- ============================================================================
 -- TESTS
@@ -917,6 +917,7 @@ select has_function('update_meeting_recording_url');
 select has_function('update_user_details');
 select has_function('user_owns_community');
 select has_function('user_owns_group');
+select has_function('user_owns_groups_in_community');
 select has_function('verify_email');
 
 -- Test: check expected trigger functions exist

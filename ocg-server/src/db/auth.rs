@@ -59,6 +59,9 @@ pub(crate) trait DBAuth {
     /// Checks if a user owns a specific group.
     async fn user_owns_group(&self, community_id: &Uuid, group_id: &Uuid, user_id: &Uuid) -> Result<bool>;
 
+    /// Checks if a user owns any group in a specific community.
+    async fn user_owns_groups_in_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool>;
+
     /// Verifies a user's email address using a verification code.
     async fn verify_email(&self, code: &Uuid) -> Result<()>;
 }
@@ -331,6 +334,21 @@ impl DBAuth for PgDB {
             .await?;
 
         Ok(row.get("owns_group"))
+    }
+
+    #[instrument(skip(self), err)]
+    async fn user_owns_groups_in_community(&self, community_id: &Uuid, user_id: &Uuid) -> Result<bool> {
+        trace!("db: check if user owns groups in community");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select user_owns_groups_in_community($1::uuid, $2::uuid) as owns_groups;",
+                &[&community_id, &user_id],
+            )
+            .await?;
+
+        Ok(row.get("owns_groups"))
     }
 
     #[instrument(skip(self), err)]

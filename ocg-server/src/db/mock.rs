@@ -68,6 +68,11 @@ mock! {
             group_id: &Uuid,
             user_id: &Uuid,
         ) -> Result<bool>;
+        async fn user_owns_groups_in_community(
+            &self,
+            community_id: &Uuid,
+            user_id: &Uuid,
+        ) -> Result<bool>;
         async fn verify_email(&self, code: &Uuid) -> Result<()>;
     }
 

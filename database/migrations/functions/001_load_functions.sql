@@ -3,6 +3,7 @@
 {{ template "auth/update_user_details.sql" }}
 {{ template "auth/user_owns_community.sql" }}
 {{ template "auth/user_owns_group.sql" }}
+{{ template "auth/user_owns_groups_in_community.sql" }}
 {{ template "auth/verify_email.sql" }}
 
 {{ template "common/generate_slug.sql" }}

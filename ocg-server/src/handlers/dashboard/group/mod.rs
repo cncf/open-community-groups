@@ -43,13 +43,13 @@ pub(crate) async fn select_community(
     let community_groups = groups_by_community
         .iter()
         .find(|c| c.community.community_id == community_id)
-        .ok_or_else(|| anyhow::anyhow!("community not found in user's groups (invariant violation)"))?;
+        .ok_or(HandlerError::Forbidden)?;
 
     // Get the first group (list_user_groups guarantees non-empty groups per community)
     let first_group_id = community_groups
         .groups
         .first()
-        .ok_or_else(|| anyhow::anyhow!("community entry has no groups (invariant violation)"))?
+        .ok_or(HandlerError::Forbidden)?
         .group_id;
 
     // Update the selected community and group in the session
@@ -120,6 +120,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_groups_in_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
         db.expect_list_user_groups()
             .times(1)
             .withf(move |uid| uid == &user_id)

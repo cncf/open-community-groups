@@ -255,6 +255,8 @@ fn setup_community_dashboard_router(state: State) -> Router<State> {
 fn setup_group_dashboard_router(state: State) -> Router<State> {
     // Setup authorization middleware
     let check_user_belongs_to_any_group_team = middleware::from_fn(auth::user_belongs_to_any_group_team);
+    let check_user_owns_groups_in_path_community =
+        middleware::from_fn_with_state(state.clone(), auth::user_owns_groups_in_path_community);
     let check_user_owns_selected_group =
         middleware::from_fn_with_state(state.clone(), auth::user_owns_selected_group);
     let check_user_owns_path_group = middleware::from_fn_with_state(state, auth::user_owns_path_group);
@@ -335,7 +337,7 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         )
         .route(
             "/community/{community_id}/select",
-            put(dashboard::group::select_community),
+            put(dashboard::group::select_community).route_layer(check_user_owns_groups_in_path_community),
         )
 }
 
