@@ -7,9 +7,13 @@ use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         community::CommunitySummary,
+        event::{EventKind, EventSummary},
+        group::GroupSummary,
         site::{SiteHomeStats, SiteSettings},
     },
 };
+
+// Pages and sections templates.
 
 /// Template for rendering the global site home page.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
@@ -21,10 +25,32 @@ pub struct Page {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// List of groups recently added across all communities.
+    pub recently_added_groups: Vec<GroupCard>,
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Site statistics.
     pub stats: SiteHomeStats,
+    /// List of upcoming in-person events across all communities.
+    pub upcoming_in_person_events: Vec<EventCard>,
+    /// List of upcoming virtual events across all communities.
+    pub upcoming_virtual_events: Vec<EventCard>,
     /// Authenticated user information.
     pub user: User,
+}
+
+/// Event card template for home page display.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "common/event_card_small.html")]
+pub struct EventCard {
+    /// Event data.
+    pub event: EventSummary,
+}
+
+/// Group card template for home page display.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "community/group_card.html")]
+pub struct GroupCard {
+    /// Group data.
+    pub group: GroupSummary,
 }

@@ -68,7 +68,7 @@ values
 
 -- Should return groups ordered by creation date DESC
 select is(
-    get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
+    get_site_recently_added_groups()::jsonb,
     jsonb_build_array(
         get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'communityID'::uuid, :'group2ID'::uuid)::jsonb,
@@ -77,11 +77,12 @@ select is(
     'Should return groups ordered by creation date DESC'
 );
 
--- Should return empty array for non-existing community
+-- Should return empty array when no groups exist
+delete from "group";
 select is(
-    get_community_recently_added_groups('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    get_site_recently_added_groups()::jsonb,
     '[]'::jsonb,
-    'Should return empty array for non-existing community'
+    'Should return empty array when no groups exist'
 );
 
 -- ============================================================================

@@ -516,7 +516,14 @@ mock! {
             entity: Option<crate::templates::site::explore::Entity>,
         ) -> Result<crate::templates::site::explore::FiltersOptions>;
         async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
+        async fn get_site_recently_added_groups(
+            &self,
+        ) -> Result<Vec<crate::types::group::GroupSummary>>;
         async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;
+        async fn get_site_upcoming_events(
+            &self,
+            event_kinds: Vec<crate::types::event::EventKind>,
+        ) -> Result<Vec<crate::types::event::EventSummary>>;
         async fn list_communities(&self) -> Result<Vec<crate::types::community::CommunitySummary>>;
     }
 }

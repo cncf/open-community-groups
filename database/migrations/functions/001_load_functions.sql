@@ -95,7 +95,9 @@
 
 {{ template "site/get_filters_options.sql" }}
 {{ template "site/get_site_home_stats.sql" }}
+{{ template "site/get_site_recently_added_groups.sql" }}
 {{ template "site/get_site_settings.sql" }}
+{{ template "site/get_site_upcoming_events.sql" }}
 {{ template "site/list_communities.sql" }}
 
 ---- create above / drop below ----

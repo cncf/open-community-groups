@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(303);
+select plan(306);
 
 -- ============================================================================
 -- TESTS
@@ -876,7 +876,10 @@ select has_function('get_group_past_events');
 select has_function('get_group_sponsor');
 select has_function('get_group_summary');
 select has_function('get_group_upcoming_events');
+select has_function('get_site_home_stats');
+select has_function('get_site_recently_added_groups');
 select has_function('get_site_settings');
+select has_function('get_site_upcoming_events');
 select has_function('get_user_by_id');
 select has_function('i_array_to_string');
 select has_function('is_event_attendee');

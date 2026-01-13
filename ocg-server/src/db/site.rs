@@ -9,6 +9,8 @@ use crate::{
     templates::site::explore::{Entity, FiltersOptions},
     types::{
         community::CommunitySummary,
+        event::{EventKind, EventSummary},
+        group::GroupSummary,
         site::{SiteHomeStats, SiteSettings},
     },
 };
@@ -29,8 +31,14 @@ pub(crate) trait DBSite {
     /// Retrieves the site home stats.
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats>;
 
+    /// Retrieves the most recently added groups across all communities.
+    async fn get_site_recently_added_groups(&self) -> Result<Vec<GroupSummary>>;
+
     /// Retrieves the site settings.
     async fn get_site_settings(&self) -> Result<SiteSettings>;
+
+    /// Retrieves upcoming events across all communities.
+    async fn get_site_upcoming_events(&self, event_kinds: Vec<EventKind>) -> Result<Vec<EventSummary>>;
 
     /// Lists all active communities.
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>>;
@@ -71,6 +79,19 @@ impl DBSite for PgDB {
     }
 
     #[instrument(skip(self), err)]
+    async fn get_site_recently_added_groups(&self) -> Result<Vec<GroupSummary>> {
+        trace!("db: get site recently added groups");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select get_site_recently_added_groups()::text", &[])
+            .await?;
+        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(groups)
+    }
+
+    #[instrument(skip(self), err)]
     async fn get_site_settings(&self) -> Result<SiteSettings> {
         trace!("db: get site settings");
 
@@ -79,6 +100,23 @@ impl DBSite for PgDB {
         let settings = SiteSettings::try_from_json(&row.get::<_, String>(0))?;
 
         Ok(settings)
+    }
+
+    #[instrument(skip(self), err)]
+    async fn get_site_upcoming_events(&self, event_kinds: Vec<EventKind>) -> Result<Vec<EventSummary>> {
+        trace!("db: get site upcoming events");
+
+        let event_kinds = event_kinds.into_iter().map(|k| k.to_string()).collect::<Vec<_>>();
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_site_upcoming_events($1::text[])::text",
+                &[&event_kinds],
+            )
+            .await?;
+        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+
+        Ok(events)
     }
 
     #[instrument(skip(self), err)]

@@ -10,6 +10,6 @@ returns json as $$
         where g.community_id = p_community_id
         and g.active = true
         order by g.created_at desc
-        limit 9
+        limit 8
     ) g;
 $$ language sql;
