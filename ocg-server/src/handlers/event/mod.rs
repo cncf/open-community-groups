@@ -116,8 +116,8 @@ pub(crate) async fn attend_event(
         db.get_event_summary_by_id(community_id, event_id),
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event.community_name, &event);
-    let calendar_ics = build_event_calendar_attachment(base_url, &event.community_name, &event);
+    let link = build_event_page_link(base_url, &event);
+    let calendar_ics = build_event_calendar_attachment(base_url, &event);
     let template_data = EventWelcome {
         link,
         event,
@@ -231,7 +231,7 @@ mod tests {
             .withf(move |id, group_slug, event_slug| {
                 *id == community_id && group_slug == "test-group" && event_slug == "test-event"
             })
-            .returning(move |_, _, _| Ok(sample_event_full(event_id, group_id)));
+            .returning(move |_, _, _| Ok(sample_event_full(community_id, event_id, group_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));

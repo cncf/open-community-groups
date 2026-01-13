@@ -278,7 +278,7 @@ pub(crate) fn sample_event_form() -> GroupEventForm {
 }
 
 /// Sample full event with hosts, sponsors, and schedule.
-pub(crate) fn sample_event_full(event_id: Uuid, group_id: Uuid) -> EventFull {
+pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uuid) -> EventFull {
     let starts_at = Utc::now() + chrono::Duration::hours(1);
     let mut sessions = BTreeMap::new();
     sessions.insert(starts_at.date_naive(), Vec::new());
@@ -287,6 +287,7 @@ pub(crate) fn sample_event_full(event_id: Uuid, group_id: Uuid) -> EventFull {
         canceled: false,
         category_name: "Cloud Native".to_string(),
         color: "#336699".to_string(),
+        community: sample_community_summary(community_id),
         created_at: Utc::now(),
         description: "A detailed event description".to_string(),
         event_id,

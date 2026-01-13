@@ -324,9 +324,11 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         .route("/team/add", post(dashboard::group::team::add))
         .route("/team/{user_id}/delete", delete(dashboard::group::team::delete))
         .route("/team/{user_id}/role", put(dashboard::group::team::update_role))
-        .route("/users/search", get(dashboard::common::search_user))
         .route_layer(check_user_owns_selected_group)
-        .route_layer(check_user_belongs_to_any_group_team)
+        .route(
+            "/users/search",
+            get(dashboard::common::search_user).route_layer(check_user_belongs_to_any_group_team),
+        )
         .route(
             "/{group_id}/select",
             put(dashboard::group::select_group).route_layer(check_user_owns_path_group),

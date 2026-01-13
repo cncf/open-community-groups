@@ -194,12 +194,11 @@ pub(crate) async fn cancel(
             .collect();
 
         if !recipients.is_empty() {
-            let (community, site_settings) =
-                tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
+            let site_settings = db.get_site_settings().await?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base_url, &community.name, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base_url, &community.name, &event_summary);
+            let link = build_event_page_link(base_url, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
             let template_data = EventCanceled {
                 event: event_summary,
                 link,
@@ -269,12 +268,11 @@ pub(crate) async fn publish(
 
         if has_members || has_speakers {
             // Prepare common data for notifications
-            let (community, site_settings) =
-                tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
+            let site_settings = db.get_site_settings().await?;
             let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base_url, &community.name, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base_url, &community.name, &event_summary);
+            let link = build_event_page_link(base_url, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base_url, &event_summary);
 
             // Notify group members about published event
             if has_members {
@@ -421,12 +419,11 @@ pub(crate) async fn update(
             .collect();
 
         if !recipients.is_empty() {
-            let (community, site_settings) =
-                tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
+            let site_settings = db.get_site_settings().await?;
             let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
             let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base, &community.name, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base, &community.name, &event_summary);
+            let link = build_event_page_link(base, &event_summary);
+            let calendar_ics = build_event_calendar_attachment(base, &event_summary);
             let template_data = EventRescheduled {
                 event: event_summary,
                 link,
@@ -659,7 +656,7 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let event_full = sample_event_full(event_id, group_id);
+        let event_full = sample_event_full(community_id, event_id, group_id);
         let event_full_db = event_full.clone();
         let category = sample_event_category();
         let kind = sample_event_kind_summary();
@@ -747,7 +744,7 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let event_full = sample_event_full(event_id, group_id);
+        let event_full = sample_event_full(community_id, event_id, group_id);
         let event_full_db = event_full.clone();
 
         // Setup database mock
@@ -951,7 +948,7 @@ mod tests {
                 featured: false,
                 user: sample_template_user_with_id(speaker_id),
             }],
-            ..sample_event_full(event_id, group_id)
+            ..sample_event_full(community_id, event_id, group_id)
         };
         let site_settings = sample_site_settings();
         let site_settings_for_notifications = site_settings.clone();
@@ -986,10 +983,6 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id]));
-        db.expect_get_community_summary()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1064,7 +1057,7 @@ mod tests {
                 featured: false,
                 user: sample_template_user_with_id(speaker_id),
             }],
-            ..sample_event_full(event_id, group_id)
+            ..sample_event_full(community_id, event_id, group_id)
         };
         let site_settings = sample_site_settings();
         let site_settings_for_member_notification = site_settings.clone();
@@ -1100,10 +1093,6 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id]));
-        db.expect_get_community_summary()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1257,7 +1246,7 @@ mod tests {
                 featured: false,
                 user: sample_template_user_with_id(speaker_id),
             }],
-            ..sample_event_full(event_id, group_id)
+            ..sample_event_full(community_id, event_id, group_id)
         };
         let site_settings = sample_site_settings();
         let site_settings_for_speaker_notification = site_settings.clone();
@@ -1293,10 +1282,6 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![]));
-        db.expect_get_community_summary()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1489,7 +1474,7 @@ mod tests {
                 featured: false,
                 user: sample_template_user_with_id(speaker_id),
             }],
-            ..sample_event_full(event_id, group_id)
+            ..sample_event_full(community_id, event_id, group_id)
         };
         let site_settings = sample_site_settings();
         let site_settings_for_notifications = site_settings.clone();
@@ -1542,10 +1527,6 @@ mod tests {
             .times(1)
             .withf(move |gid, eid| *gid == group_id && *eid == event_id)
             .returning(move |_, _| Ok(vec![attendee_id]));
-        db.expect_get_community_summary()
-            .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(sample_community_summary(community_id)));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));

@@ -7,11 +7,7 @@ use sha2::{Digest, Sha256};
 use crate::{services::notifications::Attachment, types::event::EventSummary};
 
 /// Build an iCalendar (ICS) attachment for the specified event.
-pub(crate) fn build_event_calendar_attachment(
-    base_url: &str,
-    community_name: &str,
-    event: &EventSummary,
-) -> Attachment {
+pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSummary) -> Attachment {
     // Prepare some event data
     let description = build_event_calendar_description(event);
     let location = event.location(512);
@@ -25,10 +21,7 @@ pub(crate) fn build_event_calendar_attachment(
         .uid(&uid)
         .timestamp(Utc::now())
         .created(Utc::now())
-        .append_property(Property::new(
-            "URL",
-            build_event_page_link(base_url, community_name, event),
-        ));
+        .append_property(Property::new("URL", build_event_page_link(base_url, event)));
     if !description.is_empty() {
         ical_event.description(&description);
     }
@@ -94,12 +87,12 @@ pub(crate) fn build_event_calendar_attachment(
     }
 }
 
-/// Build the event page link based on the base URL, community name, and event and group slugs.
-pub(crate) fn build_event_page_link(base_url: &str, community_name: &str, event: &EventSummary) -> String {
+/// Build the event page link based on the base URL and event and group slugs.
+pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
     let base = base_url.strip_suffix('/').unwrap_or(base_url);
     format!(
         "{}/{}/group/{}/event/{}",
-        base, community_name, event.group_slug, event.slug
+        base, event.community_name, event.group_slug, event.slug
     )
 }
 
@@ -178,12 +171,11 @@ mod tests {
     use super::*;
 
     const BASE_URL: &str = "https://example.test";
-    const COMMUNITY_NAME: &str = "test-community";
 
     #[test]
     fn test_build_event_calendar_attachment_confirmed() {
         let event = sample_event(false);
-        let attachment = build_event_calendar_attachment(BASE_URL, COMMUNITY_NAME, &event);
+        let attachment = build_event_calendar_attachment(BASE_URL, &event);
         let data = String::from_utf8(attachment.data).unwrap();
         let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
@@ -219,7 +211,7 @@ mod tests {
     #[test]
     fn test_build_event_calendar_attachment_canceled() {
         let event = sample_event(true);
-        let attachment = build_event_calendar_attachment(BASE_URL, COMMUNITY_NAME, &event);
+        let attachment = build_event_calendar_attachment(BASE_URL, &event);
         let data = String::from_utf8(attachment.data).unwrap();
         let unfolded = data.replace("\r\n ", "").replace("\n ", "");
 
