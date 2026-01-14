@@ -2,7 +2,7 @@
 
 {# Community -#}
 {% if filters_options.communities.len() > 0 -%}
-  <collapsible-filter title="Community" name="community" options="{{ filters_options.communities|json }}" selected="{{ filters.community|json }}" viewType="rows" maxVisibleItems="5" singleSelection></collapsible-filter>
+  <collapsible-filter title="Community" name="community" options="{{ filters_options.communities|json }}" selected="{{ filters.community|json }}" viewType="rows" maxVisibleItems="5" singleSelection resetDependentFilters></collapsible-filter>
 {% endif -%}
 {# End community -#}
 

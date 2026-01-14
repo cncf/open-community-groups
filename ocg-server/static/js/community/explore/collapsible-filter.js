@@ -21,6 +21,7 @@ export class CollapsibleFilter extends LitWrapper {
    * @property {'rows'|'cols'} viewType - Layout orientation for options display
    * @property {boolean} singleSelection - Whether only one option can be selected
    * @property {Array} visibleOptions - Filtered options array for current view
+   * @property {boolean} resetDependentFilters - Whether to reset other filters on selection change
    */
   static properties = {
     title: { type: String },
@@ -33,6 +34,7 @@ export class CollapsibleFilter extends LitWrapper {
     viewType: { type: String },
     singleSelection: { type: Boolean },
     visibleOptions: { type: Array },
+    resetDependentFilters: { type: Boolean },
   };
 
   constructor() {
@@ -47,6 +49,7 @@ export class CollapsibleFilter extends LitWrapper {
     this.viewType = "cols";
     this.visibleOptions = [];
     this.singleSelection = false;
+    this.resetDependentFilters = false;
   }
 
   /**
@@ -56,6 +59,30 @@ export class CollapsibleFilter extends LitWrapper {
   cleanSelected() {
     this.selected = [];
     this._filterOptions();
+  }
+
+  /**
+   * Resets all dependent filter components in the parent form.
+   * Used when resetDependentFilters is enabled (e.g., for community filter).
+   * @private
+   */
+  _resetDependentFiltersInForm() {
+    const form = this.closest("form");
+    if (!form) return;
+
+    // Reset all collapsible-filter components except this one
+    form.querySelectorAll("collapsible-filter").forEach((filter) => {
+      if (filter !== this && filter.cleanSelected) {
+        filter.cleanSelected();
+      }
+    });
+
+    // Reset all multi-select-filter components
+    form.querySelectorAll("multi-select-filter").forEach((filter) => {
+      if (filter.cleanSelected) {
+        filter.cleanSelected();
+      }
+    });
   }
 
   connectedCallback() {
@@ -165,6 +192,10 @@ export class CollapsibleFilter extends LitWrapper {
     this._checkExpandIfHiddenSelected();
     this._filterOptions();
 
+    if (this.resetDependentFilters) {
+      this._resetDependentFiltersInForm();
+    }
+
     // Request update and wait for it to complete
     this.requestUpdate();
     await this.updateComplete;
@@ -185,6 +216,10 @@ export class CollapsibleFilter extends LitWrapper {
     // Clear all selections when "Any" is clicked
     this.selected = [];
     this._filterOptions();
+
+    if (this.resetDependentFilters) {
+      this._resetDependentFiltersInForm();
+    }
 
     // Request update and wait for it to complete
     this.requestUpdate();
