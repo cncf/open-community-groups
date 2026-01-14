@@ -46,7 +46,7 @@ pub(crate) async fn page(
         db.get_community_site_stats(community_id),
     )?;
     let template = community::Page {
-        community: Some(community),
+        community,
         page_id: PageId::Community,
         path: uri.path().to_string(),
         recently_added_groups: recently_added_groups

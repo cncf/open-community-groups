@@ -23,7 +23,7 @@ use crate::{
 #[template(path = "community/page.html")]
 pub(crate) struct Page {
     /// Community information.
-    pub community: Option<CommunityFull>,
+    pub community: CommunityFull,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.
