@@ -14,7 +14,9 @@
 
   {% if !community.description.is_empty() -%}
     <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-12">
-      <div class="font-normal text-stone-600">{{ community.description|md_to_html|safe }}</div>
+      <div class="font-normal text-stone-600 jumbotron-description pb-14">
+        {{ community.description|md_to_html|safe }}
+      </div>
     </div>
   {% endif -%}
   {# End breadcrumb -#}
