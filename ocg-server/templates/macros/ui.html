@@ -158,9 +158,7 @@
       {% if events.len() > 0 -%}
         <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
           {% for event in events -%}
-            {% if loop.index0 < 8 -%}
-              {{ event|safe }}
-            {% endif -%}
+            {{ event|safe }}
           {% endfor -%}
         </div>
       {% else -%}
