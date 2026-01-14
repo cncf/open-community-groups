@@ -4,7 +4,7 @@
         aria-label="Site footer">
   <div class="px-8 py-7 lg:px-16 lg:py-12">
     <div class="pb-10 text-center md:text-left">
-      <div class="flex flex-col justify-between md:flex-row">
+      <div class="flex flex-col justify-between items-center gap-6 md:flex-row">
         {# Footer logo -#}
         {% if let Some(footer_logo_url) = &self.site_settings.footer_logo_url -%}
           <div class="inline-flex">
@@ -16,6 +16,16 @@
           </div>
         {% endif -%}
         {# End footer logo -#}
+
+        {# GitHub link -#}
+        <a href="https://github.com/cncf/open-community-groups"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="group p-2 flex items-center justify-center rounded-lg hover:bg-stone-800 transition-colors"
+           title="GitHub">
+          <div class="svg-icon size-6 bg-white icon-github"></div>
+        </a>
+        {# End GitHub link -#}
       </div>
     </div>
 

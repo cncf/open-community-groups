@@ -68,7 +68,7 @@
                 {% endif -%}
                 <span class="ml-auto">{{ badges::event_badge(kind = event.kind) -}}</span>
               {% else -%}
-                {{ ui::icon_text(icon_name = "recording", text = "Virtual") -}}
+                {{ ui::icon_text(icon_name = "location", text = "Virtual") -}}
                 <span class="ml-auto">{{ badges::event_badge(kind = event.kind) -}}</span>
               {% endif -%}
             </div>
@@ -101,7 +101,7 @@
             {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
           {% endif -%}
         {% else -%}
-          {{ ui::icon_text(icon_name = "recording", text = "Virtual") -}}
+          {{ ui::icon_text(icon_name = "location", text = "Virtual") -}}
         {% endif -%}
       </div>
       <div class="card-meta">
