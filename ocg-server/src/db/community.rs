@@ -59,7 +59,7 @@ impl DBCommunity for PgDB {
             let community_id = db
                 .query_opt("select get_community_id_by_name($1::text)", &[&name])
                 .await?
-                .map(|row| row.get(0));
+                .and_then(|row| row.get(0));
 
             Ok(community_id)
         }
@@ -87,7 +87,7 @@ impl DBCommunity for PgDB {
             let name = db
                 .query_opt("select get_community_name_by_id($1::uuid)", &[&community_id])
                 .await?
-                .map(|row| row.get(0));
+                .and_then(|row| row.get(0));
 
             Ok(name)
         }
