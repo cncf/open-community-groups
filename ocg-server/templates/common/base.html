@@ -116,14 +116,14 @@
       </div>
 
       {# Content -#}
-      <main id="main-content" class='grow z-[1] {% if path == "/log-in" || path == "/sign-up" || path.starts_with("/check-in") %}flex{% endif %}' role="main">
+      <main id="main-content" class='grow z-[1] {% if path == "/log-in" || path == "/sign-up" || path.contains("/check-in/") %}flex{% endif %}' role="main">
         {% block content -%}
         {% endblock content -%}
       </main>
       {# End content -#}
 
       {# Footer -#}
-      {% if !path.starts_with("/dashboard") && path != "/log-in" && path != "/sign-up" && !path.starts_with("/check-in") -%}
+      {% if !path.starts_with("/dashboard") && path != "/log-in" && path != "/sign-up" && !path.contains("/check-in/") -%}
         {% include "common/footer.html" -%}
       {% endif -%}
       {# End footer -#}
