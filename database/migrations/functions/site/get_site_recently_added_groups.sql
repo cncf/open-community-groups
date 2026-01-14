@@ -8,6 +8,7 @@ returns json as $$
         select g.community_id, g.group_id
         from "group" g
         where g.active = true
+        and g.logo_url is not null
         order by g.created_at desc
         limit 8
     ) g;

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(2);
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set group4ID '00000000-0000-0000-0000-000000000034'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 \set region2ID '00000000-0000-0000-0000-000000000022'
 
@@ -60,13 +61,28 @@ values
      'San Francisco', 'CA', 'US', 'United States', :'region1ID'),
     (:'group3ID', 'Test Group 3', 'ghi9abc', :'communityID', :'category1ID',
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
-     'London', null, 'GB', 'United Kingdom', :'region2ID');
+     'London', null, 'GB', 'United Kingdom', :'region2ID'),
+    (:'group4ID', 'Test Group 4', 'jkl0def', :'communityID', :'category1ID',
+     '2024-01-04 09:00:00+00', null, 'Fourth group (no logo)',
+     'Paris', null, 'FR', 'France', :'region2ID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
+-- Should exclude groups without logo_url
+select is(
+    get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb,
+        get_group_summary(:'communityID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'communityID'::uuid, :'group1ID'::uuid)::jsonb
+    ),
+    'Should exclude groups without logo_url'
+);
+
 -- Should return groups ordered by creation date DESC
+delete from "group" where group_id = :'group4ID';
 select is(
     get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
     jsonb_build_array(

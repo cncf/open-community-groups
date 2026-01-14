@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(2);
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
 \set event4ID '00000000-0000-0000-0000-000000000044'
+\set event5ID '00000000-0000-0000-0000-000000000045'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 
@@ -64,36 +65,51 @@ insert into event (
     published,
     starts_at,
     ends_at,
-    canceled
+    canceled,
+    logo_url
 ) values
     -- Past event
     (:'event1ID', 'Past Event', 'past-event', 'A past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00', false),
-    -- Future event 1
+     '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00', false, null),
+    -- Future event 1 (with logo)
     (:'event2ID', 'Future Event 1', 'future-event-1', 'A future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00', false),
+     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00', false, 'https://example.com/event-logo.png'),
     -- Future event 2 (unpublished)
     (:'event3ID', 'Future Event 2', 'future-event-2', 'An unpublished event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
-     '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00', false),
+     '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00', false, null),
     -- Future event 3 (canceled - should be filtered out)
     (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
-     '2026-01-15 14:00:00+00', '2026-01-15 16:00:00+00', true);
+     '2026-01-15 14:00:00+00', '2026-01-15 16:00:00+00', true, null),
+    -- Future event 4 (no logo - should be filtered out)
+    (:'event5ID', 'No Logo Event', 'no-logo-event', 'An event without logo', 'UTC',
+     :'eventCategory1ID', 'in-person', :'group1ID', true,
+     '2026-02-02 09:00:00+00', '2026-02-02 11:00:00+00', false, null);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return only published future events
+-- Should exclude events without logo_url
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'Should return only published future events'
+    'Should exclude events without logo_url'
+);
+
+-- Should return only published future events with logo
+delete from event where event_id = :'event5ID';
+select is(
+    get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+    ),
+    'Should return only published future events with logo'
 );
 
 -- Should return empty array when no events match the filter
