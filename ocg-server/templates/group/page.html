@@ -21,7 +21,7 @@
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full">
-      <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
+      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
         {# Group header with name and region -#}
         <div>
           {# Main flex container for logo, name/region, and social networks -#}
@@ -207,7 +207,7 @@
         {# Group description -#}
         {% if let Some(description) = &group.description -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-4 lg:pb-10">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pb-12">
               About this group
             </div>
             <div class="text-stone-500 text-sm/6 markdown px-4">{{ description|md_to_html|safe }}</div>
@@ -219,7 +219,7 @@
         {% if let Some(tags) = &group.tags -%}
           {% if !tags.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Topics</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Topics</div>
               <div class="flex flex-wrap gap-2">
                 {% for tag in tags -%}
                   <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
@@ -234,7 +234,7 @@
         {% if !upcoming_events.is_empty() -%}
           {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name -%}
           <div>
-            <div class="flex items-center justify-between pb-6 lg:pb-10">
+            <div class="flex items-center justify-between pb-8 lg:pb-12">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Upcoming Events</div>
               {# See all events on desktop -#}
               <div class="hidden justify-self-end md:flex">
@@ -270,7 +270,7 @@
           {% let past_events_date_to = past_events_date_option|display_some_datetime_tz("%Y-%m-%d", chrono_tz::UTC) -%}
           {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
           <div>
-            <div class="flex items-center justify-between pb-6 lg:pb-10">
+            <div class="flex items-center justify-between pb-8 lg:pb-12">
               <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Past Events</div>
               {# See all events on desktop -#}
               <div class="hidden justify-self-end md:flex">
@@ -303,7 +303,7 @@
         {# Organizers section - Full width -#}
         {% if !group.organizers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Organizers</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Organizers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in group.organizers -%}
                 {% if organizer.name.is_some() -%}
@@ -318,7 +318,7 @@
         {# Sponsors section -#}
         {% if !group.sponsors.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Sponsors</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in group.sponsors -%}
                 {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url) -}}
@@ -332,7 +332,7 @@
         {% if let Some(photos_urls) = &group.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Gallery</div>
               <images-gallery title="Gallery" altImage="Group {{ group.name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>
           {% endif -%}
