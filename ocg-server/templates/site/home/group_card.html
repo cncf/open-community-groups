@@ -2,7 +2,7 @@
 
 {% block preheader -%}
   <span>
-    <span class="text-primary-500">{{ group.community_name }}</span>
+    <span class="text-primary-500 pe-2">{{ group.community_name }}</span>
     {% if let Some(region) = &group.region -%}
       {{ region.name }}
     {% else -%}
