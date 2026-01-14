@@ -12,15 +12,15 @@ use uuid::Uuid;
 #[allow(dead_code)]
 pub struct SiteHomeStats {
     /// Number of active communities.
-    pub communities: usize,
+    pub communities: i64,
     /// Number of published events.
-    pub events: usize,
+    pub events: i64,
     /// Number of event attendees.
-    pub events_attendees: usize,
+    pub events_attendees: i64,
     /// Number of active groups.
-    pub groups: usize,
+    pub groups: i64,
     /// Number of group members.
-    pub groups_members: usize,
+    pub groups_members: i64,
 }
 
 /// Global site settings.
