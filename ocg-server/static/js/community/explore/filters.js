@@ -43,14 +43,24 @@ export const closeFiltersDrawer = () => {
  * Resets all filters in the specified form to their default values.
  * @param {string} formId - The ID of the form containing the filters to reset
  */
-export const resetFilters = (formId) => {
-  // Reset all CollapsibleFilter components in the form
+export const resetFilters = async (formId) => {
   const collapsibleFilters = document.querySelectorAll(`#${formId} collapsible-filter`);
-  collapsibleFilters.forEach((filter) => {
+  const multiSelectFilters = document.querySelectorAll(`#${formId} multi-select-filter`);
+  const filters = [...collapsibleFilters, ...multiSelectFilters];
+
+  filters.forEach((filter) => {
     if (filter.cleanSelected) {
       filter.cleanSelected();
     }
   });
+
+  const updatePromises = filters
+    .map((filter) => filter.updateComplete)
+    .filter((updatePromise) => updatePromise && typeof updatePromise.then === "function");
+
+  if (updatePromises.length > 0) {
+    await Promise.all(updatePromises);
+  }
 
   // Uncheck all checkboxes and radios
   document.querySelectorAll(`#${formId} input[type=checkbox]`).forEach((el) => (el.checked = false));

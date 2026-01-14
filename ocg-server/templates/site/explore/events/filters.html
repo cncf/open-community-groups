@@ -65,6 +65,14 @@
 {% endif -%}
 {# End community -#}
 
+{# Groups (only shown when a community is selected) -#}
+{% if let Some(groups) = &filters_options.groups -%}
+  {% if groups.len() > 0 -%}
+    <multi-select-filter title="Groups" name="group" options="{{ groups|json }}" selected="{{ filters.group|json }}" placeholder="Type to search"></multi-select-filter>
+  {% endif -%}
+{% endif -%}
+{# End groups -#}
+
 {# Group category -#}
 {% if let Some(group_category) = &filters_options.group_category -%}
   <collapsible-filter title="Group category" name="group_category" options="{{ group_category|json }}" selected="{{ filters.group_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
