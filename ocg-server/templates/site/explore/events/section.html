@@ -11,6 +11,34 @@
 {% endblock filters_mobile -%}
 {# End filters -#}
 
+{# Sort options -#}
+{% block sort_options -%}
+  {% let current_sort_direction = filters.sort_direction.clone().unwrap_or("asc".to_string()) -%}
+  {% let current_sort_value = current_sort_by.clone() + "-" + &current_sort_direction -%}
+
+  <input type="hidden"
+         name="sort_by"
+         id="sort_by"
+         value="{{ current_sort_by }}">
+  <input type="hidden"
+         name="sort_direction"
+         id="sort_direction"
+         value="{{ current_sort_direction }}">
+
+  <select id="sort_selector"
+          class="block w-32 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+    <option value="date-asc"
+            {% if current_sort_value == "date-asc" %}selected{% endif %}>Date ↑</option>
+    <option value="date-desc"
+            {% if current_sort_value == "date-desc" %}selected{% endif %}>Date ↓</option>
+    {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
+      <option value="distance-asc"
+              {% if current_sort_value == "distance-asc" || current_sort_by == "distance" %}selected{% endif %}>Distance</option>
+    {% endif -%}
+  </select>
+{% endblock sort_options -%}
+{# End sort options -#}
+
 {# Current page status -#}
 {% block current_page -%}
   {% if results_section.events.len() > 0 -%}
@@ -26,7 +54,8 @@
     import {
       cleanInputField,
       searchOnEnter,
-      triggerChangeOnForm
+      triggerChangeOnForm,
+      updateSortInputsFromSelector
     } from '/static/js/community/explore/filters.js';
 
     const searchBtn = document.getElementById('search-btn');
@@ -42,6 +71,13 @@
     const cleanSearch = document.getElementById('clean-search');
     if (cleanSearch) {
       cleanSearch.addEventListener('click', () => cleanInputField('ts_query', 'events-form'));
+    }
+
+    const sortSelector = document.getElementById('sort_selector');
+    if (sortSelector) {
+      sortSelector.addEventListener('change', () => {
+        updateSortInputsFromSelector(sortSelector, 'sort_by', 'sort_direction');
+      });
     }
   </script>
 {% endblock search_bar -%}

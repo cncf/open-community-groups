@@ -232,9 +232,18 @@
 
         {# Next events section -#}
         {% if !upcoming_events.is_empty() -%}
+          {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">
-              Upcoming Events
+            <div class="flex items-center justify-between pb-6 lg:pb-10">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Upcoming Events</div>
+              {# See all events on desktop -#}
+              <div class="hidden justify-self-end md:flex">
+                <a href="{{ upcoming_events_link }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="btn-secondary-anchor ms-4">See all events</a>
+              </div>
+              {# End see all events on desktop -#}
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
               {% for event in upcoming_events -%}
@@ -243,14 +252,35 @@
                 {% endif -%}
               {% endfor -%}
             </div>
+            {# See all events on mobile -#}
+            <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <a href="{{ upcoming_events_link }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor">See all events</a>
+            </div>
+            {# End see all events on mobile -#}
           </div>
         {% endif -%}
         {# End next events section -#}
 
         {# Past events section -#}
         {% if !past_events.is_empty() -%}
+          {% let past_events_date_option = Some(chrono::Utc::now() - chrono::Duration::days(1)) -%}
+          {% let past_events_date_to = past_events_date_option|display_some_datetime_tz("%Y-%m-%d", chrono_tz::UTC) -%}
+          {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + &group.slug + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Past Events</div>
+            <div class="flex items-center justify-between pb-6 lg:pb-10">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Past Events</div>
+              {# See all events on desktop -#}
+              <div class="hidden justify-self-end md:flex">
+                <a href="{{ past_events_link }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="btn-secondary-anchor ms-4">See all events</a>
+              </div>
+              {# End see all events on desktop -#}
+            </div>
             <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2">
               {% for event in past_events -%}
                 {% if loop.index0 < 6 -%}
@@ -258,6 +288,14 @@
                 {% endif -%}
               {% endfor -%}
             </div>
+            {# See all events on mobile -#}
+            <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <a href="{{ past_events_link }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor">See all events</a>
+            </div>
+            {# End see all events on mobile -#}
           </div>
         {% endif -%}
         {# End past events section -#}

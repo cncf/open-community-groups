@@ -87,9 +87,14 @@ export const resetFilters = (formId) => {
   document.querySelector('input[name="ts_query"]').value = "";
 
   // Reset sort by
-  const sortSelect = document.querySelector('select[name="sort_by"]');
-  if (sortSelect) {
-    sortSelect.value = "date";
+  const sortSelector = document.getElementById("sort_selector");
+  const sortByInput = document.getElementById("sort_by");
+  const sortDirectionInput = document.getElementById("sort_direction");
+  if (sortSelector) {
+    const isEvents = formId === "events-form" || formId === "events-form-mobile";
+    sortSelector.value = isEvents ? "date-asc" : "date";
+    if (sortByInput) sortByInput.value = "date";
+    if (sortDirectionInput) sortDirectionInput.value = "asc";
   }
 
   // Select "Any" option when applicable
@@ -156,6 +161,30 @@ export const triggerChangeOnForm = (formId, fromSearch) => {
     // Trigger change event using htmx
     htmx.trigger(form, "change");
   }
+};
+
+/**
+ * Updates sort inputs based on a select element value.
+ * @param {HTMLSelectElement} selector - Sort selector element
+ * @param {string} sortById - ID of the sort by input
+ * @param {string} sortDirectionId - ID of the sort direction input
+ * @param {string} fallbackDirection - Direction to use when none is provided
+ */
+export const updateSortInputsFromSelector = (
+  selector,
+  sortById,
+  sortDirectionId,
+  fallbackDirection = "asc",
+) => {
+  const sortByInput = document.getElementById(sortById);
+  const sortDirectionInput = document.getElementById(sortDirectionId);
+  if (!selector || !sortByInput || !sortDirectionInput) {
+    return;
+  }
+
+  const [sortBy, sortDir] = selector.value.split("-");
+  sortByInput.value = sortBy;
+  sortDirectionInput.value = sortDir || fallbackDirection;
 };
 
 /**

@@ -32,7 +32,9 @@
         hx-get='/explore/{{ entity }}-section'
         hx-trigger="change"
         hx-target="#entity-section"
-        hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+        hx-include="[name='ts_query'], [name='sort_by'],
+                    {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
+                    [name='view_mode']"
         hx-boost="true"
         hx-ext="no-empty-vals">
     {% block filters_mobile -%}
@@ -72,7 +74,9 @@
           hx-get='/explore/{{ entity }}-section'
           hx-trigger="change"
           hx-target="#entity-section"
-          hx-include="[name='ts_query'], [name='sort_by'], [name='view_mode']"
+          hx-include="[name='ts_query'], [name='sort_by'],
+                      {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
+                      [name='view_mode']"
           hx-boost="true"
           hx-ext="no-empty-vals">
       {% block filters_desktop -%}
@@ -179,32 +183,15 @@
         {# Sort by -#}
         <div class="flex flex-1 flex-row items-center justify-end mb-3 mt-3 sm:mb-0 sm:mt-0">
           {% if view_mode == ViewMode::List -%}
-            <label for="sort_by"
+            <label for="sort_selector"
                    class="font-semibold text-[0.775rem] text-nowrap text-black leading-6 me-2 xl:me-3">
               Sort by
             </label>
 
-            <select id="sort_by"
-                    name="sort_by"
-                    class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
-              {% if let Some(sort_by) = &filters.sort_by -%}
-                <option value="date" {% if sort_by == "date" %}selected{% endif %}>Date</option>
-                {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
-                  <option value="distance" {% if sort_by == "distance" %}selected{% endif %}>Distance</option>
-                {% endif -%}
-                {% if entity == Entity::Groups -%}
-                  <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name</option>
-                {% endif -%}
-              {% else -%}
-                <option value="date" selected>Date</option>
-                {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
-                  <option value="distance">Distance</option>
-                {% endif -%}
-                {% if entity == Entity::Groups -%}
-                  <option value="name">Name</option>
-                {% endif -%}
-              {% endif -%}
-            </select>
+            {% let current_sort_by = filters.sort_by.clone().unwrap_or("date".to_string()) -%}
+
+            {% block sort_options -%}
+            {% endblock sort_options -%}
           {% endif -%}
         </div>
         {# End sort by -#}
@@ -262,10 +249,10 @@
     });
   });
 
-  const select = document.getElementById('sort_by');
+  const sortSelector = document.getElementById('sort_selector');
   // Sort by is only available in list view
-  if (select) {
-    select.addEventListener('change', () => triggerChangeOnForm('{{ entity }}-form'));
+  if (sortSelector) {
+    sortSelector.addEventListener('change', () => triggerChangeOnForm('{{ entity }}-form'));
   }
 
   const resetButtons = document.querySelectorAll('.reset-filters');
