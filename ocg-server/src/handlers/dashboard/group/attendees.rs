@@ -66,15 +66,20 @@ pub(crate) async fn generate_check_in_qr_code(
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get community name and ensure event belongs to selected group
-    let community = db.get_community_summary(community_id).await?;
-    db.get_event_summary(community_id, group_id, event_id).await?;
+    // Get community name (cached) and ensure event belongs to selected group
+    let (community_name, _) = tokio::try_join!(
+        db.get_community_name_by_id(community_id),
+        db.get_event_summary(community_id, group_id, event_id)
+    )?;
+    let Some(community_name) = community_name else {
+        return Err(anyhow::anyhow!("community not found").into());
+    };
 
     // Get base URL from configuration
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
 
     // Construct check-in URL
-    let check_in_url = format!("{base_url}/{}/check-in/{event_id}", community.name);
+    let check_in_url = format!("{base_url}/{community_name}/check-in/{event_id}");
 
     // Generate QR code
     let code = qrcode::QrCode::new(check_in_url.as_bytes())
@@ -223,10 +228,10 @@ mod tests {
             .times(1)
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
-        db.expect_get_community_summary()
+        db.expect_get_community_name_by_id()
             .times(1)
             .withf(move |cid| *cid == community_id)
-            .returning(move |cid| Ok(sample_community_summary(cid)));
+            .returning(|_| Ok(Some("test".to_string())));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)

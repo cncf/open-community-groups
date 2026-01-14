@@ -1,17 +1,12 @@
 //! Custom extractors for handlers.
 
-#[cfg(not(test))]
-use std::time::Duration;
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::Result;
 use axum::{
     Form,
     extract::{FromRequest, FromRequestParts, Path, Request},
     http::{StatusCode, request::Parts},
 };
-#[cfg(not(test))]
-use cached::proc_macro::cached;
 use garde::Validate;
 use serde::de::DeserializeOwned;
 use tower_sessions::Session;
@@ -21,14 +16,11 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails},
     config::{OAuth2Provider, OidcProvider},
-    db::DynDB,
     handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
 };
 
 /// Extractor that resolves a community ID from the request path parameter.
-///
-/// The community ID is cached for 24 hours to reduce database lookups.
 pub(crate) struct CommunityId(pub Uuid);
 
 impl FromRequestParts<router::State> for CommunityId {
@@ -44,43 +36,24 @@ impl FromRequestParts<router::State> for CommunityId {
             return Err((StatusCode::BAD_REQUEST, "missing community parameter"));
         };
 
-        // Lookup the community id in the database
-        let Some(community_id) =
-            lookup_community_id(state.db.clone(), community_name)
-                .await
-                .map_err(|err| {
-                    error!(?err, "error looking up community id");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "")
-                })?
+        // Lookup the community id in the database (cached at DB layer)
+        if community_name.is_empty() {
+            return Err((StatusCode::NOT_FOUND, "community not found"));
+        }
+        let Some(community_id) = state
+            .db
+            .get_community_id_by_name(community_name)
+            .await
+            .map_err(|err| {
+                error!(?err, "error looking up community id");
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?
         else {
             return Err((StatusCode::NOT_FOUND, "community not found"));
         };
 
         Ok(CommunityId(community_id))
     }
-}
-
-/// Lookup function for resolving community IDs from community names.
-///
-/// In non-test builds, results are cached for 24 hours (86400 seconds) to minimize
-/// database queries. During tests the cache is disabled to avoid cross-test
-/// contamination when multiple tests reuse the same name value.
-#[cfg_attr(
-    not(test),
-    cached(
-        time = 86400,
-        key = "String",
-        convert = r#"{ String::from(name) }"#,
-        sync_writes = "by_key",
-        result = true
-    )
-)]
-#[instrument(skip(db), err)]
-async fn lookup_community_id(db: DynDB, name: &str) -> Result<Option<Uuid>> {
-    if name.is_empty() {
-        return Ok(None);
-    }
-    db.get_community_id_by_name(name).await
 }
 
 /// Extractor for `OAuth2` provider details from the authenticated session.
@@ -376,41 +349,6 @@ mod tests {
 
         // Check response matches expectations
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-    }
-
-    #[tokio::test]
-    async fn test_lookup_community_id_success() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let name = "test-community";
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_community_id_by_name()
-            .times(1)
-            .withf(move |requested_name| requested_name == name)
-            .returning(move |_| Ok(Some(community_id)));
-        let db: DynDB = Arc::new(db);
-
-        // Execute lookup
-        let result = lookup_community_id(db, name).await.expect("lookup should succeed");
-
-        // Check response matches expectations
-        assert_eq!(result, Some(community_id));
-    }
-
-    #[tokio::test]
-    async fn test_lookup_community_id_empty_is_noop() {
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_community_id_by_name().times(0);
-        let db: DynDB = Arc::new(db);
-
-        // Execute lookup
-        let community_id = lookup_community_id(db, "").await.expect("lookup should succeed");
-
-        // Check response matches expectations
-        assert!(community_id.is_none());
     }
 
     #[tokio::test]

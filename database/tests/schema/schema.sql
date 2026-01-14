@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(306);
+select plan(307);
 
 -- ============================================================================
 -- TESTS
@@ -861,6 +861,7 @@ select has_function('delete_group_team_member');
 select has_function('generate_slug');
 select has_function('get_community_full');
 select has_function('get_community_id_by_name');
+select has_function('get_community_name_by_id');
 select has_function('get_community_recently_added_groups');
 select has_function('get_community_site_stats');
 select has_function('get_community_stats');

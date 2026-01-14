@@ -16,6 +16,7 @@
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
 {{ template "community/get_community_id_by_name.sql" }}
+{{ template "community/get_community_name_by_id.sql" }}
 {{ template "community/get_community_recently_added_groups.sql" }}
 {{ template "community/get_community_site_stats.sql" }}
 {{ template "community/get_community_upcoming_events.sql" }}

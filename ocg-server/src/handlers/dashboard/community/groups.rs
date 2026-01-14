@@ -36,11 +36,15 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Get community name (cached)
+    let Some(community_name) = db.get_community_name_by_id(community_id).await? else {
+        return Err(anyhow::anyhow!("community not found").into());
+    };
+
     // Prepare template
-    let community = db.get_community_summary(community_id).await?;
     let ts_query = query.get("ts_query").cloned();
     let filters = explore::GroupsFilters {
-        community: vec![community.name],
+        community: vec![community_name],
         limit: Some(MAX_GROUPS_LISTED),
         sort_by: Some(String::from("name")),
         ts_query: ts_query.clone(),
@@ -227,10 +231,10 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_summary()
+        db.expect_get_community_name_by_id()
             .times(1)
             .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community_summary(community_id)));
+            .returning(|_| Ok(Some("test".to_string())));
         db.expect_search_groups()
             .times(1)
             .withf({
@@ -296,10 +300,10 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_summary()
+        db.expect_get_community_name_by_id()
             .times(1)
             .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community_summary(community_id)));
+            .returning(|_| Ok(Some("test".to_string())));
         db.expect_search_groups()
             .times(1)
             .withf(move |filters| {

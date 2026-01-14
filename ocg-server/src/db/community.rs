@@ -1,7 +1,11 @@
 //! This module defines some database functionality for the community site.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
+use deadpool_postgres::Client;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -19,6 +23,9 @@ use crate::{
 pub(crate) trait DBCommunity {
     /// Resolves a community ID from the provided community name.
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
+
+    /// Resolves a community name from the provided community ID.
+    async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
 
     /// Retrieves the most recently added groups in the community.
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
@@ -39,15 +46,54 @@ impl DBCommunity for PgDB {
     /// [`DB::get_community_id_by_name`]
     #[instrument(skip(self), err)]
     async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
-        trace!("db: get community id by name");
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from(name) }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client, name: &str) -> Result<Option<Uuid>> {
+            trace!("db: get community id by name");
+
+            let community_id = db
+                .query_opt("select get_community_id_by_name($1::text)", &[&name])
+                .await?
+                .map(|row| row.get(0));
+
+            Ok(community_id)
+        }
+
+        if name.is_empty() {
+            return Ok(None);
+        }
+        let db = self.pool.get().await?;
+        inner(db, name).await
+    }
+
+    /// [`DB::get_community_name_by_id`]
+    #[instrument(skip(self), err)]
+    async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>> {
+        #[cached(
+            time = 86400,
+            key = "Uuid",
+            convert = r#"{ community_id }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client, community_id: Uuid) -> Result<Option<String>> {
+            trace!("db: get community name by id");
+
+            let name = db
+                .query_opt("select get_community_name_by_id($1::uuid)", &[&community_id])
+                .await?
+                .map(|row| row.get(0));
+
+            Ok(name)
+        }
 
         let db = self.pool.get().await?;
-        let community_id = db
-            .query_opt("select get_community_id_by_name($1::text)", &[&name])
-            .await?
-            .map(|row| row.get(0));
-
-        Ok(community_id)
+        inner(db, community_id).await
     }
 
     /// [`DB::get_community_recently_added_groups`]

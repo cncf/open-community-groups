@@ -125,15 +125,16 @@ mock! {
 
     #[async_trait]
     impl crate::db::community::DBCommunity for DB {
-        async fn get_community_site_stats(
-            &self,
-            community_id: Uuid,
-        ) -> Result<crate::templates::community::Stats>;
         async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
+        async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
         async fn get_community_recently_added_groups(
             &self,
             community_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupSummary>>;
+        async fn get_community_site_stats(
+            &self,
+            community_id: Uuid,
+        ) -> Result<crate::templates::community::Stats>;
         async fn get_community_upcoming_events(
             &self,
             community_id: Uuid,
