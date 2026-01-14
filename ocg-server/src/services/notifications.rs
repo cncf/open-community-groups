@@ -872,7 +872,7 @@ mod tests {
                 "slug": "custom-event",
                 "timezone": "UTC"
             },
-            "link": "https://example.test/group/notification-group/event/custom-event",
+            "link": "https://example.test/test-community/group/notification-group/event/custom-event",
             "theme": {
                 "primary_color": "#000000"
             }
@@ -898,7 +898,7 @@ mod tests {
                 "name": "Hello Group",
                 "slug": "hello-group"
             },
-            "link": "https://example.test/group/hello-group",
+            "link": "https://example.test/test-community/group/hello-group",
             "theme": {
                 "primary_color": "#000000"
             }

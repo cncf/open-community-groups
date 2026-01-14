@@ -17,7 +17,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  *   banner-url="/path/to/banner.jpg"
  *   items='[
  *     {"label": "Home", "href": "/", "icon": "home"},
- *     {"label": "Group", "href": "/group/slug", "icon": "groups"},
+ *     {"label": "Group", "href": "/community/group/slug", "icon": "groups"},
  *     {"label": "Event", "icon": "date", "current": true}
  *   ]'>
  * </breadcrumb-nav>
