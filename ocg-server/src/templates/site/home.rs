@@ -41,7 +41,7 @@ pub struct Page {
 
 /// Event card template for home page display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "common/event_card_small.html")]
+#[template(path = "site/home/event_card.html")]
 pub struct EventCard {
     /// Event data.
     pub event: EventSummary,
@@ -49,7 +49,7 @@ pub struct EventCard {
 
 /// Group card template for home page display.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "community/group_card.html")]
+#[template(path = "site/home/group_card.html")]
 pub struct GroupCard {
     /// Group data.
     pub group: GroupSummary,
