@@ -31,19 +31,14 @@
   </div>
 
   <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
-    {# Community selector -#}
+    {# Community and group selector -#}
     <div>
-      {{ dashboard::menu_title(text = "Community", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
       <div class="mt-2">
         <community-selector communities="{{ groups_by_community|json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community"></community-selector>
       </div>
-    </div>
-    {# End community selector -#}
 
-    {# Groups -#}
-    <div class="pt-6 border-t border-stone-200">
-      {{ dashboard::menu_title(text = "Group", extra_styles = "py-1.5") -}}
-      <div class="mt-2">
+      <div class="mt-4">
         <group-selector groups-by-community="{{ groups_by_community|json }}" selected-community-id="{{ selected_community_id }}" selected-group-id="{{ selected_group_id }}" search-delay="250"></group-selector>
       </div>
       {% for group in selected_community_groups() -%}
@@ -60,7 +55,7 @@
         </div>
       {% endif -%}
     </div>
-    {# End groups -#}
+    {# End community and group selector -#}
 
     {# Analytics -#}
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">

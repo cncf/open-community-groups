@@ -1,12 +1,22 @@
 {# Social network link -#}
-{% macro social_link(url, icon_name, platform_name) -%}
+{% macro social_link(url, icon_name, platform_name, big = false) -%}
   <a href="{{ url }}"
      target="_blank"
      rel="noopener noreferrer"
-     class="group btn-secondary-anchor p-1.5 size-[40px] sm:size-[30px] flex items-center justify-center"
+     class="group btn-secondary-anchor flex items-center justify-center
+            {% if big %}
+              size-[50px] sm:size-[40px] p-2
+            {% else %}
+              size-[40px] sm:size-[30px] p-1.5
+            {% endif %}"
      title="{{ platform_name }}">
-    <div class="svg-icon size-4 bg-primary-500 group-hover:bg-white transition-colors icon-{{ icon_name }}">
-    </div>
+    <div class="svg-icon
+                {% if big %}
+                  size-5
+                {% else %}
+                  size-4
+                {% endif %}
+                bg-primary-500 group-hover:bg-white transition-colors icon-{{ icon_name }}"></div>
   </a>
 {% endmacro social_link -%}
 {# End social network link -#}
