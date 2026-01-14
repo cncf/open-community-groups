@@ -44,7 +44,6 @@ num-format = "0.4.4"
 oauth2 = "5.0.0"
 openidconnect = { version = "4.0.0", features = ["accept-rfc3339-timestamps"] }
 openssl = { version = "0.10.75", features = ["vendored"] }
-palette = "0.7.6"
 password-auth = "1.0.0"
 percent-encoding = "2.3.2"
 postgres-openssl = "0.5.2"

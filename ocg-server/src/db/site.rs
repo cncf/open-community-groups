@@ -73,7 +73,7 @@ impl DBSite for PgDB {
 
         let db = self.pool.get().await?;
         let row = db.query_one("select get_site_home_stats()::text", &[]).await?;
-        let stats = SiteHomeStats::try_from_json(&row.get::<_, String>(0))?;
+        let stats: SiteHomeStats = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(stats)
     }
@@ -97,7 +97,7 @@ impl DBSite for PgDB {
 
         let db = self.pool.get().await?;
         let row = db.query_one("select get_site_settings()::text", &[]).await?;
-        let settings = SiteSettings::try_from_json(&row.get::<_, String>(0))?;
+        let settings: SiteSettings = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(settings)
     }
