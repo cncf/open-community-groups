@@ -1,6 +1,7 @@
 {% extends "common/base.html" -%}
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/search.html" as search -%}
+{% import "macros/social.html" as social -%}
 {% import "macros/ui.html" as ui -%}
 
 {% block scripts -%}
@@ -11,37 +12,91 @@
 {% block content -%}
   {# Breadcrumb -#}
   <breadcrumb-nav banner-url="{{ community.banner_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
-
-  {% if !community.description.is_empty() -%}
-    <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-12">
-      <div class="font-normal text-stone-600 jumbotron-description pb-14">
-        {{ community.description|md_to_html|safe }}
-      </div>
-    </div>
-  {% endif -%}
   {# End breadcrumb -#}
 
-  {# Main content -#}
-  <div class="bg-white">
-    <div class="container mx-auto max-w-7xl px-4 pb-6 lg:pb-12 sm:px-6 lg:px-8 pt-10">
-      {# Stats -#}
-      {{ stats|safe }}
-      {# End stats -#}
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full">
+      <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
+        {# About this community -#}
+        {% let has_social_links = community.twitter_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
+        {% let has_extra_links = community.extra_links.is_some() -%}
+        {% if !community.description.is_empty() || has_social_links || has_extra_links -%}
+          <div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">
+              About this community
+            </div>
+            {% if !community.description.is_empty() -%}
+              <div class="font-normal text-stone-600 jumbotron-description">
+                {{ community.description|md_to_html|safe }}
+              </div>
+            {% endif -%}
 
-      <div class="pt-3 xl:pt-8">
-        {# Events in-person -#}
-        {% let in_person_link = "/explore?entity=events&kind[0]=in-person&community[0]=".to_owned() + &community.name -%}
-        {{ ui::events_list(title = "upcoming in-person events", link = &in_person_link, events = upcoming_in_person_events) -}}
-        {# End events in-person -#}
+            {# Social network links -#}
+            {% if has_social_links -%}
+              <div class="mt-6 lg:mt-8 flex flex-wrap gap-3">
+                {% if let Some(twitter_url) = &community.twitter_url -%}
+                  {{ social::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -}}
+                {% endif -%}
+                {% if let Some(github_url) = &community.github_url -%}
+                  {{ social::social_link(url = github_url, icon_name = "github", platform_name = "GitHub") -}}
+                {% endif -%}
+                {% if let Some(linkedin_url) = &community.linkedin_url -%}
+                  {{ social::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn") -}}
+                {% endif -%}
+                {% if let Some(instagram_url) = &community.instagram_url -%}
+                  {{ social::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram") -}}
+                {% endif -%}
+                {% if let Some(wechat_url) = &community.wechat_url -%}
+                  {{ social::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -}}
+                {% endif -%}
+                {% if let Some(youtube_url) = &community.youtube_url -%}
+                  {{ social::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube") -}}
+                {% endif -%}
+                {% if let Some(flickr_url) = &community.flickr_url -%}
+                  {{ social::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -}}
+                {% endif -%}
+                {% if let Some(facebook_url) = &community.facebook_url -%}
+                  {{ social::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -}}
+                {% endif -%}
+                {% if let Some(slack_url) = &community.slack_url -%}
+                  {{ social::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -}}
+                {% endif -%}
+              </div>
+            {% endif -%}
+            {# End social network links -#}
 
-        {# Events online -#}
-        {% let virtual_link = "/explore?entity=events&kind[0]=virtual&community[0]=".to_owned() + &community.name -%}
-        {{ ui::events_list(title = "upcoming virtual events", link = &virtual_link, events = upcoming_virtual_events) -}}
-        {# End events online -#}
+            {# Quick links -#}
+            {% if let Some(extra_links) = &community.extra_links -%}
+              <div class="mt-6 lg:mt-8">
+                <div class="font-bold text-sm uppercase text-stone-400 mb-3">Quick links</div>
+                <div class="flex flex-wrap gap-x-1 gap-y-2 text-sm/6 md:text-base">
+                  {% for (name, url) in extra_links -%}
+                    {% if !loop.first -%}
+                      <span class="text-stone-300">·</span>
+                    {% endif -%}
+                    <a href="{{ url }}"
+                       class="tracking-wider text-sm text-stone-700 hover:text-primary-500 transition-colors"
+                       target='{%- if url.starts_with("/") -%}_self{%- else -%}_blank{%- endif -%}'
+                       rel="noopener noreferrer">{{ name }}</a>
+                  {% endfor -%}
+                </div>
+              </div>
+            {% endif -%}
+            {# End quick links -#}
+          </div>
+        {% endif -%}
+        {# End about this community -#}
+
+        {# Stats -#}
+        <div>
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Stats</div>
+          {{ stats|safe }}
+        </div>
+        {# End stats -#}
 
         {# Banner -#}
         {% if let Some(ad_banner_url) = &community.ad_banner_url -%}
-          <div class="hidden pb-2 lg:pb-8 xl:pb-16 md:flex">
+          <div class="hidden md:flex">
             {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url -%}
               <a rel="noopener noreferrer"
                  href="{{ ad_banner_link_url }}"
@@ -63,104 +118,65 @@
         {% endif -%}
         {# End banner -#}
 
+        {# Events in-person -#}
+        {% let in_person_link = "/explore?entity=events&kind[0]=in-person&community[0]=".to_owned() + &community.name -%}
+        {{ ui::events_list(title = "upcoming in-person events", link = &in_person_link, events = upcoming_in_person_events) -}}
+        {# End events in-person -#}
+
+        {# Events online -#}
+        {% let virtual_link = "/explore?entity=events&kind[0]=virtual&community[0]=".to_owned() + &community.name -%}
+        {{ ui::events_list(title = "upcoming virtual events", link = &virtual_link, events = upcoming_virtual_events) -}}
+        {# End events online -#}
+
         {# Latest groups added -#}
-        <div class="flex items-center justify-between mb-2 md:mb-6">
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
-          {# See all groups on desktop -#}
-          <div class="hidden justify-self-end md:flex">
-            <a href="/explore?entity=groups&community[0]={{ community.name }}"
-               hx-boost="true"
-               hx-target="body"
-               class="btn-secondary-anchor ms-4">See all groups</a>
-          </div>
-          {# End see all groups on desktop -#}
-        </div>
-        <div class="mt-5 mb-3 lg:mt-10 lg:mb-10">
-          {# Groups cards -#}
-          {% if recently_added_groups.len() > 0 -%}
-            <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
-              {% for group in recently_added_groups -%}
-                {{ group|safe }}
-              {% endfor -%}
+        <div>
+          <div class="flex items-center justify-between mb-2 md:mb-6">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
+            {# See all groups on desktop -#}
+            <div class="hidden justify-self-end md:flex">
+              <a href="/explore?entity=groups&community[0]={{ community.name }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor ms-4">See all groups</a>
             </div>
-          {% else -%}
-            {{ feedback::placeholder(title = "Groups coming soon",
-                        content = "Community organizers are still setting this up, check back soon for new groups.") -}}
-          {% endif -%}
-          {# End groups cards -#}
-          {# See all groups mobile button -#}
-          <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-            <a href="/explore?entity=groups&community[0]={{ community.name }}"
-               hx-boost="true"
-               hx-target="body"
-               class="btn-secondary-anchor">See all groups</a>
+            {# End see all groups on desktop -#}
           </div>
-          {# End see all groups mobile button -#}
+          <div class="mt-5 mb-3 lg:mt-10 lg:mb-10">
+            {# Groups cards -#}
+            {% if recently_added_groups.len() > 0 -%}
+              <div class="grid-1 grid gap-8 lg:gap-12 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+                {% for group in recently_added_groups -%}
+                  {{ group|safe }}
+                {% endfor -%}
+              </div>
+            {% else -%}
+              {{ feedback::placeholder(title = "Groups coming soon",
+                            content = "Community organizers are still setting this up, check back soon for new groups.") -}}
+            {% endif -%}
+            {# End groups cards -#}
+            {# See all groups mobile button -#}
+            <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <a href="/explore?entity=groups&community[0]={{ community.name }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor">See all groups</a>
+            </div>
+            {# End see all groups mobile button -#}
+          </div>
         </div>
         {# End latest groups added -#}
+
+        {# Gallery -#}
+        {% if let Some(photos_urls) = &community.photos_urls -%}
+          {% if !photos_urls.is_empty() -%}
+            <div class="mb-10">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
+              <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+            </div>
+          {% endif -%}
+        {% endif -%}
+        {# End gallery -#}
       </div>
     </div>
   </div>
-  {# End main content -#}
-
-  {# Gallery -#}
-  {% if let Some(photos_urls) = &community.photos_urls -%}
-    {% if !photos_urls.is_empty() -%}
-      <div class="bg-stone-100 pt-2 lg:pt-10 pb-6 lg:pb-12">
-        <div class="container mx-auto max-w-7xl px-4 py-3 lg:py-10 lg:px-6">
-          <!-- Title -->
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
-          <!-- End title -->
-          <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
-        </div>
-      </div>
-    {% endif -%}
-  {% endif -%}
-  {# End gallery -#}
-
-  {# Community social links and extra links -#}
-  {% let has_social_links = community.twitter_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
-  {% let has_extra_links = community.extra_links.is_some() -%}
-  {% if has_social_links || has_extra_links -%}
-    <div class="bg-stone-900 text-white py-8 lg:py-12">
-      <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {# Social network links -#}
-        {% if has_social_links -%}
-          <nav class="flex flex-wrap justify-center gap-4 mb-8"
-               aria-label="Social media links">
-            {{ ui::social_icon_link(kind = "twitter", url = &community.twitter_url) -}}
-            {{ ui::social_icon_link(kind = "github", url = &community.github_url) -}}
-            {{ ui::social_icon_link(kind = "linkedin", url = &community.linkedin_url) -}}
-            {{ ui::social_icon_link(kind = "instagram", url = &community.instagram_url) -}}
-            {{ ui::social_icon_link(kind = "wechat", url = &community.wechat_url) -}}
-            {{ ui::social_icon_link(kind = "youtube", url = &community.youtube_url) -}}
-            {{ ui::social_icon_link(kind = "flickr", url = &community.flickr_url) -}}
-            {{ ui::social_icon_link(kind = "facebook", url = &community.facebook_url) -}}
-            {{ ui::social_icon_link(kind = "slack", url = &community.slack_url) -}}
-          </nav>
-        {% endif -%}
-        {# End social network links -#}
-
-        {# Extra links -#}
-        {% if let Some(extra_links) = &community.extra_links -%}
-          <div class="text-center">
-            <div class="font-bold text-sm uppercase text-stone-300 mb-2">Quick links</div>
-            <div class="text-sm/6 md:text-base">
-              {% for (name, url) in extra_links -%}
-                {% if !loop.first -%}
-                  <span class="px-2 text-stone-300 md:px-3">·</span>
-                {% endif -%}
-                <a href="{{ url }}"
-                   class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
-                   target='{%- if url.starts_with("/") -%}_self{%- else -%}_blank{%- endif -%}'
-                   rel="noopener noreferrer">{{ name }}</a>
-              {% endfor -%}
-            </div>
-          </div>
-        {% endif -%}
-        {# End extra links -#}
-      </div>
-    </div>
-  {% endif -%}
-  {# End community social links and extra links -#}
 {% endblock content -%}

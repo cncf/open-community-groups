@@ -4,18 +4,18 @@
 
 {% block jumbotron -%}
   {# Jumbotron -#}
-  <div class="relative container mx-auto max-w-7xl px-4 pt-2 xl:pt-5 pb-10 sm:px-6 lg:px-8">
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8">
     <section>
-      <div class="relative z-10 max-w-screen-xl pb-7 lg:pb-14">
+      <div class="relative z-10 max-w-7xl pb-7 lg:pb-14 text-center">
         {# Site title -#}
-        <h1 class="text-center mb-8 text-[1.8rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+        <h1 class="mb-8 text-[1.8rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ site_settings.title }}
         </h1>
         {# End site title -#}
 
         {# Site description -#}
         {% if !site_settings.description.is_empty() -%}
-          <div class="mb-8 font-normal text-xl text-stone-600 jumbotron-description">
+          <div class="font-normal text-lg/6 lg:text-2xl/10 my-8 lg:my-14 text-stone-600 jumbotron-description">
             {{ site_settings.description|md_to_html|safe }}
           </div>
         {% endif -%}
@@ -24,7 +24,7 @@
         <a href="/explore"
            hx-boost="true"
            hx-target="body"
-           class="btn-primary-anchor text-lg py-3 px-8 font-semibold">Explore groups and events</a>
+           class="btn-primary-anchor text-md lg:text-lg py-3 px-8 font-semibold">Explore groups and events</a>
       </div>
     </section>
   </div>
