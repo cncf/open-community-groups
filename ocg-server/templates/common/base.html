@@ -46,15 +46,6 @@
           href="/static/vendor/css/leaflet.markercluster.v1.5.3.min.css" />
     <link rel="stylesheet" href="/static/vendor/css/easymde.v2.20.0.min.css" />
     <link rel="stylesheet" href="/static/css/styles.css" />
-    {% if !site_settings.theme.palette.is_empty() -%}
-      <style>
-        :root {
-        {% for (color_name, color_value) in site_settings.theme.palette -%}
-          --color-primary-{{ color_name }}: {{ color_value }};
-        {% endfor -%}
-        }
-      </style>
-    {% endif -%}
     {# End styles -#}
 
     {# Scripts -#}

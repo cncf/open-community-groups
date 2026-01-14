@@ -11,17 +11,18 @@
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
     Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol";
-  --color-primary-50: #FDF4FA;
-  --color-primary-100: #FBE9F4;
-  --color-primary-200: #F5C8E4;
-  --color-primary-300: #EB90C9;
-  --color-primary-400: #E059AE;
-  --color-primary-500: #D62293;
-  --color-primary-600: #C11F84;
-  --color-primary-700: #AB1B76;
-  --color-primary-800: #8B1660;
-  --color-primary-900: #6B114A;
-  --color-primary-950: #4C0D34;
+
+  --color-primary-50:  #EBF5FF;   /* Very light azure tint */
+  --color-primary-100: #D6EBFF;   /* Light azure tint */
+  --color-primary-200: #ADD6FF;   /* Lighter azure */
+  --color-primary-300: #6BB8FF;   /* Light-mid azure */
+  --color-primary-400: #29A3FF;   /* Azure approaching main */
+  --color-primary-500: #0094FF;   /* Azure (main brand color) */
+  --color-primary-600: #0077CC;   /* Darker azure */
+  --color-primary-700: #005999;   /* Transitioning toward navy */
+  --color-primary-800: #004880;   /* Dark blue */
+  --color-primary-900: #003778;   /* Royal Navy */
+  --color-primary-950: #002152;   /* Deepest navy */
 }
 
 @layer components {
