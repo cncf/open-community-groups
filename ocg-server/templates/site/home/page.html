@@ -39,10 +39,10 @@
 {% block content -%}
   {# Main content -#}
   <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
-    <div class="flex flex-col gap-y-5 sm:gap-y-7 lg:gap-y-10">
+    <div class="flex flex-col gap-y-5 sm:gap-y-7 lg:gap-y-12">
       {# Communities list -#}
       <div>
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Communities</div>
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-7 lg:pb-12">Communities</div>
         {% if communities.len() > 0 -%}
           <div class="flex flex-col gap-8">
             {% for community in communities -%}
@@ -64,7 +64,7 @@
       {# End communities list -#}
 
       {# Events -#}
-      <div class="flex flex-col gap-y-5 sm:gap-y-7 lg:gap-y-10">
+      <div class="flex flex-col gap-y-5 sm:gap-y-7 lg:gap-y-12">
         {# Events in-person -#}
         {{ ui::events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind[0]=in-person", events = upcoming_in_person_events) -}}
         {# End events in-person -#}
