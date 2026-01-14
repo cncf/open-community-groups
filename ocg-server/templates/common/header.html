@@ -11,8 +11,8 @@
       {% if path != "/" %}<a href="/" aria-label="Go to homepage" class="inline-flex">{% endif %}
         <div class="inline-flex items-top gap-x-3 me-5">
           {% if let Some(url) = &site_settings.header_logo_url -%}
-            <img class="w-auto max-w-[208px] h-10 mt-[5px]"
-                 height="40"
+            <img class="w-auto max-w-[208px] h-[50px] z-1"
+                 height="50"
                  width="auto"
                  src="{{ url }}"
                  alt="{{ site_settings.title }} logo" />
