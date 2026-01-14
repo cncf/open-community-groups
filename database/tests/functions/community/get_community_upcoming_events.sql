@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -45,8 +45,8 @@ insert into group_category (group_category_id, name, community_id)
 values (:'category1ID', 'Technology', :'communityID');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
-values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States');
+insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url)
+values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States', 'https://example.com/group-logo.png');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -93,14 +93,26 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Should exclude events without logo_url
+-- Should include events with group logo (event has no logo but group does)
+select is(
+    get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
+    jsonb_build_array(
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb
+    ),
+    'Should include events with group logo (event has no logo but group does)'
+);
+
+-- Should exclude events without any logo (event or group)
+update "group" set logo_url = null where group_id = :'group1ID';
 select is(
     get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'Should exclude events without logo_url'
+    'Should exclude events without any logo (event or group)'
 );
+update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'group1ID';
 
 -- Should return only published future events with logo
 delete from event where event_id = :'event5ID';

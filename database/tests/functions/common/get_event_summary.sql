@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -198,6 +198,19 @@ select is(
     }'::jsonb,
     'Should return correct event summary data as JSON'
 );
+
+-- Should use group logo when event has no logo
+update event set logo_url = null where event_id = :'eventID';
+select is(
+    (get_event_summary(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb)->>'logo_url',
+    'https://example.com/group-logo.png',
+    'Should use group logo when event has no logo'
+);
+update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event ID
 select ok(

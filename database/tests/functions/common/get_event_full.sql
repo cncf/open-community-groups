@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -72,7 +72,9 @@ insert into "group" (
     state,
     country_code,
     country_name,
-    location
+    location,
+
+    logo_url
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
@@ -85,7 +87,9 @@ insert into "group" (
     'NY',
     'US',
     'United States',
-    ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326)  -- New York coordinates
+    ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326),  -- New York coordinates
+
+    'https://example.com/group-logo.png'
 );
 
 -- Group (inactive)
@@ -490,6 +494,7 @@ select is(
             "community_name": "cloud-native-seattle",
             "group_id": "00000000-0000-0000-0000-000000000021",
             "latitude": 40.73061,
+            "logo_url": "https://example.com/group-logo.png",
             "longitude": -73.935242,
             "created_at": 1709287200,
             "country_code": "US",
@@ -684,6 +689,19 @@ select is(
     }'::jsonb,
     'Should return complete event data with hosts, organizers, and sessions as JSON'
 );
+
+-- Should use group logo when event has no logo
+update event set logo_url = null where event_id = :'eventID';
+select is(
+    (get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb)->>'logo_url',
+    'https://example.com/group-logo.png',
+    'Should use group logo when event has no logo'
+);
+update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event
 

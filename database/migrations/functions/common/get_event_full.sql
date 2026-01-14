@@ -22,7 +22,7 @@ returns json as $$
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
         'latitude', st_y(e.location::geometry),
-        'logo_url', e.logo_url,
+        'logo_url', coalesce(e.logo_url, g.logo_url),
         'longitude', st_x(e.location::geometry),
         'meeting_error', e.meeting_error,
         'meeting_hosts', e.meeting_hosts,
