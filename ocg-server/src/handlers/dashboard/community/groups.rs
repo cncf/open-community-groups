@@ -9,12 +9,15 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
 };
+use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
+    auth::AuthSession,
     db::DynDB,
     handlers::{
+        auth::SELECTED_GROUP_ID_KEY,
         error::HandlerError,
         extractors::{SelectedCommunityId, ValidatedFormQs},
     },
@@ -115,12 +118,18 @@ pub(crate) async fn activate(
 /// Adds a new group to the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
+    session: Session,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedFormQs(group): ValidatedFormQs<Group>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Add group to database
-    db.add_group(community_id, &group).await?;
+    let group_id = db.add_group(community_id, &group).await?;
+
+    // Auto-select the new group if none was selected
+    if session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await?.is_none() {
+        session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
+    }
 
     Ok((
         StatusCode::CREATED,
@@ -148,12 +157,32 @@ pub(crate) async fn deactivate(
 /// Deletes a group from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
+    auth_session: AuthSession,
+    session: Session,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.expect("user to be logged in");
+
     // Delete group from database (soft delete)
     db.delete_group(community_id, group_id).await?;
+
+    // Update selection if deleted group was selected
+    if session.get::<Uuid>(SELECTED_GROUP_ID_KEY).await? == Some(group_id) {
+        // Get remaining groups in this community
+        let groups_by_community = db.list_user_groups(&user.user_id).await?;
+        let community_groups = groups_by_community
+            .iter()
+            .find(|c| c.community.community_id == community_id);
+
+        if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
+            session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
+        } else {
+            session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
+        }
+    }
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -192,12 +221,13 @@ mod tests {
         },
     };
     use axum_login::tower_sessions::session;
+    use serde_json::json;
     use tower::ServiceExt;
     use uuid::Uuid;
 
     use crate::{
         db::{common::SearchGroupsOutput, mock::MockDB},
-        handlers::tests::*,
+        handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
     };
@@ -565,10 +595,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_add_success() {
+    async fn test_add_success_auto_selects_group() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let category_id = Uuid::new_v4();
+        let new_group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -597,6 +628,79 @@ mod tests {
                     && group.category_id == category_id
                     && group.description == "Group description"
             })
+            .returning(move |_, _| Ok(new_group_id));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| {
+                record.id == session_id
+                    && record
+                        .data
+                        .get(SELECTED_GROUP_ID_KEY)
+                        .is_some_and(|value| value == &json!(new_group_id))
+            })
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("POST")
+            .uri("/dashboard/community/groups/add")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(body))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::CREATED);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-community-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_add_success_keeps_existing_group_selection() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let category_id = Uuid::new_v4();
+        let existing_group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(existing_group_id),
+        );
+        let body = serde_qs::to_string(&sample_group_form(category_id)).unwrap();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_add_group()
+            .times(1)
+            .withf(move |cid, group| *cid == community_id && group.category_id == category_id)
             .returning(|_, _| Ok(Uuid::new_v4()));
 
         // Setup notifications manager mock
@@ -993,14 +1097,21 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_delete_success() {
+    async fn test_delete_non_selected_group() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
+        let other_group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(other_group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1020,6 +1131,150 @@ mod tests {
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri(format!("/dashboard/community/groups/{group_id}/delete"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-community-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_delete_selected_group_selects_another() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let other_group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+        let groups = sample_user_groups_by_community(community_id, other_group_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_delete_group()
+            .times(1)
+            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+            .returning(move |_, _| Ok(()));
+        db.expect_list_user_groups()
+            .times(1)
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(groups.clone()));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| {
+                record.id == session_id
+                    && record
+                        .data
+                        .get(SELECTED_GROUP_ID_KEY)
+                        .is_some_and(|value| value == &json!(other_group_id))
+            })
+            .returning(|_| Ok(()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri(format!("/dashboard/community/groups/{group_id}/delete"))
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-community-dashboard-table"),
+        );
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_delete_selected_group_clears_selection() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_delete_group()
+            .times(1)
+            .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+            .returning(move |_, _| Ok(()));
+        db.expect_list_user_groups()
+            .times(1)
+            .withf(move |uid| *uid == user_id)
+            .returning(|_| Ok(vec![]));
+        db.expect_update_session()
+            .times(1)
+            .withf(move |record| record.id == session_id && !record.data.contains_key(SELECTED_GROUP_ID_KEY))
+            .returning(|_| Ok(()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

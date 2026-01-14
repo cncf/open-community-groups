@@ -44,6 +44,8 @@ pub(crate) async fn select_community(
     session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
     if let Some(first_group_id) = community_groups.and_then(|c| c.groups.first()).map(|g| g.group_id) {
         session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
+    } else {
+        session.remove::<uuid::Uuid>(SELECTED_GROUP_ID_KEY).await?;
     }
 
     Ok((
@@ -149,10 +151,12 @@ mod tests {
     async fn test_select_community_without_groups() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+        let stale_group_id = Uuid::new_v4(); // Stale group from a different community
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let session_record =
+            sample_session_record(session_id, user_id, &auth_hash, None, Some(stale_group_id));
 
         // Setup database mock
         let mut db = MockDB::new();
