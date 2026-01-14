@@ -15,7 +15,7 @@
 
         {# Site description -#}
         {% if !site_settings.description.is_empty() -%}
-          <div class="font-normal text-lg/6 lg:text-2xl/10 my-8 lg:my-14 text-stone-600 jumbotron-description">
+          <div class="font-normal text-lg/8 lg:text-[22px]/10 my-8 lg:my-14 text-stone-600 jumbotron-description">
             {{ site_settings.description|md_to_html|safe }}
           </div>
         {% endif -%}
