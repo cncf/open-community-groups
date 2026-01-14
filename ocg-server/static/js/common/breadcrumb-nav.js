@@ -208,7 +208,7 @@ export class BreadcrumbNav extends LitWrapper {
         <div class="bg-white border border-stone-200 rounded-lg overflow-hidden">
           ${this.bannerUrl
             ? html`
-                <div class="h-24 w-full">
+                <div class="aspect-[607/48] w-full">
                   <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
                 </div>
               `
