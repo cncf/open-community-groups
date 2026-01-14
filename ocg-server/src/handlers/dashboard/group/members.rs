@@ -70,7 +70,7 @@ pub(crate) async fn send_group_custom_notification(
 
     // Enqueue notification
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = format!("{}/group/{}", base_url, group.slug);
+    let link = format!("{}/{}/group/{}", base_url, group.community_name, group.slug);
     let template_data = GroupCustom {
         body: notification.body.clone(),
         group,
@@ -275,7 +275,7 @@ mod tests {
         let site_settings = sample_site_settings();
         let site_settings_for_notifications = site_settings.clone();
         let group_summary = sample_group_summary(group_id);
-        let expected_link = format!("/group/{}", group_summary.slug);
+        let expected_link = format!("/{}/group/{}", group_summary.community_name, group_summary.slug);
         let group_for_notifications = group_summary.clone();
         let group_for_db = group_summary.clone();
         let notification_body = "Hello, group members!";

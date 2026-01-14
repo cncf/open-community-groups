@@ -128,7 +128,10 @@ pub(crate) async fn send_event_custom_notification(
 
     // Enqueue notification
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = format!("{}/group/{}/event/{}", base_url, event.group_slug, event.slug);
+    let link = format!(
+        "{}/{}/group/{}/event/{}",
+        base_url, event.community_name, event.group_slug, event.slug
+    );
     let template_data = EventCustom {
         body: notification.body.clone(),
         event,
@@ -406,6 +409,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)]
     async fn test_send_event_custom_notification_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
@@ -426,7 +430,10 @@ mod tests {
         let site_settings = sample_site_settings();
         let site_settings_for_notifications = site_settings.clone();
         let event = sample_event_summary(event_id, group_id);
-        let expected_link = format!("/group/{}/event/{}", event.group_slug, event.slug);
+        let expected_link = format!(
+            "/{}/group/{}/event/{}",
+            event.community_name, event.group_slug, event.slug
+        );
         let event_for_notifications = event.clone();
         let event_for_db = event.clone();
         let notification_body = "Hello, event attendees!";
