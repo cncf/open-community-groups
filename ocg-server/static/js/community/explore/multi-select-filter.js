@@ -388,7 +388,7 @@ export class MultiSelectFilter extends LitWrapper {
                   (opt) => opt.value,
                   (opt) => html`
                     <span
-                      class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] font-medium text-primary-500 border border-primary-500 rounded-lg"
+                      class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-primary-500 border border-primary-500 rounded-lg"
                     >
                       <span>${opt.name}</span>
                       <button
