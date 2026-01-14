@@ -12,6 +12,10 @@
     Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol";
 
+/**
+ * Keep these colors so Tailwind can build utilities using them.
+ * Actual theme values come from site settings at runtime and override these defaults.
+ */
   --color-primary-50:  #EBF5FF;   /* Very light azure tint */
   --color-primary-100: #D6EBFF;   /* Light azure tint */
   --color-primary-200: #ADD6FF;   /* Lighter azure */

@@ -34,18 +34,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <style>
-      :root {
-        --ocg-primary: {{ site_settings.theme.primary_color }};
-      }
-    </style>
-
     {# Styles -#}
     <link rel="stylesheet" href="/static/vendor/css/leaflet.v1.9.4.min.css" />
     <link rel="stylesheet"
           href="/static/vendor/css/leaflet.markercluster.v1.5.3.min.css" />
     <link rel="stylesheet" href="/static/vendor/css/easymde.v2.20.0.min.css" />
     <link rel="stylesheet" href="/static/css/styles.css" />
+    <style>
+      :root {
+        --ocg-primary: {{ site_settings.theme.primary_color }};
+        {% if !site_settings.theme.palette.is_empty() -%}
+          {% for (color_name, color_value) in site_settings.theme.palette -%}
+            --color-primary-{{ color_name }}: {{ color_value }};
+          {% endfor -%}
+        {% endif -%}
+      }
+    </style>
+
     {# End styles -#}
 
     {# Scripts -#}
