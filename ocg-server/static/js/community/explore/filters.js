@@ -102,7 +102,7 @@ export const resetFilters = async (formId) => {
   const sortDirectionInput = document.getElementById("sort_direction");
   if (sortSelector) {
     const isEvents = formId === "events-form" || formId === "events-form-mobile";
-    sortSelector.value = isEvents ? "date-asc" : "date";
+    sortSelector.value = isEvents ? "date-asc" : "name";
     if (sortByInput) sortByInput.value = "date";
     if (sortDirectionInput) sortDirectionInput.value = "asc";
   }

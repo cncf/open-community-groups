@@ -13,6 +13,7 @@
 
 {# Sort options -#}
 {% block sort_options -%}
+  {% let current_sort_by = filters.sort_by.clone().unwrap_or("name".to_string()) -%}
   <select id="sort_selector"
           name="sort_by"
           class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
@@ -67,3 +68,13 @@
   {{ results_section|safe }}
 {% endblock content -%}
 {# End main content -#}
+
+{# Trigger re-fetch with default sort when no sort_by was provided -#}
+{% if filters.sort_by.is_none() -%}
+  <script type="module">
+    import {
+      triggerChangeOnForm
+    } from '/static/js/community/explore/filters.js';
+    triggerChangeOnForm("groups-form");
+  </script>
+{% endif -%}
