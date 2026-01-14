@@ -3,10 +3,8 @@
 //! The home page displays an overview of the community including community statistics,
 //! upcoming events (both in-person and virtual), and recently added groups.
 
-use anyhow::Result;
 use askama::Template;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
@@ -72,13 +70,4 @@ pub(crate) struct Stats {
     pub events: i64,
     /// Total number of attendees across all events.
     pub events_attendees: i64,
-}
-
-impl Stats {
-    /// Try to create a `Stats` instance from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_from_json(data: &str) -> Result<Self> {
-        let stats: Stats = serde_json::from_str(data)?;
-        Ok(stats)
-    }
 }

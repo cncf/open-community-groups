@@ -192,7 +192,7 @@ impl DBDashboardCommunity for PgDB {
                 &[&community_id],
             )
             .await?;
-        let members = CommunityTeamMember::try_from_json_array(&row.get::<_, String>(0))?;
+        let members: Vec<CommunityTeamMember> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(members)
     }

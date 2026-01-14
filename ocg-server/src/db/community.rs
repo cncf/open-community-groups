@@ -125,7 +125,7 @@ impl DBCommunity for PgDB {
                 &[&community_id],
             )
             .await?;
-        let stats = community::Stats::try_from_json(&row.get::<_, String>(0))?;
+        let stats: community::Stats = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(stats)
     }

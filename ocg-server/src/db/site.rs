@@ -62,7 +62,7 @@ impl DBSite for PgDB {
                 &[&community_name, &entity.map(|e| e.to_string())],
             )
             .await?;
-        let filters_options = FiltersOptions::try_from_json(&row.get::<_, String>(0))?;
+        let filters_options: FiltersOptions = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(filters_options)
     }

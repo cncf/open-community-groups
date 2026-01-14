@@ -531,16 +531,6 @@ pub(crate) struct FiltersOptions {
     pub region: Option<Vec<FilterOption>>,
 }
 
-impl FiltersOptions {
-    /// Try to create a `FiltersOptions` instance from a JSON string.
-    #[instrument(skip_all, err)]
-    pub(crate) fn try_from_json(data: &str) -> Result<Self> {
-        let filters_options: FiltersOptions = serde_json::from_str(data)?;
-
-        Ok(filters_options)
-    }
-}
-
 /// Individual filter option with display name and value.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct FilterOption {

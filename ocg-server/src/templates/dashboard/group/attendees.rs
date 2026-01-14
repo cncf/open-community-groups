@@ -1,11 +1,9 @@
 //! Templates and types for listing event attendees in the group dashboard.
 
-use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{templates::helpers::user_initials, types::event::EventSummary};
@@ -49,15 +47,6 @@ pub struct Attendee {
     pub photo_url: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
-}
-
-impl Attendee {
-    /// Try to create a vector of `Attendee` from a JSON array string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let attendees: Vec<Self> = serde_json::from_str(data)?;
-        Ok(attendees)
-    }
 }
 
 /// Filter parameters for attendees searches.

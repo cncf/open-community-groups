@@ -354,7 +354,7 @@ impl DBDashboardGroup for PgDB {
         let row = db
             .query_one("select list_group_members($1::uuid)::text", &[&group_id])
             .await?;
-        let members = GroupMember::try_from_json_array(&row.get::<_, String>(0))?;
+        let members: Vec<GroupMember> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(members)
     }
@@ -408,7 +408,7 @@ impl DBDashboardGroup for PgDB {
         let row = db
             .query_one("select list_group_team_members($1::uuid)::text", &[&group_id])
             .await?;
-        let members = GroupTeamMember::try_from_json_array(&row.get::<_, String>(0))?;
+        let members: Vec<GroupTeamMember> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(members)
     }
@@ -470,7 +470,7 @@ impl DBDashboardGroup for PgDB {
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let attendees = Attendee::try_from_json_array(&row.get::<_, String>(0))?;
+        let attendees: Vec<Attendee> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(attendees)
     }

@@ -1,9 +1,7 @@
 //! Templates and types for managing the group team in the dashboard.
 
-use anyhow::Result;
 use askama::Template;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -47,13 +45,4 @@ pub struct GroupTeamMember {
     pub role: Option<GroupRole>,
     /// Title held by the user.
     pub title: Option<String>,
-}
-
-impl GroupTeamMember {
-    /// Try to create a vector of `GroupTeamMember` from a JSON array string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let members: Vec<Self> = serde_json::from_str(data)?;
-        Ok(members)
-    }
 }
