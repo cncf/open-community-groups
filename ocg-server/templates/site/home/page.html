@@ -39,22 +39,26 @@
     {# End stats -#}
 
     {# Communities list -#}
-    <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 mb-6 pt-12">Communities</div>
-    {% if communities.len() > 0 -%}
-      <div class="flex flex-col gap-8 pb-6 lg:pb-12">
-        {% for community in communities -%}
-          <a href="/{{ community.name }}"
-             class="block aspect-[607/48] bg-white rounded-lg border border-stone-200 hover:shadow-md transition-shadow overflow-hidden">
-            <img class="w-full h-full object-cover"
-                 src="{{ community.banner_url }}"
-                 alt="{{ community.display_name }} banner" />
-          </a>
-        {% endfor -%}
-      </div>
-    {% else -%}
-      {{ feedback::placeholder(title = "No communities yet",
-            content = "Communities are being set up, check back soon.") -}}
-    {% endif -%}
+    <div class="pt-3 xl:pt-8">
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 mb-6">Communities</div>
+      {% if communities.len() > 0 -%}
+        <div class="flex flex-col gap-8 my-5 xl:my-10">
+          {% for community in communities -%}
+            <a href="/{{ community.name }}"
+               class="block aspect-[607/48] bg-white rounded-lg border border-stone-200 hover:shadow-md transition-shadow overflow-hidden">
+              <img class="w-full h-full object-cover"
+                   height="auto"
+                   width="auto"
+                   src="{{ community.banner_url }}"
+                   alt="{{ community.display_name }} banner" />
+            </a>
+          {% endfor -%}
+        </div>
+      {% else -%}
+        {{ feedback::placeholder(title = "No communities yet",
+                content = "Communities are being set up, check back soon.") -}}
+      {% endif -%}
+    </div>
     {# End communities list -#}
 
     {# Events -#}
