@@ -42,17 +42,30 @@
     <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
       {# Communities list -#}
       <div>
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Communities</div>
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pb-12">
+          Communities
+        </div>
         {% if communities.len() > 0 -%}
           <div class="flex flex-col gap-8">
             {% for community in communities -%}
               <a href="/{{ community.name }}"
-                 class="block aspect-[607/48] bg-white rounded-lg border border-stone-200 hover:shadow-md transition-shadow overflow-hidden">
-                <img class="w-full h-full object-cover"
-                     height="auto"
-                     width="auto"
-                     src="{{ community.banner_url }}"
-                     alt="{{ community.display_name }} banner" />
+                 class="block bg-white rounded-lg border border-stone-200 hover:shadow-md transition-shadow overflow-hidden">
+                {# Mobile banner -#}
+                <div class="aspect-[305/48] sm:hidden">
+                  <img class="w-full h-full object-cover"
+                       height="auto"
+                       width="auto"
+                       src="{{ community.banner_mobile_url }}"
+                       alt="{{ community.display_name }} banner" />
+                </div>
+                {# Desktop banner -#}
+                <div class="aspect-[607/48] hidden sm:block">
+                  <img class="w-full h-full object-cover"
+                       height="auto"
+                       width="auto"
+                       src="{{ community.banner_url }}"
+                       alt="{{ community.display_name }} banner" />
+                </div>
               </a>
             {% endfor -%}
           </div>

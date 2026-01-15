@@ -16,7 +16,7 @@
   {% let has_social_links = group.website_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">

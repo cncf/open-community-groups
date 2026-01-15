@@ -16,7 +16,7 @@
   {% let has_social_links = event.meetup_url.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.slug }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.slug }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">

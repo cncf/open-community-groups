@@ -10,11 +10,13 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  *   - href: string (optional) - Link URL (omit for current page)
  *   - icon: string (required) - Icon name without 'icon-' prefix
  *   - current: boolean (optional) - Mark as current page
- * - banner-url: string (optional) - URL to banner image displayed above breadcrumb
+ * - banner-url: string (optional) - URL to banner image displayed above breadcrumb (sm+)
+ * - banner-mobile-url: string (optional) - URL to mobile banner image (below sm breakpoint)
  *
  * Example:
  * <breadcrumb-nav
  *   banner-url="/path/to/banner.jpg"
+ *   banner-mobile-url="/path/to/banner-mobile.jpg"
  *   items='[
  *     {"label": "Home", "href": "/", "icon": "home"},
  *     {"label": "Group", "href": "/community/group/slug", "icon": "groups"},
@@ -27,6 +29,7 @@ export class BreadcrumbNav extends LitWrapper {
     return {
       items: { type: Array },
       bannerUrl: { type: String, attribute: "banner-url" },
+      bannerMobileUrl: { type: String, attribute: "banner-mobile-url" },
       _isOpen: { type: Boolean, state: true },
     };
   }
@@ -35,6 +38,7 @@ export class BreadcrumbNav extends LitWrapper {
     super();
     this.items = [];
     this.bannerUrl = null;
+    this.bannerMobileUrl = null;
     this._isOpen = false;
     this._dropdownId = `breadcrumb-dropdown-${Math.random().toString(36).slice(2, 9)}`;
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
@@ -205,10 +209,21 @@ export class BreadcrumbNav extends LitWrapper {
 
     return html`
       <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
-        <div class="bg-white border border-stone-200 rounded-lg overflow-hidden">
+        <div class="bg-white border border-stone-200 rounded-lg">
+          ${this.bannerMobileUrl
+            ? html`
+                <div
+                  class="aspect-[305/48] w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg"
+                >
+                  <img src="${this.bannerMobileUrl}" class="w-full h-full object-cover" alt="Banner" />
+                </div>
+              `
+            : ""}
           ${this.bannerUrl
             ? html`
-                <div class="aspect-[607/48] w-full border-b border-stone-200">
+                <div
+                  class="aspect-[607/48] w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg"
+                >
                   <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
                 </div>
               `

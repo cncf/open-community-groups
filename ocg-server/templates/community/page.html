@@ -11,7 +11,7 @@
 
 {% block content -%}
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ community.banner_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
+  <breadcrumb-nav banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">

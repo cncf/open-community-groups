@@ -80,32 +80,39 @@
     </div>
     {# End Banner URL -#}
 
-    {# Short Description -#}
+    {# Banner Mobile URL -#}
     <div class="col-span-full">
-      <label for="description_short" class="form-label">Short Description</label>
-      <div class="mt-2">
-        <textarea id="description_short"
-                  name="description_short"
-                  rows="2"
-                  class="input-primary"
-                  maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
-      </div>
-      <p class="form-legend">Brief description for group listings and previews.</p>
-    </div>
-    {# End Short Description -#}
-
-    {# Group Description -#}
-    <div class="col-span-full">
-      <label for="description" class="form-label">
-        Description <span class="asterisk">*</span>
-      </label>
-      <div class="mt-2">
-        <markdown-editor id="description" name="description" required></markdown-editor>
-      </div>
-      <p class="form-legend">Brief description of the group and its purpose.</p>
-    </div>
-    {# End Group Description -#}
+      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" help-prefix-text="Size required 1220 x 192 px.">
+    </image-field>
   </div>
+  {# End Banner Mobile URL -#}
+
+  {# Short Description -#}
+  <div class="col-span-full">
+    <label for="description_short" class="form-label">Short Description</label>
+    <div class="mt-2">
+      <textarea id="description_short"
+                name="description_short"
+                rows="2"
+                class="input-primary"
+                maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
+    </div>
+    <p class="form-legend">Brief description for group listings and previews.</p>
+  </div>
+  {# End Short Description -#}
+
+  {# Group Description -#}
+  <div class="col-span-full">
+    <label for="description" class="form-label">
+      Description <span class="asterisk">*</span>
+    </label>
+    <div class="mt-2">
+      <markdown-editor id="description" name="description" required></markdown-editor>
+    </div>
+    <p class="form-legend">Brief description of the group and its purpose.</p>
+  </div>
+  {# End Group Description -#}
+</div>
 </div>
 
 {# Location section -#}
