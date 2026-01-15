@@ -242,7 +242,7 @@ export class CollapsibleFilter extends LitWrapper {
 
     return html`<div class="px-6 py-7 pt-5 border-b border-stone-100">
       <div class="flex justify-between items-center">
-        <div class="font-semibold leading-4 md:leading-8 text-[0.775rem] text-stone-700">${this.title}</div>
+        <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700">${this.title}</div>
         <div>
           ${canCollapse
             ? html`<button
