@@ -11,7 +11,7 @@
       {% if path != "/" %}<a href="/" aria-label="Go to homepage" class="inline-flex">{% endif %}
         <div class="inline-flex items-top gap-x-3 me-5">
           {% if let Some(url) = &site_settings.header_logo_url -%}
-            <img class="w-auto max-w-[208px] h-[50px] z-1"
+            <img class="w-auto max-w-52 h-[50px] z-1"
                  height="50"
                  width="auto"
                  src="{{ url }}"
@@ -19,7 +19,7 @@
           {% endif -%}
           {# Beta badge -#}
           <div>
-            <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 font-semibold">
+            <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 ms-1 font-semibold">
               BETA
             </div>
           </div>

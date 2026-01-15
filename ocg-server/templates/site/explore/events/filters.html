@@ -68,7 +68,7 @@
 {# Groups (only shown when a community is selected) -#}
 {% if let Some(groups) = &filters_options.groups -%}
   {% if groups.len() > 0 -%}
-    <multi-select-filter title="Groups" name="group" options="{{ groups|json }}" selected="{{ filters.group|json }}" placeholder="Type to search"></multi-select-filter>
+    <multi-select-filter title="Group" name="group" options="{{ groups|json }}" selected="{{ filters.group|json }}" placeholder="Type to search"></multi-select-filter>
   {% endif -%}
 {% endif -%}
 {# End groups -#}
