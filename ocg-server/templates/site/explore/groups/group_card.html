@@ -25,7 +25,8 @@
             {# Group region -#}
             <div class="card-header">
               <span>
-                <span class="text-primary-500 pe-2">{{ group.community_name }}</span>
+                <span class="text-primary-500">{{ group.community_display_name }}</span>
+                <span class="px-1 hidden sm:inline">·</span>
                 {% if let Some(region) = &group.region -%}
                   {{ region.name }}
                 {% else -%}

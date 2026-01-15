@@ -1,5 +1,9 @@
 {% extends "common/event_card_small.html" -%}
 
 {% block preheader -%}
-  <span><span class="text-primary-500 pe-2">{{ event.community_name }}</span> {{ event.group_name }}</span>
+  <span>
+    <span class="text-primary-500">{{ event.community_display_name }}</span>
+    <span class="px-1 hidden sm:inline">·</span>
+    {{ event.group_name }}
+  </span>
 {% endblock preheader -%}
