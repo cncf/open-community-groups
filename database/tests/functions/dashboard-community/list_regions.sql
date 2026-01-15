@@ -25,14 +25,13 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
-) values 
-    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'seattle.cloudnative.org', 'Cloud Native Seattle Community', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png', '{}'::jsonb),
-    (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'vancouver.devops.org', 'DevOps Vancouver Community', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', '{}'::jsonb);
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values
+    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo1.png', 'https://example.com/banner_mobile1.png', 'https://example.com/banner1.png'),
+    (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
 -- Region
 insert into region (region_id, name, community_id, "order")
@@ -74,20 +73,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'community3ID'::uuid,
     'rust-denver',
     'Rust Denver',
-    'denver.rust-lang.org',
-    'Rust Denver Community',
     'Building the Rust programming community in Denver',
     'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 select is(

@@ -139,7 +139,7 @@ export class UserChip extends LitWrapper {
         </avatar-image>
         <div class="leading-tight min-w-0">
           <div class="font-semibold text-stone-900 truncate ${nameSize}">${name}</div>
-          ${jobTitle ? html`<div class="text-stone-600 mt-1 line-clamp-2 ${jobSize}">${jobTitle}</div>` : ""}
+          ${jobTitle ? html`<div class="text-stone-600 mt-3 truncate ${jobSize}">${jobTitle}</div>` : ""}
         </div>
       </div>
     `;

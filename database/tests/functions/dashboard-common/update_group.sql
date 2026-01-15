@@ -27,20 +27,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Group Category
@@ -152,6 +150,14 @@ select is(
             "name": "Business",
             "normalized_name": "business"
         },
+        "community": {
+            "banner_mobile_url": "https://example.com/banner_mobile.png",
+            "banner_url": "https://example.com/banner.png",
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "display_name": "Cloud Native Seattle",
+            "logo_url": "https://example.com/logo.png",
+            "name": "cloud-native-seattle"
+        },
         "group_id": "00000000-0000-0000-0000-000000000021",
         "description": "Updated description",
         "description_short": "Updated brief description",
@@ -242,7 +248,7 @@ select update_group(
 
 -- Should keep minimal fields after empty-string conversion
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "pqr4jkl"
@@ -276,7 +282,7 @@ select update_group(
 
 -- Should persist explicit null arrays in result
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",

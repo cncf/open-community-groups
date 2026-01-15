@@ -11,17 +11,22 @@
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
     Arial, sans-serif, Roboto, Ubuntu, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol";
-  --color-primary-50: #FDF4FA;
-  --color-primary-100: #FBE9F4;
-  --color-primary-200: #F5C8E4;
-  --color-primary-300: #EB90C9;
-  --color-primary-400: #E059AE;
-  --color-primary-500: #D62293;
-  --color-primary-600: #C11F84;
-  --color-primary-700: #AB1B76;
-  --color-primary-800: #8B1660;
-  --color-primary-900: #6B114A;
-  --color-primary-950: #4C0D34;
+
+/**
+ * Keep these colors so Tailwind can build utilities using them.
+ * Actual theme values come from site settings at runtime and override these defaults.
+ */
+  --color-primary-50:  #EBF5FF;   /* Very light azure tint */
+  --color-primary-100: #D6EBFF;   /* Light azure tint */
+  --color-primary-200: #ADD6FF;   /* Lighter azure */
+  --color-primary-300: #6BB8FF;   /* Light-mid azure */
+  --color-primary-400: #29A3FF;   /* Azure approaching main */
+  --color-primary-500: #0094FF;   /* Azure (main brand color) */
+  --color-primary-600: #0077CC;   /* Darker azure */
+  --color-primary-700: #005999;   /* Transitioning toward navy */
+  --color-primary-800: #004880;   /* Dark blue */
+  --color-primary-900: #003778;   /* Royal Navy */
+  --color-primary-950: #002152;   /* Deepest navy */
 }
 
 @layer components {
@@ -76,18 +81,18 @@
   }
 
   .icon-text img {
-    @apply -mt-0.5 w-3 h-3;
+    @apply -mt-0.5 w-3 h-3 text-stone-500 shrink-0;
   }
 
   .icon-text span {
-    @apply text-xs text-stone-700 uppercase truncate;
+    @apply text-[0.825rem] text-stone-700 truncate;
   }
 
-  .event-badge {
+  .custom-badge {
     @apply -mt-px border border-stone-200 text-stone-500 text-[10px] text-nowrap uppercase font-medium px-1.5 rounded-full;
   }
 
-  .event-badge.canceled {
+  .custom-badge.canceled {
     @apply border-red-300 text-red-500;
   }
 
@@ -96,7 +101,19 @@
   }
 
   .card-logo {
-    @apply relative;
+    @apply relative shrink-0;
+  }
+
+  .card-surface {
+    @apply rounded-2xl border border-stone-100 bg-white p-4 shadow-sm transition-shadow;
+  }
+
+  .card-surface:hover {
+    @apply border-stone-200 shadow;
+  }
+
+  .card-surface:focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-primary-500;
   }
 
   .card-content {
@@ -112,7 +129,7 @@
   }
 
   .card-header span {
-    @apply text-xs font-semibold tracking-wide uppercase;
+    @apply text-[0.7rem] md:text-xs font-semibold tracking-wider uppercase;
   }
 
   .card-title {
@@ -232,7 +249,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 /* Jumbotron */
-.jumbotron-description a, .new-group-content a {
+.jumbotron-description a, .community-description a, .new-group-content a {
   color: var(--ocg-primary);
   font-weight: 600;
 }
@@ -378,6 +395,7 @@ input:placeholder-shown {
 .icon-calendar { --icon-url: url('/static/images/icons/calendar.svg'); }
 .icon-cancel { --icon-url: url('/static/images/icons/cancel.svg'); }
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
+.icon-community { --icon-url: url('/static/images/icons/community.svg'); }
 .icon-eraser { --icon-url: url('/static/images/icons/eraser.svg'); }
 .icon-eye { --icon-url: url('/static/images/icons/eye.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
@@ -403,6 +421,7 @@ input:placeholder-shown {
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }
 .icon-lines { --icon-url: url('/static/images/icons/lines.svg'); }
+.icon-tree-list { --icon-url: url('/static/images/icons/tree_list.svg'); }
 .icon-link { --icon-url: url('/static/images/icons/link.svg'); }
 .icon-linkedin { --icon-url: url('/static/images/icons/linkedin.svg'); }
 .icon-list { --icon-url: url('/static/images/icons/list.svg'); }
@@ -444,6 +463,10 @@ input:placeholder-shown {
 .icon-youtube { --icon-url: url('/static/images/icons/youtube.svg'); }
 /* End icons */
 
+/* Breadcrumb item width (uses CSS variable set at runtime) */
+.breadcrumb-item {
+  max-width: calc(100% / var(--breadcrumb-count, 1));
+}
 
 /* Font family */
 
@@ -561,6 +584,10 @@ input:placeholder-shown {
   text-wrap: auto;
 }
 
+.markdown p {
+  margin-bottom: 0.5rem;
+}
+
 .markdown * {
   max-width: 100%;
   white-space: normal;
@@ -662,4 +689,3 @@ textarea:disabled + .EasyMDEContainer .editor-toolbar button {
 }
 
 /* End spinner */
-

@@ -54,23 +54,6 @@ pub fn email_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
     Ok(())
 }
 
-/// Validates that a string is a valid hex color in #RRGGBB format.
-pub fn hex_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
-    let s = value.as_ref();
-    if s.len() != 7 {
-        return Err(garde::Error::new(
-            "hex color must be 7 characters (e.g., #FF0000)",
-        ));
-    }
-    if !s.starts_with('#') {
-        return Err(garde::Error::new("hex color must start with #"));
-    }
-    if !s[1..].chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(garde::Error::new("hex color must contain valid hex digits"));
-    }
-    Ok(())
-}
-
 /// Validates that a required string is a valid image URL (absolute or relative).
 ///
 /// Accepts absolute URLs (with scheme) or relative URLs starting with `/`.
@@ -248,33 +231,6 @@ mod tests {
         );
         // Empty vec is valid (no invalid elements)
         assert!(email_vec(&Some(vec![]), &()).is_ok());
-    }
-
-    #[test]
-    fn test_hex_color_invalid() {
-        // Missing #
-        assert!(hex_color(&"FF0000", &()).is_err());
-        // Too short
-        assert!(hex_color(&"#FFF", &()).is_err());
-        // Too long
-        assert!(hex_color(&"#FF00000", &()).is_err());
-        // Invalid hex digits
-        assert!(hex_color(&"#GGGGGG", &()).is_err());
-        assert!(hex_color(&"#ZZZZZZ", &()).is_err());
-        // Empty
-        assert!(hex_color(&"", &()).is_err());
-        // Wrong prefix
-        assert!(hex_color(&"0xFF0000", &()).is_err());
-    }
-
-    #[test]
-    fn test_hex_color_valid() {
-        assert!(hex_color(&"#FF0000", &()).is_ok());
-        assert!(hex_color(&"#000000", &()).is_ok());
-        assert!(hex_color(&"#ffffff", &()).is_ok());
-        assert!(hex_color(&"#FFFFFF", &()).is_ok());
-        assert!(hex_color(&"#123abc", &()).is_ok());
-        assert!(hex_color(&"#D62293", &()).is_ok());
     }
 
     #[test]

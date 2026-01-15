@@ -16,7 +16,8 @@ returns json as $$
         and e.starts_at is not null
         and e.starts_at > now()
         and e.canceled = false
+        and (e.logo_url is not null or g.logo_url is not null)
         order by e.starts_at asc
-        limit 9
+        limit 8
     ) e;
 $$ language sql;

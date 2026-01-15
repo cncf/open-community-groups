@@ -13,9 +13,9 @@ use uuid::Uuid;
 
 use crate::{
     db::{BBox, PgDB, Total},
-    templates::community::explore,
+    templates::site::explore,
     types::{
-        community::Community,
+        community::{CommunityFull, CommunitySummary},
         event::{EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
     },
@@ -25,7 +25,10 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBCommon {
     /// Retrieves community information by its unique identifier.
-    async fn get_community(&self, community_id: Uuid) -> Result<Community>;
+    async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull>;
+
+    /// Retrieves community summary by its unique identifier.
+    async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary>;
 
     /// Gets full event details.
     async fn get_event_full(&self, community_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<EventFull>;
@@ -47,33 +50,39 @@ pub(crate) trait DBCommon {
     /// Lists all available timezones.
     async fn list_timezones(&self) -> Result<Vec<String>>;
 
-    /// Searches for community events based on provided filters.
-    async fn search_community_events(
-        &self,
-        community_id: Uuid,
-        filters: &explore::EventsFilters,
-    ) -> Result<SearchCommunityEventsOutput>;
+    /// Searches for events based on provided filters.
+    async fn search_events(&self, filters: &explore::EventsFilters) -> Result<SearchEventsOutput>;
 
-    /// Searches for community groups based on provided filters.
-    async fn search_community_groups(
-        &self,
-        community_id: Uuid,
-        filters: &explore::GroupsFilters,
-    ) -> Result<SearchCommunityGroupsOutput>;
+    /// Searches for groups based on provided filters.
+    async fn search_groups(&self, filters: &explore::GroupsFilters) -> Result<SearchGroupsOutput>;
 }
 
 #[async_trait]
 impl DBCommon for PgDB {
-    /// [`DBCommon::get_community`]
+    /// [`DBCommon::get_community_full`]
     #[instrument(skip(self), err)]
-    async fn get_community(&self, community_id: Uuid) -> Result<Community> {
-        trace!("db: get community");
+    async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull> {
+        trace!("db: get community full");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select get_community($1::uuid)::text", &[&community_id])
+            .query_one("select get_community_full($1::uuid)::text", &[&community_id])
             .await?;
-        let community = Community::try_from_json(&row.get::<_, String>(0))?;
+        let community: CommunityFull = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(community)
+    }
+
+    /// [`DBCommon::get_community_summary`]
+    #[instrument(skip(self), err)]
+    async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary> {
+        trace!("db: get community summary");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select get_community_summary($1::uuid)::text", &[&community_id])
+            .await?;
+        let community: CommunitySummary = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(community)
     }
@@ -187,14 +196,10 @@ impl DBCommon for PgDB {
         inner(db).await
     }
 
-    /// [`DBCommon::search_community_events`]
+    /// [`DBCommon::search_events`]
     #[instrument(skip(self), err)]
-    async fn search_community_events(
-        &self,
-        community_id: Uuid,
-        filters: &explore::EventsFilters,
-    ) -> Result<SearchCommunityEventsOutput> {
-        trace!("db: search community events");
+    async fn search_events(&self, filters: &explore::EventsFilters) -> Result<SearchEventsOutput> {
+        trace!("db: search events");
 
         // Query database
         let db = self.pool.get().await?;
@@ -202,15 +207,15 @@ impl DBCommon for PgDB {
             .query_one(
                 "
                 select events::text, bbox::text, total
-                from search_community_events($1::uuid, $2::jsonb)
+                from search_events($1::jsonb)
                 ",
-                &[&community_id, &Json(filters)],
+                &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchCommunityEventsOutput {
+        let output = SearchEventsOutput {
             events: EventSummary::try_from_json_array(&row.get::<_, String>("events"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
@@ -223,14 +228,10 @@ impl DBCommon for PgDB {
         Ok(output)
     }
 
-    /// [`DBCommon::search_community_groups`]
+    /// [`DBCommon::search_groups`]
     #[instrument(skip(self), err)]
-    async fn search_community_groups(
-        &self,
-        community_id: Uuid,
-        filters: &explore::GroupsFilters,
-    ) -> Result<SearchCommunityGroupsOutput> {
-        trace!("db: search community groups");
+    async fn search_groups(&self, filters: &explore::GroupsFilters) -> Result<SearchGroupsOutput> {
+        trace!("db: search groups");
 
         // Query database
         let db = self.pool.get().await?;
@@ -238,15 +239,15 @@ impl DBCommon for PgDB {
             .query_one(
                 "
                 select groups::text, bbox::text, total
-                from search_community_groups($1::uuid, $2::jsonb)
+                from search_groups($1::jsonb)
                 ",
-                &[&community_id, &Json(filters)],
+                &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchCommunityGroupsOutput {
+        let output = SearchGroupsOutput {
             groups: GroupSummary::try_from_json_array(&row.get::<_, String>("groups"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
@@ -260,17 +261,17 @@ impl DBCommon for PgDB {
     }
 }
 
-/// Output structure for community events search operations.
+/// Output structure for events search operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchCommunityEventsOutput {
+pub(crate) struct SearchEventsOutput {
     pub events: Vec<EventSummary>,
     pub bbox: Option<BBox>,
     pub total: Total,
 }
 
-/// Output structure for community groups search operations.
+/// Output structure for groups search operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct SearchCommunityGroupsOutput {
+pub(crate) struct SearchGroupsOutput {
     pub groups: Vec<GroupSummary>,
     pub bbox: Option<BBox>,
     pub total: Total,

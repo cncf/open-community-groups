@@ -1,10 +1,8 @@
 //! Templates and types for listing group members in the dashboard.
 
-use anyhow::Result;
 use askama::Template;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 
 use crate::templates::helpers::user_initials;
 
@@ -37,13 +35,4 @@ pub struct GroupMember {
     pub photo_url: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
-}
-
-impl GroupMember {
-    /// Try to create a vector of `GroupMember` from a JSON array string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let members: Vec<Self> = serde_json::from_str(data)?;
-        Ok(members)
-    }
 }

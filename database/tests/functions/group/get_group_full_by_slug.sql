@@ -22,25 +22,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -51,11 +34,11 @@ insert into region (region_id, name, community_id)
 values (:'regionID', 'North America', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, bio, name, company, title, photo_url, created_at)
+insert into "user" (user_id, auth_hash, email, username, created_at, bio, company, name, photo_url, title)
 values
-    (:'organizer1ID', 'organizer1@example.com', 'organizer1', false, 'test_hash', :'communityID', 'Group founder and speaker', 'John Doe', 'Tech Corp', 'CTO', 'https://example.com/john.png', '2024-01-01 00:00:00'),
-    (:'organizer2ID', 'organizer2@example.com', 'organizer2', false, 'test_hash', :'communityID', 'Community events coordinator', 'Jane Smith', 'Dev Inc', 'Lead Dev', 'https://example.com/jane.png', '2024-01-01 00:00:00'),
-    (:'memberID', 'member@example.com', 'member1', false, 'test_hash', :'communityID', null, 'Bob Wilson', 'StartUp', 'Engineer', 'https://example.com/bob.png', '2024-01-01 00:00:00');
+    (:'organizer1ID', 'test_hash', 'organizer1@example.com', 'organizer1', '2024-01-01 00:00:00', 'Group founder and speaker', 'Tech Corp', 'John Doe', 'https://example.com/john.png', 'CTO'),
+    (:'organizer2ID', 'test_hash', 'organizer2@example.com', 'organizer2', '2024-01-01 00:00:00', 'Community events coordinator', 'Dev Inc', 'Jane Smith', 'https://example.com/jane.png', 'Lead Dev'),
+    (:'memberID', 'test_hash', 'member@example.com', 'member1', '2024-01-01 00:00:00', null, 'StartUp', 'Bob Wilson', 'https://example.com/bob.png', 'Engineer');
 
 -- Group
 insert into "group" (
@@ -135,6 +118,14 @@ select is(
         "sponsors": [],
         "longitude": -74.006,
         "banner_url": "https://example.com/k8s-banner.png",
+        "community": {
+            "banner_mobile_url": "https://example.com/banner_mobile.png",
+            "banner_url": "https://example.com/banner.png",
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "display_name": "Cloud Native Seattle",
+            "logo_url": "https://example.com/logo.png",
+            "name": "cloud-native-seattle"
+        },
         "github_url": "https://github.com/k8snyc",
         "organizers": [
             {

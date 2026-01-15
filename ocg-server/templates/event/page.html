@@ -5,6 +5,7 @@
 {% import "macros/social.html" as social -%}
 
 {% block scripts -%}
+  <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
   <script type="module" src="/static/js/common/images-gallery.js"></script>
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
@@ -13,20 +14,18 @@
 
 {% block content -%}
   {% let has_social_links = event.meetup_url.is_some() -%}
-  {# Community title -#}
-  <div class="text-center pt-2 xl:pt-5">
-    <h1 class="mb-2 xl:mb-6 mx-3 md:mx-5 text-[1.4rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
-      {{ community.title }}
-    </h1>
-  </div>
-  {# End community title -#}
+
+  {# Breadcrumb -#}
+  <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.slug }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
+  {# End breadcrumb -#}
+
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pt-3 pb-4 sm:py-8 w-full relative overflow-hidden">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full relative overflow-hidden">
       {# Sold out badge -#}
       {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]") , orientation = "top-right") -}}
       {# End sold out badge -#}
 
-      <div class="flex gap-y-5 sm:gap-y-7 lg:gap-y-10 flex-col px-4 sm:px-6 lg:px-8">
+      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
         {# Event header with name and group -#}
         <div>
           {# Main flex container for logo, name/group, and social networks -#}
@@ -42,7 +41,7 @@
                 <div class="flex flex-col justify-between">
                   <div>
                     {# Group/Category legend -#}
-                    <a href="/group/{{ event.group.slug }}"
+                    <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
                        class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline"
                        hx-boost="true"
                        hx-target="body">{{ event.group.name }}</a>
@@ -122,10 +121,10 @@
         {# End event header -#}
 
         {# Event date and location -#}
-        <div>
-          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8 mt-3 lg:mt-0">
+        <div class="py-4">
+          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8">
             {# Event date -#}
-            <div class="border border-stone-200 rounded-lg h-full">
+            <div class="border border-stone-200 rounded-lg h-full bg-white">
               <div class="p-4 h-full flex flex-col">
                 <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Event date</div>
                 <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400 h-full">
@@ -151,7 +150,7 @@
                         <a href="{{ meeting_join_url }}"
                            target="_blank"
                            rel="noopener noreferrer"
-                           class="group btn-secondary-anchor p-1.5 size-[40px] sm:size-[30px] flex items-center justify-center"
+                           class="group btn-secondary-anchor p-1.5 size-10 sm:size-[30px] flex items-center justify-center"
                            aria-label="Meeting link">
                           <div class="svg-icon size-3 bg-primary-500 group-hover:bg-white icon-meeting"></div>
                         </a>
@@ -162,9 +161,9 @@
               </div>
             </div>
             {# Location -#}
-            <div class="border border-stone-200 rounded-lg p-4">
+            <div class="border border-stone-200 rounded-lg p-4 bg-white">
               <div class="text-base/3 uppercase font-semibold text-stone-400 mb-4">Location</div>
-              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden flex-grow min-h-25">
+              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-25">
                 {% if event.kind != EventKind::Virtual %}
                   {% if event.latitude.is_some() && event.longitude.is_some() %}
                     {# Use event-specific location #}
@@ -179,12 +178,12 @@
                         <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center bg-no-repeat opacity-30">
                         </div>
                         {% if let Some(text) = &location_text %}
-                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none hidden sm:block md:hidden xl:block">
+                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none hidden sm:block md:hidden xl:block">
                             {{ text }}
                           </div>
                         {% endif %}
                         {% if let Some(text) = &location_text_small %}
-                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-1000 pointer-events-none block sm:hidden md:block xl:hidden">
+                          <div class="absolute bottom-2 left-2 bg-white/80 text-stone-700 text-xs rounded-full px-1.5 md:px-3 py-1 z-[1000] pointer-events-none block sm:hidden md:block xl:hidden">
                             {{ text }}
                           </div>
                         {% endif %}
@@ -218,7 +217,7 @@
 
         {# Event description -#}
         <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-4 lg:pb-10">
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pb-12">
             About this event
           </div>
           <div class="text-stone-500 text-sm/6 markdown">{{ event.description|md_to_html|safe }}</div>
@@ -276,7 +275,7 @@
         {% if let Some(tags) = &event.tags -%}
           {% if !tags.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Topics</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Topics</div>
               <div class="flex flex-wrap gap-2">
                 {% for tag in tags -%}
                   <span class="inline-block px-3 py-1 bg-stone-50 text-stone-700 text-sm rounded-full uppercase">{{ tag }}</span>
@@ -291,7 +290,7 @@
         {% if !event.sessions.is_empty() -%}
           {% let days_count = event.sessions.len() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Agenda</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Agenda</div>
 
             {# Single-day agenda: no date title -#}
             {% if days_count == 1 -%}
@@ -302,7 +301,7 @@
               {% endfor -%}
             {% else -%}
               {# Multi-day agenda: tabs with one day per tab -#}
-              <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-[0.25rem]">
+              <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1">
                 {% for day in event.sessions -%}
                   <li>
                     <button type="button"
@@ -351,7 +350,7 @@
         {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
           {% if !legacy_hosts.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Hosts</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Hosts</div>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for host in legacy_hosts -%}
                   {% if host.name.is_some() -%}
@@ -367,7 +366,7 @@
         {# Hosts section - Full width -#}
         {% if !event.hosts.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Hosts</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Hosts</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for host in event.hosts -%}
                 {% if host.name.is_some() -%}
@@ -382,7 +381,7 @@
         {# Event speakers section - Full width -#}
         {% if !event.speakers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">
               Featured speakers
             </div>
             <div class="featured-speakers-grid grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -395,7 +394,7 @@
           </div>
 
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Speakers</div>
             <div class="regular-speakers-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for speaker in event.speakers -%}
                 {% if !speaker.featured && speaker.user.name.is_some() -%}
@@ -411,7 +410,7 @@
         {% if let Some(legacy_speakers) = &event.legacy_speakers -%}
           {% if !legacy_speakers.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Speakers</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Speakers</div>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for speaker in legacy_speakers -%}
                   {% if speaker.name.is_some() -%}
@@ -427,7 +426,7 @@
         {# Organizers section - Full width -#}
         {% if !event.organizers.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Organizers</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Organizers</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for organizer in event.organizers -%}
                 {% if organizer.name.is_some() -%}
@@ -442,7 +441,7 @@
         {# Sponsors section - Full width -#}
         {% if !event.sponsors.is_empty() -%}
           <div>
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Sponsors</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Sponsors</div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {% for sponsor in event.sponsors -%}
                 {{ badges::sponsor_badge(name = sponsor.name, logo_url = sponsor.logo_url, website_url = sponsor.website_url, level = sponsor.level, with_level = true) -}}
@@ -456,7 +455,7 @@
         {% if let Some(photos_urls) = &event.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 lg:pb-10">Gallery</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Gallery</div>
               <images-gallery title="Gallery" altImage="Event {{ event.name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>
           {% endif -%}

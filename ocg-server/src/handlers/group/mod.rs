@@ -36,19 +36,18 @@ use super::{error::HandlerError, extractors::CommunityId};
 pub(crate) async fn page(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Path(group_slug): Path<String>,
+    Path((_, group_slug)): Path<(String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
-    let (community, group, upcoming_events, past_events) = tokio::try_join!(
-        db.get_community(community_id),
+    let (group, past_events, site_settings, upcoming_events) = tokio::try_join!(
         db.get_group_full_by_slug(community_id, &group_slug),
-        db.get_group_upcoming_events(community_id, &group_slug, event_kinds.clone(), 9),
-        db.get_group_past_events(community_id, &group_slug, event_kinds, 9)
+        db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 9),
+        db.get_site_settings(),
+        db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
     )?;
     let template = Page {
-        community,
         group,
         page_id: PageId::Group,
         past_events: past_events
@@ -56,6 +55,7 @@ pub(crate) async fn page(
             .map(|event| group::PastEventCard { event })
             .collect(),
         path: uri.path().to_string(),
+        site_settings,
         upcoming_events: upcoming_events
             .into_iter()
             .map(|event| group::UpcomingEventCard { event })
@@ -79,7 +79,7 @@ pub(crate) async fn join_group(
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     CommunityId(community_id): CommunityId,
-    Path(group_id): Path<Uuid>,
+    Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -88,15 +88,15 @@ pub(crate) async fn join_group(
     db.join_group(community_id, group_id, user.user_id).await?;
 
     // Enqueue welcome to group notification
-    let (community, group) = tokio::try_join!(
-        db.get_community(community_id),
+    let (site_settings, group) = tokio::try_join!(
+        db.get_site_settings(),
         db.get_group_summary(community_id, group_id)
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let template_data = GroupWelcome {
-        link: format!("{}/group/{}", base_url, group.slug),
+        link: format!("{}/{}/group/{}", base_url, group.community_name, group.slug),
         group,
-        theme: community.theme,
+        theme: site_settings.theme,
     };
     let notification = NewNotification {
         attachments: vec![],
@@ -115,7 +115,7 @@ pub(crate) async fn leave_group(
     auth_session: AuthSession,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Path(group_id): Path<Uuid>,
+    Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -132,7 +132,7 @@ pub(crate) async fn membership_status(
     auth_session: AuthSession,
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
-    Path(group_id): Path<Uuid>,
+    Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
@@ -154,7 +154,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -180,14 +180,10 @@ mod tests {
 
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
@@ -210,6 +206,9 @@ mod tests {
                     && *limit == 9
             })
             .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -218,8 +217,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri("/group/test-group")
-            .header(HOST, "example.test")
+            .uri("/test-community/group/test-group")
             .body(Body::empty())
             .unwrap();
         let response = router.oneshot(request).await.unwrap();
@@ -248,20 +246,16 @@ mod tests {
 
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
             .returning(move |_, _| Ok(sample_group_full(group_id)));
         db.expect_get_group_upcoming_events()
-            .times(1)
+            .times(0..=1)
             .withf(move |id, slug, kinds, limit| {
                 *id == community_id
                     && slug == "test-group"
@@ -270,7 +264,7 @@ mod tests {
             })
             .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
         db.expect_get_group_past_events()
-            .times(1)
+            .times(0..=1)
             .withf(move |id, slug, kinds, limit| {
                 *id == community_id
                     && slug == "test-group"
@@ -286,8 +280,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri("/group/test-group")
-            .header(HOST, "example.test")
+            .uri("/test-community/group/test-group")
             .body(Body::empty())
             .unwrap();
         let response = router.oneshot(request).await.unwrap();
@@ -307,10 +300,9 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
-        let community = sample_community(community_id);
-        let community_for_notifications = community.clone();
-        let community_for_db = community;
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let site_settings = sample_site_settings();
+        let site_settings_for_notifications = site_settings.clone();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -322,9 +314,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_join_group()
             .times(1)
@@ -334,13 +326,9 @@ mod tests {
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(sample_group_summary(group_id)));
-        db.expect_get_community()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning({
-                let community = community_for_db;
-                move |_| Ok(community.clone())
-            });
+            .returning(move || Ok(site_settings.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -353,9 +341,9 @@ mod tests {
                         serde_json::from_value::<GroupWelcome>(data.clone())
                             .map(|welcome| {
                                 welcome.group.group_id == group_id
-                                    && welcome.link == "/group/npq6789"
+                                    && welcome.link == "/test-community/group/npq6789"
                                     && welcome.theme.primary_color
-                                        == community_for_notifications.theme.primary_color
+                                        == site_settings_for_notifications.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
@@ -366,8 +354,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("POST")
-            .uri(format!("/group/{group_id}/join"))
-            .header(HOST, "example.test")
+            .uri(format!("/test-community/group/{group_id}/join"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -388,7 +375,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -400,9 +387,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_leave_group()
             .times(1)
@@ -416,8 +403,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("DELETE")
-            .uri(format!("/group/{group_id}/leave"))
-            .header(HOST, "example.test")
+            .uri(format!("/test-community/group/{group_id}/leave"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -438,7 +424,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -450,9 +436,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         db.expect_is_group_member()
             .times(1)
@@ -466,8 +452,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri(format!("/group/{group_id}/membership"))
-            .header(HOST, "example.test")
+            .uri(format!("/test-community/group/{group_id}/membership"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

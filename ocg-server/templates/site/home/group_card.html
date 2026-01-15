@@ -1,0 +1,13 @@
+{% extends "community/group_card.html" -%}
+
+{% block preheader -%}
+  <span>
+    <span class="text-primary-500">{{ group.community_display_name }}</span>
+    <span class="px-1 hidden sm:inline">·</span>
+    {% if let Some(region) = &group.region -%}
+      {{ region.name }}
+    {% else -%}
+      {{ group.category.name }}
+    {% endif -%}
+  </span>
+{% endblock preheader -%}

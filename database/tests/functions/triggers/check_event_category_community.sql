@@ -22,46 +22,12 @@ select plan(3);
 -- ============================================================================
 
 -- Community 1
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'community1ID',
-    'community-1',
-    'Community 1',
-    'community1.example.org',
-    'Community 1',
-    'Test community 1',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'community1ID', 'community-1', 'Community 1', 'Test community 1', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Community 2
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'community2ID',
-    'community-2',
-    'Community 2',
-    'community2.example.org',
-    'Community 2',
-    'Test community 2',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'community2ID', 'community-2', 'Community 2', 'Test community 2', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Event Category 1 (belongs to community 1)
 insert into event_category (event_category_id, name, slug, community_id)

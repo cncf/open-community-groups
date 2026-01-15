@@ -90,7 +90,10 @@ pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSumma
 /// Build the event page link based on the base URL and event and group slugs.
 pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
     let base = base_url.strip_suffix('/').unwrap_or(base_url);
-    format!("{}/group/{}/event/{}", base, event.group_slug, event.slug)
+    format!(
+        "{}/{}/group/{}/event/{}",
+        base, event.community_name, event.group_slug, event.slug
+    )
 }
 
 /// Computes the SHA-256 hash of the provided bytes and returns a hex string.
@@ -194,7 +197,9 @@ mod tests {
         assert!(unfolded.contains("STATUS:CONFIRMED"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
-        assert!(unfolded.contains("URL:https://example.test/group/test-group/event/test-event"));
+        assert!(
+            unfolded.contains("URL:https://example.test/test-community/group/test-group/event/test-event")
+        );
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
         assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
         assert!(unfolded.contains("X-APPLE-RADIUS=100"));
@@ -227,7 +232,9 @@ mod tests {
         assert!(unfolded.contains("NAME:Test Group - Test Event"));
         assert!(unfolded.contains("STATUS:CANCELLED"));
         assert!(unfolded.contains("SUMMARY:Test Event"));
-        assert!(unfolded.contains("URL:https://example.test/group/test-group/event/test-event"));
+        assert!(
+            unfolded.contains("URL:https://example.test/test-community/group/test-group/event/test-event")
+        );
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
         assert!(unfolded.contains("X-ADDRESS=\"Test Venue, 123 Main St, San Francisco, CA, United States\""));
@@ -274,6 +281,8 @@ mod tests {
     fn sample_event(canceled: bool) -> EventSummary {
         EventSummary {
             canceled,
+            community_display_name: "Test Community".to_string(),
+            community_name: "test-community".to_string(),
             event_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
             group_category_name: "Community".to_string(),
             group_color: "#ff4081".to_string(),

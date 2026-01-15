@@ -19,7 +19,7 @@ use crate::{
             location::{LocationParts, build_location},
         },
     },
-    types::group::GroupSummary,
+    types::{community::CommunitySummary, group::GroupSummary},
 };
 
 // Event types: summary, detailed, and full.
@@ -30,6 +30,10 @@ use crate::{
 pub struct EventSummary {
     /// Whether the event has been canceled.
     pub canceled: bool,
+    /// Human-readable display name of the community this event belongs to.
+    pub community_display_name: String,
+    /// Name of the community this event belongs to (slug for URLs).
+    pub community_name: String,
     /// Unique identifier for the event.
     pub event_id: Uuid,
     /// Category of the hosting group.
@@ -147,6 +151,8 @@ pub struct EventFull {
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
+    /// Community this event belongs to.
+    pub community: CommunitySummary,
     /// When the event was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -177,6 +183,8 @@ pub struct EventFull {
     /// Timezone for event times.
     pub timezone: Tz,
 
+    /// URL to the event banner image optimized for mobile devices.
+    pub banner_mobile_url: Option<String>,
     /// URL to the event banner image.
     pub banner_url: Option<String>,
     /// Maximum capacity for the event.
@@ -312,6 +320,8 @@ impl From<&EventFull> for EventSummary {
     fn from(event: &EventFull) -> Self {
         EventSummary {
             canceled: event.canceled,
+            community_display_name: event.community.display_name.clone(),
+            community_name: event.community.name.clone(),
             event_id: event.event_id,
             group_category_name: event.group.category.name.clone(),
             group_color: event.group.color.clone(),

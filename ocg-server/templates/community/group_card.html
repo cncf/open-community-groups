@@ -1,0 +1,50 @@
+{% import "macros/ui.html" as ui -%}
+
+{# Group card -#}
+<a href="/{{ group.community_name }}/group/{{ group.slug }}"
+   class="flex flex-1 flex-row items-center group select-none">
+  <div class="relative group-hover:opacity-75 transition-opacity">
+    {# Group icon -#}
+    {{ ui::logo(logo_url = group.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120, color = group.color, name = Some(group.name) ) -}}
+    {# End group icon -#}
+  </div>
+
+  <div class="card-content">
+    <div class="card-body">
+      <div>
+        {# Category or region -#}
+        <div class="card-header">
+          {% block preheader -%}
+            <span>
+              {% if let Some(region) = &group.region -%}
+                {{ region.name }}
+              {% else -%}
+                {{ group.category.name }}
+              {% endif -%}
+            </span>
+          {% endblock preheader -%}
+        </div>
+        {# End category or region -#}
+
+        {# Group title -#}
+        <div class="card-title group-hover:underline">{{ group.name|demoji }}</div>
+        {# End group title -#}
+      </div>
+
+      <div>
+        {# Group location -#}
+        {% if let Some(location) = &self.group.location(25) -%}
+          <div class="card-meta">{{ ui::icon_text(icon_name = "location", text = location) -}}</div>
+        {% endif -%}
+        {# End group location -#}
+
+        {# Group creation date -#}
+        <div class="card-meta">
+          {{ ui::icon_text(icon_name = "date", text = group.created_at.format("%B %e · %Y") ) -}}
+        </div>
+        {# End group creation date -#}
+      </div>
+    </div>
+  </div>
+</a>
+{# End group card -#}

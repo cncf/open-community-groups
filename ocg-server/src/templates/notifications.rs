@@ -3,7 +3,7 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{community::Theme, event::EventSummary, group::GroupSummary};
+use crate::types::{event::EventSummary, group::GroupSummary, site::Theme};
 
 // Emails templates.
 

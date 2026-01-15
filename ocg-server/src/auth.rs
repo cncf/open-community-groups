@@ -170,14 +170,10 @@ impl AuthnBackend {
         let user_summary = match creds.provider {
             OAuth2Provider::GitHub => UserSummary::from_github_profile(&access_token).await?,
         };
-        let user = if let Some(user) = self
-            .db
-            .get_user_by_email(&creds.community_id, &user_summary.email)
-            .await?
-        {
+        let user = if let Some(user) = self.db.get_user_by_email(&user_summary.email).await? {
             user
         } else {
-            let (user, _) = self.db.sign_up_user(&creds.community_id, &user_summary, true).await?;
+            let (user, _) = self.db.sign_up_user(&user_summary, true).await?;
             user
         };
 
@@ -207,14 +203,10 @@ impl AuthnBackend {
         let user_summary = match creds.provider {
             OidcProvider::LinuxFoundation => UserSummary::from_oidc_id_token_claims(claims)?,
         };
-        let user = if let Some(user) = self
-            .db
-            .get_user_by_email(&creds.community_id, &user_summary.email)
-            .await?
-        {
+        let user = if let Some(user) = self.db.get_user_by_email(&user_summary.email).await? {
             user
         } else {
-            let (user, _) = self.db.sign_up_user(&creds.community_id, &user_summary, true).await?;
+            let (user, _) = self.db.sign_up_user(&user_summary, true).await?;
             user
         };
 
@@ -224,10 +216,7 @@ impl AuthnBackend {
     /// Authenticate user using password credentials.
     async fn authenticate_password(&self, creds: PasswordCredentials) -> Result<Option<User>> {
         // Get user from database
-        let user = self
-            .db
-            .get_user_by_username(&creds.community_id, &creds.username)
-            .await?;
+        let user = self.db.get_user_by_username(&creds.username).await?;
 
         // Check if the credentials are valid, returning the user if they are
         if let Some(mut user) = user {
@@ -382,8 +371,6 @@ pub enum Credentials {
 pub(crate) struct OAuth2Credentials {
     /// Authorization code from the `OAuth2` provider.
     pub code: String,
-    /// Community ID for which the user is authenticating.
-    pub community_id: Uuid,
     /// The `OAuth2` provider to use.
     pub provider: OAuth2Provider,
 }
@@ -393,8 +380,6 @@ pub(crate) struct OAuth2Credentials {
 pub(crate) struct OidcCredentials {
     /// Authorization code from the `Oidc` provider.
     pub code: String,
-    /// Community ID for which the user is authenticating.
-    pub community_id: Uuid,
     /// Nonce used for ID token verification.
     pub nonce: oidc::Nonce,
     /// The `Oidc` provider to use.
@@ -404,12 +389,10 @@ pub(crate) struct OidcCredentials {
 /// Credentials for password authentication.
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct PasswordCredentials {
-    /// Community ID for which the user is authenticating.
-    pub community_id: Uuid,
-    /// Username for authentication.
-    pub username: String,
     /// Password for authentication.
     pub password: String,
+    /// Username for authentication.
+    pub username: String,
 }
 
 // User types and implementations.

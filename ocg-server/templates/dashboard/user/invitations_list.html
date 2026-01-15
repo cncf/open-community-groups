@@ -42,7 +42,7 @@ description = "Manage invitations to join communities.") -}}
               <td class="px-3 xl:px-5 py-4 w-27">
                 <div class="flex items-center justify-center gap-x-2">
                   <div>
-                    <button hx-put="/dashboard/user/invitations/community/accept"
+                    <button hx-put="/dashboard/user/invitations/community/{{ invitation.community_id }}/accept"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
                             class="btn-tertiary p-2"
@@ -51,8 +51,8 @@ description = "Manage invitations to join communities.") -}}
                     </button>
                   </div>
                   <div>
-                    <button id="reject-community-{{ invitation.community_name }}"
-                            hx-put="/dashboard/user/invitations/community/reject"
+                    <button id="reject-community-{{ invitation.community_id }}"
+                            hx-put="/dashboard/user/invitations/community/{{ invitation.community_id }}/reject"
                             hx-indicator="#dashboard-spinner"
                             hx-trigger="confirmed"
                             hx-disabled-elt="this"
@@ -66,12 +66,12 @@ description = "Manage invitations to join communities.") -}}
                         handleHtmxResponse,
                       } from '/static/js/common/alerts.js';
                       (() => {
-                        const rejectBtn = document.getElementById('reject-community-{{ invitation.community_name }}');
+                        const rejectBtn = document.getElementById('reject-community-{{ invitation.community_id }}');
                         if (rejectBtn) {
                           rejectBtn.addEventListener('click', () => {
                             showConfirmAlert(
                               "Are you sure you would like to reject this invitation?",
-                              "reject-community-{{ invitation.community_name }}",
+                              "reject-community-{{ invitation.community_id }}",
                               "Yes"
                             );
                           });

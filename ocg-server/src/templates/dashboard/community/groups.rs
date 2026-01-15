@@ -67,6 +67,9 @@ pub(crate) struct Group {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub name: String,
 
+    /// URL to the group's banner image optimized for mobile devices.
+    #[garde(custom(image_url_opt))]
+    pub banner_mobile_url: Option<String>,
     /// Banner image URL.
     #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,

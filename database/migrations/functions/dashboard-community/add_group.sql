@@ -21,6 +21,7 @@ begin
                 slug,
                 group_category_id,
 
+                banner_mobile_url,
                 banner_url,
                 city,
                 country_code,
@@ -50,6 +51,7 @@ begin
                 v_slug,
                 (p_group->>'category_id')::uuid,
 
+                nullif(p_group->>'banner_mobile_url', ''),
                 nullif(p_group->>'banner_url', ''),
                 nullif(p_group->>'city', ''),
                 nullif(p_group->>'country_code', ''),

@@ -13,7 +13,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, ValidatedFormQs},
+        extractors::{SelectedCommunityId, ValidatedFormQs},
     },
     templates::dashboard::community::settings::{self, CommunityUpdate},
 };
@@ -23,11 +23,11 @@ use crate::{
 /// Displays the page to update community settings.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let community = db.get_community(community_id).await?;
+    let community = db.get_community_full(community_id).await?;
     let template = settings::UpdatePage { community };
 
     Ok(Html(template.render()?))
@@ -38,7 +38,7 @@ pub(crate) async fn update_page(
 /// Updates community settings in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedFormQs(community_update): ValidatedFormQs<CommunityUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -76,8 +76,8 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
-        let community = sample_community(community_id);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let community = sample_community_full(community_id);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -89,15 +89,11 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(community.clone()));
@@ -138,7 +134,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -150,15 +146,11 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community()
+        db.expect_get_community_full()
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Err(anyhow!("db error")));
@@ -191,10 +183,9 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let update = sample_community_update();
         let expected_display_name = update.display_name.clone();
-        let expected_primary_color = update.primary_color.clone();
         let body = serde_qs::to_string(&update).unwrap();
 
         // Setup database mock
@@ -207,21 +198,13 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
         db.expect_update_community()
             .times(1)
-            .withf(move |cid, update| {
-                *cid == community_id
-                    && update.display_name == expected_display_name
-                    && update.primary_color == expected_primary_color
-            })
+            .withf(move |cid, update| *cid == community_id && update.display_name == expected_display_name)
             .returning(|_, _| Ok(()));
 
         // Setup notifications manager mock
@@ -253,7 +236,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -265,10 +248,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -303,7 +282,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let update = sample_community_update();
         let body = serde_qs::to_string(&update).unwrap();
 
@@ -317,10 +296,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)

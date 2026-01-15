@@ -62,32 +62,15 @@ select plan(26);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'test.example.org',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Users for event_host, event_speaker, session_speaker tests
-insert into "user" (user_id, community_id, email, username, auth_hash) values
-    (:'userEventHost1ID', :'communityID', 'eventhost1@example.com', 'eventhost1', 'hash1'),
-    (:'userEventHost2ID', :'communityID', 'eventhost2@example.com', 'eventhost2', 'hash2'),
-    (:'userEventSpeaker1ID', :'communityID', 'eventspeaker1@example.com', 'eventspeaker1', 'hash3'),
-    (:'userSessionSpeaker1ID', :'communityID', 'sessionspeaker1@example.com', 'sessionspeaker1', 'hash4');
+insert into "user" (user_id, auth_hash, email, username) values
+    (:'userEventHost1ID', 'hash1', 'eventhost1@example.com', 'eventhost1'),
+    (:'userEventHost2ID', 'hash2', 'eventhost2@example.com', 'eventhost2'),
+    (:'userEventSpeaker1ID', 'hash3', 'eventspeaker1@example.com', 'eventspeaker1'),
+    (:'userSessionSpeaker1ID', 'hash4', 'sessionspeaker1@example.com', 'sessionspeaker1');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)

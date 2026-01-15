@@ -6,37 +6,6 @@ begin;
 select plan(5);
 
 -- ============================================================================
--- VARIABLES
--- ============================================================================
-
-\set communityID '00000000-0000-0000-0000-000000000001'
-
--- ============================================================================
--- SEED DATA
--- ============================================================================
-
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    description,
-    header_logo_url,
-    theme,
-    title
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'test.example.com',
-    'Seattle community for cloud native technologies',
-    'https://example.com/logo.png',
-    '{}'::jsonb,
-    'Cloud Native Seattle Community'
-);
-
--- ============================================================================
 -- TESTS
 -- ============================================================================
 
@@ -45,7 +14,6 @@ insert into community (
 -- Create user with unverified email
 with test_user as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'test1@example.com',
             'username', 'testuser1',
@@ -62,13 +30,12 @@ select is(
     email_verified,
     true,
     'Should set email_verified to true for valid verification code'
-) from "user" 
+) from "user"
 where email = 'test1@example.com';
 
 -- Should delete verification code after use
 with test_user as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'test1b@example.com',
             'username', 'testuser1b',
@@ -78,7 +45,7 @@ with test_user as (
     )
 ),
 verification_result as (
-    select 
+    select
         verification_code,
         verify_email(verification_code) as verify_result
     from test_user
@@ -87,7 +54,7 @@ select is(
     count(*)::integer,
     0,
     'Should delete verification code after use'
-) from email_verification_code 
+) from email_verification_code
 where email_verification_code_id = (select verification_code from verification_result);
 
 -- Should raise exception for invalid verification code
@@ -102,7 +69,6 @@ select throws_ok(
 -- Create user and expire their code
 with test_user as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'test2@example.com',
             'username', 'testuser2',
@@ -126,7 +92,6 @@ select throws_ok(
 -- Should raise exception for already used verification code
 with test_user as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'test3@example.com',
             'username', 'testuser3',
@@ -136,7 +101,7 @@ with test_user as (
     )
 ),
 first_use as (
-    select 
+    select
         verification_code,
         verify_email(verification_code) as verify_result
     from test_user

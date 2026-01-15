@@ -1,0 +1,25 @@
+{% import "macros/explore.html" as explore -%}
+
+{# Community -#}
+{% if filters_options.communities.len() > 0 -%}
+  <collapsible-filter title="Community" name="community" options="{{ filters_options.communities|json }}" selected="{{ filters.community|json }}" viewType="rows" maxVisibleItems="5" singleSelection resetDependentFilters></collapsible-filter>
+{% endif -%}
+{# End community -#}
+
+{# Group category -#}
+{% if let Some(group_category) = &filters_options.group_category -%}
+  <collapsible-filter title="Group category" name="group_category" options="{{ group_category|json }}" selected="{{ filters.group_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
+{% endif -%}
+{# End Group category -#}
+
+{# Regions -#}
+{% if let Some(region) = &filters_options.region -%}
+  <collapsible-filter title="Region" name="region" options="{{ region|json }}" selected="{{ filters.region|json }}" viewType="cols" maxVisibleItems="5"></collapsible-filter>
+{% endif -%}
+{# End Regions -#}
+
+{% if filters.longitude.is_some() && filters.latitude.is_some() -%}
+  {# Distance -#}
+  <collapsible-filter title="Distance" name="distance" options="{{ filters_options.distance|json }}" selected="{{ filters.distance|json }}" viewType="cols" maxVisibleItems="5" singleSelection></collapsible-filter>
+  {# End distance -#}
+{% endif -%}

@@ -1,17 +1,12 @@
 //! Custom extractors for handlers.
 
-use std::sync::Arc;
-#[cfg(not(test))]
-use std::time::Duration;
+use std::{collections::HashMap, sync::Arc};
 
-use anyhow::Result;
 use axum::{
     Form,
     extract::{FromRequest, FromRequestParts, Path, Request},
-    http::{StatusCode, header::HOST, request::Parts},
+    http::{StatusCode, request::Parts},
 };
-#[cfg(not(test))]
-use cached::proc_macro::cached;
 use garde::Validate;
 use serde::de::DeserializeOwned;
 use tower_sessions::Session;
@@ -21,16 +16,11 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails},
     config::{OAuth2Provider, OidcProvider},
-    db::DynDB,
-    handlers::auth::SELECTED_GROUP_ID_KEY,
+    handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
 };
 
-/// Extractor that resolves a community ID from the request's Host header.
-///
-/// This enables multi-tenant functionality where different communities are served based
-/// on the domain name. The community ID is cached for 24 hours to reduce database
-/// lookups.
+/// Extractor that resolves a community ID from the request path parameter.
 pub(crate) struct CommunityId(pub Uuid);
 
 impl FromRequestParts<router::State> for CommunityId {
@@ -38,51 +28,32 @@ impl FromRequestParts<router::State> for CommunityId {
 
     #[instrument(skip_all, err(Debug))]
     async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
-        // Extract host from the request headers
-        let Some(host_header) = parts.headers.get(HOST) else {
-            return Err((StatusCode::BAD_REQUEST, "missing host header"));
+        // Extract community name from path parameter
+        let path_params: Path<HashMap<String, String>> = Path::from_request_parts(parts, state)
+            .await
+            .map_err(|_| (StatusCode::BAD_REQUEST, "invalid path parameters"))?;
+        let Some(community_name) = path_params.get("community") else {
+            return Err((StatusCode::BAD_REQUEST, "missing community parameter"));
         };
-        let host = host_header
-            .to_str()
-            .unwrap_or_default()
-            .split(':')
-            .next()
-            .unwrap_or_default();
 
-        // Lookup the community id in the database
-        let Some(community_id) = lookup_community_id(state.db.clone(), host).await.map_err(|err| {
-            error!(?err, "error looking up community id");
-            (StatusCode::INTERNAL_SERVER_ERROR, "")
-        })?
+        // Lookup the community id in the database (cached at DB layer)
+        if community_name.is_empty() {
+            return Err((StatusCode::NOT_FOUND, "community not found"));
+        }
+        let Some(community_id) = state
+            .db
+            .get_community_id_by_name(community_name)
+            .await
+            .map_err(|err| {
+                error!(?err, "error looking up community id");
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?
         else {
-            return Err((StatusCode::BAD_REQUEST, "community host not found"));
+            return Err((StatusCode::NOT_FOUND, "community not found"));
         };
 
         Ok(CommunityId(community_id))
     }
-}
-
-/// Lookup function for resolving community IDs from hostnames.
-///
-/// In non-test builds, results are cached for 24 hours (86400 seconds) to minimize
-/// database queries. During tests the cache is disabled to avoid cross-test
-/// contamination when multiple tests reuse the same host value.
-#[cfg_attr(
-    not(test),
-    cached(
-        time = 86400,
-        key = "String",
-        convert = r#"{ String::from(host) }"#,
-        sync_writes = "by_key",
-        result = true
-    )
-)]
-#[instrument(skip(db), err)]
-async fn lookup_community_id(db: DynDB, host: &str) -> Result<Option<Uuid>> {
-    if host.is_empty() {
-        return Ok(None);
-    }
-    db.get_community_id(host).await
 }
 
 /// Extractor for `OAuth2` provider details from the authenticated session.
@@ -124,6 +95,31 @@ impl FromRequestParts<router::State> for Oidc {
             return Err((StatusCode::BAD_REQUEST, "oidc provider not supported"));
         };
         Ok(Oidc(provider_details.clone()))
+    }
+}
+
+/// Extractor for the selected community ID from the session.
+/// Returns the Uuid if present, or an error if not found in the session.
+pub(crate) struct SelectedCommunityId(pub Uuid);
+
+impl FromRequestParts<router::State> for SelectedCommunityId {
+    type Rejection = (StatusCode, &'static str);
+
+    #[instrument(skip_all, err(Debug))]
+    async fn from_request_parts(parts: &mut Parts, state: &router::State) -> Result<Self, Self::Rejection> {
+        let Ok(session) = Session::from_request_parts(parts, state).await else {
+            return Err((StatusCode::UNAUTHORIZED, "user not logged in"));
+        };
+        let community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "error getting selected community from session",
+            )
+        })?;
+        match community_id {
+            Some(id) => Ok(SelectedCommunityId(id)),
+            None => Err((StatusCode::BAD_REQUEST, "missing community id")),
+        }
     }
 }
 
@@ -224,7 +220,7 @@ mod tests {
     use axum::{
         Router,
         body::{Body, to_bytes},
-        http::{Request, StatusCode, header::HOST},
+        http::{Request, StatusCode},
         routing::get,
     };
     use axum_login::AuthManagerLayerBuilder;
@@ -237,7 +233,7 @@ mod tests {
         auth::AuthnBackend,
         config::{HttpServerConfig, OAuth2ProviderConfig},
         db::{DynDB, mock::MockDB},
-        handlers::auth::SELECTED_GROUP_ID_KEY,
+        handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
         router::{self, serde_qs_config},
         services::{
             images::{DynImageStorage, MockImageStorage},
@@ -254,9 +250,9 @@ mod tests {
 
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(move |_| Ok(Some(community_id)));
         let db: DynDB = Arc::new(db);
 
@@ -264,51 +260,36 @@ mod tests {
         let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
-        // Setup request parts and state
+        // Setup router with test endpoint that uses CommunityId extractor
+        let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/{community}/test",
+                get(|CommunityId(id): CommunityId| async move { id.to_string() }),
+            )
+            .with_state(state);
+
+        // Send request with community in path
         let request = Request::builder()
-            .uri("/")
-            .header(HOST, "example.test")
+            .uri("/test-community/test")
             .body(Body::empty())
             .unwrap();
-        let (mut parts, _) = request.into_parts();
-        let state = build_state(db, is, nm);
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-        // Check extraction matches expectations
-        let CommunityId(extracted) = CommunityId::from_request_parts(&mut parts, &state)
-            .await
-            .expect("extractor should succeed");
-        assert_eq!(extracted, community_id);
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(bytes.as_ref(), community_id.to_string().as_bytes());
     }
 
     #[tokio::test]
-    async fn test_community_id_extractor_missing_host_header() {
-        // Setup database mock
-        let db: DynDB = Arc::new(MockDB::new());
-
-        // Setup services mocks
-        let is: DynImageStorage = Arc::new(MockImageStorage::new());
-        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
-
-        // Setup request parts and state
-        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
-        let (mut parts, _) = request.into_parts();
-        let state = build_state(db, is, nm);
-
-        // Check extraction matches expectations
-        let result = CommunityId::from_request_parts(&mut parts, &state).await;
-        assert!(matches!(
-            result,
-            Err((StatusCode::BAD_REQUEST, "missing host header"))
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_community_id_extractor_unknown_host() {
+    async fn test_community_id_extractor_unknown_community() {
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "unknown.test")
+            .withf(|name| name == "unknown")
             .returning(|_| Ok(None));
         let db: DynDB = Arc::new(db);
 
@@ -316,30 +297,33 @@ mod tests {
         let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
-        // Setup request parts and state
-        let request = Request::builder()
-            .uri("/")
-            .header(HOST, "unknown.test")
-            .body(Body::empty())
-            .unwrap();
-        let (mut parts, _) = request.into_parts();
+        // Setup router with test endpoint that uses CommunityId extractor
         let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/{community}/test",
+                get(|CommunityId(_id): CommunityId| async { StatusCode::OK }),
+            )
+            .with_state(state);
 
-        // Check extraction matches expectations
-        let result = CommunityId::from_request_parts(&mut parts, &state).await;
-        assert!(matches!(
-            result,
-            Err((StatusCode::BAD_REQUEST, "community host not found"))
-        ));
+        // Send request
+        let request = Request::builder().uri("/unknown/test").body(Body::empty()).unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NOT_FOUND);
+        assert_eq!(bytes.as_ref(), b"community not found");
     }
 
     #[tokio::test]
     async fn test_community_id_extractor_db_error() {
         // Setup database mock
         let mut db = MockDB::new();
-        db.expect_get_community_id()
+        db.expect_get_community_id_by_name()
             .times(1)
-            .withf(|host| host == "example.test")
+            .withf(|name| name == "test-community")
             .returning(|_| Err(anyhow!("db error")));
         let db: DynDB = Arc::new(db);
 
@@ -347,53 +331,24 @@ mod tests {
         let is: DynImageStorage = Arc::new(MockImageStorage::new());
         let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
-        // Setup request parts and state
+        // Setup router with test endpoint that uses CommunityId extractor
+        let state = build_state(db, is, nm);
+        let router = Router::new()
+            .route(
+                "/{community}/test",
+                get(|CommunityId(_id): CommunityId| async { StatusCode::OK }),
+            )
+            .with_state(state);
+
+        // Send request
         let request = Request::builder()
-            .uri("/")
-            .header(HOST, "example.test")
+            .uri("/test-community/test")
             .body(Body::empty())
             .unwrap();
-        let (mut parts, _) = request.into_parts();
-        let state = build_state(db, is, nm);
-
-        // Check extraction matches expectations
-        let result = CommunityId::from_request_parts(&mut parts, &state).await;
-        assert!(matches!(result, Err((StatusCode::INTERNAL_SERVER_ERROR, ""))));
-    }
-
-    #[tokio::test]
-    async fn test_lookup_community_id_success() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let host = "example.test";
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_community_id()
-            .times(1)
-            .withf(move |requested_host| requested_host == host)
-            .returning(move |_| Ok(Some(community_id)));
-        let db: DynDB = Arc::new(db);
-
-        // Execute lookup
-        let result = lookup_community_id(db, host).await.expect("lookup should succeed");
+        let response = router.oneshot(request).await.unwrap();
 
         // Check response matches expectations
-        assert_eq!(result, Some(community_id));
-    }
-
-    #[tokio::test]
-    async fn test_lookup_community_id_empty_host_is_noop() {
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_community_id().times(0);
-        let db: DynDB = Arc::new(db);
-
-        // Execute lookup
-        let community_id = lookup_community_id(db, "").await.expect("lookup should succeed");
-
-        // Check response matches expectations
-        assert!(community_id.is_none());
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[tokio::test]
@@ -645,6 +600,86 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::BAD_REQUEST);
         assert_eq!(bytes.as_ref(), b"oidc provider not supported");
+    }
+
+    #[tokio::test]
+    async fn test_selected_community_id_extractor_missing_community_id() {
+        // Setup identifiers and data structures
+        let store = Arc::new(MemoryStore::default());
+        let session = Session::new(None, store, None);
+
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup request parts and state
+        let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        request.extensions_mut().insert(session);
+        let (mut parts, _) = request.into_parts();
+        let state = build_state(db, is, nm);
+
+        // Check extraction matches expectations
+        let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
+        assert!(matches!(
+            result,
+            Err((StatusCode::BAD_REQUEST, "missing community id"))
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_selected_community_id_extractor_missing_session() {
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup request parts and state
+        let request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let (mut parts, _) = request.into_parts();
+        let state = build_state(db, is, nm);
+
+        // Check extraction matches expectations
+        let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
+        assert!(matches!(
+            result,
+            Err((StatusCode::UNAUTHORIZED, "user not logged in"))
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_selected_community_id_extractor_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let store = Arc::new(MemoryStore::default());
+        let session = Session::new(None, store, None);
+        session
+            .insert(SELECTED_COMMUNITY_ID_KEY, community_id)
+            .await
+            .expect("session insert should succeed");
+
+        // Setup database mock
+        let db: DynDB = Arc::new(MockDB::new());
+
+        // Setup services mocks
+        let is: DynImageStorage = Arc::new(MockImageStorage::new());
+        let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
+
+        // Setup request parts and state
+        let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
+        request.extensions_mut().insert(session);
+        let (mut parts, _) = request.into_parts();
+        let state = build_state(db, is, nm);
+
+        // Check extraction matches expectations
+        let SelectedCommunityId(extracted) = SelectedCommunityId::from_request_parts(&mut parts, &state)
+            .await
+            .expect("extractor should succeed");
+        assert_eq!(extracted, community_id);
     }
 
     #[tokio::test]

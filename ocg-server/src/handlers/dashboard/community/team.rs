@@ -17,7 +17,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, ValidatedForm},
+        extractors::{SelectedCommunityId, ValidatedForm},
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::dashboard::community::team,
@@ -29,7 +29,7 @@ use crate::{
 /// Displays the list of community team members.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     let members = db.list_community_team_members(community_id).await?;
@@ -47,7 +47,7 @@ pub(crate) async fn list_page(
 /// Adds a user to the community team.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
@@ -57,14 +57,15 @@ pub(crate) async fn add(
     db.add_community_team_member(community_id, member.user_id).await?;
 
     // Enqueue invitation email notification
-    let community = db.get_community(community_id).await?;
+    let (community, site_settings) =
+        tokio::try_join!(db.get_community_summary(community_id), db.get_site_settings())?;
     let template_data = CommunityTeamInvitation {
         community_name: community.display_name,
         link: format!(
             "{}/dashboard/user?tab=invitations",
             server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
         ),
-        theme: community.theme,
+        theme: site_settings.theme,
     };
     let notification = NewNotification {
         attachments: vec![],
@@ -83,7 +84,7 @@ pub(crate) async fn add(
 /// Deletes a user from the community team.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(user_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -138,7 +139,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let members = vec![
             sample_community_team_member(true),
             sample_community_team_member(false),
@@ -154,10 +155,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -203,7 +200,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -215,10 +212,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -257,9 +250,11 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
-        let community = sample_community(community_id);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let community = sample_community_summary(community_id);
         let community_for_db = community.clone();
+        let site_settings = sample_site_settings();
+        let site_settings_for_assertions = site_settings.clone();
         let new_member_form = NewTeamMember {
             user_id: new_member_id,
         };
@@ -275,10 +270,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -287,10 +278,13 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == new_member_id)
             .returning(move |_, _| Ok(()));
-        db.expect_get_community()
+        db.expect_get_community_summary()
             .times(1)
             .withf(move |cid| *cid == community_id)
             .returning(move |_| Ok(community_for_db.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(move || Ok(site_settings.clone()));
 
         // Setup notifications manager mock
         let mut nm = MockNotificationsManager::new();
@@ -304,7 +298,8 @@ mod tests {
                             .map(|template| {
                                 template.community_name == community.display_name
                                     && template.link == "/dashboard/user?tab=invitations"
-                                    && template.theme.primary_color == community.theme.primary_color
+                                    && template.theme.primary_color
+                                        == site_settings_for_assertions.theme.primary_color
                             })
                             .unwrap_or(false)
                     })
@@ -342,7 +337,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let new_member_form = NewTeamMember {
             user_id: new_member_id,
         };
@@ -358,10 +353,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
@@ -401,7 +392,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -413,10 +404,6 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_user_owns_community()
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)

@@ -14,7 +14,7 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::error::HandlerError,
     templates::{
         PageId,
         auth::{self, User, UserDetails},
@@ -31,7 +31,6 @@ use crate::{
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
-    CommunityId(community_id): CommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -41,8 +40,8 @@ pub(crate) async fn page(
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
-    // Get community information
-    let community = db.get_community(community_id).await?;
+    // Get site settings
+    let site_settings = db.get_site_settings().await?;
 
     // Prepare content for the selected tab
     let content = match tab {
@@ -56,8 +55,8 @@ pub(crate) async fn page(
         }
         Tab::Invitations => {
             let (community_invitations, group_invitations) = tokio::try_join!(
-                db.list_user_community_team_invitations(community_id, user.user_id),
-                db.list_user_group_team_invitations(community_id, user.user_id)
+                db.list_user_community_team_invitations(user.user_id),
+                db.list_user_group_team_invitations(user.user_id)
             )?;
             Content::Invitations(invitations::ListPage {
                 community_invitations,
@@ -68,11 +67,11 @@ pub(crate) async fn page(
 
     // Render the page
     let page = Page {
-        community,
         content,
         messages: messages.into_iter().collect(),
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
+        site_settings,
         user: User::from_session(auth_session).await?,
     };
 
@@ -89,7 +88,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -104,11 +103,10 @@ mod tests {
     #[tokio::test]
     async fn test_page_account_tab_success() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -120,17 +118,12 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_list_timezones()
             .times(1)
             .returning(|| Ok(vec!["UTC".to_string(), "America/New_York".to_string()]));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -140,7 +133,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -169,8 +161,8 @@ mod tests {
         let user_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
-        let community_invitations = vec![sample_community_invitation()];
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let community_invitations = vec![sample_community_invitation(community_id)];
         let group_invitations = vec![sample_group_invitation(group_id)];
 
         // Setup database mock
@@ -183,22 +175,17 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
-            .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(sample_community(community_id)));
         db.expect_list_user_community_team_invitations()
             .times(1)
-            .withf(move |id, uid| *id == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(community_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(community_invitations.clone()));
         db.expect_list_user_group_team_invitations()
             .times(1)
-            .withf(move |id, uid| *id == community_id && *uid == user_id)
-            .returning(move |_, _| Ok(group_invitations.clone()));
+            .withf(move |uid| *uid == user_id)
+            .returning(move |_| Ok(group_invitations.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -208,7 +195,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user?tab=invitations")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -232,11 +218,10 @@ mod tests {
     #[tokio::test]
     async fn test_page_db_error() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -249,14 +234,9 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash_for_user))));
-        db.expect_get_community_id()
+        db.expect_get_site_settings()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
-        db.expect_get_community()
-            .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Err(anyhow!("db error")));
+            .returning(|| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -266,7 +246,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

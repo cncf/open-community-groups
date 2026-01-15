@@ -1,13 +1,17 @@
 //! This module defines some database functionality for the community site.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use cached::proc_macro::cached;
+use deadpool_postgres::Client;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
 use crate::{
     db::PgDB,
-    templates::community::{explore, home},
+    templates::community,
     types::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
@@ -17,17 +21,17 @@ use crate::{
 /// Database trait defining all data access operations for the community site.
 #[async_trait]
 pub(crate) trait DBCommunity {
-    /// Retrieves available filter options for the community explore page.
-    async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions>;
+    /// Resolves a community ID from the provided community name.
+    async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
 
-    /// Retrieves statistical data for the community home page.
-    async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats>;
-
-    /// Resolves a community ID from the provided hostname.
-    async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
+    /// Resolves a community name from the provided community ID.
+    async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
 
     /// Retrieves the most recently added groups in the community.
     async fn get_community_recently_added_groups(&self, community_id: Uuid) -> Result<Vec<GroupSummary>>;
+
+    /// Retrieves statistical data for the community page.
+    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats>;
 
     /// Retrieves upcoming events for the community.
     async fn get_community_upcoming_events(
@@ -39,55 +43,57 @@ pub(crate) trait DBCommunity {
 
 #[async_trait]
 impl DBCommunity for PgDB {
-    /// [`DB::get_community_filters_options`]
+    /// [`DB::get_community_id_by_name`]
     #[instrument(skip(self), err)]
-    async fn get_community_filters_options(&self, community_id: Uuid) -> Result<explore::FiltersOptions> {
-        trace!("db: get community filters options");
+    async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
+        #[cached(
+            time = 86400,
+            key = "String",
+            convert = r#"{ String::from(name) }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client, name: &str) -> Result<Option<Uuid>> {
+            trace!("db: get community id by name");
 
+            let community_id = db
+                .query_opt("select get_community_id_by_name($1::text)", &[&name])
+                .await?
+                .and_then(|row| row.get(0));
+
+            Ok(community_id)
+        }
+
+        if name.is_empty() {
+            return Ok(None);
+        }
         let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_community_filters_options($1::uuid)::text",
-                &[&community_id],
-            )
-            .await?;
-        let filters_options = explore::FiltersOptions::try_from_json(&row.get::<_, String>(0))?;
-
-        Ok(filters_options)
+        inner(db, name).await
     }
 
-    /// [`DB::get_community_home_stats`]
+    /// [`DB::get_community_name_by_id`]
     #[instrument(skip(self), err)]
-    async fn get_community_home_stats(&self, community_id: Uuid) -> Result<home::Stats> {
-        trace!("db: get community home stats");
+    async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>> {
+        #[cached(
+            time = 86400,
+            key = "Uuid",
+            convert = r#"{ community_id }"#,
+            sync_writes = "by_key",
+            result = true
+        )]
+        async fn inner(db: Client, community_id: Uuid) -> Result<Option<String>> {
+            trace!("db: get community name by id");
+
+            let name = db
+                .query_opt("select get_community_name_by_id($1::uuid)", &[&community_id])
+                .await?
+                .and_then(|row| row.get(0));
+
+            Ok(name)
+        }
 
         let db = self.pool.get().await?;
-        let row = db
-            .query_one(
-                "select get_community_home_stats($1::uuid)::text",
-                &[&community_id],
-            )
-            .await?;
-        let stats = home::Stats::try_from_json(&row.get::<_, String>(0))?;
-
-        Ok(stats)
-    }
-
-    /// [`DB::get_community_id`]
-    #[instrument(skip(self), err)]
-    async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>> {
-        trace!("db: get community id");
-
-        let db = self.pool.get().await?;
-        let community_id = db
-            .query_opt(
-                "select community_id from community where host = $1::text",
-                &[&host],
-            )
-            .await?
-            .map(|row| row.get("community_id"));
-
-        Ok(community_id)
+        inner(db, community_id).await
     }
 
     /// [`DB::get_community_recently_added_groups`]
@@ -105,6 +111,23 @@ impl DBCommunity for PgDB {
         let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
+    }
+
+    /// [`DB::get_community_site_stats`]
+    #[instrument(skip(self), err)]
+    async fn get_community_site_stats(&self, community_id: Uuid) -> Result<community::Stats> {
+        trace!("db: get community site stats");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_community_site_stats($1::uuid)::text",
+                &[&community_id],
+            )
+            .await?;
+        let stats: community::Stats = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(stats)
     }
 
     /// [`DB::get_community_upcoming_events`]

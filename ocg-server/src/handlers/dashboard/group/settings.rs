@@ -13,7 +13,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
     templates::dashboard::group::settings::{self, GroupUpdate},
 };
@@ -23,7 +23,7 @@ use crate::{
 /// Displays the page to update group settings.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -47,7 +47,7 @@ pub(crate) async fn update_page(
 /// Updates group settings in the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     ValidatedFormQs(group_update): ValidatedFormQs<GroupUpdate>,
@@ -71,7 +71,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -91,7 +91,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let group = sample_group_full(group_id);
         let category = sample_group_category();
         let region = sample_group_region();
@@ -106,10 +112,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_full()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -131,7 +137,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/settings/update")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -160,7 +165,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -172,10 +183,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_full()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -189,7 +200,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/settings/update")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -210,7 +220,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let update = sample_group_update();
         let body = serde_qs::to_string(&update).unwrap();
 
@@ -224,10 +240,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_update_group()
             .times(1)
             .withf(move |cid, gid, group| {
@@ -243,7 +259,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/group/settings/update")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from(body))
@@ -269,7 +284,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -281,10 +302,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -294,7 +315,6 @@ mod tests {
         let request = Request::builder()
             .method("PUT")
             .uri("/dashboard/group/settings/update")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
             .body(Body::from("invalid"))

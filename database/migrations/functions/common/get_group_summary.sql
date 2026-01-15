@@ -12,11 +12,15 @@ returns json as $$
             'normalized_name', gc.normalized_name,
             'order', gc.order
         ),
+        'community_display_name', c.display_name,
+        'community_name', c.name,
         'created_at', floor(extract(epoch from g.created_at)),
         'group_id', g.group_id,
         'name', g.name,
         'slug', g.slug,
 
+        'banner_mobile_url', g.banner_mobile_url,
+        'banner_url', g.banner_url,
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,
@@ -35,6 +39,7 @@ returns json as $$
         'state', g.state
     )) as json_data
     from "group" g
+    join community c using (community_id)
     join group_category gc using (group_category_id)
     left join region r using (region_id)
     where g.group_id = p_group_id

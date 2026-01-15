@@ -30,30 +30,13 @@ select plan(13);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'test.example.org',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Users
-insert into "user" (user_id, community_id, email, email_verified, username, auth_hash) values
-    (:'userVerifiedID', :'communityID', 'verified@example.com', true, 'verified', 'hash1'),
-    (:'userUnverifiedID', :'communityID', 'unverified@example.com', false, 'unverified', 'hash2');
+insert into "user" (user_id, auth_hash, email, username, email_verified) values
+    (:'userVerifiedID', 'hash1', 'verified@example.com', 'verified', true),
+    (:'userUnverifiedID', 'hash2', 'unverified@example.com', 'unverified', false);
 
 -- Notification templates
 insert into notification_template_data (notification_template_data_id, data, hash) values

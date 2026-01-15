@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -26,20 +26,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Group Category
@@ -76,7 +74,6 @@ insert into "user" (
     username,
     email_verified,
     auth_hash,
-    community_id,
     created_at
 ) values (
     :'attendee1ID',
@@ -84,7 +81,6 @@ insert into "user" (
     'attendee1',
     true,
     'attendee-hash',
-    :'communityID',
     '2024-01-01 00:00:00+00'
 ), (
     :'attendee2ID',
@@ -92,7 +88,6 @@ insert into "user" (
     'attendee2',
     true,
     'attendee-hash',
-    :'communityID',
     '2024-01-01 00:00:00+00'
 );
 
@@ -176,6 +171,8 @@ select is(
     )::jsonb,
     '{
         "canceled": false,
+        "community_display_name": "Cloud Native Seattle",
+        "community_name": "cloud-native-seattle",
         "event_id": "00000000-0000-0000-0000-000000000031",
         "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",
@@ -204,6 +201,19 @@ select is(
     }'::jsonb,
     'Should return correct event summary data as JSON'
 );
+
+-- Should use group logo when event has no logo
+update event set logo_url = null where event_id = :'eventID';
+select is(
+    (get_event_summary(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb)->>'logo_url',
+    'https://example.com/group-logo.png',
+    'Should use group logo when event has no logo'
+);
+update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event ID
 select ok(

@@ -24,25 +24,8 @@ select plan(8);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -70,19 +53,8 @@ insert into "group" (
 );
 
 -- User (publisher)
-insert into "user" (
-    user_id,
-    auth_hash,
-    community_id,
-    email,
-    username
-) values (
-    :'userID',
-    'x',
-    :'communityID',
-    'user@test.local',
-    'user'
-);
+insert into "user" (user_id, auth_hash, email, username)
+values (:'userID', 'x', 'user@test.local', 'user');
 
 -- Event (unpublished, with meeting_in_sync=true to verify it gets set to false)
 insert into event (

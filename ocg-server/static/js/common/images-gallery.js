@@ -98,11 +98,11 @@ export class ImagesGallery extends LitWrapper {
         ${this.images.map(
           (image, index) => html`
             <div class="hidden md:block">
-              <button @click=${() => this._openModal(index)}>
+              <button class="w-full" @click=${() => this._openModal(index)}>
                 <img
                   width="160"
                   height="160"
-                  class="bg-white w-40 h-40 object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
+                  class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
                   src=${image}
                   alt="${this.altImage} image ${index + 1}"
                 />
@@ -112,7 +112,7 @@ export class ImagesGallery extends LitWrapper {
               <img
                 width="160"
                 height="160"
-                class="bg-white w-40 h-40 object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
+                class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
                 src=${image}
                 alt="${this.altImage} image ${index + 1}"
               />

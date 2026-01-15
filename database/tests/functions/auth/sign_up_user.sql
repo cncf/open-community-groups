@@ -6,44 +6,12 @@ begin;
 select plan(5);
 
 -- ============================================================================
--- VARIABLES
--- ============================================================================
-
-\set communityID '00000000-0000-0000-0000-000000000001'
-
--- ============================================================================
--- SEED DATA
--- ============================================================================
-
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    description,
-    header_logo_url,
-    theme,
-    title
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'test.example.com',
-    'Seattle community for cloud native technologies',
-    'https://example.com/logo.png',
-    '{}'::jsonb,
-    'Cloud Native Seattle Community'
-);
-
--- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should not generate verification code when email_verified is true
 with verified_user_result as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'verified@example.com',
             'username', 'verifieduser',
@@ -69,7 +37,6 @@ select ok(
 -- Should generate verification code when email_verified is false
 with unverified_user_result as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'unverified@example.com',
             'username', 'unverifieduser',
@@ -95,7 +62,6 @@ select ok(
 -- Should default to false and generate verification code when email_verified is omitted
 with default_user_result as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'default@example.com',
             'username', 'defaultuser',
@@ -120,7 +86,6 @@ select ok(
 -- Should add numeric suffix starting at 2 for duplicate usernames
 with duplicate_user_1 as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'duplicate1@example.com',
             'username', 'duplicateuser',
@@ -132,7 +97,6 @@ with duplicate_user_1 as (
 ),
 duplicate_user_2 as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'duplicate2@example.com',
             'username', 'duplicateuser',
@@ -151,7 +115,6 @@ select ok(
 -- Should increment suffix properly for multiple duplicate usernames
 with duplicate_user_3 as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'duplicate3@example.com',
             'username', 'duplicateuser',
@@ -163,7 +126,6 @@ with duplicate_user_3 as (
 ),
 duplicate_user_4 as (
     select * from sign_up_user(
-        :'communityID',
         jsonb_build_object(
             'email', 'duplicate4@example.com',
             'username', 'duplicateuser',

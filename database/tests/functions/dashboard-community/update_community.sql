@@ -19,28 +19,22 @@ select plan(3);
 insert into community (
     community_id,
     active,
+    banner_mobile_url,
+    banner_url,
     community_site_layout_id,
     description,
     display_name,
-    header_logo_url,
-    host,
+    logo_url,
     name,
-    theme,
-    title,
     ad_banner_url,
     ad_banner_link_url,
-    copyright_notice,
     extra_links,
     facebook_url,
-    favicon_url,
     flickr_url,
-    footer_logo_url,
     github_url,
     instagram_url,
-    jumbotron_image_url,
     linkedin_url,
     new_group_details,
-    og_image_url,
     photos_urls,
     slack_url,
     twitter_url,
@@ -50,28 +44,22 @@ insert into community (
 ) values (
     :'communityID',
     true,
+    'https://original.com/community-banner_mobile.png',
+    'https://original.com/community-banner.png',
     'default',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'Cloud Native Seattle',
-    'https://original.com/header-logo.png',
-    'seattle.cloudnative.org',
+    'https://original.com/logo.png',
     'cloud-native-seattle',
-    '{"primary_color": "#000000"}'::jsonb,
-    'Cloud Native Seattle Community',
     'https://original.com/banner.png',
     'https://original.com/banner-link',
-    'Copyright © 2024 Original',
     '{"docs": "https://docs.original.com"}'::jsonb,
     'https://facebook.com/original',
-    'https://original.com/favicon.ico',
     'https://flickr.com/original',
-    'https://original.com/footer-logo.png',
     'https://github.com/original',
     'https://instagram.com/original',
-    'https://original.com/jumbotron.png',
     'https://linkedin.com/original',
     'Contact team members to create groups',
-    'https://original.com/og.png',
     array['https://original.com/photo1.jpg', 'https://original.com/photo2.jpg'],
     'https://original.slack.com',
     'https://twitter.com/original',
@@ -88,30 +76,23 @@ insert into community (
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
-        "active": false,
-        "community_site_layout_id": "default",
         "description": "Updated description for Seattle cloud native community",
         "display_name": "Cloud Native Seattle Updated",
-        "header_logo_url": "https://updated.com/header-logo.png",
-        "host": "seattle.cloudnative.org",
-        "name": "cloud-native-seattle-updated",
-        "primary_color": "#FF0000",
-        "title": "Cloud Native Seattle Updated"
+        "logo_url": "https://updated.com/logo.png"
     }'::jsonb
 );
 
 select is(
-    (select get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
+    (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
+        "banner_mobile_url": "https://original.com/community-banner_mobile.png",
+        "banner_url": "https://original.com/community-banner.png",
         "community_site_layout_id": "default",
         "description": "Updated description for Seattle cloud native community",
         "display_name": "Cloud Native Seattle Updated",
-        "header_logo_url": "https://updated.com/header-logo.png",
-        "host": "seattle.cloudnative.org",
-        "name": "cloud-native-seattle-updated",
-        "theme": {"primary_color": "#FF0000"},
-        "title": "Cloud Native Seattle Updated"
+        "logo_url": "https://updated.com/logo.png",
+        "name": "cloud-native-seattle"
     }'::jsonb,
     'Should update required fields and set optional fields to null when not provided'
 );
@@ -120,71 +101,55 @@ select is(
 select update_community(
     '00000000-0000-0000-0000-000000000001'::uuid,
     '{
-        "active": true,
-        "community_site_layout_id": "default",
         "description": "Comprehensive cloud native community in Seattle",
         "display_name": "Cloud Native Seattle Complete",
-        "header_logo_url": "https://new.com/header.png",
-        "host": "seattle.cloudnative.org",
-        "name": "cloud-native-seattle-complete",
-        "primary_color": "#00FF00",
-        "title": "Cloud Native Seattle Complete",
+        "logo_url": "https://new.com/logo.png",
         "ad_banner_url": "https://new.com/banner.png",
         "ad_banner_link_url": "https://new.com/link",
-        "copyright_notice": "Copyright © 2025 New",
+        "banner_mobile_url": "https://new.com/community-banner_mobile.png",
+        "banner_url": "https://new.com/community-banner.png",
         "extra_links": {"blog": "https://blog.new.com", "forum": "https://forum.new.com"},
         "facebook_url": "https://facebook.com/new",
-        "favicon_url": "https://new.com/favicon.ico",
         "flickr_url": "https://flickr.com/new",
-        "footer_logo_url": "https://new.com/footer.png",
         "github_url": "https://github.com/new",
         "instagram_url": "https://instagram.com/new",
-        "jumbotron_image_url": "https://new.com/jumbotron.png",
         "linkedin_url": "https://linkedin.com/new",
         "new_group_details": "New groups welcome!",
-        "og_image_url": "https://new.com/og.png",
         "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
         "slack_url": "https://new.slack.com",
         "twitter_url": "https://twitter.com/new",
         "website_url": "https://new.com",
         "wechat_url": "https://wechat.com/new",
-        "youtube_url": "https://youtube.com/new",
-        "jumbotron_image_url": "https://new.com/jumbotron.png"
+        "youtube_url": "https://youtube.com/new"
     }'::jsonb
 );
 
 select is(
-    (select get_community('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
+    (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
         "ad_banner_link_url": "https://new.com/link",
         "ad_banner_url": "https://new.com/banner.png",
+        "banner_mobile_url": "https://new.com/community-banner_mobile.png",
+        "banner_url": "https://new.com/community-banner.png",
         "community_site_layout_id": "default",
-        "copyright_notice": "Copyright © 2025 New",
         "description": "Comprehensive cloud native community in Seattle",
         "display_name": "Cloud Native Seattle Complete",
         "extra_links": {"blog": "https://blog.new.com", "forum": "https://forum.new.com"},
         "facebook_url": "https://facebook.com/new",
-        "favicon_url": "https://new.com/favicon.ico",
         "flickr_url": "https://flickr.com/new",
-        "footer_logo_url": "https://new.com/footer.png",
         "github_url": "https://github.com/new",
-        "header_logo_url": "https://new.com/header.png",
-        "host": "seattle.cloudnative.org",
         "instagram_url": "https://instagram.com/new",
         "linkedin_url": "https://linkedin.com/new",
-        "name": "cloud-native-seattle-complete",
+        "logo_url": "https://new.com/logo.png",
+        "name": "cloud-native-seattle",
         "new_group_details": "New groups welcome!",
-        "og_image_url": "https://new.com/og.png",
         "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
         "slack_url": "https://new.slack.com",
-        "theme": {"primary_color": "#00FF00"},
-        "title": "Cloud Native Seattle Complete",
         "twitter_url": "https://twitter.com/new",
         "website_url": "https://new.com",
         "wechat_url": "https://wechat.com/new",
-        "youtube_url": "https://youtube.com/new",
-        "jumbotron_image_url": "https://new.com/jumbotron.png"
+        "youtube_url": "https://youtube.com/new"
     }'::jsonb,
     'Should update all fields correctly including optional ones'
 );
@@ -195,42 +160,32 @@ select update_community(
     '{
         "ad_banner_url": "",
         "ad_banner_link_url": "",
-        "copyright_notice": "",
         "facebook_url": "",
-        "favicon_url": "",
         "flickr_url": "",
-        "footer_logo_url": "",
         "github_url": "",
         "instagram_url": "",
-        "jumbotron_image_url": "",
         "linkedin_url": "",
         "new_group_details": "",
-        "og_image_url": "",
         "slack_url": "",
         "twitter_url": "",
         "website_url": "",
         "wechat_url": "",
-        "youtube_url": "",
-        "jumbotron_image_url": ""
+        "youtube_url": ""
     }'::jsonb
 );
 
 select is(
-    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'community_site_layout_id' - 'description' - 'display_name' - 'header_logo_url' - 'host' - 'name' - 'theme' - 'title' - 'extra_links' - 'photos_urls'
+    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'banner_mobile_url' - 'banner_url' - 'community_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
      from (
         select * from community where community_id = '00000000-0000-0000-0000-000000000001'::uuid
      ) t),
     '{
         "ad_banner_url": null,
         "ad_banner_link_url": null,
-        "copyright_notice": null,
         "facebook_url": null,
-        "favicon_url": null,
         "flickr_url": null,
-        "footer_logo_url": null,
         "github_url": null,
         "instagram_url": null,
-        "jumbotron_image_url": null,
         "linkedin_url": null,
         "new_group_details": null,
         "og_image_url": null,

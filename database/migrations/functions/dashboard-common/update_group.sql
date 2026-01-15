@@ -10,6 +10,7 @@ begin
         name = p_group->>'name',
         group_category_id = (p_group->>'category_id')::uuid,
 
+        banner_mobile_url = nullif(p_group->>'banner_mobile_url', ''),
         banner_url = nullif(p_group->>'banner_url', ''),
         city = nullif(p_group->>'city', ''),
         country_code = nullif(p_group->>'country_code', ''),

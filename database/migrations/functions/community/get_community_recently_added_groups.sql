@@ -9,7 +9,8 @@ returns json as $$
         from "group" g
         where g.community_id = p_community_id
         and g.active = true
+        and g.logo_url is not null
         order by g.created_at desc
-        limit 9
+        limit 8
     ) g;
 $$ language sql;

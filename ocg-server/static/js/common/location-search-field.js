@@ -711,7 +711,7 @@ export class LocationSearchField extends LitWrapper {
                       <div class="absolute end-1.5 top-1.5">
                         <button
                           type="button"
-                          class="cursor-pointer mt-[2px]"
+                          class="cursor-pointer mt-0.5"
                           @click=${this._clearSearch}
                           ?disabled=${this.disabled}
                         >
@@ -748,7 +748,7 @@ export class LocationSearchField extends LitWrapper {
   _renderDropdown() {
     return html`
       <div
-        class="absolute z-50 mt-2 w-full bg-white rounded-lg shadow-lg border border-stone-200 max-h-[320px] overflow-y-auto"
+        class="absolute z-50 mt-2 w-full bg-white rounded-lg shadow-lg border border-stone-200 max-h-80 overflow-y-auto"
         role="listbox"
       >
         ${this._isSearching
@@ -1175,7 +1175,7 @@ export class LocationSearchField extends LitWrapper {
           this._highlightedIndex = index;
         }}
       >
-        <div class="flex-shrink-0 mt-0.5">
+        <div class="shrink-0 mt-0.5">
           <div class="svg-icon size-4 bg-stone-400 icon-marker -mt-px"></div>
         </div>
         <div class="flex-1 min-w-0">

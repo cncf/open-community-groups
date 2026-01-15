@@ -1,0 +1,23 @@
+{# Link -#}
+{% macro link(content, href, current_path, path = "", extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <a href="{{ href }}"
+     hx-boost="true"
+     hx-target="body"
+     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
+            {% if current_path == href || current_path == path -%}
+              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
+{% endmacro link -%}
+{# End link -#}
+
+{# Button -#}
+{% macro button(id, content, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  <button id="{{ id }}"
+          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors {{ extra_styles_ }}">
+    {{ content }}
+  </button>
+{% endmacro button -%}
+{# End button -#}

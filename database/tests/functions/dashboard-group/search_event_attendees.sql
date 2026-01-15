@@ -23,8 +23,8 @@ select plan(4);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, host, title, description, header_logo_url, theme)
-values (:'communityID', 'c', 'C', 'c.example.org', 't', 'd', 'https://e/logo.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c', 'C', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Group category
 insert into group_category (group_category_id, name, community_id)
@@ -39,20 +39,10 @@ insert into "group" (group_id, community_id, group_category_id, name, slug, acti
 values (:'groupID', :'communityID', :'categoryID', 'G', 'g', true, false);
 
 -- Users
-insert into "user" (
-    auth_hash,
-    community_id,
-    company,
-    email,
-    name,
-    photo_url,
-    title,
-    user_id,
-    username
-)
+insert into "user" (auth_hash, email, user_id, username, company, name, photo_url, title)
 values
-    ('h', :'communityID', 'Cloud Corp', 'alice@example.com', 'Alice', 'https://example.com/a.png', 'Principal Engineer', :'user1ID', 'alice'),
-    ('h', :'communityID', null, 'bob@example.com', null, 'https://example.com/b.png', null, :'user2ID', 'bob');
+    ('h', 'alice@example.com', :'user1ID', 'alice', 'Cloud Corp', 'Alice', 'https://example.com/a.png', 'Principal Engineer'),
+    ('h', 'bob@example.com', :'user2ID', 'bob', null, null, 'https://example.com/b.png', null);
 
 -- Events
 insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted)

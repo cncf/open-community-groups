@@ -23,8 +23,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, display_name, host, name, title, description, header_logo_url, theme)
-values (:'communityID', 'C1', 'c1.example.com', 'c1', 'C1', 'd', 'https://e/logo.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -35,17 +35,17 @@ insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
-insert into "user" (user_id, auth_hash, community_id, email, name, username, email_verified, photo_url)
+insert into "user" (user_id, auth_hash, email, name, username, email_verified, photo_url)
 values
-    (:'user1ID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice',
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice',
         'alice', true, 'https://example.com/alice.png'),
-    (:'user2ID', gen_random_bytes(32), :'communityID', 'bob@example.com', null,
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', null,
         'bob', true, 'https://example.com/bob.png'),
-    (:'user3ID', gen_random_bytes(32), :'communityID', 'aaron@example.com', null,
+    (:'user3ID', gen_random_bytes(32), 'aaron@example.com', null,
         'aaron', true, 'https://example.com/aaron.png'),
-    (:'user4ID', gen_random_bytes(32), :'communityID', 'alice2@example.com', 'Alice',
+    (:'user4ID', gen_random_bytes(32), 'alice2@example.com', 'Alice',
         'alice2', true, 'https://example.com/alice2.png'),
-    (:'user5ID', gen_random_bytes(32), :'communityID', 'bobby@example.com', 'Bob',
+    (:'user5ID', gen_random_bytes(32), 'bobby@example.com', 'Bob',
         'bobby', true, 'https://example.com/bobby.png');
 
 -- Group members

@@ -9,7 +9,7 @@ use tracing::instrument;
 
 use crate::{
     db::DynDB,
-    handlers::{error::HandlerError, extractors::CommunityId},
+    handlers::{error::HandlerError, extractors::SelectedCommunityId},
     templates::dashboard::community::analytics,
 };
 
@@ -18,7 +18,7 @@ use crate::{
 /// Displays the community analytics dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     let stats = db.get_community_stats(community_id).await?;
@@ -55,7 +55,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -71,10 +71,6 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community_stats()
             .times(1)
             .withf(move |cid| *cid == community_id)
@@ -108,7 +104,7 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, None);
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let stats = sample_community_stats();
 
         // Setup database mock
@@ -125,10 +121,6 @@ mod tests {
             .times(1)
             .withf(move |cid, uid| *cid == community_id && *uid == user_id)
             .returning(|_, _| Ok(true));
-        db.expect_get_community_id()
-            .times(2)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
         db.expect_get_community_stats()
             .times(1)
             .withf(move |cid| *cid == community_id)

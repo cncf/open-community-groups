@@ -17,44 +17,12 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    description,
-    header_logo_url,
-    theme,
-    title
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'test.example.com',
-    'Seattle community for cloud native technologies',
-    'https://example.com/logo.png',
-    '{}'::jsonb,
-    'Cloud Native Seattle Community'
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'Seattle community for cloud native technologies', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- User
-insert into "user" (
-    user_id,
-    auth_hash,
-    community_id,
-    email,
-    email_verified,
-    name,
-    username
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    :'communityID',
-    'user@example.com',
-    true,
-    'User',
-    'user'
-);
+insert into "user" (user_id, auth_hash, email, username, email_verified, name)
+values (:'userID', gen_random_bytes(32), 'user@example.com', 'user', true, 'User');
 
 -- Pending invitation
 insert into community_team (

@@ -17,12 +17,13 @@ returns json as $$
         'slug', e.slug,
         'timezone', e.timezone,
 
+        'banner_mobile_url', e.banner_mobile_url,
         'banner_url', e.banner_url,
         'capacity', e.capacity,
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
         'latitude', st_y(e.location::geometry),
-        'logo_url', e.logo_url,
+        'logo_url', coalesce(e.logo_url, g.logo_url),
         'longitude', st_x(e.location::geometry),
         'meeting_error', e.meeting_error,
         'meeting_hosts', e.meeting_hosts,
@@ -46,6 +47,7 @@ returns json as $$
         'venue_state', e.venue_state,
         'venue_zip_code', e.venue_zip_code,
 
+        'community', get_community_summary(g.community_id),
         'group', get_group_summary(g.community_id, g.group_id),
         'hosts', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(

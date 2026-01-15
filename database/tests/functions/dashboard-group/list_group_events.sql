@@ -28,20 +28,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'community1ID',
     'test-community',
     'Test Community',
-    'test.localhost',
-    'Test Community Title',
     'A test community for testing purposes',
     'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Event Category

@@ -9,16 +9,19 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  * the menu. Typing in the search field filters results with a debounce to
  * reduce re-render pressure while the user is typing.
  *
- * @property {Array<object>} groups List of groups with group_id and name keys
+ * @property {Array<object>} groupsByCommunity List of communities with their
+ *   groups, each having community.community_id and groups array
+ * @property {string} selectedCommunityId Currently selected community identifier
  * @property {string} selectedGroupId Currently selected group identifier
  * @property {number} searchDelay Debounced search delay in milliseconds
  */
 export class GroupSelector extends LitWrapper {
   static properties = {
-    groups: {
-      attribute: "groups",
+    groupsByCommunity: {
+      attribute: "groups-by-community",
       type: Array,
     },
+    selectedCommunityId: { type: String, attribute: "selected-community-id" },
     selectedGroupId: { type: String, attribute: "selected-group-id" },
     _isOpen: { state: true },
     _query: { state: true },
@@ -28,7 +31,8 @@ export class GroupSelector extends LitWrapper {
 
   constructor() {
     super();
-    this.groups = [];
+    this.groupsByCommunity = [];
+    this.selectedCommunityId = "";
     this.selectedGroupId = "";
     this._isOpen = false;
     this._query = "";
@@ -49,6 +53,22 @@ export class GroupSelector extends LitWrapper {
     if (this._searchTimeoutId) {
       window.clearTimeout(this._searchTimeoutId);
     }
+  }
+
+  /**
+   * Gets groups for the selected community from groupsByCommunity data.
+   * @returns {Array<object>} Groups for the selected community
+   */
+  get _groups() {
+    if (!this.groupsByCommunity || this.groupsByCommunity.length === 0) {
+      return [];
+    }
+    const targetId = this.selectedCommunityId ? String(this.selectedCommunityId) : "";
+    const communityEntry = this.groupsByCommunity.find((item) => {
+      const communityId = item.community?.community_id ?? item.community_id;
+      return String(communityId) === targetId;
+    });
+    return communityEntry?.groups ?? [];
   }
 
   /**
@@ -73,9 +93,9 @@ export class GroupSelector extends LitWrapper {
   get _filteredGroups() {
     const normalized = (this._query || "").trim().toLowerCase();
     if (!normalized) {
-      return this.groups;
+      return this._groups;
     }
-    return this.groups.filter((group) => {
+    return this._groups.filter((group) => {
       return (group.name || "").toLowerCase().includes(normalized);
     });
   }
@@ -139,7 +159,7 @@ export class GroupSelector extends LitWrapper {
    * Opens the dropdown and resets search.
    */
   _openDropdown() {
-    if (this.groups.length === 0 || this._isSubmitting) {
+    if (this._groups.length === 0 || this._isSubmitting) {
       return;
     }
     this._isOpen = true;
@@ -248,11 +268,12 @@ export class GroupSelector extends LitWrapper {
    * @returns {object|null}
    */
   _findSelectedGroup() {
-    if (!this.groups || this.groups.length === 0) {
+    const groups = this._groups;
+    if (!groups || groups.length === 0) {
       return null;
     }
     const targetId = this.selectedGroupId != null ? String(this.selectedGroupId) : "";
-    return this.groups.find((group) => String(group.group_id) === targetId) || null;
+    return groups.find((group) => String(group.group_id) === targetId) || null;
   }
 
   /**
@@ -266,7 +287,7 @@ export class GroupSelector extends LitWrapper {
 
   render() {
     const selectedGroup = this._findSelectedGroup();
-    const isDisabled = this.groups.length === 0 || this._isSubmitting;
+    const isDisabled = this._groups.length === 0 || this._isSubmitting;
 
     return html`
       <div class="relative">

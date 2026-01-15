@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(2);
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set group4ID '00000000-0000-0000-0000-000000000034'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 \set region2ID '00000000-0000-0000-0000-000000000022'
 
@@ -26,20 +27,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A test community',
     'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Group Category
@@ -64,82 +63,35 @@ values
      'San Francisco', 'CA', 'US', 'United States', :'region1ID'),
     (:'group3ID', 'Test Group 3', 'ghi9abc', :'communityID', :'category1ID',
      '2024-01-03 09:00:00+00', 'https://example.com/logo3.png', 'Third group',
-     'London', null, 'GB', 'United Kingdom', :'region2ID');
+     'London', null, 'GB', 'United Kingdom', :'region2ID'),
+    (:'group4ID', 'Test Group 4', 'jkl0def', :'communityID', :'category1ID',
+     '2024-01-04 09:00:00+00', null, 'Fourth group (no logo)',
+     'Paris', null, 'FR', 'France', :'region2ID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return groups ordered by creation date DESC
+-- Should exclude groups without logo_url
 select is(
     get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
-    '[
-        {
-            "active": true,
-            "city": "London",
-            "name": "Test Group 3",
-            "slug": "ghi9abc",
-            "group_id": "00000000-0000-0000-0000-000000000033",
-            "logo_url": "https://example.com/logo3.png",
-            "created_at": 1704272400,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000022",
-                "name": "Europe",
-                "normalized_name": "europe"
-            },
-            "country_code": "GB",
-            "country_name": "United Kingdom",
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            }
-        },
-        {
-            "active": true,
-            "city": "San Francisco",
-            "name": "Test Group 2",
-            "slug": "def5678",
-            "state": "CA",
-            "group_id": "00000000-0000-0000-0000-000000000032",
-            "logo_url": "https://example.com/logo2.png",
-            "created_at": 1704186000,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "country_code": "US",
-            "country_name": "United States",
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            }
-        },
-        {
-            "active": true,
-            "city": "New York",
-            "name": "Test Group 1",
-            "slug": "abc1234",
-            "state": "NY",
-            "group_id": "00000000-0000-0000-0000-000000000031",
-            "logo_url": "https://example.com/logo1.png",
-            "created_at": 1704099600,
-            "region": {
-                "region_id": "00000000-0000-0000-0000-000000000021",
-                "name": "North America",
-                "normalized_name": "north-america"
-            },
-            "country_code": "US",
-            "country_name": "United States",
-            "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
-                "name": "Technology",
-                "normalized_name": "technology"
-            }
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb,
+        get_group_summary(:'communityID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'communityID'::uuid, :'group1ID'::uuid)::jsonb
+    ),
+    'Should exclude groups without logo_url'
+);
+
+-- Should return groups ordered by creation date DESC
+delete from "group" where group_id = :'group4ID';
+select is(
+    get_community_recently_added_groups(:'communityID'::uuid)::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb,
+        get_group_summary(:'communityID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'communityID'::uuid, :'group1ID'::uuid)::jsonb
+    ),
     'Should return groups ordered by creation date DESC'
 );
 

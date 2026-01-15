@@ -17,26 +17,16 @@ pub(crate) trait DBDashboardUser {
     async fn accept_community_team_invitation(&self, community_id: Uuid, user_id: Uuid) -> Result<()>;
 
     /// Accepts a pending group team invitation.
-    async fn accept_group_team_invitation(
-        &self,
-        community_id: Uuid,
-        group_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()>;
+    async fn accept_group_team_invitation(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
 
-    /// Lists pending community team invitations for the user.
+    /// Lists all pending community team invitations for the user.
     async fn list_user_community_team_invitations(
         &self,
-        community_id: Uuid,
         user_id: Uuid,
     ) -> Result<Vec<CommunityTeamInvitation>>;
 
-    /// Lists pending group team invitations for the user.
-    async fn list_user_group_team_invitations(
-        &self,
-        community_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Vec<GroupTeamInvitation>>;
+    /// Lists all pending group team invitations for the user.
+    async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>>;
 }
 
 #[async_trait]
@@ -58,18 +48,13 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::accept_group_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn accept_group_team_invitation(
-        &self,
-        community_id: Uuid,
-        group_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<()> {
+    async fn accept_group_team_invitation(&self, group_id: Uuid, user_id: Uuid) -> Result<()> {
         trace!("db: accept group team invitation");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select accept_group_team_invitation($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &group_id, &user_id],
+            "select accept_group_team_invitation($1::uuid, $2::uuid)",
+            &[&group_id, &user_id],
         )
         .await?;
 
@@ -80,7 +65,6 @@ impl DBDashboardUser for PgDB {
     #[instrument(skip(self), err)]
     async fn list_user_community_team_invitations(
         &self,
-        community_id: Uuid,
         user_id: Uuid,
     ) -> Result<Vec<CommunityTeamInvitation>> {
         trace!("db: list user community team invitations");
@@ -88,8 +72,8 @@ impl DBDashboardUser for PgDB {
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_community_team_invitations($1::uuid, $2::uuid)::text",
-                &[&community_id, &user_id],
+                "select list_user_community_team_invitations($1::uuid)::text",
+                &[&user_id],
             )
             .await?;
         let invitations: Vec<CommunityTeamInvitation> = serde_json::from_str(&row.get::<_, String>(0))?;
@@ -99,18 +83,14 @@ impl DBDashboardUser for PgDB {
 
     /// [`DBDashboardUser::list_user_group_team_invitations`]
     #[instrument(skip(self), err)]
-    async fn list_user_group_team_invitations(
-        &self,
-        community_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Vec<GroupTeamInvitation>> {
+    async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>> {
         trace!("db: list user group team invitations");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_user_group_team_invitations($1::uuid, $2::uuid)::text",
-                &[&community_id, &user_id],
+                "select list_user_group_team_invitations($1::uuid)::text",
+                &[&user_id],
             )
             .await?;
         let invitations: Vec<GroupTeamInvitation> = serde_json::from_str(&row.get::<_, String>(0))?;

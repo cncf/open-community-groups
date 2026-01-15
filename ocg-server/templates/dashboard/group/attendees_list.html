@@ -15,8 +15,8 @@
   </div>
 </div>
 
-<div class="flex items-end justify-between mb-5">
-  <div class="flex text-sm text-stone-600">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between mb-5">
+  <div class="flex text-sm text-stone-600 mb-4 lg:mb-0">
     <div>Total attendees:</div>
     <div class="font-semibold ms-1 text-end">
       {% if attendees.is_empty() -%}
@@ -26,7 +26,7 @@
       {% endif -%}
     </div>
   </div>
-  <div class="flex-shrink-0 w-full lg:w-auto mb-1.5 flex flex-col gap-3 lg:flex-row">
+  <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
     <button id="open-event-qr-code-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto"
@@ -34,7 +34,7 @@
               disabled title="Select an event to view its QR code."
             {% endif -%}
             {% if let Some(selected_event) = &event -%}
-              data-event-id="{{ selected_event.event_id }}" data-event-name="{{ selected_event.name }}" data-group-name="{{ selected_event.group_name }}" data-event-slug="{{ selected_event.slug }}" data-check-in-url="/check-in/{{ selected_event.event_id }}" data-qr-code-url="/dashboard/group/check-in/{{ selected_event.event_id }}/qr-code"
+              data-event-id="{{ selected_event.event_id }}" data-event-name="{{ selected_event.name }}" data-group-name="{{ selected_event.group_name }}" data-event-slug="{{ selected_event.slug }}" data-check-in-url="/{{ selected_event.community_name }}/check-in/{{ selected_event.event_id }}" data-qr-code-url="/dashboard/group/check-in/{{ selected_event.event_id }}/qr-code"
               {% if let Some(start_time) = &selected_event.starts_at -%}
                 data-event-start="{{ start_time.with_timezone(selected_event.timezone).format("%b %e · %I:%M %p %Z") }}"
               {% endif -%}
@@ -154,7 +154,7 @@
      role="dialog"
      aria-modal="true"
      aria-labelledby="attendee-notification-modal-title"
-     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-[1000]">
   <div id="overlay-attendee-notification-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="relative p-4 w-full max-w-2xl max-h-full">
@@ -231,7 +231,7 @@
      role="dialog"
      aria-modal="true"
      aria-labelledby="event-qr-code-modal-title"
-     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-1000">
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-[1000]">
   <div id="overlay-event-qr-code-modal"
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="relative p-4 w-full max-w-4xl max-h-full">
@@ -265,17 +265,17 @@
             <div class="mt-7">
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Group</p>
               <p id="event-qr-code-group-name"
-                 class="text-base font-semibold text-stone-900 break-words line-clamp-2"></p>
+                 class="text-base font-semibold text-stone-900 wrap-break-word line-clamp-2"></p>
             </div>
             <div>
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Event</p>
               <p id="event-qr-code-name"
-                 class="text-base font-semibold text-stone-900 break-words line-clamp-3"></p>
+                 class="text-base font-semibold text-stone-900 wrap-break-word line-clamp-3"></p>
             </div>
             <div>
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Date</p>
               <p id="event-qr-code-start"
-                 class="text-base font-medium text-stone-700 break-words"></p>
+                 class="text-base font-medium text-stone-700 wrap-break-word"></p>
             </div>
             <div>
               <p class="text-xs text-stone-500 uppercase tracking-wide mb-1">Check-in link</p>

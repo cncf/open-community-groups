@@ -4,58 +4,34 @@
         aria-label="Site footer">
   <div class="px-8 py-7 lg:px-16 lg:py-12">
     <div class="pb-10 text-center md:text-left">
-      <div class="flex flex-col justify-between md:flex-row">
+      <div class="flex flex-col justify-between items-center gap-6 md:flex-row">
         {# Footer logo -#}
-        {% if let Some(footer_logo_url) = &self.community.footer_logo_url -%}
+        {% if let Some(footer_logo_url) = &self.site_settings.footer_logo_url -%}
           <div class="inline-flex">
             <img class="w-auto max-w-[518px] h-[48px]"
                  width="auto"
                  height="48"
                  src="{{ footer_logo_url }}"
-                 alt="{{ community.display_name }} footer logo" />
+                 alt="{{ site_settings.title }} footer logo" />
           </div>
         {% endif -%}
         {# End footer logo -#}
 
-        {# Social network links -#}
-        <nav class="flex flex-wrap justify-center gap-4 md:gap-0 md:justify-self-end mt-6 md:mt-0"
-             aria-label="Social media links">
-          {{ social_icon_link(kind = "twitter", url = &self.community.twitter_url) -}}
-          {{ social_icon_link(kind = "github", url = &self.community.github_url) -}}
-          {{ social_icon_link(kind = "linkedin", url = &self.community.linkedin_url) -}}
-          {{ social_icon_link(kind = "instagram", url = &self.community.instagram_url) -}}
-          {{ social_icon_link(kind = "wechat", url = &self.community.wechat_url) -}}
-          {{ social_icon_link(kind = "youtube", url = &self.community.youtube_url) -}}
-          {{ social_icon_link(kind = "flickr", url = &self.community.flickr_url) -}}
-          {{ social_icon_link(kind = "facebook", url = &self.community.facebook_url) -}}
-          {{ social_icon_link(kind = "slack", url = &self.community.slack_url) -}}
-        </nav>
-        {# End social network links -#}
+        {# GitHub link -#}
+        <a href="https://github.com/cncf/open-community-groups"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="group p-2 flex items-center justify-center rounded-lg hover:bg-stone-800 transition-colors"
+           title="GitHub">
+          <div class="svg-icon size-6 bg-white icon-github"></div>
+        </a>
+        {# End GitHub link -#}
       </div>
     </div>
 
-    {# Extra links -#}
-    {% if let Some(extra_links) = &self.community.extra_links -%}
-      <div class="font-bold text-sm uppercase text-stone-300">Quick links</div>
-      <div class="pb-8 pt-2 text-sm/6 md:text-base">
-        {% for (name, url) in extra_links -%}
-          {# Extra link -#}
-          {% if !loop.first -%}
-            <span class="px-2 text-stone-300 md:px-3">·</span>
-          {% endif -%}
-          <a href="{{ url }}"
-             class="tracking-wider text-sm text-white hover:text-primary-500 transition-colors"
-             target='{%- if url.starts_with("/") -%} _self {%- else -%} _blank {%- endif -%}'
-             rel="noopener noreferrer">{{ name }}</a>
-          {# End extra link -#}
-        {% endfor -%}
-      </div>
-    {% endif -%}
-    {# End extra links -#}
-
     {# Copyright section -#}
     <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300">
-      {% if let Some(copyright_notice) = &self.community.copyright_notice -%}
+      {% if let Some(copyright_notice) = &self.site_settings.copyright_notice -%}
         <div class="mb-4 copyright">{{ copyright_notice|md_to_html|safe }}</div>
       {% endif -%}
       <p>
@@ -69,17 +45,3 @@
   </div>
 </footer>
 {# End footer -#}
-
-{# Icon link -#}
-{% macro social_icon_link(kind, url) -%}
-  {% if let Some(url) = &url -%}
-    <a href="{{ url }}"
-       class="ms-0 md:ms-6 content-center"
-       target="_blank"
-       rel="noopener noreferrer"
-       aria-label="{{ kind | title }} (opens in new window)">
-      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 transition-colors icon-{{ kind }}"></div>
-    </a>
-  {% endif -%}
-{% endmacro social_icon_link -%}
-{# End icon link -#}

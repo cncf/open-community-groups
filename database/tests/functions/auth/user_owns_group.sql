@@ -30,20 +30,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
     description,
-    header_logo_url,
-    theme,
-    title
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'community1ID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'test.example.com',
     'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
-    '{}'::jsonb,
-    'Cloud Native Seattle Community'
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Second community
@@ -51,27 +49,24 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
     description,
-    header_logo_url,
-    theme,
-    title
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'community2ID',
     'cloud-native-portland',
     'Cloud Native Portland',
-    'test2.example.com',
     'Portland community for cloud native technologies',
     'https://example.com/logo2.png',
-    '{}'::jsonb,
-    'Cloud Native Portland Community'
+    'https://example.com/banner_mobile2.png',
+    'https://example.com/banner2.png'
 );
 
 -- Users
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     email_verified,
     name,
@@ -79,7 +74,6 @@ insert into "user" (
 ) values (
     :'userOrganizerID',
     gen_random_bytes(32),
-    :'community1ID',
     'organizer@example.com',
     true,
     'Group Organizer',
@@ -87,7 +81,6 @@ insert into "user" (
 ), (
     :'userRegularID',
     gen_random_bytes(32),
-    :'community1ID',
     'regular@example.com',
     true,
     'Regular User',
@@ -95,7 +88,6 @@ insert into "user" (
 ), (
     :'userCommunityTeamID',
     gen_random_bytes(32),
-    :'community1ID',
     'communityteam@example.com',
     true,
     'Community Team Member',
@@ -103,7 +95,6 @@ insert into "user" (
 ), (
     :'userCommunityTeam2ID',
     gen_random_bytes(32),
-    :'community2ID',
     'communityteam2@example.com',
     true,
     'Community Team Member 2',
@@ -111,7 +102,6 @@ insert into "user" (
 ), (
     :'userCommunityTeamPendingID',
     gen_random_bytes(32),
-    :'community1ID',
     'communityteam-pending@example.com',
     true,
     'Community Team Member Pending',
@@ -119,7 +109,6 @@ insert into "user" (
 ), (
     :'userGroupTeamPendingID',
     gen_random_bytes(32),
-    :'community1ID',
     'groupteam-pending@example.com',
     true,
     'Group Team Member Pending',

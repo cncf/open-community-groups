@@ -1,3 +1,5 @@
+{% import "macros/feedback.html" as feedback -%}
+
 {# Logo -#}
 {% macro logo(logo_url, classes, size, color, border = true, name = None) -%}
   {% if let Some(logo_url) = &logo_url -%}
@@ -5,14 +7,14 @@
 
     <div class="md:my-auto bg-white overflow-hidden bg-no-repeat bg-center bg-contain
                 {% if border -%}
-                  rounded-lg outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white
+                  rounded-lg outline outline-1 outline-stone-300 border border-[5px] border-white
                 {% endif -%}
                 {{ classes }}"
          style="background-image: url('{{ bg_image }}')"></div>
   {% else -%}
     <div class="relative md:my-auto bg-white overflow-hidden bg-no-repeat bg-center bg-contain
                 {% if border -%}
-                  rounded-lg outline outline-1 outline-stone-300 border border-stone-200 border-[5px] border-white
+                  rounded-lg outline outline-1 outline-stone-300 border border-[5px] border-white
                 {% endif -%}
                 {{ classes }}">
       <div class="relative h-full w-full flex place-items-center text-[0.78rem] text-stone-600 font-bold leading-5 capitalize z-10
@@ -42,8 +44,8 @@
       :root {
         {% match spinner_variant.as_str() %}
         {% when "1" %}
-        --spinner-base: #e5e7eb;
-        --spinner-accent: var(--color-primary-500);
+          --spinner-base: #e5e7eb;
+          --spinner-accent: var(--color-primary-500);
         {% when "2" %}
           --spinner-base: #e5e7eb;
           --spinner-accent: var(--color-primary-300);
@@ -114,8 +116,67 @@
   {% let icon_extra_styles_ = icon_extra_styles.unwrap_or("") -%}
 
   <div class="icon-text min-w-0 {{ extra_styles_ }}">
-    <div class="relative svg-icon w-3 h-3 mr-2 bg-stone-700 icon-{{ icon_name }} {{ icon_extra_styles_ }}"></div>
+    <div class="relative svg-icon w-3 h-3 mr-2 bg-stone-500 icon-{{ icon_name }} {{ icon_extra_styles_ }}"></div>
     <span class="truncate">{{ text }}</span>
   </div>
 {% endmacro icon_text -%}
 {# End icon text -#}
+
+{# Social icon link -#}
+{% macro social_icon_link(kind, url) -%}
+  {% if let Some(url) = &url -%}
+    <a href="{{ url }}"
+       class="content-center"
+       target="_blank"
+       rel="noopener noreferrer"
+       aria-label="{{ kind | title }} (opens in new window)">
+      <div class="svg-icon h-8 w-8 bg-white hover:bg-primary-500 transition-colors icon-{{ kind }}"></div>
+    </a>
+  {% endif -%}
+{% endmacro social_icon_link -%}
+{# End social icon link -#}
+
+{# Events list -#}
+{% macro events_list(title, link, events) -%}
+  <div>
+    <div class="flex items-center justify-between pb-8 lg:pb-12">
+      {# Title -#}
+      <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">{{ title }}</div>
+      {# End title -#}
+
+      {# See all events on desktop -#}
+      <div class="hidden justify-self-end md:flex">
+        <a href="{{ link }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-secondary-anchor ms-4">Explore all events</a>
+      </div>
+      {# End see all events on desktop -#}
+    </div>
+    <div>
+      {# Cards list -#}
+      {% if events.len() > 0 -%}
+        <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+          {% for event in events -%}
+            {{ event|safe }}
+          {% endfor -%}
+        </div>
+      {% else -%}
+        {% let placeholder_title = "No ".to_string() + title -%}
+        {% let placeholder_content = "We don't have any ".to_string() + title + " yet, check back soon for fresh listings." -%}
+        {{ feedback::placeholder(title = placeholder_title, content = placeholder_content) -}}
+      {% endif -%}
+      {# End cards list -#}
+
+      {# See all events on mobile -#}
+      <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+        <a href="{{ link }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-secondary-anchor">Explore all events</a>
+      </div>
+      {# See all events on mobile -#}
+    </div>
+  </div>
+{% endmacro events_list -%}
+{# End events list -#}

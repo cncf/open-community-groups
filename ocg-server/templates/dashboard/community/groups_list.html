@@ -171,6 +171,27 @@
                 </div>
                 {# End update group button -#}
 
+                {# View group button -#}
+                <div>
+                  {% if group.active -%}
+                    <a href="/{{ group.community_name }}/group/{{ group.slug }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn-tertiary p-2 inline-flex items-center justify-center"
+                       aria-label="View group page: {{ group.name }}">
+                      <div class="svg-icon size-4 icon-eye"></div>
+                    </a>
+                  {% else -%}
+                    <button disabled
+                            class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
+                            title="Group must be active"
+                            aria-label="View group page: {{ group.name }}">
+                      <div class="svg-icon size-4 icon-eye"></div>
+                    </button>
+                  {% endif -%}
+                </div>
+                {# End view group button -#}
+
                 {# Actions dropdown (Deactivate/Delete) -#}
                 <div class="group relative">
                   <button data-group-id="{{ group.group_id }}"

@@ -34,19 +34,16 @@ mock! {
         ) -> Result<Option<axum_login::tower_sessions::session::Record>>;
         async fn get_user_by_email(
             &self,
-            community_id: &Uuid,
             email: &str,
         ) -> Result<Option<crate::auth::User>>;
         async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<crate::auth::User>>;
         async fn get_user_by_username(
             &self,
-            community_id: &Uuid,
             username: &str,
         ) -> Result<Option<crate::auth::User>>;
         async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
         async fn sign_up_user(
             &self,
-            community_id: &Uuid,
             user_summary: &crate::auth::UserSummary,
             email_verified: bool,
         ) -> Result<(crate::auth::User, Option<Uuid>)>;
@@ -71,15 +68,24 @@ mock! {
             group_id: &Uuid,
             user_id: &Uuid,
         ) -> Result<bool>;
+        async fn user_owns_groups_in_community(
+            &self,
+            community_id: &Uuid,
+            user_id: &Uuid,
+        ) -> Result<bool>;
         async fn verify_email(&self, code: &Uuid) -> Result<()>;
     }
 
     #[async_trait]
     impl crate::db::common::DBCommon for DB {
-        async fn get_community(
+        async fn get_community_full(
             &self,
             community_id: Uuid,
-        ) -> Result<crate::types::community::Community>;
+        ) -> Result<crate::types::community::CommunityFull>;
+        async fn get_community_summary(
+            &self,
+            community_id: Uuid,
+        ) -> Result<crate::types::community::CommunitySummary>;
         async fn get_event_full(
             &self,
             community_id: Uuid,
@@ -107,33 +113,28 @@ mock! {
         )
             -> Result<crate::types::group::GroupSummary>;
         async fn list_timezones(&self) -> Result<Vec<String>>;
-        async fn search_community_events(
+        async fn search_events(
             &self,
-            community_id: Uuid,
-            filters: &crate::templates::community::explore::EventsFilters,
-        ) -> Result<crate::db::common::SearchCommunityEventsOutput>;
-        async fn search_community_groups(
+            filters: &crate::templates::site::explore::EventsFilters,
+        ) -> Result<crate::db::common::SearchEventsOutput>;
+        async fn search_groups(
             &self,
-            community_id: Uuid,
-            filters: &crate::templates::community::explore::GroupsFilters,
-        ) -> Result<crate::db::common::SearchCommunityGroupsOutput>;
+            filters: &crate::templates::site::explore::GroupsFilters,
+        ) -> Result<crate::db::common::SearchGroupsOutput>;
     }
 
     #[async_trait]
     impl crate::db::community::DBCommunity for DB {
-        async fn get_community_filters_options(
-            &self,
-            community_id: Uuid,
-        ) -> Result<crate::templates::community::explore::FiltersOptions>;
-        async fn get_community_home_stats(
-            &self,
-            community_id: Uuid,
-        ) -> Result<crate::templates::community::home::Stats>;
-        async fn get_community_id(&self, host: &str) -> Result<Option<Uuid>>;
+        async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
+        async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
         async fn get_community_recently_added_groups(
             &self,
             community_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupSummary>>;
+        async fn get_community_site_stats(
+            &self,
+            community_id: Uuid,
+        ) -> Result<crate::templates::community::Stats>;
         async fn get_community_upcoming_events(
             &self,
             community_id: Uuid,
@@ -147,7 +148,6 @@ mock! {
     impl crate::db::dashboard::common::DBDashboardCommon for DB {
         async fn search_user(
             &self,
-            community_id: Uuid,
             query: &str,
         ) -> Result<Vec<crate::db::dashboard::common::User>>;
         async fn update_group(
@@ -194,6 +194,10 @@ mock! {
             &self,
             community_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupRegion>>;
+        async fn list_user_communities(
+            &self,
+            user_id: &Uuid,
+        ) -> Result<Vec<crate::types::community::CommunitySummary>>;
         async fn update_community(
             &self,
             community_id: Uuid,
@@ -280,7 +284,7 @@ mock! {
         async fn list_user_groups(
             &self,
             user_id: &Uuid,
-        ) -> Result<Vec<crate::types::group::GroupSummary>>;
+        ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByCommunity>>;
         async fn publish_event(
             &self,
             group_id: Uuid,
@@ -323,20 +327,17 @@ mock! {
         ) -> Result<()>;
         async fn accept_group_team_invitation(
             &self,
-            community_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn list_user_community_team_invitations(
             &self,
-            community_id: Uuid,
             user_id: Uuid,
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::CommunityTeamInvitation,
         >>;
         async fn list_user_group_team_invitations(
             &self,
-            community_id: Uuid,
             user_id: Uuid,
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::GroupTeamInvitation,
@@ -506,5 +507,24 @@ mock! {
             notification: &crate::services::notifications::Notification,
             error: Option<String>,
         ) -> Result<()>;
+    }
+
+    #[async_trait]
+    impl crate::db::site::DBSite for DB {
+        async fn get_filters_options(
+            &self,
+            community_name: Option<String>,
+            entity: Option<crate::templates::site::explore::Entity>,
+        ) -> Result<crate::templates::site::explore::FiltersOptions>;
+        async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
+        async fn get_site_recently_added_groups(
+            &self,
+        ) -> Result<Vec<crate::types::group::GroupSummary>>;
+        async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;
+        async fn get_site_upcoming_events(
+            &self,
+            event_kinds: Vec<crate::types::event::EventKind>,
+        ) -> Result<Vec<crate::types::event::EventSummary>>;
+        async fn list_communities(&self) -> Result<Vec<crate::types::community::CommunitySummary>>;
     }
 }

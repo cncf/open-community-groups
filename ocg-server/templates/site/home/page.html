@@ -1,0 +1,131 @@
+{% extends "common/base.html" -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block jumbotron -%}
+  {# Jumbotron -#}
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8">
+    <section>
+      <div class="relative z-10 max-w-7xl pb-7 lg:pb-14 text-center">
+        {# Site title -#}
+        <h1 class="mb-8 text-[1.8rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
+          {{ site_settings.title }}
+        </h1>
+        {# End site title -#}
+
+        {# Site description -#}
+        {% if !site_settings.description.is_empty() -%}
+          <div class="font-normal text-lg/8 lg:text-[22px]/10 mb-8 mt-6 lg:mt-12 lg:mb-14 text-stone-600 jumbotron-description">
+            {{ site_settings.description|md_to_html|safe }}
+          </div>
+        {% endif -%}
+        {# End site description -#}
+
+        {# Stats -#}
+        <div class="mb-8 lg:mb-14">{% include "site/home/stats.html" %}</div>
+        {# End stats -#}
+
+        <a href="{{ explore_events }}"
+           hx-boost="true"
+           hx-target="body"
+           class="btn-primary-anchor text-md lg:text-lg py-3 px-8 font-semibold">Explore groups and events</a>
+
+      </div>
+    </section>
+  </div>
+  {# End jumbotron -#}
+{% endblock jumbotron -%}
+
+{% block content -%}
+  {# Main content -#}
+  <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
+    <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
+      {# Communities list -#}
+      <div>
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pb-12">
+          Communities
+        </div>
+        {% if communities.len() > 0 -%}
+          <div class="flex flex-col gap-8">
+            {% for community in communities -%}
+              <a href="/{{ community.name }}"
+                 class="block bg-white rounded-lg border border-stone-200 hover:shadow-md transition-shadow overflow-hidden">
+                {# Mobile banner -#}
+                <div class="aspect-[61/12] sm:hidden">
+                  <img class="w-full h-full object-cover"
+                       height="auto"
+                       width="auto"
+                       src="{{ community.banner_mobile_url }}"
+                       alt="{{ community.display_name }} banner" />
+                </div>
+                {# Desktop banner -#}
+                <div class="aspect-[607/48] hidden sm:block">
+                  <img class="w-full h-full object-cover"
+                       height="auto"
+                       width="auto"
+                       src="{{ community.banner_url }}"
+                       alt="{{ community.display_name }} banner" />
+                </div>
+              </a>
+            {% endfor -%}
+          </div>
+        {% else -%}
+          {{ feedback::placeholder(title = "No communities yet",
+                    content = "Communities are being set up, check back soon.") -}}
+        {% endif -%}
+      </div>
+      {# End communities list -#}
+
+      {# Events -#}
+      <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
+        {# Events in-person -#}
+        {{ ui::events_list(title = "upcoming in-person events", link = explore_events, events = upcoming_in_person_events) -}}
+        {# End events in-person -#}
+
+        {# Events online -#}
+        {{ ui::events_list(title = "upcoming virtual events", link = explore_events, events = upcoming_virtual_events) -}}
+        {# End events online -#}
+
+        {# Latest groups added -#}
+        <div>
+          <div class="flex items-center justify-between pb-8 lg:pb-12">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
+            {# See all groups on desktop -#}
+            <div class="hidden justify-self-end md:flex">
+              <a href="{{ explore_groups }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor ms-4">Explore all groups</a>
+            </div>
+            {# End see all groups on desktop -#}
+          </div>
+          <div>
+            {# Groups cards -#}
+            {% if recently_added_groups.len() > 0 -%}
+              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+                {% for group in recently_added_groups -%}
+                  {{ group|safe }}
+                {% endfor -%}
+              </div>
+            {% else -%}
+              {{ feedback::placeholder(title = "Groups coming soon",
+                            content = "Community organizers are still setting this up, check back soon for new groups.") -}}
+            {% endif -%}
+            {# End groups cards -#}
+            {# See all groups mobile button -#}
+            <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <a href="{{ explore_groups }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor">Explore all groups</a>
+            </div>
+            {# End see all groups mobile button -#}
+          </div>
+        </div>
+        {# End latest groups added -#}
+      </div>
+      {# End events -#}
+    </div>
+  </div>
+  {# End main content -#}
+{% endblock content -%}

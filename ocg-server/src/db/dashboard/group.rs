@@ -17,13 +17,14 @@ use crate::{
         analytics::GroupStats,
         attendees::{Attendee, AttendeesFilters},
         events::{Event, GroupEvents},
+        home::UserGroupsByCommunity,
         members::GroupMember,
         sponsors::Sponsor,
         team::GroupTeamMember,
     },
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
-        group::{GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary},
+        group::{GroupRole, GroupRoleSummary, GroupSponsor},
     },
 };
 
@@ -92,8 +93,8 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
-    /// Lists all groups where the user is a team member.
-    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>>;
+    /// Lists all groups where the user is a team member, grouped by community.
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>>;
 
     /// Publishes an event (sets published=true and records publication metadata).
     async fn publish_event(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
@@ -353,7 +354,7 @@ impl DBDashboardGroup for PgDB {
         let row = db
             .query_one("select list_group_members($1::uuid)::text", &[&group_id])
             .await?;
-        let members = GroupMember::try_from_json_array(&row.get::<_, String>(0))?;
+        let members: Vec<GroupMember> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(members)
     }
@@ -407,7 +408,7 @@ impl DBDashboardGroup for PgDB {
         let row = db
             .query_one("select list_group_team_members($1::uuid)::text", &[&group_id])
             .await?;
-        let members = GroupTeamMember::try_from_json_array(&row.get::<_, String>(0))?;
+        let members: Vec<GroupTeamMember> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(members)
     }
@@ -426,14 +427,14 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_user_groups`]
     #[instrument(skip(self), err)]
-    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<GroupSummary>> {
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>> {
         trace!("db: list user groups");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one("select list_user_groups($1::uuid)::text", &[&user_id])
             .await?;
-        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let groups = UserGroupsByCommunity::try_from_json_array(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }
@@ -469,7 +470,7 @@ impl DBDashboardGroup for PgDB {
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let attendees = Attendee::try_from_json_array(&row.get::<_, String>(0))?;
+        let attendees: Vec<Attendee> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(attendees)
     }

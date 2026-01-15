@@ -1,0 +1,73 @@
+{# Stats -#}
+{# Desktop -#}
+<div class="hidden lg:flex w-full flex-row justify-around items-center mx-auto">
+  {# Group stats -#}
+  {{ stat_block(kind = "groups", title = "Groups", value = groups) -}}
+  {# End group stats -#}
+
+  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+
+  {# Members stats -#}
+  {{ stat_block(kind = "members", title = "Members", value = groups_members) -}}
+  {# End members stats -#}
+
+  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+
+  {# Events stats -#}
+  {{ stat_block(kind = "events", title = "Events", value = events) -}}
+  {# End events stats -#}
+
+  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+
+  {# Attendees stats -#}
+  {{ stat_block(kind = "attendees", title = "Attendees", value = events_attendees) -}}
+  {# End attendees stats -#}
+</div>
+{# End desktop -#}
+
+{# Mobile -#}
+<div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full mx-auto">
+  {# Group stats -#}
+  {{ stat_block(kind = "groups", title = "Groups", value = groups, extra_styles=Some("place-self-center w-[130px] -ms-4") ) -}}
+  {# End group stats -#}
+
+  {# Members stats -#}
+  {{ stat_block(kind = "members", title = "Members", value = groups_members, extra_styles=Some("place-self-center w-[130px]") ) -}}
+  {# End members stats -#}
+
+  {# Events stats -#}
+  {{ stat_block(kind = "events", title = "Events", value = events, extra_styles=Some("place-self-center w-[130px] -ms-4") ) -}}
+  {# End events stats -#}
+
+  {# Attendees stats -#}
+  {{ stat_block(kind = "attendees", title = "Attendees", value = events_attendees, extra_styles=Some("place-self-center w-[130px]") ) -}}
+  {# End attendees stats -#}
+</div>
+
+{# End mobile -#}
+{# End stats -#}
+
+{# Stat block -#}
+{% macro stat_block(kind, title, value, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+  <div class="{{ extra_styles_ }}">
+    <div class="flex items-center justify-center">
+      {# Icon -#}
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-{{ kind }}"></div>
+      </div>
+      {# End icon -#}
+
+      <div class="ms-3 md:ms-5">
+        {# Title -#}
+        <div class="text-xs text-stone-500 font-medium uppercase">{{ title }}</div>
+        {# End title -#}
+
+        {# Value -#}
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ value|num_fmt }}</div>
+        {# End value -#}
+      </div>
+    </div>
+  </div>
+{% endmacro stat_block -%}
+{# End stat block -#}

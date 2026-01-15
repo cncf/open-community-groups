@@ -73,222 +73,286 @@
       </div>
       {# End Logo URL -#}
 
-      {# Short Description -#}
+      {# Banner URL -#}
       <div class="col-span-full">
-        <label for="description_short" class="form-label">Short Description</label>
-        <div class="mt-2">
-          <textarea id="description_short"
-                    name="description_short"
-                    rows="2"
-                    class="input-primary"
-                    maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
-        </div>
-        <p class="form-legend">Brief description for group listings and previews.</p>
-      </div>
-      {# End Short Description -#}
-
-      {# Group Description -#}
-      <div class="col-span-full">
-        <label for="description" class="form-label">
-          Description <span class="asterisk">*</span>
-        </label>
-        <div class="mt-2">
-          <markdown-editor id="description" name="description" required></markdown-editor>
-        </div>
-        <p class="form-legend">Brief description of the group and its purpose.</p>
-      </div>
-      {# End Group Description -#}
+        <image-field label="Banner" name="banner_url" image-kind="banner" help-prefix-text="Size required 2428 x 192 px.">
+      </image-field>
     </div>
+    {# End Banner URL -#}
+
+    {# Banner Mobile URL -#}
+    <div class="col-span-full">
+      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" help-prefix-text="Size required 1220 x 192 px.">
+    </image-field>
   </div>
+  {# End Banner Mobile URL -#}
 
-  {# Location section -#}
-  <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard::form_title(title = "Location",
-        description = "Optional location information for the group.",
-        button = "<button id='clear-location-fields'
-            type='button'
-            class='btn-primary-outline btn-mini whitespace-nowrap'
-            aria-label='Clear location details'>Clear location</button>") -}}
-
-    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      {# Location search -#}
-      <div class="col-span-full">
-        <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
-        </location-search-field>
-      </div>
-      {# End Location search -#}
+  {# Short Description -#}
+  <div class="col-span-full">
+    <label for="description_short" class="form-label">Short Description</label>
+    <div class="mt-2">
+      <textarea id="description_short"
+                name="description_short"
+                rows="2"
+                class="input-primary"
+                maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
     </div>
+    <p class="form-legend">Brief description for group listings and previews.</p>
   </div>
-  {# End location section -#}
+  {# End Short Description -#}
 
-  {# Social links section -#}
-  <div class="border-b border-stone-900/10 pb-12">
-    {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
-
-    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      {# Website URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="website_url" class="form-label">Website</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-link bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="website_url"
-                 id="website_url"
-                 class="input-primary ps-10"
-                 placeholder="https://example.com">
-        </div>
-      </div>
-      {# End Website URL -#}
-
-      {# GitHub URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="github_url" class="form-label">GitHub</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-github bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="github_url"
-                 id="github_url"
-                 class="input-primary ps-10"
-                 placeholder="https://github.com/organization">
-        </div>
-      </div>
-      {# End GitHub URL -#}
-
-      {# Twitter URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="twitter_url"
-                 id="twitter_url"
-                 class="input-primary ps-10"
-                 placeholder="https://x.com/username">
-        </div>
-      </div>
-      {# End Twitter URL -#}
-
-      {# Facebook URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="facebook_url" class="form-label">Facebook</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="facebook_url"
-                 id="facebook_url"
-                 class="input-primary ps-10"
-                 placeholder="https://facebook.com/page">
-        </div>
-      </div>
-      {# End Facebook URL -#}
-
-      {# LinkedIn URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="linkedin_url" class="form-label">LinkedIn</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="linkedin_url"
-                 id="linkedin_url"
-                 class="input-primary ps-10"
-                 placeholder="https://linkedin.com/company/name">
-        </div>
-      </div>
-      {# End LinkedIn URL -#}
-
-      {# Instagram URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="instagram_url" class="form-label">Instagram</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-instagram bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="instagram_url"
-                 id="instagram_url"
-                 class="input-primary ps-10"
-                 placeholder="https://instagram.com/username">
-        </div>
-      </div>
-      {# End Instagram URL -#}
-
-      {# Slack URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="slack_url" class="form-label">Slack</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-slack bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="slack_url"
-                 id="slack_url"
-                 class="input-primary ps-10"
-                 placeholder="https://workspace.slack.com">
-        </div>
-      </div>
-      {# End Slack URL -#}
-
-      {# YouTube URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="youtube_url" class="form-label">YouTube</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="youtube_url"
-                 id="youtube_url"
-                 class="input-primary ps-10"
-                 placeholder="https://youtube.com/channel/id">
-        </div>
-      </div>
-      {# End YouTube URL -#}
+  {# Group Description -#}
+  <div class="col-span-full">
+    <label for="description" class="form-label">
+      Description <span class="asterisk">*</span>
+    </label>
+    <div class="mt-2">
+      <markdown-editor id="description" name="description" required></markdown-editor>
     </div>
+    <p class="form-legend">Brief description of the group and its purpose.</p>
   </div>
-  {# End social links section -#}
+  {# End Group Description -#}
+</div>
+</div>
 
-  {# Tags section -#}
-  <div class="pb-12">
-    {{ dashboard::form_title(title = "Tags", description = "Optional tags to help categorize and find the group.") -}}
+{# Location section -#}
+<div class="border-b border-stone-900/10 pb-12">
+  {{ dashboard::form_title(title = "Location",
+    description = "Optional location information for the group.",
+    button = "<button id='clear-location-fields'
+          type='button'
+          class='btn-primary-outline btn-mini whitespace-nowrap'
+          aria-label='Clear location details'>Clear location</button>") -}}
 
-    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      {# Tags -#}
-      <div class="col-span-3">
-        <multiple-inputs field-name="tags" input-type="text" label="Tag">
-        </multiple-inputs>
-      </div>
-      {# End Tags -#}
+  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+    {# Location search -#}
+    <div class="col-span-full">
+      <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled>
+      </location-search-field>
     </div>
+    {# End Location search -#}
   </div>
-  {# End tags section -#}
+</div>
+{# End location section -#}
 
-  <div class="mt-6 flex items-center justify-end gap-x-6">
-    {# Cancel button -#}
-    <button id="cancel-button"
-            type="button"
-            hx-get="/dashboard/community?tab=groups"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline">Cancel</button>
-    {# End cancel button -#}
+{# Social links section -#}
+<div class="border-b border-stone-900/10 pb-12">
+  {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
 
-    {# Save button -#}
-    <button type="submit"  class="btn-primary relative">
-      {{ ui::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -}}
-      Create Group
-    </button>
-    {# End save button -#}
+  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+    {# Website URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="website_url" class="form-label">Website</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-link bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="website_url"
+               id="website_url"
+               class="input-primary ps-10"
+               placeholder="https://example.com">
+      </div>
+    </div>
+    {# End Website URL -#}
+
+    {# Facebook URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="facebook_url" class="form-label">Facebook</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="facebook_url"
+               id="facebook_url"
+               class="input-primary ps-10"
+               placeholder="https://facebook.com/page">
+      </div>
+    </div>
+    {# End Facebook URL -#}
+
+    {# Flickr URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="flickr_url" class="form-label">Flickr</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="flickr_url"
+               id="flickr_url"
+               class="input-primary ps-10"
+               placeholder="https://flickr.com/photos/account">
+      </div>
+    </div>
+    {# End Flickr URL -#}
+
+    {# GitHub URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="github_url" class="form-label">GitHub</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-github bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="github_url"
+               id="github_url"
+               class="input-primary ps-10"
+               placeholder="https://github.com/organization">
+      </div>
+    </div>
+    {# End GitHub URL -#}
+
+    {# Instagram URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="instagram_url" class="form-label">Instagram</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-instagram bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="instagram_url"
+               id="instagram_url"
+               class="input-primary ps-10"
+               placeholder="https://instagram.com/username">
+      </div>
+    </div>
+    {# End Instagram URL -#}
+
+    {# LinkedIn URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="linkedin_url" class="form-label">LinkedIn</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="linkedin_url"
+               id="linkedin_url"
+               class="input-primary ps-10"
+               placeholder="https://linkedin.com/company/name">
+      </div>
+    </div>
+    {# End LinkedIn URL -#}
+
+    {# Slack URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="slack_url" class="form-label">Slack</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-slack bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="slack_url"
+               id="slack_url"
+               class="input-primary ps-10"
+               placeholder="https://workspace.slack.com">
+      </div>
+    </div>
+    {# End Slack URL -#}
+
+    {# Twitter URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="twitter_url"
+               id="twitter_url"
+               class="input-primary ps-10"
+               placeholder="https://x.com/username">
+      </div>
+    </div>
+    {# End Twitter URL -#}
+
+    {# WeChat URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="wechat_url" class="form-label">WeChat</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-wechat bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="wechat_url"
+               id="wechat_url"
+               class="input-primary ps-10"
+               placeholder="https://wechat.com/account">
+      </div>
+    </div>
+    {# End WeChat URL -#}
+
+    {# YouTube URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="youtube_url" class="form-label">YouTube</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="youtube_url"
+               id="youtube_url"
+               class="input-primary ps-10"
+               placeholder="https://youtube.com/channel/id">
+      </div>
+    </div>
+    {# End YouTube URL -#}
   </div>
+</div>
+{# End social links section -#}
+
+{# Additional content section -#}
+<div class="pb-12">
+  {{ dashboard::form_title(title = "Additional Content", description = "Optional tags, photos, and custom links.") -}}
+
+  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+    {# Tags -#}
+    <div class="col-span-3">
+      <multiple-inputs field-name="tags" input-type="text" label="Tag">
+      </multiple-inputs>
+    </div>
+    {# End Tags -#}
+
+    {# Photo gallery -#}
+    <div class="col-span-full">
+      <gallery-field field-name="photos_urls" images="[]" max-images="0" label="Photos"></gallery-field>
+      <p class="form-legend">Photos that will be displayed in the group gallery.</p>
+    </div>
+    {# End photo gallery -#}
+
+    {# Extra links -#}
+    <div class="col-span-full">
+      <label class="form-label">Extra Links</label>
+      <div class="mt-2">
+        <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{}" label="Link">
+        </key-value-inputs>
+      </div>
+      <p class="form-legend">Additional custom links displayed in the group page.</p>
+    </div>
+    {# End extra links -#}
+  </div>
+</div>
+{# End additional content section -#}
+
+<div class="mt-6 flex items-center justify-end gap-x-6">
+  {# Cancel button -#}
+  <button id="cancel-button"
+          type="button"
+          hx-get="/dashboard/community?tab=groups"
+          hx-target="body"
+          hx-indicator="#dashboard-spinner"
+          class="btn-primary-outline">Cancel</button>
+  {# End cancel button -#}
+
+  {# Save button -#}
+  <button type="submit"  class="btn-primary relative">
+    {{ ui::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -}}
+    Create Group
+  </button>
+  {# End save button -#}
+</div>
 </div>
 </form>
 

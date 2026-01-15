@@ -34,31 +34,14 @@ select plan(42);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    title,
-    description,
-    header_logo_url,
-    theme
-) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'test.localhost',
-    'Test Community Title',
-    'A test community for testing purposes',
-    'https://example.com/logo.png',
-    '{}'::jsonb
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Users
-insert into "user" (user_id, community_id, email, username, auth_hash, name) values
-    (:'user1ID', :'community1ID', 'host1@example.com', 'host1', 'hash1', 'Host One'),
-    (:'user2ID', :'community1ID', 'host2@example.com', 'host2', 'hash2', 'Host Two'),
-    (:'user3ID', :'community1ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
+insert into "user" (user_id, auth_hash, email, username, name) values
+    (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
+    (:'user2ID', 'hash2', 'host2@example.com', 'host2', 'Host Two'),
+    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
@@ -368,7 +351,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers'
     )),
     '{
         "canceled": false,
@@ -472,7 +455,7 @@ select is(
             :'community1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'
+        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions'
     )),
     '{
         "canceled": false,
@@ -710,26 +693,28 @@ select throws_ok(
     'Should throw error when event is canceled'
 );
 
--- Should throw error for invalid host user_id
+-- Should throw error for invalid host user_id (FK violation)
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Host", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "hosts": ["99999999-9999-9999-9999-999999999999"]}'::jsonb
     )$$,
-    'user not found in community',
-    'Should throw error when host user_id does not exist in community'
+    '23503',
+    null,
+    'Should throw error when host user_id does not exist'
 );
 
--- Should throw error for invalid speaker user_id
+-- Should throw error for invalid speaker user_id (FK violation)
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Event with Invalid Speaker", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "speakers": [{"user_id": "99999999-9999-9999-9999-999999999999", "featured": false}]}'::jsonb
     )$$,
-    'user not found in community',
-    'Should throw error when speaker user_id does not exist in community'
+    '23503',
+    null,
+    'Should throw error when speaker user_id does not exist'
 );
 
 -- Should verify session exists before update
@@ -860,7 +845,7 @@ select throws_like(
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
     )$$,
-    '%event_ends_at_after_starts_at_check%',
+    '%event_check%',
     'Should throw error when event ends_at is before starts_at'
 );
 
@@ -871,7 +856,7 @@ select throws_like(
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
-    '%session_ends_at_after_starts_at_check%',
+    '%session_check%',
     'Should throw error when session ends_at is before starts_at'
 );
 
@@ -882,7 +867,7 @@ select throws_like(
         '00000000-0000-0000-0000-000000000003'::uuid,
         '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
     )$$,
-    '%event_ends_at_after_starts_at_check%',
+    '%event_check%',
     'Should throw error when event ends_at is set without starts_at'
 );
 

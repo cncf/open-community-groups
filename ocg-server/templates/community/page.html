@@ -1,0 +1,175 @@
+{% extends "common/base.html" -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/search.html" as search -%}
+{% import "macros/social.html" as social -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
+  <script type="module" src="/static/js/common/images-gallery.js"></script>
+{% endblock scripts -%}
+
+{% block content -%}
+  {# Breadcrumb -#}
+  <breadcrumb-nav banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
+  {# End breadcrumb -#}
+
+  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
+    <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full">
+      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+        {# About this community -#}
+        {% let has_social_links = community.twitter_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
+        {% let has_extra_links = community.extra_links.is_some() -%}
+        {% if !community.description.is_empty() || has_social_links || has_extra_links -%}
+          <div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">
+              About this community
+            </div>
+            {% if !community.description.is_empty() -%}
+              <div class="font-normal text-base/8 text-stone-600 jumbotron-description -mt-1.5">
+                {{ community.description|md_to_html|safe }}
+              </div>
+            {% endif -%}
+
+            {# Social network links -#}
+            {% if has_social_links -%}
+              <div class="mt-6 lg:mt-8 flex flex-wrap gap-3">
+                {% if let Some(twitter_url) = &community.twitter_url -%}
+                  {{ social::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter", big = true) -}}
+                {% endif -%}
+                {% if let Some(github_url) = &community.github_url -%}
+                  {{ social::social_link(url = github_url, icon_name = "github", platform_name = "GitHub", big = true) -}}
+                {% endif -%}
+                {% if let Some(linkedin_url) = &community.linkedin_url -%}
+                  {{ social::social_link(url = linkedin_url, icon_name = "linkedin", platform_name = "LinkedIn", big = true) -}}
+                {% endif -%}
+                {% if let Some(instagram_url) = &community.instagram_url -%}
+                  {{ social::social_link(url = instagram_url, icon_name = "instagram", platform_name = "Instagram", big = true) -}}
+                {% endif -%}
+                {% if let Some(wechat_url) = &community.wechat_url -%}
+                  {{ social::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat", big = true) -}}
+                {% endif -%}
+                {% if let Some(youtube_url) = &community.youtube_url -%}
+                  {{ social::social_link(url = youtube_url, icon_name = "youtube", platform_name = "YouTube", big = true) -}}
+                {% endif -%}
+                {% if let Some(flickr_url) = &community.flickr_url -%}
+                  {{ social::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr", big = true) -}}
+                {% endif -%}
+                {% if let Some(facebook_url) = &community.facebook_url -%}
+                  {{ social::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook", big = true) -}}
+                {% endif -%}
+                {% if let Some(slack_url) = &community.slack_url -%}
+                  {{ social::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack", big = true) -}}
+                {% endif -%}
+              </div>
+            {% endif -%}
+            {# End social network links -#}
+
+            {# New group instructions -#}
+            {% if let Some(new_group_details) = &community.new_group_details -%}
+              {% if !new_group_details.is_empty() -%}
+                <div class="mt-6 lg:mt-8">
+                  <div class="font-bold text-sm uppercase text-stone-400 mb-3">New groups</div>
+                  <div class="font-normal text-base/8 text-stone-600 new-group-content">
+                    {{ new_group_details|md_to_html|safe }}
+                  </div>
+                </div>
+              {% endif -%}
+            {% endif -%}
+            {# End new group instructions -#}
+
+            {# Quick links -#}
+            {% if let Some(extra_links) = &community.extra_links -%}
+              <div class="mt-6 lg:mt-8">
+                <div class="font-bold text-sm uppercase text-stone-400 mb-3">Quick links</div>
+                <div class="flex flex-wrap gap-x-1 gap-y-2 text-base/8">
+                  {% for (name, url) in extra_links -%}
+                    {% if !loop.first -%}
+                      <span class="text-stone-300 px-1">·</span>
+                    {% endif -%}
+                    <a href="{{ url }}"
+                       class="font-normal text-stone-600 hover:text-primary-500 transition-colors"
+                       target='{%- if url.starts_with("/") -%}_self{%- else -%}_blank{%- endif -%}'
+                       rel="noopener noreferrer">{{ name }}</a>
+                  {% endfor -%}
+                </div>
+              </div>
+            {% endif -%}
+            {# End quick links -#}
+          </div>
+        {% endif -%}
+        {# End about this community -#}
+
+        {# Stats -#}
+        <div>{{ stats|safe }}</div>
+        {# End stats -#}
+
+        <div class="text-center mt-2">
+          <a href="/explore?community[0]={{ community.name }}"
+             hx-boost="true"
+             hx-target="body"
+             class="btn-primary-anchor text-md lg:text-lg px-8 font-semibold">Explore community groups and events</a>
+        </div>
+
+        {# Events in-person -#}
+        {% let in_person_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
+        {{ ui::events_list(title = "upcoming in-person events", link = &in_person_link, events = upcoming_in_person_events) -}}
+        {# End events in-person -#}
+
+        {# Events online -#}
+        {% let virtual_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
+        {{ ui::events_list(title = "upcoming virtual events", link = &virtual_link, events = upcoming_virtual_events) -}}
+        {# End events online -#}
+
+        {# Latest groups added -#}
+        <div>
+          <div class="flex items-center justify-between pb-8 lg:pb-12">
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
+            {# See all groups on desktop -#}
+            <div class="hidden justify-self-end md:flex">
+              <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor ms-4">Explore all groups</a>
+            </div>
+            {# End see all groups on desktop -#}
+          </div>
+          <div>
+            {# Groups cards -#}
+            {% if recently_added_groups.len() > 0 -%}
+              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+                {% for group in recently_added_groups -%}
+                  {{ group|safe }}
+                {% endfor -%}
+              </div>
+            {% else -%}
+              {{ feedback::placeholder(title = "Groups coming soon",
+                            content = "Community organizers are still setting this up, check back soon for new groups.") -}}
+            {% endif -%}
+            {# End groups cards -#}
+            {# See all groups mobile button -#}
+            <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+              <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor">Explore all groups</a>
+            </div>
+            {# End see all groups mobile button -#}
+          </div>
+        </div>
+        {# End latest groups added -#}
+
+        {# Gallery -#}
+        {% if let Some(photos_urls) = &community.photos_urls -%}
+          {% if !photos_urls.is_empty() -%}
+            <div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Gallery</div>
+              <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
+            </div>
+          {% endif -%}
+        {% endif -%}
+        {# End gallery -#}
+      </div>
+    </div>
+  </div>
+{% endblock content -%}

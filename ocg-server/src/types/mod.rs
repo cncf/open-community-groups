@@ -3,3 +3,4 @@
 pub mod community;
 pub mod event;
 pub mod group;
+pub mod site;

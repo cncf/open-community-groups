@@ -24,6 +24,8 @@ pub(crate) mod group;
 pub(crate) mod helpers;
 /// Notification templates.
 pub(crate) mod notifications;
+/// Global site templates.
+pub(crate) mod site;
 
 /// Enum representing unique identifiers for each page in the application.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -31,12 +33,13 @@ pub(crate) mod notifications;
 pub(crate) enum PageId {
     CheckIn,
     CommunityDashboard,
-    CommunityExplore,
-    CommunityHome,
+    Community,
     Event,
     Group,
     GroupDashboard,
     LogIn,
     SignUp,
+    SiteExplore,
+    SiteHome,
     UserDashboard,
 }

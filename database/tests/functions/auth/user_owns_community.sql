@@ -23,27 +23,24 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
     description,
-    header_logo_url,
-    theme,
-    title
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'test.example.com',
     'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
-    '{}'::jsonb,
-    'Cloud Native Seattle Community'
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Users
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     email_verified,
     name,
@@ -51,7 +48,6 @@ insert into "user" (
 ) values (
     :'userTeamMemberID',
     gen_random_bytes(32),
-    :'communityID',
     'teammember@example.com',
     true,
     'Team Member',
@@ -59,7 +55,6 @@ insert into "user" (
 ), (
     :'userRegularID',
     gen_random_bytes(32),
-    :'communityID',
     'regular@example.com',
     true,
     'Regular User',
@@ -67,7 +62,6 @@ insert into "user" (
 ), (
     :'userTeamMemberPendingID',
     gen_random_bytes(32),
-    :'communityID',
     'pending@example.com',
     true,
     'Pending Member',

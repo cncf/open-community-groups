@@ -18,16 +18,28 @@ select plan(3);
 
 -- Community
 insert into community (
-    community_id, display_name, host, name, title, description, header_logo_url, theme
+    community_id,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
-    :'communityID', 'C1', 'c1.example.com', 'c1', 'C1', 'd', 'https://e/logo.png', '{}'::jsonb
+    :'communityID',
+    'c1',
+    'C1',
+    'Community 1',
+    'https://e/logo.png',
+    'https://e/banner_mobile.png',
+    'https://e/banner.png'
 );
 
 -- User
 insert into "user" (
-    user_id, auth_hash, community_id, email, name, username, email_verified
+    user_id, auth_hash, email, name, username, email_verified
 ) values (
-    :'user1ID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true
+    :'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true
 );
 
 insert into community_team (community_id, user_id) values (:'communityID', :'user1ID');

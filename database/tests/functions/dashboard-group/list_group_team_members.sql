@@ -20,8 +20,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, display_name, host, name, title, description, header_logo_url, theme)
-values (:'communityID', 'C1', 'c1.example.com', 'c1', 'C1', 'd', 'https://e/logo.png', '{}'::jsonb);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -32,10 +32,10 @@ insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
-insert into "user" (user_id, auth_hash, community_id, company, email, name, title, username, email_verified)
+insert into "user" (user_id, auth_hash, company, email, name, title, username, email_verified)
 values
-    (:'user1ID', gen_random_bytes(32), :'communityID', 'Cloud Corp', 'alice@example.com', 'Alice', 'Organizer', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), :'communityID', null, 'bob@example.com', null, null, 'bob', true);
+    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Organizer', 'alice', true),
+    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', null, null, 'bob', true);
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)

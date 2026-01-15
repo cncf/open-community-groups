@@ -9,12 +9,15 @@ use serde_with::skip_serializing_none;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::templates::{
-    common::User,
-    helpers::{
-        color,
-        location::{LocationParts, build_location},
+use crate::{
+    templates::{
+        common::User,
+        helpers::{
+            color,
+            location::{LocationParts, build_location},
+        },
     },
+    types::community::CommunitySummary,
 };
 
 // Group types: summary, detailed, and full.
@@ -30,6 +33,10 @@ pub struct GroupSummary {
     /// Color associated with this group, used for visual styling.
     #[serde(default)]
     pub color: String,
+    /// Human-readable display name of the community this group belongs to.
+    pub community_display_name: String,
+    /// Name of the community this group belongs to (slug for URLs).
+    pub community_name: String,
     /// UTC timestamp when the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -40,6 +47,10 @@ pub struct GroupSummary {
     /// URL-friendly identifier for this group.
     pub slug: String,
 
+    /// URL to the group's banner image optimized for mobile devices.
+    pub banner_mobile_url: Option<String>,
+    /// URL to the group's banner image.
+    pub banner_url: Option<String>,
     /// City where the group is located.
     pub city: Option<String>,
     /// ISO country code of the group's location.
@@ -106,6 +117,8 @@ pub struct GroupFull {
     /// Generated color for visual distinction.
     #[serde(default)]
     pub color: String,
+    /// Community this group belongs to.
+    pub community: CommunitySummary,
     /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -122,6 +135,8 @@ pub struct GroupFull {
     /// List of group sponsors.
     pub sponsors: Vec<GroupSponsor>,
 
+    /// URL to the group's banner image optimized for mobile devices.
+    pub banner_mobile_url: Option<String>,
     /// Banner image URL for the group page.
     pub banner_url: Option<String>,
     /// City where the group is based.

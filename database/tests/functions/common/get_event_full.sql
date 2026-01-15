@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,20 +39,18 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    logo_url,
+    banner_mobile_url,
+    banner_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'seattle.cloudnative.org',
-    'Cloud Native Seattle Community',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
-    '{}'::jsonb
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
 );
 
 -- Group Category
@@ -76,7 +74,9 @@ insert into "group" (
     state,
     country_code,
     country_name,
-    location
+    location,
+
+    logo_url
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
@@ -89,7 +89,9 @@ insert into "group" (
     'NY',
     'US',
     'United States',
-    ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326)  -- New York coordinates
+    ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326),  -- New York coordinates
+
+    'https://example.com/group-logo.png'
 );
 
 -- Group (inactive)
@@ -110,11 +112,11 @@ insert into "group" (
 );
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, community_id, bio, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, bio, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', :'communityID', 'Cloud native community leader', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
-    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', :'communityID', 'Event organizer and speaker', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
-    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', :'communityID', 'Kubernetes expert and speaker', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
+    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'Sarah Chen', 'https://example.com/sarah.png', 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
+    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'Mike Rodriguez', 'https://example.com/mike.png', 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
+    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'Alex Thompson', 'https://example.com/alex.png', 'Google', 'Staff Engineer', null, 'https://linkedin.com/in/alexthompson', null, null);
 
 -- Event
 insert into event (
@@ -473,6 +475,14 @@ select is(
         "venue_state": "NY",
         "venue_zip_code": "10001",
         "remaining_capacity": 498,
+        "community": {
+            "banner_mobile_url": "https://example.com/banner_mobile.png",
+            "banner_url": "https://example.com/banner.png",
+            "community_id": "00000000-0000-0000-0000-000000000001",
+            "display_name": "Cloud Native Seattle",
+            "logo_url": "https://example.com/logo.png",
+            "name": "cloud-native-seattle"
+        },
         "group": {
             "city": "New York",
             "name": "Seattle Kubernetes Meetup",
@@ -484,8 +494,11 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_display_name": "Cloud Native Seattle",
+            "community_name": "cloud-native-seattle",
             "group_id": "00000000-0000-0000-0000-000000000021",
             "latitude": 40.73061,
+            "logo_url": "https://example.com/group-logo.png",
             "longitude": -73.935242,
             "created_at": 1709287200,
             "country_code": "US",
@@ -680,6 +693,19 @@ select is(
     }'::jsonb,
     'Should return complete event data with hosts, organizers, and sessions as JSON'
 );
+
+-- Should use group logo when event has no logo
+update event set logo_url = null where event_id = :'eventID';
+select is(
+    (get_event_full(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb)->>'logo_url',
+    'https://example.com/group-logo.png',
+    'Should use group logo when event has no logo'
+);
+update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event
 

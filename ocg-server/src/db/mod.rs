@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::db::{
     auth::DBAuth, common::DBCommon, community::DBCommunity, dashboard::DBDashboard, event::DBEvent,
-    group::DBGroup, images::DBImages, meetings::DBMeetings, notifications::DBNotifications,
+    group::DBGroup, images::DBImages, meetings::DBMeetings, notifications::DBNotifications, site::DBSite,
 };
 
 /// Module containing authentication database operations.
@@ -48,6 +48,9 @@ pub(crate) mod mock;
 /// Module containing database functionality for managing notifications.
 pub(crate) mod notifications;
 
+/// Module containing database functionality for global site.
+pub(crate) mod site;
+
 /// Error message when a transaction client is not found.
 const TX_CLIENT_NOT_FOUND: &str = "transaction client not found, it probably timed out";
 
@@ -61,7 +64,16 @@ const TXS_CLIENT_TIMEOUT: TimeDelta = TimeDelta::seconds(30);
 /// that includes all the functionality defined in other traits.
 #[async_trait]
 pub(crate) trait DB:
-    DBAuth + DBCommon + DBCommunity + DBDashboard + DBEvent + DBGroup + DBImages + DBMeetings + DBNotifications
+    DBAuth
+    + DBCommon
+    + DBCommunity
+    + DBDashboard
+    + DBEvent
+    + DBGroup
+    + DBImages
+    + DBMeetings
+    + DBNotifications
+    + DBSite
 {
     /// Begins a new transaction and returns a unique client identifier.
     async fn tx_begin(&self) -> Result<Uuid>;

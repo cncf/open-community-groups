@@ -3,6 +3,7 @@
 use askama::Template;
 use axum_messages::{Level, Message};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     templates::{
@@ -12,7 +13,7 @@ use crate::{
         filters,
         helpers::user_initials,
     },
-    types::community::Community,
+    types::{community::CommunitySummary, site::SiteSettings},
 };
 
 /// Home page template for the community dashboard.
@@ -20,8 +21,8 @@ use crate::{
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/community/home.html")]
 pub(crate) struct Page {
-    /// Community information.
-    pub community: Community,
+    /// List of communities the user is a team member of.
+    pub communities: Vec<CommunitySummary>,
     /// Main content section for the page.
     pub content: Content,
     /// Flash or status messages to display.
@@ -30,6 +31,10 @@ pub(crate) struct Page {
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
+    /// Currently selected community ID.
+    pub selected_community_id: Uuid,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 }

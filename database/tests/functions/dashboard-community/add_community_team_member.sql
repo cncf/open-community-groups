@@ -3,13 +3,12 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set user1ID '00000000-0000-0000-0000-000000000011'
 \set user2ID '00000000-0000-0000-0000-000000000012'
@@ -18,28 +17,40 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
+-- Community
 insert into community (
-    community_id, display_name, host, name, title, description, header_logo_url, theme
-) values
-    (:'communityID', 'C1', 'c1.example.com', 'c1', 'C1', 'd', 'https://e/logo.png', '{}'::jsonb),
-    (:'community2ID', 'C2', 'c2.example.com', 'c2', 'C2', 'd', 'https://e/logo.png', '{}'::jsonb);
+    community_id,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values (
+    :'communityID',
+    'c1',
+    'C1',
+    'Community 1',
+    'https://e/logo.png',
+    'https://e/banner_mobile.png',
+    'https://e/banner.png'
+);
 
 -- Users
 insert into "user" (
-    user_id, auth_hash, community_id, email, name, username, email_verified
+    user_id, auth_hash, email, name, username, email_verified
 ) values
-    (:'user1ID', gen_random_bytes(32), :'communityID', 'alice@example.com', 'Alice', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), :'community2ID', 'bob@example.com', 'Bob', 'bob', true);
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'Bob', 'bob', true);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Adding a user from the same community should create membership
+-- Adding a user should create membership
 select lives_ok(
     $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
-    'Should succeed for same community user'
+    'Should succeed for valid user'
 );
 select results_eq(
     $$
@@ -59,13 +70,6 @@ select throws_ok(
     $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
     'user is already a community team member',
     'Should not allow duplicate community team membership'
-);
-
--- Should fail for user from another community
-select throws_ok(
-    $$ select add_community_team_member('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000012'::uuid) $$,
-    'user not found in community',
-    'Should fail for other community user'
 );
 
 -- ============================================================================

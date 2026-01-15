@@ -1,0 +1,122 @@
+{% import "macros/explore.html" as explore -%}
+
+{% let view_mode = filters.view_mode.clone().unwrap_or_default() -%}
+
+{# Type -#}
+<div class="px-6 py-7 pt-5 border-b border-stone-100">
+  <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700">Type</div>
+  <ul class="grid w-full gap-2.5 grid-cols-2 mt-3">
+    {# In-person -#}
+    <li>
+      <label class="group items-center w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none flex flex-row {%+ if filters.kind.contains(&EventKind::InPerson) %}border-primary-500{%+ else %}border-stone-200{%- endif %} hover:bg-stone-50 transition-colors">
+        <input type="checkbox"
+               name="kind[]"
+               value="in-person"
+               class="hidden peer"
+               {% if filters.kind.contains(&EventKind::InPerson) %}checked{% endif %}>
+        <div class="svg-icon size-3 bg-stone-500 peer-checked:bg-primary-500 icon-in-person shrink-0"></div>
+        <div class="text-[0.775rem] ms-2 text-stone-500 text-nowrap peer-checked:text-primary-500">In-person</div>
+      </label>
+    </li>
+    {# End in-person -#}
+
+    {# Virtual -#}
+    <li>
+      <label class="group flex flex-row items-center w-full px-2 py-1 border rounded-lg peer-enabled:cursor-pointer select-none {%+ if view_mode == ViewMode::Map %} bg-stone-50 border-stone-200 opacity-30 {%- else %} {%+ if filters.kind.contains(&EventKind::Virtual) %}border-primary-500{%+ else %}border-stone-200{%- endif %} cursor-pointer hover:bg-stone-50 bg-white transition-colors{%- endif %}">
+        {% if view_mode == ViewMode::Map -%}
+          <input type="checkbox"
+                 name="kind[]"
+                 value="virtual"
+                 class="virtual-kind hidden peer"
+                 disabled>
+        {% else -%}
+          <input type="checkbox"
+                 name="kind[]"
+                 value="virtual"
+                 class="virtual-kind hidden peer"
+                 {% if filters.kind.contains(&EventKind::Virtual) %}checked{% endif %}>
+        {% endif -%}
+        <div class="svg-icon size-3 bg-stone-500 peer-checked:bg-primary-500 icon-virtual shrink-0"></div>
+        <div class="text-[0.775rem] ms-2 text-stone-500 peer-checked:text-primary-500">Virtual</div>
+      </label>
+    </li>
+    {# End virtual -#}
+
+    {# Hybrid -#}
+    <li>
+      <label class="group items-center w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none flex flex-row {%+ if filters.kind.contains(&EventKind::Hybrid) %}border-primary-500{%+ else %}border-stone-200{%- endif %} hover:bg-stone-50 transition-colors">
+        <input type="checkbox"
+               name="kind[]"
+               value="hybrid"
+               class="hidden peer"
+               {% if filters.kind.contains(&EventKind::Hybrid) %}checked{% endif %}>
+        <div class="svg-icon size-3 bg-stone-500 peer-checked:bg-primary-500 icon-buildings shrink-0"></div>
+        <div class="text-[0.775rem] ms-2 text-stone-500 peer-checked:text-primary-500">Hybrid</div>
+      </label>
+    </li>
+    {# End hybrid -#}
+  </ul>
+</div>
+{# End type -#}
+
+{# Community -#}
+{% if filters_options.communities.len() > 0 -%}
+  <collapsible-filter title="Community" name="community" options="{{ filters_options.communities|json }}" selected="{{ filters.community|json }}" viewType="rows" maxVisibleItems="5" singleSelection resetDependentFilters></collapsible-filter>
+{% endif -%}
+{# End community -#}
+
+{# Groups (only shown when a community is selected) -#}
+{% if let Some(groups) = &filters_options.groups -%}
+  {% if groups.len() > 0 -%}
+    <multi-select-filter title="Group" name="group" options="{{ groups|json }}" selected="{{ filters.group|json }}" placeholder="Type to search"></multi-select-filter>
+  {% endif -%}
+{% endif -%}
+{# End groups -#}
+
+{# Group category -#}
+{% if let Some(group_category) = &filters_options.group_category -%}
+  <collapsible-filter title="Group category" name="group_category" options="{{ group_category|json }}" selected="{{ filters.group_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
+{% endif -%}
+{# End Group category -#}
+
+{# Regions -#}
+{% if let Some(region) = &filters_options.region -%}
+  <collapsible-filter title="Region" name="region" options="{{ region|json }}" selected="{{ filters.region|json }}" viewType="cols" maxVisibleItems="5"></collapsible-filter>
+{% endif -%}
+{# End Regions -#}
+
+{# Event category -#}
+{% if let Some(event_category) = &filters_options.event_category -%}
+  <collapsible-filter title="Event category" name="event_category" options="{{ event_category|json }}" selected="{{ filters.event_category|json }}" viewType="rows" maxVisibleItems="4"></collapsible-filter>
+{% endif -%}
+{# End event category -#}
+
+{% if filters.longitude.is_some() && filters.latitude.is_some() -%}
+  {# Distance -#}
+  <collapsible-filter title="Distance" name="distance" options="{{ filters_options.distance|json }}" selected="{{ filters.distance|json }}" viewType="cols" maxVisibleItems="5" singleSelection></collapsible-filter>
+  {# End distance -#}
+{% endif -%}
+
+{% if view_mode != ViewMode::Calendar -%}
+  {# Date -#}
+  <div class="px-6 py-7 pt-5">
+    <div class="flex justify-between items-center">
+      <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700">Date</div>
+    </div>
+    <div class="flex flex-wrap gap-3 items-center mt-3">
+      {{ explore::date_input(name = "date_from", label = "from", value = filters.date_from) -}}
+      {{ explore::date_input(name = "date_to", label = "to", value = filters.date_to) -}}
+    </div>
+  </div>
+  {# End date -#}
+{% else -%}
+  {# Date on calendar view -#}
+  <input type="hidden"
+         name="date_from"
+         value="{%- if let Some(date_from) = &filters.date_from -%} {{ date_from }} {%- endif -%}">
+  <input type="hidden"
+         name="date_to"
+         value="{%- if let Some(date_to) = &filters.date_to -%} {{ date_to }} {%- endif -%}">
+  {# End date on calendar view -#}
+{% endif -%}
+{# Apply filters -#}

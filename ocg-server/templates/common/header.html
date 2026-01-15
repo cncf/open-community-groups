@@ -1,4 +1,5 @@
 {% import "macros/ui.html" as ui -%}
+{% import "macros/header.html" as header -%}
 
 {# Header -#}
 <header id="header" class="w-full" role="banner">
@@ -10,14 +11,16 @@
       {# Logo -#}
       {% if path != "/" %}<a href="/" aria-label="Go to homepage" class="inline-flex">{% endif %}
         <div class="inline-flex items-top gap-x-3 me-5">
-          <img class="w-auto max-w-[208px] h-10 mt-[5px]"
-               height="40"
-               width="auto"
-               src="{{ self.community.header_logo_url }}"
-               alt="{{ community.display_name }} logo" />
+          {% if let Some(url) = &site_settings.header_logo_url -%}
+            <img class="w-auto max-w-44 sm:max-w-52 h-10 sm:h-[50px] z-1"
+                 height="50"
+                 width="auto"
+                 src="{{ url }}"
+                 alt="{{ site_settings.title }} logo" />
+          {% endif -%}
           {# Beta badge -#}
           <div>
-            <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 font-semibold">
+            <div class="relative text-[0.7rem]/5 md:text-xs/6 tracking-widest rounded-full bg-stone-400/20 px-2 ms-1 font-semibold">
               BETA
             </div>
           </div>
@@ -27,31 +30,15 @@
 
       {# Desktop links -#}
       <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
-        {{ link(content = "Home", href = "/", current_path = path) -}}
-        {{ link(content = "Explore", href = "/explore", current_path = path) -}}
-        {% if let Some(new_group_details) = &self.community.new_group_details -%}
-          <button id="open-new-group-btn"
-                  class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors">
-            New group
-          </button>
-          <script type="module">
-            import {
-              toggleModalVisibility
-            } from '/static/js/common/common.js';
-
-            const openNewGroupBtn = document.getElementById('open-new-group-btn');
-            if (openNewGroupBtn) {
-              openNewGroupBtn.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
-            }
-          </script>
-        {% endif -%}
+        {{ header::link(content = "Home", href = "/", current_path = path) -}}
+        {{ header::link(content = "Explore", href = explore_events, current_path = path, path = "/explore") -}}
       </div>
       {# End desktop links -#}
     </div>
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end">
-      {% if page_id == PageId::CommunityExplore || page_id == PageId::CommunityHome || page_id == PageId::Group || page_id == PageId::Event -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
@@ -73,32 +60,10 @@
 </header>
 {# End header -#}
 
-{# Link -#}
-{% macro link(content, href, current_path, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <a href="{{ href }}"
-     hx-boost="true"
-     hx-target="body"
-     class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 transition-colors
-            {% if current_path == href -%}
-              border-primary-500{%- else -%}border-transparent hover:border-primary-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
-{% endmacro link -%}
-{# End link -#}
-
-{# Button -#}
-{% macro button(id, content, extra_styles = None) -%}
-  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
-
-  <button id="{{ id }}"
-          class="mx-3 pb-1 border-0 border-primary-500 text-base font-semibold tracking-widest text-primary-500 uppercase border-b-2 border-transparent hover:border-primary-300 transition-colors {{ extra_styles_ }}">
-    {{ content }}
-  </button>
-{% endmacro button -%}
-{# End button -#}
-
 {# User menu macro -#}
 {% macro user_menu(user) -%}
+  {# TODO: Hardcoded community until we add more #}
+  {% let explore_events = "/explore?community[0]=cncf" %}
   <div class="relative">
     {% if user.logged_in -%}
       <button id="user-dropdown-button"
@@ -111,7 +76,7 @@
 
       {# User dropdown menu -#}
       <div id="user-dropdown"
-           class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+           class="dropdown absolute hidden z-[100] right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
           <li class="border-b border-stone-200 mb-2 pb-2" role="none">
@@ -146,7 +111,7 @@
           </li>
 
           <li class="lg:hidden" role="none">
-            <a href="/explore"
+            <a href="{{ explore_events }}"
                hx-boost="true"
                hx-target="body"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
@@ -229,7 +194,7 @@
 
       {# User dropdown menu for non-logged users -#}
       <div id="user-dropdown"
-           class="dropdown absolute hidden z-100 right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
+           class="dropdown absolute hidden z-[100] right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
           <li class="lg:hidden" role="none">
@@ -246,7 +211,7 @@
           </li>
 
           <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
-            <a href="/explore"
+            <a href="{{ explore_events }}"
                hx-boost="true"
                hx-target="body"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"

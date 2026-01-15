@@ -51,14 +51,13 @@ insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
-) values 
-    (:'communityID', 'test-community', 'Test Community', 'test.example.org', 'Test Community', 'Community used for dashboard stats tests', 'https://example.com/logo.png', '{}'::jsonb),
-    (:'community2ID', 'other-community', 'Other Community', 'other.example.org', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png', '{}'::jsonb);
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values
+    (:'communityID', 'test-community', 'Test Community', 'Community used for dashboard stats tests', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
+    (:'community2ID', 'other-community', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
 -- Regions
 insert into region (region_id, community_id, name, "order") values
@@ -78,15 +77,15 @@ insert into event_category (event_category_id, community_id, name, slug) values
     (:'eventCategory2ID', :'communityID', 'Meetup', 'meetup');
 
 -- Users
-insert into "user" (user_id, community_id, auth_hash, email, username) values
-    (:'user1ID', :'communityID', 'hash-1', 'user1@example.com', 'user1'),
-    (:'user2ID', :'communityID', 'hash-2', 'user2@example.com', 'user2'),
-    (:'user3ID', :'communityID', 'hash-3', 'user3@example.com', 'user3'),
-    (:'user4ID', :'communityID', 'hash-4', 'user4@example.com', 'user4'),
-    (:'user5ID', :'communityID', 'hash-5', 'user5@example.com', 'user5'),
-    (:'user6ID', :'communityID', 'hash-6', 'user6@example.com', 'user6'),
-    (:'user7ID', :'communityID', 'hash-7', 'user7@example.com', 'user7'),
-    (:'user8ID', :'communityID', 'hash-8', 'user8@example.com', 'user8');
+insert into "user" (user_id, auth_hash, email, username) values
+    (:'user1ID', 'hash-1', 'user1@example.com', 'user1'),
+    (:'user2ID', 'hash-2', 'user2@example.com', 'user2'),
+    (:'user3ID', 'hash-3', 'user3@example.com', 'user3'),
+    (:'user4ID', 'hash-4', 'user4@example.com', 'user4'),
+    (:'user5ID', 'hash-5', 'user5@example.com', 'user5'),
+    (:'user6ID', 'hash-6', 'user6@example.com', 'user6'),
+    (:'user7ID', 'hash-7', 'user7@example.com', 'user7'),
+    (:'user8ID', 'hash-8', 'user8@example.com', 'user8');
 
 -- Groups
 insert into "group" (

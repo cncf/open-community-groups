@@ -1,6 +1,5 @@
 -- sign_up_user creates a new user and generates an email verification code if needed.
 create or replace function sign_up_user(
-    p_community_id uuid,
     p_user jsonb,
     p_email_verified boolean default false
 )
@@ -17,11 +16,10 @@ begin
     v_base_username := p_user->>'username';
     v_username := v_base_username;
 
-    -- Check if username exists in the community
+    -- Check if username exists
     select exists(
         select 1 from "user"
         where username = v_username
-        and community_id = p_community_id
     ) into v_username_exists;
 
     -- If username exists, try with numeric suffixes from 2 to 99
@@ -31,7 +29,6 @@ begin
             select exists(
                 select 1 from "user"
                 where username = v_username
-                and community_id = p_community_id
             ) into v_username_exists;
 
             exit when not v_username_exists;
@@ -46,7 +43,6 @@ begin
     -- Insert the user with the available username
     insert into "user" (
         auth_hash,
-        community_id,
         email,
         email_verified,
         name,
@@ -54,7 +50,6 @@ begin
         username
     ) values (
         encode(gen_random_bytes(32), 'hex'),
-        p_community_id,
         p_user->>'email',
         p_email_verified,
         p_user->>'name',

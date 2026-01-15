@@ -85,6 +85,7 @@ begin
                 event_category_id,
                 event_kind_id,
 
+                banner_mobile_url,
                 banner_url,
                 capacity,
                 description_short,
@@ -118,6 +119,7 @@ begin
                 (p_event->>'category_id')::uuid,
                 p_event->>'kind_id',
 
+                p_event->>'banner_mobile_url',
                 p_event->>'banner_url',
                 (p_event->>'capacity')::int,
                 p_event->>'description_short',

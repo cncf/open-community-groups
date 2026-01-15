@@ -36,28 +36,6 @@
         </div>
         {# End display name -#}
 
-        {# Hidden name field -#}
-        <input type="hidden" name="name" value="{{ community.name }}">
-        {# End hidden name field -#}
-
-        {# Title -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="title" class="form-label">
-            Title <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="title"
-                   id="title"
-                   maxlength="{{ crate::validation::MAX_LEN_M }}"
-                   class="input-primary"
-                   value="{{ community.title }}"
-                   required>
-          </div>
-          <p class="form-legend">Main name shown prominently on the community site header and pages.</p>
-        </div>
-        {# End title -#}
-
         {# Description -#}
         <div class="col-span-full">
           <label for="description" class="form-label">
@@ -72,12 +50,6 @@
         </div>
         {# End description -#}
 
-        {# Hidden primary color field -#}
-        <input type="hidden"
-               name="primary_color"
-               value="{{ community.theme.primary_color }}">
-        {# End hidden primary color field -#}
-
         {# Hidden layout field -#}
         <input type="hidden"
                name="community_site_layout_id"
@@ -91,41 +63,26 @@
       {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
 
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Header logo URL -#}
+        {# Logo URL -#}
         <div class="col-span-full">
-          <image-field label="Header Logo" name="header_logo_url" value="{{ community.header_logo_url }}" image-kind="logo" required help-prefix-text="Maximum height 80px.">
+          <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="logo" required help-prefix-text="Maximum height 80px.">
         </image-field>
       </div>
-      {# End header logo URL -#}
+      {# End logo URL -#}
 
-      {# Footer logo URL -#}
+      {# Banner URL -#}
       <div class="col-span-full">
-        <image-field label="Footer Logo" name="footer_logo_url" image-kind="logo" value="{%- if let Some(footer_logo_url) = &community.footer_logo_url -%}{{ footer_logo_url }}{%- endif -%}" preview-bg-class="bg-stone-900" help-prefix-text="Maximum height 96px.">
+        <image-field label="Banner" name="banner_url" image-kind="banner" value="{{ community.banner_url }}" help-prefix-text="Size required 2428 x 192 px." required>
       </image-field>
     </div>
-    {# End footer logo URL -#}
+    {# End Banner URL -#}
 
-    {# Jumbotron image -#}
+    {# Banner Mobile URL -#}
     <div class="col-span-full">
-      <image-field label="Jumbotron Background Image" name="jumbotron_image_url" image-kind="banner" value="{%- if let Some(jumbotron_image_url) = &community.jumbotron_image_url -%}{{ jumbotron_image_url }}{%- endif -%}" help-prefix-text="Maximum size recommended 1400 * 400.">
+      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{{ community.banner_mobile_url }}" help-prefix-text="Size required 1220 x 192 px." required>
     </image-field>
-    <p class="form-legend">URL to the background image shown in the community home page jumbotron.</p>
   </div>
-  {# End jumbotron image -#}
-
-  {# Copyright notice -#}
-  <div class="col-span-full">
-    <label for="copyright_notice" class="form-label">Copyright Notice</label>
-    <div class="mt-2">
-      <markdown-editor id="copyright_notice" name="copyright_notice" mini
-      {% if let Some(copyright_notice) = &community.copyright_notice -%}
-        content="{{ copyright_notice }}"
-      {% endif -%}
-      ></markdown-editor>
-    </div>
-    <p class="form-legend">Copyright text displayed in the footer.</p>
-  </div>
-  {# End copyright notice -#}
+  {# End Banner Mobile URL -#}
 </div>
 </div>
 {# End branding section -#}
@@ -152,40 +109,6 @@
     </div>
     {# End website URL -#}
 
-    {# GitHub URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="github_url" class="form-label">GitHub</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-github bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="github_url"
-               id="github_url"
-               class="input-primary ps-10"
-               placeholder="https://github.com/organization"
-               {% if let Some(github_url) = &community.github_url %}value="{{ github_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End GitHub URL -#}
-
-    {# Twitter URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="twitter_url"
-               id="twitter_url"
-               class="input-primary ps-10"
-               placeholder="https://x.com/username"
-               {% if let Some(twitter_url) = &community.twitter_url %}value="{{ twitter_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Twitter URL -#}
-
     {# Facebook URL -#}
     <div class="col-span-full lg:col-span-3">
       <label for="facebook_url" class="form-label">Facebook</label>
@@ -203,22 +126,39 @@
     </div>
     {# End Facebook URL -#}
 
-    {# LinkedIn URL -#}
+    {# Flickr URL -#}
     <div class="col-span-full lg:col-span-3">
-      <label for="linkedin_url" class="form-label">LinkedIn</label>
+      <label for="flickr_url" class="form-label">Flickr</label>
       <div class="mt-2 relative">
         <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+          <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
         </div>
         <input type="url"
-               name="linkedin_url"
-               id="linkedin_url"
+               name="flickr_url"
+               id="flickr_url"
                class="input-primary ps-10"
-               placeholder="https://linkedin.com/company/name"
-               {% if let Some(linkedin_url) = &community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+               placeholder="https://flickr.com/photos/account"
+               {% if let Some(flickr_url) = &community.flickr_url %}value="{{ flickr_url }}"{% endif %}>
       </div>
     </div>
-    {# End LinkedIn URL -#}
+    {# End Flickr URL -#}
+
+    {# GitHub URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="github_url" class="form-label">GitHub</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-github bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="github_url"
+               id="github_url"
+               class="input-primary ps-10"
+               placeholder="https://github.com/organization"
+               {% if let Some(github_url) = &community.github_url %}value="{{ github_url }}"{% endif %}>
+      </div>
+    </div>
+    {# End GitHub URL -#}
 
     {# Instagram URL -#}
     <div class="col-span-full lg:col-span-3">
@@ -237,6 +177,23 @@
     </div>
     {# End Instagram URL -#}
 
+    {# LinkedIn URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="linkedin_url" class="form-label">LinkedIn</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="linkedin_url"
+               id="linkedin_url"
+               class="input-primary ps-10"
+               placeholder="https://linkedin.com/company/name"
+               {% if let Some(linkedin_url) = &community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+      </div>
+    </div>
+    {# End LinkedIn URL -#}
+
     {# Slack URL -#}
     <div class="col-span-full lg:col-span-3">
       <label for="slack_url" class="form-label">Slack</label>
@@ -254,22 +211,22 @@
     </div>
     {# End Slack URL -#}
 
-    {# YouTube URL -#}
+    {# Twitter URL -#}
     <div class="col-span-full lg:col-span-3">
-      <label for="youtube_url" class="form-label">YouTube</label>
+      <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
       <div class="mt-2 relative">
         <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
+          <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
         </div>
         <input type="url"
-               name="youtube_url"
-               id="youtube_url"
+               name="twitter_url"
+               id="twitter_url"
                class="input-primary ps-10"
-               placeholder="https://youtube.com/channel/id"
-               {% if let Some(youtube_url) = &community.youtube_url %}value="{{ youtube_url }}"{% endif %}>
+               placeholder="https://x.com/username"
+               {% if let Some(twitter_url) = &community.twitter_url %}value="{{ twitter_url }}"{% endif %}>
       </div>
     </div>
-    {# End YouTube URL -#}
+    {# End Twitter URL -#}
 
     {# WeChat URL -#}
     <div class="col-span-full lg:col-span-3">
@@ -288,22 +245,22 @@
     </div>
     {# End WeChat URL -#}
 
-    {# Flickr URL -#}
+    {# YouTube URL -#}
     <div class="col-span-full lg:col-span-3">
-      <label for="flickr_url" class="form-label">Flickr</label>
+      <label for="youtube_url" class="form-label">YouTube</label>
       <div class="mt-2 relative">
         <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
+          <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
         </div>
         <input type="url"
-               name="flickr_url"
-               id="flickr_url"
+               name="youtube_url"
+               id="youtube_url"
                class="input-primary ps-10"
-               placeholder="https://flickr.com/photos/account"
-               {% if let Some(flickr_url) = &community.flickr_url %}value="{{ flickr_url }}"{% endif %}>
+               placeholder="https://youtube.com/channel/id"
+               {% if let Some(youtube_url) = &community.youtube_url %}value="{{ youtube_url }}"{% endif %}>
       </div>
     </div>
-    {# End Flickr URL -#}
+    {# End YouTube URL -#}
   </div>
 </div>
 {# End social links section -#}
@@ -315,7 +272,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
     <div class="col-span-full">
-      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 1700 * 210.">
+      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 1700 x 210 px.">
     </image-field>
   </div>
   {# End ad banner -#}

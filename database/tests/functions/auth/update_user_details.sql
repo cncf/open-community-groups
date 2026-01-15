@@ -9,7 +9,6 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set user2ID '00000000-0000-0000-0000-000000000003'
 \set user3ID '00000000-0000-0000-0000-000000000004'
 \set userID '00000000-0000-0000-0000-000000000002'
@@ -18,32 +17,10 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    host,
-    description,
-    header_logo_url,
-    theme,
-    title
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'test.example.com',
-    'Seattle community for cloud native technologies',
-    'https://example.com/logo.png',
-    '{}'::jsonb,
-    'Cloud Native Seattle Community'
-);
-
 -- User for updates
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     email_verified,
     name,
@@ -51,7 +28,6 @@ insert into "user" (
 ) values (
     :'userID',
     gen_random_bytes(32),
-    :'communityID',
     'test@example.com',
     true,
     'Original User',
@@ -62,7 +38,6 @@ insert into "user" (
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     email_verified,
     name,
@@ -82,7 +57,6 @@ insert into "user" (
 ) values (
     :'user2ID',
     gen_random_bytes(32),
-    :'communityID',
     'test2@example.com',
     true,
     'Second User',
@@ -105,7 +79,6 @@ insert into "user" (
 insert into "user" (
     user_id,
     auth_hash,
-    community_id,
     email,
     email_verified,
     name,
@@ -125,7 +98,6 @@ insert into "user" (
 ) values (
     :'user3ID',
     gen_random_bytes(32),
-    :'communityID',
     'test3@example.com',
     true,
     'Third User',

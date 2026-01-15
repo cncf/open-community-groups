@@ -4,6 +4,7 @@ import {
   createAreaChart,
   createMonthlyBarChart,
   initChart,
+  deferUntilHtmxSettled,
 } from "/static/js/dashboard/common.js";
 import { debounce } from "/static/js/common/common.js";
 
@@ -112,20 +113,22 @@ export const initAnalyticsCharts = async (stats) => {
     return;
   }
 
-  await loadEChartsScript();
-  const palette = getThemePalette();
+  return deferUntilHtmxSettled(async () => {
+    await loadEChartsScript();
+    const palette = getThemePalette();
 
-  const charts = [
-    ...initMembersCharts(stats.members, palette),
-    ...initEventsCharts(stats.events, palette),
-    ...initAttendeesCharts(stats.attendees, palette),
-  ];
+    const charts = [
+      ...initMembersCharts(stats.members, palette),
+      ...initEventsCharts(stats.events, palette),
+      ...initAttendeesCharts(stats.attendees, palette),
+    ];
 
-  const hydratedCharts = charts.filter(Boolean);
+    const hydratedCharts = charts.filter(Boolean);
 
-  const resizeCharts = debounce(() => {
-    hydratedCharts.forEach((chart) => chart.resize());
-  }, 200);
+    const resizeCharts = debounce(() => {
+      hydratedCharts.forEach((chart) => chart.resize());
+    }, 200);
 
-  window.addEventListener("resize", resizeCharts);
+    window.addEventListener("resize", resizeCharts);
+  });
 };

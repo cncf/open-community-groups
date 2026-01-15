@@ -2,121 +2,117 @@
 {% import "macros/badges.html" as badges -%}
 
 {# Event card -#}
-<a href="/group/{{ event.group_slug }}/event/{{ event.slug }}"
+<a href="/{{ event.community_name }}/group/{{ event.group_slug }}/event/{{ event.slug }}"
    hx-boost="true"
    hx-target="body"
-   class="group select-none">
-  <div class="flex flex-1 flex-row items-stretch">
-    {# Event icon -#}
-    <div class="card-logo group-hover:opacity-75 transition-opacity relative">
-      {{ ui::logo(logo_url = event.logo_url, classes = "hidden md:block h-[140px] w-[140px] min-w-[140px]", size = 140, color = event.group_color, name = Some(event.group_name) ) -}}
-      {{ ui::logo(logo_url = event.logo_url, classes = "block h-14 w-14 min-w-14 md:hidden", size = 60, color = event.group_color) -}}
-      {# Sold out badge -#}
-      {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[42px] md:top-[55px] right-[-10px] md:right-[56px]") ) -}}
-      {# End sold out badge -#}
-    </div>
-    {# End event icon -#}
+   class="group select-none cursor-pointer h-full">
+  <article class="flex flex-col md:flex-row h-full">
+    {# Top section with logo and content -#}
+    <div class="flex md:contents">
+      {# Event logo - Desktop -#}
+      <div class="hidden md:block shrink-0 group-hover:opacity-75 transition-opacity relative">
+        {{ ui::logo(logo_url = event.logo_url, classes = "h-[180px] w-[180px] min-w-[180px]", size = 180, color = event.group_color, name = Some(event.group_name) ) -}}
+        {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[70px] right-[52px]") ) -}}
+      </div>
+      {# End event logo - Desktop -#}
 
-    <div class="min-w-0 pl-4 content-center">
-      <div class="flex flex-col justify-between h-full">
-        <div>
-          {# Event group name -#}
-          <div class="card-header truncate">
-            {% block preheader %}
-              <span>{{ event.group_name }}</span>
-              <span class="px-1 hidden sm:inline">·</span>
-              <span class="hidden sm:inline">{{ event.group_category_name }}</span>
-            {% endblock preheader %}
-          </div>
-          {# End event group name -#}
+      {# Event logo - Mobile -#}
+      <div class="md:hidden shrink-0 group-hover:opacity-75 transition-opacity relative">
+        {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px]", size = 60, color = event.group_color) -}}
+        {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[22px] right-[18px]") ) -}}
+      </div>
+      {# End event logo - Mobile -#}
 
-          {# Event name -#}
-          <div class="line-clamp-2 text-[0.9rem]/4 md:text-base font-semibold mt-2 md:mt-1 md:line-clamp-1 group-hover:underline">
-            {{ event.name|demoji }}
-          </div>
-          {# End event name -#}
-        </div>
+      <div class="card-content md:pl-5">
+        <div class="card-body">
+          <div>
+            {# Event group name -#}
+            <div class="card-header">
+              {% block preheader %}
+                <span class="text-primary-500">{{ event.community_display_name }}</span>
+                <span class="px-1 hidden sm:inline">·</span>
+                <span>{{ event.group_name }}</span>
+                <span class="px-1 hidden sm:inline">·</span>
+                <span class="hidden sm:inline">{{ event.group_category_name }}</span>
+              {% endblock preheader %}
+            </div>
+            {# End event group name -#}
 
-        {# Event description on desktop -#}
-        {% if let Some(description_short) = &event.description_short -%}
-          <div class="hidden h-[36px] md:my-2 md:block">
-            <p class="text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2">{{ description_short|demoji }}</p>
-          </div>
-        {% endif -%}
-        {# End event description on desktop -#}
+            {# Event name -#}
+            <div class="card-title group-hover:underline line-clamp-2 text-[0.85rem] md:text-base md:line-clamp-1 h-10 md:h-auto md:mt-2">
+              {{ event.name|demoji }}
+            </div>
+            {# End event name -#}
 
-        <div class="hidden md:block">
-          {# Event location -#}
-          <div class="card-meta h-[28px]">
-            {% if event.kind != EventKind::Virtual -%}
-              {% if let Some(location) = &self.event.location(36) -%}
-                <div class="hidden truncate me-2 xl:block">
-                  {{ ui::icon_text(icon_name = "location", text = self.event.location(57).expect("location to exist")) -}}
-                </div>
-                <div class="block truncate me-2 xl:hidden">
-                  {{ ui::icon_text(icon_name = "location", text = location) -}}
-                </div>
-              {% endif -%}
-            {% else -%}
-              <div class="icon-text me-2">
-                <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
+            {# Event description -#}
+            {% if let Some(description_short) = &event.description_short -%}
+              <div class="hidden md:block">
+                <p class="text-sm text-stone-500 leading-relaxed mt-2 line-clamp-2">{{ description_short|demoji }}</p>
               </div>
             {% endif -%}
-            {{ badges::event_badge(kind = event.kind) -}}
+            {# End event description -#}
           </div>
-          {# End event location -#}
 
-          {# Event date -#}
-          <div class="flex items-center pt-0.75">
-            {% if let Some(starts_at) = &event.starts_at -%}
-              {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
-            {% endif -%}
-            {% if event.canceled -%}
-              {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
-            {% endif -%}
+          {# Event location and date footer - Desktop -#}
+          <div class="hidden md:block mt-auto pt-3 border-t border-stone-200 border-dashed">
+            {# Event location - Desktop -#}
+            <div class="flex items-center gap-2">
+              {% if event.kind != EventKind::Virtual -%}
+                {% if let Some(location) = &self.event.location(36) -%}
+                  <div class="hidden xl:flex items-center gap-2 min-w-0">
+                    {{ ui::icon_text(icon_name = "location", text = self.event.location(57).expect("location to exist")) -}}
+                  </div>
+                  <div class="flex xl:hidden items-center gap-2 min-w-0">
+                    {{ ui::icon_text(icon_name = "location", text = location) -}}
+                  </div>
+                {%- else -%}
+                  {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
+                {% endif -%}
+                <span class="ml-auto">{{ badges::event_badge(kind = event.kind) -}}</span>
+              {% else -%}
+                {{ ui::icon_text(icon_name = "location", text = "Virtual") -}}
+                <span class="ml-auto">{{ badges::event_badge(kind = event.kind) -}}</span>
+              {% endif -%}
+            </div>
+            {# End event location - Desktop -#}
+
+            {# Event date - Desktop -#}
+            <div class="flex items-center gap-2 mt-1.5">
+              {% if let Some(starts_at) = &event.starts_at -%}
+                {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
+              {% endif -%}
+              {% if event.canceled -%}
+                {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
+              {% endif -%}
+            </div>
+            {# End event date - Desktop -#}
           </div>
-          {# End event date -#}
+          {# End event location and date footer - Desktop -#}
         </div>
       </div>
     </div>
-  </div>
+    {# End top section -#}
 
-  {# Mobile content -#}
-  <div class="block md:hidden">
-    {# Event location -#}
-    <div class="card-meta mt-3 h-[21px]">
-      {% if event.kind != EventKind::Virtual -%}
-        {% if let Some(location) = &self.event.location(25) -%}
-          {{ ui::icon_text(icon_name = "location", text = location, extra_styles = Some("me-2") ) -}}
+    {# Event location and date footer - Mobile (full width) -#}
+    <div class="md:hidden mt-2 pt-2 border-t border-stone-200 border-dashed">
+      <div class="card-meta">
+        {% if event.kind != EventKind::Virtual -%}
+          {% if let Some(location) = &self.event.location(30) -%}
+            {{ ui::icon_text(icon_name = "location", text = location) -}}
+          {%- else -%}
+            {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
+          {% endif -%}
+        {% else -%}
+          {{ ui::icon_text(icon_name = "location", text = "Virtual") -}}
         {% endif -%}
-      {% else -%}
-        <div class="icon-text me-2">
-          <div class="svg-icon w-3 h-3 bg-stone-700 icon-location"></div>
-        </div>
-      {% endif -%}
-      {{ badges::event_badge(kind = event.kind) -}}
+      </div>
+      <div class="card-meta">
+        {% if let Some(starts_at) = &event.starts_at -%}
+          {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%b %e · %l:%M %p %Z"), icon_extra_styles = Some("-top-px")) -}}
+        {% endif -%}
+      </div>
     </div>
-    {# End event location -#}
-
-    {# Event date -#}
-    <div class="flex items-center pt-1">
-      {% if let Some(starts_at) = &event.starts_at -%}
-        {{ ui::icon_text(icon_name = "date", text = starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z")) -}}
-      {% endif -%}
-      {% if event.canceled -%}
-        {{ badges::event_badge(kind = event.kind, canceled = true, extra_styles = Some("ms-3") ) -}}
-      {% endif -%}
-    </div>
-    {# End event date -#}
-  </div>
-  {# End mobile content -#}
-
-  {# Description -#}
-  {% if let Some(description_short) = &event.description_short -%}
-    <div class="block md:hidden">
-      <p class="text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2 mt-3">{{ description_short|demoji }}</p>
-    </div>
-  {% endif -%}
-  {# End description -#}
+    {# End event location and date footer - Mobile -#}
+  </article>
 </a>
 {# End event card -#}

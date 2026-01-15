@@ -24,8 +24,11 @@ pub(crate) struct ListPage {
 /// Community team invitation summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct CommunityTeamInvitation {
+    /// Community identifier.
+    pub community_id: Uuid,
     /// Community name (slug).
     pub community_name: String,
+
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -34,13 +37,16 @@ pub(crate) struct CommunityTeamInvitation {
 /// Group team invitation summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupTeamInvitation {
-    /// Invitation creation time.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub created_at: DateTime<Utc>,
+    /// Community name (slug).
+    pub community_name: String,
     /// Group identifier.
     pub group_id: Uuid,
     /// Group name.
     pub group_name: String,
     /// Role within the group.
     pub role: GroupRole,
+
+    /// Invitation creation time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
 }

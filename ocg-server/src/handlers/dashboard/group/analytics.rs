@@ -11,7 +11,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CommunityId, SelectedGroupId},
+        extractors::{SelectedCommunityId, SelectedGroupId},
     },
     templates::dashboard::group::analytics,
 };
@@ -21,7 +21,7 @@ use crate::{
 /// Displays the group analytics dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
-    CommunityId(community_id): CommunityId,
+    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -40,7 +40,7 @@ mod tests {
         body::{Body, to_bytes},
         http::{
             HeaderValue, Request, StatusCode,
-            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST},
+            header::{CACHE_CONTROL, CONTENT_TYPE, COOKIE},
         },
     };
     use axum_login::tower_sessions::session;
@@ -60,7 +60,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -72,10 +78,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_stats()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -89,7 +95,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/analytics")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -110,7 +115,13 @@ mod tests {
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(group_id));
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
         let stats = sample_group_stats();
 
         // Setup database mock
@@ -123,10 +134,10 @@ mod tests {
             .times(1)
             .withf(move |id| *id == user_id)
             .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_get_community_id()
+        db.expect_user_owns_group()
             .times(1)
-            .withf(|host| host == "example.test")
-            .returning(move |_| Ok(Some(community_id)));
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
         db.expect_get_group_stats()
             .times(1)
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
@@ -140,7 +151,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/analytics")
-            .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

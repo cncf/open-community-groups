@@ -11,20 +11,19 @@
 
 ## Features
 
-### Community
+### Communities
 
-- Multi-tenant support for multiple communities
-- Dedicated community site with customizable layout
-- Custom branding, colors, and themes
-- Dashboard with analytics charts and metrics
+- Support for multiple communities
+- Dedicated site for each community
+- Dashboard with analytics charts and metrics per community
 
 ### Groups
 
-- Dedicated group site with customizable layout
+- Dedicated site for each group
 - Create and organize groups by categories and regions
 - Customize with logos, banners, and photo galleries
 - Manage members, teams, and sponsors
-- Dashboard with analytics charts and metrics
+- Dashboard with analytics charts and metrics per group
 - Connect via social links
 
 ### Events

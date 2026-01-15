@@ -22,6 +22,7 @@ returns json as $$
         'name', g.name,
         'slug', g.slug,
 
+        'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'city', g.city,
         'country_code', g.country_code,
@@ -54,6 +55,7 @@ returns json as $$
         'website_url', g.website_url,
         'youtube_url', g.youtube_url,
 
+        'community', get_community_summary(g.community_id),
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
