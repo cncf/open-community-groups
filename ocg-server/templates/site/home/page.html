@@ -25,7 +25,7 @@
         <div class="mb-8 lg:mb-14">{% include "site/home/stats.html" %}</div>
         {# End stats -#}
 
-        <a href="/explore"
+        <a href="{{ explore_events }}"
            hx-boost="true"
            hx-target="body"
            class="btn-primary-anchor text-md lg:text-lg py-3 px-8 font-semibold">Explore groups and events</a>
@@ -66,11 +66,11 @@
       {# Events -#}
       <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
         {# Events in-person -#}
-        {{ ui::events_list(title = "upcoming in-person events", link = "/explore?entity=events&kind[0]=in-person", events = upcoming_in_person_events) -}}
+        {{ ui::events_list(title = "upcoming in-person events", link = explore_events, events = upcoming_in_person_events) -}}
         {# End events in-person -#}
 
         {# Events online -#}
-        {{ ui::events_list(title = "upcoming virtual events", link = "/explore?entity=events&kind[0]=virtual", events = upcoming_virtual_events) -}}
+        {{ ui::events_list(title = "upcoming virtual events", link = explore_events, events = upcoming_virtual_events) -}}
         {# End events online -#}
 
         {# Latest groups added -#}
@@ -79,10 +79,10 @@
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
             {# See all groups on desktop -#}
             <div class="hidden justify-self-end md:flex">
-              <a href="/explore?entity=groups&sort_by=name"
+              <a href="{{ explore_groups }}"
                  hx-boost="true"
                  hx-target="body"
-                 class="btn-secondary-anchor ms-4">See all groups</a>
+                 class="btn-secondary-anchor ms-4">Explore all groups</a>
             </div>
             {# End see all groups on desktop -#}
           </div>
@@ -101,10 +101,10 @@
             {# End groups cards -#}
             {# See all groups mobile button -#}
             <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-              <a href="/explore?entity=groups&sort_by=name"
+              <a href="{{ explore_groups }}"
                  hx-boost="true"
                  hx-target="body"
-                 class="btn-secondary-anchor">See all groups</a>
+                 class="btn-secondary-anchor">Explore all groups</a>
             </div>
             {# End see all groups mobile button -#}
           </div>

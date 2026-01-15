@@ -91,13 +91,20 @@
         <div>{{ stats|safe }}</div>
         {# End stats -#}
 
+        <div class="text-center mt-2">
+          <a href="/explore?community[0]={{ community.name }}"
+             hx-boost="true"
+             hx-target="body"
+             class="btn-primary-anchor text-md lg:text-lg px-8 font-semibold">Explore community groups and events</a>
+        </div>
+
         {# Events in-person -#}
-        {% let in_person_link = "/explore?entity=events&kind[0]=in-person&community[0]=".to_owned() + &community.name -%}
+        {% let in_person_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
         {{ ui::events_list(title = "upcoming in-person events", link = &in_person_link, events = upcoming_in_person_events) -}}
         {# End events in-person -#}
 
         {# Events online -#}
-        {% let virtual_link = "/explore?entity=events&kind[0]=virtual&community[0]=".to_owned() + &community.name -%}
+        {% let virtual_link = "/explore?entity=events&community[0]=".to_owned() + &community.name -%}
         {{ ui::events_list(title = "upcoming virtual events", link = &virtual_link, events = upcoming_virtual_events) -}}
         {# End events online -#}
 
@@ -110,7 +117,7 @@
               <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
                  hx-boost="true"
                  hx-target="body"
-                 class="btn-secondary-anchor ms-4">See all groups</a>
+                 class="btn-secondary-anchor ms-4">Explore all groups</a>
             </div>
             {# End see all groups on desktop -#}
           </div>
@@ -132,7 +139,7 @@
               <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
                  hx-boost="true"
                  hx-target="body"
-                 class="btn-secondary-anchor">See all groups</a>
+                 class="btn-secondary-anchor">Explore all groups</a>
             </div>
             {# End see all groups mobile button -#}
           </div>
