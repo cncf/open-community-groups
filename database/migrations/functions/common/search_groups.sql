@@ -9,7 +9,7 @@ declare
     v_max_distance real;
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
     v_region text[];
-    v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
+    v_sort_by text := coalesce(p_filters->>'sort_by', 'name');
     v_tsquery_with_prefix_matching tsquery;
     v_user_location geography;
 begin

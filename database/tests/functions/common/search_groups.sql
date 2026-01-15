@@ -110,11 +110,11 @@ insert into "group" (
 select is(
     (select groups from search_groups('{}'::jsonb))::jsonb,
     jsonb_build_array(
-        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
     ),
     'Should return all active groups without filters'
 );
@@ -123,10 +123,10 @@ select is(
 select is(
     (select groups from search_groups(jsonb_build_object('community', jsonb_build_array('test-community'))))::jsonb,
     jsonb_build_array(
-        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
     ),
     'Should filter groups by community'
 );
@@ -149,11 +149,11 @@ select is(
 select is(
     (select groups from search_groups(jsonb_build_object('community', jsonb_build_array())))::jsonb,
     jsonb_build_array(
-        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
     ),
     'Should return all groups when community filter is empty array'
 );
@@ -175,9 +175,9 @@ select is(
         jsonb_build_object('community', jsonb_build_array('test-community'), 'region', jsonb_build_array('north-america'))
     ))::jsonb,
     jsonb_build_array(
-        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
-        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
     ),
     'Should filter groups by region'
 );
@@ -215,7 +215,7 @@ select is(
         jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 1, 'offset', 1)
     ))::jsonb,
     jsonb_build_array(
-        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb
     ),
     'Should paginate results correctly'
 );
