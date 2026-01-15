@@ -173,6 +173,7 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
+            "community_display_name": "Cloud Native Seattle",
             "community_name": "cloud-native-seattle",
             "created_at": 1739268000,
             "group_id": "00000000-0000-0000-0000-000000000031",

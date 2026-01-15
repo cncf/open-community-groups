@@ -169,6 +169,7 @@ select is(
     )::jsonb,
     '{
         "canceled": false,
+        "community_display_name": "Cloud Native Seattle",
         "community_name": "cloud-native-seattle",
         "event_id": "00000000-0000-0000-0000-000000000031",
         "group_category_name": "Technology",

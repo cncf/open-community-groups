@@ -860,6 +860,7 @@ mod tests {
             "body": "Custom event body",
             "event": {
                 "canceled": false,
+                "community_display_name": "Test Community",
                 "community_name": "test-community",
                 "event_id": "11111111-1111-1111-1111-111111111111",
                 "group_category_name": "Community",
@@ -892,6 +893,7 @@ mod tests {
                     "normalized_name": "sample-category"
                 },
                 "color": "#123456",
+                "community_display_name": "Test Community",
                 "community_name": "test-community",
                 "created_at": 1,
                 "group_id": "33333333-3333-3333-3333-333333333333",

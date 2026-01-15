@@ -330,6 +330,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
     let starts_at = Utc::now() + chrono::Duration::hours(1);
     EventSummary {
         canceled: false,
+        community_display_name: "Test Community".to_string(),
         community_name: "test-community".to_string(),
         event_id,
         group_category_name: "Meetup".to_string(),
@@ -500,6 +501,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         active: true,
         category: sample_group_category(),
         color: "#336699".to_string(),
+        community_display_name: "Test Community".to_string(),
         community_name: "test-community".to_string(),
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         group_id,

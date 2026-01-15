@@ -12,6 +12,7 @@ returns json as $$
             'normalized_name', gc.normalized_name,
             'order', gc.order
         ),
+        'community_display_name', c.display_name,
         'community_name', c.name,
         'created_at', floor(extract(epoch from g.created_at)),
         'group_id', g.group_id,

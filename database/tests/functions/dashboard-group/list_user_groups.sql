@@ -136,6 +136,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
@@ -153,6 +154,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704189600,
                     "group_id": "00000000-0000-0000-0000-000000000032",
@@ -189,6 +191,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
@@ -206,6 +209,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704189600,
                     "group_id": "00000000-0000-0000-0000-000000000032",
@@ -223,6 +227,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704276000,
                     "group_id": "00000000-0000-0000-0000-000000000033",
@@ -259,6 +264,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
@@ -276,6 +282,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704189600,
                     "group_id": "00000000-0000-0000-0000-000000000032",
@@ -293,6 +300,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704276000,
                     "group_id": "00000000-0000-0000-0000-000000000033",
@@ -329,6 +337,7 @@ select is(
                         "normalized_name": "test-category",
                         "order": 1
                     },
+                    "community_display_name": "Cloud Native Seattle",
                     "community_name": "cloud-native-seattle",
                     "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
@@ -357,6 +366,7 @@ select is(
                         "normalized_name": "devops-category",
                         "order": 1
                     },
+                    "community_display_name": "DevOps NYC",
                     "community_name": "devops-nyc",
                     "created_at": 1704448800,
                     "group_id": "00000000-0000-0000-0000-000000000035",
