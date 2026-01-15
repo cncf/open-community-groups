@@ -68,13 +68,3 @@
   {{ results_section|safe }}
 {% endblock content -%}
 {# End main content -#}
-
-{# Trigger re-fetch with default sort when no sort_by was provided -#}
-{% if filters.sort_by.is_none() -%}
-  <script type="module">
-    import {
-      triggerChangeOnForm
-    } from '/static/js/community/explore/filters.js';
-    triggerChangeOnForm("groups-form");
-  </script>
-{% endif -%}
