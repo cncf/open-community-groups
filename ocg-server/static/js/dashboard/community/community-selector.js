@@ -293,7 +293,7 @@ export class CommunitySelector extends LitWrapper {
 
   render() {
     const selectedCommunity = this._findSelectedCommunity();
-    const isDisabled = this._normalizedCommunities.length <= 1 || this._isSubmitting;
+    const isDisabled = this._isSubmitting;
 
     return html`
       <div class="relative">
@@ -301,7 +301,7 @@ export class CommunitySelector extends LitWrapper {
           id="community-selector-button"
           type="button"
           class="select select-primary relative text-left pe-9 ${isDisabled
-            ? "opacity-60 cursor-not-allowed"
+            ? "opacity-80 cursor-not-allowed"
             : "cursor-pointer"}"
           ?disabled=${isDisabled}
           aria-haspopup="listbox"
