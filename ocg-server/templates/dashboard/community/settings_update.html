@@ -72,7 +72,7 @@
 
       {# Banner URL -#}
       <div class="col-span-full">
-        <image-field label="Banner" name="banner_url" image-kind="banner" value="{{ community.banner_url }}" help-prefix-text="Size recommended 2400 x 300." required>
+        <image-field label="Banner" name="banner_url" image-kind="banner" value="{{ community.banner_url }}" help-prefix-text="Size required 2428 x 192 px." required>
       </image-field>
     </div>
     {# End Banner URL -#}
@@ -265,7 +265,7 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
     <div class="col-span-full">
-      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 1700 * 210.">
+      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 1700 x 210 px.">
     </image-field>
   </div>
   {# End ad banner -#}
