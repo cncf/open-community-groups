@@ -38,7 +38,7 @@
         <community-selector communities="{{ groups_by_community|json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community"></community-selector>
       </div>
 
-      <div class="mt-4">
+      <div class="my-4">
         <group-selector groups-by-community="{{ groups_by_community|json }}" selected-community-id="{{ selected_community_id }}" selected-group-id="{{ selected_group_id }}" search-delay="250"></group-selector>
       </div>
       {% for group in selected_community_groups() -%}
