@@ -465,13 +465,58 @@ class EventSelector extends LitWrapper {
   }
 
   /**
+   * Reads the selected community name from the community-selector component.
+   * @returns {string} Community name or empty string if not found.
+   */
+  _getCommunityNameFromSelector() {
+    const selector = document.querySelector("community-selector");
+    if (!selector) {
+      return "";
+    }
+    const communities = selector.communities || [];
+    const selectedId = selector.selectedCommunityId;
+    if (!selectedId) {
+      return "";
+    }
+    for (const item of communities) {
+      const community = item.community || item;
+      const id = community.community_id;
+      if (String(id) === String(selectedId)) {
+        return community.name || "";
+      }
+    }
+    return "";
+  }
+
+  /**
+   * Reads the selected group slug from the group-selector component.
+   * @returns {string} Group slug or empty string if not found.
+   */
+  _getGroupSlugFromSelector() {
+    const selector = document.querySelector("group-selector");
+    if (!selector) {
+      return "";
+    }
+    const groups = selector._groups || [];
+    const selectedId = selector.selectedGroupId;
+    if (!selectedId) {
+      return "";
+    }
+    for (const group of groups) {
+      if (String(group.group_id) === String(selectedId)) {
+        return group.slug || "";
+      }
+    }
+    return "";
+  }
+
+  /**
    * Performs a remote search using the provided config.
    * @param {{groupId: string, sortDirection?: string, query?: string, dateFrom?: string, dateTo?: string}} config
    * @returns {Promise<object[]>}
    */
   async _requestEvents(config) {
     const params = new URLSearchParams();
-    params.append("group[]", config.groupId);
     params.set("limit", "10");
     if (config.dateFrom) {
       params.set("date_from", config.dateFrom);
@@ -486,7 +531,11 @@ class EventSelector extends LitWrapper {
       params.set("ts_query", config.query);
     }
 
-    const response = await fetch(`/explore/events/search?${params.toString()}`, {
+    const groupSlug = this._getGroupSlugFromSelector();
+    const communityName = this._getCommunityNameFromSelector();
+    let url = `/explore/events/search?group[]=${groupSlug}&community[]=${communityName}&${params.toString()}`;
+
+    const response = await fetch(url, {
       headers: {
         Accept: "application/json",
       },
