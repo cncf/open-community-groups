@@ -65,17 +65,30 @@
             {% endif -%}
             {# End social network links -#}
 
+            {# New group instructions -#}
+            {% if let Some(new_group_details) = &community.new_group_details -%}
+              {% if !new_group_details.is_empty() -%}
+                <div class="mt-6 lg:mt-8">
+                  <div class="font-bold text-sm uppercase text-stone-400 mb-3">New groups</div>
+                  <div class="font-normal text-base/8 text-stone-600 new-group-content">
+                    {{ new_group_details|md_to_html|safe }}
+                  </div>
+                </div>
+              {% endif -%}
+            {% endif -%}
+            {# End new group instructions -#}
+
             {# Quick links -#}
             {% if let Some(extra_links) = &community.extra_links -%}
               <div class="mt-6 lg:mt-8">
                 <div class="font-bold text-sm uppercase text-stone-400 mb-3">Quick links</div>
-                <div class="flex flex-wrap gap-x-1 gap-y-2 text-sm/6 md:text-base">
+                <div class="flex flex-wrap gap-x-1 gap-y-2 text-base/8">
                   {% for (name, url) in extra_links -%}
                     {% if !loop.first -%}
-                      <span class="text-stone-300">·</span>
+                      <span class="text-stone-300 px-1">·</span>
                     {% endif -%}
                     <a href="{{ url }}"
-                       class="tracking-wider text-sm text-stone-700 hover:text-primary-500 transition-colors"
+                       class="font-normal text-stone-600 hover:text-primary-500 transition-colors"
                        target='{%- if url.starts_with("/") -%}_self{%- else -%}_blank{%- endif -%}'
                        rel="noopener noreferrer">{{ name }}</a>
                   {% endfor -%}

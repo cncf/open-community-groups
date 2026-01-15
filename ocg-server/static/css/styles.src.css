@@ -249,7 +249,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 /* Jumbotron */
-.jumbotron-description a, .new-group-content a {
+.jumbotron-description a, .community-description a, .new-group-content a {
   color: var(--ocg-primary);
   font-weight: 600;
 }
