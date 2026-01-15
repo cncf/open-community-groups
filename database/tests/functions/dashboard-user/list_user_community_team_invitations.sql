@@ -20,9 +20,9 @@ select plan(3);
 -- ============================================================================
 
 -- Communities
-insert into community (community_id, name, display_name, description, logo_url, banner_url) values
-    (:'community1ID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner.png'),
-    (:'community2ID', 'c2', 'C2', 'd', 'https://e/logo.png', 'https://e/banner.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
+    (:'community1ID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png'),
+    (:'community2ID', 'c2', 'C2', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values

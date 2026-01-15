@@ -22,8 +22,8 @@ select plan(9);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)

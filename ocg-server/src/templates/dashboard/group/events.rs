@@ -105,6 +105,9 @@ pub(crate) struct Event {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub timezone: String,
 
+    /// URL to the event banner image optimized for mobile devices.
+    #[garde(custom(image_url_opt))]
+    pub banner_mobile_url: Option<String>,
     /// Banner image URL.
     #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,
@@ -235,6 +238,9 @@ pub(crate) struct PastEventUpdate {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
     pub description: String,
 
+    /// URL to the event banner image optimized for mobile devices.
+    #[garde(custom(image_url_opt))]
+    pub banner_mobile_url: Option<String>,
     /// Banner image URL.
     #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,

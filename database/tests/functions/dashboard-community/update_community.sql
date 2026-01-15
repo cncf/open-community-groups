@@ -19,6 +19,8 @@ select plan(3);
 insert into community (
     community_id,
     active,
+    banner_mobile_url,
+    banner_url,
     community_site_layout_id,
     description,
     display_name,
@@ -26,7 +28,6 @@ insert into community (
     name,
     ad_banner_url,
     ad_banner_link_url,
-    banner_url,
     extra_links,
     facebook_url,
     flickr_url,
@@ -43,6 +44,8 @@ insert into community (
 ) values (
     :'communityID',
     true,
+    'https://original.com/community-banner_mobile.png',
+    'https://original.com/community-banner.png',
     'default',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'Cloud Native Seattle',
@@ -50,7 +53,6 @@ insert into community (
     'cloud-native-seattle',
     'https://original.com/banner.png',
     'https://original.com/banner-link',
-    'https://original.com/community-banner.png',
     '{"docs": "https://docs.original.com"}'::jsonb,
     'https://facebook.com/original',
     'https://flickr.com/original',
@@ -84,6 +86,7 @@ select is(
     (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
+        "banner_mobile_url": "https://original.com/community-banner_mobile.png",
         "banner_url": "https://original.com/community-banner.png",
         "community_site_layout_id": "default",
         "description": "Updated description for Seattle cloud native community",
@@ -103,6 +106,7 @@ select update_community(
         "logo_url": "https://new.com/logo.png",
         "ad_banner_url": "https://new.com/banner.png",
         "ad_banner_link_url": "https://new.com/link",
+        "banner_mobile_url": "https://new.com/community-banner_mobile.png",
         "banner_url": "https://new.com/community-banner.png",
         "extra_links": {"blog": "https://blog.new.com", "forum": "https://forum.new.com"},
         "facebook_url": "https://facebook.com/new",
@@ -126,6 +130,7 @@ select is(
         "active": true,
         "ad_banner_link_url": "https://new.com/link",
         "ad_banner_url": "https://new.com/banner.png",
+        "banner_mobile_url": "https://new.com/community-banner_mobile.png",
         "banner_url": "https://new.com/community-banner.png",
         "community_site_layout_id": "default",
         "description": "Comprehensive cloud native community in Seattle",
@@ -170,7 +175,7 @@ select update_community(
 );
 
 select is(
-    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'banner_url' - 'community_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
+    (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'banner_mobile_url' - 'banner_url' - 'community_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
      from (
         select * from community where community_id = '00000000-0000-0000-0000-000000000001'::uuid
      ) t),

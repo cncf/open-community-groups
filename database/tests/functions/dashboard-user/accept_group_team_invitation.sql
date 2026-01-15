@@ -18,8 +18,8 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
-insert into community (community_id, name, display_name, description, logo_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 insert into group_category (group_category_id, community_id, name)
 values (:'categoryID', :'communityID', 'Tech');
 insert into "group" (group_id, community_id, group_category_id, name, slug)

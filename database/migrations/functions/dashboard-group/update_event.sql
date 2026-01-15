@@ -56,6 +56,7 @@ begin
     if v_is_past_event then
         -- Update only allowed fields for past events
         update event set
+            banner_mobile_url = nullif(p_event->>'banner_mobile_url', ''),
             banner_url = nullif(p_event->>'banner_url', ''),
             description = p_event->>'description',
             description_short = nullif(p_event->>'description_short', ''),
@@ -130,6 +131,7 @@ begin
         event_category_id = (p_event->>'category_id')::uuid,
         event_kind_id = p_event->>'kind_id',
 
+        banner_mobile_url = nullif(p_event->>'banner_mobile_url', ''),
         banner_url = nullif(p_event->>'banner_url', ''),
         capacity = (p_event->>'capacity')::int,
         description_short = nullif(p_event->>'description_short', ''),

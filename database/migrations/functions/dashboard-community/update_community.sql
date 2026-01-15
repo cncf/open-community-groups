@@ -6,6 +6,7 @@ create or replace function update_community(
 begin
     update community
     set
+        banner_mobile_url = coalesce(p_data->>'banner_mobile_url', banner_mobile_url),
         banner_url = coalesce(p_data->>'banner_url', banner_url),
         description = coalesce(p_data->>'description', description),
         display_name = coalesce(p_data->>'display_name', display_name),

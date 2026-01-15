@@ -19,6 +19,7 @@ returns json as $$
         'name', g.name,
         'slug', g.slug,
 
+        'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'city', g.city,
         'country_code', g.country_code,

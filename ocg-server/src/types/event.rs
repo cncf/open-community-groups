@@ -183,6 +183,8 @@ pub struct EventFull {
     /// Timezone for event times.
     pub timezone: Tz,
 
+    /// URL to the event banner image optimized for mobile devices.
+    pub banner_mobile_url: Option<String>,
     /// URL to the event banner image.
     pub banner_url: Option<String>,
     /// Maximum capacity for the event.

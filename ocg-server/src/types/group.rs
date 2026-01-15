@@ -47,6 +47,8 @@ pub struct GroupSummary {
     /// URL-friendly identifier for this group.
     pub slug: String,
 
+    /// URL to the group's banner image optimized for mobile devices.
+    pub banner_mobile_url: Option<String>,
     /// URL to the group's banner image.
     pub banner_url: Option<String>,
     /// City where the group is located.
@@ -133,6 +135,8 @@ pub struct GroupFull {
     /// List of group sponsors.
     pub sponsors: Vec<GroupSponsor>,
 
+    /// URL to the group's banner image optimized for mobile devices.
+    pub banner_mobile_url: Option<String>,
     /// Banner image URL for the group page.
     pub banner_url: Option<String>,
     /// City where the group is based.

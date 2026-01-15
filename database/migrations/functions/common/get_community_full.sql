@@ -3,6 +3,8 @@ create or replace function get_community_full(p_community_id uuid)
 returns json as $$
     select json_strip_nulls(json_build_object(
         'active', active,
+        'banner_mobile_url', banner_mobile_url,
+        'banner_url', banner_url,
         'community_id', community_id,
         'community_site_layout_id', community_site_layout_id,
         'created_at', floor(extract(epoch from created_at)*1000),
@@ -13,7 +15,6 @@ returns json as $$
 
         'ad_banner_link_url', ad_banner_link_url,
         'ad_banner_url', ad_banner_url,
-        'banner_url', banner_url,
         'extra_links', extra_links,
         'facebook_url', facebook_url,
         'flickr_url', flickr_url,

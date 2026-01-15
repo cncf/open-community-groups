@@ -23,6 +23,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values (
     :'communityID',
@@ -30,6 +31,7 @@ insert into community (
     'C1',
     'Community 1',
     'https://e/logo.png',
+    'https://e/banner_mobile.png',
     'https://e/banner.png'
 );
 

@@ -17,8 +17,8 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_url)
-values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'Seattle community for cloud native technologies', 'https://example.com/logo.png', 'https://example.com/banner.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'Seattle community for cloud native technologies', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified, name)

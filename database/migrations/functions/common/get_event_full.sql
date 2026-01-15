@@ -17,6 +17,7 @@ returns json as $$
         'slug', e.slug,
         'timezone', e.timezone,
 
+        'banner_mobile_url', e.banner_mobile_url,
         'banner_url', e.banner_url,
         'capacity', e.capacity,
         'description_short', e.description_short,

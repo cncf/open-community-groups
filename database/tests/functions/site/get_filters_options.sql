@@ -29,10 +29,11 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values
-    (:'community1ID', 'alpha-community', 'Alpha Community', 'First community', 'https://example.com/alpha-logo.png', 'https://example.com/alpha-banner.png'),
-    (:'community2ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community', 'https://example.com/cns-logo.png', 'https://example.com/cns-banner.png');
+    (:'community1ID', 'alpha-community', 'Alpha Community', 'First community', 'https://example.com/alpha-logo.png', 'https://example.com/alpha-banner_mobile.png', 'https://example.com/alpha-banner.png'),
+    (:'community2ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community', 'https://example.com/cns-logo.png', 'https://example.com/cns-banner_mobile.png', 'https://example.com/cns-banner.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id, "order")

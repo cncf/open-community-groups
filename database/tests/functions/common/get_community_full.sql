@@ -21,14 +21,16 @@ select plan(3);
 insert into community (
     community_id,
     active,
+    banner_mobile_url,
+    banner_url,
     community_site_layout_id,
     description,
     display_name,
     logo_url,
     name,
-    ad_banner_url,
+
     ad_banner_link_url,
-    banner_url,
+    ad_banner_url,
     extra_links,
     facebook_url,
     flickr_url,
@@ -45,14 +47,16 @@ insert into community (
 ) values (
     :'community1ID',
     true,
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
     'default',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'Cloud Native Seattle',
     'https://example.com/logo.png',
     'cloud-native-seattle',
-    'https://example.com/banner.png',
+
     'https://example.com/banner-link',
-    'https://example.com/community-banner.png',
+    'https://example.com/ad-banner.png',
     '{"docs": "https://docs.example.com", "blog": "https://blog.example.com"}'::jsonb,
     'https://facebook.com/testcommunity',
     'https://flickr.com/testcommunity',
@@ -75,6 +79,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values (
     :'community2ID',
@@ -82,6 +87,7 @@ insert into community (
     'Cloud Native Portland',
     'A growing community for cloud native technologies in Portland',
     'https://portland.cloudnative.org/logo.png',
+    'https://portland.cloudnative.org/banner_mobile.png',
     'https://portland.cloudnative.org/banner.png'
 );
 
@@ -95,8 +101,9 @@ select is(
     '{
         "active": true,
         "ad_banner_link_url": "https://example.com/banner-link",
-        "ad_banner_url": "https://example.com/banner.png",
-        "banner_url": "https://example.com/community-banner.png",
+        "ad_banner_url": "https://example.com/ad-banner.png",
+        "banner_mobile_url": "https://example.com/banner_mobile.png",
+        "banner_url": "https://example.com/banner.png",
         "community_site_layout_id": "default",
         "description": "A vibrant community for cloud native technologies and practices in Seattle",
         "display_name": "Cloud Native Seattle",
@@ -124,6 +131,7 @@ select is(
     get_community_full(:'community2ID'::uuid)::jsonb - 'community_id' - 'created_at',
     '{
         "active": true,
+        "banner_mobile_url": "https://portland.cloudnative.org/banner_mobile.png",
         "banner_url": "https://portland.cloudnative.org/banner.png",
         "community_site_layout_id": "default",
         "description": "A growing community for cloud native technologies in Portland",

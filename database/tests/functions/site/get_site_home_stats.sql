@@ -37,11 +37,12 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values
-    (:'community1ID', true, 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community', 'https://example.com/logo1.png', 'https://example.com/banner1.png'),
-    (:'community2ID', true, 'cloud-native-portland', 'Cloud Native Portland', 'Another vibrant community', 'https://example.com/logo2.png', 'https://example.com/banner2.png'),
-    (:'community3ID', false, 'inactive-community', 'Inactive Community', 'An inactive community', 'https://example.com/logo3.png', 'https://example.com/banner3.png');
+    (:'community1ID', true, 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community', 'https://example.com/logo1.png', 'https://example.com/banner_mobile1.png', 'https://example.com/banner1.png'),
+    (:'community2ID', true, 'cloud-native-portland', 'Cloud Native Portland', 'Another vibrant community', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png'),
+    (:'community3ID', false, 'inactive-community', 'Inactive Community', 'An inactive community', 'https://example.com/logo3.png', 'https://example.com/banner_mobile3.png', 'https://example.com/banner3.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)

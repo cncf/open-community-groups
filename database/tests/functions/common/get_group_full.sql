@@ -32,6 +32,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values (
     :'communityID',
@@ -39,6 +40,7 @@ insert into community (
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
+    'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
@@ -218,6 +220,7 @@ select is(
         "website_url": "https://seattle.kubernetes.com",
         "youtube_url": "https://youtube.com/@seattlek8s",
         "community": {
+            "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "community_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",

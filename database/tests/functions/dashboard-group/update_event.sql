@@ -34,8 +34,8 @@ select plan(42);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_url)
-values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner.png');
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, name) values

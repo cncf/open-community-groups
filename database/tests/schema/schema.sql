@@ -72,6 +72,8 @@ select columns_are('auth_session', array[
 select columns_are('community', array[
     'community_id',
     'active',
+    'banner_mobile_url',
+    'banner_url',
     'community_site_layout_id',
     'created_at',
     'description',
@@ -81,7 +83,6 @@ select columns_are('community', array[
 
     'ad_banner_link_url',
     'ad_banner_url',
-    'banner_url',
     'extra_links',
     'facebook_url',
     'flickr_url',
@@ -145,6 +146,7 @@ select columns_are('event', array[
     'timezone',
     'tsdoc',
 
+    'banner_mobile_url',
     'banner_url',
     'capacity',
     'deleted_at',
@@ -259,6 +261,7 @@ select columns_are('group', array[
     'slug',
     'tsdoc',
 
+    'banner_mobile_url',
     'banner_url',
     'city',
     'country_code',

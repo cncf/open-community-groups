@@ -13,6 +13,8 @@ use uuid::Uuid;
 pub struct CommunityFull {
     /// Whether the community is active.
     pub active: bool,
+    /// URL to the community banner image optimized for mobile devices.
+    pub banner_mobile_url: String,
     /// URL to the community banner image.
     pub banner_url: String,
     /// Unique identifier for the community.
@@ -67,6 +69,8 @@ pub struct CommunityFull {
 /// Summary of a community used for listing communities.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct CommunitySummary {
+    /// URL to the community banner image optimized for mobile devices.
+    pub banner_mobile_url: String,
     /// URL to the community banner image.
     pub banner_url: String,
     /// Unique identifier for the community.

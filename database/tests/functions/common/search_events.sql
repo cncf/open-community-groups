@@ -36,6 +36,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values
     (
@@ -44,6 +45,7 @@ insert into community (
         'Test Community',
         'A test community',
         'https://example.com/logo.png',
+        'https://example.com/banner_mobile.png',
         'https://example.com/banner.png'
     ),
     (
@@ -52,6 +54,7 @@ insert into community (
         'Other Community',
         'Another test community',
         'https://example.com/logo2.png',
+        'https://example.com/banner_mobile2.png',
         'https://example.com/banner2.png'
     );
 

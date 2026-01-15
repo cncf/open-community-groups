@@ -133,6 +133,7 @@ pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
 /// Sample community summary used across tests.
 pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
     CommunitySummary {
+        banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
         banner_url: "https://example.test/banner.png".to_string(),
         community_id,
         display_name: "Test".to_string(),
@@ -167,6 +168,7 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
 /// Sample community update payload for dashboard community settings tests.
 pub(crate) fn sample_community_update() -> CommunityUpdate {
     CommunityUpdate {
+        banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
         banner_url: "https://example.test/banner.png".to_string(),
         description: "Updated description".to_string(),
         display_name: "Test".to_string(),
@@ -508,6 +510,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         name: "Test Group".to_string(),
         slug: "npq6789".to_string(),
 
+        banner_mobile_url: Some("https://example.test/banner_mobile.png".to_string()),
         banner_url: Some("https://example.test/banner.png".to_string()),
         city: Some("San Francisco".to_string()),
         country_code: Some("US".to_string()),
@@ -671,6 +674,7 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
 /// Sample user communities used in dashboard community tests.
 pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<CommunitySummary> {
     vec![CommunitySummary {
+        banner_mobile_url: "https://example.com/banner_mobile.png".to_string(),
         banner_url: "https://example.com/banner.png".to_string(),
         community_id,
         display_name: "Test Community".to_string(),
@@ -686,6 +690,7 @@ pub(crate) fn sample_user_groups_by_community(
 ) -> Vec<UserGroupsByCommunity> {
     vec![UserGroupsByCommunity {
         community: CommunitySummary {
+            banner_mobile_url: "https://example.com/banner_mobile.png".to_string(),
             banner_url: "https://example.com/banner.png".to_string(),
             community_id,
             display_name: "Test Community".to_string(),

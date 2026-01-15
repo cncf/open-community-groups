@@ -31,6 +31,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values (
     :'community1ID',
@@ -38,6 +39,7 @@ insert into community (
     'Cloud Native Seattle',
     'Seattle community for cloud native technologies',
     'https://example.com/logo.png',
+    'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
@@ -48,6 +50,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values (
     :'community2ID',
@@ -55,6 +58,7 @@ insert into community (
     'Cloud Native Portland',
     'Portland community for cloud native technologies',
     'https://example.com/logo2.png',
+    'https://example.com/banner_mobile2.png',
     'https://example.com/banner2.png'
 );
 

@@ -26,6 +26,7 @@ insert into community (
     display_name,
     description,
     logo_url,
+    banner_mobile_url,
     banner_url
 ) values (
     :'communityID',
@@ -33,6 +34,7 @@ insert into community (
     'Cloud Native London',
     'Community for cloud native technologies in London',
     'https://example.com/logo.png',
+    'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
