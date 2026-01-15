@@ -102,7 +102,7 @@
     {# End alert -#}
 
     <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
-      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-40% to-stone-900/12 to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
+      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-40% to-stone-900/12 to-98% md:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {# Header -#}
         {% if !path.starts_with("/dashboard") -%}
           <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
