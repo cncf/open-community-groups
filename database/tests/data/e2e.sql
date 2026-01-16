@@ -9,25 +9,36 @@ delete from "group" where group_id = '44444444-4444-4444-4444-444444444444';
 delete from event_category where event_category_id = '33333333-3333-3333-3333-333333333333';
 delete from group_category where group_category_id = '22222222-2222-2222-2222-222222222222';
 delete from community where community_id = '11111111-1111-1111-1111-111111111111';
+delete from site where site_id = '00000000-0000-0000-0000-000000000000';
+
+insert into site (
+    site_id,
+    title,
+    description,
+    theme
+) values (
+    '00000000-0000-0000-0000-000000000000',
+    'E2E Test Site',
+    'Site for E2E testing',
+    '{"primary_color": "#0EA5E9"}'::jsonb
+);
 
 insert into community (
     community_id,
     name,
     display_name,
-    host,
-    title,
     description,
-    header_logo_url,
-    theme
+    banner_url,
+    banner_mobile_url,
+    logo_url
 ) values (
     '11111111-1111-1111-1111-111111111111',
     'e2e-test-community',
     'E2E Test Community',
-    'test-community.localhost',
-    'E2E Test Community',
     'E2E test community description',
-    'https://example.com/logo.png',
-    '{"primary_color": "#0EA5E9"}'::jsonb
+    'https://example.com/banner.png',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/logo.png'
 );
 
 insert into group_category (group_category_id, name, community_id)
