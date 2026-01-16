@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  TEST_COMMUNITY_HOST,
-  buildE2eUrl,
-  navigateToPath,
-  setHostHeader,
-} from "../utils";
+import { buildE2eUrl, navigateToPath } from "../utils";
 
 const githubEnabled = process.env.OCG_E2E_GITHUB_ENABLED !== "false";
 const githubAuthUrl =
@@ -14,10 +9,6 @@ const linuxfoundationEnabled =
   process.env.OCG_E2E_LINUXFOUNDATION_ENABLED === "true";
 
 test.describe("oauth providers", () => {
-  test.beforeEach(async ({ page }) => {
-    await setHostHeader(page, TEST_COMMUNITY_HOST);
-  });
-
   test("github login redirects to authorization url", async ({ page, request }) => {
     if (!githubEnabled) {
       test.skip(true, "GitHub login not enabled");
