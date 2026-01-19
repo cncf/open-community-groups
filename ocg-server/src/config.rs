@@ -184,6 +184,8 @@ pub(crate) struct HttpServerConfig {
 
     /// Optional cookie configuration.
     pub cookie: Option<CookieConfig>,
+    /// Optional list of hostnames that should redirect to `base_url`.
+    pub redirect_hosts: Option<Vec<String>>,
 }
 
 /// Cookie settings configuration.

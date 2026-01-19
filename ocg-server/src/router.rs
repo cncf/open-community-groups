@@ -6,13 +6,13 @@
 use anyhow::Result;
 use axum::{
     Router,
-    extract::FromRef,
+    extract::{FromRef, Request, State as AxumState},
     http::{
         HeaderValue, StatusCode, Uri,
-        header::{CACHE_CONTROL, CONTENT_TYPE},
+        header::{CACHE_CONTROL, CONTENT_TYPE, HOST},
     },
-    middleware,
-    response::IntoResponse,
+    middleware::{self, Next},
+    response::{IntoResponse, Redirect},
     routing::{delete, get, post, put},
 };
 use axum_login::login_required;
@@ -195,7 +195,8 @@ pub(crate) async fn setup(
         .layer(SetResponseHeaderLayer::if_not_present(
             CACHE_CONTROL,
             HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-        ));
+        ))
+        .layer(middleware::from_fn_with_state(state.clone(), redirect_old_hosts));
 
     Ok(router.with_state(state))
 }
@@ -415,14 +416,38 @@ pub(crate) fn serde_qs_config() -> serde_qs::Config {
     serde_qs::Config::new(3, false)
 }
 
+/// Middleware that redirects requests from old hosts to the base URL.
+///
+/// If the request's Host header matches any hostname in the configured `redirect_hosts`
+/// list, the request is redirected with a 301 permanent redirect to the base URL.
+async fn redirect_old_hosts(
+    AxumState(server_cfg): AxumState<HttpServerConfig>,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    if let Some(redirect_hosts) = &server_cfg.redirect_hosts
+        && let Some(host) = request.headers().get(HOST).and_then(|h| h.to_str().ok())
+    {
+        // Strip port from host if present
+        let host = host.split(':').next().unwrap_or(host);
+
+        // Redirect if host matches any of the redirect hosts
+        if redirect_hosts.iter().any(|h| h == host) {
+            return Redirect::permanent(&server_cfg.base_url).into_response();
+        }
+    }
+    next.run(request).await.into_response()
+}
+
 // Tests.
 
 #[cfg(test)]
 mod tests {
     use axum::{
-        body::to_bytes,
-        http::{HeaderValue, StatusCode, Uri},
+        body::{Body, to_bytes},
+        http::{HeaderValue, StatusCode, Uri, header::LOCATION},
     };
+    use tower::ServiceExt;
 
     use super::*;
 
@@ -433,6 +458,35 @@ mod tests {
 
         assert_eq!(parts.status, StatusCode::OK);
         assert!(to_bytes(body, usize::MAX).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_redirect_old_hosts_redirects_matching_host() {
+        let server_cfg = HttpServerConfig {
+            base_url: "https://example.com".to_string(),
+            redirect_hosts: Some(vec!["old.example.com".to_string()]),
+            ..Default::default()
+        };
+        let router: Router<()> = Router::new()
+            .route("/", get(|| async { "ok" }))
+            .layer(middleware::from_fn_with_state(
+                server_cfg.clone(),
+                redirect_old_hosts,
+            ))
+            .with_state(server_cfg);
+
+        let request = Request::builder()
+            .uri("/some/path?query=value")
+            .header(HOST, "old.example.com:8080")
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
+        assert_eq!(
+            response.headers().get(LOCATION).unwrap(),
+            &HeaderValue::from_static("https://example.com")
+        );
     }
 
     #[tokio::test]
