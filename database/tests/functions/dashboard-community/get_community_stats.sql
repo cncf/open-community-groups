@@ -99,7 +99,7 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'group1ID', :'communityID', :'category1ID', 'AI Europe', 'ai-europe', '2024-01-15 00:00:00+00', :'region1ID', true, false),
+    (:'group1ID', :'communityID', :'category1ID', 'AI Europe', 'ai-europe', '2024-02-15 00:00:00+00', :'region1ID', true, false),
     (:'group2ID', :'communityID', :'category1ID', 'AI North America', 'ai-north-america', '2024-03-15 00:00:00+00', :'region2ID', true, false),
     (:'group3ID', :'communityID', :'category2ID', 'Cloud Europe', 'cloud-europe', '2024-05-15 00:00:00+00', :'region1ID', true, false),
     (:'group4ID', :'communityID', :'category2ID', 'Cloud North America', 'cloud-north-america', '2024-07-15 00:00:00+00', :'region2ID', true, false),
@@ -174,14 +174,14 @@ select is(
                 ["North America", 2]
             ],
             "running_total": [
-                [1704067200000, 1],
+                [1706745600000, 1],
                 [1709251200000, 2],
                 [1714521600000, 3],
                 [1719792000000, 4]
             ],
             "running_total_by_category": {
                 "AI/ML": [
-                    [1704067200000, 1],
+                    [1706745600000, 1],
                     [1709251200000, 2]
                 ],
                 "Cloud Native": [
@@ -191,7 +191,7 @@ select is(
             },
             "running_total_by_region": {
                 "Europe": [
-                    [1704067200000, 1],
+                    [1706745600000, 1],
                     [1714521600000, 2]
                 ],
                 "North America": [
@@ -200,14 +200,14 @@ select is(
                 ]
             },
             "per_month": [
-                ["2024-01", 1],
+                ["2024-02", 1],
                 ["2024-03", 1],
                 ["2024-05", 1],
                 ["2024-07", 1]
             ],
             "per_month_by_category": {
                 "AI/ML": [
-                    ["2024-01", 1],
+                    ["2024-02", 1],
                     ["2024-03", 1]
                 ],
                 "Cloud Native": [
@@ -217,7 +217,7 @@ select is(
             },
             "per_month_by_region": {
                 "Europe": [
-                    ["2024-01", 1],
+                    ["2024-02", 1],
                     ["2024-05", 1]
                 ],
                 "North America": [

@@ -149,6 +149,9 @@ server:
         - profile
         - email
 
+  # Optional list of hostnames that should redirect to baseUrl
+  redirectHosts: []
+
   # Ingress configuration
   ingress:
     enabled: true
