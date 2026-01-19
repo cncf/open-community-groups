@@ -32,7 +32,7 @@ test.describe("public pages", () => {
   test("community home page loads and displays correctly", async ({ page }) => {
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
-    await expect(page.getByText(TEST_COMMUNITY_TITLE)).toBeVisible();
+    await expect(page.getByText(TEST_COMMUNITY_TITLE).first()).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Explore all groups" })
     ).toBeVisible();
@@ -76,6 +76,6 @@ test.describe("public pages", () => {
       page,
       `/explore?entity=groups&ts_query=${encodeURIComponent(TEST_SEARCH_QUERY)}`
     );
-    await expect(page.getByText(TEST_GROUP_NAME)).toBeVisible();
+    await expect(page.getByText(TEST_GROUP_NAME).first()).toBeVisible();
   });
 });
