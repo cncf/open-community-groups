@@ -216,7 +216,7 @@
 }
 
 .placeholder-logo {
-  mask-image: url(/static/images/placeholder_cncf.png);
+  mask-image: url(/static/images/placeholder_ocg.png);
   mask-mode: alpha;
   mask-size: cover;
 }
