@@ -77,25 +77,6 @@
               {% endif -%}
             {% endif -%}
             {# End new group instructions -#}
-
-            {# Quick links -#}
-            {% if let Some(extra_links) = &community.extra_links -%}
-              <div class="mt-6 lg:mt-8">
-                <div class="font-bold text-sm uppercase text-stone-400 mb-3">Quick links</div>
-                <div class="flex flex-wrap gap-x-1 gap-y-2 text-base/8">
-                  {% for (name, url) in extra_links -%}
-                    {% if !loop.first -%}
-                      <span class="text-stone-300 px-1">·</span>
-                    {% endif -%}
-                    <a href="{{ url }}"
-                       class="font-normal text-stone-600 hover:text-primary-500 transition-colors"
-                       target='{%- if url.starts_with("/") -%}_self{%- else -%}_blank{%- endif -%}'
-                       rel="noopener noreferrer">{{ name }}</a>
-                  {% endfor -%}
-                </div>
-              </div>
-            {% endif -%}
-            {# End quick links -#}
           </div>
         {% endif -%}
         {# End about this community -#}
