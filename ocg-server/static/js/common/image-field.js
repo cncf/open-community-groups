@@ -25,6 +25,7 @@ export class ImageField extends LitWrapper {
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
+   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo").
    */
   static properties = {
     label: { type: String },
@@ -35,6 +36,7 @@ export class ImageField extends LitWrapper {
     imageKind: { type: String, attribute: "image-kind" },
     previewBgClass: { type: String, attribute: "preview-bg-class" },
     helpPrefixText: { type: String, attribute: "help-prefix-text" },
+    target: { type: String },
   };
 
   constructor() {
@@ -50,6 +52,7 @@ export class ImageField extends LitWrapper {
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
     this.previewBgClass = "";
     this.helpPrefixText = "";
+    this.target = "";
   }
 
   get _valueInputId() {
@@ -186,6 +189,10 @@ export class ImageField extends LitWrapper {
     this.requestUpdate();
 
     const formData = new FormData();
+    // Append target first (before file) so it's parsed first in multipart
+    if (this.target) {
+      formData.append("target", this.target);
+    }
     formData.append("file", file, file.name);
 
     try {
