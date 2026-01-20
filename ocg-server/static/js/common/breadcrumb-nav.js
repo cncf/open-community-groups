@@ -208,7 +208,7 @@ export class BreadcrumbNav extends LitWrapper {
     const breadcrumbCount = Math.max(nonHomeItems.length, 1);
 
     return html`
-      <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
+      <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-10 pt-3 sm:pt-8">
         <div class="bg-white border border-stone-200 rounded-lg">
           ${this.bannerMobileUrl
             ? html`
@@ -228,7 +228,7 @@ export class BreadcrumbNav extends LitWrapper {
                 </div>
               `
             : ""}
-          <nav class="px-4 sm:px-6 lg:px-8 py-3" aria-label="Breadcrumb">
+          <nav class="px-4 sm:px-6 lg:px-10 py-3" aria-label="Breadcrumb">
             <!-- Mobile breadcrumb dropdown -->
             <div class="relative sm:hidden">
               <button
