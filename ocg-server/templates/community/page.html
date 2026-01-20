@@ -20,7 +20,7 @@
         {# About this community -#}
         {% let has_social_links = community.twitter_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
         <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
             About this community
           </div>
           {% if !community.description.is_empty() -%}
@@ -102,7 +102,9 @@
         {# Latest groups added -#}
         <div>
           <div class="flex items-center justify-between pb-8 lg:pb-12">
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">
+              Latest groups added
+            </div>
             {# See all groups on desktop -#}
             <div class="hidden justify-self-end md:flex">
               <a href="/explore?entity=groups&sort_by=name&community[0]={{ community.name }}"
@@ -141,7 +143,9 @@
         {% if let Some(photos_urls) = &community.photos_urls -%}
           {% if !photos_urls.is_empty() -%}
             <div>
-              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pb-12">Gallery</div>
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+                Gallery
+              </div>
               <images-gallery title="Gallery" altImage="Community {{ community.display_name }}" images="{{ photos_urls|json }}"></images-gallery>
             </div>
           {% endif -%}
