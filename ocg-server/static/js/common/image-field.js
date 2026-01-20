@@ -25,6 +25,7 @@ export class ImageField extends LitWrapper {
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
+   * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo").
    */
   static properties = {
     label: { type: String },
@@ -35,6 +36,7 @@ export class ImageField extends LitWrapper {
     imageKind: { type: String, attribute: "image-kind" },
     previewBgClass: { type: String, attribute: "preview-bg-class" },
     helpPrefixText: { type: String, attribute: "help-prefix-text" },
+    target: { type: String },
   };
 
   constructor() {
@@ -50,6 +52,7 @@ export class ImageField extends LitWrapper {
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
     this.previewBgClass = "";
     this.helpPrefixText = "";
+    this.target = "";
   }
 
   get _valueInputId() {
@@ -186,6 +189,10 @@ export class ImageField extends LitWrapper {
     this.requestUpdate();
 
     const formData = new FormData();
+    // Append target first (before file) so it's parsed first in multipart
+    if (this.target) {
+      formData.append("target", this.target);
+    }
     formData.append("file", file, file.name);
 
     try {
@@ -211,7 +218,7 @@ export class ImageField extends LitWrapper {
       this._setValue(data.url);
     } catch (error) {
       const ERROR_MESSAGE =
-        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
       showErrorAlert(ERROR_MESSAGE, true);
     } finally {
       this._isUploading = false;
@@ -261,8 +268,8 @@ export class ImageField extends LitWrapper {
     const removeDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
     const helpText = isWide
-      ? "Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
-      : "Images must be at least 380x380 (square). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+      ? "Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
+      : "Images must be 360 x 360 px (square). Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
 
     return html`

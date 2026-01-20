@@ -1,6 +1,6 @@
 //! Handlers for uploading and serving image assets.
 
-use std::{borrow::Cow, str::FromStr};
+use std::{borrow::Cow, io::Cursor, str::FromStr};
 
 use anyhow::{Context, Result, anyhow};
 use axum::{
@@ -13,7 +13,7 @@ use axum::{
     },
     response::IntoResponse,
 };
-use image::ImageFormat;
+use image::{ImageFormat, ImageReader};
 use quick_xml::{Reader, events::Event};
 use serde_json::json;
 use tracing::instrument;
@@ -26,21 +26,11 @@ use crate::{
     util::compute_hash,
 };
 
-/// Maximum payload size allowed for image uploads (2 MiB).
-const MAX_IMAGE_SIZE_BYTES: usize = 2 * 1024 * 1024;
+/// Maximum payload size allowed for image uploads (1 MiB).
+const MAX_IMAGE_SIZE_BYTES: usize = 1024 * 1024;
 
 /// Cache-Control header for long-lived responses.
 const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
-
-/// Supported image formats accepted by the upload endpoint.
-enum SupportedImageFormat {
-    Gif,
-    Jpeg,
-    Png,
-    Svg,
-    Tiff,
-    Webp,
-}
 
 // Handlers
 
@@ -83,24 +73,43 @@ pub(crate) async fn upload(
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate referer header matches configured hostname.
+    // Validate referer header matches configured hostname
     if !referer_matches_site(&server_cfg, &headers)? {
         return Ok((StatusCode::FORBIDDEN).into_response());
     }
 
-    // Extract file name and bytes from multipart payload
-    let Ok(Some(field)) = multipart.next_field().await else {
-        return Ok((StatusCode::BAD_REQUEST).into_response());
+    // Extract optional target, file name and bytes from multipart payload
+    let mut target: Option<ImageTarget> = None;
+    let mut file_name: Option<String> = None;
+    let mut data: Option<bytes::Bytes> = None;
+
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let field_name = field.name().map(str::to_string);
+
+        match field_name.as_deref() {
+            Some("target") => {
+                let target_value = field.text().await.context("error reading target field")?;
+                target = Some(ImageTarget::from_str(&target_value)?);
+            }
+            Some("file") => {
+                file_name = field.file_name().map(str::to_string);
+                data = Some(field.bytes().await.context("error reading uploaded image")?);
+            }
+            _ => {}
+        }
+    }
+
+    // Ensure we have a file
+    let Some(file_name) = file_name else {
+        return Ok((StatusCode::BAD_REQUEST, "missing file in upload payload").into_response());
     };
-    let file_name = field
-        .file_name()
-        .map(str::to_string)
-        .ok_or_else(|| HandlerError::Other(anyhow!("missing file name in upload payload")))?;
-    let data = field.bytes().await.context("error reading uploaded image")?;
+    let Some(data) = data else {
+        return Ok((StatusCode::BAD_REQUEST, "missing file in upload payload").into_response());
+    };
 
     // Enforce maximum file size
     if data.len() > MAX_IMAGE_SIZE_BYTES {
-        return Ok((StatusCode::PAYLOAD_TOO_LARGE, "image exceeds 2MB limit").into_response());
+        return Ok((StatusCode::PAYLOAD_TOO_LARGE, "image exceeds 1MB limit").into_response());
     }
 
     // Detect image format and check extension matches
@@ -112,6 +121,14 @@ pub(crate) async fn upload(
             "file extension does not match detected image format",
         )
             .into_response());
+    }
+
+    // Validate dimensions if target is specified and image is not SVG
+    if let Some(target) = target
+        && !matches!(format, SupportedImageFormat::Svg)
+        && let Err(e) = validate_image_dimensions(data.as_ref(), target)
+    {
+        return Ok((StatusCode::UNPROCESSABLE_ENTITY, e.to_string()).into_response());
     }
 
     // Compute file hash
@@ -318,6 +335,67 @@ fn referer_matches_site(server_cfg: &HttpServerConfig, headers: &HeaderMap) -> R
         .ok_or_else(|| anyhow!("missing host in base_url"))?;
 
     Ok(referer_host.is_some_and(|referer_host| referer_host == site_host))
+}
+
+/// Validates image dimensions match the target requirements.
+fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
+    let (expected_width, expected_height) = target.dimensions();
+    let reader = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .context("failed to detect image format")?;
+    let (width, height) = reader.into_dimensions().context("failed to read dimensions")?;
+
+    if width != expected_width || height != expected_height {
+        return Err(anyhow!(
+            "image dimensions {width}x{height} do not match required {expected_width}x{expected_height}"
+        ));
+    }
+
+    Ok(())
+}
+
+// Types
+
+/// Image target defining expected dimensions.
+#[derive(Clone, Copy)]
+enum ImageTarget {
+    Banner,
+    BannerMobile,
+    Logo,
+}
+
+impl ImageTarget {
+    /// Returns (width, height) for the target.
+    fn dimensions(self) -> (u32, u32) {
+        match self {
+            ImageTarget::Banner => (2428, 192),
+            ImageTarget::BannerMobile => (1220, 192),
+            ImageTarget::Logo => (360, 360),
+        }
+    }
+}
+
+impl FromStr for ImageTarget {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "banner" => Ok(ImageTarget::Banner),
+            "banner_mobile" => Ok(ImageTarget::BannerMobile),
+            "logo" => Ok(ImageTarget::Logo),
+            _ => Err(anyhow!("unknown image target: {s}")),
+        }
+    }
+}
+
+/// Supported image formats accepted by the upload endpoint.
+enum SupportedImageFormat {
+    Gif,
+    Jpeg,
+    Png,
+    Svg,
+    Tiff,
+    Webp,
 }
 
 #[cfg(test)]
@@ -771,6 +849,16 @@ mod tests {
         assert_eq!(
             value.get("url"),
             Some(&Value::String(format!("/images/{expected_file_name}")))
+        );
+    }
+
+    #[test]
+    fn test_validate_image_dimensions_rejects_wrong_dimensions() {
+        // PNG_BYTES is 1x1 pixel, should fail for any target
+        let result = validate_image_dimensions(PNG_BYTES, ImageTarget::Logo);
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "image dimensions 1x1 do not match required 360x360"
         );
     }
 

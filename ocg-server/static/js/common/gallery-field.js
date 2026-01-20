@@ -112,9 +112,9 @@ export class GalleryField extends LitWrapper {
     if (hasLegend) {
       tmp_legend = this.legend;
     } else if (this.maxImages > 0) {
-      tmp_legend = `Upload up to ${this.maxImages} images. Maximum size: 2MB each.`;
+      tmp_legend = `Upload up to ${this.maxImages} images. Maximum size: 1MB each.`;
     } else {
-      tmp_legend = "Upload as many images as you need. Maximum size: 2MB each.";
+      tmp_legend = "Upload as many images as you need. Maximum size: 1MB each.";
     }
 
     return `${tmp_legend} Drag and drop thumbnails to change their order before submitting.`;
@@ -236,7 +236,7 @@ export class GalleryField extends LitWrapper {
       } catch (error) {
         if (!this._uploadErrorShown) {
           const ERROR_MESSAGE =
-            'Something went wrong adding the images. Please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+            'Something went wrong adding the images. Please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
           showErrorAlert(ERROR_MESSAGE, true);
           this._uploadErrorShown = true;
         }
