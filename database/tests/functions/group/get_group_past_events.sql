@@ -57,22 +57,22 @@ insert into event (
     -- Past published event (oldest)
     (:'event1ID', 'Past Event 1', 'past-event-1', 'First past event', 'UTC',
      :'eventCategoryID', 'in-person', :'groupID', true,
-     '2024-01-01 09:00:00+00', '2024-01-01 11:00:00+00',
+     now() - interval '1 year', now() - interval '1 year' + interval '2 hours',
      'https://example.com/past-event-1.png', 'San Francisco'),
     -- Past published event (newer)
     (:'event2ID', 'Past Event 2', 'past-event-2', 'Second past event', 'UTC',
      :'eventCategoryID', 'virtual', :'groupID', true,
-     '2024-01-10 09:00:00+00', '2024-01-10 11:00:00+00',
+     now() - interval '11 months', now() - interval '11 months' + interval '2 hours',
      'https://example.com/past-event-2.png', 'Online'),
     -- Past unpublished event (should not be included)
     (:'event3ID', 'Past Event 3', 'past-event-3', 'Unpublished past event', 'UTC',
      :'eventCategoryID', 'hybrid', :'groupID', false,
-     '2024-01-05 09:00:00+00', '2024-01-05 11:00:00+00',
+     now() - interval '1 year' + interval '5 days', now() - interval '1 year' + interval '5 days' + interval '2 hours',
      null, 'New York'),
     -- Future event (should not be included)
     (:'event4ID', 'Future Event', 'future-event', 'A future event', 'UTC',
      :'eventCategoryID', 'virtual', :'groupID', true,
-     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00',
+     now() + interval '1 year', now() + interval '1 year' + interval '2 hours',
      null, 'Los Angeles');
 
 -- ============================================================================

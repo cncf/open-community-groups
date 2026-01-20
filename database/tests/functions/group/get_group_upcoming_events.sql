@@ -58,22 +58,22 @@ insert into event (
     -- Past event (should not be included)
     (:'event1ID', 'Past Event', 'past-event', 'A past event', 'A past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00',
+     now() - interval '1 year', now() - interval '1 year' + interval '2 hours',
      null, 'San Francisco'),
     -- Future published event (closest)
     (:'event2ID', 'Future Event 1', 'future-event-1', 'First future event', 'First future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00',
+     now() + interval '1 month', now() + interval '1 month' + interval '2 hours',
      'https://example.com/future-event-1.png', 'Online'),
     -- Future published event (later)
     (:'event3ID', 'Future Event 2', 'future-event-2', 'Second future event', 'Second future event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', true,
-     '2026-02-10 09:00:00+00', '2026-02-10 11:00:00+00',
+     now() + interval '2 months', now() + interval '2 months' + interval '2 hours',
      'https://example.com/future-event-2.png', 'Los Angeles'),
     -- Future unpublished event (should not be included)
     (:'event4ID', 'Future Event 3', 'future-event-3', 'Unpublished future event', 'Unpublished future event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
-     '2026-02-20 09:00:00+00', '2026-02-20 11:00:00+00',
+     now() + interval '3 months', now() + interval '3 months' + interval '2 hours',
      null, 'New York');
 
 -- ============================================================================
