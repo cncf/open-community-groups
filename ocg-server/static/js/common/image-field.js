@@ -218,7 +218,7 @@ export class ImageField extends LitWrapper {
       this._setValue(data.url);
     } catch (error) {
       const ERROR_MESSAGE =
-        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 2MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
+        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
       showErrorAlert(ERROR_MESSAGE, true);
     } finally {
       this._isUploading = false;
@@ -268,8 +268,8 @@ export class ImageField extends LitWrapper {
     const removeDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
     const helpText = isWide
-      ? "Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
-      : "Images must be at least 380x380 (square). Maximum size: 2MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+      ? "Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
+      : "Images must be 360 x 360 px (square). Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
 
     return html`

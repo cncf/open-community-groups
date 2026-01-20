@@ -109,7 +109,7 @@ pub(crate) async fn upload(
 
     // Enforce maximum file size
     if data.len() > MAX_IMAGE_SIZE_BYTES {
-        return Ok((StatusCode::PAYLOAD_TOO_LARGE, "image exceeds 2MB limit").into_response());
+        return Ok((StatusCode::PAYLOAD_TOO_LARGE, "image exceeds 1MB limit").into_response());
     }
 
     // Detect image format and check extension matches
