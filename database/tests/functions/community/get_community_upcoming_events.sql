@@ -73,23 +73,25 @@ insert into event (
     -- Past event
     (:'event1ID', 'Past Event', 'past-event', 'A past event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2024-01-01 10:00:00+00', '2024-01-01 12:00:00+00', false, null),
+     now() - interval '1 year', now() - interval '1 year' + interval '2 hours', false, null),
     -- Future event 1 (with logo)
     (:'event2ID', 'Future Event 1', 'future-event-1', 'A future event', 'UTC',
      :'eventCategory1ID', 'virtual', :'group1ID', true,
-     '2026-02-01 09:00:00+00', '2026-02-01 11:00:00+00', false, 'https://example.com/event-logo.png'),
+     now() + interval '1 month', now() + interval '1 month' + interval '2 hours', false,
+     'https://example.com/event-logo.png'),
     -- Future event 2 (unpublished)
     (:'event3ID', 'Future Event 2', 'future-event-2', 'An unpublished event', 'UTC',
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
-     '2026-03-01 09:00:00+00', '2026-03-01 11:00:00+00', false, null),
+     now() + interval '3 months', now() + interval '3 months' + interval '2 hours', false, null),
     -- Future event 3 (canceled - should be filtered out)
     (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
-     '2026-01-15 14:00:00+00', '2026-01-15 16:00:00+00', true, null),
+     now() + interval '2 weeks', now() + interval '2 weeks' + interval '2 hours', true, null),
     -- Future event 4 (no logo - should be filtered out)
     (:'event5ID', 'No Logo Event', 'no-logo-event', 'An event without logo', 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     '2026-02-02 09:00:00+00', '2026-02-02 11:00:00+00', false, null);
+     now() + interval '1 month' + interval '1 day', now() + interval '1 month' + interval '1 day' + interval '2 hours',
+     false, null);
 
 -- ============================================================================
 -- TESTS

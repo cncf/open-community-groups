@@ -53,7 +53,7 @@ insert into event_category (event_category_id, community_id, name, slug) values
     (:'eventCategoryID', :'communityID', 'Conference', 'conference'),
     (:'eventCategory2ID', :'community2ID', 'Conference2', 'conference2');
 
--- Groups
+-- Groups (using relative dates within 2-year window)
 insert into "group" (
     group_id,
     community_id,
@@ -65,11 +65,11 @@ insert into "group" (
     deleted
 ) values
     (:'group1ID', :'communityID', :'groupCategoryID', 'Group One', 'group-one',
-        '2025-09-01 00:00:00+00', true, false),
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months', true, false),
     (:'group2ID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two',
-        '2025-10-01 00:00:00+00', true, false),
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months', true, false),
     (:'group3ID', :'community2ID', :'groupCategory2ID', 'Other Community Group', 'other-group',
-        '2025-11-01 00:00:00+00', true, false);
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', true, false);
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username) values
@@ -78,13 +78,13 @@ insert into "user" (user_id, auth_hash, email, username) values
     (:'user3ID', 'hash-3', 'user3@example.com', 'user3'),
     (:'user4ID', 'hash-4', 'user4@example.com', 'user4');
 
--- Members
+-- Members (month -3 and month -1 relative to current date)
 insert into group_member (group_id, user_id, created_at) values
-    (:'group1ID', :'user1ID', '2025-10-05 00:00:00+00'),
-    (:'group1ID', :'user2ID', '2025-12-10 00:00:00+00'),
-    (:'group2ID', :'user3ID', '2025-12-15 00:00:00+00');
+    (:'group1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '5 days'),
+    (:'group1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '10 days'),
+    (:'group2ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '15 days');
 
--- Events
+-- Events (month -2 and current month)
 insert into event (
     event_id,
     group_id,
@@ -100,18 +100,21 @@ insert into event (
     starts_at
 ) values
     (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event One', 'event-one',
-        'First event', 'UTC', true, false, false, '2025-11-15 00:00:00+00'),
+        'First event', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '15 days'),
     (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two',
-        'Second event', 'UTC', true, false, false, '2026-01-15 00:00:00+00'),
+        'Second event', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'),
     (:'event3ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Other Group Event', 'other-event',
-        'Other group event', 'UTC', true, false, false, '2026-01-20 00:00:00+00');
+        'Other group event', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days');
 
--- Attendees
+-- Attendees (matching event months)
 insert into event_attendee (event_id, user_id, created_at) values
-    (:'event1ID', :'user1ID', '2025-11-01 00:00:00+00'),
-    (:'event1ID', :'user2ID', '2025-11-05 00:00:00+00'),
-    (:'event2ID', :'user1ID', '2026-01-10 00:00:00+00'),
-    (:'event3ID', :'user4ID', '2026-01-20 00:00:00+00');
+    (:'event1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '1 day'),
+    (:'event1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '5 days'),
+    (:'event2ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') + interval '10 days'),
+    (:'event3ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days');
 
 -- ============================================================================
 -- TESTS
@@ -120,43 +123,71 @@ insert into event_attendee (event_id, user_id, created_at) values
 -- Should return complete accurate JSON for seeded group
 select is(
     get_group_stats(:'communityID'::uuid, :'group1ID'::uuid)::jsonb,
-    $$
-    {
-        "members": {
-            "total": 2,
-            "running_total": [
-                [1759276800000, 1],
-                [1764547200000, 2]
-            ],
-            "per_month": [
-                ["2025-10", 1],
-                ["2025-12", 1]
-            ]
-        },
-        "events": {
-            "total": 2,
-            "running_total": [
-                [1761955200000, 1],
-                [1767225600000, 2]
-            ],
-            "per_month": [
-                ["2025-11", 1],
-                ["2026-01", 1]
-            ]
-        },
-        "attendees": {
-            "total": 3,
-            "running_total": [
-                [1761955200000, 2],
-                [1767225600000, 3]
-            ],
-            "per_month": [
-                ["2025-11", 2],
-                ["2026-01", 1]
-            ]
-        }
-    }
-    $$,
+    (
+        with
+        -- Define the months used in test data relative to current_timestamp at UTC
+        months as (
+            select
+                date_trunc('month', current_timestamp at time zone 'UTC') as m0,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' as m1,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' as m2,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' as m3
+        )
+        select jsonb_build_object(
+            'members', jsonb_build_object(
+                'total', 2,
+                'running_total', jsonb_build_array(
+                    jsonb_build_array(
+                        (extract(epoch from m3 at time zone 'UTC') * 1000)::bigint,
+                        1
+                    ),
+                    jsonb_build_array(
+                        (extract(epoch from m1 at time zone 'UTC') * 1000)::bigint,
+                        2
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m3, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m1, 'YYYY-MM'), 1)
+                )
+            ),
+            'events', jsonb_build_object(
+                'total', 2,
+                'running_total', jsonb_build_array(
+                    jsonb_build_array(
+                        (extract(epoch from m2 at time zone 'UTC') * 1000)::bigint,
+                        1
+                    ),
+                    jsonb_build_array(
+                        (extract(epoch from m0 at time zone 'UTC') * 1000)::bigint,
+                        2
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 1)
+                )
+            ),
+            'attendees', jsonb_build_object(
+                'total', 3,
+                'running_total', jsonb_build_array(
+                    jsonb_build_array(
+                        (extract(epoch from m2 at time zone 'UTC') * 1000)::bigint,
+                        2
+                    ),
+                    jsonb_build_array(
+                        (extract(epoch from m0 at time zone 'UTC') * 1000)::bigint,
+                        3
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 2),
+                    jsonb_build_array(to_char(m0, 'YYYY-MM'), 1)
+                )
+            )
+        )
+        from months
+    ),
     'Should return complete accurate JSON for seeded group'
 );
 

@@ -87,7 +87,12 @@ insert into "user" (user_id, auth_hash, email, username) values
     (:'user7ID', 'hash-7', 'user7@example.com', 'user7'),
     (:'user8ID', 'hash-8', 'user8@example.com', 'user8');
 
--- Groups
+-- Groups (using relative dates within 2-year window)
+-- month_10 = date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' (group1, AI/ML, Europe)
+-- month_9  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months'  (group2, AI/ML, North America)
+-- month_7  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months'  (group3, Cloud Native, Europe)
+-- month_5  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months'  (group4, Cloud Native, North America)
+-- month_3  = date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months'  (group5, other community)
 insert into "group" (
     group_id,
     community_id,
@@ -99,24 +104,53 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'group1ID', :'communityID', :'category1ID', 'AI Europe', 'ai-europe', '2024-02-15 00:00:00+00', :'region1ID', true, false),
-    (:'group2ID', :'communityID', :'category1ID', 'AI North America', 'ai-north-america', '2024-03-15 00:00:00+00', :'region2ID', true, false),
-    (:'group3ID', :'communityID', :'category2ID', 'Cloud Europe', 'cloud-europe', '2024-05-15 00:00:00+00', :'region1ID', true, false),
-    (:'group4ID', :'communityID', :'category2ID', 'Cloud North America', 'cloud-north-america', '2024-07-15 00:00:00+00', :'region2ID', true, false),
-    (:'group5ID', :'community2ID', :'category3ID', 'Other Community Group', 'other-group', '2024-09-15 00:00:00+00', :'region3ID', true, false);
+    (:'group1ID', :'communityID', :'category1ID', 'AI Europe', 'ai-europe',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' + interval '15 days',
+        :'region1ID', true, false),
+    (:'group2ID', :'communityID', :'category1ID', 'AI North America', 'ai-north-america',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months' + interval '15 days',
+        :'region2ID', true, false),
+    (:'group3ID', :'communityID', :'category2ID', 'Cloud Europe', 'cloud-europe',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months' + interval '15 days',
+        :'region1ID', true, false),
+    (:'group4ID', :'communityID', :'category2ID', 'Cloud North America', 'cloud-north-america',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '15 days',
+        :'region2ID', true, false),
+    (:'group5ID', :'community2ID', :'category3ID', 'Other Community Group', 'other-group',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '15 days',
+        :'region3ID', true, false);
 
 -- Group members
+-- Members join across different months:
+-- month_11: user1 joins group1 (AI/ML, Europe)
+-- month_10: user2 joins group1 (AI/ML, Europe)
+-- month_9:  user4 joins group2 (AI/ML, North America)
+-- month_8:  user5 joins group2 (AI/ML, North America)
+-- month_7:  user6 joins group3 (Cloud Native, Europe)
+-- month_6:  user3 joins group1 (AI/ML, Europe)
+-- month_5:  user8 joins group4 (Cloud Native, North America)
+-- month_4:  user7 joins group3 (Cloud Native, Europe)
 insert into group_member (group_id, user_id, created_at) values
-    (:'group1ID', :'user1ID', '2024-01-20 00:00:00+00'),
-    (:'group1ID', :'user2ID', '2024-02-10 00:00:00+00'),
-    (:'group1ID', :'user3ID', '2024-06-05 00:00:00+00'),
-    (:'group2ID', :'user4ID', '2024-03-20 00:00:00+00'),
-    (:'group2ID', :'user5ID', '2024-04-10 00:00:00+00'),
-    (:'group3ID', :'user6ID', '2024-05-20 00:00:00+00'),
-    (:'group3ID', :'user7ID', '2024-08-10 00:00:00+00'),
-    (:'group4ID', :'user8ID', '2024-07-20 00:00:00+00');
+    (:'group1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '11 months' + interval '20 days'),
+    (:'group1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' + interval '10 days'),
+    (:'group2ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months' + interval '20 days'),
+    (:'group2ID', :'user5ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months' + interval '10 days'),
+    (:'group3ID', :'user6ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months' + interval '20 days'),
+    (:'group1ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months' + interval '5 days'),
+    (:'group4ID', :'user8ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '20 days'),
+    (:'group3ID', :'user7ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '10 days');
 
 -- Events
+-- Published events across different months:
+-- month_10: event1 (group1/AI/ML/Europe, Conference)
+-- month_8:  event2 (group1/AI/ML/Europe, Meetup)
+-- month_6:  event3 (group2/AI/ML/N.America, Conference)
+-- month_4:  event4 (group3/Cloud/Europe, Meetup)
+-- month_3:  event5 (group3/Cloud/Europe, Conference)
+-- month_2:  event6 (group4/Cloud/N.America, Meetup)
+-- Unpublished/canceled events (should not be counted):
+-- month_1:  event7 (unpublished)
+-- month_0:  event8 (canceled)
 insert into event (
     event_id,
     group_id,
@@ -131,28 +165,42 @@ insert into event (
     deleted,
     starts_at
 ) values
-    (:'event1ID', :'group1ID', :'eventCategory1ID', 'in-person', 'Conference 1', 'conference-1', 'Event 1', 'UTC', true, false, false, '2024-02-15 00:00:00+00'),
-    (:'event2ID', :'group1ID', :'eventCategory2ID', 'in-person', 'Meetup 1', 'meetup-1', 'Event 2', 'UTC', true, false, false, '2024-04-15 00:00:00+00'),
-    (:'event3ID', :'group2ID', :'eventCategory1ID', 'in-person', 'Conference 2', 'conference-2', 'Event 3', 'UTC', true, false, false, '2024-06-15 00:00:00+00'),
-    (:'event4ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Meetup 2', 'meetup-2', 'Event 4', 'UTC', true, false, false, '2024-08-15 00:00:00+00'),
-    (:'event5ID', :'group3ID', :'eventCategory1ID', 'in-person', 'Conference 3', 'conference-3', 'Event 5', 'UTC', true, false, false, '2024-09-15 00:00:00+00'),
-    (:'event6ID', :'group4ID', :'eventCategory2ID', 'in-person', 'Meetup 3', 'meetup-3', 'Event 6', 'UTC', true, false, false, '2024-10-15 00:00:00+00'),
-    (:'event7ID', :'group1ID', :'eventCategory1ID', 'in-person', 'Conference Draft', 'conference-draft', 'Draft Event', 'UTC', false, false, false, '2024-11-15 00:00:00+00'),
-    (:'event8ID', :'group2ID', :'eventCategory2ID', 'in-person', 'Meetup Canceled', 'meetup-canceled', 'Canceled Event', 'UTC', false, true, false, '2024-12-15 00:00:00+00');
+    (:'event1ID', :'group1ID', :'eventCategory1ID', 'in-person', 'Conference 1', 'conference-1', 'Event 1', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' + interval '15 days'),
+    (:'event2ID', :'group1ID', :'eventCategory2ID', 'in-person', 'Meetup 1', 'meetup-1', 'Event 2', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months' + interval '15 days'),
+    (:'event3ID', :'group2ID', :'eventCategory1ID', 'in-person', 'Conference 2', 'conference-2', 'Event 3', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months' + interval '15 days'),
+    (:'event4ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Meetup 2', 'meetup-2', 'Event 4', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '15 days'),
+    (:'event5ID', :'group3ID', :'eventCategory1ID', 'in-person', 'Conference 3', 'conference-3', 'Event 5', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '15 days'),
+    (:'event6ID', :'group4ID', :'eventCategory2ID', 'in-person', 'Meetup 3', 'meetup-3', 'Event 6', 'UTC', true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '15 days'),
+    (:'event7ID', :'group1ID', :'eventCategory1ID', 'in-person', 'Conference Draft', 'conference-draft', 'Draft Event', 'UTC', false, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '15 days'),
+    (:'event8ID', :'group2ID', :'eventCategory2ID', 'in-person', 'Meetup Canceled', 'meetup-canceled', 'Canceled Event', 'UTC', false, true, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days');
 
--- Event attendees
+-- Event attendees (in the same months as the events they attend)
+-- event1 (month_10): 3 attendees
+-- event2 (month_8): 2 attendees
+-- event3 (month_6): 2 attendees
+-- event4 (month_4): 1 attendee
+-- event5 (month_3): 2 attendees
+-- event6 (month_2): 1 attendee
 insert into event_attendee (event_id, user_id, created_at) values
-    (:'event1ID', :'user1ID', '2024-02-01 00:00:00+00'),
-    (:'event1ID', :'user2ID', '2024-02-05 00:00:00+00'),
-    (:'event1ID', :'user3ID', '2024-02-10 00:00:00+00'),
-    (:'event2ID', :'user4ID', '2024-04-01 00:00:00+00'),
-    (:'event2ID', :'user5ID', '2024-04-05 00:00:00+00'),
-    (:'event3ID', :'user6ID', '2024-06-01 00:00:00+00'),
-    (:'event3ID', :'user7ID', '2024-06-05 00:00:00+00'),
-    (:'event4ID', :'user8ID', '2024-08-01 00:00:00+00'),
-    (:'event5ID', :'user1ID', '2024-09-01 00:00:00+00'),
-    (:'event5ID', :'user2ID', '2024-09-05 00:00:00+00'),
-    (:'event6ID', :'user3ID', '2024-10-01 00:00:00+00');
+    (:'event1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' + interval '1 day'),
+    (:'event1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' + interval '5 days'),
+    (:'event1ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' + interval '10 days'),
+    (:'event2ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months' + interval '1 day'),
+    (:'event2ID', :'user5ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months' + interval '5 days'),
+    (:'event3ID', :'user6ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months' + interval '1 day'),
+    (:'event3ID', :'user7ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months' + interval '5 days'),
+    (:'event4ID', :'user8ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '1 day'),
+    (:'event5ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '1 day'),
+    (:'event5ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '5 days'),
+    (:'event6ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '1 day');
 
 -- ============================================================================
 -- TESTS
@@ -161,366 +209,382 @@ insert into event_attendee (event_id, user_id, created_at) values
 -- Should return complete accurate JSON for test community
 select is(
     get_community_stats(:'communityID'::uuid)::jsonb,
-    $$
-    {
-        "groups": {
-            "total": 4,
-            "total_by_category": [
-                ["AI/ML", 2],
-                ["Cloud Native", 2]
-            ],
-            "total_by_region": [
-                ["Europe", 2],
-                ["North America", 2]
-            ],
-            "running_total": [
-                [1706745600000, 1],
-                [1709251200000, 2],
-                [1714521600000, 3],
-                [1719792000000, 4]
-            ],
-            "running_total_by_category": {
-                "AI/ML": [
-                    [1706745600000, 1],
-                    [1709251200000, 2]
-                ],
-                "Cloud Native": [
-                    [1714521600000, 1],
-                    [1719792000000, 2]
-                ]
-            },
-            "running_total_by_region": {
-                "Europe": [
-                    [1706745600000, 1],
-                    [1714521600000, 2]
-                ],
-                "North America": [
-                    [1709251200000, 1],
-                    [1719792000000, 2]
-                ]
-            },
-            "per_month": [
-                ["2024-02", 1],
-                ["2024-03", 1],
-                ["2024-05", 1],
-                ["2024-07", 1]
-            ],
-            "per_month_by_category": {
-                "AI/ML": [
-                    ["2024-02", 1],
-                    ["2024-03", 1]
-                ],
-                "Cloud Native": [
-                    ["2024-05", 1],
-                    ["2024-07", 1]
-                ]
-            },
-            "per_month_by_region": {
-                "Europe": [
-                    ["2024-02", 1],
-                    ["2024-05", 1]
-                ],
-                "North America": [
-                    ["2024-03", 1],
-                    ["2024-07", 1]
-                ]
-            }
-        },
-        "members": {
-            "total": 8,
-            "total_by_category": [
-                ["AI/ML", 5],
-                ["Cloud Native", 3]
-            ],
-            "total_by_region": [
-                ["Europe", 5],
-                ["North America", 3]
-            ],
-            "running_total": [
-                [1704067200000, 1],
-                [1706745600000, 2],
-                [1709251200000, 3],
-                [1711929600000, 4],
-                [1714521600000, 5],
-                [1717200000000, 6],
-                [1719792000000, 7],
-                [1722470400000, 8]
-            ],
-            "running_total_by_category": {
-                "AI/ML": [
-                    [1704067200000, 1],
-                    [1706745600000, 2],
-                    [1709251200000, 3],
-                    [1711929600000, 4],
-                    [1717200000000, 5]
-                ],
-                "Cloud Native": [
-                    [1714521600000, 1],
-                    [1719792000000, 2],
-                    [1722470400000, 3]
-                ]
-            },
-            "running_total_by_region": {
-                "Europe": [
-                    [1704067200000, 1],
-                    [1706745600000, 2],
-                    [1714521600000, 3],
-                    [1717200000000, 4],
-                    [1722470400000, 5]
-                ],
-                "North America": [
-                    [1709251200000, 1],
-                    [1711929600000, 2],
-                    [1719792000000, 3]
-                ]
-            },
-            "per_month": [
-                ["2024-01", 1],
-                ["2024-02", 1],
-                ["2024-03", 1],
-                ["2024-04", 1],
-                ["2024-05", 1],
-                ["2024-06", 1],
-                ["2024-07", 1],
-                ["2024-08", 1]
-            ],
-            "per_month_by_category": {
-                "AI/ML": [
-                    ["2024-01", 1],
-                    ["2024-02", 1],
-                    ["2024-03", 1],
-                    ["2024-04", 1],
-                    ["2024-06", 1]
-                ],
-                "Cloud Native": [
-                    ["2024-05", 1],
-                    ["2024-07", 1],
-                    ["2024-08", 1]
-                ]
-            },
-            "per_month_by_region": {
-                "Europe": [
-                    ["2024-01", 1],
-                    ["2024-02", 1],
-                    ["2024-05", 1],
-                    ["2024-06", 1],
-                    ["2024-08", 1]
-                ],
-                "North America": [
-                    ["2024-03", 1],
-                    ["2024-04", 1],
-                    ["2024-07", 1]
-                ]
-            }
-        },
-        "events": {
-            "total": 6,
-            "total_by_event_category": [
-                ["Conference", 3],
-                ["Meetup", 3]
-            ],
-            "total_by_group_category": [
-                ["AI/ML", 3],
-                ["Cloud Native", 3]
-            ],
-            "total_by_group_region": [
-                ["Europe", 4],
-                ["North America", 2]
-            ],
-            "running_total": [
-                [1706745600000, 1],
-                [1711929600000, 2],
-                [1717200000000, 3],
-                [1722470400000, 4],
-                [1725148800000, 5],
-                [1727740800000, 6]
-            ],
-            "running_total_by_event_category": {
-                "Conference": [
-                    [1706745600000, 1],
-                    [1717200000000, 2],
-                    [1725148800000, 3]
-                ],
-                "Meetup": [
-                    [1711929600000, 1],
-                    [1722470400000, 2],
-                    [1727740800000, 3]
-                ]
-            },
-            "running_total_by_group_category": {
-                "AI/ML": [
-                    [1706745600000, 1],
-                    [1711929600000, 2],
-                    [1717200000000, 3]
-                ],
-                "Cloud Native": [
-                    [1722470400000, 1],
-                    [1725148800000, 2],
-                    [1727740800000, 3]
-                ]
-            },
-            "running_total_by_group_region": {
-                "Europe": [
-                    [1706745600000, 1],
-                    [1711929600000, 2],
-                    [1722470400000, 3],
-                    [1725148800000, 4]
-                ],
-                "North America": [
-                    [1717200000000, 1],
-                    [1727740800000, 2]
-                ]
-            },
-            "per_month": [
-                ["2024-02", 1],
-                ["2024-04", 1],
-                ["2024-06", 1],
-                ["2024-08", 1],
-                ["2024-09", 1],
-                ["2024-10", 1]
-            ],
-            "per_month_by_event_category": {
-                "Conference": [
-                    ["2024-02", 1],
-                    ["2024-06", 1],
-                    ["2024-09", 1]
-                ],
-                "Meetup": [
-                    ["2024-04", 1],
-                    ["2024-08", 1],
-                    ["2024-10", 1]
-                ]
-            },
-            "per_month_by_group_category": {
-                "AI/ML": [
-                    ["2024-02", 1],
-                    ["2024-04", 1],
-                    ["2024-06", 1]
-                ],
-                "Cloud Native": [
-                    ["2024-08", 1],
-                    ["2024-09", 1],
-                    ["2024-10", 1]
-                ]
-            },
-            "per_month_by_group_region": {
-                "Europe": [
-                    ["2024-02", 1],
-                    ["2024-04", 1],
-                    ["2024-08", 1],
-                    ["2024-09", 1]
-                ],
-                "North America": [
-                    ["2024-06", 1],
-                    ["2024-10", 1]
-                ]
-            }
-        },
-        "attendees": {
-            "total": 11,
-            "total_by_event_category": [
-                ["Conference", 7],
-                ["Meetup", 4]
-            ],
-            "total_by_group_category": [
-                ["AI/ML", 7],
-                ["Cloud Native", 4]
-            ],
-            "total_by_group_region": [
-                ["Europe", 8],
-                ["North America", 3]
-            ],
-            "running_total": [
-                [1706745600000, 3],
-                [1711929600000, 5],
-                [1717200000000, 7],
-                [1722470400000, 8],
-                [1725148800000, 10],
-                [1727740800000, 11]
-            ],
-            "running_total_by_event_category": {
-                "Conference": [
-                    [1706745600000, 3],
-                    [1717200000000, 5],
-                    [1725148800000, 7]
-                ],
-                "Meetup": [
-                    [1711929600000, 2],
-                    [1722470400000, 3],
-                    [1727740800000, 4]
-                ]
-            },
-            "running_total_by_group_category": {
-                "AI/ML": [
-                    [1706745600000, 3],
-                    [1711929600000, 5],
-                    [1717200000000, 7]
-                ],
-                "Cloud Native": [
-                    [1722470400000, 1],
-                    [1725148800000, 3],
-                    [1727740800000, 4]
-                ]
-            },
-            "running_total_by_group_region": {
-                "Europe": [
-                    [1706745600000, 3],
-                    [1711929600000, 5],
-                    [1722470400000, 6],
-                    [1725148800000, 8]
-                ],
-                "North America": [
-                    [1717200000000, 2],
-                    [1727740800000, 3]
-                ]
-            },
-            "per_month": [
-                ["2024-02", 3],
-                ["2024-04", 2],
-                ["2024-06", 2],
-                ["2024-08", 1],
-                ["2024-09", 2],
-                ["2024-10", 1]
-            ],
-            "per_month_by_event_category": {
-                "Conference": [
-                    ["2024-02", 3],
-                    ["2024-06", 2],
-                    ["2024-09", 2]
-                ],
-                "Meetup": [
-                    ["2024-04", 2],
-                    ["2024-08", 1],
-                    ["2024-10", 1]
-                ]
-            },
-            "per_month_by_group_category": {
-                "AI/ML": [
-                    ["2024-02", 3],
-                    ["2024-04", 2],
-                    ["2024-06", 2]
-                ],
-                "Cloud Native": [
-                    ["2024-08", 1],
-                    ["2024-09", 2],
-                    ["2024-10", 1]
-                ]
-            },
-            "per_month_by_group_region": {
-                "Europe": [
-                    ["2024-02", 3],
-                    ["2024-04", 2],
-                    ["2024-08", 1],
-                    ["2024-09", 2]
-                ],
-                "North America": [
-                    ["2024-06", 2],
-                    ["2024-10", 1]
-                ]
-            }
-        }
-    }
-    $$::jsonb,
+    (
+        with
+        -- Define the months used in test data relative to current_timestamp at UTC
+        months as (
+            select
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '11 months' as m11,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '10 months' as m10,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '9 months' as m9,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '8 months' as m8,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '7 months' as m7,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '6 months' as m6,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' as m5,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' as m4,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' as m3,
+                date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' as m2
+        )
+        select jsonb_build_object(
+            'groups', jsonb_build_object(
+                'total', 4,
+                'total_by_category', jsonb_build_array(
+                    jsonb_build_array('AI/ML', 2),
+                    jsonb_build_array('Cloud Native', 2)
+                ),
+                'total_by_region', jsonb_build_array(
+                    jsonb_build_array('Europe', 2),
+                    jsonb_build_array('North America', 2)
+                ),
+                'running_total', jsonb_build_array(
+                    jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                    jsonb_build_array((extract(epoch from m9 at time zone 'UTC') * 1000)::bigint, 2),
+                    jsonb_build_array((extract(epoch from m7 at time zone 'UTC') * 1000)::bigint, 3),
+                    jsonb_build_array((extract(epoch from m5 at time zone 'UTC') * 1000)::bigint, 4)
+                ),
+                'running_total_by_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m9 at time zone 'UTC') * 1000)::bigint, 2)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m7 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m5 at time zone 'UTC') * 1000)::bigint, 2)
+                    )
+                ),
+                'running_total_by_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m7 at time zone 'UTC') * 1000)::bigint, 2)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m9 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m5 at time zone 'UTC') * 1000)::bigint, 2)
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m9, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m7, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m5, 'YYYY-MM'), 1)
+                ),
+                'per_month_by_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m9, 'YYYY-MM'), 1)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array(to_char(m7, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m5, 'YYYY-MM'), 1)
+                    )
+                ),
+                'per_month_by_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m7, 'YYYY-MM'), 1)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array(to_char(m9, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m5, 'YYYY-MM'), 1)
+                    )
+                )
+            ),
+            'members', jsonb_build_object(
+                'total', 8,
+                'total_by_category', jsonb_build_array(
+                    jsonb_build_array('AI/ML', 5),
+                    jsonb_build_array('Cloud Native', 3)
+                ),
+                'total_by_region', jsonb_build_array(
+                    jsonb_build_array('Europe', 5),
+                    jsonb_build_array('North America', 3)
+                ),
+                'running_total', jsonb_build_array(
+                    jsonb_build_array((extract(epoch from m11 at time zone 'UTC') * 1000)::bigint, 1),
+                    jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 2),
+                    jsonb_build_array((extract(epoch from m9 at time zone 'UTC') * 1000)::bigint, 3),
+                    jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 4),
+                    jsonb_build_array((extract(epoch from m7 at time zone 'UTC') * 1000)::bigint, 5),
+                    jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 6),
+                    jsonb_build_array((extract(epoch from m5 at time zone 'UTC') * 1000)::bigint, 7),
+                    jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 8)
+                ),
+                'running_total_by_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m11 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m9 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 4),
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 5)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m7 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m5 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 3)
+                    )
+                ),
+                'running_total_by_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m11 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m7 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 4),
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 5)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m9 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m5 at time zone 'UTC') * 1000)::bigint, 3)
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m11, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m9, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m7, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m6, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m5, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m4, 'YYYY-MM'), 1)
+                ),
+                'per_month_by_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array(to_char(m11, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m9, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 1)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array(to_char(m7, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m5, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1)
+                    )
+                ),
+                'per_month_by_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array(to_char(m11, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m7, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array(to_char(m9, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m5, 'YYYY-MM'), 1)
+                    )
+                )
+            ),
+            'events', jsonb_build_object(
+                'total', 6,
+                'total_by_event_category', jsonb_build_array(
+                    jsonb_build_array('Conference', 3),
+                    jsonb_build_array('Meetup', 3)
+                ),
+                'total_by_group_category', jsonb_build_array(
+                    jsonb_build_array('AI/ML', 3),
+                    jsonb_build_array('Cloud Native', 3)
+                ),
+                'total_by_group_region', jsonb_build_array(
+                    jsonb_build_array('Europe', 4),
+                    jsonb_build_array('North America', 2)
+                ),
+                'running_total', jsonb_build_array(
+                    jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                    jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 2),
+                    jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 3),
+                    jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 4),
+                    jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 5),
+                    jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 6)
+                ),
+                'running_total_by_event_category', jsonb_build_object(
+                    'Conference', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 3)
+                    ),
+                    'Meetup', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 3)
+                    )
+                ),
+                'running_total_by_group_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 3)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 3)
+                    )
+                ),
+                'running_total_by_group_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 4)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 2)
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m6, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m3, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                ),
+                'per_month_by_event_category', jsonb_build_object(
+                    'Conference', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 1)
+                    ),
+                    'Meetup', jsonb_build_array(
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                    )
+                ),
+                'per_month_by_group_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 1)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                    )
+                ),
+                'per_month_by_group_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 1)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                    )
+                )
+            ),
+            'attendees', jsonb_build_object(
+                'total', 11,
+                'total_by_event_category', jsonb_build_array(
+                    jsonb_build_array('Conference', 7),
+                    jsonb_build_array('Meetup', 4)
+                ),
+                'total_by_group_category', jsonb_build_array(
+                    jsonb_build_array('AI/ML', 7),
+                    jsonb_build_array('Cloud Native', 4)
+                ),
+                'total_by_group_region', jsonb_build_array(
+                    jsonb_build_array('Europe', 8),
+                    jsonb_build_array('North America', 3)
+                ),
+                'running_total', jsonb_build_array(
+                    jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 3),
+                    jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 5),
+                    jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 7),
+                    jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 8),
+                    jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 10),
+                    jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 11)
+                ),
+                'running_total_by_event_category', jsonb_build_object(
+                    'Conference', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 5),
+                        jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 7)
+                    ),
+                    'Meetup', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 4)
+                    )
+                ),
+                'running_total_by_group_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 5),
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 7)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 1),
+                        jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 4)
+                    )
+                ),
+                'running_total_by_group_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m10 at time zone 'UTC') * 1000)::bigint, 3),
+                        jsonb_build_array((extract(epoch from m8 at time zone 'UTC') * 1000)::bigint, 5),
+                        jsonb_build_array((extract(epoch from m4 at time zone 'UTC') * 1000)::bigint, 6),
+                        jsonb_build_array((extract(epoch from m3 at time zone 'UTC') * 1000)::bigint, 8)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array((extract(epoch from m6 at time zone 'UTC') * 1000)::bigint, 2),
+                        jsonb_build_array((extract(epoch from m2 at time zone 'UTC') * 1000)::bigint, 3)
+                    )
+                ),
+                'per_month', jsonb_build_array(
+                    jsonb_build_array(to_char(m10, 'YYYY-MM'), 3),
+                    jsonb_build_array(to_char(m8, 'YYYY-MM'), 2),
+                    jsonb_build_array(to_char(m6, 'YYYY-MM'), 2),
+                    jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                    jsonb_build_array(to_char(m3, 'YYYY-MM'), 2),
+                    jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                ),
+                'per_month_by_event_category', jsonb_build_object(
+                    'Conference', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 3),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 2),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 2)
+                    ),
+                    'Meetup', jsonb_build_array(
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 2),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                    )
+                ),
+                'per_month_by_group_category', jsonb_build_object(
+                    'AI/ML', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 3),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 2),
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 2)
+                    ),
+                    'Cloud Native', jsonb_build_array(
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 2),
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                    )
+                ),
+                'per_month_by_group_region', jsonb_build_object(
+                    'Europe', jsonb_build_array(
+                        jsonb_build_array(to_char(m10, 'YYYY-MM'), 3),
+                        jsonb_build_array(to_char(m8, 'YYYY-MM'), 2),
+                        jsonb_build_array(to_char(m4, 'YYYY-MM'), 1),
+                        jsonb_build_array(to_char(m3, 'YYYY-MM'), 2)
+                    ),
+                    'North America', jsonb_build_array(
+                        jsonb_build_array(to_char(m6, 'YYYY-MM'), 2),
+                        jsonb_build_array(to_char(m2, 'YYYY-MM'), 1)
+                    )
+                )
+            )
+        )
+        from months
+    ),
     'Should return complete accurate JSON for test community'
 );
 
