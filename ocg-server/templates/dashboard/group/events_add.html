@@ -538,7 +538,7 @@
 
       if (formElement && !formElement.checkValidity()) {
         displayActiveSection(formName);
-        formElement.reportValidity();
+        requestAnimationFrame(() => setTimeout(() => formElement.reportValidity(), 0));
         return false;
       }
     }
@@ -713,6 +713,12 @@
     // Convert datetime-local values to proper ISO format for PostgreSQL
     addEventButton.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'add-event-button') {
+        const isValid = validateEventForms();
+        if (!isValid) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         Object.keys(e.detail.parameters).forEach((key) => {
           const isEventDate = key.match(/^(starts_at|ends_at)$/);
           const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
