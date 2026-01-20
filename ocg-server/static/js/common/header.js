@@ -49,6 +49,32 @@ const ensureDocumentHandlers = () => {
   documentHandlersBound = true;
 };
 
+/**
+ * Determines if a body swap should reset scroll for the group dashboard.
+ * @param {Event} event - HTMX afterSwap event.
+ * @returns {boolean} True when the swap targets the group dashboard body.
+ */
+const shouldResetGroupScroll = (event) => {
+  if (!event || event.target !== document.body) {
+    return false;
+  }
+
+  const path = window.location?.pathname || "";
+  return path.startsWith("/dashboard/");
+};
+
+/**
+ * Scrolls to the top after full-body swaps on the group dashboard.
+ * @param {Event} event - HTMX afterSwap event.
+ */
+const scrollToTopOnGroupSwap = (event) => {
+  if (!shouldResetGroupScroll(event) || typeof window.scrollTo !== "function") {
+    return;
+  }
+
+  window.scrollTo({ top: 0, behavior: "auto" });
+};
+
 // Subscribes to HTMX lifecycle hooks once for history and swap events.
 const bindLifecycleListeners = () => {
   if (lifecycleListenersBound) {
@@ -57,6 +83,7 @@ const bindLifecycleListeners = () => {
 
   document.addEventListener("htmx:historyRestore", initUserDropdown);
   document.addEventListener("htmx:afterSwap", initUserDropdown);
+  document.addEventListener("htmx:afterSwap", scrollToTopOnGroupSwap);
   window.addEventListener("pageshow", () => initUserDropdown());
 
   lifecycleListenersBound = true;
