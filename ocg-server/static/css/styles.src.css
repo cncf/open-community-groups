@@ -289,6 +289,11 @@ input:placeholder-shown {
 .fc-daygrid-event-harness:hover div[data-popover] {
   opacity: 1;
   visibility: visible;
+  transition-delay: 300ms;
+}
+
+.fc-daygrid-event-harness div[data-popover] {
+  transition-delay: 0s;
 }
 
 .fc-daygrid-day-frame {
