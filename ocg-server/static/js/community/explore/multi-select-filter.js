@@ -309,7 +309,7 @@ export class MultiSelectFilter extends LitWrapper {
             <div class="svg-icon size-3 icon-search bg-stone-400 shrink-0"></div>
             <input
               type="text"
-              class="flex-1 text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
+              class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
               placeholder="${this.placeholder}"
               autocomplete="off"
               .value=${this._query}
@@ -324,7 +324,7 @@ export class MultiSelectFilter extends LitWrapper {
                     class="text-stone-400 hover:text-stone-700 shrink-0"
                     @click=${() => this._clearQuery()}
                   >
-                    <div class="svg-icon size-3.5 icon-close bg-current"></div>
+                    <div class="svg-icon size-4 md:size-3.5 icon-close bg-current"></div>
                   </button>
                 `
               : ""}

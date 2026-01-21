@@ -36,6 +36,7 @@ export class Map {
 
     this.entity = entity;
     this.enabledMoveEnd = false;
+    this.tooltipTimers = new WeakMap();
 
     // Load markercluster library after LeafletJS is loaded
     script.onload = () => {
@@ -196,7 +197,7 @@ export class Map {
   }
 
   /**
-   * Adds markers to the map with clustering and popover functionality.
+   * Adds markers to the map with clustering and delayed tooltip functionality.
    * @param {Array} items - Array of items (events or groups) to add as markers
    * @param {object} bbox - Optional bounding box to fit the map view
    */
@@ -251,17 +252,48 @@ export class Map {
       });
 
       if (item.popover_html) {
-        // Add popup to marker
-        marker.bindTooltip(
-          `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`,
-          {
-            direction: "top",
-            permanent: false,
-            sticky: true,
-            offset: [0, 0],
-            opacity: 1,
-          },
-        );
+        const tooltipContent = `<div class="flex flex-1 flex-row items-center min-w-[370px]">${item.popover_html}</div>`;
+        const tooltipOptions = {
+          direction: "top",
+          permanent: false,
+          sticky: true,
+          offset: [0, 0],
+          opacity: 1,
+        };
+
+        /** Starts a 300ms delay before opening the tooltip. */
+        const startTooltipTimer = () => {
+          clearTimeout(this.tooltipTimers.get(marker));
+          const timer = setTimeout(() => {
+            if (!marker.getTooltip()) {
+              marker.bindTooltip(tooltipContent, tooltipOptions);
+            }
+            marker.openTooltip();
+          }, 300);
+          this.tooltipTimers.set(marker, timer);
+        };
+
+        /** Clears the tooltip delay timer. */
+        const stopTooltipTimer = () => {
+          clearTimeout(this.tooltipTimers.get(marker));
+          this.tooltipTimers.delete(marker);
+        };
+
+        marker.on("mouseover", startTooltipTimer);
+        marker.on("mouseout", () => {
+          stopTooltipTimer();
+          if (marker.getTooltip()) {
+            marker.closeTooltip();
+            marker.unbindTooltip();
+          }
+        });
+
+        marker.on("remove", () => {
+          stopTooltipTimer();
+          if (marker.getTooltip()) {
+            marker.unbindTooltip();
+          }
+        });
       }
 
       // Add click handler to navigate to item page

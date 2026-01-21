@@ -6,7 +6,7 @@
   {# Jumbotron -#}
   <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 pb-10 sm:px-6 lg:px-8">
     <section>
-      <div class="relative z-10 max-w-7xl pb-7 lg:pb-14 text-center">
+      <div class="relative z-10 max-w-7xl pb-6 lg:pb-10 text-center">
         {# Site title -#}
         <h1 class="mb-8 text-[1.8rem] font-semibold tracking-tight leading-8 sm:leading-none md:text-2xl lg:text-4xl xl:text-5xl">
           {{ site_settings.title }}
@@ -42,7 +42,7 @@
     <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
       {# Communities list -#}
       <div>
-        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pb-12">
+        <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pt-2 lg:pb-14">
           Communities
         </div>
         {% if communities.len() > 0 -%}
@@ -89,7 +89,9 @@
         {# Latest groups added -#}
         <div>
           <div class="flex items-center justify-between pb-8 lg:pb-12">
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10">Latest groups added</div>
+            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">
+              Latest groups added
+            </div>
             {# See all groups on desktop -#}
             <div class="hidden justify-self-end md:flex">
               <a href="{{ explore_groups }}"

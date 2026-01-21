@@ -15,6 +15,8 @@ export class Calendar {
       return Calendar._instance;
     }
 
+    this.popoverTimers = new WeakMap();
+
     // Display main loading spinner
     // This is used to show a loading spinner while the calendar is being set up
     // and the FullCalendar script is being loaded.
@@ -68,20 +70,64 @@ export class Calendar {
         }
       },
 
-      // Add popover to events when they are mounted
+      // Store alignment data on element for later popover creation
       eventDidMount: (info) => {
-        if (info.event.extendedProps.event.popover_html) {
-          // Calculate alignment based on the position of the event in the calendar
-          const horizontalAlignment = info.el.fcSeg.firstCol > 3 ? "right" : "left";
-          const verticalAlignment = info.el.fcSeg.row > 4 ? "top" : "bottom";
+        const parent = info.el.parentNode;
+        if (!parent) {
+          return;
+        }
 
-          // Add popover with unique ID to the event element
-          const id = `popover-${info.event.extendedProps.event.slug}`;
-          info.el.parentNode.setAttribute("popovertarget", id);
-          info.el.parentNode.insertAdjacentHTML(
-            "beforeend",
-            newEventPopover(id, info.event.extendedProps.event, horizontalAlignment, verticalAlignment),
-          );
+        if (info.event.extendedProps.event.popover_html) {
+          parent.dataset.popoverAlign = JSON.stringify({
+            id: `popover-${info.event.extendedProps.event.slug}`,
+            horizontal: info.el.fcSeg.firstCol > 3 ? "right" : "left",
+            vertical: info.el.fcSeg.row > 4 ? "top" : "bottom",
+          });
+        } else if (parent.dataset.popoverAlign) {
+          const { id } = JSON.parse(parent.dataset.popoverAlign);
+          const existingPopover = document.getElementById(id);
+          if (existingPopover) {
+            existingPopover.remove();
+          }
+          delete parent.dataset.popoverAlign;
+          parent.removeAttribute("popovertarget");
+        }
+      },
+
+      // Start 300ms timer to show popover on mouse enter
+      eventMouseEnter: (info) => {
+        const parent = info.el.parentNode;
+        if (!parent) return;
+        if (!parent.dataset.popoverAlign) return;
+
+        clearTimeout(this.popoverTimers.get(parent));
+        const timer = setTimeout(() => {
+          createPopoverIfNeeded(parent, info.event.extendedProps.event);
+        }, 300);
+        this.popoverTimers.set(parent, timer);
+      },
+
+      // Cancel popover timer on mouse leave
+      eventMouseLeave: (info) => {
+        const parent = info.el.parentNode;
+        if (!parent) return;
+        clearTimeout(this.popoverTimers.get(parent));
+      },
+
+      // Clean up timers when events are unmounted (e.g., month navigation)
+      eventWillUnmount: (info) => {
+        const parent = info.el.parentNode;
+        if (!parent) return;
+        clearTimeout(this.popoverTimers.get(parent));
+        this.popoverTimers.delete(parent);
+        if (parent.dataset.popoverAlign) {
+          const { id } = JSON.parse(parent.dataset.popoverAlign);
+          const existingPopover = document.getElementById(id);
+          if (existingPopover) {
+            existingPopover.remove();
+          }
+          delete parent.dataset.popoverAlign;
+          parent.removeAttribute("popovertarget");
         }
       },
     });
@@ -325,4 +371,23 @@ function newEventPopover(id, event, horizontalAlignment, verticalAlignment) {
   `;
 
   return popover;
+}
+
+/**
+ * Creates the popover DOM if it doesn't already exist.
+ * @param {HTMLElement} parent - The parent element to attach the popover to
+ * @param {object} event - The event object containing popover_html
+ */
+function createPopoverIfNeeded(parent, event) {
+  const alignData = parent.dataset.popoverAlign;
+  if (!alignData) return;
+
+  const { id, horizontal, vertical } = JSON.parse(alignData);
+
+  // Check if popover already exists
+  if (document.getElementById(id)) return;
+
+  // Set popovertarget and create popover
+  parent.setAttribute("popovertarget", id);
+  parent.insertAdjacentHTML("beforeend", newEventPopover(id, event, horizontal, vertical));
 }

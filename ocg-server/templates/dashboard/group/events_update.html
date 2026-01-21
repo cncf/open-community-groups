@@ -657,7 +657,7 @@
 
       if (formElement && !formElement.checkValidity()) {
         displayActiveSection(formName);
-        formElement.reportValidity();
+        requestAnimationFrame(() => setTimeout(() => formElement.reportValidity(), 0));
         return false;
       }
     }
@@ -833,6 +833,12 @@
     // Preserve slug from form; only generate if missing
     updateEventButton.addEventListener('htmx:configRequest', (e) => {
       if (e.detail.elt.id === 'update-event-button') {
+        const isValid = validateEventForms();
+        if (!isValid) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
 
         // Convert datetime-local values to proper ISO format for PostgreSQL
         Object.keys(e.detail.parameters).forEach((key) => {

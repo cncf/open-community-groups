@@ -63,6 +63,8 @@
             src="/static/vendor/js/sweetalert2.v11.23.0.min.js"></script>
     <script src="/static/vendor/js/easymde.v2.20.0.min.js"></script>
     <script type="module" src="/static/js/common/form-validation.js"></script>
+    <script type="module" src="/static/js/event/attendance.js"></script>
+    <script type="module" src="/static/js/group/membership.js"></script>
     {# End scripts -#}
 
     <script type="text/javascript">
@@ -102,7 +104,7 @@
     {# End alert -#}
 
     <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
-      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-40% to-stone-900/12 to-98% md:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
+      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-60% lg:from-40% to-stone-900/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {# Header -#}
         {% if !path.starts_with("/dashboard") -%}
           <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>

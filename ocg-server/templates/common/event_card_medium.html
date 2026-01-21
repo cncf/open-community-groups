@@ -12,14 +12,14 @@
       {# Event logo - Desktop -#}
       <div class="hidden md:block shrink-0 group-hover:opacity-75 transition-opacity relative">
         {{ ui::logo(logo_url = event.logo_url, classes = "h-[180px] w-[180px] min-w-[180px]", size = 180, color = event.group_color, name = Some(event.group_name) ) -}}
-        {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[70px] right-[52px]") ) -}}
+        {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[55px] right-[96px]") ) -}}
       </div>
       {# End event logo - Desktop -#}
 
       {# Event logo - Mobile -#}
       <div class="md:hidden shrink-0 group-hover:opacity-75 transition-opacity relative">
         {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px]", size = 60, color = event.group_color) -}}
-        {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[22px] right-[18px]") ) -}}
+        {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] right-[-8px]") ) -}}
       </div>
       {# End event logo - Mobile -#}
 
