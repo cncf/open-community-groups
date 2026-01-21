@@ -630,7 +630,6 @@ select indexes_are('email_verification_code', array[
 -- Test: event indexes should match expected
 select indexes_are('event', array[
     'event_pkey',
-    'event_legacy_id_key',
     'event_slug_group_id_key',
     'event_event_category_id_idx',
     'event_event_kind_id_idx',
@@ -675,7 +674,6 @@ select indexes_are('event_kind', array[
 -- Test: group indexes should match expected
 select indexes_are('group', array[
     'group_pkey',
-    'group_legacy_id_key',
     'group_slug_community_id_key',
     'group_community_id_idx',
     'group_group_category_id_idx',
@@ -838,7 +836,6 @@ select indexes_are('user', array[
     'user_pkey',
     'user_email_key',
     'user_email_lower_idx',
-    'user_legacy_id_key',
     'user_name_lower_idx',
     'user_username_key',
     'user_username_lower_idx'
