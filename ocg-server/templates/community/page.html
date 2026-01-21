@@ -20,11 +20,11 @@
         {# About this community -#}
         {% let has_social_links = community.twitter_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
         <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-10">
             About this community
           </div>
           {% if !community.description.is_empty() -%}
-            <div class="font-normal text-base/8 text-stone-600 jumbotron-description -mt-1.5">
+            <div class="font-normal text-base/8 text-stone-600 jumbotron-description">
               {{ community.description|md_to_html|safe }}
             </div>
           {% endif -%}
