@@ -532,6 +532,15 @@ input:placeholder-shown {
   font-size: 1.15rem;
 }
 
+.markdown > h1:first-child,
+.markdown > h2:first-child,
+.markdown > h3:first-child,
+.markdown > h4:first-child,
+.markdown > h5:first-child,
+.markdown > h6:first-child {
+  margin-top: 0;
+}
+
 .markdown p:not(:last-child),
 .markdown ul:not(:last-child),
 .markdown ol:not(:last-child),
