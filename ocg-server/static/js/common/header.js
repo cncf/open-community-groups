@@ -123,7 +123,10 @@ export const initUserDropdown = () => {
         if (!link) {
           return;
         }
-        // Ensure selecting any link closes the dropdown immediately.
+        // Close immediately unless the link shows a loading spinner.
+        if (link.querySelector(".hx-spinner")) {
+          return;
+        }
         dropdown.classList.add("hidden");
       },
       true,
