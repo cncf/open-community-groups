@@ -1,6 +1,7 @@
 {# Attend button section -#}
 <div id="attendance-container"
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}
+     {% if let Some(capacity) = &event.capacity %}data-capacity="{{ capacity }}"{% endif %}
      {% if let Some(remaining_capacity) = &event.remaining_capacity %}
        data-remaining-capacity="{{ remaining_capacity }}"
      {% endif %}

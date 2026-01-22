@@ -32,26 +32,28 @@
 
             <div class="flex-1 flex flex-col justify-between">
               <div class="flex-1 flex justify-between">
-                <div class="flex flex-col justify-between">
-                  <div>
-                    {# Region/Category legend -#}
-                    <div>
-                      <span class="text-sm font-semibold tracking-wide uppercase text-stone-400">
-                        {% if let Some(region) = &group.region -%}
-                          {{ region.name }}
-                        {% else -%}
-                          {{ group.category.name }}
-                        {% endif -%}
-                      </span>
-                    </div>
-                    {# End region/category legend -#}
+                <div class="flex flex-col">
+                  {# Region/Category legend -#}
+                  <span class="text-sm font-semibold tracking-wide uppercase text-stone-400 lg:-mt-1 md:mb-0.5">
+                    {% if let Some(region) = &group.region -%}
+                      {{ region.name }}
+                    {% else -%}
+                      {{ group.category.name }}
+                    {% endif -%}
+                  </span>
+                  {# End region/category legend -#}
 
-                    {# Group name -#}
+                  {# Group name: use smaller font size for long titles (>68 chars) -#}
+                  {% if group.name.len() > 68 -%}
+                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
+                      {{ group.name|demoji }}
+                    </h1>
+                  {% else -%}
                     <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ group.name|demoji }}
                     </h1>
-                    {# End group name -#}
-                  </div>
+                  {% endif -%}
+                  {# End group name -#}
                 </div>
 
                 {# Social networks -#}
@@ -63,7 +65,7 @@
                 {# End social networks -#}
               </div>
 
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
+              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
                 {# Members count and founded date -#}
                 <div class="flex items-center gap-4 text-stone-600">
                   <div class="flex items-center">

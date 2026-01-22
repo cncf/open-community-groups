@@ -79,51 +79,52 @@
       {# Events -#}
       <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
         {# Events in-person -#}
-        {{ ui::events_list(title = "upcoming in-person events", link = explore_events, events = upcoming_in_person_events) -}}
+        {% if upcoming_in_person_events.len() > 0 -%}
+          {{ ui::events_list(title = "upcoming in-person events", link = explore_events, events = upcoming_in_person_events) -}}
+        {% endif -%}
         {# End events in-person -#}
 
         {# Events online -#}
-        {{ ui::events_list(title = "upcoming virtual events", link = explore_events, events = upcoming_virtual_events) -}}
+        {% if upcoming_virtual_events.len() > 0 -%}
+          {{ ui::events_list(title = "upcoming virtual events", link = explore_events, events = upcoming_virtual_events) -}}
+        {% endif -%}
         {# End events online -#}
 
         {# Latest groups added -#}
-        <div>
-          <div class="flex items-center justify-between pb-8 lg:pb-12">
-            <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">
-              Latest groups added
-            </div>
-            {# See all groups on desktop -#}
-            <div class="hidden justify-self-end md:flex">
-              <a href="{{ explore_groups }}"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="btn-secondary-anchor ms-4">Explore all groups</a>
-            </div>
-            {# End see all groups on desktop -#}
-          </div>
+        {% if recently_added_groups.len() > 0 -%}
           <div>
-            {# Groups cards -#}
-            {% if recently_added_groups.len() > 0 -%}
+            <div class="flex items-center justify-between pb-8 lg:pb-12">
+              <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">
+                Latest groups added
+              </div>
+              {# See all groups on desktop -#}
+              <div class="hidden justify-self-end md:flex">
+                <a href="{{ explore_groups }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="btn-secondary-anchor ms-4">Explore all groups</a>
+              </div>
+              {# End see all groups on desktop -#}
+            </div>
+            <div>
+              {# Groups cards -#}
               <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
                 {% for group in recently_added_groups -%}
                   {{ group|safe }}
                 {% endfor -%}
               </div>
-            {% else -%}
-              {{ feedback::placeholder(title = "Groups coming soon",
-                            content = "Community organizers are still setting this up, check back soon for new groups.") -}}
-            {% endif -%}
-            {# End groups cards -#}
-            {# See all groups mobile button -#}
-            <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-              <a href="{{ explore_groups }}"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="btn-secondary-anchor">Explore all groups</a>
+              {# End groups cards -#}
+              {# See all groups mobile button -#}
+              <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
+                <a href="{{ explore_groups }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="btn-secondary-anchor">Explore all groups</a>
+              </div>
+              {# End see all groups mobile button -#}
             </div>
-            {# End see all groups mobile button -#}
           </div>
-        </div>
+        {% endif -%}
         {# End latest groups added -#}
       </div>
       {# End events -#}

@@ -1,5 +1,3 @@
-{% import "macros/feedback.html" as feedback -%}
-
 {# Logo -#}
 {% macro logo(logo_url, classes, size, border = true) -%}
   {% let bg_image = logo_url.replace("c_fill,dpr_2,f_auto,g_center,q_auto:good", &format!("c_scale,w_{}", size * 2) ) -%}
@@ -138,17 +136,11 @@
     </div>
     <div>
       {# Cards list -#}
-      {% if events.len() > 0 -%}
-        <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
-          {% for event in events -%}
-            {{ event|safe }}
-          {% endfor -%}
-        </div>
-      {% else -%}
-        {% let placeholder_title = "No ".to_string() + title -%}
-        {% let placeholder_content = "We don't have any ".to_string() + title + " yet, check back soon for fresh listings." -%}
-        {{ feedback::placeholder(title = placeholder_title, content = placeholder_content) -}}
-      {% endif -%}
+      <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+        {% for event in events -%}
+          {{ event|safe }}
+        {% endfor -%}
+      </div>
       {# End cards list -#}
 
       {# See all events on mobile -#}
