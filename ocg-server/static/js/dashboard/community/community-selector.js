@@ -292,9 +292,9 @@ export class CommunitySelector extends LitWrapper {
         >
           <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
-                              ${selectedCommunity
-                                ? selectedCommunity.display_name || selectedCommunity.name
-                                : "Select a community"}
+              ${selectedCommunity
+                ? selectedCommunity.display_name || selectedCommunity.name
+                : "Select a community"}
             </div>
           </div>
           <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
