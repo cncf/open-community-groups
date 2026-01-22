@@ -266,7 +266,6 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
     Router::new()
         .route("/", get(dashboard::group::home::page))
         .route("/analytics", get(dashboard::group::analytics::page))
-        .route("/attendees", get(dashboard::group::attendees::list_page))
         .route(
             "/check-in/{event_id}/qr-code",
             get(dashboard::group::attendees::generate_check_in_qr_code),
@@ -275,6 +274,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
         .route(
             "/events/add",
             get(dashboard::group::events::add_page).post(dashboard::group::events::add),
+        )
+        .route(
+            "/events/{event_id}/attendees",
+            get(dashboard::group::attendees::list_page),
         )
         .route("/events/{event_id}/cancel", put(dashboard::group::events::cancel))
         .route(

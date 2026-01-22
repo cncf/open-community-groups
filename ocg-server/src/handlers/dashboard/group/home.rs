@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Query, RawQuery, State},
+    extract::{Query, State},
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -22,7 +22,7 @@ use crate::{
         PageId,
         auth::User,
         dashboard::group::{
-            analytics, attendees, events,
+            analytics, events,
             home::{Content, Page, Tab},
             members, settings, sponsors, team,
         },
@@ -33,7 +33,6 @@ use crate::{
 ///
 /// This handler manages the main group dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
-#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
     auth_session: AuthSession,
@@ -41,9 +40,7 @@ pub(crate) async fn page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(serde_qs_de): State<serde_qs::Config>,
     Query(query): Query<HashMap<String, String>>,
-    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
@@ -60,22 +57,6 @@ pub(crate) async fn page(
         Tab::Analytics => {
             let stats = db.get_group_stats(community_id, group_id).await?;
             Content::Analytics(Box::new(analytics::Page { stats }))
-        }
-        Tab::Attendees => {
-            let filters: attendees::AttendeesFilters = serde_qs_de
-                .deserialize_str(&raw_query.unwrap_or_default())
-                .map_err(anyhow::Error::new)?;
-            let attendees = db.search_event_attendees(group_id, &filters).await?;
-            let event = if let Some(event_id) = filters.event_id {
-                Some(db.get_event_summary(community_id, group_id, event_id).await?)
-            } else {
-                None
-            };
-            Content::Attendees(Box::new(attendees::ListPage {
-                attendees,
-                group_id,
-                event,
-            }))
         }
         Tab::Events => {
             let events = db.list_group_events(group_id).await?;
@@ -202,84 +183,6 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group?tab=analytics")
-            .header(COOKIE, format!("id={session_id}"))
-            .body(Body::empty())
-            .unwrap();
-        let response = router.oneshot(request).await.unwrap();
-        let (parts, body) = response.into_parts();
-        let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-        // Check response matches expectations
-        assert_eq!(parts.status, StatusCode::OK);
-        assert_eq!(
-            parts.headers.get(CONTENT_TYPE).unwrap(),
-            &HeaderValue::from_static("text/html; charset=utf-8"),
-        );
-        assert_eq!(
-            parts.headers.get(CACHE_CONTROL).unwrap(),
-            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
-        );
-        assert!(!bytes.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_page_attendees_tab_success() {
-        // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
-        let event_id = Uuid::new_v4();
-        let group_id = Uuid::new_v4();
-        let session_id = session::Id::default();
-        let user_id = Uuid::new_v4();
-        let auth_hash = "hash".to_string();
-        let session_record = sample_session_record(
-            session_id,
-            user_id,
-            &auth_hash,
-            Some(community_id),
-            Some(group_id),
-        );
-        let groups = sample_user_groups_by_community(community_id, group_id);
-        let attendees = vec![sample_attendee()];
-        let event_summary = sample_event_summary(event_id, group_id);
-
-        // Setup database mock
-        let mut db = MockDB::new();
-        db.expect_get_session()
-            .times(1)
-            .withf(move |id| *id == session_id)
-            .returning(move |_| Ok(Some(session_record.clone())));
-        db.expect_get_user_by_id()
-            .times(1)
-            .withf(move |id| *id == user_id)
-            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-        db.expect_user_owns_group()
-            .times(1)
-            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
-            .returning(|_, _, _| Ok(true));
-        db.expect_list_user_groups()
-            .times(1)
-            .withf(move |uid| uid == &user_id)
-            .returning(move |_| Ok(groups.clone()));
-        db.expect_search_event_attendees()
-            .times(1)
-            .withf(move |id, filters| *id == group_id && filters.event_id == Some(event_id))
-            .returning(move |_, _| Ok(attendees.clone()));
-        db.expect_get_event_summary()
-            .times(1)
-            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-            .returning(move |_, _, _| Ok(event_summary.clone()));
-        db.expect_get_site_settings()
-            .times(1)
-            .returning(|| Ok(sample_site_settings()));
-
-        // Setup notifications manager mock
-        let nm = MockNotificationsManager::new();
-
-        // Setup router and send request
-        let router = TestRouterBuilder::new(db, nm).build().await;
-        let request = Request::builder()
-            .method("GET")
-            .uri(format!("/dashboard/group?tab=attendees&event_id={event_id}"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

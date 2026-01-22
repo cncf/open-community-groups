@@ -2,7 +2,6 @@
 
 use askama::Template;
 use chrono::{DateTime, Utc};
-use garde::Validate;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -16,11 +15,8 @@ use crate::{templates::helpers::user_initials, types::event::EventSummary};
 pub(crate) struct ListPage {
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
-    /// Identifier of the current group.
-    pub group_id: Uuid,
-
-    /// Event currently selected in the filters.
-    pub event: Option<EventSummary>,
+    /// Event for which attendees are listed.
+    pub event: EventSummary,
 }
 
 // Types.
@@ -50,9 +46,8 @@ pub struct Attendee {
 }
 
 /// Filter parameters for attendees searches.
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct AttendeesFilters {
     /// Selected event to scope attendees list.
-    #[garde(skip)]
-    pub event_id: Option<Uuid>,
+    pub event_id: Uuid,
 }

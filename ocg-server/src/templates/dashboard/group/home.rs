@@ -9,7 +9,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        dashboard::group::{analytics, attendees, events, members, settings, sponsors, team},
+        dashboard::group::{analytics, events, members, settings, sponsors, team},
         filters,
         helpers::user_initials,
     },
@@ -62,8 +62,6 @@ impl Page {
 pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),
-    /// Attendees list page.
-    Attendees(Box<attendees::ListPage>),
     /// Events management page.
     Events(events::ListPage),
     /// Members list page.
@@ -81,12 +79,6 @@ impl Content {
     #[allow(dead_code)]
     fn is_analytics(&self) -> bool {
         matches!(self, Content::Analytics(_))
-    }
-
-    /// Check if the content is the attendees page.
-    #[allow(dead_code)]
-    fn is_attendees(&self) -> bool {
-        matches!(self, Content::Attendees(_))
     }
 
     /// Check if the content is the events page.
@@ -124,7 +116,6 @@ impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Analytics(template) => write!(f, "{}", template.render()?),
-            Content::Attendees(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
@@ -141,8 +132,6 @@ pub(crate) enum Tab {
     /// Analytics tab (default).
     #[default]
     Analytics,
-    /// Attendees list tab.
-    Attendees,
     /// Events management tab.
     Events,
     /// Members list tab.
