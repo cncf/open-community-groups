@@ -434,7 +434,7 @@ impl DBDashboardGroup for PgDB {
         let row = db
             .query_one("select list_user_groups($1::uuid)::text", &[&user_id])
             .await?;
-        let groups = UserGroupsByCommunity::try_from_json_array(&row.get::<_, String>(0))?;
+        let groups = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }

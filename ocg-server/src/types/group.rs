@@ -20,7 +20,18 @@ use crate::{
     types::community::CommunitySummary,
 };
 
-// Group types: summary, detailed, and full.
+// Group types: minimal, summary and full.
+
+/// Minimal group information for dashboard selectors.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GroupMinimal {
+    /// Whether the group is active.
+    pub active: bool,
+    /// Unique identifier for the group.
+    pub group_id: Uuid,
+    /// Display name of the group.
+    pub name: String,
+}
 
 /// Summary group information.
 #[skip_serializing_none]

@@ -497,7 +497,7 @@ class EventSelector extends LitWrapper {
     if (!selector) {
       return "";
     }
-    const groups = selector._groups || [];
+    const groups = selector.groups || [];
     const selectedId = selector.selectedGroupId;
     if (!selectedId) {
       return "";

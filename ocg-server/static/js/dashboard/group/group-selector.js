@@ -9,19 +9,13 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  * the menu. Typing in the search field filters results with a debounce to
  * reduce re-render pressure while the user is typing.
  *
- * @property {Array<object>} groupsByCommunity List of communities with their
- *   groups, each having community.community_id and groups array
- * @property {string} selectedCommunityId Currently selected community identifier
+ * @property {Array<object>} groups List of groups for the selected community
  * @property {string} selectedGroupId Currently selected group identifier
  * @property {number} searchDelay Debounced search delay in milliseconds
  */
 export class GroupSelector extends LitWrapper {
   static properties = {
-    groupsByCommunity: {
-      attribute: "groups-by-community",
-      type: Array,
-    },
-    selectedCommunityId: { type: String, attribute: "selected-community-id" },
+    groups: { type: Array, attribute: "groups" },
     selectedGroupId: { type: String, attribute: "selected-group-id" },
     _isOpen: { state: true },
     _query: { state: true },
@@ -31,8 +25,7 @@ export class GroupSelector extends LitWrapper {
 
   constructor() {
     super();
-    this.groupsByCommunity = [];
-    this.selectedCommunityId = "";
+    this.groups = [];
     this.selectedGroupId = "";
     this._isOpen = false;
     this._query = "";
@@ -53,22 +46,6 @@ export class GroupSelector extends LitWrapper {
     if (this._searchTimeoutId) {
       window.clearTimeout(this._searchTimeoutId);
     }
-  }
-
-  /**
-   * Gets groups for the selected community from groupsByCommunity data.
-   * @returns {Array<object>} Groups for the selected community
-   */
-  get _groups() {
-    if (!this.groupsByCommunity || this.groupsByCommunity.length === 0) {
-      return [];
-    }
-    const targetId = this.selectedCommunityId ? String(this.selectedCommunityId) : "";
-    const communityEntry = this.groupsByCommunity.find((item) => {
-      const communityId = item.community?.community_id ?? item.community_id;
-      return String(communityId) === targetId;
-    });
-    return communityEntry?.groups ?? [];
   }
 
   /**
@@ -93,9 +70,9 @@ export class GroupSelector extends LitWrapper {
   get _filteredGroups() {
     const normalized = (this._query || "").trim().toLowerCase();
     if (!normalized) {
-      return this._groups;
+      return this.groups;
     }
-    return this._groups.filter((group) => {
+    return this.groups.filter((group) => {
       return (group.name || "").toLowerCase().includes(normalized);
     });
   }
@@ -159,7 +136,7 @@ export class GroupSelector extends LitWrapper {
    * Opens the dropdown and resets search.
    */
   _openDropdown() {
-    if (this._groups.length === 0 || this._isSubmitting) {
+    if (this.groups.length === 0 || this._isSubmitting) {
       return;
     }
     this._isOpen = true;
@@ -268,7 +245,7 @@ export class GroupSelector extends LitWrapper {
    * @returns {object|null}
    */
   _findSelectedGroup() {
-    const groups = this._groups;
+    const groups = this.groups;
     if (!groups || groups.length === 0) {
       return null;
     }
@@ -287,101 +264,114 @@ export class GroupSelector extends LitWrapper {
 
   render() {
     const selectedGroup = this._findSelectedGroup();
-    const isDisabled = this._groups.length === 0 || this._isSubmitting;
+    const isDisabled = this.groups.length === 0 || this._isSubmitting;
 
-    return html`
-      <div class="relative">
-        <button
-          id="group-selector-button"
-          type="button"
-          class="select select-primary relative text-left pe-9 ${isDisabled
-            ? "opacity-60 cursor-not-allowed"
-            : "cursor-pointer"}"
-          ?disabled=${isDisabled}
-          aria-haspopup="listbox"
-          aria-expanded=${this._isOpen ? "true" : "false"}
-          @click=${() => this._toggleDropdown()}
-        >
-          <div class="flex flex-col justify-center min-h-10">
-            <div class="text-xs/4 text-stone-900 line-clamp-2">
-              ${selectedGroup ? selectedGroup.name : "Select a group"}
-            </div>
-          </div>
-          <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-            <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
-          </div>
-        </button>
-
-        <div
-          class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-            ._isOpen
-            ? ""
-            : "hidden"}"
-        >
-          <div class="p-3 border-b border-stone-200">
-            <div class="relative">
-              <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
-                <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+    return html`<div>
+        <div class="my-4">
+          <div class="relative">
+            <button
+              id="group-selector-button"
+              type="button"
+              class="select select-primary relative text-left pe-9 ${isDisabled
+                ? "opacity-60 cursor-not-allowed"
+                : "cursor-pointer"}"
+              ?disabled=${isDisabled}
+              aria-haspopup="listbox"
+              aria-expanded=${this._isOpen ? "true" : "false"}
+              @click=${() => this._toggleDropdown()}
+            >
+              <div class="flex flex-col justify-center min-h-10">
+                <div class="text-xs/4 text-stone-900 line-clamp-2">
+                  ${selectedGroup ? selectedGroup.name : "Select a group"}
+                </div>
               </div>
-              <input
-                id="group-search-input"
-                type="search"
-                class="input-primary w-full ps-9"
-                placeholder="Search groups"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                .value=${this._query}
-                @input=${(event) => this._handleSearchInput(event)}
-              />
+              <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+                <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
+              </div>
+            </button>
+
+            <div
+              class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
+                ._isOpen
+                ? ""
+                : "hidden"}"
+            >
+              <div class="p-3 border-b border-stone-200">
+                <div class="relative">
+                  <div class="absolute top-3 start-0 flex items-center ps-3 pointer-events-none">
+                    <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+                  </div>
+                  <input
+                    id="group-search-input"
+                    type="search"
+                    class="input-primary w-full ps-9"
+                    placeholder="Search groups"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    .value=${this._query}
+                    @input=${(event) => this._handleSearchInput(event)}
+                  />
+                </div>
+              </div>
+
+              ${this._filteredGroups.length > 0
+                ? html`
+                    <ul
+                      id="group-selector-list"
+                      class="max-h-48 overflow-y-auto text-stone-700"
+                      role="listbox"
+                    >
+                      ${repeat(
+                        this._filteredGroups,
+                        (group) => group.group_id,
+                        (group, index) => {
+                          const isSelected = this._isSelected(group);
+                          const isActive = this._activeIndex === index;
+                          const isDisabled = isSelected || this._isSubmitting;
+
+                          let statusClass = "";
+                          if (isDisabled) {
+                            statusClass = "opacity-50 cursor-not-allowed bg-stone-100";
+                          } else if (isActive) {
+                            statusClass = "cursor-pointer bg-stone-50";
+                          } else {
+                            statusClass = "cursor-pointer hover:bg-stone-50";
+                          }
+
+                          return html`
+                            <li role="presentation" data-index=${index}>
+                              <button
+                                id="group-option-${group.group_id}"
+                                type="button"
+                                class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                                role="option"
+                                data-group-id=${group.group_id}
+                                ?disabled=${isDisabled}
+                                @click=${(event) => this._handleGroupClick(event, group)}
+                                @mouseover=${() => (this._activeIndex = index)}
+                              >
+                                <div class="text-xs/4 text-stone-900 line-clamp-2">${group.name}</div>
+                              </button>
+                            </li>
+                          `;
+                        },
+                      )}
+                    </ul>
+                  `
+                : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`}
             </div>
           </div>
-
-          ${this._filteredGroups.length > 0
-            ? html`
-                <ul id="group-selector-list" class="max-h-48 overflow-y-auto text-stone-700" role="listbox">
-                  ${repeat(
-                    this._filteredGroups,
-                    (group) => group.group_id,
-                    (group, index) => {
-                      const isSelected = this._isSelected(group);
-                      const isActive = this._activeIndex === index;
-                      const isDisabled = isSelected || this._isSubmitting;
-
-                      let statusClass = "";
-                      if (isDisabled) {
-                        statusClass = "opacity-50 cursor-not-allowed bg-stone-100";
-                      } else if (isActive) {
-                        statusClass = "cursor-pointer bg-stone-50";
-                      } else {
-                        statusClass = "cursor-pointer hover:bg-stone-50";
-                      }
-
-                      return html`
-                        <li role="presentation" data-index=${index}>
-                          <button
-                            id="group-option-${group.group_id}"
-                            type="button"
-                            class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
-                            role="option"
-                            data-group-id=${group.group_id}
-                            ?disabled=${isDisabled}
-                            @click=${(event) => this._handleGroupClick(event, group)}
-                            @mouseover=${() => (this._activeIndex = index)}
-                          >
-                            <div class="text-xs/4 text-stone-900 line-clamp-2">${group.name}</div>
-                          </button>
-                        </li>
-                      `;
-                    },
-                  )}
-                </ul>
-              `
-            : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`}
         </div>
       </div>
-    `;
+      ${selectedGroup && !selectedGroup.active
+        ? html`<div
+            class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2"
+          >
+            This group has been deactivated. Please contact to a community admin.
+          </div>`
+        : ""} `;
   }
 }
 

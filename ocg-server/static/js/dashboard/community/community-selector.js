@@ -59,24 +59,6 @@ export class CommunitySelector extends LitWrapper {
   }
 
   /**
-   * Normalizes communities data to handle both flat and nested structures.
-   * @returns {Array<object>} Normalized communities with community_id, display_name,
-   *   community_name
-   */
-  get _normalizedCommunities() {
-    return this.communities.map((item) => {
-      if (item.community && typeof item.community === "object") {
-        return {
-          community_id: item.community.community_id,
-          display_name: item.community.display_name,
-          community_name: item.community.name,
-        };
-      }
-      return item;
-    });
-  }
-
-  /**
    * Stores the current query and triggers filtering with simple debounce.
    * @param {InputEvent} event Native input event
    */
@@ -99,10 +81,10 @@ export class CommunitySelector extends LitWrapper {
   get _filteredCommunities() {
     const normalized = (this._query || "").trim().toLowerCase();
     if (!normalized) {
-      return this._normalizedCommunities;
+      return this.communities;
     }
-    return this._normalizedCommunities.filter((community) => {
-      const name = (community.display_name || community.community_name || "").toLowerCase();
+    return this.communities.filter((community) => {
+      const name = (community.display_name || community.name || "").toLowerCase();
       return name.includes(normalized);
     });
   }
@@ -159,7 +141,7 @@ export class CommunitySelector extends LitWrapper {
    * Opens the dropdown and resets search.
    */
   _openDropdown() {
-    if (this._normalizedCommunities.length === 0 || this._isSubmitting) {
+    if (this.communities.length === 0 || this._isSubmitting) {
       return;
     }
     this._isOpen = true;
@@ -274,7 +256,7 @@ export class CommunitySelector extends LitWrapper {
    * @returns {object|null}
    */
   _findSelectedCommunity() {
-    const communities = this._normalizedCommunities;
+    const communities = this.communities;
     if (!communities || communities.length === 0) {
       return null;
     }
@@ -311,7 +293,7 @@ export class CommunitySelector extends LitWrapper {
           <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
               ${selectedCommunity
-                ? selectedCommunity.display_name || selectedCommunity.community_name
+                ? selectedCommunity.display_name || selectedCommunity.name
                 : "Select a community"}
             </div>
           </div>
@@ -383,7 +365,7 @@ export class CommunitySelector extends LitWrapper {
                             @mouseover=${() => (this._activeIndex = index)}
                           >
                             <div class="text-xs/4 text-stone-900 line-clamp-2">
-                              ${community.display_name || community.community_name}
+                              ${community.display_name || community.name}
                             </div>
                           </button>
                         </li>
@@ -399,4 +381,6 @@ export class CommunitySelector extends LitWrapper {
   }
 }
 
-customElements.define("community-selector", CommunitySelector);
+if (!customElements.get("community-selector")) {
+  customElements.define("community-selector", CommunitySelector);
+}

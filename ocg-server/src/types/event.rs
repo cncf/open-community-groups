@@ -22,7 +22,7 @@ use crate::{
     types::{community::CommunitySummary, group::GroupSummary},
 };
 
-// Event types: summary, detailed, and full.
+// Event types: summary and full.
 
 /// Summary event information.
 #[skip_serializing_none]
