@@ -42,6 +42,12 @@ pub(crate) struct Page {
 }
 
 impl Page {
+    /// Returns all communities the user has access to.
+    #[allow(dead_code)]
+    fn communities(&self) -> Vec<&CommunitySummary> {
+        self.groups_by_community.iter().map(|c| &c.community).collect()
+    }
+
     /// Returns groups for the currently selected community.
     fn selected_community_groups(&self) -> &[GroupMinimal] {
         self.groups_by_community
