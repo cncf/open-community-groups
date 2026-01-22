@@ -1,5 +1,10 @@
 -- Check-in a user for an event.
-create or replace function check_in_event(p_community_id uuid, p_event_id uuid, p_user_id uuid)
+create or replace function check_in_event(
+    p_community_id uuid,
+    p_event_id uuid,
+    p_user_id uuid,
+    p_bypass_window boolean
+)
 returns void as $$
 declare
     v_starts_at timestamptz;
@@ -18,8 +23,15 @@ begin
     if not found then
         raise exception 'event not found or inactive';
     end if;
-    if v_starts_at is null then
-        raise exception 'event has no start time';
+
+    -- Validate start time and check-in window unless bypassing
+    if not p_bypass_window then
+        if v_starts_at is null then
+            raise exception 'event has no start time';
+        end if;
+        if not is_event_check_in_window_open(p_community_id, p_event_id) then
+            raise exception 'check-in window closed';
+        end if;
     end if;
 
     -- Check if user is registered for the event after validating it exists
@@ -30,11 +42,6 @@ begin
         and ea.user_id = p_user_id
     ) then
         raise exception 'user is not registered for this event';
-    end if;
-
-    -- Check if check-in window is open
-    if not is_event_check_in_window_open(p_community_id, p_event_id) then
-        raise exception 'check-in window closed';
     end if;
 
     -- Update check-in status

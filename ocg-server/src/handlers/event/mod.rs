@@ -165,8 +165,8 @@ pub(crate) async fn check_in(
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.expect("user to be logged in");
 
-    // Check in event
-    db.check_in_event(community_id, event_id, user.user_id).await?;
+    // Check in event (bypass_window = false for user self check-in)
+    db.check_in_event(community_id, event_id, user.user_id, false).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -523,8 +523,10 @@ mod tests {
             .returning(move |_| Ok(Some(community_id)));
         db.expect_check_in_event()
             .times(1)
-            .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
-            .returning(|_, _, _| Ok(()));
+            .withf(move |cid, eid, uid, bypass_window| {
+                *cid == community_id && *eid == event_id && *uid == user_id && !bypass_window
+            })
+            .returning(|_, _, _, _| Ok(()));
 
         // Setup router and send request
         let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
