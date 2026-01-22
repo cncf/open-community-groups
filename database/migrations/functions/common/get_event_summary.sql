@@ -19,6 +19,7 @@ returns json as $$
         'slug', e.slug,
         'timezone', e.timezone,
 
+        'capacity', e.capacity,
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
         'latitude', st_y(e.location::geometry),
