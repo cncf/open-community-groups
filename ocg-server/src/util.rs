@@ -293,6 +293,8 @@ mod tests {
             published: true,
             slug: "test-event".to_string(),
             timezone: Los_Angeles,
+
+            capacity: None,
             description_short: Some("Short description".to_string()),
             ends_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 21, 0, 0).unwrap()),
             latitude: Some(37.78),

@@ -345,6 +345,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         slug: "ghi9abc".to_string(),
         timezone: UTC,
 
+        capacity: None,
         description_short: Some("A brief summary of the sample event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(2)),
         latitude: Some(42.3601),

@@ -56,6 +56,8 @@ pub struct EventSummary {
     /// Timezone in which the event times should be displayed.
     pub timezone: Tz,
 
+    /// Maximum capacity for the event.
+    pub capacity: Option<i32>,
     /// Brief event description for listings.
     pub description_short: Option<String>,
     /// Event end time in UTC.
@@ -333,6 +335,7 @@ impl From<&EventFull> for EventSummary {
             slug: event.slug.clone(),
             timezone: event.timezone,
 
+            capacity: event.capacity,
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
             latitude: event.latitude,
