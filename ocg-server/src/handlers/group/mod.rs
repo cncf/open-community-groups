@@ -187,7 +187,7 @@ mod tests {
         db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
-            .returning(move |_, _| Ok(sample_group_full(group_id)));
+            .returning(move |_, _| Ok(sample_group_full(community_id, group_id)));
         db.expect_get_group_upcoming_events()
             .times(1)
             .withf(move |id, slug, kinds, limit| {
@@ -253,7 +253,7 @@ mod tests {
         db.expect_get_group_full_by_slug()
             .times(1)
             .withf(move |id, slug| *id == community_id && slug == "test-group")
-            .returning(move |_, _| Ok(sample_group_full(group_id)));
+            .returning(move |_, _| Ok(sample_group_full(community_id, group_id)));
         db.expect_get_group_upcoming_events()
             .times(0..=1)
             .withf(move |id, slug, kinds, limit| {

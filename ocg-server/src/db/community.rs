@@ -108,7 +108,7 @@ impl DBCommunity for PgDB {
                 &[&community_id],
             )
             .await?;
-        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let groups: Vec<GroupSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }
@@ -147,7 +147,7 @@ impl DBCommunity for PgDB {
                 &[&community_id, &event_kinds],
             )
             .await?;
-        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

@@ -61,7 +61,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug],
             )
             .await?;
-        let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
+        let group: GroupFull = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(group)
     }
@@ -85,7 +85,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(events)
     }
@@ -109,7 +109,7 @@ impl DBGroup for PgDB {
                 &[&community_id, &group_slug, &event_kind_ids, &limit],
             )
             .await?;
-        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

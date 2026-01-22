@@ -340,7 +340,7 @@ impl DBDashboardGroup for PgDB {
         let row = db
             .query_one("select list_group_events($1::uuid)::text", &[&group_id])
             .await?;
-        let events = GroupEvents::try_from_json(&row.get::<_, String>(0))?;
+        let events: GroupEvents = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

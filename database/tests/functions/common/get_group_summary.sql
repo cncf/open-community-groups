@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -166,6 +166,18 @@ select is(
     }'::jsonb,
     'Should return correct group summary data as JSON'
 );
+
+-- Should use community logo when group has no logo
+update "group" set logo_url = null where group_id = :'groupID';
+select is(
+    (get_group_summary(
+        :'communityID'::uuid,
+        :'groupID'::uuid
+    )::jsonb)->>'logo_url',
+    'https://example.com/logo.png',
+    'Should use community logo when group has no logo'
+);
+update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 
 -- Should return null for non-existent group
 select ok(

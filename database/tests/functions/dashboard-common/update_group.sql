@@ -43,7 +43,7 @@ insert into community (
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
-values 
+values
     (:'category1ID', 'Technology', :'communityID'),
     (:'category2ID', 'Business', :'communityID');
 
@@ -251,7 +251,8 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
-        "slug": "pqr4jkl"
+        "slug": "pqr4jkl",
+        "logo_url": "https://example.com/logo.png"
     }'::jsonb,
     'Should convert empty strings to null for nullable fields'
 );
@@ -286,7 +287,8 @@ select is(
     '{
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",
-        "description": "Updated description"
+        "description": "Updated description",
+        "logo_url": "https://example.com/logo.png"
     }'::jsonb,
     'Should handle explicit null values for array fields (tags, photos_urls)'
 );

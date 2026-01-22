@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -214,6 +214,19 @@ select is(
     'https://example.com/group-logo.png',
     'Should use group logo when event has no logo'
 );
+
+-- Should use community logo when event and group have no logo
+update "group" set logo_url = null where group_id = :'groupID';
+select is(
+    (get_event_summary(
+        :'communityID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid
+    )::jsonb)->>'logo_url',
+    'https://example.com/logo.png',
+    'Should use community logo when event and group have no logo'
+);
+update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 update event set logo_url = 'https://example.com/event-logo.png' where event_id = :'eventID';
 
 -- Should return null for non-existent event ID

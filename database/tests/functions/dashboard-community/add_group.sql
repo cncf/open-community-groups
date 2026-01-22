@@ -68,6 +68,7 @@ select is(
         },
         "description": "A simple test group",
         "description_short": "Brief overview of the test group",
+        "logo_url": "https://example.com/logo.png",
         "organizers": [],
         "sponsors": []
     }'::jsonb,

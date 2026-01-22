@@ -94,7 +94,7 @@ impl DBEvent for PgDB {
                 &[&community_id, &group_slug, &event_slug],
             )
             .await?;
-        let event = EventFull::try_from_json(row.get(0))?;
+        let event: EventFull = serde_json::from_str(row.get(0))?;
 
         Ok(event)
     }
@@ -111,7 +111,7 @@ impl DBEvent for PgDB {
                 &[&community_id, &event_id],
             )
             .await?;
-        let event = EventSummary::try_from_json(row.get(0))?;
+        let event: EventSummary = serde_json::from_str(row.get(0))?;
 
         Ok(event)
     }
