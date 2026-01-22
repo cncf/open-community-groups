@@ -9,13 +9,13 @@
     <div class="flex md:contents">
       {# Group icon - Desktop -#}
       <div class="hidden md:block shrink-0 group-hover:opacity-75 transition-opacity relative">
-        {{ ui::logo(logo_url = group.logo_url, classes = "h-[180px] w-[180px] min-w-[180px]", size = 180, color = group.color, name = Some(group.name) ) -}}
+        {{ ui::logo(logo_url = group.logo_url, classes = "h-[180px] w-[180px] min-w-[180px]", size = 180) -}}
       </div>
       {# End group icon - Desktop -#}
 
       {# Group icon - Mobile -#}
       <div class="md:hidden shrink-0 group-hover:opacity-75 transition-opacity relative">
-        {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px]", size = 60, color = group.color) -}}
+        {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px]", size = 60) -}}
       </div>
       {# End group icon - Mobile -#}
 

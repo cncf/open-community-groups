@@ -23,7 +23,7 @@ returns json as $$
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
         'latitude', st_y(e.location::geometry),
-        'logo_url', coalesce(e.logo_url, g.logo_url),
+        'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
         'longitude', st_x(e.location::geometry),
         'meeting_error', e.meeting_error,
         'meeting_hosts', e.meeting_hosts,
@@ -209,6 +209,7 @@ returns json as $$
     )) as json_data
     from event e
     join "group" g using (group_id)
+    join community c on c.community_id = g.community_id
     join event_category ec using (event_category_id)
     left join meeting m_event on m_event.event_id = e.event_id
     left join (

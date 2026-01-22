@@ -364,7 +364,7 @@ mod tests {
             Some(group_id),
         );
         let groups = sample_user_groups_by_community(community_id, group_id);
-        let group_full = sample_group_full(group_id);
+        let group_full = sample_group_full(community_id, group_id);
         let category = sample_group_category();
         let region = sample_group_region();
 

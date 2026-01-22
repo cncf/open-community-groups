@@ -26,7 +26,7 @@ returns json as $$
         'country_name', g.country_name,
         'description_short', g.description_short,
         'latitude', st_y(g.location::geometry),
-        'logo_url', g.logo_url,
+        'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
         'region', case when r.region_id is not null then
             json_build_object(

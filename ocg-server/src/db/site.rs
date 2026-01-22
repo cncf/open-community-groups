@@ -86,7 +86,7 @@ impl DBSite for PgDB {
         let row = db
             .query_one("select get_site_recently_added_groups()::text", &[])
             .await?;
-        let groups = GroupSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let groups: Vec<GroupSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(groups)
     }
@@ -114,7 +114,7 @@ impl DBSite for PgDB {
                 &[&event_kinds],
             )
             .await?;
-        let events = EventSummary::try_from_json_array(&row.get::<_, String>(0))?;
+        let events: Vec<EventSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(events)
     }

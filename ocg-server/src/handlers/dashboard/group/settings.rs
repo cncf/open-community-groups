@@ -98,7 +98,7 @@ mod tests {
             Some(community_id),
             Some(group_id),
         );
-        let group = sample_group_full(group_id);
+        let group = sample_group_full(community_id, group_id);
         let category = sample_group_category();
         let region = sample_group_region();
 

@@ -2,21 +2,16 @@
 
 use std::collections::HashMap;
 
-use anyhow::Result;
 use askama::Template;
 use chrono::NaiveDateTime;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     services::meetings::MeetingProvider,
-    templates::{
-        filters,
-        helpers::{DATE_FORMAT, color},
-    },
+    templates::{filters, helpers::DATE_FORMAT},
     types::event::{
         EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
     },
@@ -214,20 +209,6 @@ pub(crate) struct GroupEvents {
     pub past: Vec<EventSummary>,
     /// Events happening in the future.
     pub upcoming: Vec<EventSummary>,
-}
-
-impl GroupEvents {
-    /// Try to create group events split into past and upcoming from JSON.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json(data: &str) -> Result<Self> {
-        let mut events: Self = serde_json::from_str(data)?;
-
-        for event in events.past.iter_mut().chain(events.upcoming.iter_mut()) {
-            event.group_color = color(&event.group_name).to_string();
-        }
-
-        Ok(events)
-    }
 }
 
 /// Event update details for past events (limited fields).

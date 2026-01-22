@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -97,35 +97,24 @@ insert into event (
 -- TESTS
 -- ============================================================================
 
--- Should include events with group logo (event has no logo but group does)
+-- Should return published future events
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
-    'Should include events with group logo (event has no logo but group does)'
+    'Should return published future events'
 );
 
--- Should exclude events without any logo (event or group)
-update "group" set logo_url = null where group_id = :'group1ID';
-select is(
-    get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
-    jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
-    ),
-    'Should exclude events without any logo (event or group)'
-);
-update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'group1ID';
-
--- Should return only published future events with logo
+-- Should return only published future events matching event kind filter
 delete from event where event_id = :'event5ID';
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'Should return only published future events with logo'
+    'Should return only published future events'
 );
 
 -- Should return empty array when no events match the filter

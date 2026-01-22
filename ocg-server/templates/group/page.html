@@ -27,7 +27,7 @@
           {# Main flex container for logo, name/region, and social networks -#}
           <div class="flex flex-1 flex-row items-stretch gap-6">
             {# Group logo -#}
-            {{ ui::logo(logo_url = group.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112, color = group.color, name = Some(group.name) ) -}}
+            {{ ui::logo(logo_url = group.logo_url, classes = "hidden md:block size-24 md:size-28", size = 112) -}}
             {# End group logo -#}
 
             <div class="flex-1 flex flex-col justify-between">

@@ -215,12 +215,6 @@
   mask-position: center;
 }
 
-.placeholder-logo {
-  mask-image: url(/static/images/placeholder_ocg.png);
-  mask-mode: alpha;
-  mask-size: cover;
-}
-
 button:enabled {
   cursor: pointer;
 }

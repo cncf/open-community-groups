@@ -1,41 +1,16 @@
 //! Template helper functions and utilities.
 //!
 //! This module provides utility functions used by templates for common tasks like
-//! building location strings, generating consistent colors for entities, and extracting
-//! geolocation data from HTTP headers.
-
-use std::hash::{DefaultHasher, Hash, Hasher};
+//! building location strings and extracting geolocation data from HTTP headers.
 
 // Location related helpers.
 pub(crate) mod location;
-
-/// Predefined color palette for visual entity identification.
-///
-/// These soft pastel colors are used to generate consistent visual identifiers for
-/// entities like groups or events, particularly in placeholder images.
-const COLORS: &[&str] = &["#FDC8B9", "#FBEDC1", "#D1E4C9", "#C4DAEE"];
 
 /// Format for date-time inputs used by templates (YYYY-MM-DDTHH:MM).
 pub(crate) const DATE_FORMAT: &str = "%Y-%m-%dT%H:%M";
 
 /// The date format used in templates (YYYY-MM-DD).
 pub(crate) const DATE_FORMAT_2: &str = "%Y-%m-%d";
-
-/// Returns a consistent color for any hashable value.
-///
-/// Uses a hash function to deterministically map values to colors from the predefined
-/// palette. Ensures the same input always produces the same color, useful for visual
-/// consistency across the application.
-pub(crate) fn color<T: Hash + ?Sized>(value: &T) -> &str {
-    // Calculate the hash of the value
-    let mut hasher = DefaultHasher::new();
-    value.hash(&mut hasher);
-    let hash = hasher.finish();
-
-    // Pick one of the colors based on the hash
-    #[allow(clippy::cast_possible_truncation)]
-    COLORS[(hash % COLORS.len() as u64) as usize]
-}
 
 /// Generates initials from a name and username.
 pub(crate) fn user_initials(name: Option<&str>, username: &str) -> String {
@@ -94,21 +69,6 @@ pub(crate) fn user_initials(name: Option<&str>, username: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_color() {
-        let cases = [
-            ("value2", COLORS[0]),
-            ("value1", COLORS[1]),
-            ("value3", COLORS[2]),
-            ("value5", COLORS[3]),
-        ];
-
-        // Assert that the same input always yields the same color
-        for (value, expected) in cases {
-            assert_eq!(color(&value), expected);
-        }
-    }
 
     #[test]
     fn test_user_initials() {

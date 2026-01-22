@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
@@ -72,22 +72,11 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should exclude groups without logo_url
-select is(
-    get_site_recently_added_groups()::jsonb,
-    jsonb_build_array(
-        get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group2ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group1ID'::uuid)::jsonb
-    ),
-    'Should exclude groups without logo_url'
-);
-
 -- Should return groups ordered by creation date DESC
-delete from "group" where group_id = :'group4ID';
 select is(
     get_site_recently_added_groups()::jsonb,
     jsonb_build_array(
+        get_group_summary(:'communityID'::uuid, :'group4ID'::uuid)::jsonb,
         get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'communityID'::uuid, :'group2ID'::uuid)::jsonb,
         get_group_summary(:'communityID'::uuid, :'group1ID'::uuid)::jsonb

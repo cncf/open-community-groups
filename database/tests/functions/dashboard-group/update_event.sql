@@ -359,6 +359,7 @@ select is(
         "description": "Updated description",
         "hosts": [],
         "kind": "virtual",
+        "logo_url": "https://example.com/logo.png",
         "name": "Updated Event Name",
         "published": false,
         "slug": "def5678",

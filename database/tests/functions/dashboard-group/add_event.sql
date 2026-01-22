@@ -103,6 +103,7 @@ select ok(
         "hosts": [],
         "speakers": [],
         "kind": "in-person",
+        "logo_url": "https://example.com/logo.png",
         "name": "Kubernetes Fundamentals Workshop",
         "published": false,
         "sponsors": [],

@@ -286,7 +286,6 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
     EventFull {
         canceled: false,
         category_name: "Cloud Native".to_string(),
-        color: "#336699".to_string(),
         community: sample_community_summary(community_id),
         created_at: Utc::now(),
         description: "A detailed event description".to_string(),
@@ -294,6 +293,7 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
         group: sample_group_summary(group_id),
         hosts: vec![sample_template_user()],
         kind: EventKind::InPerson,
+        logo_url: "https://example.test/logo.png".to_string(),
         name: "Test Event".to_string(),
         organizers: vec![sample_template_user()],
         published: true,
@@ -306,7 +306,6 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
         description_short: Some("A test event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(1)),
         latitude: Some(37.0),
-        logo_url: Some("https://example.test/logo.png".to_string()),
         longitude: Some(-122.0),
         registration_required: Some(true),
         starts_at: Some(starts_at),
@@ -337,10 +336,10 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         community_name: "test-community".to_string(),
         event_id,
         group_category_name: "Meetup".to_string(),
-        group_color: "#123456".to_string(),
         group_name: "Test Group".to_string(),
         group_slug: "def5678".to_string(),
         kind: EventKind::Virtual,
+        logo_url: "https://example.test/logo.png".to_string(),
         name: "Sample Event".to_string(),
         published: true,
         slug: "ghi9abc".to_string(),
@@ -350,7 +349,6 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         description_short: Some("A brief summary of the sample event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(2)),
         latitude: Some(42.3601),
-        logo_url: Some("https://example.test/logo.png".to_string()),
         longitude: Some(-71.0589),
         meeting_join_url: Some("https://example.test/meeting".to_string()),
         meeting_password: None,
@@ -403,12 +401,14 @@ pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
 }
 
 /// Sample full group record used in group pages.
-pub(crate) fn sample_group_full(group_id: Uuid) -> GroupFull {
+pub(crate) fn sample_group_full(community_id: Uuid, group_id: Uuid) -> GroupFull {
     GroupFull {
         active: true,
         category: sample_group_category(),
+        community: sample_community_summary(community_id),
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         group_id,
+        logo_url: "https://example.test/logo.png".to_string(),
         members_count: 0,
         name: "Test Group".to_string(),
         organizers: Vec::new(),
@@ -418,7 +418,6 @@ pub(crate) fn sample_group_full(group_id: Uuid) -> GroupFull {
         city: Some("Test City".to_string()),
         country_code: Some("US".to_string()),
         country_name: Some("United States".to_string()),
-        logo_url: Some("https://example.test/logo.png".to_string()),
         region: Some(sample_group_region()),
         state: Some("MA".to_string()),
         ..Default::default()
@@ -513,11 +512,11 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
     GroupSummary {
         active: true,
         category: sample_group_category(),
-        color: "#336699".to_string(),
         community_display_name: "Test Community".to_string(),
         community_name: "test-community".to_string(),
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         group_id,
+        logo_url: "https://example.test/logo.png".to_string(),
         name: "Test Group".to_string(),
         slug: "npq6789".to_string(),
 
@@ -528,7 +527,6 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
         country_name: Some("United States".to_string()),
         description_short: Some("An example summary for the sample group".to_string()),
         latitude: Some(37.0),
-        logo_url: Some("https://example.test/logo.png".to_string()),
         longitude: Some(-122.0),
         popover_html: None,
         region: Some(sample_group_region()),

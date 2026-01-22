@@ -2,22 +2,17 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use anyhow::Result;
 use chrono::{DateTime, NaiveDate, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     services::meetings::MeetingProvider,
     templates::{
         common::User,
-        helpers::{
-            color,
-            location::{LocationParts, build_location},
-        },
+        helpers::location::{LocationParts, build_location},
     },
     types::{community::CommunitySummary, group::GroupSummary},
 };
@@ -38,15 +33,14 @@ pub struct EventSummary {
     pub event_id: Uuid,
     /// Category of the hosting group.
     pub group_category_name: String,
-    /// Color associated with the group hosting this event, used for visual styling.
-    #[serde(default)]
-    pub group_color: String,
     /// Name of the group hosting this event.
     pub group_name: String,
     /// URL-friendly identifier for the group hosting this event.
     pub group_slug: String,
     /// Type of event (in-person or virtual).
     pub kind: EventKind,
+    /// URL to the event or group's logo image.
+    pub logo_url: String,
     /// Display name of the event.
     pub name: String,
     /// Whether the event is published.
@@ -65,8 +59,6 @@ pub struct EventSummary {
     pub ends_at: Option<DateTime<Utc>>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
-    /// URL to the event or group's logo image.
-    pub logo_url: Option<String>,
     /// Longitude of the event's location.
     pub longitude: Option<f64>,
     /// URL to join the meeting.
@@ -120,26 +112,6 @@ impl EventSummary {
 
         build_location(&parts, max_len)
     }
-
-    /// Try to create a vector of `EventSummary` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let mut events: Vec<Self> = serde_json::from_str(data)?;
-
-        for event in &mut events {
-            event.group_color = color(&event.group_name).to_string();
-        }
-
-        Ok(events)
-    }
-
-    /// Try to create an `EventSummary` instance from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json(data: &str) -> Result<Self> {
-        let mut event: Self = serde_json::from_str(data)?;
-        event.group_color = color(&event.group_name).to_string();
-        Ok(event)
-    }
 }
 
 /// Full event information.
@@ -150,9 +122,6 @@ pub struct EventFull {
     pub canceled: bool,
     /// Event category information.
     pub category_name: String,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub color: String,
     /// Community this event belongs to.
     pub community: CommunitySummary,
     /// When the event was created.
@@ -160,14 +129,16 @@ pub struct EventFull {
     pub created_at: DateTime<Utc>,
     /// Full event description.
     pub description: String,
+    /// Unique identifier for the event.
+    pub event_id: Uuid,
     /// Group hosting the event.
     pub group: GroupSummary,
     /// Event hosts.
     pub hosts: Vec<User>,
-    /// Unique identifier for the event.
-    pub event_id: Uuid,
     /// Type of event (in-person, online, hybrid).
     pub kind: EventKind,
+    /// URL to the event logo.
+    pub logo_url: String,
     /// Event title.
     pub name: String,
     /// Event organizers (from group team).
@@ -191,8 +162,6 @@ pub struct EventFull {
     pub banner_url: Option<String>,
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
-    /// Remaining capacity after subtracting registered attendees.
-    pub remaining_capacity: Option<i32>,
     /// Brief event description.
     pub description_short: Option<String>,
     /// Event end time in UTC.
@@ -204,8 +173,6 @@ pub struct EventFull {
     pub legacy_hosts: Option<Vec<LegacyUser>>,
     /// Legacy event speakers.
     pub legacy_speakers: Option<Vec<LegacyUser>>,
-    /// URL to the event logo.
-    pub logo_url: Option<String>,
     /// Longitude of the event's location.
     pub longitude: Option<f64>,
     /// Error message if meeting sync failed.
@@ -233,6 +200,8 @@ pub struct EventFull {
     pub published_at: Option<DateTime<Utc>>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
+    /// Remaining capacity after subtracting registered attendees.
+    pub remaining_capacity: Option<i32>,
     /// Event start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
@@ -308,14 +277,6 @@ impl EventFull {
         ids.sort();
         ids
     }
-
-    /// Try to create an `EventFull` instance from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json(data: &str) -> Result<Self> {
-        let mut event: EventFull = serde_json::from_str(data)?;
-        event.color = color(&event.name).to_string();
-        Ok(event)
-    }
 }
 
 impl From<&EventFull> for EventSummary {
@@ -326,10 +287,10 @@ impl From<&EventFull> for EventSummary {
             community_name: event.community.name.clone(),
             event_id: event.event_id,
             group_category_name: event.group.category.name.clone(),
-            group_color: event.group.color.clone(),
             group_name: event.group.name.clone(),
             group_slug: event.group.slug.clone(),
             kind: event.kind.clone(),
+            logo_url: event.logo_url.clone(),
             name: event.name.clone(),
             published: event.published,
             slug: event.slug.clone(),
@@ -339,7 +300,6 @@ impl From<&EventFull> for EventSummary {
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
             latitude: event.latitude,
-            logo_url: event.logo_url.clone(),
             longitude: event.longitude,
             meeting_join_url: event.meeting_join_url.clone(),
             meeting_password: event.meeting_password.clone(),

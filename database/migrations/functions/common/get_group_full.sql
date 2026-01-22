@@ -36,7 +36,7 @@ returns json as $$
         'instagram_url', g.instagram_url,
         'latitude', st_y(g.location::geometry),
         'linkedin_url', g.linkedin_url,
-        'logo_url', g.logo_url,
+        'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
         'photos_urls', g.photos_urls,
         'region', case when r.region_id is not null then
@@ -94,6 +94,7 @@ returns json as $$
         )
     )) as json_data
     from "group" g
+    join community c using (community_id)
     join group_category gc using (group_category_id)
     left join region r using (region_id)
     where g.group_id = p_group_id

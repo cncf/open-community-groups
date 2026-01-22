@@ -486,7 +486,7 @@ mod tests {
         let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
         let categories = vec![sample_group_category()];
         let regions = vec![sample_group_region()];
-        let group_full = sample_group_full(group_id);
+        let group_full = sample_group_full(community_id, group_id);
 
         // Setup database mock
         let mut db = MockDB::new();

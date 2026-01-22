@@ -99,7 +99,7 @@ impl DBCommon for PgDB {
                 &[&community_id, &group_id, &event_id],
             )
             .await?;
-        let event = EventFull::try_from_json(&row.get::<_, String>(0))?;
+        let event: EventFull = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(event)
     }
@@ -121,7 +121,7 @@ impl DBCommon for PgDB {
                 &[&community_id, &group_id, &event_id],
             )
             .await?;
-        let event = EventSummary::try_from_json(&row.get::<_, String>(0))?;
+        let event: EventSummary = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(event)
     }
@@ -138,7 +138,7 @@ impl DBCommon for PgDB {
                 &[&community_id, &group_id],
             )
             .await?;
-        let group = GroupFull::try_from_json(&row.get::<_, String>(0))?;
+        let group: GroupFull = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(group)
     }
@@ -155,7 +155,7 @@ impl DBCommon for PgDB {
                 &[&community_id, &group_id],
             )
             .await?;
-        let group = GroupSummary::try_from_json(&row.get::<_, String>(0))?;
+        let group: GroupSummary = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(group)
     }
@@ -216,7 +216,7 @@ impl DBCommon for PgDB {
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let output = SearchEventsOutput {
-            events: EventSummary::try_from_json_array(&row.get::<_, String>("events"))?,
+            events: serde_json::from_str(&row.get::<_, String>("events"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
             } else {
@@ -248,7 +248,7 @@ impl DBCommon for PgDB {
         // Prepare search output
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let output = SearchGroupsOutput {
-            groups: GroupSummary::try_from_json_array(&row.get::<_, String>("groups"))?,
+            groups: serde_json::from_str(&row.get::<_, String>("groups"))?,
             bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
                 serde_json::from_str(&bbox)?
             } else {

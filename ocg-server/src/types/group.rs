@@ -2,20 +2,15 @@
 
 use std::collections::BTreeMap;
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     templates::{
         common::User,
-        helpers::{
-            color,
-            location::{LocationParts, build_location},
-        },
+        helpers::location::{LocationParts, build_location},
     },
     types::community::CommunitySummary,
 };
@@ -41,9 +36,6 @@ pub struct GroupSummary {
     pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
-    /// Color associated with this group, used for visual styling.
-    #[serde(default)]
-    pub color: String,
     /// Human-readable display name of the community this group belongs to.
     pub community_display_name: String,
     /// Name of the community this group belongs to (slug for URLs).
@@ -53,6 +45,8 @@ pub struct GroupSummary {
     pub created_at: DateTime<Utc>,
     /// Unique identifier for the group.
     pub group_id: Uuid,
+    /// URL to the group's logo image.
+    pub logo_url: String,
     /// Display name of the group.
     pub name: String,
     /// URL-friendly identifier for this group.
@@ -72,8 +66,6 @@ pub struct GroupSummary {
     pub description_short: Option<String>,
     /// Latitude for map display.
     pub latitude: Option<f64>,
-    /// URL to the group's logo image.
-    pub logo_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
     /// Pre-rendered HTML for map popovers.
@@ -95,26 +87,6 @@ impl GroupSummary {
 
         build_location(&parts, max_len)
     }
-
-    /// Try to create a vector of `GroupSummary` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let mut groups: Vec<Self> = serde_json::from_str(data)?;
-
-        for group in &mut groups {
-            group.color = color(&group.name).to_string();
-        }
-
-        Ok(groups)
-    }
-
-    /// Try to create a `GroupSummary` instance from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json(data: &str) -> Result<Self> {
-        let mut group: Self = serde_json::from_str(data)?;
-        group.color = color(&group.name).to_string();
-        Ok(group)
-    }
 }
 
 /// Full group information.
@@ -125,9 +97,6 @@ pub struct GroupFull {
     pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
-    /// Generated color for visual distinction.
-    #[serde(default)]
-    pub color: String,
     /// Community this group belongs to.
     pub community: CommunitySummary,
     /// When the group was created.
@@ -135,6 +104,8 @@ pub struct GroupFull {
     pub created_at: DateTime<Utc>,
     /// Unique identifier for the group.
     pub group_id: Uuid,
+    /// URL to the group logo.
+    pub logo_url: String,
     /// Total number of group members.
     pub members_count: i64,
     /// Group name.
@@ -174,8 +145,6 @@ pub struct GroupFull {
     pub latitude: Option<f64>,
     /// `LinkedIn` profile URL.
     pub linkedin_url: Option<String>,
-    /// URL to the group logo.
-    pub logo_url: Option<String>,
     /// Longitude for map display.
     pub longitude: Option<f64>,
     /// Gallery of photo URLs.
@@ -209,14 +178,6 @@ impl GroupFull {
             .state(self.state.as_ref());
 
         build_location(&parts, max_len)
-    }
-
-    /// Try to create a `GroupFull` instance from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json(data: &str) -> Result<Self> {
-        let mut group: GroupFull = serde_json::from_str(data)?;
-        group.color = color(&group.name).to_string();
-        Ok(group)
     }
 }
 

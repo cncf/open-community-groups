@@ -75,7 +75,7 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-4">
-          <image-field label="Logo" name="logo_url" value="{%- if let Some(logo_url) = &group.logo_url -%}{{ logo_url }}{%- endif -%}" image-kind="avatar">
+          <image-field label="Logo" name="logo_url" value="{{ group.logo_url }}" image-kind="avatar">
         </image-field>
       </div>
       {# End Logo URL -#}
