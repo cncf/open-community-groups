@@ -1,4 +1,4 @@
-import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showErrorAlert, showInfoAlert } from "/static/js/common/alerts.js";
 import { setImageFieldValue, setSelectValue, setTextValue } from "/static/js/common/utils.js";
@@ -6,9 +6,8 @@ import * as formHelpers from "/static/js/dashboard/group/event-form-helpers.js";
 import "/static/js/common/svg-spinner.js";
 
 /**
- * Lightweight dropdown that loads group events on demand and supports multiple modes:
- * - copy: fetches full event details and populates the event form for copying
- * - custom: renders event buttons with htmx attributes for custom endpoints
+ * Lightweight dropdown that loads group events on demand and populates the event form
+ * with selected event details for copying.
  */
 class EventSelector extends LitWrapper {
   dateFrom = "2000-01-01";
@@ -19,14 +18,11 @@ class EventSelector extends LitWrapper {
    * - selectedEvent: preloaded event payload to render selected label
    * - groupId: optional override group uuid
    * - buttonId: optional button id to control focus interactions
-   * - mode: "attendees" | "copy" | "custom" (default "attendees").
-   * - targetSelector: CSS selector for htmx swaps (attendees/custom).
-   * - endpoint: URL base for custom mode (required when mode="custom").
    * - _isOpen: dropdown visibility flag
    * - _query: current search term
    * - _results: fetched events list
    * - _loading: remote fetch in progress indicator
-   * - _copyLoading: copy mode fetch in progress indicator
+   * - _copyLoading: copy fetch in progress indicator
    * - _error: remote fetch error message
    * - _activeIndex: highlighted result index for keyboard navigation
    */
@@ -48,9 +44,6 @@ class EventSelector extends LitWrapper {
     },
     groupId: { type: String, attribute: "group-id" },
     buttonId: { type: String, attribute: "button-id" },
-    mode: { type: String, attribute: "mode" },
-    targetSelector: { type: String, attribute: "target-selector" },
-    endpoint: { type: String, attribute: "endpoint" },
     _isOpen: { state: true },
     _query: { state: true },
     _results: { state: true },
@@ -66,9 +59,6 @@ class EventSelector extends LitWrapper {
     this.selectedEvent = null;
     this.groupId = "";
     this.buttonId = "";
-    this.mode = "copy";
-    this.targetSelector = "#dashboard-content";
-    this.endpoint = "";
     this._isOpen = false;
     this._query = "";
     this._results = [];
@@ -95,14 +85,7 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Validates inputs once the component is mounted.
-   */
-  firstUpdated() {
-    this._validateMode();
-  }
-
-  /**
-   * Re-processes HTMX bindings whenever results change.
+   * Re-syncs selected event state when properties change.
    * @param {Map<string, unknown>} changed Changed reactive props
    */
   updated(changed) {
@@ -116,32 +99,6 @@ class EventSelector extends LitWrapper {
     if (changed.has("groupId")) {
       this._hasFetched = false;
       this._primaryResults = [];
-    }
-    const usesHtmx = this.mode === "custom";
-    if (
-      usesHtmx &&
-      (changed.has("_results") || changed.has("_isOpen")) &&
-      typeof window !== "undefined" &&
-      window.htmx &&
-      typeof window.htmx.process === "function"
-    ) {
-      this.updateComplete.then(() => {
-        const buttons = this.querySelectorAll(".event-button");
-        if (buttons.length === 0) {
-          window.htmx.process(this);
-          return;
-        }
-        buttons.forEach((button) => {
-          button.removeAttribute("hx-processed");
-          window.htmx.process(button);
-          if (!button._eventSelectorBound) {
-            button.addEventListener("htmx:beforeRequest", () => {
-              this._closeDropdown();
-            });
-            button._eventSelectorBound = true;
-          }
-        });
-      });
     }
   }
 
@@ -180,20 +137,14 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Handles selection click according to the current mode.
+   * Handles selection click to copy event details into the form.
    * @param {MouseEvent} event Triggering click
    * @param {object} eventData Selected event
    */
   async _handleEventClick(event, eventData) {
-    if (this.mode === "copy") {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      await this._handleCopyMode(eventData);
-      return;
-    }
-    if (this.mode === "custom") {
-      this._closeDropdown();
-    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    await this._handleCopyMode(eventData);
   }
 
   /**
@@ -250,24 +201,6 @@ class EventSelector extends LitWrapper {
    */
   _removeOutsideListener() {
     document.removeEventListener("click", this._outsideHandler);
-  }
-
-  /**
-   * Ensures provided mode is supported to avoid silent failures.
-   */
-  _validateMode() {
-    const allowedModes = ["copy", "custom"];
-    if (!allowedModes.includes(this.mode)) {
-      console.warn(`event-selector: invalid mode "${this.mode}", defaulting to "copy".`);
-      this.mode = "copy";
-      return;
-    }
-    if (this.mode === "custom" && !this.endpoint) {
-      console.error(
-        'event-selector: mode "custom" requires an "endpoint" attribute; falling back to "copy".',
-      );
-      this.mode = "copy";
-    }
   }
 
   /**
@@ -472,8 +405,10 @@ class EventSelector extends LitWrapper {
     if (!selector) {
       return "";
     }
-    const communities = selector.communities || [];
-    const selectedId = selector.selectedCommunityId;
+    const communities = this._normalizeSelectorItems(
+      selector.communities ?? selector.getAttribute("communities"),
+    );
+    const selectedId = selector.selectedCommunityId || selector.getAttribute("selected-community-id");
     if (!selectedId) {
       return "";
     }
@@ -489,24 +424,58 @@ class EventSelector extends LitWrapper {
 
   /**
    * Reads the selected group slug from the group-selector component.
+   * @param {string} groupIdOverride Optional group id override.
    * @returns {string} Group slug or empty string if not found.
    */
-  _getGroupSlugFromSelector() {
+  _getGroupSlugFromSelector(groupIdOverride = "") {
     const selector = document.querySelector("group-selector");
     if (!selector) {
       return "";
     }
-    const groups = selector.groups || [];
-    const selectedId = selector.selectedGroupId;
+    const selectedId =
+      groupIdOverride || selector.selectedGroupId || selector.getAttribute("selected-group-id");
     if (!selectedId) {
       return "";
     }
+    const safeSelectedId =
+      typeof CSS !== "undefined" && typeof CSS.escape === "function"
+        ? CSS.escape(String(selectedId))
+        : String(selectedId);
+    const selectedGroup = selector.querySelector(`[data-group-id="${safeSelectedId}"]`);
+    const slugFromAttribute = selectedGroup?.dataset?.groupSlug;
+    if (slugFromAttribute) {
+      return slugFromAttribute;
+    }
+    const groups = this._normalizeSelectorItems(selector.groups ?? selector.getAttribute("groups"));
     for (const group of groups) {
       if (String(group.group_id) === String(selectedId)) {
         return group.slug || "";
       }
     }
     return "";
+  }
+
+  /**
+   * Normalizes selector payloads into arrays.
+   * @param {unknown} value Selector payload.
+   * @returns {Array<object>}
+   */
+  _normalizeSelectorItems(value) {
+    if (!value) {
+      return [];
+    }
+    if (Array.isArray(value)) {
+      return value;
+    }
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (_error) {
+        return [];
+      }
+    }
+    return [];
   }
 
   /**
@@ -530,9 +499,15 @@ class EventSelector extends LitWrapper {
       params.set("ts_query", config.query);
     }
 
-    const groupSlug = this._getGroupSlugFromSelector();
+    const groupSlug = this._getGroupSlugFromSelector(config.groupId);
     const communityName = this._getCommunityNameFromSelector();
-    let url = `/explore/events/search?group[]=${groupSlug}&community[]=${communityName}&${params.toString()}`;
+    if (groupSlug) {
+      params.append("group[]", groupSlug);
+    }
+    if (communityName) {
+      params.append("community[]", communityName);
+    }
+    const url = `/explore/events/search?${params.toString()}`;
 
     const response = await fetch(url, {
       headers: {
@@ -766,21 +741,6 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Ensures the toggle button has a stable id.
-   * @returns {string}
-   */
-  _ensureButtonId() {
-    if (this.buttonId) {
-      return this.buttonId;
-    }
-    if (!this._generatedButtonId) {
-      const randomChunk = Math.random().toString(36).slice(2, 10);
-      this._generatedButtonId = `event-selector-${randomChunk}`;
-    }
-    return this._generatedButtonId;
-  }
-
-  /**
    * Builds the dropdown list content based on loading state.
    * @returns {import("lit").TemplateResult}
    */
@@ -805,33 +765,14 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Builds HTMX config for custom mode.
-   * @param {object} event Event payload
-   * @returns {{hxGet?: string, hxTarget?: string, hxIndicator?: string, hxSwap?: string, hxDisabled?: string}}
-   */
-  _getHtmxConfig(event) {
-    const target = this.targetSelector || "#dashboard-content";
-    if (this.mode === "custom" && this.endpoint) {
-      return {
-        hxGet: `${this.endpoint}?event_id=${event.event_id}`,
-        hxTarget: target,
-        hxIndicator: "#dashboard-spinner",
-        hxSwap: "innerHTML show:body:top",
-        hxDisabled: ".event-button",
-      };
-    }
-    return {};
-  }
-
-  /**
    * Renders a single event option button.
    * @param {object} event Event payload
+   * @param {number} index Index in the results list
    * @returns {import("lit").TemplateResult}
    */
   _renderEventOption(event, index) {
     const isSelected = this.selectedEventId && String(this.selectedEventId) === String(event.event_id);
     const isActive = index === this._activeIndex;
-    const htmxConfig = this._getHtmxConfig(event);
     let status = "";
     if (isActive && !isSelected) {
       status = "bg-stone-50";
@@ -847,11 +788,6 @@ class EventSelector extends LitWrapper {
           type="button"
           class="event-button cursor-pointer w-full flex items-center justify-between px-4 py-2 text-sm/6 text-left hover:bg-stone-100 ${status}"
           ?disabled=${isSelected}
-          hx-get=${htmxConfig.hxGet ?? nothing}
-          hx-target=${htmxConfig.hxTarget ?? nothing}
-          hx-indicator=${htmxConfig.hxIndicator ?? nothing}
-          hx-swap=${htmxConfig.hxSwap ?? nothing}
-          hx-disabled-elt=${htmxConfig.hxDisabled ?? nothing}
           @click=${(clickEvent) => this._handleEventClick(clickEvent, event)}
           @mouseenter=${() => {
             this._activeIndex = index;
@@ -878,21 +814,6 @@ class EventSelector extends LitWrapper {
         </div>
       </div>
     `;
-  }
-
-  /**
-   * Returns the placeholder text according to mode.
-   * @returns {string}
-   */
-  _getPlaceholderText() {
-    switch (this.mode) {
-      case "copy":
-        return "Choose an event to copy";
-      case "custom":
-        return "Choose an event";
-      default:
-        return "Choose an event";
-    }
   }
 
   /**
@@ -938,13 +859,12 @@ class EventSelector extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   render() {
-    const buttonId = this._ensureButtonId();
     const selectedEvent = this._findSelectedEvent();
 
     return html`
       <div class="relative inline-block w-full">
         <button
-          id=${buttonId}
+          id=${this.buttonId}
           class="relative cursor-pointer select select-primary w-full
                text-left pe-9"
           aria-label="Select event"
@@ -954,7 +874,7 @@ class EventSelector extends LitWrapper {
             ? this._renderEventPreview(selectedEvent)
             : html`<div class="flex flex-col min-w-0">
                 <div class="max-w-full truncate">Select event</div>
-                <div class="text-xs text-stone-500 truncate">${this._getPlaceholderText()}</div>
+                <div class="text-xs text-stone-500 truncate">Choose an event to copy</div>
               </div>`}
           <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none gap-2">
             ${this._loading ? html`<svg-spinner label="Loading events"></svg-spinner>` : ""}

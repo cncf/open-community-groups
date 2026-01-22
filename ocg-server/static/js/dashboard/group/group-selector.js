@@ -348,6 +348,7 @@ export class GroupSelector extends LitWrapper {
                                 class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
                                 role="option"
                                 data-group-id=${group.group_id}
+                                data-group-slug=${group.slug || ""}
                                 ?disabled=${isDisabled}
                                 @click=${(event) => this._handleGroupClick(event, group)}
                                 @mouseover=${() => (this._activeIndex = index)}
