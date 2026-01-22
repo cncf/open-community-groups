@@ -35,19 +35,10 @@
     <div>
       {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
       <div class="mt-2">
-        <community-selector communities="{{ groups_by_community|json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community"></community-selector>
+        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community"></community-selector>
       </div>
 
-      <div class="my-4">
-        <group-selector groups-by-community="{{ groups_by_community|json }}" selected-community-id="{{ selected_community_id }}" selected-group-id="{{ selected_group_id }}" search-delay="250"></group-selector>
-      </div>
-      {% for group in selected_community_groups() -%}
-        {% if group.group_id == selected_group_id && !group.active -%}
-          <div class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">
-            This group has been deactivated. Please contact to a community admin.
-          </div>
-        {% endif -%}
-      {% endfor -%}
+      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}"></group-selector>
       {% if !selected_community_groups().is_empty() -%}
         <div class="mt-3 grid gap-y-0.5">
           {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
