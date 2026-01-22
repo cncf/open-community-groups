@@ -65,8 +65,8 @@ values
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000041"}'::jsonb)::jsonb,
     '[
-        {"checked_in": true,  "created_at": 1704067200, "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
-        {"checked_in": false, "created_at": 1704153600, "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://example.com/b.png", "title": null}
+        {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
+        {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://example.com/b.png", "title": null}
     ]'::jsonb,
     'Should return attendees for event1 with expected fields and order'
 );
@@ -75,7 +75,7 @@ select is(
 select is(
     search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000042"}'::jsonb)::jsonb,
     '[
-        {"checked_in": true, "created_at": 1704240000, "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
+        {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
     ]'::jsonb,
     'Should return attendees for event2'
 );

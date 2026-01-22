@@ -79,6 +79,7 @@ pub(crate) fn sample_attendee() -> Attendee {
     Attendee {
         checked_in: true,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        user_id: Uuid::new_v4(),
         username: "attendee".to_string(),
 
         checked_in_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
