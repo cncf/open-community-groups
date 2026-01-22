@@ -102,16 +102,28 @@
             </td>
             {# End RSVP date -#}
 
-            {# Checked In -#}
+            {# Checked In Toggle -#}
             <td class="px-3 xl:px-5 py-4 w-30">
-              {% if attendee.checked_in -%}
-                <div class="svg-icon size-4 icon-check bg-primary-500"
-                     aria-label="Checked in"></div>
-              {% else -%}
-                <span class="text-stone-400">-</span>
-              {% endif -%}
+              <label class="inline-flex items-center
+                            {% if attendee.checked_in %}
+                              cursor-not-allowed
+                            {% else %}
+                              cursor-pointer
+                            {% endif %}">
+                <input type="checkbox"
+                       class="sr-only peer check-in-toggle"
+                       aria-label="{% if attendee.checked_in %}
+                                     Checked in
+                                   {% else %}
+                                     Check in attendee
+                                   {% endif %}"
+                       data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/check-in"
+                       {% if attendee.checked_in %}checked disabled{% endif %}>
+                <div class="relative w-11 h-6 bg-stone-200 rounded-full peer peer-checked:bg-primary-500 peer-disabled:opacity-70 after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white">
+                </div>
+              </label>
             </td>
-            {# End checked in -#}
+            {# End checked in toggle -#}
           </tr>
         {% endfor -%}
       {% endif -%}
