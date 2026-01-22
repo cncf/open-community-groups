@@ -381,4 +381,6 @@ export class CommunitySelector extends LitWrapper {
   }
 }
 
-customElements.define("community-selector", CommunitySelector);
+if (!customElements.get("community-selector")) {
+  customElements.define("community-selector", CommunitySelector);
+}
