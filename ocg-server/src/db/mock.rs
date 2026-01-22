@@ -357,6 +357,7 @@ mock! {
             community_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+            bypass_window: bool,
         ) -> Result<()>;
         async fn get_event_full_by_slug(
             &self,

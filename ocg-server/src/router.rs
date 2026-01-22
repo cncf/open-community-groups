@@ -279,6 +279,10 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             "/events/{event_id}/attendees",
             get(dashboard::group::attendees::list_page),
         )
+        .route(
+            "/events/{event_id}/attendees/{user_id}/check-in",
+            post(dashboard::group::attendees::manual_check_in),
+        )
         .route("/events/{event_id}/cancel", put(dashboard::group::events::cancel))
         .route(
             "/events/{event_id}/delete",

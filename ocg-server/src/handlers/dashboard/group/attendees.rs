@@ -94,6 +94,23 @@ pub(crate) async fn generate_check_in_qr_code(
     Ok((StatusCode::OK, headers, svg))
 }
 
+/// Manually checks in a user for an event, bypassing the check-in window validation.
+#[instrument(skip_all, err)]
+pub(crate) async fn manual_check_in(
+    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Validate event belongs to the selected group
+    db.get_event_summary(community_id, group_id, event_id).await?;
+
+    // Check-in with bypass_window = true
+    db.check_in_event(community_id, event_id, user_id, true).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Sends a custom notification to event attendees.
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
@@ -347,6 +364,72 @@ mod tests {
             &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
         );
         assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_manual_check_in_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let target_user_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+        let event = sample_event_summary(event_id, group_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event.clone()));
+        db.expect_check_in_event()
+            .times(1)
+            .withf(move |cid, eid, uid, bypass_window| {
+                *cid == community_id && *eid == event_id && *uid == target_user_id && *bypass_window
+            })
+            .returning(|_, _, _, _| Ok(()));
+
+        // Setup notifications manager mock (not used by this handler)
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!(
+                "/dashboard/group/events/{event_id}/attendees/{target_user_id}/check-in"
+            ))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert!(bytes.is_empty());
     }
 
     #[tokio::test]

@@ -17,7 +17,13 @@ pub(crate) trait DBEvent {
     async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
 
     /// Marks an attendee as checked in for an event.
-    async fn check_in_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn check_in_event(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        bypass_window: bool,
+    ) -> Result<()>;
 
     /// Retrieves detailed event information.
     async fn get_event_full_by_slug(
@@ -64,13 +70,19 @@ impl DBEvent for PgDB {
 
     /// [`DBEvent::check_in_event`]
     #[instrument(skip(self), err)]
-    async fn check_in_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
+    async fn check_in_event(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        bypass_window: bool,
+    ) -> Result<()> {
         trace!("db: check in event");
 
         let db = self.pool.get().await?;
         db.execute(
-            "select check_in_event($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &event_id, &user_id],
+            "select check_in_event($1::uuid, $2::uuid, $3::uuid, $4::bool)",
+            &[&community_id, &event_id, &user_id, &bypass_window],
         )
         .await?;
 

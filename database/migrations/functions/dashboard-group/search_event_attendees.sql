@@ -9,6 +9,7 @@ returns json as $$
             select
                 ea.checked_in,
                 extract(epoch from ea.created_at)::bigint as created_at,
+                u.user_id,
                 u.username,
 
                 extract(epoch from ea.checked_in_at)::bigint as checked_in_at,
