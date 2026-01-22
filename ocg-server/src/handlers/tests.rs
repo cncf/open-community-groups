@@ -454,6 +454,7 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
         active: true,
         group_id,
         name: "Test Group".to_string(),
+        slug: "test-group".to_string(),
     }
 }
 

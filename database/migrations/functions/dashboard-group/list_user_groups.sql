@@ -32,7 +32,8 @@ returns json as $$
             json_build_object(
                 'active', g.active,
                 'group_id', g.group_id,
-                'name', g.name
+                'name', g.name,
+                'slug', g.slug
             ) as group_json
         from user_groups ug
         join community c using (community_id)
