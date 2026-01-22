@@ -1,10 +1,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
-{# Attendees header -#}
-{{ dashboard::form_title(title = "Attendees") -}}
-
-<div class="flex flex-col lg:flex-row lg:items-end justify-between mt-10 mb-5">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
   <div class="flex text-sm text-stone-600 mb-4 lg:mb-0">
     <div>Total attendees:</div>
     <div class="font-semibold ms-1 text-end">
@@ -39,7 +36,7 @@
 </div>
 
 {# Attendees table -#}
-<div class="relative overflow-visible">
+<div class="relative overflow-visible pb-12">
   <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
          role="table"
          aria-label="Attendees list">
@@ -66,7 +63,7 @@
         </tr>
       {% else -%}
         {% for attendee in attendees -%}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 last:border-b-0">
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-5">

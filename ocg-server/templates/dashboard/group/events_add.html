@@ -25,81 +25,50 @@
     </p>
   </div>
 
-  <div class="flex flex-col xl:flex-row xl:justify-between xl:space-x-10">
-    <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-900/10 w-full xl:w-auto">
-      <li>
-        <button type="button"
-                data-section="details"
-                data-active="true"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-          <div class="svg-icon size-3 me-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          Details
-        </button>
-      </li>
-      <li>
-        <button type="button"
-                data-section="date-venue"
-                data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-          <div class="svg-icon size-3 me-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          Date & Venue
-        </button>
-      </li>
-      <li>
-        <button type="button"
-                data-section="hosts-sponsors"
-                data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-          <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="hidden lg:inline">Hosts & Speakers</span>
-          <span class="lg:hidden">Hosts</span>
-        </button>
-      </li>
-      <li>
-        <button type="button"
-                data-section="sessions"
-                data-active="false"
-                class="lg:w-36 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-          <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-          </div>
-          Sessions
-        </button>
-      </li>
-    </ul>
-
-    <div class="flex items-center justify-end space-x-5 mt-6 xl:-mt-2">
-      {# Cancel button -#}
-      <div>
-        <button id="cancel-button"
-                type="button"
-                hx-get="/dashboard/group?tab=events"
-                hx-target="body"
-                hx-indicator="#dashboard-spinner"
-                class="btn-primary-outline w-24">Cancel</button>
-      </div>
-      {# End cancel button -#}
-
-      {# Save button -#}
-      <div>
-        <button id="add-event-button"
-                type="button"
-                class="btn-primary w-24 text-nowrap"
-                hx-post="/dashboard/group/events/add"
-                hx-ext="no-empty-vals"
-                hx-include="#details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
-                hx-target="#dashboard-content"
-                hx-indicator="#dashboard-spinner"
-                hx-disabled-elt="#add-event-button, #cancel-button"
-                hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested]">
-          Add
-        </button>
-      </div>
-      {# End save button -#}
-    </div>
-  </div>
+  <ul class="flex flex-wrap space-x-2 -mb-px text-xs lg:text-sm font-medium text-center border-b border-stone-900/10 w-full mb-10">
+    <li>
+      <button type="button"
+              data-section="details"
+              data-active="true"
+              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+        <div class="svg-icon size-3 me-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        Details
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="date-venue"
+              data-active="false"
+              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+        <div class="svg-icon size-3 me-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="hidden lg:inline">Date & Venue</span>
+        <span class="lg:hidden">Schedule</span>
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="hosts-sponsors"
+              data-active="false"
+              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+        <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="hidden xl:inline">Hosts & Speakers</span>
+        <span class="xl:hidden">Hosts</span>
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="sessions"
+              data-active="false"
+              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+        <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        Sessions
+      </button>
+    </li>
+  </ul>
 
   <div>
     <div class="space-y-12">
@@ -476,6 +445,36 @@
 {# End Hosts & Speakers Tab -#}
 
 </div>
+
+{# Form buttons -#}
+<div class="flex items-center justify-end space-x-5 mt-6 border-t border-stone-900/10 pt-6">
+  {# Cancel button -#}
+  <div>
+    <button id="cancel-button"
+            type="button"
+            hx-get="/dashboard/group?tab=events"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline w-24">Cancel</button>
+  </div>
+  {# End cancel button -#}
+
+  {# Save button -#}
+  <div>
+    <button id="add-event-button"
+            type="button"
+            class="btn-primary w-24 text-nowrap"
+            hx-post="/dashboard/group/events/add"
+            hx-ext="no-empty-vals"
+            hx-include="#details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            hx-disabled-elt="#add-event-button, #cancel-button"
+            hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested]">Add</button>
+  </div>
+  {# End save button -#}
+</div>
+{# End form buttons -#}
 </div>
 </div>
 
