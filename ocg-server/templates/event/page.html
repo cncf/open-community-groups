@@ -38,21 +38,25 @@
 
             <div class="flex-1 flex flex-col justify-between">
               <div class="flex-1 flex justify-between">
-                <div class="flex flex-col justify-between">
-                  <div>
-                    {# Group/Category legend -#}
-                    <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
-                       class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline"
-                       hx-boost="true"
-                       hx-target="body">{{ event.group.name }}</a>
-                    {# End group/category legend -#}
+                <div class="flex flex-col">
+                  {# Group/Category legend -#}
+                  <a href="/{{ event.community.name }}/group/{{ event.group.slug }}"
+                     class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5"
+                     hx-boost="true"
+                     hx-target="body">{{ event.group.name }}</a>
+                  {# End group/category legend -#}
 
-                    {# Event name -#}
+                  {# Event name: use smaller font size for long titles (>68 chars) -#}
+                  {% if event.name.len() > 68 -%}
+                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
+                      {{ event.name|demoji }}
+                    </h1>
+                  {% else -%}
                     <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ event.name|demoji }}
                     </h1>
-                    {# End event name -#}
-                  </div>
+                  {% endif -%}
+                  {# End event name -#}
                 </div>
 
                 {# Event status and social networks -#}
@@ -76,9 +80,9 @@
                 {# End event status and social networks -#}
               </div>
 
-              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
+              <div class="mt-2 md:mt-auto flex flex-col md:flex-row md:items-end md:justify-between w-full">
                 {# Event details and date -#}
-                <div class="flex items-center gap-4 text-stone-600">
+                <div class="flex items-end gap-4 text-stone-600">
                   {% if let Some(capacity) = &event.capacity -%}
                     <div class="flex items-center">
                       <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
@@ -90,7 +94,7 @@
                       {% endif %}
                     </div>
                   {% endif -%}
-                  {{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}
+                  <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}</div>
                 </div>
                 {# End event details and date -#}
 
