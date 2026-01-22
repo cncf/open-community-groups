@@ -22,7 +22,7 @@
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-hidden">
       {# Sold out badge -#}
-      {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]") , orientation = "top-right") -}}
+      {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[44px] md:top-[55px] right-[-12px] md:right-[-16px]") , orientation = "top-right") -}}
       {# End sold out badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">

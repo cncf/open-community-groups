@@ -10,7 +10,7 @@
     {# Event icon -#}
     {{ ui::logo(logo_url = event.logo_url, classes = "h-24 w-24 md:h-[120px] md:w-[120px] md:min-w-[120px]", size = 120) -}}
     {# End event icon -#}
-    {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, inner_classes = Some("top-[43px] md:top-[55px] right-[29px] md:right-[36px]") ) -}}
+    {{ badges::sold_out_overlay(remaining_capacity = event.remaining_capacity, capacity = event.capacity, inner_classes = Some("top-[43px] md:top-[55px] right-[29px] md:right-[36px]") ) -}}
   </div>
 
   <div class="card-content">

@@ -26,6 +26,21 @@ const getAttendanceContainers = (root) => {
 };
 
 /**
+ * Parses capacity from container data attributes.
+ * @param {HTMLElement} container - Attendance container element
+ * @returns {number|null} Parsed capacity, or null if unavailable
+ */
+const parseCapacity = (container) => {
+  const capacityAttr = container?.dataset?.capacity;
+  if (!capacityAttr) {
+    return null;
+  }
+
+  const parsedCapacity = Number(capacityAttr);
+  return Number.isFinite(parsedCapacity) ? parsedCapacity : null;
+};
+
+/**
  * Parses remaining capacity from container data attributes.
  * @param {HTMLElement} container - Attendance container element
  * @returns {number|null} Parsed remaining capacity, or null if unavailable
@@ -47,8 +62,9 @@ const parseRemainingCapacity = (container) => {
  */
 const getAttendanceMeta = (container) => {
   const startsAtValue = container?.dataset?.starts ?? null;
+  const capacity = parseCapacity(container);
   const remainingCapacity = parseRemainingCapacity(container);
-  const isSoldOut = remainingCapacity !== null && remainingCapacity <= 0;
+  const isSoldOut = capacity !== null && capacity > 0 && remainingCapacity !== null && remainingCapacity <= 0;
   const eventIsLive = container?.dataset?.isLive === "true";
   const isPastEvent = (() => {
     if (!startsAtValue) {

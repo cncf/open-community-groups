@@ -33,24 +33,28 @@
 {# End status badge -#}
 
 {# Sold out overlay badge -#}
-{% macro sold_out_overlay(remaining_capacity, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
+{% macro sold_out_overlay(remaining_capacity, capacity = None, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
   {% let outer_classes_ = outer_classes.unwrap_or("") -%}
   {% let inner_classes_ = inner_classes.unwrap_or("") -%}
   {% let orientation_ = orientation.to_string() -%}
 
-  {% if let Some(remaining_capacity_) = &remaining_capacity -%}
-    {% if *remaining_capacity_ == 0 -%}
-      <div class="absolute overflow-hidden inset-0 {{ outer_classes_ }}">
-        <div class="pointer-events-none absolute z-10 w-20 md:w-25 {{ inner_classes_ }}">
-          <span class="block bg-red-500/90 text-white text-shadow-xs text-[0.45rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-widest text-center text-nowrap shadow-md transform
-                       {% if orientation_ == "top-right" -%}
-                         rotate-45 origin-top-right
-                       {% else -%}
-                         -rotate-45 origin-top-left
-                       {% endif -%}
-                       caps">{{ label }}</span>
-        </div>
-      </div>
+  {% if let Some(capacity_) = &capacity -%}
+    {% if *capacity_ > 0 -%}
+      {% if let Some(remaining_capacity_) = &remaining_capacity -%}
+        {% if *remaining_capacity_ == 0 -%}
+          <div class="absolute overflow-hidden inset-0 {{ outer_classes_ }}">
+            <div class="pointer-events-none absolute z-10 w-20 md:w-25 {{ inner_classes_ }}">
+              <span class="block bg-red-500/90 text-white text-shadow-xs text-[0.45rem]/4 md:text-[0.6rem]/5 font-bold uppercase tracking-widest text-center text-nowrap shadow-md transform
+                           {% if orientation_ == "top-right" -%}
+                             rotate-45 origin-top-right
+                           {% else -%}
+                             -rotate-45 origin-top-left
+                           {% endif -%}
+                           caps">{{ label }}</span>
+            </div>
+          </div>
+        {% endif -%}
+      {% endif -%}
     {% endif -%}
   {% endif -%}
 {% endmacro sold_out_overlay -%}
