@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
@@ -13,8 +13,6 @@ use qrcode::render::svg;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
-
-use crate::validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty};
 
 use crate::{
     auth::AuthSession,
@@ -27,30 +25,28 @@ use crate::{
     },
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{dashboard::group::attendees, notifications::EventCustom},
+    validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty},
 };
 
 // Pages handlers.
 
-/// Displays the list of attendees for the selected event and filters.
+/// Displays the list of attendees for a specific event.
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    Query(filters): Query<attendees::AttendeesFilters>,
+    Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Fetch event summary and attendees
+    let filters = attendees::AttendeesFilters { event_id };
+    let (event, attendees) = tokio::try_join!(
+        db.get_event_summary(community_id, group_id, event_id),
+        db.search_event_attendees(group_id, &filters)
+    )?;
+
     // Prepare template
-    let attendees = db.search_event_attendees(group_id, &filters).await?;
-    let event = if let Some(event_id) = filters.event_id {
-        Some(db.get_event_summary(community_id, group_id, event_id).await?)
-    } else {
-        None
-    };
-    let template = attendees::ListPage {
-        attendees,
-        group_id,
-        event,
-    };
+    let template = attendees::ListPage { attendees, event };
 
     Ok(Html(template.render()?))
 }
@@ -318,7 +314,7 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(1)
-            .withf(move |id, filters| *id == group_id && filters.event_id == Some(event_id))
+            .withf(move |gid, filters| *gid == group_id && filters.event_id == event_id)
             .returning(move |_, _| Ok(vec![attendee.clone()]));
         db.expect_get_event_summary()
             .times(1)
@@ -332,7 +328,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri(format!("/dashboard/group/attendees?event_id={event_id}"))
+            .uri(format!("/dashboard/group/events/{event_id}/attendees"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -357,6 +353,7 @@ mod tests {
     async fn test_list_page_db_error() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
@@ -384,9 +381,13 @@ mod tests {
             .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
             .returning(|_, _, _| Ok(true));
         db.expect_search_event_attendees()
-            .times(1)
-            .withf(move |id, filters| *id == group_id && filters.event_id.is_none())
+            .times(0..=1)
+            .withf(move |gid, filters| *gid == group_id && filters.event_id == event_id)
             .returning(move |_, _| Err(anyhow!("db error")));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -395,7 +396,7 @@ mod tests {
         let router = TestRouterBuilder::new(db, nm).build().await;
         let request = Request::builder()
             .method("GET")
-            .uri("/dashboard/group/attendees")
+            .uri(format!("/dashboard/group/events/{event_id}/attendees"))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

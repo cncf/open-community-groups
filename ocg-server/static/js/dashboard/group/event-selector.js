@@ -7,7 +7,6 @@ import "/static/js/common/svg-spinner.js";
 
 /**
  * Lightweight dropdown that loads group events on demand and supports multiple modes:
- * - attendees: renders event buttons with htmx attributes to load attendee lists
  * - copy: fetches full event details and populates the event form for copying
  * - custom: renders event buttons with htmx attributes for custom endpoints
  */
@@ -67,7 +66,7 @@ class EventSelector extends LitWrapper {
     this.selectedEvent = null;
     this.groupId = "";
     this.buttonId = "";
-    this.mode = "attendees";
+    this.mode = "copy";
     this.targetSelector = "#dashboard-content";
     this.endpoint = "";
     this._isOpen = false;
@@ -118,7 +117,7 @@ class EventSelector extends LitWrapper {
       this._hasFetched = false;
       this._primaryResults = [];
     }
-    const usesHtmx = this.mode === "attendees" || this.mode === "custom";
+    const usesHtmx = this.mode === "custom";
     if (
       usesHtmx &&
       (changed.has("_results") || changed.has("_isOpen")) &&
@@ -192,7 +191,7 @@ class EventSelector extends LitWrapper {
       await this._handleCopyMode(eventData);
       return;
     }
-    if (this.mode === "attendees" || this.mode === "custom") {
+    if (this.mode === "custom") {
       this._closeDropdown();
     }
   }
@@ -257,17 +256,17 @@ class EventSelector extends LitWrapper {
    * Ensures provided mode is supported to avoid silent failures.
    */
   _validateMode() {
-    const allowedModes = ["attendees", "copy", "custom"];
+    const allowedModes = ["copy", "custom"];
     if (!allowedModes.includes(this.mode)) {
-      console.warn(`event-selector: invalid mode "${this.mode}", defaulting to "attendees".`);
-      this.mode = "attendees";
+      console.warn(`event-selector: invalid mode "${this.mode}", defaulting to "copy".`);
+      this.mode = "copy";
       return;
     }
     if (this.mode === "custom" && !this.endpoint) {
       console.error(
-        'event-selector: mode "custom" requires an "endpoint" attribute; falling back to "attendees".',
+        'event-selector: mode "custom" requires an "endpoint" attribute; falling back to "copy".',
       );
-      this.mode = "attendees";
+      this.mode = "copy";
     }
   }
 
@@ -806,21 +805,12 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Builds HTMX config for attendees/custom modes.
+   * Builds HTMX config for custom mode.
    * @param {object} event Event payload
    * @returns {{hxGet?: string, hxTarget?: string, hxIndicator?: string, hxSwap?: string, hxDisabled?: string}}
    */
   _getHtmxConfig(event) {
     const target = this.targetSelector || "#dashboard-content";
-    if (this.mode === "attendees") {
-      return {
-        hxGet: `/dashboard/group/attendees?event_id=${event.event_id}`,
-        hxTarget: target,
-        hxIndicator: "#dashboard-spinner",
-        hxSwap: "innerHTML show:body:top",
-        hxDisabled: ".event-button",
-      };
-    }
     if (this.mode === "custom" && this.endpoint) {
       return {
         hxGet: `${this.endpoint}?event_id=${event.event_id}`,
@@ -896,8 +886,6 @@ class EventSelector extends LitWrapper {
    */
   _getPlaceholderText() {
     switch (this.mode) {
-      case "attendees":
-        return "Choose an event to view attendees";
       case "copy":
         return "Choose an event to copy";
       case "custom":
