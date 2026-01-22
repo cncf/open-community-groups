@@ -133,12 +133,14 @@ select is(
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A"
+                    "name": "Group A",
+                    "slug": "abc1234"
                 },
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000032",
-                    "name": "Group B"
+                    "name": "Group B",
+                    "slug": "def5678"
                 }
             ]
         }
@@ -163,17 +165,20 @@ select is(
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A"
+                    "name": "Group A",
+                    "slug": "abc1234"
                 },
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000032",
-                    "name": "Group B"
+                    "name": "Group B",
+                    "slug": "def5678"
                 },
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000033",
-                    "name": "Group C"
+                    "name": "Group C",
+                    "slug": "ghi9abc"
                 }
             ]
         }
@@ -198,17 +203,20 @@ select is(
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A"
+                    "name": "Group A",
+                    "slug": "abc1234"
                 },
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000032",
-                    "name": "Group B"
+                    "name": "Group B",
+                    "slug": "def5678"
                 },
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000033",
-                    "name": "Group C"
+                    "name": "Group C",
+                    "slug": "ghi9abc"
                 }
             ]
         }
@@ -233,7 +241,8 @@ select is(
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A"
+                    "name": "Group A",
+                    "slug": "abc1234"
                 }
             ]
         },
@@ -250,7 +259,8 @@ select is(
                 {
                     "active": true,
                     "group_id": "00000000-0000-0000-0000-000000000035",
-                    "name": "NYC DevOps Meetup"
+                    "name": "NYC DevOps Meetup",
+                    "slug": "mno3ghi"
                 }
             ]
         }

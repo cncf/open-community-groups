@@ -26,6 +26,8 @@ pub struct GroupMinimal {
     pub group_id: Uuid,
     /// Display name of the group.
     pub name: String,
+    /// URL-friendly identifier for this group.
+    pub slug: String,
 }
 
 /// Summary group information.
