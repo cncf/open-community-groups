@@ -132,39 +132,13 @@ select is(
             "groups": [
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A",
-                    "slug": "abc1234",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group A"
                 },
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704189600,
                     "group_id": "00000000-0000-0000-0000-000000000032",
-                    "name": "Group B",
-                    "slug": "def5678",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group B"
                 }
             ]
         }
@@ -188,57 +162,18 @@ select is(
             "groups": [
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A",
-                    "slug": "abc1234",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group A"
                 },
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704189600,
                     "group_id": "00000000-0000-0000-0000-000000000032",
-                    "name": "Group B",
-                    "slug": "def5678",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group B"
                 },
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704276000,
                     "group_id": "00000000-0000-0000-0000-000000000033",
-                    "name": "Group C",
-                    "slug": "ghi9abc",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group C"
                 }
             ]
         }
@@ -262,57 +197,18 @@ select is(
             "groups": [
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A",
-                    "slug": "abc1234",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group A"
                 },
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704189600,
                     "group_id": "00000000-0000-0000-0000-000000000032",
-                    "name": "Group B",
-                    "slug": "def5678",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group B"
                 },
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704276000,
                     "group_id": "00000000-0000-0000-0000-000000000033",
-                    "name": "Group C",
-                    "slug": "ghi9abc",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group C"
                 }
             ]
         }
@@ -336,21 +232,8 @@ select is(
             "groups": [
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000021",
-                        "name": "Test Category",
-                        "normalized_name": "test-category",
-                        "order": 1
-                    },
-                    "community_display_name": "Cloud Native Seattle",
-                    "community_name": "cloud-native-seattle",
-                    "created_at": 1704103200,
                     "group_id": "00000000-0000-0000-0000-000000000031",
-                    "name": "Group A",
-                    "slug": "abc1234",
-                    "city": "Test City",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "Group A"
                 }
             ]
         },
@@ -366,21 +249,8 @@ select is(
             "groups": [
                 {
                     "active": true,
-                    "category": {
-                        "group_category_id": "00000000-0000-0000-0000-000000000022",
-                        "name": "DevOps Category",
-                        "normalized_name": "devops-category",
-                        "order": 1
-                    },
-                    "community_display_name": "DevOps NYC",
-                    "community_name": "devops-nyc",
-                    "created_at": 1704448800,
                     "group_id": "00000000-0000-0000-0000-000000000035",
-                    "name": "NYC DevOps Meetup",
-                    "slug": "mno3ghi",
-                    "city": "New York",
-                    "country_code": "US",
-                    "country_name": "United States"
+                    "name": "NYC DevOps Meetup"
                 }
             ]
         }

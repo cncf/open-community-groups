@@ -1,10 +1,8 @@
 //! Templates and types for the group dashboard home page.
 
-use anyhow::Result;
 use askama::Template;
 use axum_messages::{Level, Message};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -13,9 +11,9 @@ use crate::{
         auth::User,
         dashboard::group::{analytics, attendees, events, members, settings, sponsors, team},
         filters,
-        helpers::{color, user_initials},
+        helpers::user_initials,
     },
-    types::{community::CommunitySummary, group::GroupSummary, site::SiteSettings},
+    types::{community::CommunitySummary, group::GroupMinimal, site::SiteSettings},
 };
 
 /// Home page template for the group dashboard.
@@ -45,7 +43,7 @@ pub(crate) struct Page {
 
 impl Page {
     /// Returns groups for the currently selected community.
-    fn selected_community_groups(&self) -> &[GroupSummary] {
+    fn selected_community_groups(&self) -> &[GroupMinimal] {
         self.groups_by_community
             .iter()
             .find(|c| c.community.community_id == self.selected_community_id)
@@ -159,22 +157,5 @@ pub struct UserGroupsByCommunity {
     /// Community information.
     pub community: CommunitySummary,
     /// Groups belonging to this community.
-    pub groups: Vec<GroupSummary>,
-}
-
-impl UserGroupsByCommunity {
-    /// Try to create a vector of `UserGroupsByCommunity` instances from a JSON string.
-    #[instrument(skip_all, err)]
-    pub fn try_from_json_array(data: &str) -> Result<Vec<Self>> {
-        let mut communities: Vec<Self> = serde_json::from_str(data)?;
-
-        // Apply color to each group summary
-        for community in &mut communities {
-            for group in &mut community.groups {
-                group.color = color(&group.name).to_string();
-            }
-        }
-
-        Ok(communities)
-    }
+    pub groups: Vec<GroupMinimal>,
 }

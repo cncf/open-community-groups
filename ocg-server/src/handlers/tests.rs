@@ -54,7 +54,8 @@ use crate::{
         community::{CommunityFull, CommunitySummary},
         event::{EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary},
         group::{
-            GroupCategory, GroupFull, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor, GroupSummary,
+            GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary, GroupSponsor,
+            GroupSummary,
         },
         site::{SiteSettings, Theme},
     },
@@ -448,6 +449,15 @@ pub(crate) fn sample_group_member() -> GroupMember {
     }
 }
 
+/// Sample minimal group used in dashboard group selector tests.
+pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
+    GroupMinimal {
+        active: true,
+        group_id,
+        name: "Test Group".to_string(),
+    }
+}
+
 /// Sample group region definition reused across tests.
 pub(crate) fn sample_group_region() -> GroupRegion {
     GroupRegion {
@@ -698,7 +708,7 @@ pub(crate) fn sample_user_groups_by_community(
             logo_url: "https://example.com/logo.png".to_string(),
             name: "test-community".to_string(),
         },
-        groups: vec![sample_group_summary(group_id)],
+        groups: vec![sample_group_minimal(group_id)],
     }]
 }
 
