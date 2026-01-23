@@ -185,19 +185,24 @@ e2e-write-server-config:
     "  oidc: {}" \
     > "{{ e2e_server_config }}"
 
+# Install e2e dependencies and Playwright browsers.
 e2e-install:
     yarn install
     yarn playwright install --with-deps
 
+# Run e2e tests.
 e2e-tests:
     yarn test:e2e
 
+# Run e2e tests in headed mode (browser visible).
 e2e-tests-headed:
     yarn test:e2e:headed
 
+# Run e2e tests with Playwright UI for debugging.
 e2e-tests-ui:
     yarn test:e2e:ui
 
+# Set up e2e test database (drop, create, migrate, seed).
 e2e-db-setup: e2e-write-tern-config
     just pg dropdb {{ pg_conn }} --if-exists --force {{ db_name_e2e }}
     just pg createdb {{ pg_conn }} {{ db_name_e2e }}
@@ -206,6 +211,7 @@ e2e-db-setup: e2e-write-tern-config
     cd "{{ source_dir }}/database/migrations" && TERN_CONF="{{ e2e_tern_conf }}" ./migrate.sh
     PATH="{{ pg_bin }}:$PATH" psql {{ pg_conn }} {{ db_name_e2e }} -f "{{ source_dir }}/database/tests/data/e2e.sql"
 
+# Run full e2e setup: database, dependencies, server, and tests.
 e2e-full: e2e-db-setup e2e-install e2e-write-server-config
     cargo run -- -c "{{ e2e_server_config }}" &
     i=0; while [ $i -lt 30 ]; do curl -sf http://localhost:9000/health-check > /dev/null && break; i=$((i+1)); sleep 2; done
