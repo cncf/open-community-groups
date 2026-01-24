@@ -3,13 +3,52 @@ import type { Page } from "@playwright/test";
 
 export const TEST_COMMUNITY_NAME =
   process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
-export const TEST_GROUP_SLUG = process.env.OCG_E2E_GROUP_SLUG || "test-group";
-export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "test-event";
-export const TEST_GROUP_NAME = "E2E Test Group";
-export const TEST_EVENT_NAME = "E2E Test Event";
+export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
+export const TEST_GROUP_SLUG =
+  process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
+export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
+export const TEST_GROUP_NAME = "E2E Test Group Alpha";
+export const TEST_EVENT_NAME = "Alpha Event One";
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "E2E Test Community";
+export const TEST_COMMUNITY_TITLE_2 = "E2E Second Community";
+
+// Group slugs organized by community
+export const TEST_GROUP_SLUGS = {
+  community1: {
+    alpha: "test-group-alpha",
+    beta: "test-group-beta",
+    gamma: "test-group-gamma",
+  },
+  community2: {
+    delta: "second-group-delta",
+    epsilon: "second-group-epsilon",
+    zeta: "second-group-zeta",
+  },
+} as const;
+
+// Event slugs organized by group
+export const TEST_EVENT_SLUGS = {
+  alpha: ["alpha-event-1", "alpha-event-2", "alpha-event-3"],
+  beta: ["beta-event-1", "beta-event-2", "beta-event-3"],
+  gamma: ["gamma-event-1", "gamma-event-2", "gamma-event-3"],
+  delta: ["delta-event-1", "delta-event-2", "delta-event-3"],
+  epsilon: ["epsilon-event-1", "epsilon-event-2", "epsilon-event-3"],
+  zeta: ["zeta-event-1", "zeta-event-2", "zeta-event-3"],
+} as const;
+
+// Pre-seeded user credentials for e2e tests
+export const TEST_USER_CREDENTIALS = {
+  admin1: { username: "e2e-admin-1", password: "Password123!" },
+  admin2: { username: "e2e-admin-2", password: "Password123!" },
+  organizer1: { username: "e2e-organizer-1", password: "Password123!" },
+  organizer2: { username: "e2e-organizer-2", password: "Password123!" },
+  member1: { username: "e2e-member-1", password: "Password123!" },
+  member2: { username: "e2e-member-2", password: "Password123!" },
+  pending1: { username: "e2e-pending-1", password: "Password123!" },
+  pending2: { username: "e2e-pending-2", password: "Password123!" },
+} as const;
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://localhost:9000";
 
 const buildUrl = (path: string) => new URL(path, BASE_URL).toString();
