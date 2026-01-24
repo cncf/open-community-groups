@@ -8,8 +8,14 @@ const dashboardRoutes = [
   "/dashboard/user",
 ];
 
+/**
+ * Dashboard access control checks for unauthenticated traffic.
+ */
 test.describe("dashboard access control", () => {
   for (const route of dashboardRoutes) {
+    /**
+     * Ensures protected dashboard routes redirect anonymous users to log in.
+     */
     test(`requires login for ${route}`, async ({ page }) => {
       await navigateToPath(page, route);
 

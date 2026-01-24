@@ -17,7 +17,13 @@ import {
   navigateToSiteHome,
 } from "../utils";
 
+/**
+ * Public page smoke tests that validate navigation and core content rendering.
+ */
 test.describe("public pages", () => {
+  /**
+   * Verifies the site home page shows the main title and community link.
+   */
   test("site home page loads and displays correctly", async ({ page }) => {
     await navigateToSiteHome(page);
 
@@ -29,6 +35,9 @@ test.describe("public pages", () => {
     ).toBeVisible();
   });
 
+  /**
+   * Verifies the community home page shows the community title and explore link.
+   */
   test("community home page loads and displays correctly", async ({ page }) => {
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
@@ -38,6 +47,9 @@ test.describe("public pages", () => {
     ).toBeVisible();
   });
 
+  /**
+   * Checks explore pages render the correct search inputs and site title.
+   */
   test("explore page loads for events and groups", async ({ page }) => {
     await navigateToSiteExplore(page);
     await expect(page.getByPlaceholder("Search events")).toBeVisible();
@@ -52,6 +64,9 @@ test.describe("public pages", () => {
     ).toBeVisible();
   });
 
+  /**
+   * Checks group pages render the seeded test group heading.
+   */
   test("group page displays group information", async ({ page }) => {
     await navigateToGroup(page, TEST_COMMUNITY_NAME, TEST_GROUP_SLUG);
     await expect(
@@ -59,6 +74,9 @@ test.describe("public pages", () => {
     ).toBeVisible();
   });
 
+  /**
+   * Checks event pages render the seeded test event heading.
+   */
   test("event page displays event information", async ({ page }) => {
     await navigateToEvent(
       page,
@@ -71,6 +89,9 @@ test.describe("public pages", () => {
     ).toBeVisible();
   });
 
+  /**
+   * Confirms group search returns the seeded test group in explore results.
+   */
   test("search returns matching groups", async ({ page }) => {
     await navigateToPath(
       page,

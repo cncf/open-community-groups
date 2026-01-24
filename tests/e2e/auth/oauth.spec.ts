@@ -8,7 +8,13 @@ const githubAuthUrl =
 const linuxfoundationEnabled =
   process.env.OCG_E2E_LINUXFOUNDATION_ENABLED === "true";
 
+/**
+ * OAuth provider checks for availability and redirect behavior.
+ */
 test.describe("oauth providers", () => {
+  /**
+   * Ensures GitHub login redirects to the configured authorization endpoint.
+   */
   test("github login redirects to authorization url", async ({ page, request }) => {
     if (!githubEnabled) {
       test.skip(true, "GitHub login not enabled");
@@ -25,6 +31,9 @@ test.describe("oauth providers", () => {
     expect(location).toContain(githubAuthUrl);
   });
 
+  /**
+   * Ensures the Linux Foundation SSO link is available when configured.
+   */
   test("linux foundation sso is available when configured", async ({ page }) => {
     if (!linuxfoundationEnabled) {
       test.skip(true, "Linux Foundation SSO not enabled");
