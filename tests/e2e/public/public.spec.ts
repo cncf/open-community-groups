@@ -31,17 +31,17 @@ test.describe("public pages", () => {
       page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE })
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: TEST_COMMUNITY_TITLE })
+      page.getByRole("link", { name: TEST_COMMUNITY_TITLE }).first()
     ).toBeVisible();
   });
 
   /**
-   * Verifies the community home page shows the community title and explore link.
+   * Verifies the community home page shows the about section and explore link.
    */
   test("community home page loads and displays correctly", async ({ page }) => {
     await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
 
-    await expect(page.getByText(TEST_COMMUNITY_TITLE).first()).toBeVisible();
+    await expect(page.getByText("About this community")).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Explore all groups" })
     ).toBeVisible();
