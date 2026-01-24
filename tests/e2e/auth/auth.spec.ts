@@ -36,7 +36,13 @@ const logInWithEmail = async (page: Page, user: AuthUser) => {
   await page.getByRole("button", { name: "Sign In" }).click();
 };
 
+/**
+ * Authentication flow tests for email sign-up and subsequent login attempts.
+ */
 test.describe("authentication", () => {
+  /**
+   * Ensures email sign-up requires verification before log in is allowed.
+   */
   test("email sign up requires verification before log in", async ({ page }) => {
     const user = buildAuthUser();
 
