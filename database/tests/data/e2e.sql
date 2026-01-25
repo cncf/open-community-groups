@@ -244,15 +244,19 @@ insert into "group" (
 -- ============================================================================
 
 -- Alpha group events (community 1)
--- Event 1: future in-person event with location
+-- Event 1: future in-person event with full location data
 insert into event (
-    event_id, name, slug, description, timezone, event_category_id,
-    event_kind_id, group_id, published, starts_at, ends_at, venue_city
+    event_id, name, slug, description, description_short, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at,
+    venue_name, venue_address, venue_city, venue_state, venue_country_name,
+    venue_country_code, venue_zip_code, banner_url, logo_url, capacity,
+    registration_required, tags
 ) values (
     '55555555-5555-5555-5555-555555555501',
     'Alpha Event One',
     'alpha-event-1',
     'In-person event for Alpha group.',
+    'Join us for the Alpha group meetup!',
     'UTC',
     '33333333-3333-3333-3333-333333333331',
     'in-person',
@@ -260,8 +264,25 @@ insert into event (
     true,
     now() + interval '10 days',
     now() + interval '10 days 2 hours',
-    'New York'
-), (
+    'Tech Conference Center',
+    '123 Main Street',
+    'New York',
+    'NY',
+    'United States',
+    'US',
+    '10001',
+    'https://example.com/event-banner.png',
+    'https://example.com/event-logo.png',
+    100,
+    true,
+    '{"meetup", "tech", "networking"}'
+);
+
+-- Event 2: future virtual event
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city
+) values (
     '55555555-5555-5555-5555-555555555502',
     'Alpha Event Two',
     'alpha-event-2',
