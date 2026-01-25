@@ -48,6 +48,32 @@ delete from "user" where user_id in (
     '77777777-7777-7777-7777-777777777708'
 );
 
+delete from session_speaker where session_id in (
+    '88888888-8888-8888-8888-888888888801',
+    '88888888-8888-8888-8888-888888888802'
+);
+
+delete from session where session_id in (
+    '88888888-8888-8888-8888-888888888801',
+    '88888888-8888-8888-8888-888888888802'
+);
+
+delete from event_speaker where event_id in (
+    '55555555-5555-5555-5555-555555555501'
+);
+
+delete from event_host where event_id in (
+    '55555555-5555-5555-5555-555555555501'
+);
+
+delete from event_sponsor where event_id in (
+    '55555555-5555-5555-5555-555555555501'
+);
+
+delete from group_sponsor where group_sponsor_id in (
+    '66666666-6666-6666-6666-666666666601'
+);
+
 delete from event where event_id in (
     '55555555-5555-5555-5555-555555555501',
     '55555555-5555-5555-5555-555555555502',
@@ -250,7 +276,7 @@ insert into event (
     event_kind_id, group_id, published, starts_at, ends_at,
     venue_name, venue_address, venue_city, venue_state, venue_country_name,
     venue_country_code, venue_zip_code, banner_url, logo_url, capacity,
-    registration_required, tags
+    registration_required, tags, meetup_url, meeting_join_url, photos_urls
 ) values (
     '55555555-5555-5555-5555-555555555501',
     'Alpha Event One',
@@ -275,13 +301,17 @@ insert into event (
     'https://example.com/event-logo.png',
     100,
     true,
-    '{"meetup", "tech", "networking"}'
+    '{"meetup", "tech", "networking"}',
+    'https://www.meetup.com/test-group/events/123456789/',
+    'https://zoom.us/j/1234567890',
+    '{"https://example.com/photo1.jpg", "https://example.com/photo2.jpg"}'
 );
 
--- Event 2: future virtual event
+-- Event 2: future virtual event with recording
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
-    event_kind_id, group_id, published, starts_at, ends_at, venue_city
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city,
+    meeting_recording_url
 ) values (
     '55555555-5555-5555-5555-555555555502',
     'Alpha Event Two',
@@ -294,8 +324,15 @@ insert into event (
     true,
     now() + interval '20 days',
     now() + interval '20 days 2 hours',
-    'San Francisco'
-), (
+    'San Francisco',
+    'https://www.youtube.com/watch?v=test123'
+);
+
+-- Event 3: future hybrid event
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city
+) values (
     '55555555-5555-5555-5555-555555555503',
     'Alpha Event Three',
     'alpha-event-3',
@@ -311,10 +348,10 @@ insert into event (
 );
 
 -- Beta group events (community 1)
--- Event 1: future in-person event
+-- Event 1: future in-person event (canceled - must be unpublished)
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
-    event_kind_id, group_id, published, starts_at, ends_at, venue_city
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city, canceled
 ) values (
     '55555555-5555-5555-5555-555555555504',
     'Beta Event One',
@@ -324,11 +361,18 @@ insert into event (
     '33333333-3333-3333-3333-333333333331',
     'in-person',
     '44444444-4444-4444-4444-444444444442',
-    true,
+    false,
     now() + interval '11 days',
     now() + interval '11 days 2 hours',
-    'Los Angeles'
-), (
+    'Los Angeles',
+    true
+);
+
+-- Event 2 and 3: future virtual and hybrid events
+insert into event (
+    event_id, name, slug, description, timezone, event_category_id,
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city
+) values (
     '55555555-5555-5555-5555-555555555505',
     'Beta Event Two',
     'beta-event-2',
@@ -686,6 +730,89 @@ values (
 ), (
     '44444444-4444-4444-4444-444444444445',
     '77777777-7777-7777-7777-777777777706'
+);
+
+-- ============================================================================
+-- GROUP SPONSORS
+-- ============================================================================
+
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
+values (
+    '66666666-6666-6666-6666-666666666601',
+    '44444444-4444-4444-4444-444444444441',
+    'Tech Corp',
+    'https://example.com/sponsor-logo.png',
+    'https://techcorp.example.com'
+);
+
+-- ============================================================================
+-- EVENT SPONSORS
+-- ============================================================================
+
+insert into event_sponsor (group_sponsor_id, event_id, level)
+values (
+    '66666666-6666-6666-6666-666666666601',
+    '55555555-5555-5555-5555-555555555501',
+    'gold'
+);
+
+-- ============================================================================
+-- EVENT HOSTS
+-- ============================================================================
+
+insert into event_host (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555501',
+    '77777777-7777-7777-7777-777777777703'
+);
+
+-- ============================================================================
+-- EVENT SPEAKERS
+-- ============================================================================
+
+insert into event_speaker (event_id, user_id, featured)
+values (
+    '55555555-5555-5555-5555-555555555501',
+    '77777777-7777-7777-7777-777777777705',
+    true
+), (
+    '55555555-5555-5555-5555-555555555501',
+    '77777777-7777-7777-7777-777777777706',
+    false
+);
+
+-- ============================================================================
+-- SESSIONS
+-- ============================================================================
+
+insert into session (session_id, event_id, name, session_kind_id, starts_at, ends_at, description)
+values (
+    '88888888-8888-8888-8888-888888888801',
+    '55555555-5555-5555-5555-555555555501',
+    'Opening Keynote',
+    'in-person',
+    now() + interval '10 days',
+    now() + interval '10 days 1 hour',
+    'Welcome and introduction to the event.'
+), (
+    '88888888-8888-8888-8888-888888888802',
+    '55555555-5555-5555-5555-555555555501',
+    'Technical Workshop',
+    'in-person',
+    now() + interval '10 days 1 hour',
+    now() + interval '10 days 2 hours',
+    'Hands-on technical session.'
+);
+
+-- ============================================================================
+-- SESSION SPEAKERS
+-- ============================================================================
+
+insert into session_speaker (session_id, user_id, featured)
+values (
+    '88888888-8888-8888-8888-888888888801',
+    '77777777-7777-7777-7777-777777777705',
+    true
 );
 
 commit;
