@@ -22,7 +22,7 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    // About section tests
+    /** About section. */
     test("about section renders with heading and CTA link", async ({ page }) => {
       await expect(page.getByText("About this community")).toBeVisible();
 
@@ -49,7 +49,7 @@ test.describe("community home page", () => {
       );
     });
 
-    // Breadcrumb tests
+    /** Breadcrumb. */
     test("breadcrumb navigation displays community name", async ({ page }) => {
       const breadcrumb = page.locator("breadcrumb-nav");
       await expect(breadcrumb).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("community home page", () => {
       expect(itemsAttr).toContain(TEST_COMMUNITY_TITLE);
     });
 
-    // Stats strip tests
+    /** Stats strip. */
     test("stats strip displays all stat labels", async ({ page }) => {
       const statLabels = ["Groups", "Members", "Events", "Attendees"];
       for (const label of statLabels) {
@@ -82,7 +82,7 @@ test.describe("community home page", () => {
       }
     });
 
-    // Upcoming events section tests
+    /** Upcoming events. */
     test("upcoming in-person events section renders with title", async ({
       page,
     }) => {
@@ -106,7 +106,7 @@ test.describe("community home page", () => {
       await expect(page.getByText(TEST_EVENT_NAMES.gamma[1])).toBeVisible();
     });
 
-    // Latest groups section tests
+    /** Latest groups. */
     test("latest groups section renders heading and explore link", async ({
       page,
     }) => {
@@ -118,7 +118,6 @@ test.describe("community home page", () => {
       await expect(exploreGroupsLinks.first()).toBeVisible();
     });
 
-    // Verifies all seeded groups appear with correct links to their detail pages
     test("latest groups section contains seeded groups with correct links", async ({
       page,
     }) => {
@@ -150,7 +149,6 @@ test.describe("community home page", () => {
       await navigateToCommunityHome(page, TEST_COMMUNITY_NAME);
     });
 
-    // Verifies each stat displays a valid numeric value (digits with optional commas)
     test("stats strip displays non-empty numeric values", async ({ page }) => {
       const desktopStats = page
         .locator("div.hidden.lg\\:flex")
@@ -206,7 +204,6 @@ test.describe("community home page", () => {
       );
     });
 
-    // Verifies desktop explore groups link is visible at md breakpoint
     test("explore all groups link visible on desktop", async ({ page }) => {
       const desktopExploreLink = page
         .locator("div.hidden.md\\:flex")
@@ -228,7 +225,6 @@ test.describe("community home page", () => {
       await expect(mobileStats).toBeVisible();
     });
 
-    // Verifies mobile explore link has correct href scoped to in-person section
     test("explore all events links have correct href on mobile", async ({
       page,
     }) => {
@@ -245,7 +241,6 @@ test.describe("community home page", () => {
       );
     });
 
-    // Verifies mobile explore groups link is visible below md breakpoint
     test("explore all groups link visible on mobile", async ({ page }) => {
       const mobileExploreLink = page
         .locator("div.md\\:hidden")

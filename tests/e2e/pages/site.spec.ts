@@ -20,7 +20,7 @@ test.describe("site home page", () => {
       await navigateToSiteHome(page);
     });
 
-    // Jumbotron tests
+    /** Jumbotron section. */
     test("jumbotron renders with title, description, and CTA link", async ({
       page,
     }) => {
@@ -36,7 +36,7 @@ test.describe("site home page", () => {
       await expect(ctaLink).toHaveAttribute("href", /\/explore/);
     });
 
-    // Stats strip tests
+    /** Stats strip. */
     test("stats strip displays all stat labels with values", async ({
       page,
     }) => {
@@ -48,7 +48,7 @@ test.describe("site home page", () => {
       }
     });
 
-    // Communities section tests
+    /** Community cards. */
     test("communities section lists community cards with correct links", async ({
       page,
     }) => {
@@ -71,7 +71,7 @@ test.describe("site home page", () => {
       );
     });
 
-    // Upcoming events section tests
+    /** Upcoming events. */
     test("upcoming in-person events section renders with title", async ({
       page,
     }) => {
@@ -94,7 +94,7 @@ test.describe("site home page", () => {
       await expect(page.getByText(TEST_EVENT_NAMES.alpha[1])).toBeVisible();
     });
 
-    // Latest groups section tests
+    /** Latest groups. */
     test("latest groups section renders heading and explore link", async ({
       page,
     }) => {
@@ -106,7 +106,7 @@ test.describe("site home page", () => {
       await expect(exploreGroupsLinks.first()).toBeVisible();
     });
 
-    // Card grid visibility test
+    /** Groups grid layout. */
     test("groups grid has correct responsive hiding classes", async ({
       page,
     }) => {
@@ -123,7 +123,6 @@ test.describe("site home page", () => {
       await navigateToSiteHome(page);
     });
 
-    // Verifies each stat displays a valid numeric value (digits with optional commas)
     test("stats strip displays non-empty numeric values", async ({ page }) => {
       const desktopStats = page
         .locator("div.hidden.lg\\:flex")
@@ -151,7 +150,6 @@ test.describe("site home page", () => {
       await expect(desktopStats).toBeVisible();
     });
 
-    // Verifies community card links render correctly on desktop viewport
     test("community cards render on desktop with correct links", async ({
       page,
     }) => {
@@ -174,7 +172,6 @@ test.describe("site home page", () => {
       );
     });
 
-    // Verifies banner images have accessible alt text with community display name
     test("community banners use display name in alt text", async ({ page }) => {
       const desktopBannerContainer = page.locator("div.hidden.sm\\:block");
       await expect(
@@ -189,7 +186,6 @@ test.describe("site home page", () => {
       ).toBeVisible();
     });
 
-    // Verifies desktop banner is visible and mobile banner is hidden on large screens
     test("desktop banner renders on large viewports", async ({ page }) => {
       const desktopBanner = page.locator("div.hidden.sm\\:block").first();
       await expect(desktopBanner).toBeVisible();
@@ -211,7 +207,6 @@ test.describe("site home page", () => {
         .locator("div.hidden.md\\:flex")
         .getByRole("link", { name: "Explore all events" });
       await expect(desktopLink).toBeVisible();
-      // Actual href from base.html template
       await expect(desktopLink).toHaveAttribute(
         "href",
         "/explore?community[0]=cncf&entity=events",
@@ -226,14 +221,12 @@ test.describe("site home page", () => {
       const desktopLink = groupsSection
         .locator("div.hidden.md\\:flex")
         .getByRole("link", { name: "Explore all groups" });
-      // Actual href from base.html template
       await expect(desktopLink).toHaveAttribute(
         "href",
         "/explore?community[0]=cncf&entity=groups",
       );
     });
 
-    // Verifies desktop explore groups link is visible at md breakpoint
     test("explore all groups link visible on desktop", async ({ page }) => {
       const desktopExploreLink = page
         .locator("div.hidden.md\\:flex")
@@ -255,7 +248,6 @@ test.describe("site home page", () => {
       await expect(mobileStats).toBeVisible();
     });
 
-    // Verifies community card links render correctly on mobile viewport
     test("community cards render on mobile with correct links", async ({
       page,
     }) => {
@@ -272,7 +264,6 @@ test.describe("site home page", () => {
       );
     });
 
-    // Verifies mobile banner is visible and desktop banner is hidden on small screens
     test("mobile banner renders on small viewports", async ({ page }) => {
       const mobileBanner = page
         .locator("div.aspect-\\[61\\/12\\].sm\\:hidden")
@@ -283,7 +274,6 @@ test.describe("site home page", () => {
       await expect(desktopBanner).toBeHidden();
     });
 
-    // Verifies mobile explore link has correct href from base.html template
     test("explore all events link visible on mobile with correct href", async ({
       page,
     }) => {
@@ -301,7 +291,6 @@ test.describe("site home page", () => {
       );
     });
 
-    // Verifies mobile explore groups link has correct href from base.html template
     test("explore all groups mobile link has correct href", async ({ page }) => {
       const groupsSection = page
         .getByText("Latest groups added", { exact: true })
@@ -316,7 +305,6 @@ test.describe("site home page", () => {
       );
     });
 
-    // Verifies mobile explore groups link is visible below md breakpoint
     test("explore all groups link visible on mobile", async ({ page }) => {
       const mobileExploreLink = page
         .locator("div.md\\:hidden")
