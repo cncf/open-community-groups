@@ -244,10 +244,10 @@ insert into "group" (
 -- ============================================================================
 
 -- Alpha group events (community 1)
--- Event 1: past in-person event
+-- Event 1: future in-person event with location
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
-    event_kind_id, group_id, published, starts_at, ends_at
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city
 ) values (
     '55555555-5555-5555-5555-555555555501',
     'Alpha Event One',
@@ -259,7 +259,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     now() + interval '10 days',
-    now() + interval '10 days 2 hours'
+    now() + interval '10 days 2 hours',
+    'New York'
 ), (
     '55555555-5555-5555-5555-555555555502',
     'Alpha Event Two',
@@ -271,7 +272,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     now() + interval '20 days',
-    now() + interval '20 days 2 hours'
+    now() + interval '20 days 2 hours',
+    'San Francisco'
 ), (
     '55555555-5555-5555-5555-555555555503',
     'Alpha Event Three',
@@ -283,7 +285,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444441',
     true,
     now() + interval '30 days',
-    now() + interval '30 days 2 hours'
+    now() + interval '30 days 2 hours',
+    null
 );
 
 -- Beta group events (community 1)
