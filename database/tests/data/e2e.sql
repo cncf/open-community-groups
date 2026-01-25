@@ -311,10 +311,10 @@ insert into event (
 );
 
 -- Beta group events (community 1)
--- Event 1: past in-person event
+-- Event 1: future in-person event
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
-    event_kind_id, group_id, published, starts_at, ends_at
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city
 ) values (
     '55555555-5555-5555-5555-555555555504',
     'Beta Event One',
@@ -326,7 +326,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444442',
     true,
     now() + interval '11 days',
-    now() + interval '11 days 2 hours'
+    now() + interval '11 days 2 hours',
+    'Los Angeles'
 ), (
     '55555555-5555-5555-5555-555555555505',
     'Beta Event Two',
@@ -338,7 +339,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444442',
     true,
     now() + interval '21 days',
-    now() + interval '21 days 2 hours'
+    now() + interval '21 days 2 hours',
+    'Los Angeles'
 ), (
     '55555555-5555-5555-5555-555555555506',
     'Beta Event Three',
@@ -350,14 +352,15 @@ insert into event (
     '44444444-4444-4444-4444-444444444442',
     true,
     now() + interval '31 days',
-    now() + interval '31 days 2 hours'
+    now() + interval '31 days 2 hours',
+    null
 );
 
 -- Gamma group events (community 1)
--- Event 1: past in-person event
+-- Event 1: future in-person event
 insert into event (
     event_id, name, slug, description, timezone, event_category_id,
-    event_kind_id, group_id, published, starts_at, ends_at
+    event_kind_id, group_id, published, starts_at, ends_at, venue_city
 ) values (
     '55555555-5555-5555-5555-555555555507',
     'Gamma Event One',
@@ -369,7 +372,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444443',
     true,
     now() + interval '12 days',
-    now() + interval '12 days 2 hours'
+    now() + interval '12 days 2 hours',
+    'Chicago'
 ), (
     '55555555-5555-5555-5555-555555555508',
     'Gamma Event Two',
@@ -381,7 +385,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444443',
     true,
     now() + interval '22 days',
-    now() + interval '22 days 2 hours'
+    now() + interval '22 days 2 hours',
+    'Chicago'
 ), (
     '55555555-5555-5555-5555-555555555509',
     'Gamma Event Three',
@@ -393,7 +398,8 @@ insert into event (
     '44444444-4444-4444-4444-444444444443',
     true,
     now() + interval '32 days',
-    now() + interval '32 days 2 hours'
+    now() + interval '32 days 2 hours',
+    null
 );
 
 -- Delta group events (community 2)

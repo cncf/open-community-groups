@@ -6,13 +6,34 @@ export const TEST_COMMUNITY_NAME =
 export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
 export const TEST_GROUP_SLUG =
   process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
-export const TEST_EVENT_SLUG = process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
+export const TEST_EVENT_SLUG =
+  process.env.OCG_E2E_EVENT_SLUG || "alpha-event-1";
 export const TEST_GROUP_NAME = "E2E Test Group Alpha";
 export const TEST_EVENT_NAME = "Alpha Event One";
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "E2E Test Community";
 export const TEST_COMMUNITY_TITLE_2 = "E2E Second Community";
+
+// Community details for assertions
+export const TEST_COMMUNITY_DESCRIPTION = "E2E test community description";
+export const TEST_COMMUNITY_BANNER_URL = "https://example.com/banner.png";
+export const TEST_COMMUNITY_BANNER_MOBILE_URL =
+  "https://example.com/banner-mobile.png";
+
+// Group names organized by community
+export const TEST_GROUP_NAMES = {
+  alpha: "E2E Test Group Alpha",
+  beta: "E2E Test Group Beta",
+  gamma: "E2E Test Group Gamma",
+} as const;
+
+// Event names organized by group
+export const TEST_EVENT_NAMES = {
+  alpha: ["Alpha Event One", "Alpha Event Two", "Alpha Event Three"],
+  beta: ["Beta Event One", "Beta Event Two", "Beta Event Three"],
+  gamma: ["Gamma Event One", "Gamma Event Two", "Gamma Event Three"],
+} as const;
 
 // Group slugs organized by community
 export const TEST_GROUP_SLUGS = {
@@ -99,7 +120,7 @@ export const navigateToSiteExplore = async (page: Page) => {
  */
 export const navigateToCommunityHome = async (
   page: Page,
-  communityName: string
+  communityName: string,
 ) => {
   await page.goto(buildUrl(`/${communityName}`));
 };
@@ -110,7 +131,7 @@ export const navigateToCommunityHome = async (
 export const navigateToGroup = async (
   page: Page,
   communityName: string,
-  groupSlug: string
+  groupSlug: string,
 ) => {
   await page.goto(buildUrl(`/${communityName}/group/${groupSlug}`));
 };
@@ -122,10 +143,10 @@ export const navigateToEvent = async (
   page: Page,
   communityName: string,
   groupSlug: string,
-  eventSlug: string
+  eventSlug: string,
 ) => {
   await page.goto(
-    buildUrl(`/${communityName}/group/${groupSlug}/event/${eventSlug}`)
+    buildUrl(`/${communityName}/group/${groupSlug}/event/${eventSlug}`),
   );
 };
 
