@@ -15,27 +15,27 @@ export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "E2E Test Community";
 export const TEST_COMMUNITY_TITLE_2 = "E2E Second Community";
 
-// Community details for assertions
+/** Community details for assertions. */
 export const TEST_COMMUNITY_DESCRIPTION = "E2E test community description";
 export const TEST_COMMUNITY_BANNER_URL = "https://example.com/banner.png";
 export const TEST_COMMUNITY_BANNER_MOBILE_URL =
   "https://example.com/banner-mobile.png";
 
-// Group names organized by community
+/** Group names organized by community. */
 export const TEST_GROUP_NAMES = {
   alpha: "E2E Test Group Alpha",
   beta: "E2E Test Group Beta",
   gamma: "E2E Test Group Gamma",
 } as const;
 
-// Event names organized by group
+/** Event names organized by group. */
 export const TEST_EVENT_NAMES = {
   alpha: ["Alpha Event One", "Alpha Event Two", "Alpha Event Three"],
   beta: ["Beta Event One", "Beta Event Two", "Beta Event Three"],
   gamma: ["Gamma Event One", "Gamma Event Two", "Gamma Event Three"],
 } as const;
 
-// Group slugs organized by community
+/** Group slugs organized by community. */
 export const TEST_GROUP_SLUGS = {
   community1: {
     alpha: "test-group-alpha",
@@ -49,7 +49,7 @@ export const TEST_GROUP_SLUGS = {
   },
 } as const;
 
-// Event slugs organized by group
+/** Event slugs organized by group. */
 export const TEST_EVENT_SLUGS = {
   alpha: ["alpha-event-1", "alpha-event-2", "alpha-event-3"],
   beta: ["beta-event-1", "beta-event-2", "beta-event-3"],
@@ -59,7 +59,7 @@ export const TEST_EVENT_SLUGS = {
   zeta: ["zeta-event-1", "zeta-event-2", "zeta-event-3"],
 } as const;
 
-// Pre-seeded user credentials for e2e tests
+/** Pre-seeded user credentials for e2e tests. */
 export const TEST_USER_CREDENTIALS = {
   admin1: { username: "e2e-admin-1", password: "Password123!" },
   admin2: { username: "e2e-admin-2", password: "Password123!" },
