@@ -10,6 +10,7 @@
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
+  <script type="module" src="/static/js/common/share-modal.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -110,7 +111,12 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
-                <div class="mt-4 md:mt-0 flex flex:row md:flex-col items-end md:ml-auto">
+                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
+                  {# Share button -#}
+                  <share-modal title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/event/{{ event.slug }}">
+                  </share-modal>
+                  {# End share button -#}
+
                   {# Attend button section -#}
                   {% include "event/attend_button.html" %}
                   {# End attend button section -#}
