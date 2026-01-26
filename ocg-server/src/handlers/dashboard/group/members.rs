@@ -57,14 +57,21 @@ pub(crate) async fn send_group_custom_notification(
     let user = auth_session.user.expect("user to be logged in");
 
     // Get group data and site settings
-    let (site_settings, group, group_members_ids) = tokio::try_join!(
+    let (site_settings, group, group_members_ids, team_member_ids) = tokio::try_join!(
         db.get_site_settings(),
         db.get_group_summary(community_id, group_id),
         db.list_group_members_ids(group_id),
+        db.list_group_team_members_ids(group_id),
     )?;
 
-    // If there are no members, nothing to do
-    if group_members_ids.is_empty() {
+    // Combine group members and team members
+    let mut recipients = group_members_ids;
+    recipients.extend(team_member_ids);
+    recipients.sort();
+    recipients.dedup();
+
+    // If there are no recipients, nothing to do
+    if recipients.is_empty() {
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
@@ -81,7 +88,7 @@ pub(crate) async fn send_group_custom_notification(
     let new_notification = NewNotification {
         attachments: vec![],
         kind: NotificationKind::GroupCustom,
-        recipients: group_members_ids,
+        recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
     notifications_manager.enqueue(&new_notification).await?;
@@ -255,6 +262,7 @@ mod tests {
         assert!(bytes.is_empty());
     }
 
+    #[allow(clippy::too_many_lines)]
     #[tokio::test]
     async fn test_send_group_custom_notification_success() {
         // Setup identifiers and data structures
@@ -262,6 +270,7 @@ mod tests {
         let group_id = Uuid::new_v4();
         let member_id1 = Uuid::new_v4();
         let member_id2 = Uuid::new_v4();
+        let team_member_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -280,6 +289,8 @@ mod tests {
         let group_for_db = group_summary.clone();
         let notification_body = "Hello, group members!";
         let notification_subject = "Important Update";
+        let mut expected_recipients = vec![member_id1, member_id2, team_member_id];
+        expected_recipients.sort();
         let form_data = serde_qs::to_string(&GroupCustomNotification {
             title: notification_subject.to_string(),
             body: notification_body.to_string(),
@@ -310,6 +321,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id1, member_id2]));
+        db.expect_list_group_team_members_ids()
+            .times(1)
+            .withf(move |gid| *gid == group_id)
+            .returning(move |_| Ok(vec![team_member_id]));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -334,7 +349,7 @@ mod tests {
             .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::GroupCustom)
-                    && notification.recipients == vec![member_id1, member_id2]
+                    && notification.recipients == expected_recipients
                     && notification.template_data.as_ref().is_some_and(|value| {
                         serde_json::from_value::<GroupCustom>(value.clone())
                             .map(|template| {
@@ -409,6 +424,10 @@ mod tests {
             .withf(move |cid, gid| *cid == community_id && *gid == group_id)
             .returning(move |_, _| Ok(group_for_db.clone()));
         db.expect_list_group_members_ids()
+            .times(1)
+            .withf(move |gid| *gid == group_id)
+            .returning(move |_| Ok(vec![]));
+        db.expect_list_group_team_members_ids()
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![]));

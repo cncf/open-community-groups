@@ -250,21 +250,28 @@ pub(crate) async fn publish(
     );
     if should_notify {
         // Fetch event full and group member IDs concurrently
-        let (event_full, all_member_ids) = tokio::try_join!(
+        let (event_full, group_member_ids, team_member_ids) = tokio::try_join!(
             db.get_event_full(community_id, group_id, event_id),
-            db.list_group_members_ids(group_id)
+            db.list_group_members_ids(group_id),
+            db.list_group_team_members_ids(group_id)
         )?;
+
+        // Combine group members and team members
+        let mut recipients = group_member_ids;
+        recipients.extend(team_member_ids);
+        recipients.sort();
+        recipients.dedup();
 
         // Extract speaker IDs
         let speaker_ids = event_full.speakers_ids();
         let has_speakers = !speaker_ids.is_empty();
 
         // Filter out speakers from member IDs (they get a separate notification)
-        let member_ids: Vec<Uuid> = all_member_ids
+        let recipients: Vec<Uuid> = recipients
             .into_iter()
             .filter(|id| !speaker_ids.contains(id))
             .collect();
-        let has_members = !member_ids.is_empty();
+        let has_members = !recipients.is_empty();
 
         if has_members || has_speakers {
             // Prepare common data for notifications
@@ -284,7 +291,7 @@ pub(crate) async fn publish(
                 let notification = NewNotification {
                     attachments: vec![calendar_ics.clone()],
                     kind: NotificationKind::EventPublished,
-                    recipients: member_ids,
+                    recipients,
                     template_data: Some(serde_json::to_value(&template_data)?),
                 };
                 notifications_manager.enqueue(&notification).await?;
@@ -1038,6 +1045,7 @@ mod tests {
         let group_id = Uuid::new_v4();
         let member_id = Uuid::new_v4();
         let speaker_id = Uuid::new_v4();
+        let team_member_id = Uuid::new_v4();
         let session_id = session::Id::default();
         let user_id = Uuid::new_v4();
         let auth_hash = "hash".to_string();
@@ -1062,6 +1070,8 @@ mod tests {
         let site_settings = sample_site_settings();
         let site_settings_for_member_notification = site_settings.clone();
         let site_settings_for_speaker_notification = site_settings.clone();
+        let mut expected_member_recipients = vec![member_id, team_member_id];
+        expected_member_recipients.sort();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1093,6 +1103,10 @@ mod tests {
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![member_id]));
+        db.expect_list_group_team_members_ids()
+            .times(1)
+            .withf(move |gid| *gid == group_id)
+            .returning(move |_| Ok(vec![team_member_id]));
         db.expect_get_site_settings()
             .times(1)
             .returning(move || Ok(site_settings.clone()));
@@ -1103,7 +1117,7 @@ mod tests {
             .times(1)
             .withf(move |notification| {
                 matches!(notification.kind, NotificationKind::EventPublished)
-                    && notification.recipients == vec![member_id]
+                    && notification.recipients == expected_member_recipients
                     && notification.template_data.as_ref().is_some_and(|value| {
                         from_value::<EventPublished>(value.clone())
                             .map(|template| {
@@ -1279,6 +1293,10 @@ mod tests {
             .returning(move |_, _, _| Ok(event_full.clone()));
         // No group members
         db.expect_list_group_members_ids()
+            .times(1)
+            .withf(move |gid| *gid == group_id)
+            .returning(move |_| Ok(vec![]));
+        db.expect_list_group_team_members_ids()
             .times(1)
             .withf(move |gid| *gid == group_id)
             .returning(move |_| Ok(vec![]));

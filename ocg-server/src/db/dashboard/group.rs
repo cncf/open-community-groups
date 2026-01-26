@@ -90,6 +90,9 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all group team members.
     async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
 
+    /// Lists all accepted, verified group team member user ids.
+    async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
+
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
@@ -411,6 +414,20 @@ impl DBDashboardGroup for PgDB {
         let members: Vec<GroupTeamMember> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(members)
+    }
+
+    /// [`DBDashboardGroup::list_group_team_members_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
+        trace!("db: list group team members ids");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_group_team_members_ids($1::uuid)::text", &[&group_id])
+            .await?;
+        let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(ids)
     }
 
     /// [`DBDashboardGroup::list_session_kinds`]
