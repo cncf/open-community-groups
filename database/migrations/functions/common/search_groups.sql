@@ -5,6 +5,7 @@ declare
     v_bbox geometry;
     v_community_ids uuid[];
     v_group_category text[];
+    v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
     v_limit int := coalesce((p_filters->>'limit')::int, 10);
     v_max_distance real;
     v_offset int := coalesce((p_filters->>'offset')::int, 0);
@@ -67,7 +68,7 @@ begin
         from "group" g
         join group_category gc using (group_category_id)
         left join region r using (region_id)
-        where g.active = true
+        where (g.active = true or v_include_inactive)
         and
             case when v_bbox is not null then
             st_intersects(g.location, v_bbox) else true end

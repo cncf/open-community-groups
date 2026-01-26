@@ -413,6 +413,10 @@ pub(crate) struct GroupsFilters {
     /// Whether to include bounding box in results.
     #[garde(skip)]
     pub include_bbox: Option<bool>,
+    /// Whether to include inactive groups in results.
+    #[serde(default, skip_deserializing)]
+    #[garde(skip)]
+    pub include_inactive: Option<bool>,
     /// User's latitude for distance-based filtering.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
