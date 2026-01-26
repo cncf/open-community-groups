@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { speakerKey } from "/static/js/dashboard/event/speaker-utils.js";
 
@@ -164,12 +164,12 @@ export class SessionSpeakerModal extends LitWrapper {
     const initials = computeUserInitials(user.name, user.username, 2);
     return html`
       <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
-        <avatar-image
+        <logo-image
           image-url=${user.photo_url || ""}
           placeholder=${initials}
           size="size-[24px]"
           hide-border
-        ></avatar-image>
+        ></logo-image>
         ${this._featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
         <span class="text-sm text-stone-700">${user.name || user.username}</span>
       </div>

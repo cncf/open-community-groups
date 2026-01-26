@@ -263,7 +263,7 @@ export class ImageField extends LitWrapper {
    */
   render() {
     const valueInputId = this._valueInputId;
-    const bannerLikeKinds = [IMAGE_KIND.BANNER, IMAGE_KIND.LOGO];
+    const bannerLikeKinds = [IMAGE_KIND.BANNER];
     const isWide = bannerLikeKinds.includes(this.imageKind);
     const removeDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();

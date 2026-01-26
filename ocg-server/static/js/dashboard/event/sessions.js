@@ -5,7 +5,7 @@ import {
   convertTimestampToDateTimeLocalInTz,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 import "/static/js/common/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/speaker-utils.js";

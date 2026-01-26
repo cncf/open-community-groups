@@ -43,12 +43,12 @@
             {# Member -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-5">
-                <avatar-image
+                <logo-image
                 {% if let Some(photo_url) = &member.photo_url -%}
                   image-url="{{ photo_url }}"
                 {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
-                </avatar-image>
+                </logo-image>
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1">
                     <div class="font-medium text-stone-900 truncate">{{ member.name|assigned_or(member.username) }}</div>
