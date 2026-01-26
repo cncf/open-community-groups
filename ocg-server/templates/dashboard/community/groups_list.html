@@ -93,17 +93,27 @@
     <tbody id="groups-list">
       {% if groups.is_empty() -%}
         <tr class="bg-white border-b border-stone-200">
-          {# Mobile: 2 columns (Name, Actions) -#}
-          <td class="xl:hidden px-8 py-20 text-center" colspan="2">
-            {% include "dashboard/placeholders/community_groups_table.html" -%}
-          </td>
-          {# xl: 4 columns (adds Location, Category) -#}
-          <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
-              colspan="4">{% include "dashboard/placeholders/community_groups_table.html" -%}</td>
-          {# 2xl: 5 columns (adds Created) -#}
-          <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
-            {% include "dashboard/placeholders/community_groups_table.html" -%}
-          </td>
+          {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+            {# No results when filtering -#}
+            <td class="xl:hidden px-8 py-20 text-center" colspan="2">
+              {% include "dashboard/placeholders/no_results.html" -%}
+            </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+                colspan="4">{% include "dashboard/placeholders/no_results.html" -%}</td>
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
+              {% include "dashboard/placeholders/no_results.html" -%}
+            </td>
+          {% else -%}
+            {# No groups created yet -#}
+            <td class="xl:hidden px-8 py-20 text-center" colspan="2">
+              {% include "dashboard/placeholders/community_groups_table.html" -%}
+            </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+                colspan="4">{% include "dashboard/placeholders/community_groups_table.html" -%}</td>
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
+              {% include "dashboard/placeholders/community_groups_table.html" -%}
+            </td>
+          {% endif -%}
         </tr>
       {% else -%}
         {% for group in groups -%}
