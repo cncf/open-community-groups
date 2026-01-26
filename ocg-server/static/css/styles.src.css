@@ -389,6 +389,7 @@ input:placeholder-shown {
 .icon-arrow-right-double { --icon-url: url('/static/images/icons/arrow_right_double.svg'); }
 .icon-arrow-right { --icon-url: url('/static/images/icons/arrow_right.svg'); }
 .icon-attendees { --icon-url: url('/static/images/icons/attendees.svg'); }
+.icon-bluesky { --icon-url: url('/static/images/icons/bluesky.svg'); }
 .icon-buildings { --icon-url: url('/static/images/icons/buildings.svg'); }
 .icon-handshake { --icon-url: url('/static/images/icons/handshake.svg'); }
 .icon-calendar { --icon-url: url('/static/images/icons/calendar.svg'); }
@@ -403,7 +404,9 @@ input:placeholder-shown {
 .icon-check-in { --icon-url: url('/static/images/icons/check_in.svg'); }
 .icon-clock { --icon-url: url('/static/images/icons/clock.svg'); }
 .icon-close { --icon-url: url('/static/images/icons/close.svg'); }
+.icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
+.icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }
 .icon-events { --icon-url: url('/static/images/icons/events.svg'); }
 .icon-external-link { --icon-url: url('/static/images/icons/external_link.svg'); }
@@ -445,7 +448,9 @@ input:placeholder-shown {
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
+.icon-reddit { --icon-url: url('/static/images/icons/reddit.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
+.icon-share { --icon-url: url('/static/images/icons/share.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
@@ -457,6 +462,7 @@ input:placeholder-shown {
 .icon-vertical-dots { --icon-url: url('/static/images/icons/vertical_dots.svg'); }
 .icon-virtual { --icon-url: url('/static/images/icons/virtual.svg'); }
 .icon-warning { --icon-url: url('/static/images/icons/warning.svg'); }
+.icon-whatsapp { --icon-url: url('/static/images/icons/whatsapp.svg'); }
 .icon-website { --icon-url: url('/static/images/icons/website.svg'); }
 .icon-wechat { --icon-url: url('/static/images/icons/wechat.svg'); }
 .icon-youtube { --icon-url: url('/static/images/icons/youtube.svg'); }

@@ -10,6 +10,7 @@
   <script type="module" src="/static/js/common/people-list.js"></script>
   <script type="module" src="/static/js/common/user-chip.js"></script>
   <script type="module" src="/static/js/common/user-info-modal.js"></script>
+  <script type="module" src="/static/js/common/share-modal.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -87,7 +88,12 @@
                 {% endif -%}
                 {# End social networks (mobile) -#}
 
-                <div class="mt-4 md:mt-0 flex flex:row md:flex-col items-end md:ml-auto">
+                <div class="mt-4 md:mt-0 flex flex-row flex-wrap gap-4 items-end md:ml-auto">
+                  {# Share button -#}
+                  <share-modal title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.slug }}">
+                  </share-modal>
+                  {# End share button -#}
+
                   {# Membership button section -#}
                   {% include "group/membership_button.html" %}
                   {# End membership button section -#}
