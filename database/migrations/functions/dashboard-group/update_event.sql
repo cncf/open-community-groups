@@ -7,6 +7,7 @@ create or replace function update_event(
 )
 returns void as $$
 declare
+    v_attendee_count int;
     v_community_id uuid;
     v_ends_at timestamptz;
     v_event_before jsonb;
@@ -120,6 +121,18 @@ begin
         then
             raise exception 'event capacity (%) exceeds maximum participants allowed (%)',
                 (p_event->>'capacity')::int, v_provider_max_participants;
+        end if;
+    end if;
+
+    -- Validate event capacity is not less than current attendee count
+    if (p_event->>'capacity')::int is not null then
+        select count(*) into v_attendee_count
+        from event_attendee
+        where event_id = p_event_id;
+
+        if (p_event->>'capacity')::int < v_attendee_count then
+            raise exception 'event capacity (%) cannot be less than current number of attendees (%)',
+                (p_event->>'capacity')::int, v_attendee_count;
         end if;
     end if;
 
