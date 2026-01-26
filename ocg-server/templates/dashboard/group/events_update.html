@@ -781,6 +781,17 @@
   let previousStartsAt = startsAtInput?.value || '';
   let previousEndsAt = endsAtInput?.value || '';
 
+  if (startsAtInput) {
+    startsAtInput.addEventListener('change', () => {
+      startsAtInput.setCustomValidity('');
+    });
+  }
+  if (endsAtInput) {
+    endsAtInput.addEventListener('change', () => {
+      endsAtInput.setCustomValidity('');
+    });
+  }
+
   if (startsAtInput && onlineEventDetails) {
     startsAtInput.addEventListener('change', async () => {
       const accepted = await onlineEventDetails.trySetStartsAt(startsAtInput.value);
