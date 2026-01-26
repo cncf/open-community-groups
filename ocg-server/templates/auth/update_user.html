@@ -93,7 +93,7 @@
 
         {# Photo URL -#}
         <div class="col-span-full">
-          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = &user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar">
+          <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = &user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="avatar" target="logo">
         </image-field>
       </div>
       {# End photo URL -#}

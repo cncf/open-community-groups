@@ -101,21 +101,21 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-4">
-          <image-field label="Logo" name="logo_url" value="{{ group.logo_url }}" image-kind="avatar">
+          <image-field label="Logo" name="logo_url" value="{{ group.logo_url }}" image-kind="avatar" target="logo">
         </image-field>
       </div>
       {# End Logo URL -#}
 
       {# Banner URL -#}
       <div class="col-span-full">
-        <image-field label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}" help-prefix-text="Size required 2428 x 192 px.">
+        <image-field label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}" help-prefix-text="Size required 2428 x 192 px." target="banner">
       </image-field>
     </div>
     {# End Banner URL -#}
 
     {# Banner Mobile URL -#}
     <div class="col-span-full">
-      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}" help-prefix-text="Size required 1220 x 192 px.">
+      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile">
     </image-field>
   </div>
   {# End Banner Mobile URL -#}
