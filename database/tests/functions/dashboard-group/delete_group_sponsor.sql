@@ -78,7 +78,7 @@ values (:'eventID', :'sponsorID', 'Gold');
 -- Should fail when sponsor is referenced by event
 select throws_like(
     $$select delete_group_sponsor('40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
-    '%foreign key%',
+    '%sponsor is used by one or more events%',
     'Should fail when sponsor is referenced by event'
 );
 
