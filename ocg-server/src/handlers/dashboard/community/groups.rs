@@ -48,6 +48,7 @@ pub(crate) async fn list_page(
     let ts_query = query.get("ts_query").cloned();
     let filters = explore::GroupsFilters {
         community: vec![community_name],
+        include_inactive: Some(true),
         limit: Some(MAX_GROUPS_LISTED),
         sort_by: Some(String::from("name")),
         ts_query: ts_query.clone(),
@@ -271,6 +272,7 @@ mod tests {
                 let ts_query = ts_query.clone();
                 move |filters| {
                     filters.community == vec!["test".to_string()]
+                        && filters.include_inactive == Some(true)
                         && filters.limit == Some(super::MAX_GROUPS_LISTED)
                         && filters.sort_by.as_deref() == Some("name")
                         && filters.ts_query.as_deref() == Some(ts_query.as_str())
@@ -338,6 +340,7 @@ mod tests {
             .times(1)
             .withf(move |filters| {
                 filters.community == vec!["test".to_string()]
+                    && filters.include_inactive == Some(true)
                     && filters.limit == Some(super::MAX_GROUPS_LISTED)
             })
             .returning(move |_| Err(anyhow!("db error")));

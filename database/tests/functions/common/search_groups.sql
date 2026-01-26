@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(11);
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
 \set group5ID '00000000-0000-0000-0000-000000000035'
+\set group6ID '00000000-0000-0000-0000-000000000036'
 \set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 
@@ -82,28 +83,33 @@ insert into "group" (
     location,
     description_short,
     logo_url,
+    active,
     created_at
 ) values
     (:'group1ID', 'Kubernetes Meetup', 'abc1234', :'community1ID', :'category1ID',
      array['kubernetes', 'cloud'], 'San Francisco', 'CA', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-122.4194 37.7749)'), 'SF Bay Area Kubernetes enthusiasts',
-     'https://example.com/k8s-logo.png', '2024-01-03 10:00:00+00'),
+     'https://example.com/k8s-logo.png', true, '2024-01-03 10:00:00+00'),
     (:'group2ID', 'Docker Users', 'def5678', :'community1ID', :'category1ID',
      array['docker', 'containers'], 'New York', 'NY', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-74.0060 40.7128)'), 'NYC Docker community meetup group',
-     'https://example.com/docker-logo.png', '2024-01-02 10:00:00+00'),
+     'https://example.com/docker-logo.png', true, '2024-01-02 10:00:00+00'),
     (:'group3ID', 'Business Leaders', 'ghi9abc', :'community1ID', :'category2ID',
      array['leadership', 'management'], 'London', null, 'GB', 'United Kingdom', null,
      ST_GeogFromText('POINT(-0.1278 51.5074)'), 'London business leadership forum',
-     'https://example.com/business-logo.png', '2024-01-01 10:00:00+00'),
+     'https://example.com/business-logo.png', true, '2024-01-01 10:00:00+00'),
     (:'group4ID', 'Tech Innovators', 'jkl2def', :'community1ID', :'category1ID',
      array['innovation', 'tech'], 'Austin', 'TX', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-97.7431 30.2672)'), 'This is a placeholder group.',
-     'https://example.com/tech-logo.png', '2024-01-04 10:00:00+00'),
+     'https://example.com/tech-logo.png', true, '2024-01-04 10:00:00+00'),
     (:'group5ID', 'Python Developers', 'mno3ghi', :'community2ID', :'category3ID',
      array['python', 'programming'], 'Chicago', 'IL', 'US', 'United States', null,
      ST_GeogFromText('POINT(-87.6298 41.8781)'), 'Chicago Python community meetup',
-     'https://example.com/python-logo.png', '2024-01-05 10:00:00+00');
+     'https://example.com/python-logo.png', true, '2024-01-05 10:00:00+00'),
+    (:'group6ID', 'Archived Group', 'pqr4jkl', :'community1ID', :'category2ID',
+     array['archived'], 'Miami', 'FL', 'US', 'United States', :'region1ID',
+     ST_GeogFromText('POINT(-80.1918 25.7617)'), 'This group is inactive.',
+     'https://example.com/archived-logo.png', false, '2024-01-06 10:00:00+00');
 
 -- ============================================================================
 -- TESTS
@@ -120,6 +126,20 @@ select is(
         get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
     ),
     'Should return all active groups without filters'
+);
+
+-- Should return inactive groups when include_inactive is enabled
+select is(
+    (select groups from search_groups(jsonb_build_object('include_inactive', true)))::jsonb,
+    jsonb_build_array(
+        get_group_summary(:'community1ID'::uuid, :'group6ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group1ID'::uuid)::jsonb,
+        get_group_summary(:'community2ID'::uuid, :'group5ID'::uuid)::jsonb,
+        get_group_summary(:'community1ID'::uuid, :'group4ID'::uuid)::jsonb
+    ),
+    'Should return inactive groups when include_inactive is enabled'
 );
 
 -- Should filter groups by community
