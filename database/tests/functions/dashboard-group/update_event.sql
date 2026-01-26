@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(42);
+select plan(45);
 
 -- ============================================================================
 -- VARIABLES
@@ -323,6 +323,12 @@ insert into event (
     current_timestamp - interval '1 hour',
     current_timestamp + interval '2 hours'
 );
+
+-- Event Attendees (for capacity validation tests)
+insert into event_attendee (event_id, user_id) values
+    (:'event5ID', :'user1ID'),
+    (:'event5ID', :'user2ID'),
+    (:'event5ID', :'user3ID');
 
 -- ============================================================================
 -- TESTS
@@ -1129,6 +1135,37 @@ select throws_ok(
     ),
     'event starts_at cannot be earlier than current value',
     'Should throw error when trying to backdate starts_at on live event'
+);
+
+-- Should throw error when capacity is reduced below attendee count
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "description": "Test", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 2}'::jsonb
+    )$$,
+    'event capacity (2) cannot be less than current number of attendees (3)',
+    'Should throw error when capacity is reduced below attendee count'
+);
+
+-- Should succeed when capacity equals attendee count
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "description": "Test capacity equals", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 3}'::jsonb
+    )$$,
+    'Should succeed when capacity equals attendee count'
+);
+
+-- Should succeed when capacity exceeds attendee count
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{"name": "Event With Pending Sync", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100}'::jsonb
+    )$$,
+    'Should succeed when capacity exceeds attendee count'
 );
 
 -- ============================================================================
