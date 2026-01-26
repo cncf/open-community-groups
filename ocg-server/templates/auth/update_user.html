@@ -110,7 +110,7 @@
                     maxlength="{{ crate::validation::MAX_LEN_BIO }}"
                     class="input-primary">{% if let Some(bio) = &user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
-        <p class="form-legend">A description about yourself and your background. Max 250 characters.</p>
+        <p class="form-legend">A description about yourself and your background. Max {{ crate::validation::MAX_LEN_BIO }} characters.</p>
       </div>
       {# End bio -#}
 
