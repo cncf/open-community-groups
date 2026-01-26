@@ -178,32 +178,39 @@ export class MultipleInputs extends LitWrapper {
         ${repeat(
           this.items,
           (item) => item.id,
-          (item) => html`
-            <div class="flex items-center gap-2">
-              <div class="flex-1">
-                <input
-                  type=${validInputType}
-                  class="input-primary w-full"
-                  placeholder=${this.placeholder}
-                  value=${item.value}
-                  @input=${(e) => this._handleInputChange(item.id, e)}
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                />
+          (item) => {
+            const isItemEmpty = item.value.trim() === "";
+            const isRemoveDisabled = isItemEmpty || (this.items.length <= 1 && this.required);
+
+            return html`
+              <div class="flex items-center gap-2">
+                <div class="flex-1">
+                  <input
+                    type=${validInputType}
+                    class="input-primary w-full"
+                    placeholder=${this.placeholder}
+                    value=${item.value}
+                    @input=${(e) => this._handleInputChange(item.id, e)}
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class=${`p-2 border border-stone-200 rounded-full ${
+                    isRemoveDisabled ? "" : "cursor-pointer hover:bg-stone-100"
+                  }`}
+                  title="Remove item"
+                  @click=${() => this._removeItem(item.id)}
+                  ?disabled=${isRemoveDisabled}
+                >
+                  <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                </button>
               </div>
-              <button
-                type="button"
-                class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
-                title="Remove item"
-                @click=${() => this._removeItem(item.id)}
-                ?disabled=${this.items.length <= 1 && this.required}
-              >
-                <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
-              </button>
-            </div>
-          `,
+            `;
+          },
         )}
 
         <!-- Legend text -->
@@ -217,8 +224,9 @@ export class MultipleInputs extends LitWrapper {
         >
           Add ${this.label || "Item"}
         </button>
-
-        <!-- Hidden inputs for form submission -->
+      </div>
+      <!-- Hidden inputs for form submission -->
+      <div class="hidden">
         ${this.fieldName
           ? this.items.map((item) =>
               item.value.trim() !== ""
