@@ -279,6 +279,10 @@ mock! {
             &self,
             group_id: Uuid,
         ) -> Result<Vec<crate::templates::dashboard::group::team::GroupTeamMember>>;
+        async fn list_group_team_members_ids(
+            &self,
+            group_id: Uuid,
+        ) -> Result<Vec<Uuid>>;
         async fn list_session_kinds(&self)
             -> Result<Vec<crate::types::event::SessionKindSummary>>;
         async fn list_user_groups(
