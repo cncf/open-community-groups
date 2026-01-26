@@ -104,7 +104,7 @@
                          required
                          {% if event.is_past() %}disabled{% endif %}>
                 </div>
-                <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup).</p>
+                <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max 250 characters.</p>
               </div>
               {# End Event name -#}
 
@@ -187,9 +187,7 @@
                       class="input-primary"
                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{% if let Some(description_short) = &event.description_short %}{{ description_short }}{% endif %}</textarea>
           </div>
-          <p class="form-legend">
-            Brief description used in event listings and previews (max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters).
-          </p>
+          <p class="form-legend">Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.</p>
         </div>
         {# End Short Description -#}
 
