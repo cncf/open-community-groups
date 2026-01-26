@@ -87,12 +87,20 @@
                   {% if let Some(capacity) = &event.capacity -%}
                     <div class="flex items-center">
                       <div class="svg-icon size-4 mr-2 bg-stone-600 icon-people"></div>
-                      <span class="text-sm">Capacity: {{ capacity }}</span>
-                      {% if let Some(remaining_capacity) = &event.remaining_capacity %}
-                        {% if *remaining_capacity > 0 %}
-                          <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
+                      {% if event.is_past() -%}
+                        {% if let Some(remaining_capacity) = &event.remaining_capacity -%}
+                          <span class="text-sm">Attendees: {{ capacity - remaining_capacity }}</span>
+                        {% else -%}
+                          <span class="text-sm">Capacity: {{ capacity }}</span>
+                        {% endif -%}
+                      {% else -%}
+                        <span class="text-sm">Capacity: {{ capacity }}</span>
+                        {% if let Some(remaining_capacity) = &event.remaining_capacity %}
+                          {% if *remaining_capacity > 0 %}
+                            <span class="text-xs text-stone-500 ms-2">(Remaining: {{ remaining_capacity }})</span>
+                          {% endif %}
                         {% endif %}
-                      {% endif %}
+                      {% endif -%}
                     </div>
                   {% endif -%}
                   <div>{{ badges::event_badge(kind = event.kind, extra_styles = Some("mt-0.5 px-2.5 py-0.5") ) -}}</div>
