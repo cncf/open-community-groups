@@ -23,9 +23,6 @@ export class ShareModal extends LitWrapper {
     };
   }
 
-  /**
-   * Creates an instance of ShareModal.
-   */
   constructor() {
     super();
     this.title = "";
