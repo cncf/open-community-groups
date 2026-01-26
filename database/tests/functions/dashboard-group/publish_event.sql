@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(8);
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
+\set eventNoStartDateID '00000000-0000-0000-0000-000000000033'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set sessionMeetingID '00000000-0000-0000-0000-000000000051'
@@ -124,6 +125,29 @@ insert into event (
     false
 );
 
+-- Event without start date (to verify it cannot be published)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    published
+) values (
+    :'eventNoStartDateID',
+    :'groupID',
+    'Test Event No Start Date',
+    'test-event-no-start-date',
+    'A test event without start date',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    false
+);
+
 -- Session with meeting_requested=true (should be marked as out of sync)
 insert into session (
     session_id,
@@ -227,6 +251,13 @@ select throws_ok(
     $$select publish_event('00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
     'event not found or inactive',
     'Should throw error when group_id does not match'
+);
+
+-- Should throw error when event has no start date
+select throws_ok(
+    $$select publish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    'event must have a start date to be published',
+    'Should throw error when event has no start date'
 );
 
 -- ============================================================================
