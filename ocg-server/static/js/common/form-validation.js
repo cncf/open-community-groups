@@ -4,6 +4,7 @@
  * @module form-validation
  */
 
+import { isDashboardPath, isElementInView } from "/static/js/common/common.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
@@ -35,6 +36,136 @@ const normalizeField = (field) => {
   const trimmed = field.value.trim();
   if (trimmed !== field.value) {
     field.value = trimmed;
+  }
+};
+
+/**
+ * Finds the nearest visible element for scrolling.
+ * @param {HTMLElement} field - The invalid form field
+ * @returns {HTMLElement|null} Visible element to scroll into view
+ */
+const getVisibleScrollTarget = (field) => {
+  if (!field) {
+    return null;
+  }
+
+  if (field.getClientRects().length > 0) {
+    return field;
+  }
+
+  let current = field.parentElement;
+  while (current) {
+    if (current.getClientRects().length > 0) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+
+  return null;
+};
+
+/**
+ * Returns the header height when it is sticky or fixed.
+ * @returns {number} Header height in pixels
+ */
+const getStickyHeaderOffset = () => {
+  const header =
+    document.querySelector('nav[role="banner"]') || document.querySelector("#header")?.closest("nav");
+
+  if (!header) {
+    return 0;
+  }
+
+  const style = window.getComputedStyle(header);
+  if (style.position !== "fixed" && style.position !== "sticky") {
+    return 0;
+  }
+
+  const rect = header.getBoundingClientRect();
+  return rect.height || 0;
+};
+
+/**
+ * Adjusts scroll position so the target isn't hidden behind the header.
+ * @param {HTMLElement} element - Target element
+ */
+const adjustScrollForHeader = (element) => {
+  if (!element || typeof element.getBoundingClientRect !== "function") {
+    return;
+  }
+
+  const headerOffset = getStickyHeaderOffset();
+  if (!headerOffset || typeof window.scrollBy !== "function") {
+    return;
+  }
+
+  const gap = 24;
+  const rect = element.getBoundingClientRect();
+  if (rect.top < headerOffset + gap) {
+    window.scrollBy({
+      top: rect.top - headerOffset - gap,
+      left: 0,
+      behavior: "auto",
+    });
+  }
+};
+
+/**
+ * Scrolls the invalid field into view on dashboard pages.
+ * @param {HTMLElement} field - The invalid form field
+ */
+const scrollToInvalidField = (field) => {
+  if (!isDashboardPath()) {
+    return;
+  }
+
+  if (!field || typeof field.scrollIntoView !== "function") {
+    return;
+  }
+
+  const target = getVisibleScrollTarget(field);
+  if (!target) {
+    return;
+  }
+
+  if (!isElementInView(target)) {
+    target.scrollIntoView({ behavior: "auto", block: "start" });
+  }
+
+  adjustScrollForHeader(target);
+};
+
+let invalidScrollPending = false;
+
+/**
+ * Handles invalid events and scrolls to the first invalid field.
+ * @param {Event} event - Invalid event fired by the browser
+ */
+const handleInvalidEvent = (event) => {
+  if (invalidScrollPending) {
+    return;
+  }
+
+  const field = event.target;
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  invalidScrollPending = true;
+
+  /**
+   * Runs the deferred scroll adjustment for the first invalid field.
+   * @returns {void}
+   */
+  const runScroll = () => {
+    scrollToInvalidField(field);
+    invalidScrollPending = false;
+  };
+
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setTimeout(runScroll, 0));
+  } else {
+    setTimeout(runScroll, 0);
   }
 };
 
@@ -377,6 +508,10 @@ const wireForm = (form) => {
   });
 
   form.addEventListener("htmx:configRequest", (event) => {
+    const requestElement = event.detail?.elt;
+    if (requestElement?.id === "cancel-button" || requestElement?.dataset?.skipValidation === "true") {
+      return;
+    }
     if (!validateForm(form)) {
       event.preventDefault();
     }
@@ -421,6 +556,7 @@ const init = () => {
   }
 
   document.body?.addEventListener("htmx:configRequest", handleConfigRequest);
+  document.addEventListener("invalid", handleInvalidEvent, true);
 };
 
 if (document.readyState === "loading") {
