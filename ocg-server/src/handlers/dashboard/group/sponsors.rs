@@ -152,7 +152,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager, templates::pagination::DASHBOARD_PAGINATION_LIMIT,
+        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]

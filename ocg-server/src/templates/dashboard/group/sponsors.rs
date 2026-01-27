@@ -7,7 +7,10 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::pagination::{self, Pagination, ToRawQuery},
+    templates::{
+        dashboard,
+        pagination::{self, Pagination, ToRawQuery},
+    },
     types::group::GroupSponsor,
     validation::{MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty},
 };
@@ -46,6 +49,31 @@ pub(crate) struct UpdatePage {
 
 // Types.
 
+/// Filter parameters for group sponsors pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct GroupSponsorsFilters {
+    /// Number of results per page.
+    #[serde(default = "dashboard::default_limit")]
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[serde(default = "dashboard::default_offset")]
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+crate::impl_pagination_and_raw_query!(GroupSponsorsFilters, limit, offset);
+
+/// Paginated group sponsors response data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupSponsorsOutput {
+    /// List of sponsors in the group.
+    pub sponsors: Vec<GroupSponsor>,
+    /// Total number of sponsors in the group.
+    pub total: usize,
+}
+
 /// Sponsor input for create/update operations.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -60,29 +88,4 @@ pub(crate) struct Sponsor {
     /// Sponsor website URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
-}
-
-/// Filter parameters for group sponsors pagination.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct GroupSponsorsFilters {
-    /// Number of results per page.
-    #[serde(default = "pagination::default_dashboard_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
-    pub limit: Option<usize>,
-    /// Pagination offset for results.
-    #[serde(default = "pagination::default_dashboard_offset")]
-    #[garde(skip)]
-    pub offset: Option<usize>,
-}
-
-crate::impl_pagination_and_raw_query!(GroupSponsorsFilters, limit, offset);
-
-/// Paginated group sponsors response data.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct GroupSponsorsOutput {
-    /// List of sponsors in the group.
-    pub sponsors: Vec<GroupSponsor>,
-    /// Total number of sponsors in the group.
-    pub total: usize,
 }

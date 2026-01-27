@@ -5,24 +5,6 @@ use std::fmt::Write as _;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-/// Default pagination limit for dashboard lists.
-pub(crate) const DASHBOARD_PAGINATION_LIMIT: usize = 50;
-
-/// Default pagination limit.
-const DEFAULT_PAGINATION_LIMIT: usize = 10;
-
-/// Default dashboard pagination limit for serde.
-#[allow(clippy::unnecessary_wraps)]
-pub(crate) fn default_dashboard_limit() -> Option<usize> {
-    Some(DASHBOARD_PAGINATION_LIMIT)
-}
-
-/// Default dashboard pagination offset for serde.
-#[allow(clippy::unnecessary_wraps)]
-pub(crate) fn default_dashboard_offset() -> Option<usize> {
-    Some(0)
-}
-
 /// Trait for types that support pagination.
 ///
 /// Provides methods to access and modify pagination parameters, used by the navigation
@@ -118,7 +100,8 @@ impl NavigationLinks {
         let mut links = NavigationLinks::default();
 
         // Calculate offsets for pagination
-        let offsets = NavigationLinksOffsets::new(filters.offset(), filters.limit(), total);
+        let limit = filters.limit().expect("pagination limit to be set");
+        let offsets = NavigationLinksOffsets::new(filters.offset(), limit, total);
         let mut filters = filters.clone();
 
         if let Some(first_offset) = offsets.first {
@@ -188,12 +171,10 @@ impl NavigationLinksOffsets {
     ///
     /// Determines which navigation links should exist based on the current offset, page
     /// size (limit), and total number of results.
-    fn new(offset: Option<usize>, limit: Option<usize>, total: usize) -> Self {
+    fn new(offset: Option<usize>, limit: usize, total: usize) -> Self {
         let mut offsets = NavigationLinksOffsets::default();
 
-        // Use default offset and limit values if not provided
         let offset = offset.unwrap_or(0);
-        let limit = limit.unwrap_or(DEFAULT_PAGINATION_LIMIT);
 
         // There are more results going backwards
         if offset > 0 {
@@ -258,11 +239,13 @@ fn get_url_filters_separator(url: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_PAGINATION_LIMIT, NavigationLinksOffsets, get_url_filters_separator};
+    use super::{NavigationLinksOffsets, get_url_filters_separator};
+
+    const TEST_PAGINATION_LIMIT: usize = 10;
 
     #[test]
     fn test_navigation_links_offsets_1() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 20);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 20);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -276,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_2() {
-        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 20);
+        let offsets = NavigationLinksOffsets::new(Some(10), TEST_PAGINATION_LIMIT, 20);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -290,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_3() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 21);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 21);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -304,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_4() {
-        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 15);
+        let offsets = NavigationLinksOffsets::new(Some(10), TEST_PAGINATION_LIMIT, 15);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -318,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_5() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 10);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 10);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -332,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_6() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 5);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -346,7 +329,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_7() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 0);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 0);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -360,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_8() {
-        let offsets = NavigationLinksOffsets::new(None, Some(10), 15);
+        let offsets = NavigationLinksOffsets::new(None, TEST_PAGINATION_LIMIT, 15);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -374,13 +357,13 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_9() {
-        let offsets = NavigationLinksOffsets::new(None, None, 15);
+        let offsets = NavigationLinksOffsets::new(None, TEST_PAGINATION_LIMIT, 15);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
                 first: None,
-                last: Some(DEFAULT_PAGINATION_LIMIT),
-                next: Some(DEFAULT_PAGINATION_LIMIT),
+                last: Some(TEST_PAGINATION_LIMIT),
+                next: Some(TEST_PAGINATION_LIMIT),
                 prev: None,
             }
         );
@@ -388,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_10() {
-        let offsets = NavigationLinksOffsets::new(Some(20), Some(10), 50);
+        let offsets = NavigationLinksOffsets::new(Some(20), TEST_PAGINATION_LIMIT, 50);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -402,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_11() {
-        let offsets = NavigationLinksOffsets::new(Some(2), Some(10), 20);
+        let offsets = NavigationLinksOffsets::new(Some(2), TEST_PAGINATION_LIMIT, 20);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -416,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_12() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 5);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -430,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_13() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 11);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 11);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {

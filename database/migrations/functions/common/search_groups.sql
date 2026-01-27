@@ -6,9 +6,9 @@ declare
     v_community_ids uuid[];
     v_group_category text[];
     v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
-    v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_limit int := (p_filters->>'limit')::int;
     v_max_distance real;
-    v_offset int := coalesce((p_filters->>'offset')::int, 0);
+    v_offset int := (p_filters->>'offset')::int;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'name');
     v_tsquery_with_prefix_matching tsquery;

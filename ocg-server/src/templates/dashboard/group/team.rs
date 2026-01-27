@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
+        dashboard,
         helpers::user_initials,
         pagination::{self, Pagination, ToRawQuery},
     },
@@ -35,6 +36,22 @@ pub(crate) struct ListPage {
 
 // Types.
 
+/// Filter parameters for group team pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct GroupTeamFilters {
+    /// Number of results per page.
+    #[serde(default = "dashboard::default_limit")]
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[serde(default = "dashboard::default_offset")]
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+crate::impl_pagination_and_raw_query!(GroupTeamFilters, limit, offset);
+
 /// Group team member summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupTeamMember {
@@ -56,22 +73,6 @@ pub struct GroupTeamMember {
     /// Title held by the user.
     pub title: Option<String>,
 }
-
-/// Filter parameters for group team pagination.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct GroupTeamFilters {
-    /// Number of results per page.
-    #[serde(default = "pagination::default_dashboard_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
-    pub limit: Option<usize>,
-    /// Pagination offset for results.
-    #[serde(default = "pagination::default_dashboard_offset")]
-    #[garde(skip)]
-    pub offset: Option<usize>,
-}
-
-crate::impl_pagination_and_raw_query!(GroupTeamFilters, limit, offset);
 
 /// Paginated group team response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]

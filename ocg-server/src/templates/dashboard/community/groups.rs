@@ -9,7 +9,10 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::pagination::{self, Pagination, ToRawQuery},
+    templates::{
+        dashboard,
+        pagination::{self, Pagination, ToRawQuery},
+    },
     types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S,
@@ -64,11 +67,11 @@ pub(crate) struct UpdatePage {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct CommunityGroupsFilters {
     /// Number of results per page.
-    #[serde(default = "pagination::default_dashboard_limit")]
+    #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
-    #[serde(default = "pagination::default_dashboard_offset")]
+    #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Text search query.

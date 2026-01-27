@@ -537,9 +537,8 @@ mod tests {
             notifications::{MockNotificationsManager, NotificationKind},
         },
         templates::{
-            dashboard::group::events::PastEventUpdate,
+            dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::PastEventUpdate},
             notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
-            pagination::DASHBOARD_PAGINATION_LIMIT,
         },
         types::event::{EventFull, EventSummary, Speaker},
     };

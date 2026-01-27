@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
+        dashboard,
         helpers::user_initials,
         pagination::{self, Pagination, ToRawQuery},
     },
@@ -69,11 +70,11 @@ pub(crate) struct AttendeesFilters {
     pub event_id: Uuid,
 
     /// Number of results per page.
-    #[serde(default = "pagination::default_dashboard_limit")]
+    #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
-    #[serde(default = "pagination::default_dashboard_offset")]
+    #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
 }
@@ -83,11 +84,11 @@ pub(crate) struct AttendeesFilters {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesPaginationFilters {
     /// Number of results per page.
-    #[serde(default = "pagination::default_dashboard_limit")]
+    #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
-    #[serde(default = "pagination::default_dashboard_offset")]
+    #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
 }

@@ -117,7 +117,7 @@ insert into "group" (
 
 -- Should return all active groups without filters
 select is(
-    (select search_groups('{}'::jsonb)::jsonb->'groups'),
+    (select search_groups(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
@@ -130,7 +130,7 @@ select is(
 
 -- Should return inactive groups when include_inactive is enabled
 select is(
-    (select search_groups(jsonb_build_object('include_inactive', true))::jsonb->'groups'),
+    (select search_groups(jsonb_build_object('include_inactive', true, 'limit', 10, 'offset', 0))::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group6ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
@@ -144,7 +144,9 @@ select is(
 
 -- Should filter groups by community
 select is(
-    (select search_groups(jsonb_build_object('community', jsonb_build_array('test-community')))::jsonb->'groups'),
+    (select search_groups(
+        jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0)
+    )::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
@@ -157,7 +159,9 @@ select is(
 -- Should return correct total count
 select is(
     (
-        select (search_groups(jsonb_build_object('community', jsonb_build_array('test-community')))::jsonb->>'total')::bigint
+        select (
+            search_groups(jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0))::jsonb->>'total'
+        )::bigint
     ),
     4::bigint,
     'Should return correct total count'
@@ -167,7 +171,9 @@ select is(
 select is(
     (
         select (
-            search_groups(jsonb_build_object('community', jsonb_build_array('non-existent-community')))::jsonb->>'total'
+            search_groups(
+                jsonb_build_object('community', jsonb_build_array('non-existent-community'), 'limit', 10, 'offset', 0)
+            )::jsonb->>'total'
         )::bigint
     ),
     0::bigint,
@@ -176,7 +182,7 @@ select is(
 
 -- Should return all groups when community filter is empty array
 select is(
-    (select search_groups(jsonb_build_object('community', jsonb_build_array()))::jsonb->'groups'),
+    (select search_groups(jsonb_build_object('community', jsonb_build_array(), 'limit', 10, 'offset', 0))::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb,
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
@@ -190,7 +196,12 @@ select is(
 -- Should filter groups by category
 select is(
     (select search_groups(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'group_category', jsonb_build_array('business'))
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'group_category', jsonb_build_array('business'),
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group3ID'::uuid)::jsonb
@@ -201,7 +212,12 @@ select is(
 -- Should filter groups by region
 select is(
     (select search_groups(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'region', jsonb_build_array('north-america'))
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'region', jsonb_build_array('north-america'),
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb,
@@ -214,7 +230,12 @@ select is(
 -- Should filter groups by text search query
 select is(
     (select search_groups(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'ts_query', 'Docker')
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'ts_query', 'Docker',
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'groups'),
     jsonb_build_array(
         get_group_summary(:'community1ID'::uuid, :'group2ID'::uuid)::jsonb
@@ -229,7 +250,9 @@ select is(
             'community', jsonb_build_array('test-community'),
             'latitude', 30.2672,
             'longitude', -97.7431,
-            'distance', 1000
+            'distance', 1000,
+            'limit', 10,
+            'offset', 0
         )
     )::jsonb->'groups'),
     jsonb_build_array(
@@ -252,7 +275,12 @@ select is(
 -- Include bbox option should return expected bbox
 select is(
     (select search_groups(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'include_bbox', true)
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'include_bbox', true,
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'bbox'),
     '{"ne_lat": 51.5074, "ne_lon": -0.1278, "sw_lat": 30.2672, "sw_lon": -122.4194}'::jsonb,
     'Include bbox option should return expected bbox'

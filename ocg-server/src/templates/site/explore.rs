@@ -250,12 +250,14 @@ pub(crate) struct EventsFilters {
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// Number of results per page.
+    #[serde(default = "default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
     #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
     /// Pagination offset for results.
+    #[serde(default = "default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort order for results (e.g., "date", "distance").
@@ -420,12 +422,14 @@ pub(crate) struct GroupsFilters {
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
     /// Number of results per page.
+    #[serde(default = "default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// User's longitude for distance-based filtering.
     #[garde(custom(valid_longitude))]
     pub longitude: Option<f64>,
     /// Pagination offset for results.
+    #[serde(default = "default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort order for results.
@@ -557,6 +561,20 @@ pub(crate) enum ViewMode {
     List,
     /// Interactive map view.
     Map,
+}
+
+// Serde defaults.
+
+/// Default explore pagination limit for serde.
+#[allow(clippy::unnecessary_wraps)]
+fn default_limit() -> Option<usize> {
+    Some(10)
+}
+
+/// Default explore pagination offset for serde.
+#[allow(clippy::unnecessary_wraps)]
+fn default_offset() -> Option<usize> {
+    Some(0)
 }
 
 // Helpers for rendering popovers.

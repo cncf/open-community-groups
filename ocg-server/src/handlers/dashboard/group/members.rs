@@ -163,8 +163,8 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::GroupCustom,
-        templates::pagination::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]

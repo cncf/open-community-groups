@@ -146,7 +146,7 @@ insert into event (
 
 -- Should return all published events without filters
 select is(
-    (select search_events('{}'::jsonb)::jsonb->'events'),
+    (select search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
@@ -159,7 +159,9 @@ select is(
 
 -- Should filter events by community
 select is(
-    (select search_events(jsonb_build_object('community', jsonb_build_array('test-community')))::jsonb->'events'),
+    (select search_events(
+        jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0)
+    )::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
@@ -172,7 +174,12 @@ select is(
 -- Should return events in ascending order when sort_direction is asc
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'sort_direction', 'asc')
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'limit', 10,
+            'offset', 0,
+            'sort_direction', 'asc'
+        )
     )::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
@@ -186,7 +193,12 @@ select is(
 -- Should return events in descending order when sort_direction is desc
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'sort_direction', 'desc')
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'limit', 10,
+            'offset', 0,
+            'sort_direction', 'desc'
+        )
     )::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
@@ -200,7 +212,9 @@ select is(
 -- Should return correct total count
 select is(
     (
-        select (search_events(jsonb_build_object('community', jsonb_build_array('test-community')))::jsonb->>'total')::bigint
+        select (
+            search_events(jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0))::jsonb->>'total'
+        )::bigint
     ),
     4::bigint,
     'Should return correct total count'
@@ -210,7 +224,9 @@ select is(
 select is(
     (
         select (
-            search_events(jsonb_build_object('community', jsonb_build_array('non-existent-community')))::jsonb->>'total'
+            search_events(
+                jsonb_build_object('community', jsonb_build_array('non-existent-community'), 'limit', 10, 'offset', 0)
+            )::jsonb->>'total'
         )::bigint
     ),
     0::bigint,
@@ -219,7 +235,7 @@ select is(
 
 -- Should return all events when community filter is empty array
 select is(
-    (select search_events(jsonb_build_object('community', jsonb_build_array()))::jsonb->'events'),
+    (select search_events(jsonb_build_object('community', jsonb_build_array(), 'limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
@@ -232,7 +248,7 @@ select is(
 
 -- Should return all events when group filter is empty array
 select is(
-    (select search_events(jsonb_build_object('group', jsonb_build_array()))::jsonb->'events'),
+    (select search_events(jsonb_build_object('group', jsonb_build_array(), 'limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
@@ -246,7 +262,12 @@ select is(
 -- Should filter events by kind
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'kind', jsonb_build_array('virtual'))
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'kind', jsonb_build_array('virtual'),
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
@@ -257,7 +278,12 @@ select is(
 -- Should filter events by text search query
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'ts_query', 'Docker')
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'ts_query', 'Docker',
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'events'),
     jsonb_build_array(
         get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
@@ -270,7 +296,9 @@ select is(
     (select search_events(
         jsonb_build_object(
             'community', jsonb_build_array('test-community'),
-            'date_from', to_char(current_date + interval '2 days', 'YYYY-MM-DD')
+            'date_from', to_char(current_date + interval '2 days', 'YYYY-MM-DD'),
+            'limit', 10,
+            'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
@@ -288,7 +316,9 @@ select is(
             'community', jsonb_build_array('test-community'),
             'latitude', 37.7749,
             'longitude', -122.4194,
-            'distance', 1000
+            'distance', 1000,
+            'limit', 10,
+            'offset', 0
         )
      )::jsonb->'events'),
     jsonb_build_array(
@@ -316,7 +346,9 @@ select is(
     (select search_events(
         jsonb_build_object(
             'community', jsonb_build_array('test-community'),
-            'group', jsonb_build_array('test-group')
+            'group', jsonb_build_array('test-group'),
+            'limit', 10,
+            'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
@@ -330,7 +362,12 @@ select is(
 -- Should return bbox covering all event locations (or group locations if event location is not set)
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'include_bbox', true)
+        jsonb_build_object(
+            'community', jsonb_build_array('test-community'),
+            'include_bbox', true,
+            'limit', 10,
+            'offset', 0
+        )
     )::jsonb->'bbox'),
     '{"ne_lat": 37.7749, "ne_lon": -122.4194, "sw_lat": 37.7749, "sw_lon": -122.4194}'::jsonb,
     'Should return bbox covering all event locations (or group locations if event location is not set)'

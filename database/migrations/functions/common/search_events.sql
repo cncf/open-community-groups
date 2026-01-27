@@ -10,9 +10,9 @@ declare
     v_group_category text[];
     v_group_ids uuid[];
     v_kind text[];
-    v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_limit int := (p_filters->>'limit')::int;
     v_max_distance real;
-    v_offset int := coalesce((p_filters->>'offset')::int, 0);
+    v_offset int := (p_filters->>'offset')::int;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
     v_sort_direction text := case lower(coalesce(p_filters->>'sort_direction', 'asc'))
