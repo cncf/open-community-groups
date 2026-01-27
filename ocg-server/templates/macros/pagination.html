@@ -1,9 +1,7 @@
-{% macro navigation_links(links, hx_target, hx_swap = "innerHTML show:window:top", hx_boost = true, hx_indicator = "") -%}
+{% macro navigation_links(links, hx_target, hx_swap = "innerHTML show:window:top", hx_indicator = "") -%}
   {# Pagination -#}
   <div class="pagination flex items-end justify-center py-8">
-    <div {% if hx_boost %}hx-boost="true"{% endif %}
-         class="inline-flex"
-         role="group">
+    <div class="inline-flex" role="group">
       {# First button -#}
       {% if let Some(first) = links.first -%}
         <a href="{{ first.url }}"

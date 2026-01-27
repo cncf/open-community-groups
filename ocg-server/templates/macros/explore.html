@@ -11,7 +11,6 @@
           hx-trigger="click"
           hx-target="#entity-section"
           hx-indicator="#loading-filters, #loading-filters-mobile"
-          hx-boost="true"
           {# djlint:off #}
                 {# TODO: Hardcoded community until we add more #}
                 hx-vals='{"community[0]":"cncf"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
@@ -44,7 +43,6 @@
           hx-trigger="click"
           hx-target="#entity-section"
           hx-indicator="#loading-filters, #loading-filters-mobile"
-          hx-boost="true"
           {# djlint:off #}
           {# TODO: Hardcoded community until we add more #}
           hx-vals='{"community[0]":"cncf"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'

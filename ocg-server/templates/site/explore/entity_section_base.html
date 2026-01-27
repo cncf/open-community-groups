@@ -36,7 +36,6 @@
         hx-include="[name='ts_query'], [name='sort_by'],
                     {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
                     [name='view_mode']"
-        hx-boost="true"
         hx-ext="no-empty-vals">
     {% block filters_mobile -%}
     {% endblock filters_mobile -%}
@@ -79,7 +78,6 @@
           hx-include="[name='ts_query'], [name='sort_by'],
                       {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
                       [name='view_mode']"
-          hx-boost="true"
           hx-ext="no-empty-vals">
       {% block filters_desktop -%}
       {% endblock filters_desktop -%}
