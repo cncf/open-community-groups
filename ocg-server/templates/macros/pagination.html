@@ -98,7 +98,7 @@
 
     const links = document.querySelectorAll('.pagination a');
     links.forEach(link => {
-      link.addEventListener('hmtx:trigger', () => {
+      link.addEventListener('htmx:trigger', () => {
         showLoadingSpinner("loading-filters");
         showLoadingSpinner("loading-filters-mobile");
       });
