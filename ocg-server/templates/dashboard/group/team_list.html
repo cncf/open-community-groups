@@ -147,6 +147,6 @@
 
 {# Pagination -#}
 {% if total > members.len() -%}
-  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top", hx_indicator = "#dashboard-spinner") }}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
