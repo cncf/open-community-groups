@@ -24,10 +24,7 @@ use crate::{
         auth::User,
         dashboard::group::{
             analytics,
-            events::{
-                self, EventsListFilters, EventsTab, PastEventsPaginationFilters,
-                UpcomingEventsPaginationFilters,
-            },
+            events::{self, EventsListFilters, EventsTab},
             home::{Content, Page, Tab},
             members::{self, GroupMembersFilters},
             settings,
@@ -73,18 +70,10 @@ pub(crate) async fn page(
             let filters: EventsListFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
             let events = db.list_group_events(group_id, &filters).await?;
-            let past_filters = PastEventsPaginationFilters {
-                events_tab: Some(EventsTab::Past),
-                limit: filters.limit,
-                past_offset: filters.past_offset,
-                upcoming_offset: filters.upcoming_offset,
-            };
-            let upcoming_filters = UpcomingEventsPaginationFilters {
-                events_tab: Some(EventsTab::Upcoming),
-                limit: filters.limit,
-                past_offset: filters.past_offset,
-                upcoming_offset: filters.upcoming_offset,
-            };
+            let mut past_filters = filters.clone();
+            past_filters.events_tab = Some(EventsTab::Past);
+            let mut upcoming_filters = filters.clone();
+            upcoming_filters.events_tab = Some(EventsTab::Upcoming);
             let past_navigation_links = NavigationLinks::from_filters(
                 &past_filters,
                 events.past.total,
