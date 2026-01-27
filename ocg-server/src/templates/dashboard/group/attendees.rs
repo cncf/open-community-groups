@@ -77,19 +77,6 @@ pub(crate) struct AttendeesFilters {
     pub offset: Option<usize>,
 }
 
-impl AttendeesFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.offset.is_none() {
-            self.offset = Some(0);
-        }
-        self
-    }
-}
-
 /// Filter parameters for attendee pagination URLs.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]

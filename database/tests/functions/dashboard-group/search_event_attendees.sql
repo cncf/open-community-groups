@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -72,6 +72,21 @@ select is(
         'total', 2
     ),
     'Should return attendees for event1 with expected fields and order'
+);
+
+-- Should return paginated attendees when limit and offset are provided
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000041","limit":1,"offset":1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated attendees when limit and offset are provided'
 );
 
 -- Should return attendees for event2

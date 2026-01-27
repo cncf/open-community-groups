@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -72,6 +72,22 @@ select is(
         'total', 2
     ),
     'Should return expected members in alphabetical order including accepted flag'
+);
+
+-- Should return paginated members when limit and offset are provided
+select is(
+    list_community_team_members(
+        :'communityID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'approved_total', 2,
+        'members', '[
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://example.com/b.png", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated members when limit and offset are provided'
 );
 
 -- Should return empty array for unknown community

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -71,6 +71,21 @@ select is(
         'total', 2
     ),
     'Should return group sponsors sorted by name'
+);
+
+-- Should return paginated sponsors when limit and offset are provided
+select is(
+    list_group_sponsors(
+        :'group1ID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'sponsors', '[
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated sponsors when limit and offset are provided'
 );
 
 -- Should return empty array for unknown group

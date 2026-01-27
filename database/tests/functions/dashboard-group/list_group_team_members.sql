@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -59,6 +59,22 @@ select is(
         'total', 2
     ),
     'Should return list of group team members with accepted flag'
+);
+
+-- Should return paginated team members when limit and offset are provided
+select is(
+    list_group_team_members(
+        :'groupID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'approved_total', 1,
+        'members', '[
+            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated team members when limit and offset are provided'
 );
 
 -- Should return empty list for non-existing group

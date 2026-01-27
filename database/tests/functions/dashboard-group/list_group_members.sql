@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -80,6 +80,24 @@ select is(
         'total', 5
     ),
     'Should order named users by name then username, then unnamed by username'
+);
+
+-- Should return paginated group members when limit and offset are provided
+select is(
+    list_group_members(
+        :'groupID'::uuid,
+        '{"limit": 2, "offset": 2}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'members', '[
+            {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
+                "photo_url": "https://example.com/bobby.png", "title": null},
+            {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
+                "photo_url": "https://example.com/aaron.png", "title": null}
+        ]'::jsonb,
+        'total', 5
+    ),
+    'Should return paginated group members when limit and offset are provided'
 );
 
 -- Should return empty list for non-existing group
