@@ -35,19 +35,27 @@
   <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200">
     <li>
       <button type="button"
-              id="past-tab"
-              data-events-tab="past"
-              data-active="{{ events_tab == EventsTab::Past }}"
-              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
+        id="past-tab"
+        data-active="{{ events_tab == EventsTab::Past }}"
+        hx-get="/dashboard/group/events?events_tab=Past"
+        {# hx-get="/dashboard/group/events?events_tab={{ EventsTab::Past }}" #}
+        hx-target="#dashboard-content"
+        hx-swap="innerHTML show:window:top"
+        hx-indicator="#dashboard-spinner"
+        class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
         Past events
       </button>
     </li>
     <li>
       <button type="button"
-              id="upcoming-tab"
-              data-events-tab="upcoming"
-              data-active="{{ events_tab == EventsTab::Upcoming }}"
-              class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
+        id="upcoming-tab"
+        data-active="{{ events_tab == EventsTab::Upcoming }}"
+        hx-get="/dashboard/group/events?events_tab=Upcoming"
+        {# hx-get="/dashboard/group/events?events_tab={{ EventsTab::Upcoming }}" #}
+        hx-target="#dashboard-content"
+        hx-swap="innerHTML show:window:top"
+        hx-indicator="#dashboard-spinner"
+        class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
         Upcoming events
       </button>
     </li>
@@ -654,35 +662,6 @@
   {# End pagination -#}
 </div>
 {# End Upcoming Events Section -#}
-
-<script type="module">
-  // Tab switching functionality
-  const tabButtons = document.querySelectorAll('[data-events-tab]');
-  const tabContents = document.querySelectorAll('[data-events-content]');
-
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const targetTab = button.dataset.eventsTab;
-
-      // Update button states
-      tabButtons.forEach(btn => {
-        btn.dataset.active = 'false';
-      });
-      button.dataset.active = 'true';
-
-      // Update content visibility
-      tabContents.forEach(content => {
-        if (content.dataset.eventsContent === targetTab) {
-          content.classList.remove('hidden');
-        } else {
-          content.classList.add('hidden');
-        }
-      });
-    });
-  });
-
-  // Past events tab is always visible now since we show empty state
-</script>
 
 <script type="module">
   const btnActions = document.querySelectorAll('.btn-actions');
