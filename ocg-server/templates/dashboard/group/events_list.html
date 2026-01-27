@@ -37,11 +37,7 @@
       <button type="button"
               id="past-tab"
               data-events-tab="past"
-              data-active="{% if events_tab == EventsTab::Past %}
-                             true
-                           {% else %}
-                             false
-                           {% endif %}"
+              data-active="{{ events_tab == EventsTab::Past }}"
               class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
         Past events
       </button>
@@ -50,11 +46,7 @@
       <button type="button"
               id="upcoming-tab"
               data-events-tab="upcoming"
-              data-active="{% if events_tab == EventsTab::Upcoming %}
-                             true
-                           {% else %}
-                             false
-                           {% endif %}"
+              data-active="{{ events_tab == EventsTab::Upcoming }}"
               class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
         Upcoming events
       </button>
@@ -68,6 +60,16 @@
      class="{% if events_tab == EventsTab::Upcoming %}
               hidden
             {% endif %}">
+  <div class="flex text-sm text-stone-600 mb-5">
+    <div>Total:</div>
+    <div class="font-semibold ms-1 text-end">
+      {% if events.past.total == 0 -%}
+        -
+      {% else %}
+        {{ events.past.total }}
+      {% endif -%}
+    </div>
+  </div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
            role="table"
@@ -287,12 +289,13 @@
       </tbody>
     </table>
   </div>
+
+  {# Pagination -#}
+  {% if events.past.total > events.past.events.len() -%}
+    {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+  {% endif -%}
+  {# End pagination -#}
 </div>
-{# Pagination -#}
-{% if events.past.total > events.past.events.len() -%}
-  {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
-{% endif -%}
-{# End pagination -#}
 {# End Past Events Section -#}
 
 {# Upcoming Events Section -#}
@@ -301,6 +304,16 @@
      class="{% if events_tab == EventsTab::Past %}
               hidden
             {% endif %}">
+  <div class="flex text-sm text-stone-600 mb-5">
+    <div>Total:</div>
+    <div class="font-semibold ms-1 text-end">
+      {% if events.upcoming.total == 0 -%}
+        -
+      {% else %}
+        {{ events.upcoming.total }}
+      {% endif -%}
+    </div>
+  </div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
            role="table"
@@ -634,12 +647,12 @@
       </tbody>
     </table>
   </div>
+  {# Pagination -#}
+  {% if events.upcoming.total > events.upcoming.events.len() -%}
+    {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+  {% endif -%}
+  {# End pagination -#}
 </div>
-{# Pagination -#}
-{% if events.upcoming.total > events.upcoming.events.len() -%}
-  {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
-{% endif -%}
-{# End pagination -#}
 {# End Upcoming Events Section -#}
 
 <script type="module">
