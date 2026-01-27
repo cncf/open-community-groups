@@ -7,10 +7,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
-        pagination::{Pagination, ToRawQuery},
-    },
+    templates::pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
     types::group::GroupSponsor,
     validation::{MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty},
 };
@@ -32,7 +29,7 @@ pub(crate) struct ListPage {
     /// List of sponsors in the group.
     pub sponsors: Vec<GroupSponsor>,
     /// Pagination navigation links.
-    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    pub navigation_links: pagination::NavigationLinks,
     /// Total number of sponsors in the group.
     pub total: usize,
 }

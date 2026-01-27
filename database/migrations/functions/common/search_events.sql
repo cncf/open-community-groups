@@ -159,18 +159,6 @@ begin
         offset v_offset
     )
     select json_build_object(
-        'events',
-        (
-            select coalesce(json_agg(
-                get_event_summary(community_id, group_id, event_id)
-            ), '[]'::json)
-            from filtered_events_page
-        ),
-        'total',
-        (
-            select count(*)::bigint from filtered_events
-        ),
-
         'bbox',
         (
             case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
@@ -190,6 +178,17 @@ begin
                     ) as filtered_events_bbox
                 )
             else null end
+        ),
+        'events',
+        (
+            select coalesce(json_agg(
+                get_event_summary(community_id, group_id, event_id)
+            ), '[]'::json)
+            from filtered_events_page
+        ),
+        'total',
+        (
+            select count(*)::bigint from filtered_events
         )
     )
     );

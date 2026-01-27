@@ -9,9 +9,8 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
         helpers::user_initials,
-        pagination::{Pagination, ToRawQuery},
+        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
     },
     types::event::EventSummary,
     validation::MAX_PAGINATION_LIMIT,
@@ -28,7 +27,7 @@ pub(crate) struct ListPage {
     /// Event for which attendees are listed.
     pub event: EventSummary,
     /// Pagination navigation links.
-    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    pub navigation_links: pagination::NavigationLinks,
     /// Total number of attendees for the selected event.
     pub total: usize,
 }

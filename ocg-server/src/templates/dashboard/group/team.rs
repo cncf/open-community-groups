@@ -8,9 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
         helpers::user_initials,
-        pagination::{Pagination, ToRawQuery},
+        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
     },
     types::group::{GroupRole, GroupRoleSummary},
     validation::MAX_PAGINATION_LIMIT,
@@ -27,7 +26,7 @@ pub(crate) struct ListPage {
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
     /// Pagination navigation links.
-    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    pub navigation_links: pagination::NavigationLinks,
     /// List of available team roles.
     pub roles: Vec<GroupRoleSummary>,
     /// Total number of team members.

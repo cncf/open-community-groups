@@ -248,7 +248,7 @@ mod tests {
         handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
-        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+        templates::pagination::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]

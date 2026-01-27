@@ -8,9 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
         helpers::user_initials,
-        pagination::{Pagination, ToRawQuery},
+        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
     },
     validation::MAX_PAGINATION_LIMIT,
 };
@@ -26,7 +25,7 @@ pub(crate) struct ListPage {
     /// List of team members in the community.
     pub members: Vec<CommunityTeamMember>,
     /// Pagination navigation links.
-    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    pub navigation_links: pagination::NavigationLinks,
     /// Total number of team members.
     pub total: usize,
 }

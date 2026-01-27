@@ -12,10 +12,9 @@ use uuid::Uuid;
 use crate::{
     services::meetings::MeetingProvider,
     templates::{
-        dashboard::DASHBOARD_PAGINATION_LIMIT,
         filters,
         helpers::DATE_FORMAT,
-        pagination::{Pagination, ToRawQuery},
+        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
     },
     types::event::{
         EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
@@ -62,9 +61,9 @@ pub(crate) struct ListPage {
     /// Current events tab selection.
     pub events_tab: EventsTab,
     /// Pagination links for past events.
-    pub past_navigation_links: crate::templates::pagination::NavigationLinks,
+    pub past_navigation_links: pagination::NavigationLinks,
     /// Pagination links for upcoming events.
-    pub upcoming_navigation_links: crate::templates::pagination::NavigationLinks,
+    pub upcoming_navigation_links: pagination::NavigationLinks,
 }
 
 /// Update event page template.

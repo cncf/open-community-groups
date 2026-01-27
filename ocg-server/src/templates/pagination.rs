@@ -5,6 +5,27 @@ use std::fmt::Write as _;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+/// Default pagination limit for dashboard lists.
+pub(crate) const DASHBOARD_PAGINATION_LIMIT: usize = 50;
+
+/// Default pagination limit.
+const DEFAULT_PAGINATION_LIMIT: usize = 10;
+
+/// Trait for types that support pagination.
+///
+/// Provides methods to access and modify pagination parameters, used by the navigation
+/// link generation logic to create appropriate URLs for different pages.
+pub(crate) trait Pagination {
+    /// Get the current page size limit.
+    fn limit(&self) -> Option<usize>;
+
+    /// Get the current offset (starting position).
+    fn offset(&self) -> Option<usize>;
+
+    /// Update the offset for navigation.
+    fn set_offset(&mut self, offset: Option<usize>);
+}
+
 /// Implement the `Pagination` trait for a type.
 #[macro_export]
 macro_rules! impl_pagination {
@@ -23,6 +44,15 @@ macro_rules! impl_pagination {
             }
         }
     };
+}
+
+/// Trait for converting filter structs to URL query strings.
+///
+/// Implemented by filter types to provide custom serialization logic for URL query
+/// strings.
+pub(crate) trait ToRawQuery {
+    /// Convert the implementing type to a URL query string.
+    fn to_raw_query(&self) -> Result<String>;
 }
 
 /// Implement the `ToRawQuery` trait for a type using `serde_qs`.
@@ -44,33 +74,6 @@ macro_rules! impl_pagination_and_raw_query {
         $crate::impl_pagination!($type, $limit, $offset);
         $crate::impl_to_raw_query!($type);
     };
-}
-
-/// Default pagination limit.
-const DEFAULT_PAGINATION_LIMIT: usize = 10;
-
-/// Trait for types that support pagination.
-///
-/// Provides methods to access and modify pagination parameters, used by the navigation
-/// link generation logic to create appropriate URLs for different pages.
-pub(crate) trait Pagination {
-    /// Get the current page size limit.
-    fn limit(&self) -> Option<usize>;
-
-    /// Get the current offset (starting position).
-    fn offset(&self) -> Option<usize>;
-
-    /// Update the offset for navigation.
-    fn set_offset(&mut self, offset: Option<usize>);
-}
-
-/// Trait for converting filter structs to URL query strings.
-///
-/// Implemented by filter types to provide custom serialization logic for URL query
-/// strings.
-pub(crate) trait ToRawQuery {
-    /// Convert the implementing type to a URL query string.
-    fn to_raw_query(&self) -> Result<String>;
 }
 
 /// Pagination navigation links for result sets.
@@ -101,43 +104,29 @@ impl NavigationLinks {
         T: Serialize + Clone + ToRawQuery + Pagination,
     {
         let mut links = NavigationLinks::default();
-        NavigationLinks::populate(&mut links, filters, total, base_url, base_hx_url)?;
 
-        Ok(links)
-    }
-
-    fn populate<T>(
-        links: &mut NavigationLinks,
-        filters: &T,
-        total: usize,
-        base_url: &str,
-        base_hx_url: &str,
-    ) -> Result<()>
-    where
-        T: Serialize + Clone + ToRawQuery + Pagination,
-    {
         // Calculate offsets for pagination
         let offsets = NavigationLinksOffsets::new(filters.offset(), filters.limit(), total);
         let mut filters = filters.clone();
 
         if let Some(first_offset) = offsets.first {
             filters.set_offset(Some(first_offset));
-            links.first = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
+            links.first = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
         if let Some(last_offset) = offsets.last {
             filters.set_offset(Some(last_offset));
-            links.last = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
+            links.last = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
         if let Some(next_offset) = offsets.next {
             filters.set_offset(Some(next_offset));
-            links.next = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
+            links.next = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
         if let Some(prev_offset) = offsets.prev {
             filters.set_offset(Some(prev_offset));
-            links.prev = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
+            links.prev = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
 
-        Ok(())
+        Ok(links)
     }
 }
 
@@ -155,7 +144,7 @@ pub(crate) struct NavigationLink {
 
 impl NavigationLink {
     /// Create a navigation link with custom base URLs.
-    pub(crate) fn new_with_base<T>(base_url: &str, base_hx_url: &str, filters: &T) -> Result<Self>
+    pub(crate) fn new<T>(base_url: &str, base_hx_url: &str, filters: &T) -> Result<Self>
     where
         T: Serialize + ToRawQuery,
     {

@@ -6,12 +6,13 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use crate::templates::{
-    dashboard::DASHBOARD_PAGINATION_LIMIT,
-    helpers::user_initials,
-    pagination::{Pagination, ToRawQuery},
+use crate::{
+    templates::{
+        helpers::user_initials,
+        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
+    },
+    validation::MAX_PAGINATION_LIMIT,
 };
-use crate::validation::MAX_PAGINATION_LIMIT;
 
 // Pages templates.
 
@@ -22,7 +23,7 @@ pub(crate) struct ListPage {
     /// List of members in the group.
     pub members: Vec<GroupMember>,
     /// Pagination navigation links.
-    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    pub navigation_links: pagination::NavigationLinks,
     /// Total number of members in the group.
     pub total: usize,
 }

@@ -186,8 +186,8 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
-        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::GroupTeamInvitation,
+        templates::pagination::DASHBOARD_PAGINATION_LIMIT,
         types::group::GroupRole,
     };
 

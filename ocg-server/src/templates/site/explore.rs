@@ -19,6 +19,7 @@ use crate::{
         community::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
         filters,
         helpers::{location::extract_location, user_initials},
+        pagination::{NavigationLinks, Pagination, ToRawQuery},
     },
     types::{
         event::{EventKind, EventSummary},
@@ -30,8 +31,6 @@ use crate::{
         valid_latitude, valid_longitude,
     },
 };
-
-use crate::templates::pagination::{NavigationLinks, Pagination, ToRawQuery};
 
 // Pages and sections templates.
 
