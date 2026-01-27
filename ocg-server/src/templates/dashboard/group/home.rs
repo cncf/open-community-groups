@@ -62,7 +62,7 @@ pub(crate) enum Content {
     /// Analytics page.
     Analytics(Box<analytics::Page>),
     /// Events management page.
-    Events(events::ListPage),
+    Events(Box<events::ListPage>),
     /// Members list page.
     Members(members::ListPage),
     /// Settings management page.

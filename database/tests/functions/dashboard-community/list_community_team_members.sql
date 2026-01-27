@@ -62,18 +62,26 @@ insert into community_team (accepted, community_id, user_id) values
 
 -- Should return expected members in alphabetical order including accepted flag
 select is(
-    list_community_team_members(:'communityID'::uuid)::jsonb,
-    '[
-        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
-        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://example.com/b.png", "title": null}
-    ]'::jsonb,
+    list_community_team_members(:'communityID'::uuid, '{}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'approved_total', 2,
+        'members', '[
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://example.com/b.png", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
     'Should return expected members in alphabetical order including accepted flag'
 );
 
 -- Should return empty array for unknown community
 select is(
-    list_community_team_members('00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
+    list_community_team_members('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'approved_total', 0,
+        'members', '[]'::jsonb,
+        'total', 0
+    ),
     'Should return empty array for unknown community'
 );
 

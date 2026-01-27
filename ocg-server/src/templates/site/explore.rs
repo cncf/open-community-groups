@@ -31,7 +31,7 @@ use crate::{
     },
 };
 
-use super::pagination::{NavigationLinks, Pagination, ToRawQuery};
+use crate::templates::pagination::{NavigationLinks, Pagination, ToRawQuery};
 
 // Pages and sections templates.
 

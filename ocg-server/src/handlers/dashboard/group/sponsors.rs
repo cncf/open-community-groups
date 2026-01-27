@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -16,7 +16,12 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedGroupId, ValidatedForm},
     },
-    templates::dashboard::group::sponsors::{self, Sponsor},
+    router::serde_qs_config,
+    templates::{
+        dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
+        pagination,
+        pagination::NavigationLinks,
+    },
 };
 
 // Pages handlers.
@@ -38,12 +43,30 @@ pub(crate) async fn add_page(
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let sponsors = db.list_group_sponsors(group_id).await?;
-    let template = sponsors::ListPage { sponsors };
+    let mut filters: GroupSponsorsFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    filters = filters.with_defaults();
+    let results = db.list_group_sponsors(group_id, &filters).await?;
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        results.total,
+        "/dashboard/group?tab=sponsors",
+        "/dashboard/group/sponsors",
+    )?;
+    let template = sponsors::ListPage {
+        navigation_links,
+        sponsors: results.sponsors,
+        total: results.total,
+    };
 
-    Ok(Html(template.render()?))
+    let url = pagination::build_url("/dashboard/group?tab=sponsors", &filters)?;
+    Ok((
+        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
+        Html(template.render()?),
+    ))
 }
 
 /// Displays the page to update an existing sponsor.
@@ -130,7 +153,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -208,6 +231,10 @@ mod tests {
             Some(group_id),
         );
         let sponsor = sample_group_sponsor();
+        let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+            sponsors: vec![sponsor.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -225,8 +252,12 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![sponsor.clone()]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

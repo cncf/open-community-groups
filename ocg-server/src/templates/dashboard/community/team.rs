@@ -1,10 +1,19 @@
 //! Templates and types for managing the community team in the dashboard.
 
 use askama::Template;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::templates::helpers::user_initials;
+use crate::{
+    templates::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        helpers::user_initials,
+        pagination::{Pagination, ToRawQuery},
+    },
+    validation::MAX_PAGINATION_LIMIT,
+};
 
 // Pages templates.
 
@@ -16,9 +25,40 @@ pub(crate) struct ListPage {
     pub approved_members_count: usize,
     /// List of team members in the community.
     pub members: Vec<CommunityTeamMember>,
+    /// Pagination navigation links.
+    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    /// Total number of team members.
+    pub total: usize,
 }
 
 // Types.
+
+/// Filter parameters for community team pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct CommunityTeamFilters {
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+impl CommunityTeamFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.offset.is_none() {
+            self.offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(CommunityTeamFilters, limit, offset);
 
 /// Community team member summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,4 +78,15 @@ pub struct CommunityTeamMember {
     pub photo_url: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
+}
+
+/// Paginated community team response data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CommunityTeamOutput {
+    /// Total number of approved members.
+    pub approved_total: usize,
+    /// List of team members in the community.
+    pub members: Vec<CommunityTeamMember>,
+    /// Total number of team members.
+    pub total: usize,
 }

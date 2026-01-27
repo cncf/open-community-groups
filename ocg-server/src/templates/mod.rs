@@ -24,6 +24,8 @@ pub(crate) mod group;
 pub(crate) mod helpers;
 /// Notification templates.
 pub(crate) mod notifications;
+/// Pagination types and helpers.
+pub(crate) mod pagination;
 /// Global site templates.
 pub(crate) mod site;
 

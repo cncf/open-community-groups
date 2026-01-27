@@ -2,10 +2,20 @@
 
 use askama::Template;
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
-use crate::{templates::helpers::user_initials, types::event::EventSummary};
+use crate::{
+    templates::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        helpers::user_initials,
+        pagination::{Pagination, ToRawQuery},
+    },
+    types::event::EventSummary,
+    validation::MAX_PAGINATION_LIMIT,
+};
 
 // Pages templates.
 
@@ -17,6 +27,10 @@ pub(crate) struct ListPage {
     pub attendees: Vec<Attendee>,
     /// Event for which attendees are listed.
     pub event: EventSummary,
+    /// Pagination navigation links.
+    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    /// Total number of attendees for the selected event.
+    pub total: usize,
 }
 
 // Types.
@@ -48,8 +62,66 @@ pub struct Attendee {
 }
 
 /// Filter parameters for attendees searches.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesFilters {
     /// Selected event to scope attendees list.
+    #[garde(skip)]
     pub event_id: Uuid,
+
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+impl AttendeesFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.offset.is_none() {
+            self.offset = Some(0);
+        }
+        self
+    }
+}
+
+/// Filter parameters for attendee pagination URLs.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct AttendeesPaginationFilters {
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+impl AttendeesPaginationFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.offset.is_none() {
+            self.offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(AttendeesPaginationFilters, limit, offset);
+
+/// Paginated attendee response data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct AttendeesOutput {
+    /// List of attendees for the selected event.
+    pub attendees: Vec<Attendee>,
+    /// Total number of attendees for the selected event.
+    pub total: usize,
 }

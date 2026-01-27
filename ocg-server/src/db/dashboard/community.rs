@@ -13,7 +13,10 @@ use uuid::Uuid;
 use crate::{
     db::PgDB,
     templates::dashboard::community::{
-        analytics::CommunityStats, groups::Group, settings::CommunityUpdate, team::CommunityTeamMember,
+        analytics::CommunityStats,
+        groups::Group,
+        settings::CommunityUpdate,
+        team::{CommunityTeamFilters, CommunityTeamOutput},
     },
     types::{
         community::CommunitySummary,
@@ -46,7 +49,11 @@ pub(crate) trait DBDashboardCommunity {
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityStats>;
 
     /// Lists all community team members.
-    async fn list_community_team_members(&self, community_id: Uuid) -> Result<Vec<CommunityTeamMember>>;
+    async fn list_community_team_members(
+        &self,
+        community_id: Uuid,
+        filters: &CommunityTeamFilters,
+    ) -> Result<CommunityTeamOutput>;
 
     /// Lists all group categories for a community.
     async fn list_group_categories(&self, community_id: Uuid) -> Result<Vec<GroupCategory>>;
@@ -182,19 +189,23 @@ impl DBDashboardCommunity for PgDB {
 
     /// [`DBDashboardCommunity::list_community_team_members`]
     #[instrument(skip(self), err)]
-    async fn list_community_team_members(&self, community_id: Uuid) -> Result<Vec<CommunityTeamMember>> {
+    async fn list_community_team_members(
+        &self,
+        community_id: Uuid,
+        filters: &CommunityTeamFilters,
+    ) -> Result<CommunityTeamOutput> {
         trace!("db: list community team");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_community_team_members($1::uuid)::text",
-                &[&community_id],
+                "select list_community_team_members($1::uuid, $2::jsonb)::text",
+                &[&community_id, &Json(filters)],
             )
             .await?;
-        let members: Vec<CommunityTeamMember> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output: CommunityTeamOutput = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(members)
+        Ok(output)
     }
 
     /// [`DBDashboardCommunity::list_group_categories`]

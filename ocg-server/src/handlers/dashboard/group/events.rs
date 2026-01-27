@@ -6,7 +6,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -23,13 +23,19 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
     },
+    router::serde_qs_config,
     services::{
         meetings::MeetingProvider,
         notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     },
     templates::{
-        dashboard::group::events::{self, Event, PastEventUpdate},
+        dashboard::group::events::{
+            self, Event, EventsListFilters, EventsTab, PastEventUpdate, PastEventsPaginationFilters,
+            UpcomingEventsPaginationFilters,
+        },
+        dashboard::group::sponsors::GroupSponsorsFilters,
         notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
+        pagination,
     },
     types::event::EventSummary,
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -51,11 +57,12 @@ pub(crate) async fn add_page(
     // Prepare template
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
+    let sponsor_filters = GroupSponsorsFilters::default().with_defaults();
     let (categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
-        db.list_group_sponsors(group_id),
+        db.list_group_sponsors(group_id, &sponsor_filters),
         db.list_timezones()
     )?;
     let template = events::AddPage {
@@ -65,7 +72,7 @@ pub(crate) async fn add_page(
         meetings_enabled,
         meetings_max_participants,
         session_kinds,
-        sponsors,
+        sponsors: sponsors.sponsors,
         timezones,
     };
 
@@ -77,12 +84,51 @@ pub(crate) async fn add_page(
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let events = db.list_group_events(group_id).await?;
-    let template = events::ListPage { events };
+    let mut filters: EventsListFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    filters = filters.with_defaults();
+    let events = db.list_group_events(group_id, &filters).await?;
+    let past_filters = PastEventsPaginationFilters {
+        events_tab: Some(EventsTab::Past),
+        limit: filters.limit,
+        past_offset: filters.past_offset,
+        upcoming_offset: filters.upcoming_offset,
+    }
+    .with_defaults();
+    let upcoming_filters = UpcomingEventsPaginationFilters {
+        events_tab: Some(EventsTab::Upcoming),
+        limit: filters.limit,
+        past_offset: filters.past_offset,
+        upcoming_offset: filters.upcoming_offset,
+    }
+    .with_defaults();
+    let past_navigation_links = crate::templates::pagination::NavigationLinks::from_filters(
+        &past_filters,
+        events.past.total,
+        "/dashboard/group?tab=events",
+        "/dashboard/group/events",
+    )?;
+    let upcoming_navigation_links = crate::templates::pagination::NavigationLinks::from_filters(
+        &upcoming_filters,
+        events.upcoming.total,
+        "/dashboard/group?tab=events",
+        "/dashboard/group/events",
+    )?;
+    let template = events::ListPage {
+        events,
+        events_tab: filters.current_tab(),
+        past_navigation_links,
+        upcoming_navigation_links,
+    };
 
-    Ok(Html(template.render()?))
+    let url = pagination::build_url("/dashboard/group?tab=events", &filters)?;
+    Ok((
+        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
+        Html(template.render()?),
+    ))
 }
 
 /// Displays the page to update an existing event.
@@ -97,12 +143,13 @@ pub(crate) async fn update_page(
     // Prepare template
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
+    let sponsor_filters = GroupSponsorsFilters::default().with_defaults();
     let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
-        db.list_group_sponsors(group_id),
+        db.list_group_sponsors(group_id, &sponsor_filters),
         db.list_timezones()
     )?;
     let template = events::UpdatePage {
@@ -113,7 +160,7 @@ pub(crate) async fn update_page(
         meetings_enabled,
         meetings_max_participants,
         session_kinds,
-        sponsors,
+        sponsors: sponsors.sponsors,
         timezones,
     };
 
@@ -493,6 +540,7 @@ mod tests {
             notifications::{MockNotificationsManager, NotificationKind},
         },
         templates::{
+            dashboard::DASHBOARD_PAGINATION_LIMIT,
             dashboard::group::events::PastEventUpdate,
             notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
         },
@@ -546,8 +594,19 @@ mod tests {
             .returning(move || Ok(vec![session_kind.clone()]));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![sponsor.clone()]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| {
+                Ok(
+                    crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                        sponsors: vec![sponsor.clone()],
+                        total: 1,
+                    },
+                )
+            });
         db.expect_list_timezones()
             .times(1)
             .returning(move || Ok(timezones.clone()));
@@ -613,10 +672,15 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_events()
             .times(1)
-            .withf(move |id| *id == group_id)
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.past_offset == Some(0)
+                    && filters.upcoming_offset == Some(0)
+            })
             .returning({
                 let group_events = group_events.clone();
-                move |_| Ok(group_events.clone())
+                move |_, _| Ok(group_events.clone())
             });
 
         // Setup notifications manager mock
@@ -701,8 +765,19 @@ mod tests {
             .returning(move || Ok(vec![session_kind.clone()]));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![sponsor.clone()]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| {
+                Ok(
+                    crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+                        sponsors: vec![sponsor.clone()],
+                        total: 1,
+                    },
+                )
+            });
         db.expect_list_timezones()
             .times(1)
             .returning(move || Ok(timezones.clone()));

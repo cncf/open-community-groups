@@ -206,24 +206,14 @@ impl DBCommon for PgDB {
         let row = db
             .query_one(
                 "
-                select events::text, bbox::text, total
-                from search_events($1::jsonb)
+                select search_events($1::jsonb)::text
                 ",
                 &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchEventsOutput {
-            events: serde_json::from_str(&row.get::<_, String>("events"))?,
-            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-                serde_json::from_str(&bbox)?
-            } else {
-                None
-            },
-            total: row.get::<_, i64>("total") as usize,
-        };
+        let output = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(output)
     }
@@ -238,24 +228,14 @@ impl DBCommon for PgDB {
         let row = db
             .query_one(
                 "
-                select groups::text, bbox::text, total
-                from search_groups($1::jsonb)
+                select search_groups($1::jsonb)::text
                 ",
                 &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchGroupsOutput {
-            groups: serde_json::from_str(&row.get::<_, String>("groups"))?,
-            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-                serde_json::from_str(&bbox)?
-            } else {
-                None
-            },
-            total: row.get::<_, i64>("total") as usize,
-        };
+        let output = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(output)
     }

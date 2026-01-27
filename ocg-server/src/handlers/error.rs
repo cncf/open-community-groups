@@ -85,6 +85,12 @@ impl From<FilterError> for HandlerError {
     }
 }
 
+impl From<serde_qs::Error> for HandlerError {
+    fn from(err: serde_qs::Error) -> Self {
+        HandlerError::Deserialization(err.to_string())
+    }
+}
+
 /// Extracts user-facing message from P0001 (RAISE EXCEPTION) database errors.
 fn extract_db_error_message(err: &anyhow::Error) -> Option<String> {
     let pg_err = err.downcast_ref::<tokio_postgres::Error>()?;

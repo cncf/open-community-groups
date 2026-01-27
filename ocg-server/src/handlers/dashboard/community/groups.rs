@@ -1,11 +1,9 @@
 //! HTTP handlers for managing groups in the community dashboard.
 
-use std::collections::HashMap;
-
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, RawQuery, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -21,14 +19,14 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, ValidatedFormQs},
     },
+    router::serde_qs_config,
     templates::{
-        dashboard::community::groups::{self, Group},
+        dashboard::community::groups::{self, CommunityGroupsFilters, Group},
+        pagination,
+        pagination::NavigationLinks,
         site::explore,
     },
 };
-
-/// Maximum number of groups returned when listing dashboard groups.
-pub(crate) const MAX_GROUPS_LISTED: usize = 1000;
 
 // Pages handlers.
 
@@ -37,7 +35,7 @@ pub(crate) const MAX_GROUPS_LISTED: usize = 1000;
 pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
-    Query(query): Query<HashMap<String, String>>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get community name (cached)
     let Some(community_name) = db.get_community_name_by_id(community_id).await? else {
@@ -45,19 +43,38 @@ pub(crate) async fn list_page(
     };
 
     // Prepare template
-    let ts_query = query.get("ts_query").cloned();
-    let filters = explore::GroupsFilters {
+    let mut page_filters: CommunityGroupsFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    page_filters = page_filters.with_defaults();
+    let ts_query = page_filters.ts_query.clone();
+    let db_filters = explore::GroupsFilters {
         community: vec![community_name],
         include_inactive: Some(true),
-        limit: Some(MAX_GROUPS_LISTED),
+        limit: page_filters.limit,
+        offset: page_filters.offset,
         sort_by: Some(String::from("name")),
-        ts_query: ts_query.clone(),
+        ts_query,
         ..explore::GroupsFilters::default()
     };
-    let groups = db.search_groups(&filters).await?.groups;
-    let template = groups::ListPage { groups, ts_query };
+    let results = db.search_groups(&db_filters).await?;
+    let navigation_links = NavigationLinks::from_filters(
+        &page_filters,
+        results.total,
+        "/dashboard/community?tab=groups",
+        "/dashboard/community/groups",
+    )?;
+    let template = groups::ListPage {
+        groups: results.groups,
+        navigation_links,
+        total: results.total,
+        ts_query: page_filters.ts_query.clone(),
+    };
 
-    Ok(Html(template.render()?))
+    let url = pagination::build_url("/dashboard/community?tab=groups", &page_filters)?;
+    Ok((
+        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
+        Html(template.render()?),
+    ))
 }
 
 /// Displays the page to add a new group.
@@ -231,6 +248,7 @@ mod tests {
         handlers::{auth::SELECTED_GROUP_ID_KEY, tests::*},
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -273,7 +291,7 @@ mod tests {
                 move |filters| {
                     filters.community == vec!["test".to_string()]
                         && filters.include_inactive == Some(true)
-                        && filters.limit == Some(super::MAX_GROUPS_LISTED)
+                        && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                         && filters.sort_by.as_deref() == Some("name")
                         && filters.ts_query.as_deref() == Some(ts_query.as_str())
                 }
@@ -341,7 +359,7 @@ mod tests {
             .withf(move |filters| {
                 filters.community == vec!["test".to_string()]
                     && filters.include_inactive == Some(true)
-                    && filters.limit == Some(super::MAX_GROUPS_LISTED)
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
             })
             .returning(move |_| Err(anyhow!("db error")));
 

@@ -386,8 +386,14 @@ pub(crate) fn sample_group_category() -> GroupCategory {
 pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents {
     let summary = sample_event_summary(event_id, group_id);
     GroupEvents {
-        past: vec![summary.clone()],
-        upcoming: vec![summary],
+        past: crate::templates::dashboard::group::events::PaginatedEvents {
+            events: vec![summary.clone()],
+            total: 1,
+        },
+        upcoming: crate::templates::dashboard::group::events::PaginatedEvents {
+            events: vec![summary],
+            total: 1,
+        },
     }
 }
 

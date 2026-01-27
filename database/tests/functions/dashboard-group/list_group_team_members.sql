@@ -49,18 +49,26 @@ values
 
 -- Should return list of group team members with accepted flag
 select is(
-    list_group_team_members(:'groupID'::uuid)::jsonb,
-    '[
-        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "organizer", "title": "Organizer"},
-        {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
-    ]'::jsonb,
+    list_group_team_members(:'groupID'::uuid, '{}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'approved_total', 1,
+        'members', '[
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "organizer", "title": "Organizer"},
+            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
     'Should return list of group team members with accepted flag'
 );
 
 -- Should return empty list for non-existing group
 select is(
-    list_group_team_members('00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
+    list_group_team_members('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    jsonb_build_object(
+        'approved_total', 0,
+        'members', '[]'::jsonb,
+        'total', 0
+    ),
     'Should return empty list for non-existing group'
 );
 

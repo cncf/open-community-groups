@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -19,9 +19,14 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::group::team,
     templates::notifications::GroupTeamInvitation,
+    templates::{
+        dashboard::group::team::{self, GroupTeamFilters},
+        pagination,
+        pagination::NavigationLinks,
+    },
     types::group::GroupRole,
 };
 
@@ -32,17 +37,35 @@ use crate::{
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (members, roles) = tokio::try_join!(db.list_group_team_members(group_id), db.list_group_roles())?;
-    let approved_members_count = members.iter().filter(|m| m.accepted).count();
+    let mut filters: GroupTeamFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    filters = filters.with_defaults();
+    let (results, roles) = tokio::try_join!(
+        db.list_group_team_members(group_id, &filters),
+        db.list_group_roles()
+    )?;
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        results.total,
+        "/dashboard/group?tab=team",
+        "/dashboard/group/team",
+    )?;
     let template = team::ListPage {
-        approved_members_count,
-        members,
+        approved_members_count: results.approved_total,
+        members: results.members,
+        navigation_links,
         roles,
+        total: results.total,
     };
 
-    Ok(Html(template.render()?))
+    let url = pagination::build_url("/dashboard/group?tab=team", &filters)?;
+    Ok((
+        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
+        Html(template.render()?),
+    ))
 }
 
 // Actions handlers.
@@ -163,6 +186,7 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::GroupTeamInvitation,
         types::group::GroupRole,
     };
@@ -185,7 +209,13 @@ mod tests {
             Some(group_id),
         );
         let member = sample_team_member(true);
+        let members = vec![member.clone(), sample_team_member(false)];
         let role = sample_group_role_summary();
+        let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+            approved_total: 1,
+            members: members.clone(),
+            total: members.len(),
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -203,8 +233,12 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_team_members()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![member.clone(), sample_team_member(false)]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
         db.expect_list_group_roles()
             .times(1)
             .returning(move || Ok(vec![role.clone()]));

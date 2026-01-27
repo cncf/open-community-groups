@@ -1,4 +1,5 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
 {# Sponsors header with title and add button -#}
 <div class="flex items-center">
@@ -140,3 +141,9 @@
   {# End table -#}
 
 </div>
+
+{# Pagination -#}
+{% if total > sponsors.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+{% endif -%}
+{# End pagination -#}

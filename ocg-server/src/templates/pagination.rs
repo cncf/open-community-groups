@@ -1,12 +1,50 @@
-//! Pagination-related types and helpers for the site explore page.
+//! Pagination-related types and helpers for templates.
 
 use std::fmt::Write as _;
 
 use anyhow::Result;
-use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use super::explore::Entity;
+/// Implement the `Pagination` trait for a type.
+#[macro_export]
+macro_rules! impl_pagination {
+    ($type:ty, $limit:ident, $offset:ident) => {
+        impl Pagination for $type {
+            fn limit(&self) -> Option<usize> {
+                self.$limit
+            }
+
+            fn offset(&self) -> Option<usize> {
+                self.$offset
+            }
+
+            fn set_offset(&mut self, offset: Option<usize>) {
+                self.$offset = offset;
+            }
+        }
+    };
+}
+
+/// Implement the `ToRawQuery` trait for a type using `serde_qs`.
+#[macro_export]
+macro_rules! impl_to_raw_query {
+    ($type:ty) => {
+        impl ToRawQuery for $type {
+            fn to_raw_query(&self) -> anyhow::Result<String> {
+                serde_qs::to_string(self).map_err(anyhow::Error::from)
+            }
+        }
+    };
+}
+
+/// Implement both `Pagination` and `ToRawQuery` for a type.
+#[macro_export]
+macro_rules! impl_pagination_and_raw_query {
+    ($type:ty, $limit:ident, $offset:ident) => {
+        $crate::impl_pagination!($type, $limit, $offset);
+        $crate::impl_to_raw_query!($type);
+    };
+}
 
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
@@ -39,8 +77,7 @@ pub(crate) trait ToRawQuery {
 ///
 /// Provides first/last/next/previous links for navigating through paginated results.
 /// Links are only populated when applicable based on current position in the result set.
-#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
-#[template(path = "site/explore/navigation_links.html")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct NavigationLinks {
     /// Link to first page of results.
     pub first: Option<NavigationLink>,
@@ -53,38 +90,54 @@ pub(crate) struct NavigationLinks {
 }
 
 impl NavigationLinks {
-    /// Generate navigation links based on current filters and result count.
-    ///
-    /// Calculates which navigation links should be shown based on the current offset,
-    /// limit, and total number of results. Only creates links that make sense (e.g., no
-    /// "previous" link on the first page).
-    pub(crate) fn from_filters<T>(entity: &Entity, filters: &T, total: usize) -> Result<Self>
+    /// Generate navigation links using custom base URLs.
+    pub(crate) fn from_filters<T>(
+        filters: &T,
+        total: usize,
+        base_url: &str,
+        base_hx_url: &str,
+    ) -> Result<Self>
     where
         T: Serialize + Clone + ToRawQuery + Pagination,
     {
         let mut links = NavigationLinks::default();
+        NavigationLinks::populate(&mut links, filters, total, base_url, base_hx_url)?;
 
+        Ok(links)
+    }
+
+    fn populate<T>(
+        links: &mut NavigationLinks,
+        filters: &T,
+        total: usize,
+        base_url: &str,
+        base_hx_url: &str,
+    ) -> Result<()>
+    where
+        T: Serialize + Clone + ToRawQuery + Pagination,
+    {
+        // Calculate offsets for pagination
         let offsets = NavigationLinksOffsets::new(filters.offset(), filters.limit(), total);
         let mut filters = filters.clone();
 
         if let Some(first_offset) = offsets.first {
             filters.set_offset(Some(first_offset));
-            links.first = Some(NavigationLink::new(entity, &filters)?);
+            links.first = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
         }
         if let Some(last_offset) = offsets.last {
             filters.set_offset(Some(last_offset));
-            links.last = Some(NavigationLink::new(entity, &filters)?);
+            links.last = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
         }
         if let Some(next_offset) = offsets.next {
             filters.set_offset(Some(next_offset));
-            links.next = Some(NavigationLink::new(entity, &filters)?);
+            links.next = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
         }
         if let Some(prev_offset) = offsets.prev {
             filters.set_offset(Some(prev_offset));
-            links.prev = Some(NavigationLink::new(entity, &filters)?);
+            links.prev = Some(NavigationLink::new_with_base(base_url, base_hx_url, &filters)?);
         }
 
-        Ok(links)
+        Ok(())
     }
 }
 
@@ -101,17 +154,14 @@ pub(crate) struct NavigationLink {
 }
 
 impl NavigationLink {
-    /// Create a navigation link with both standard and HTMX URLs.
-    pub(crate) fn new<T>(entity: &Entity, filters: &T) -> Result<Self>
+    /// Create a navigation link with custom base URLs.
+    pub(crate) fn new_with_base<T>(base_url: &str, base_hx_url: &str, filters: &T) -> Result<Self>
     where
         T: Serialize + ToRawQuery,
     {
-        let base_hx_url = format!("/explore/{entity}-results-section");
-        let base_url = format!("/explore?entity={entity}");
-
         Ok(NavigationLink {
-            hx_url: build_url(&base_hx_url, filters)?,
-            url: build_url(&base_url, filters)?,
+            hx_url: build_url(base_hx_url, filters)?,
+            url: build_url(base_url, filters)?,
         })
     }
 }

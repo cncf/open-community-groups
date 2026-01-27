@@ -1,5 +1,6 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
 {# Events list header with title -#}
 <div class="flex justify-between mb-10">
@@ -36,7 +37,11 @@
       <button type="button"
               id="past-tab"
               data-events-tab="past"
-              data-active="true"
+              data-active="{% if events_tab == EventsTab::Past %}
+                             true
+                           {% else %}
+                             false
+                           {% endif %}"
               class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
         Past events
       </button>
@@ -45,7 +50,11 @@
       <button type="button"
               id="upcoming-tab"
               data-events-tab="upcoming"
-              data-active="false"
+              data-active="{% if events_tab == EventsTab::Upcoming %}
+                             true
+                           {% else %}
+                             false
+                           {% endif %}"
               class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-40">
         Upcoming events
       </button>
@@ -54,7 +63,11 @@
 </div>
 
 {# Past Events Section -#}
-<div id="past-content" data-events-content="past">
+<div id="past-content"
+     data-events-content="past"
+     class="{% if events_tab == EventsTab::Upcoming %}
+              hidden
+            {% endif %}">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
            role="table"
@@ -72,7 +85,7 @@
         </tr>
       </thead>
       <tbody id="past-events-list" role="rowgroup">
-        {% if events.past.is_empty() -%}
+        {% if events.past.events.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             {# Mobile: 3 columns (Name, Status, Actions) -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="3">
@@ -87,7 +100,7 @@
             </td>
           </tr>
         {% else -%}
-          {% for event in events.past -%}
+          {% for event in events.past.events -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
@@ -275,10 +288,19 @@
     </table>
   </div>
 </div>
+{# Pagination -#}
+{% if events.past.total > events.past.events.len() -%}
+  {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+{% endif -%}
+{# End pagination -#}
 {# End Past Events Section -#}
 
 {# Upcoming Events Section -#}
-<div id="upcoming-content" data-events-content="upcoming" class="hidden">
+<div id="upcoming-content"
+     data-events-content="upcoming"
+     class="{% if events_tab == EventsTab::Past %}
+              hidden
+            {% endif %}">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
            role="table"
@@ -296,7 +318,7 @@
         </tr>
       </thead>
       <tbody id="upcoming-events-list" role="rowgroup">
-        {% if events.upcoming.is_empty() -%}
+        {% if events.upcoming.events.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
             {# Mobile: 3 columns (Name, Status, Actions) -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="3">
@@ -311,7 +333,7 @@
             </td>
           </tr>
         {% else -%}
-          {% for event in events.upcoming -%}
+          {% for event in events.upcoming.events -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
@@ -613,6 +635,11 @@
     </table>
   </div>
 </div>
+{# Pagination -#}
+{% if events.upcoming.total > events.upcoming.events.len() -%}
+  {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+{% endif -%}
+{# End pagination -#}
 {# End Upcoming Events Section -#}
 
 <script type="module">

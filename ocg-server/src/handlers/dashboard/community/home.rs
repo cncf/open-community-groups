@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Query, State},
+    extract::{Query, RawQuery, State},
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -14,17 +14,19 @@ use tracing::instrument;
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{
-        dashboard::community::groups::MAX_GROUPS_LISTED, error::HandlerError, extractors::SelectedCommunityId,
-    },
+    handlers::{error::HandlerError, extractors::SelectedCommunityId},
+    router::serde_qs_config,
     templates::{
         PageId,
         auth::User,
         dashboard::community::{
-            analytics, groups,
+            analytics,
+            groups::{self, CommunityGroupsFilters},
             home::{Content, Page, Tab},
-            settings, team,
+            settings,
+            team::{self, CommunityTeamFilters},
         },
+        pagination::NavigationLinks,
         site::explore::GroupsFilters,
     },
 };
@@ -40,6 +42,7 @@ pub(crate) async fn page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get selected tab from query
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
@@ -61,27 +64,51 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Groups => {
-            let ts_query = query.get("ts_query").cloned();
-            let filters = GroupsFilters {
+            let mut page_filters: CommunityGroupsFilters =
+                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+            page_filters = page_filters.with_defaults();
+            let db_filters = GroupsFilters {
                 community: vec![community.name.clone()],
                 include_inactive: Some(true),
-                limit: Some(MAX_GROUPS_LISTED),
+                limit: page_filters.limit,
+                offset: page_filters.offset,
                 sort_by: Some("name".to_string()),
-                ts_query: ts_query.clone(),
+                ts_query: page_filters.ts_query.clone(),
                 ..GroupsFilters::default()
             };
-            let groups = db.search_groups(&filters).await?.groups;
-            Content::Groups(groups::ListPage { groups, ts_query })
+            let results = db.search_groups(&db_filters).await?;
+            let navigation_links = NavigationLinks::from_filters(
+                &page_filters,
+                results.total,
+                "/dashboard/community?tab=groups",
+                "/dashboard/community/groups",
+            )?;
+            Content::Groups(groups::ListPage {
+                groups: results.groups,
+                navigation_links,
+                total: results.total,
+                ts_query: page_filters.ts_query,
+            })
         }
         Tab::Settings => Content::Settings(Box::new(settings::UpdatePage {
             community: community.clone(),
         })),
         Tab::Team => {
-            let members = db.list_community_team_members(community_id).await?;
-            let approved_members_count = members.iter().filter(|m| m.accepted).count();
+            let mut page_filters: CommunityTeamFilters =
+                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+            page_filters = page_filters.with_defaults();
+            let results = db.list_community_team_members(community_id, &page_filters).await?;
+            let navigation_links = NavigationLinks::from_filters(
+                &page_filters,
+                results.total,
+                "/dashboard/community?tab=team",
+                "/dashboard/community/team",
+            )?;
             Content::Team(team::ListPage {
-                approved_members_count,
-                members,
+                approved_members_count: results.approved_total,
+                members: results.members,
+                navigation_links,
+                total: results.total,
             })
         }
     };
@@ -120,9 +147,10 @@ mod tests {
 
     use crate::{
         db::{common::SearchGroupsOutput, mock::MockDB},
-        handlers::{dashboard::community::groups::MAX_GROUPS_LISTED, tests::*},
+        handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::MockNotificationsManager,
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -242,7 +270,7 @@ mod tests {
                 move |filters| {
                     filters.community == vec!["test".to_string()]
                         && filters.include_inactive == Some(true)
-                        && filters.limit == Some(MAX_GROUPS_LISTED)
+                        && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                         && filters.sort_by.as_deref() == Some("name")
                         && filters.ts_query.as_deref() == Some(ts_query.as_str())
                 }
@@ -354,6 +382,11 @@ mod tests {
             sample_community_team_member(true),
             sample_community_team_member(false),
         ];
+        let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+            approved_total: 1,
+            members: members.clone(),
+            total: members.len(),
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -379,8 +412,12 @@ mod tests {
             .returning(move |_| Ok(sample_user_communities(community_id)));
         db.expect_list_community_team_members()
             .times(1)
-            .withf(move |id| *id == community_id)
-            .returning(move |_| Ok(members.clone()));
+            .withf(move |id, filters| {
+                *id == community_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));

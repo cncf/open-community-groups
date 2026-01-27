@@ -1,6 +1,6 @@
 -- Returns the events that match the filters provided.
 create or replace function search_events(p_filters jsonb)
-returns table(events json, bbox json, total bigint) as $$
+returns json as $$
 declare
     v_bbox geometry;
     v_community_ids uuid[];
@@ -77,7 +77,7 @@ begin
         ) into v_tsquery_with_prefix_matching;
     end if;
 
-    return query
+    return (
     with filtered_events as (
         select
             g.community_id,
@@ -85,7 +85,12 @@ begin
             e.group_id,
             e.starts_at,
             coalesce(e.location, g.location) as location,
-            st_distance(coalesce(e.location, g.location), v_user_location) as distance
+            case
+                when v_sort_by = 'distance'
+                and v_user_location is not null then
+                    st_distance(coalesce(e.location, g.location), v_user_location)
+                else null
+            end as distance
         from event e
         join "group" g using (group_id)
         join group_category gc using (group_category_id)
@@ -152,18 +157,21 @@ begin
             starts_at asc
         limit v_limit
         offset v_offset
-    ),
-    filtered_events_bbox as (
-        select st_envelope(st_union(st_envelope(location::geometry))) as bb
-        from filtered_events
     )
-    select
+    select json_build_object(
+        'events',
         (
             select coalesce(json_agg(
                 get_event_summary(community_id, group_id, event_id)
-            ), '[]')
+            ), '[]'::json)
             from filtered_events_page
         ),
+        'total',
+        (
+            select count(*)::bigint from filtered_events
+        ),
+
+        'bbox',
         (
             case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
                 (
@@ -176,12 +184,14 @@ begin
                                 'sw_lon', st_xmin(bb)
                             )
                         else null end
-                    from filtered_events_bbox
+                    from (
+                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
+                        from filtered_events
+                    ) as filtered_events_bbox
                 )
             else null end
-        ),
-        (
-            select count(*) from filtered_events
-        );
+        )
+    )
+    );
 end
 $$ language plpgsql;

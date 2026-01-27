@@ -1,12 +1,19 @@
 //! Templates and types for managing the group team in the dashboard.
 
 use askama::Template;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::helpers::user_initials,
+    templates::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        helpers::user_initials,
+        pagination::{Pagination, ToRawQuery},
+    },
     types::group::{GroupRole, GroupRoleSummary},
+    validation::MAX_PAGINATION_LIMIT,
 };
 
 // Pages templates.
@@ -19,8 +26,12 @@ pub(crate) struct ListPage {
     pub approved_members_count: usize,
     /// List of team members in the group.
     pub members: Vec<GroupTeamMember>,
+    /// Pagination navigation links.
+    pub navigation_links: crate::templates::pagination::NavigationLinks,
     /// List of available team roles.
     pub roles: Vec<GroupRoleSummary>,
+    /// Total number of team members.
+    pub total: usize,
 }
 
 // Types.
@@ -45,4 +56,42 @@ pub struct GroupTeamMember {
     pub role: Option<GroupRole>,
     /// Title held by the user.
     pub title: Option<String>,
+}
+
+/// Filter parameters for group team pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct GroupTeamFilters {
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+impl GroupTeamFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.offset.is_none() {
+            self.offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(GroupTeamFilters, limit, offset);
+
+/// Paginated group team response data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupTeamOutput {
+    /// Total number of approved members.
+    pub approved_total: usize,
+    /// List of team members in the group.
+    pub members: Vec<GroupTeamMember>,
+    /// Total number of team members.
+    pub total: usize,
 }

@@ -11,14 +11,19 @@ use uuid::Uuid;
 
 use crate::{
     services::meetings::MeetingProvider,
-    templates::{filters, helpers::DATE_FORMAT},
+    templates::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        filters,
+        helpers::DATE_FORMAT,
+        pagination::{Pagination, ToRawQuery},
+    },
     types::event::{
         EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
     },
     types::group::GroupSponsor,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, email_vec, image_url_opt, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_vec, valid_latitude, valid_longitude,
+        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, MAX_PAGINATION_LIMIT, email_vec, image_url_opt,
+        trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_vec, valid_latitude, valid_longitude,
     },
 };
 
@@ -52,6 +57,12 @@ pub(crate) struct AddPage {
 pub(crate) struct ListPage {
     /// Group events split by upcoming and past ones.
     pub events: GroupEvents,
+    /// Current events tab selection.
+    pub events_tab: EventsTab,
+    /// Pagination links for past events.
+    pub past_navigation_links: crate::templates::pagination::NavigationLinks,
+    /// Pagination links for upcoming events.
+    pub upcoming_navigation_links: crate::templates::pagination::NavigationLinks,
 }
 
 /// Update event page template.
@@ -206,9 +217,142 @@ pub struct EventSponsor {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupEvents {
     /// Events that already happened.
-    pub past: Vec<EventSummary>,
+    pub past: PaginatedEvents,
     /// Events happening in the future.
-    pub upcoming: Vec<EventSummary>,
+    pub upcoming: PaginatedEvents,
+}
+
+/// Events list with pagination metadata.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct PaginatedEvents {
+    /// List of events for this section.
+    pub events: Vec<EventSummary>,
+    /// Total number of events for this section.
+    pub total: usize,
+}
+
+/// Filter parameters for events list pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct EventsListFilters {
+    /// Selected events tab.
+    #[garde(skip)]
+    pub events_tab: Option<EventsTab>,
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for past events.
+    #[garde(skip)]
+    pub past_offset: Option<usize>,
+    /// Pagination offset for upcoming events.
+    #[garde(skip)]
+    pub upcoming_offset: Option<usize>,
+}
+
+impl EventsListFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.past_offset.is_none() {
+            self.past_offset = Some(0);
+        }
+        if self.upcoming_offset.is_none() {
+            self.upcoming_offset = Some(0);
+        }
+        self
+    }
+
+    /// Current tab or default.
+    pub(crate) fn current_tab(&self) -> EventsTab {
+        self.events_tab.clone().unwrap_or_default()
+    }
+}
+
+crate::impl_to_raw_query!(EventsListFilters);
+
+/// Filter parameters for past events pagination URLs.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub(crate) struct PastEventsPaginationFilters {
+    /// Selected events tab.
+    #[garde(skip)]
+    pub events_tab: Option<EventsTab>,
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for past events.
+    #[garde(skip)]
+    pub past_offset: Option<usize>,
+    /// Pagination offset for upcoming events.
+    #[garde(skip)]
+    pub upcoming_offset: Option<usize>,
+}
+
+impl PastEventsPaginationFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.past_offset.is_none() {
+            self.past_offset = Some(0);
+        }
+        if self.upcoming_offset.is_none() {
+            self.upcoming_offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(PastEventsPaginationFilters, limit, past_offset);
+
+/// Filter parameters for upcoming events pagination URLs.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub(crate) struct UpcomingEventsPaginationFilters {
+    /// Selected events tab.
+    #[garde(skip)]
+    pub events_tab: Option<EventsTab>,
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for past events.
+    #[garde(skip)]
+    pub past_offset: Option<usize>,
+    /// Pagination offset for upcoming events.
+    #[garde(skip)]
+    pub upcoming_offset: Option<usize>,
+}
+
+impl UpcomingEventsPaginationFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.past_offset.is_none() {
+            self.past_offset = Some(0);
+        }
+        if self.upcoming_offset.is_none() {
+            self.upcoming_offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(UpcomingEventsPaginationFilters, limit, upcoming_offset);
+
+/// Tab selection for the events list.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum EventsTab {
+    /// Past events tab (default).
+    #[default]
+    Past,
+    /// Upcoming events tab.
+    Upcoming,
 }
 
 /// Event update details for past events (limited fields).

@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{RawQuery, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -21,8 +21,14 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
     },
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{dashboard::group::members, notifications::GroupCustom},
+    templates::{
+        dashboard::group::members::{self, GroupMembersFilters},
+        notifications::GroupCustom,
+        pagination,
+        pagination::NavigationLinks,
+    },
 };
 
 // Pages handlers.
@@ -32,12 +38,30 @@ use crate::{
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let members = db.list_group_members(group_id).await?;
-    let template = members::ListPage { members };
+    let mut filters: GroupMembersFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    filters = filters.with_defaults();
+    let results = db.list_group_members(group_id, &filters).await?;
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        results.total,
+        "/dashboard/group?tab=members",
+        "/dashboard/group/members",
+    )?;
+    let template = members::ListPage {
+        members: results.members,
+        navigation_links,
+        total: results.total,
+    };
 
-    Ok(Html(template.render()?))
+    let url = pagination::build_url("/dashboard/group?tab=members", &filters)?;
+    Ok((
+        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
+        Html(template.render()?),
+    ))
 }
 
 // Actions handlers.
@@ -141,6 +165,7 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::GroupCustom,
     };
 
@@ -160,6 +185,10 @@ mod tests {
             Some(group_id),
         );
         let member = sample_group_member();
+        let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+            members: vec![member.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -177,8 +206,12 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_members()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![member.clone()]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -239,8 +272,12 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_members()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Err(anyhow!("db error")));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

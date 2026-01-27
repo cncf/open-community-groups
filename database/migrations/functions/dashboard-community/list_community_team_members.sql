@@ -1,20 +1,44 @@
--- Returns all community team members.
-create or replace function list_community_team_members(p_community_id uuid)
+-- Returns paginated community team members.
+create or replace function list_community_team_members(p_community_id uuid, p_filters jsonb)
 returns json as $$
-    select coalesce(json_agg(row_to_json(member)), '[]'::json)
-    from (
-        select
-            ct.accepted,
-            u.user_id,
-            u.username,
+    with
+        filters as (
+            select
+                coalesce((p_filters->>'limit')::int, 50) as limit_value,
+                coalesce((p_filters->>'offset')::int, 0) as offset_value
+        ),
+        members as (
+            select
+                ct.accepted,
+                u.user_id,
+                u.username,
 
-            u.company,
-            u.name,
-            u.photo_url,
-            u.title
-        from community_team ct
-        join "user" u on u.user_id = ct.user_id
-        where ct.community_id = p_community_id
-        order by coalesce(lower(u.name), lower(u.username)) asc
-    ) member;
+                u.company,
+                u.name,
+                u.photo_url,
+                u.title
+            from community_team ct
+            join "user" u on u.user_id = ct.user_id
+            where ct.community_id = p_community_id
+            order by coalesce(lower(u.name), lower(u.username)) asc, u.user_id asc
+            offset (select offset_value from filters)
+            limit (select limit_value from filters)
+        ),
+        totals as (
+            select
+                count(*)::int as total,
+                count(*) filter (where ct.accepted)::int as approved_total
+            from community_team ct
+            where ct.community_id = p_community_id
+        ),
+        members_json as (
+            select coalesce(json_agg(row_to_json(members)), '[]'::json) as members
+            from members
+        )
+    select json_build_object(
+        'approved_total', totals.approved_total,
+        'members', members_json.members,
+        'total', totals.total
+    )
+    from totals, members_json;
 $$ language sql;

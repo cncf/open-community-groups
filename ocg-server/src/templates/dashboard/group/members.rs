@@ -2,9 +2,16 @@
 
 use askama::Template;
 use chrono::{DateTime, Utc};
+use garde::Validate;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
-use crate::templates::helpers::user_initials;
+use crate::templates::{
+    dashboard::DASHBOARD_PAGINATION_LIMIT,
+    helpers::user_initials,
+    pagination::{Pagination, ToRawQuery},
+};
+use crate::validation::MAX_PAGINATION_LIMIT;
 
 // Pages templates.
 
@@ -14,6 +21,10 @@ use crate::templates::helpers::user_initials;
 pub(crate) struct ListPage {
     /// List of members in the group.
     pub members: Vec<GroupMember>,
+    /// Pagination navigation links.
+    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    /// Total number of members in the group.
+    pub total: usize,
 }
 
 // Types.
@@ -35,4 +46,40 @@ pub struct GroupMember {
     pub photo_url: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
+}
+
+/// Filter parameters for group members pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct GroupMembersFilters {
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+impl GroupMembersFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.offset.is_none() {
+            self.offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(GroupMembersFilters, limit, offset);
+
+/// Paginated group members response data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupMembersOutput {
+    /// List of members in the group.
+    pub members: Vec<GroupMember>,
+    /// Total number of members in the group.
+    pub total: usize,
 }

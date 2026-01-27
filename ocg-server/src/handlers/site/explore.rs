@@ -25,12 +25,8 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        site::{
-            explore::{
-                self, Entity, EventsFilters, GroupsFilters, render_event_popover, render_group_popover,
-            },
-            pagination::{self, NavigationLinks},
-        },
+        pagination::{self, NavigationLinks},
+        site::explore::{self, EventsFilters, GroupsFilters, render_event_popover, render_group_popover},
     },
 };
 
@@ -165,7 +161,12 @@ async fn prepare_events_result_section(
     // Prepare template
     let template = explore::EventsResultsSection {
         events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
-        navigation_links: NavigationLinks::from_filters(&Entity::Events, filters, total)?,
+        navigation_links: NavigationLinks::from_filters(
+            filters,
+            total,
+            "/explore?entity=events",
+            "/explore/events-results-section",
+        )?,
         total,
         bbox,
         offset: filters.offset,
@@ -262,7 +263,12 @@ async fn prepare_groups_result_section(
     // Prepare template
     let template = explore::GroupsResultsSection {
         groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
-        navigation_links: NavigationLinks::from_filters(&Entity::Groups, filters, total)?,
+        navigation_links: NavigationLinks::from_filters(
+            filters,
+            total,
+            "/explore?entity=groups",
+            "/explore/groups-results-section",
+        )?,
         total,
         bbox,
         offset: filters.offset,
@@ -336,7 +342,7 @@ mod tests {
         db::mock::MockDB,
         handlers::tests::*,
         services::notifications::MockNotificationsManager,
-        templates::site::{explore, pagination},
+        templates::{pagination, site::explore},
     };
 
     #[tokio::test]

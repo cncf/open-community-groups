@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -19,9 +19,14 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, ValidatedForm},
     },
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::community::team,
     templates::notifications::CommunityTeamInvitation,
+    templates::{
+        dashboard::community::team::{self, CommunityTeamFilters},
+        pagination,
+        pagination::NavigationLinks,
+    },
 };
 
 // Pages handlers.
@@ -31,15 +36,30 @@ use crate::{
 pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let members = db.list_community_team_members(community_id).await?;
-    let approved_members_count = members.iter().filter(|m| m.accepted).count();
+    let mut filters: CommunityTeamFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    filters = filters.with_defaults();
+    let results = db.list_community_team_members(community_id, &filters).await?;
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        results.total,
+        "/dashboard/community?tab=team",
+        "/dashboard/community/team",
+    )?;
     let template = team::ListPage {
-        approved_members_count,
-        members,
+        approved_members_count: results.approved_total,
+        members: results.members,
+        navigation_links,
+        total: results.total,
     };
 
-    Ok(Html(template.render()?))
+    let url = pagination::build_url("/dashboard/community?tab=team", &filters)?;
+    Ok((
+        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
+        Html(template.render()?),
+    ))
 }
 
 // Actions handlers.
@@ -127,6 +147,7 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
     };
 
@@ -144,6 +165,11 @@ mod tests {
             sample_community_team_member(true),
             sample_community_team_member(false),
         ];
+        let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+            approved_total: 1,
+            members: members.clone(),
+            total: members.len(),
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -161,8 +187,12 @@ mod tests {
             .returning(|_, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(members.clone()));
+            .withf(move |cid, filters| {
+                *cid == community_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -218,8 +248,12 @@ mod tests {
             .returning(|_, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Err(anyhow!("db error")));
+            .withf(move |cid, filters| {
+                *cid == community_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

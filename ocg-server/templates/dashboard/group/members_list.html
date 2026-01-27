@@ -1,5 +1,6 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
 {# Members header -#}
 {{ dashboard::form_title(title = "Members") -}}
@@ -8,10 +9,10 @@
   <div class="flex text-sm text-stone-600">
     <div>Total members:</div>
     <div class="font-semibold ms-1 text-end">
-      {% if members.is_empty() -%}
+      {% if total == 0 -%}
         -
       {% else %}
-        {{ members.len() }}
+        {{ total }}
       {% endif -%}
     </div>
   </div>
@@ -19,7 +20,7 @@
     <button id="open-notification-modal"
             type="button"
             class="btn-primary"
-            {% if members.is_empty() -%}
+            {% if total == 0 -%}
               disabled title="Add members to enable sending notifications."
             {% endif -%}>Send email</button>
   </div>
@@ -95,6 +96,12 @@
   </table>
   {# End table -#}
 </div>
+
+{# Pagination -#}
+{% if total > members.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+{% endif -%}
+{# End pagination -#}
 
 {# Notification modal -#}
 <div id="notification-modal"

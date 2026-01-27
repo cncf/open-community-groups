@@ -15,12 +15,12 @@ use crate::{
     services::meetings::MeetingProvider,
     templates::dashboard::group::{
         analytics::GroupStats,
-        attendees::{Attendee, AttendeesFilters},
-        events::{Event, GroupEvents},
+        attendees::{AttendeesFilters, AttendeesOutput},
+        events::{Event, EventsListFilters, GroupEvents},
         home::UserGroupsByCommunity,
-        members::GroupMember,
-        sponsors::Sponsor,
-        team::GroupTeamMember,
+        members::{GroupMembersFilters, GroupMembersOutput},
+        sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
+        team::{GroupTeamFilters, GroupTeamOutput},
     },
     types::{
         event::{EventCategory, EventKindSummary as EventKind, SessionKindSummary as SessionKind},
@@ -73,10 +73,14 @@ pub(crate) trait DBDashboardGroup {
     async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
 
     /// Lists all events for a group for management.
-    async fn list_group_events(&self, group_id: Uuid) -> Result<GroupEvents>;
+    async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents>;
 
     /// Lists all group members.
-    async fn list_group_members(&self, group_id: Uuid) -> Result<Vec<GroupMember>>;
+    async fn list_group_members(
+        &self,
+        group_id: Uuid,
+        filters: &GroupMembersFilters,
+    ) -> Result<GroupMembersOutput>;
 
     /// Lists all group member user ids.
     async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
@@ -85,10 +89,18 @@ pub(crate) trait DBDashboardGroup {
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
 
     /// Lists all sponsors for a group.
-    async fn list_group_sponsors(&self, group_id: Uuid) -> Result<Vec<GroupSponsor>>;
+    async fn list_group_sponsors(
+        &self,
+        group_id: Uuid,
+        filters: &GroupSponsorsFilters,
+    ) -> Result<GroupSponsorsOutput>;
 
     /// Lists all group team members.
-    async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>>;
+    async fn list_group_team_members(
+        &self,
+        group_id: Uuid,
+        filters: &GroupTeamFilters,
+    ) -> Result<GroupTeamOutput>;
 
     /// Lists all accepted, verified group team member user ids.
     async fn list_group_team_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
@@ -107,7 +119,7 @@ pub(crate) trait DBDashboardGroup {
         &self,
         group_id: Uuid,
         filters: &AttendeesFilters,
-    ) -> Result<Vec<Attendee>>;
+    ) -> Result<AttendeesOutput>;
 
     /// Unpublishes an event (sets published=false and clears publication metadata).
     async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
@@ -336,12 +348,15 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_group_events`]
     #[instrument(skip(self), err)]
-    async fn list_group_events(&self, group_id: Uuid) -> Result<GroupEvents> {
+    async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents> {
         trace!("db: list group events");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_events($1::uuid)::text", &[&group_id])
+            .query_one(
+                "select list_group_events($1::uuid, $2::jsonb)::text",
+                &[&group_id, &Json(filters)],
+            )
             .await?;
         let events: GroupEvents = serde_json::from_str(&row.get::<_, String>(0))?;
 
@@ -350,16 +365,23 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_group_members`]
     #[instrument(skip(self), err)]
-    async fn list_group_members(&self, group_id: Uuid) -> Result<Vec<GroupMember>> {
+    async fn list_group_members(
+        &self,
+        group_id: Uuid,
+        filters: &GroupMembersFilters,
+    ) -> Result<GroupMembersOutput> {
         trace!("db: list group members");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_members($1::uuid)::text", &[&group_id])
+            .query_one(
+                "select list_group_members($1::uuid, $2::jsonb)::text",
+                &[&group_id, &Json(filters)],
+            )
             .await?;
-        let members: Vec<GroupMember> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output: GroupMembersOutput = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(members)
+        Ok(output)
     }
 
     /// [`DBDashboardGroup::list_group_members_ids`]
@@ -390,30 +412,44 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_group_sponsors`]
     #[instrument(skip(self), err)]
-    async fn list_group_sponsors(&self, group_id: Uuid) -> Result<Vec<GroupSponsor>> {
+    async fn list_group_sponsors(
+        &self,
+        group_id: Uuid,
+        filters: &GroupSponsorsFilters,
+    ) -> Result<GroupSponsorsOutput> {
         trace!("db: list group sponsors");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_sponsors($1::uuid)::text", &[&group_id])
+            .query_one(
+                "select list_group_sponsors($1::uuid, $2::jsonb)::text",
+                &[&group_id, &Json(filters)],
+            )
             .await?;
-        let sponsors: Vec<GroupSponsor> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output: GroupSponsorsOutput = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(sponsors)
+        Ok(output)
     }
 
     /// [`DBDashboardGroup::list_group_team_members`]
     #[instrument(skip(self), err)]
-    async fn list_group_team_members(&self, group_id: Uuid) -> Result<Vec<GroupTeamMember>> {
+    async fn list_group_team_members(
+        &self,
+        group_id: Uuid,
+        filters: &GroupTeamFilters,
+    ) -> Result<GroupTeamOutput> {
         trace!("db: list group team members");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_group_team_members($1::uuid)::text", &[&group_id])
+            .query_one(
+                "select list_group_team_members($1::uuid, $2::jsonb)::text",
+                &[&group_id, &Json(filters)],
+            )
             .await?;
-        let members: Vec<GroupTeamMember> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output: GroupTeamOutput = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(members)
+        Ok(output)
     }
 
     /// [`DBDashboardGroup::list_group_team_members_ids`]
@@ -477,7 +513,7 @@ impl DBDashboardGroup for PgDB {
         &self,
         group_id: Uuid,
         filters: &AttendeesFilters,
-    ) -> Result<Vec<Attendee>> {
+    ) -> Result<AttendeesOutput> {
         trace!("db: search event attendees");
 
         let db = self.pool.get().await?;
@@ -487,9 +523,9 @@ impl DBDashboardGroup for PgDB {
                 &[&group_id, &Json(filters)],
             )
             .await?;
-        let attendees: Vec<Attendee> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let output: AttendeesOutput = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(attendees)
+        Ok(output)
     }
 
     /// [`DBDashboardGroup::unpublish_event`]

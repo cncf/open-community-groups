@@ -7,8 +7,12 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
+    templates::{
+        dashboard::DASHBOARD_PAGINATION_LIMIT,
+        pagination::{Pagination, ToRawQuery},
+    },
     types::group::GroupSponsor,
-    validation::{MAX_LEN_L, MAX_LEN_M, image_url, trimmed_non_empty},
+    validation::{MAX_LEN_L, MAX_LEN_M, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty},
 };
 
 // Pages templates.
@@ -27,6 +31,10 @@ pub(crate) struct AddPage {
 pub(crate) struct ListPage {
     /// List of sponsors in the group.
     pub sponsors: Vec<GroupSponsor>,
+    /// Pagination navigation links.
+    pub navigation_links: crate::templates::pagination::NavigationLinks,
+    /// Total number of sponsors in the group.
+    pub total: usize,
 }
 
 /// Update sponsor page template.
@@ -55,4 +63,40 @@ pub(crate) struct Sponsor {
     /// Sponsor website URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
+}
+
+/// Filter parameters for group sponsors pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct GroupSponsorsFilters {
+    /// Number of results per page.
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[garde(skip)]
+    pub offset: Option<usize>,
+}
+
+impl GroupSponsorsFilters {
+    /// Apply dashboard defaults to pagination filters.
+    pub(crate) fn with_defaults(mut self) -> Self {
+        if self.limit.is_none() {
+            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
+        }
+        if self.offset.is_none() {
+            self.offset = Some(0);
+        }
+        self
+    }
+}
+
+crate::impl_pagination_and_raw_query!(GroupSponsorsFilters, limit, offset);
+
+/// Paginated group sponsors response data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GroupSponsorsOutput {
+    /// List of sponsors in the group.
+    pub sponsors: Vec<GroupSponsor>,
+    /// Total number of sponsors in the group.
+    pub total: usize,
 }

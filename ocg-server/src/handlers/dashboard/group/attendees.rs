@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
@@ -23,8 +23,13 @@ use crate::{
         extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
         prepare_headers,
     },
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{dashboard::group::attendees, notifications::EventCustom},
+    templates::{
+        dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
+        notifications::EventCustom,
+        pagination::NavigationLinks,
+    },
     validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty},
 };
 
@@ -37,16 +42,36 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and attendees
-    let filters = attendees::AttendeesFilters { event_id };
+    let mut page_filters: AttendeesPaginationFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    page_filters = page_filters.with_defaults();
+    let filters = AttendeesFilters {
+        event_id,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
+    }
+    .with_defaults();
     let (event, attendees) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
         db.search_event_attendees(group_id, &filters)
     )?;
 
     // Prepare template
-    let template = attendees::ListPage { attendees, event };
+    let navigation_links = NavigationLinks::from_filters(
+        &page_filters,
+        attendees.total,
+        &format!("/dashboard/group/events/{event_id}/attendees"),
+        &format!("/dashboard/group/events/{event_id}/attendees"),
+    )?;
+    let template = attendees::ListPage {
+        attendees: attendees.attendees,
+        event,
+        navigation_links,
+        total: attendees.total,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -209,6 +234,7 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::EventCustom,
     };
 
@@ -314,6 +340,10 @@ mod tests {
         );
         let attendee = sample_attendee();
         let event = sample_event_summary(event_id, group_id);
+        let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+            attendees: vec![attendee.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -331,8 +361,13 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(1)
-            .withf(move |gid, filters| *gid == group_id && filters.event_id == event_id)
-            .returning(move |_, _| Ok(vec![attendee.clone()]));
+            .withf(move |gid, filters| {
+                *gid == group_id
+                    && filters.event_id == event_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -465,7 +500,12 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(0..=1)
-            .withf(move |gid, filters| *gid == group_id && filters.event_id == event_id)
+            .withf(move |gid, filters| {
+                *gid == group_id
+                    && filters.event_id == event_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
             .returning(move |_, _| Err(anyhow!("db error")));
         db.expect_get_event_summary()
             .times(1)
