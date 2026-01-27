@@ -1,5 +1,3 @@
-import { showLoadingSpinner } from "/static/js/common/common.js";
-
 /**
  * Formats a date object to ISO format (YYYY-MM-DD).
  * @param {Date} date - The date object to format
@@ -109,9 +107,6 @@ export const resetFilters = async (formId) => {
 
   // Select "Any" option when applicable
   document.querySelectorAll(`#${formId} input[value='']`).forEach((el) => (el.checked = true));
-
-  showLoadingSpinner("loading-filters");
-  showLoadingSpinner("loading-filters-mobile");
 
   // Trigger change event on the form to update results
   // This is necessary to ensure the filters are applied correctly

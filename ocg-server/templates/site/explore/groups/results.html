@@ -25,7 +25,7 @@
 
 {# Pagination -#}
 {% if groups.len() > 0 -%}
-  {{ pagination::navigation_links(links = navigation_links, hx_target = "#cards-list", hx_swap = "innerHTML show:#header:top") }}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#cards-list", hx_swap = "innerHTML show:#header:top", hx_indicator = "#loading-filters, #loading-filters-mobile") }}
 {% endif -%}
 {# End pagination -#}
 

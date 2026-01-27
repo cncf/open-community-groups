@@ -1,4 +1,4 @@
-{% macro navigation_links(links, hx_target, hx_swap, hx_boost = true) -%}
+{% macro navigation_links(links, hx_target, hx_swap, hx_boost = true, hx_indicator = "") -%}
   {# Pagination -#}
   <div class="pagination flex items-end justify-center py-8">
     <div {% if hx_boost %}hx-boost="true"{% endif %}
@@ -10,6 +10,7 @@
            hx-get="{{ first.hx_url }}"
            hx-target="{{ hx_target }}"
            hx-swap="{{ hx_swap }}"
+           {% if hx_indicator != "" %}hx-indicator="{{ hx_indicator }}"{% endif %}
            class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
           <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-left-double">
           </div>
@@ -31,6 +32,7 @@
            hx-get="{{ prev.hx_url }}"
            hx-target="{{ hx_target }}"
            hx-swap="{{ hx_swap }}"
+           {% if hx_indicator != "" %}hx-indicator="{{ hx_indicator }}"{% endif %}
            class="group cursor-pointer inline-flex items-center pr-4 pl-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-e border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
           <div class="svg-icon me-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-left">
           </div>
@@ -52,6 +54,7 @@
            hx-get="{{ next.hx_url }}"
            hx-target="{{ hx_target }}"
            hx-swap="{{ hx_swap }}"
+           {% if hx_indicator != "" %}hx-indicator="{{ hx_indicator }}"{% endif %}
            class="group cursor-pointer inline-flex items-center pl-4 pr-[0.6rem] py-2 text-sm font-medium text-primary-500 bg-transparent border-t border-b border-s -ml-[1px] border-primary-500 hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
           Next
           <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-right">
@@ -73,6 +76,7 @@
            hx-get="{{ last.hx_url }}"
            hx-target="{{ hx_target }}"
            hx-swap="{{ hx_swap }}"
+           {% if hx_indicator != "" %}hx-indicator="{{ hx_indicator }}"{% endif %}
            class="group cursor-pointer inline-flex items-center pl-4 pr-3 py-2 text-sm font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white">
           Last
           <div class="svg-icon ms-2 h-5 w-5 bg-primary-500 group-hover:bg-white transition-colors icon-arrow-right-double">
@@ -91,17 +95,4 @@
   </div>
   {# End pagination -#}
 
-  <script type="module">
-    import {
-      showLoadingSpinner
-    } from '/static/js/common/common.js';
-
-    const links = document.querySelectorAll('.pagination a');
-    links.forEach(link => {
-      link.addEventListener('htmx:trigger', () => {
-        showLoadingSpinner("loading-filters");
-        showLoadingSpinner("loading-filters-mobile");
-      });
-    });
-  </script>
 {%- endmacro navigation_links %}

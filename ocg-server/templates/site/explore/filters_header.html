@@ -4,7 +4,7 @@
   <div class="flex items-center">
     {# Filters view mode -#}
     {# Loading spinner -#}
-    <div id="loading-filters" class="me-6 w-6 group">{{ ui::spinner(size = "size-5", htmx = false) -}}</div>
+    <div id="loading-filters" class="me-6 w-6 hx-spinner">{{ ui::spinner(size = "size-5") -}}</div>
     {# End loading spinner -#}
 
     <button id="reset-filters"

@@ -10,6 +10,7 @@
           hx-get='/explore/events-section'
           hx-trigger="click"
           hx-target="#entity-section"
+          hx-indicator="#loading-filters, #loading-filters-mobile"
           hx-boost="true"
           {# djlint:off #}
                 {# TODO: Hardcoded community until we add more #}
@@ -27,19 +28,6 @@
         </div>
         {# End selected entity: groups -#}
       </li>
-      <script type="module">
-        import {
-          showLoadingSpinner
-        } from '/static/js/common/common.js';
-
-        const eventsButton = document.getElementById('events-button');
-        if (eventsButton) {
-          eventsButton.addEventListener('htmx:trigger', () => {
-            showLoadingSpinner("loading-filters");
-            showLoadingSpinner("loading-filters-mobile");
-          });
-        }
-      </script>
 
       {% when Entity::Events -%}
       <li class="w-full">
@@ -55,6 +43,7 @@
           hx-get='/explore/groups-section'
           hx-trigger="click"
           hx-target="#entity-section"
+          hx-indicator="#loading-filters, #loading-filters-mobile"
           hx-boost="true"
           {# djlint:off #}
           {# TODO: Hardcoded community until we add more #}
@@ -65,19 +54,6 @@
         </button>
         {# End groups button -#}
       </li>
-      <script type="module">
-        import {
-          showLoadingSpinner
-        } from '/static/js/common/common.js';
-
-        const groupsButton = document.getElementById('groups-button');
-        if (groupsButton) {
-          groupsButton.addEventListener('htmx:trigger', () => {
-            showLoadingSpinner("loading-filters");
-            showLoadingSpinner("loading-filters-mobile");
-          });
-        }
-      </script>
     {% endmatch -%}
   </ul>
 </div>

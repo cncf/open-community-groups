@@ -300,7 +300,7 @@
 
   {# Pagination -#}
   {% if events.past.total > events.past.events.len() -%}
-    {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+    {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top", hx_indicator = "#dashboard-spinner") }}
   {% endif -%}
   {# End pagination -#}
 </div>
@@ -657,7 +657,7 @@
   </div>
   {# Pagination -#}
   {% if events.upcoming.total > events.upcoming.events.len() -%}
-    {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top") }}
+    {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_swap = "innerHTML show:window:top", hx_indicator = "#dashboard-spinner") }}
   {% endif -%}
   {# End pagination -#}
 </div>
