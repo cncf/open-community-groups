@@ -14,8 +14,8 @@ use crate::{
     templates::{PageId, filters, helpers::user_initials},
     types::site::SiteSettings,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_vec,
+        MAX_LEN_BIO, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_TIMEZONE,
+        MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_tag_vec,
     },
 };
 
@@ -124,11 +124,11 @@ impl User {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct UserDetails {
     /// User's display name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
     pub name: String,
 
     /// User's biography.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_BIO))]
     pub bio: Option<String>,
     /// User's city.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -143,7 +143,7 @@ pub(crate) struct UserDetails {
     #[garde(url, length(max = MAX_LEN_L))]
     pub facebook_url: Option<String>,
     /// User's interests.
-    #[garde(custom(trimmed_non_empty_vec))]
+    #[garde(custom(trimmed_non_empty_tag_vec))]
     pub interests: Option<Vec<String>>,
     /// User's `LinkedIn` URL.
     #[garde(url, length(max = MAX_LEN_L))]
@@ -152,7 +152,7 @@ pub(crate) struct UserDetails {
     #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
     /// User's timezone.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_TIMEZONE))]
     pub timezone: Option<String>,
     /// User's title.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]

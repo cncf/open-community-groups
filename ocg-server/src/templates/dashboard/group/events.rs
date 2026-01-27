@@ -22,8 +22,10 @@ use crate::{
     },
     types::group::GroupSponsor,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, MAX_PAGINATION_LIMIT, email_vec, image_url_opt,
-        trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_vec, valid_latitude, valid_longitude,
+        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_L,
+        MAX_LEN_S, MAX_LEN_TIMEZONE, MAX_PAGINATION_LIMIT, email_vec, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_tag_vec, trimmed_non_empty_vec, valid_latitude,
+        valid_longitude,
     },
 };
 
@@ -99,16 +101,16 @@ pub(crate) struct Event {
     #[garde(skip)]
     pub category_id: Uuid,
     /// Event description.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
     /// Type of event (in-person, virtual, hybrid).
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub kind_id: String,
     /// Event name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
     /// Timezone for the event.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_TIMEZONE))]
     pub timezone: String,
 
     /// URL to the event banner image optimized for mobile devices.
@@ -121,7 +123,7 @@ pub(crate) struct Event {
     #[garde(range(min = 0))]
     pub capacity: Option<i32>,
     /// Short description of the event.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub description_short: Option<String>,
     /// Event end time.
     #[garde(skip)]
@@ -176,7 +178,7 @@ pub(crate) struct Event {
     #[garde(skip)]
     pub starts_at: Option<NaiveDateTime>,
     /// Tags associated with the event.
-    #[garde(custom(trimmed_non_empty_vec))]
+    #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
     /// Venue address.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -185,13 +187,13 @@ pub(crate) struct Event {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub venue_city: Option<String>,
     /// ISO country code of the venue's location.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_COUNTRY_CODE))]
     pub venue_country_code: Option<String>,
     /// Full country name of the venue's location.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub venue_country_name: Option<String>,
     /// Name of the venue.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_ENTITY_NAME))]
     pub venue_name: Option<String>,
     /// State or province where the venue is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -360,7 +362,7 @@ pub(crate) enum EventsTab {
 #[derive(Debug, Clone, Serialize, Deserialize, Default, Validate)]
 pub(crate) struct PastEventUpdate {
     /// Event description.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
 
     /// URL to the event banner image optimized for mobile devices.
@@ -370,7 +372,7 @@ pub(crate) struct PastEventUpdate {
     #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,
     /// Short description of the event.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_L))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub description_short: Option<String>,
     /// URL to the event logo.
     #[garde(custom(image_url_opt))]
@@ -382,7 +384,7 @@ pub(crate) struct PastEventUpdate {
     #[garde(custom(trimmed_non_empty_vec))]
     pub photos_urls: Option<Vec<String>>,
     /// Tags associated with the event.
-    #[garde(custom(trimmed_non_empty_vec))]
+    #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
 }
 
@@ -394,7 +396,7 @@ pub(crate) struct Session {
     #[garde(skip)]
     pub kind: SessionKind,
     /// Session name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
     /// Unique identifier for the session.
     #[garde(skip)]
@@ -404,7 +406,7 @@ pub(crate) struct Session {
     pub starts_at: NaiveDateTime,
 
     /// Session description.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
     pub description: Option<String>,
     /// Session end time.
     #[garde(skip)]

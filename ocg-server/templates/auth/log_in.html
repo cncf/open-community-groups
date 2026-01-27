@@ -59,7 +59,7 @@
                   <input type="text"
                          id="username"
                          name="username"
-                         maxlength="{{ crate::validation::MAX_LEN_M }}"
+                         maxlength="{{ crate::validation::MAX_LEN_S }}"
                          class="input-primary"
                          autocomplete="username"
                          autocorrect="off"
@@ -84,6 +84,7 @@
                          class="input-primary"
                          autocomplete="current-password"
                          minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                         maxlength="{{ crate::validation::MAX_LEN_S }}"
                          required
                          aria-required="true"
                          aria-describedby="password-help" />

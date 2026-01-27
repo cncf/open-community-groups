@@ -11,8 +11,6 @@ use garde::Validate;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
-use crate::validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty};
-
 use crate::{
     auth::AuthSession,
     config::HttpServerConfig,
@@ -29,6 +27,7 @@ use crate::{
         pagination,
         pagination::NavigationLinks,
     },
+    validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
 // Pages handlers.
@@ -136,7 +135,7 @@ pub(crate) async fn send_group_custom_notification(
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct GroupCustomNotification {
     /// Body text for the notification.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
     pub body: String,
     /// Title line for the notification email.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]

@@ -16,20 +16,57 @@ use reqwest::Url;
 
 // Maximum length constants for validation.
 
-/// Maximum length for short text fields (city, country, timezone, etc.).
-pub const MAX_LEN_S: usize = 100;
+// Generic size-based limits
 
-/// Maximum length for medium text fields (names, titles, usernames).
-pub const MAX_LEN_M: usize = 250;
-
-/// Maximum length for long text fields (URLs, bios, short descriptions).
+/// Maximum length for long text fields.
 pub const MAX_LEN_L: usize = 2000;
 
-/// Maximum length for extra-long text fields (full descriptions).
-pub const MAX_LEN_XL: usize = 20000;
+/// Maximum length for medium text fields.
+pub const MAX_LEN_M: usize = 250;
+
+/// Maximum length for short text fields.
+pub const MAX_LEN_S: usize = 100;
+
+// Purpose-specific limits
 
 /// Maximum number of elements in a collection (filters, tags, etc.).
 pub const MAX_ITEMS: usize = 25;
+
+/// Maximum length for biographies.
+pub const MAX_LEN_BIO: usize = 1000;
+
+/// Maximum length for country codes.
+pub const MAX_LEN_COUNTRY_CODE: usize = 3;
+
+/// Maximum length for date strings (YYYY-MM-DD).
+pub const MAX_LEN_DATE: usize = 10;
+
+/// Maximum length for full descriptions.
+pub const MAX_LEN_DESCRIPTION: usize = 8000;
+
+/// Maximum length for short descriptions.
+pub const MAX_LEN_DESCRIPTION_SHORT: usize = 500;
+
+/// Maximum length for display names shown to users.
+pub const MAX_LEN_DISPLAY_NAME: usize = 80;
+
+/// Maximum length for entity names (groups, events, sessions, sponsors, venues).
+pub const MAX_LEN_ENTITY_NAME: usize = 120;
+
+/// Maximum length for link labels in custom link maps.
+pub const MAX_LEN_LINK_LABEL: usize = 80;
+
+/// Maximum length for notification bodies.
+pub const MAX_LEN_NOTIFICATION_BODY: usize = 5000;
+
+/// Maximum length for sort keys and directions.
+pub const MAX_LEN_SORT_KEY: usize = 32;
+
+/// Maximum length for tag or interest values.
+pub const MAX_LEN_TAG: usize = 50;
+
+/// Maximum length for timezone identifiers.
+pub const MAX_LEN_TIMEZONE: usize = 64;
 
 /// Maximum pagination limit for results per page.
 pub const MAX_PAGINATION_LIMIT: usize = 100;
@@ -106,30 +143,28 @@ pub fn trimmed_non_empty_opt(value: &Option<String>, _ctx: &()) -> garde::Result
     Ok(())
 }
 
+/// Validates that each tag in a vector is non-empty, within max length, and within max items.
+pub fn trimmed_non_empty_tag_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
+    validate_trimmed_non_empty_vec(value, MAX_LEN_TAG)
+}
+
 /// Validates that each string in a vector is non-empty after trimming and within max length.
 pub fn trimmed_non_empty_vec(value: &Option<Vec<String>>, _ctx: &()) -> garde::Result {
-    if let Some(vec) = value {
-        for s in vec {
-            if s.trim().is_empty() {
-                return Err(garde::Error::new("value cannot be empty or whitespace-only"));
-            }
-            if s.len() > MAX_LEN_M {
-                return Err(garde::Error::new(format!(
-                    "value exceeds max length of {MAX_LEN_M}"
-                )));
-            }
-        }
-    }
-    Ok(())
+    validate_trimmed_non_empty_vec(value, MAX_LEN_M)
 }
 
 /// Validates that all values in a `BTreeMap` are valid URLs within max length.
 pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> garde::Result {
     if let Some(map) = value {
+        if map.len() > MAX_ITEMS {
+            return Err(garde::Error::new(format!(
+                "value exceeds max items of {MAX_ITEMS}"
+            )));
+        }
         for (key, url) in map {
-            if key.len() > MAX_LEN_M {
+            if key.len() > MAX_LEN_LINK_LABEL {
                 return Err(garde::Error::new(format!(
-                    "key '{key}' exceeds max length of {MAX_LEN_M}"
+                    "key '{key}' exceeds max length of {MAX_LEN_LINK_LABEL}"
                 )));
             }
             if url.trim().is_empty() {
@@ -183,6 +218,28 @@ fn validate_image_url(url: &str) -> garde::Result {
     // Accept absolute URLs or relative URLs starting with /
     if !url.starts_with('/') && Url::parse(url).is_err() {
         return Err(garde::Error::new(format!("invalid image URL: {url}")));
+    }
+    Ok(())
+}
+
+// Validates a vector of trimmed non-empty strings with size and item limits
+fn validate_trimmed_non_empty_vec(value: &Option<Vec<String>>, max_len: usize) -> garde::Result {
+    if let Some(vec) = value {
+        if vec.len() > MAX_ITEMS {
+            return Err(garde::Error::new(format!(
+                "value exceeds max items of {MAX_ITEMS}"
+            )));
+        }
+        for s in vec {
+            if s.trim().is_empty() {
+                return Err(garde::Error::new("value cannot be empty or whitespace-only"));
+            }
+            if s.len() > max_len {
+                return Err(garde::Error::new(format!(
+                    "value exceeds max length of {max_len}"
+                )));
+            }
+        }
     }
     Ok(())
 }
@@ -371,36 +428,42 @@ mod tests {
     }
 
     #[test]
-    fn test_trimmed_non_empty_vec_invalid() {
-        assert!(trimmed_non_empty_vec(&Some(vec![String::new()]), &()).is_err());
-        assert!(trimmed_non_empty_vec(&Some(vec!["   ".to_string()]), &()).is_err());
-        assert!(trimmed_non_empty_vec(&Some(vec!["valid".to_string(), String::new()]), &()).is_err());
-        assert!(trimmed_non_empty_vec(&Some(vec!["valid".to_string(), "   ".to_string()]), &()).is_err());
+    fn test_validate_trimmed_non_empty_vec_invalid() {
+        assert!(validate_trimmed_non_empty_vec(&Some(vec![String::new()]), MAX_LEN_TAG).is_err());
+        assert!(validate_trimmed_non_empty_vec(&Some(vec!["   ".to_string()]), MAX_LEN_TAG).is_err());
+        assert!(
+            validate_trimmed_non_empty_vec(&Some(vec!["valid".to_string(), "   ".to_string()]), MAX_LEN_TAG)
+                .is_err()
+        );
     }
 
     #[test]
-    fn test_trimmed_non_empty_vec_length_exceeded() {
-        // String exceeding MAX_LEN_M
-        let long_string = "a".repeat(MAX_LEN_M + 1);
-        assert!(trimmed_non_empty_vec(&Some(vec![long_string]), &()).is_err());
-
-        // One valid, one too long
-        let long_string = "a".repeat(MAX_LEN_M + 1);
-        assert!(trimmed_non_empty_vec(&Some(vec!["valid".to_string(), long_string]), &()).is_err());
+    fn test_validate_trimmed_non_empty_vec_length_exceeded() {
+        let long_tag = "a".repeat(MAX_LEN_TAG + 1);
+        assert!(validate_trimmed_non_empty_vec(&Some(vec![long_tag.clone()]), MAX_LEN_TAG).is_err());
+        assert!(validate_trimmed_non_empty_vec(&Some(vec![long_tag]), MAX_LEN_M).is_ok());
     }
 
     #[test]
-    fn test_trimmed_non_empty_vec_none() {
-        assert!(trimmed_non_empty_vec(&None, &()).is_ok());
+    fn test_validate_trimmed_non_empty_vec_max_items() {
+        let tags = vec!["tag".to_string(); MAX_ITEMS + 1];
+        assert!(validate_trimmed_non_empty_vec(&Some(tags), MAX_LEN_TAG).is_err());
     }
 
     #[test]
-    fn test_trimmed_non_empty_vec_valid() {
-        assert!(trimmed_non_empty_vec(&Some(vec!["hello".to_string()]), &()).is_ok());
-        assert!(trimmed_non_empty_vec(&Some(vec!["a".to_string(), "b".to_string()]), &()).is_ok());
-        assert!(trimmed_non_empty_vec(&Some(vec!["  hello  ".to_string()]), &()).is_ok());
+    fn test_validate_trimmed_non_empty_vec_none() {
+        assert!(validate_trimmed_non_empty_vec(&None, MAX_LEN_TAG).is_ok());
+    }
+
+    #[test]
+    fn test_validate_trimmed_non_empty_vec_valid() {
+        assert!(validate_trimmed_non_empty_vec(&Some(vec!["hello".to_string()]), MAX_LEN_M).is_ok());
+        assert!(
+            validate_trimmed_non_empty_vec(&Some(vec!["a".to_string(), "b".to_string()]), MAX_LEN_M).is_ok()
+        );
+        assert!(validate_trimmed_non_empty_vec(&Some(vec!["  hello  ".to_string()]), MAX_LEN_M).is_ok());
         // Empty vec is valid (no invalid elements)
-        assert!(trimmed_non_empty_vec(&Some(vec![]), &()).is_ok());
+        assert!(validate_trimmed_non_empty_vec(&Some(vec![]), MAX_LEN_M).is_ok());
     }
 
     #[test]
@@ -426,10 +489,17 @@ mod tests {
 
     #[test]
     fn test_url_map_values_length_exceeded() {
-        // Key exceeding MAX_LEN_M
+        // Key exceeding MAX_LEN_LINK_LABEL
         let mut map = BTreeMap::new();
-        let long_key = "a".repeat(MAX_LEN_M + 1);
+        let long_key = "a".repeat(MAX_LEN_LINK_LABEL + 1);
         map.insert(long_key, "https://example.com".to_string());
+        assert!(url_map_values(&Some(map), &()).is_err());
+
+        // Exceeds MAX_ITEMS
+        let mut map = BTreeMap::new();
+        for idx in 0..=MAX_ITEMS {
+            map.insert(format!("key-{idx}"), "https://example.com".to_string());
+        }
         assert!(url_map_values(&Some(map), &()).is_err());
 
         // URL exceeding MAX_LEN_L

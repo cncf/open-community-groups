@@ -15,9 +15,9 @@ use crate::{
     },
     types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec,
-        trimmed_non_empty, trimmed_non_empty_opt, trimmed_non_empty_vec, url_map_values, valid_latitude,
-        valid_longitude,
+        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S,
+        MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec, trimmed_non_empty, trimmed_non_empty_opt,
+        trimmed_non_empty_tag_vec, url_map_values, valid_latitude, valid_longitude,
     },
 };
 
@@ -70,10 +70,10 @@ pub(crate) struct Group {
     #[garde(skip)]
     pub category_id: Uuid,
     /// Group description.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
     /// Group name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
 
     /// URL to the group's banner image optimized for mobile devices.
@@ -86,7 +86,7 @@ pub(crate) struct Group {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
     /// ISO country code.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_COUNTRY_CODE))]
     pub country_code: Option<String>,
     /// Full country name.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -131,7 +131,7 @@ pub(crate) struct Group {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub state: Option<String>,
     /// Tags associated with the group.
-    #[garde(custom(trimmed_non_empty_vec))]
+    #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
     /// Twitter profile URL.
     #[garde(url, length(max = MAX_LEN_L))]

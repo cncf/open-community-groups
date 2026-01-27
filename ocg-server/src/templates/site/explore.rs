@@ -26,8 +26,8 @@ use crate::{
         site::SiteSettings,
     },
     validation::{
-        MAX_ITEMS, MAX_LEN_M, MAX_LEN_S, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt, valid_latitude,
-        valid_longitude,
+        MAX_ITEMS, MAX_LEN_DATE, MAX_LEN_M, MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt,
+        valid_latitude, valid_longitude,
     },
 };
 
@@ -236,10 +236,10 @@ pub(crate) struct EventsFilters {
     #[garde(custom(valid_longitude))]
     pub bbox_sw_lon: Option<f64>,
     /// Start date for event filtering (YYYY-MM-DD format).
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DATE))]
     pub date_from: Option<String>,
     /// End date for event filtering (YYYY-MM-DD format).
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DATE))]
     pub date_to: Option<String>,
     /// Maximum distance in meters from user's location.
     #[garde(skip)]
@@ -260,10 +260,10 @@ pub(crate) struct EventsFilters {
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort order for results (e.g., "date", "distance").
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
     pub sort_by: Option<String>,
     /// Sort direction for results ("asc" or "desc").
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
     pub sort_direction: Option<String>,
     /// Full-text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
@@ -430,7 +430,7 @@ pub(crate) struct GroupsFilters {
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort order for results.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
     pub sort_by: Option<String>,
     /// Full-text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
