@@ -5,6 +5,18 @@ create or replace function cancel_event(
 )
 returns void as $$
 begin
+    -- Lock event row to serialize state transitions
+    perform 1
+    from event
+    where event_id = p_event_id
+    and group_id = p_group_id
+    and deleted = false
+    for update;
+
+    if not found then
+        raise exception 'event not found or inactive';
+    end if;
+
     -- Update event to mark as canceled
     -- If meeting was requested, mark meeting_in_sync as false to trigger deletion
     update event set
@@ -19,10 +31,6 @@ begin
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false;
-
-    if not found then
-        raise exception 'event not found or inactive';
-    end if;
 
     -- Mark sessions as out of sync to trigger meeting deletion
     update session set meeting_in_sync = false

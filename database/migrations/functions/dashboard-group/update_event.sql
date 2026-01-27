@@ -34,6 +34,19 @@ begin
     from "group"
     where group_id = p_group_id;
 
+    -- Lock event row to keep updates consistent with current state
+    perform 1
+    from event e
+    where e.event_id = p_event_id
+    and e.group_id = p_group_id
+    and e.deleted = false
+    and e.canceled = false
+    for update;
+
+    if not found then
+        raise exception 'event not found or inactive';
+    end if;
+
     -- Load current event state for sync calculation and existence check
     select get_event_full(v_community_id, p_group_id, p_event_id)::jsonb
     into v_event_before
