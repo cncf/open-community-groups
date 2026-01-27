@@ -4,7 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Path, RawQuery, State},
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use tower_sessions::Session;
@@ -24,7 +24,7 @@ use crate::{
         dashboard::community::groups::{self, CommunityGroupsFilters, Group},
         pagination,
         pagination::NavigationLinks,
-        site::explore,
+        site::explore::SearchGroupsFilters,
     },
 };
 
@@ -42,20 +42,21 @@ pub(crate) async fn list_page(
         return Err(anyhow::anyhow!("community not found").into());
     };
 
-    // Prepare template
+    // Fetch groups
     let page_filters: CommunityGroupsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let ts_query = page_filters.ts_query.clone();
-    let db_filters = explore::GroupsFilters {
+    let search_filters = SearchGroupsFilters {
         community: vec![community_name],
         include_inactive: Some(true),
         limit: page_filters.limit,
         offset: page_filters.offset,
         sort_by: Some(String::from("name")),
-        ts_query,
-        ..explore::GroupsFilters::default()
+        ts_query: page_filters.ts_query.clone(),
+        ..SearchGroupsFilters::default()
     };
-    let results = db.search_groups(&db_filters).await?;
+    let results = db.search_groups(&search_filters).await?;
+
+    // Prepare template
     let navigation_links = NavigationLinks::from_filters(
         &page_filters,
         results.total,
@@ -69,11 +70,11 @@ pub(crate) async fn list_page(
         ts_query: page_filters.ts_query.clone(),
     };
 
+    // Prepare response headers
     let url = pagination::build_url("/dashboard/community?tab=groups", &page_filters)?;
-    Ok((
-        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
-        Html(template.render()?),
-    ))
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Displays the page to add a new group.

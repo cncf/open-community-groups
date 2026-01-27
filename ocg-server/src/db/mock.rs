@@ -115,11 +115,11 @@ mock! {
         async fn list_timezones(&self) -> Result<Vec<String>>;
         async fn search_events(
             &self,
-            filters: &crate::templates::site::explore::EventsFilters,
+            filters: &crate::templates::site::explore::SearchEventsFilters,
         ) -> Result<crate::db::common::SearchEventsOutput>;
         async fn search_groups(
             &self,
-            filters: &crate::templates::site::explore::GroupsFilters,
+            filters: &crate::templates::site::explore::SearchGroupsFilters,
         ) -> Result<crate::db::common::SearchGroupsOutput>;
     }
 

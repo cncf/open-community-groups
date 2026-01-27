@@ -7,7 +7,7 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, RawQuery, State},
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use chrono::{TimeDelta, Utc};
@@ -29,10 +29,12 @@ use crate::{
         notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     },
     templates::{
-        dashboard::group::events::{self, Event, EventsListFilters, EventsTab, PastEventUpdate},
-        dashboard::group::sponsors::GroupSponsorsFilters,
+        dashboard::group::{
+            events::{self, Event, EventsListFilters, EventsTab, PastEventUpdate},
+            sponsors::GroupSponsorsFilters,
+        },
         notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
-        pagination,
+        pagination::{self, NavigationLinks},
     },
     types::event::EventSummary,
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -51,7 +53,7 @@ pub(crate) async fn add_page(
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
+    // Fetch template data concurrently
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
@@ -62,6 +64,8 @@ pub(crate) async fn add_page(
         db.list_group_sponsors(group_id, &sponsor_filters),
         db.list_timezones()
     )?;
+
+    // Prepare template
     let template = events::AddPage {
         group_id,
         categories,
@@ -83,7 +87,7 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
+    // Fetch group's past and upcoming events
     let filters: EventsListFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let events = db.list_group_events(group_id, &filters).await?;
@@ -91,13 +95,15 @@ pub(crate) async fn list_page(
     past_filters.events_tab = Some(EventsTab::Past);
     let mut upcoming_filters = filters.clone();
     upcoming_filters.events_tab = Some(EventsTab::Upcoming);
-    let past_navigation_links = crate::templates::pagination::NavigationLinks::from_filters(
+
+    // Prepare template
+    let past_navigation_links = NavigationLinks::from_filters(
         &past_filters,
         events.past.total,
         "/dashboard/group?tab=events",
         "/dashboard/group/events",
     )?;
-    let upcoming_navigation_links = crate::templates::pagination::NavigationLinks::from_filters(
+    let upcoming_navigation_links = NavigationLinks::from_filters(
         &upcoming_filters,
         events.upcoming.total,
         "/dashboard/group?tab=events",
@@ -110,11 +116,11 @@ pub(crate) async fn list_page(
         upcoming_navigation_links,
     };
 
+    // Prepare response headers
     let url = pagination::build_url("/dashboard/group?tab=events", &filters)?;
-    Ok((
-        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
-        Html(template.render()?),
-    ))
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Displays the page to update an existing event.

@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{BBox, PgDB, Total},
-    templates::site::explore,
+    templates::site::explore::{SearchEventsFilters, SearchGroupsFilters},
     types::{
         community::{CommunityFull, CommunitySummary},
         event::{EventFull, EventSummary},
@@ -51,10 +51,10 @@ pub(crate) trait DBCommon {
     async fn list_timezones(&self) -> Result<Vec<String>>;
 
     /// Searches for events based on provided filters.
-    async fn search_events(&self, filters: &explore::EventsFilters) -> Result<SearchEventsOutput>;
+    async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput>;
 
     /// Searches for groups based on provided filters.
-    async fn search_groups(&self, filters: &explore::GroupsFilters) -> Result<SearchGroupsOutput>;
+    async fn search_groups(&self, filters: &SearchGroupsFilters) -> Result<SearchGroupsOutput>;
 }
 
 #[async_trait]
@@ -198,7 +198,7 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::search_events`]
     #[instrument(skip(self), err)]
-    async fn search_events(&self, filters: &explore::EventsFilters) -> Result<SearchEventsOutput> {
+    async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput> {
         trace!("db: search events");
 
         // Query database
@@ -220,7 +220,7 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::search_groups`]
     #[instrument(skip(self), err)]
-    async fn search_groups(&self, filters: &explore::GroupsFilters) -> Result<SearchGroupsOutput> {
+    async fn search_groups(&self, filters: &SearchGroupsFilters) -> Result<SearchGroupsOutput> {
         trace!("db: search groups");
 
         // Query database

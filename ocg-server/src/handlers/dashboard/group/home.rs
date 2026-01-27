@@ -67,6 +67,7 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Events => {
+            // Fetch past and upcoming events
             let filters: EventsListFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
             let events = db.list_group_events(group_id, &filters).await?;
@@ -74,6 +75,8 @@ pub(crate) async fn page(
             past_filters.events_tab = Some(EventsTab::Past);
             let mut upcoming_filters = filters.clone();
             upcoming_filters.events_tab = Some(EventsTab::Upcoming);
+
+            // Prepare template content
             let past_navigation_links = NavigationLinks::from_filters(
                 &past_filters,
                 events.past.total,
@@ -94,9 +97,12 @@ pub(crate) async fn page(
             }))
         }
         Tab::Members => {
+            // Fetch group members
             let filters: GroupMembersFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
             let results = db.list_group_members(group_id, &filters).await?;
+
+            // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
                 &filters,
                 results.total,
@@ -122,9 +128,12 @@ pub(crate) async fn page(
             }))
         }
         Tab::Sponsors => {
+            // Fetch group sponsors
             let filters: GroupSponsorsFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
             let results = db.list_group_sponsors(group_id, &filters).await?;
+
+            // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
                 &filters,
                 results.total,
@@ -138,12 +147,15 @@ pub(crate) async fn page(
             })
         }
         Tab::Team => {
+            // Fetch group team members
             let filters: GroupTeamFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
             let (results, roles) = tokio::try_join!(
                 db.list_group_team_members(group_id, &filters),
                 db.list_group_roles()
             )?;
+
+            // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
                 &filters,
                 results.total,

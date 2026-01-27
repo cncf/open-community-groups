@@ -4,7 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Path, RawQuery, State},
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use garde::Validate;
@@ -39,13 +39,15 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
+    // Fetch group team members
     let filters: GroupTeamFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let (results, roles) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles()
     )?;
+
+    // Prepare template
     let navigation_links = NavigationLinks::from_filters(
         &filters,
         results.total,
@@ -60,11 +62,11 @@ pub(crate) async fn list_page(
         total: results.total,
     };
 
+    // Prepare response headers
     let url = pagination::build_url("/dashboard/group?tab=team", &filters)?;
-    Ok((
-        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
-        Html(template.render()?),
-    ))
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
 }
 
 // Actions handlers.

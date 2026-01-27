@@ -26,7 +26,9 @@ use crate::{
         PageId,
         auth::User,
         pagination::{self, NavigationLinks},
-        site::explore::{self, EventsFilters, GroupsFilters, render_event_popover, render_group_popover},
+        site::explore::{
+            self, SearchEventsFilters, SearchGroupsFilters, render_event_popover, render_group_popover,
+        },
     },
 };
 
@@ -57,12 +59,12 @@ pub(crate) async fn page(
     // Attach events or groups section template to the page template
     match entity {
         explore::Entity::Events => {
-            let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+            let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let events_section = prepare_events_section(&db, &filters).await?;
             template.events_section = Some(events_section);
         }
         explore::Entity::Groups => {
-            let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+            let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let groups_section = prepare_groups_section(&db, &filters).await?;
             template.groups_section = Some(groups_section);
         }
@@ -82,7 +84,7 @@ pub(crate) async fn events_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events section template
-    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_events_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -101,7 +103,7 @@ pub(crate) async fn events_results_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare events results section template
-    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_events_result_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -114,7 +116,7 @@ pub(crate) async fn events_results_section(
 
 /// Prepares the events section template.
 #[instrument(skip(db), err)]
-async fn prepare_events_section(db: &DynDB, filters: &EventsFilters) -> Result<explore::EventsSection> {
+async fn prepare_events_section(db: &DynDB, filters: &SearchEventsFilters) -> Result<explore::EventsSection> {
     // Pass community_name to get_filters_options only when exactly one is selected
     let community_name = if filters.community.len() == 1 {
         Some(filters.community[0].clone())
@@ -140,7 +142,7 @@ async fn prepare_events_section(db: &DynDB, filters: &EventsFilters) -> Result<e
 #[instrument(skip(db), err)]
 async fn prepare_events_result_section(
     db: &DynDB,
-    filters: &EventsFilters,
+    filters: &SearchEventsFilters,
 ) -> Result<explore::EventsResultsSection> {
     // Search for events based on filters
     let SearchEventsOutput {
@@ -184,7 +186,7 @@ pub(crate) async fn groups_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
-    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_groups_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -203,7 +205,7 @@ pub(crate) async fn groups_results_section(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare groups section template
-    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let template = prepare_groups_result_section(&db, &filters).await?;
 
     // Prepare response headers
@@ -216,7 +218,7 @@ pub(crate) async fn groups_results_section(
 
 /// Prepares groups section template.
 #[instrument(skip(db), err)]
-async fn prepare_groups_section(db: &DynDB, filters: &GroupsFilters) -> Result<explore::GroupsSection> {
+async fn prepare_groups_section(db: &DynDB, filters: &SearchGroupsFilters) -> Result<explore::GroupsSection> {
     // Pass community_name to get_filters_options only when exactly one is selected
     let community_name = if filters.community.len() == 1 {
         Some(filters.community[0].clone())
@@ -242,7 +244,7 @@ async fn prepare_groups_section(db: &DynDB, filters: &GroupsFilters) -> Result<e
 #[instrument(skip(db), err)]
 async fn prepare_groups_result_section(
     db: &DynDB,
-    filters: &GroupsFilters,
+    filters: &SearchGroupsFilters,
 ) -> Result<explore::GroupsResultsSection> {
     // Search for groups based on filters
     let SearchGroupsOutput {
@@ -288,7 +290,7 @@ pub(crate) async fn search_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Search events
-    let filters = EventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let mut search_events_output = db.search_events(&filters).await?;
 
     // Render popover HTML for each event
@@ -310,7 +312,7 @@ pub(crate) async fn search_groups(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Search groups
-    let filters = GroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
     let mut search_groups_output = db.search_groups(&filters).await?;
 
     // Render popover HTML for each group
@@ -342,7 +344,10 @@ mod tests {
         db::mock::MockDB,
         handlers::tests::*,
         services::notifications::MockNotificationsManager,
-        templates::{pagination, site::explore},
+        templates::{
+            pagination,
+            site::explore::{self, SearchEventsFilters, SearchGroupsFilters},
+        },
     };
 
     #[tokio::test]
@@ -845,14 +850,14 @@ mod tests {
     /// Helper to compute the expected events HX-Push-Url for tests.
     fn expected_events_push_url(raw_query: &str) -> String {
         let headers = HeaderMap::new();
-        let filters = explore::EventsFilters::new(&headers, raw_query).unwrap();
+        let filters = SearchEventsFilters::new(&headers, raw_query).unwrap();
         pagination::build_url("/explore?entity=events", &filters).unwrap()
     }
 
     /// Helper to compute the expected groups HX-Push-Url for tests.
     fn expected_groups_push_url(raw_query: &str) -> String {
         let headers = HeaderMap::new();
-        let filters = explore::GroupsFilters::new(&headers, raw_query).unwrap();
+        let filters = SearchGroupsFilters::new(&headers, raw_query).unwrap();
         pagination::build_url("/explore?entity=groups", &filters).unwrap()
     }
 }

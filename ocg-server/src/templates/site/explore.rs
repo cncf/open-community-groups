@@ -66,7 +66,7 @@ pub(crate) struct Page {
 #[template(path = "site/explore/events/section.html")]
 pub(crate) struct EventsSection {
     /// Active filters for events search.
-    pub filters: EventsFilters,
+    pub filters: SearchEventsFilters,
     /// Available filter options (categories, regions, etc.).
     pub filters_options: FiltersOptions,
     /// Results section containing matching events.
@@ -120,7 +120,7 @@ pub(crate) struct EventCard {
 #[template(path = "site/explore/groups/section.html")]
 pub(crate) struct GroupsSection {
     /// Active filters for groups search.
-    pub filters: GroupsFilters,
+    pub filters: SearchGroupsFilters,
     /// Available filter options (categories, regions, etc.).
     pub filters_options: FiltersOptions,
     /// Results section containing matching groups.
@@ -196,7 +196,7 @@ impl From<Option<&String>> for Entity {
 /// categorical filters, etc.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct EventsFilters {
+pub(crate) struct SearchEventsFilters {
     /// Community names to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
@@ -274,11 +274,11 @@ pub(crate) struct EventsFilters {
     pub view_mode: Option<ViewMode>,
 }
 
-impl EventsFilters {
-    /// Create a new `EventsFilters` instance from the raw query string and headers.
+impl SearchEventsFilters {
+    /// Create a new `SearchEventsFilters` instance from the raw query string and headers.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: EventsFilters = serde_qs_config().deserialize_str(raw_query)?;
+        let mut filters: SearchEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
         filters.validate()?;
 
         // Clean up entries that are empty strings
@@ -336,7 +336,7 @@ impl EventsFilters {
     }
 }
 
-impl ToRawQuery for EventsFilters {
+impl ToRawQuery for SearchEventsFilters {
     fn to_raw_query(&self) -> Result<String> {
         // Reset some filters we don't want to include in the query string
         let mut filters = self.clone();
@@ -361,7 +361,7 @@ impl ToRawQuery for EventsFilters {
     }
 }
 
-impl Pagination for EventsFilters {
+impl Pagination for SearchEventsFilters {
     fn limit(&self) -> Option<usize> {
         self.limit
     }
@@ -377,12 +377,12 @@ impl Pagination for EventsFilters {
 
 /// Filter parameters for group searches.
 ///
-/// Similar to `EventsFilters` but without temporal filters since groups are ongoing
+/// Similar to `SearchEventsFilters` but without temporal filters since groups are ongoing.
 /// entities. Supports location-based filtering, categorical filtering, and full-text
 /// search.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct GroupsFilters {
+pub(crate) struct SearchGroupsFilters {
     /// Community names to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
@@ -443,12 +443,12 @@ pub(crate) struct GroupsFilters {
     pub view_mode: Option<ViewMode>,
 }
 
-impl GroupsFilters {
-    /// Create a new `GroupsFilters` instance from the raw query string and headers
+impl SearchGroupsFilters {
+    /// Create a new `SearchGroupsFilters` instance from the raw query string and headers
     /// provided.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: GroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
+        let mut filters: SearchGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
         filters.validate()?;
 
         // Clean up entries that are empty strings
@@ -474,7 +474,7 @@ impl GroupsFilters {
     }
 }
 
-impl ToRawQuery for GroupsFilters {
+impl ToRawQuery for SearchGroupsFilters {
     fn to_raw_query(&self) -> Result<String> {
         // Reset some filters we don't want to include in the query string
         let mut filters = self.clone();
@@ -488,7 +488,7 @@ impl ToRawQuery for GroupsFilters {
     }
 }
 
-impl Pagination for GroupsFilters {
+impl Pagination for SearchGroupsFilters {
     fn limit(&self) -> Option<usize> {
         self.limit
     }
@@ -619,7 +619,7 @@ mod tests {
         .join("&");
 
         // Create filters
-        let filters = EventsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+        let filters = SearchEventsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.event_category, vec!["conference".to_string()]);
@@ -636,7 +636,7 @@ mod tests {
         headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("-0.12"));
 
         // Create filters
-        let filters = EventsFilters::new(&headers, "view_mode=list").expect("filters to be created");
+        let filters = SearchEventsFilters::new(&headers, "view_mode=list").expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.latitude, Some(51.5));
@@ -650,7 +650,8 @@ mod tests {
         let before = Utc::now().date_naive();
 
         // Create filters
-        let filters = EventsFilters::new(&HeaderMap::new(), "view_mode=list").expect("filters to be created");
+        let filters =
+            SearchEventsFilters::new(&HeaderMap::new(), "view_mode=list").expect("filters to be created");
 
         // Capture the time after
         let after = Utc::now().date_naive();
@@ -680,7 +681,7 @@ mod tests {
 
         // Create filters
         let filters =
-            EventsFilters::new(&HeaderMap::new(), "view_mode=calendar").expect("filters to be created");
+            SearchEventsFilters::new(&HeaderMap::new(), "view_mode=calendar").expect("filters to be created");
 
         // Capture the time after
         let after = Utc::now();
@@ -714,7 +715,7 @@ mod tests {
     #[test]
     fn test_events_filters_new_list_uses_provided_date_range() {
         // Create filters
-        let filters = EventsFilters::new(
+        let filters = SearchEventsFilters::new(
             &HeaderMap::new(),
             "date_from=2031-01-15&date_to=2031-02-20&view_mode=list",
         )
@@ -739,7 +740,7 @@ mod tests {
         .join("&");
 
         // Create filters
-        let filters = EventsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+        let filters = SearchEventsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.view_mode, Some(ViewMode::Map));
@@ -755,7 +756,7 @@ mod tests {
     #[test]
     fn test_events_filters_to_raw_query_preserves_custom_values() {
         // Prepare filters
-        let filters = EventsFilters {
+        let filters = SearchEventsFilters {
             date_from: Some("2030-01-01".to_string()),
             date_to: Some("2030-06-01".to_string()),
             event_category: vec!["conference".to_string()],
@@ -794,7 +795,7 @@ mod tests {
         // Prepare filters
         let date_from = Utc::now().date_naive();
         let date_to = date_from.checked_add_months(Months::new(12)).expect("valid date");
-        let filters = EventsFilters {
+        let filters = SearchEventsFilters {
             date_from: Some(date_from.to_string()),
             date_to: Some(date_to.to_string()),
             event_category: vec!["meetup".to_string()],
@@ -840,7 +841,7 @@ mod tests {
         .join("&");
 
         // Create filters
-        let filters = GroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+        let filters = SearchGroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.group_category, vec!["rust".to_string()]);
@@ -856,7 +857,7 @@ mod tests {
         headers.insert("CloudFront-Viewer-Longitude", HeaderValue::from_static("-0.12"));
 
         // Create filters
-        let filters = GroupsFilters::new(&headers, "view_mode=list").expect("filters to be created");
+        let filters = SearchGroupsFilters::new(&headers, "view_mode=list").expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.latitude, Some(51.5));
@@ -868,7 +869,7 @@ mod tests {
     fn test_groups_filters_new_calendar_sets_pagination_defaults() {
         // Create filters
         let filters =
-            GroupsFilters::new(&HeaderMap::new(), "view_mode=calendar").expect("filters to be created");
+            SearchGroupsFilters::new(&HeaderMap::new(), "view_mode=calendar").expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.view_mode, Some(ViewMode::Calendar));
@@ -890,7 +891,7 @@ mod tests {
         .join("&");
 
         // Create filters
-        let filters = GroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+        let filters = SearchGroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
 
         // Check filters match expected values
         assert_eq!(filters.view_mode, Some(ViewMode::Map));
@@ -906,7 +907,7 @@ mod tests {
     #[test]
     fn test_groups_filters_to_raw_query_preserves_custom_values() {
         // Prepare filters
-        let filters = GroupsFilters {
+        let filters = SearchGroupsFilters {
             distance: Some(25.5),
             group_category: vec!["rust".to_string()],
             include_bbox: Some(false),
@@ -941,7 +942,7 @@ mod tests {
     #[test]
     fn test_groups_filters_to_raw_query_resets_default_values() {
         // Prepare filters
-        let filters = GroupsFilters {
+        let filters = SearchGroupsFilters {
             group_category: vec!["dev".to_string()],
             include_bbox: Some(true),
             latitude: Some(40.0),

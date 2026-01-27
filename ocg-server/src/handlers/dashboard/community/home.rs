@@ -27,7 +27,7 @@ use crate::{
             team::{self, CommunityTeamFilters},
         },
         pagination::NavigationLinks,
-        site::explore::GroupsFilters,
+        site::explore::SearchGroupsFilters,
     },
 };
 
@@ -64,18 +64,21 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Groups => {
+            // Fetch groups
             let page_filters: CommunityGroupsFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            let db_filters = GroupsFilters {
+            let search_filters = SearchGroupsFilters {
                 community: vec![community.name.clone()],
                 include_inactive: Some(true),
                 limit: page_filters.limit,
                 offset: page_filters.offset,
                 sort_by: Some("name".to_string()),
                 ts_query: page_filters.ts_query.clone(),
-                ..GroupsFilters::default()
+                ..SearchGroupsFilters::default()
             };
-            let results = db.search_groups(&db_filters).await?;
+            let results = db.search_groups(&search_filters).await?;
+
+            // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
                 &page_filters,
                 results.total,
@@ -93,9 +96,12 @@ pub(crate) async fn page(
             community: community.clone(),
         })),
         Tab::Team => {
+            // Fetch team members
             let page_filters: CommunityTeamFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
             let results = db.list_community_team_members(community_id, &page_filters).await?;
+
+            // Prepare template content
             let navigation_links = NavigationLinks::from_filters(
                 &page_filters,
                 results.total,

@@ -4,7 +4,7 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::{Path, RawQuery, State},
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -45,10 +45,12 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
+    // Fetch sponsors
     let filters: GroupSponsorsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let results = db.list_group_sponsors(group_id, &filters).await?;
+
+    // Prepare template
     let navigation_links = NavigationLinks::from_filters(
         &filters,
         results.total,
@@ -61,11 +63,11 @@ pub(crate) async fn list_page(
         total: results.total,
     };
 
+    // Prepare response headers
     let url = pagination::build_url("/dashboard/group?tab=sponsors", &filters)?;
-    Ok((
-        [(axum::http::HeaderName::from_static("hx-push-url"), url)],
-        Html(template.render()?),
-    ))
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Displays the page to update an existing sponsor.

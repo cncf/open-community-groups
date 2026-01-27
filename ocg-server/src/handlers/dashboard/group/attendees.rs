@@ -47,28 +47,28 @@ pub(crate) async fn list_page(
     // Fetch event summary and attendees
     let page_filters: AttendeesPaginationFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let filters = AttendeesFilters {
+    let search_filters = AttendeesFilters {
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
     };
-    let (event, attendees) = tokio::try_join!(
+    let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
-        db.search_event_attendees(group_id, &filters)
+        db.search_event_attendees(group_id, &search_filters)
     )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
         &page_filters,
-        attendees.total,
+        search_attendees_results.total,
         &format!("/dashboard/group/events/{event_id}/attendees"),
         &format!("/dashboard/group/events/{event_id}/attendees"),
     )?;
     let template = attendees::ListPage {
-        attendees: attendees.attendees,
+        attendees: search_attendees_results.attendees,
         event,
         navigation_links,
-        total: attendees.total,
+        total: search_attendees_results.total,
     };
 
     Ok(Html(template.render()?))
