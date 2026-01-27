@@ -1,10 +1,21 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 
-{# Sponsors header with title and add button -#}
-<div class="flex items-center">
-  <div>{{ dashboard::form_title(title = "Sponsors") -}}</div>
-  <div class="ms-auto">
+{# Sponsors header -#}
+{{ dashboard::form_title(title = "Sponsors") -}}
+
+<div class="flex justify-between items-end my-5">
+  <div class="flex text-sm text-stone-600">
+    <div>Total sponsors:</div>
+    <div class="font-semibold ms-1 text-end">
+      {% if total == 0 -%}
+        -
+      {% else %}
+        {{ total }}
+      {% endif -%}
+    </div>
+  </div>
+  <div>
     <button id="add-sponsor-button"
             hx-get="/dashboard/group/sponsors/add"
             hx-target="#dashboard-content"
@@ -22,7 +33,7 @@
 </div>
 
 {# Sponsors table -#}
-<div class="relative overflow-visible mt-10">
+<div class="relative overflow-visible mt-5">
   <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
          role="table"
          aria-label="Sponsors list">

@@ -64,7 +64,7 @@
         </tr>
       {% else -%}
         {% for attendee in attendees -%}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 last:border-b-0">
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-5">
@@ -135,7 +135,7 @@
 
 {# Pagination -#}
 {% if total > attendees.len() -%}
-  {{ pagination::navigation_links(links = navigation_links, hx_target = "#attendees-content", hx_swap = "innerHTML") }}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#attendees-content", hx_swap = "innerHTML show:window:top") }}
 {% endif -%}
 {# End pagination -#}
 
