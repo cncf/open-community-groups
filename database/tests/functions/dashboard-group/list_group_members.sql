@@ -63,7 +63,10 @@ values
 
 -- Should order named users by name then username, then unnamed by username
 select is(
-    list_group_members(:'groupID'::uuid, '{}'::jsonb)::jsonb,
+    list_group_members(
+        :'groupID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'members', '[
             {"created_at": 1704067200, "username": "alice", "company": null, "name": "Alice",
@@ -102,7 +105,10 @@ select is(
 
 -- Should return empty list for non-existing group
 select is(
-    list_group_members('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    list_group_members(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'members', '[]'::jsonb,
         'total', 0

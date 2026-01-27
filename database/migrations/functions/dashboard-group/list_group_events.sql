@@ -4,9 +4,9 @@ returns json as $$
     with
         filters as (
             select
-                coalesce((p_filters->>'limit')::int, 50) as limit_value,
-                coalesce((p_filters->>'past_offset')::int, 0) as past_offset,
-                coalesce((p_filters->>'upcoming_offset')::int, 0) as upcoming_offset
+                (p_filters->>'limit')::int as limit_value,
+                (p_filters->>'past_offset')::int as past_offset,
+                (p_filters->>'upcoming_offset')::int as upcoming_offset
         ),
         group_events as (
             select e.event_id, e.name, e.starts_at, e.group_id, g.community_id

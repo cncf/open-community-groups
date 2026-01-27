@@ -62,7 +62,10 @@ insert into community_team (accepted, community_id, user_id) values
 
 -- Should return expected members in alphabetical order including accepted flag
 select is(
-    list_community_team_members(:'communityID'::uuid, '{}'::jsonb)::jsonb,
+    list_community_team_members(
+        :'communityID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'approved_total', 2,
         'members', '[
@@ -92,7 +95,10 @@ select is(
 
 -- Should return empty array for unknown community
 select is(
-    list_community_team_members('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    list_community_team_members(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'approved_total', 0,
         'members', '[]'::jsonb,

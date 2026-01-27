@@ -11,6 +11,18 @@ pub(crate) const DASHBOARD_PAGINATION_LIMIT: usize = 50;
 /// Default pagination limit.
 const DEFAULT_PAGINATION_LIMIT: usize = 10;
 
+/// Default dashboard pagination limit for serde.
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn default_dashboard_limit() -> Option<usize> {
+    Some(DASHBOARD_PAGINATION_LIMIT)
+}
+
+/// Default dashboard pagination offset for serde.
+#[allow(clippy::unnecessary_wraps)]
+pub(crate) fn default_dashboard_offset() -> Option<usize> {
+    Some(0)
+}
+
 /// Trait for types that support pagination.
 ///
 /// Provides methods to access and modify pagination parameters, used by the navigation

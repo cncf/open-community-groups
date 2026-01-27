@@ -192,7 +192,10 @@ insert into event (
 -- ============================================================================
 
 select is(
-    list_group_events('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    list_group_events(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'past', jsonb_build_object('events', '[]'::jsonb, 'total', 0),
         'upcoming', jsonb_build_object('events', '[]'::jsonb, 'total', 0)
@@ -201,7 +204,10 @@ select is(
 );
 
 select is(
-    list_group_events(:'group1ID'::uuid, '{}'::jsonb)::jsonb,
+    list_group_events(
+        :'group1ID'::uuid,
+        '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'past', jsonb_build_object(
             'events', jsonb_build_array(
@@ -222,7 +228,10 @@ select is(
 
 -- Should return correct grouped JSON for specified group
 select is(
-    list_group_events(:'group2ID'::uuid, '{}'::jsonb)::jsonb,
+    list_group_events(
+        :'group2ID'::uuid,
+        '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'past', jsonb_build_object('events', '[]'::jsonb, 'total', 0),
         'upcoming', jsonb_build_object(

@@ -64,9 +64,8 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Groups => {
-            let mut page_filters: CommunityGroupsFilters =
+            let page_filters: CommunityGroupsFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            page_filters = page_filters.with_defaults();
             let db_filters = GroupsFilters {
                 community: vec![community.name.clone()],
                 include_inactive: Some(true),
@@ -94,9 +93,8 @@ pub(crate) async fn page(
             community: community.clone(),
         })),
         Tab::Team => {
-            let mut page_filters: CommunityTeamFilters =
+            let page_filters: CommunityTeamFilters =
                 serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-            page_filters = page_filters.with_defaults();
             let results = db.list_community_team_members(community_id, &page_filters).await?;
             let navigation_links = NavigationLinks::from_filters(
                 &page_filters,

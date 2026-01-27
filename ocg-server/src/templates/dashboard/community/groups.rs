@@ -9,7 +9,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
+    templates::pagination::{self, Pagination, ToRawQuery},
     types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
         MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S,
@@ -64,27 +64,16 @@ pub(crate) struct UpdatePage {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct CommunityGroupsFilters {
     /// Number of results per page.
+    #[serde(default = "pagination::default_dashboard_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
-}
-
-impl CommunityGroupsFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.offset.is_none() {
-            self.offset = Some(0);
-        }
-        self
-    }
 }
 
 crate::impl_pagination_and_raw_query!(CommunityGroupsFilters, limit, offset);

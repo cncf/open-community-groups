@@ -63,7 +63,10 @@ values
 
 -- Should return attendees for event1 with expected fields and order
 select is(
-    search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000041"}'::jsonb)::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000041","limit":50,"offset":0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'attendees', '[
             {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
@@ -91,7 +94,10 @@ select is(
 
 -- Should return attendees for event2
 select is(
-    search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000042"}'::jsonb)::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000042","limit":50,"offset":0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'attendees', '[
             {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
@@ -103,7 +109,10 @@ select is(
 
 -- Should return empty list when no event_id provided
 select is(
-    search_event_attendees(:'groupID'::uuid, '{}'::jsonb)::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"limit":50,"offset":0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'attendees', '[]'::jsonb,
         'total', 0
@@ -113,7 +122,10 @@ select is(
 
 -- Should return empty list for non-existing event
 select is(
-    search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-999999999999"}'::jsonb)::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-999999999999","limit":50,"offset":0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'attendees', '[]'::jsonb,
         'total', 0

@@ -62,7 +62,10 @@ values
 
 -- Should return group sponsors sorted by name
 select is(
-    list_group_sponsors(:'group1ID'::uuid, '{}'::jsonb)::jsonb,
+    list_group_sponsors(
+        :'group1ID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'sponsors', '[
             {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
@@ -90,7 +93,10 @@ select is(
 
 -- Should return empty array for unknown group
 select is(
-    list_group_sponsors('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    list_group_sponsors(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'sponsors', '[]'::jsonb,
         'total', 0

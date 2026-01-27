@@ -49,7 +49,10 @@ values
 
 -- Should return list of group team members with accepted flag
 select is(
-    list_group_team_members(:'groupID'::uuid, '{}'::jsonb)::jsonb,
+    list_group_team_members(
+        :'groupID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'approved_total', 1,
         'members', '[
@@ -79,7 +82,10 @@ select is(
 
 -- Should return empty list for non-existing group
 select is(
-    list_group_team_members('00000000-0000-0000-0000-000000000099'::uuid, '{}'::jsonb)::jsonb,
+    list_group_team_members(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
     jsonb_build_object(
         'approved_total', 0,
         'members', '[]'::jsonb,

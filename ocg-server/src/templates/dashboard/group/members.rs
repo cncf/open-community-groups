@@ -9,7 +9,7 @@ use serde_with::skip_serializing_none;
 use crate::{
     templates::{
         helpers::user_initials,
-        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
+        pagination::{self, Pagination, ToRawQuery},
     },
     validation::MAX_PAGINATION_LIMIT,
 };
@@ -54,24 +54,13 @@ pub struct GroupMember {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct GroupMembersFilters {
     /// Number of results per page.
+    #[serde(default = "pagination::default_dashboard_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
-}
-
-impl GroupMembersFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.offset.is_none() {
-            self.offset = Some(0);
-        }
-        self
-    }
 }
 
 crate::impl_pagination_and_raw_query!(GroupMembersFilters, limit, offset);

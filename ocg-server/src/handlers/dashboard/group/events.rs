@@ -57,7 +57,7 @@ pub(crate) async fn add_page(
     // Prepare template
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    let sponsor_filters = GroupSponsorsFilters::default().with_defaults();
+    let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
     let (categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
@@ -87,24 +87,21 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let mut filters: EventsListFilters =
+    let filters: EventsListFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters = filters.with_defaults();
     let events = db.list_group_events(group_id, &filters).await?;
     let past_filters = PastEventsPaginationFilters {
         events_tab: Some(EventsTab::Past),
         limit: filters.limit,
         past_offset: filters.past_offset,
         upcoming_offset: filters.upcoming_offset,
-    }
-    .with_defaults();
+    };
     let upcoming_filters = UpcomingEventsPaginationFilters {
         events_tab: Some(EventsTab::Upcoming),
         limit: filters.limit,
         past_offset: filters.past_offset,
         upcoming_offset: filters.upcoming_offset,
-    }
-    .with_defaults();
+    };
     let past_navigation_links = crate::templates::pagination::NavigationLinks::from_filters(
         &past_filters,
         events.past.total,
@@ -143,7 +140,7 @@ pub(crate) async fn update_page(
     // Prepare template
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
-    let sponsor_filters = GroupSponsorsFilters::default().with_defaults();
+    let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
     let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
         db.list_event_categories(community_id),

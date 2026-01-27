@@ -45,9 +45,8 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and attendees
-    let mut page_filters: AttendeesPaginationFilters =
+    let page_filters: AttendeesPaginationFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    page_filters = page_filters.with_defaults();
     let filters = AttendeesFilters {
         event_id,
         limit: page_filters.limit,

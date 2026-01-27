@@ -40,9 +40,8 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let mut filters: GroupMembersFilters =
+    let filters: GroupMembersFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters = filters.with_defaults();
     let results = db.list_group_members(group_id, &filters).await?;
     let navigation_links = NavigationLinks::from_filters(
         &filters,

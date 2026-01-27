@@ -7,7 +7,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
+    templates::pagination::{self, Pagination, ToRawQuery},
     types::group::GroupSponsor,
     validation::{MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_PAGINATION_LIMIT, image_url, trimmed_non_empty},
 };
@@ -67,24 +67,13 @@ pub(crate) struct Sponsor {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct GroupSponsorsFilters {
     /// Number of results per page.
+    #[serde(default = "pagination::default_dashboard_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
-}
-
-impl GroupSponsorsFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.offset.is_none() {
-            self.offset = Some(0);
-        }
-        self
-    }
 }
 
 crate::impl_pagination_and_raw_query!(GroupSponsorsFilters, limit, offset);

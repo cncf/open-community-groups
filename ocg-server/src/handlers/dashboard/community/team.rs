@@ -38,9 +38,8 @@ pub(crate) async fn list_page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let mut filters: CommunityTeamFilters =
+    let filters: CommunityTeamFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    filters = filters.with_defaults();
     let results = db.list_community_team_members(community_id, &filters).await?;
     let navigation_links = NavigationLinks::from_filters(
         &filters,

@@ -43,9 +43,8 @@ pub(crate) async fn list_page(
     };
 
     // Prepare template
-    let mut page_filters: CommunityGroupsFilters =
+    let page_filters: CommunityGroupsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    page_filters = page_filters.with_defaults();
     let ts_query = page_filters.ts_query.clone();
     let db_filters = explore::GroupsFilters {
         community: vec![community_name],

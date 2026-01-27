@@ -5,8 +5,8 @@ returns json as $$
         filters as (
             select
                 (p_filters->>'event_id')::uuid as event_id,
-                coalesce((p_filters->>'limit')::int, 50) as limit_value,
-                coalesce((p_filters->>'offset')::int, 0) as offset_value
+                (p_filters->>'limit')::int as limit_value,
+                (p_filters->>'offset')::int as offset_value
         ),
         attendees as (
             select

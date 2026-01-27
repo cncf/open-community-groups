@@ -14,7 +14,7 @@ use crate::{
     templates::{
         filters,
         helpers::DATE_FORMAT,
-        pagination::{self, DASHBOARD_PAGINATION_LIMIT, Pagination, ToRawQuery},
+        pagination::{self, Pagination, ToRawQuery},
     },
     types::event::{
         EventCategory, EventFull, EventKindSummary, EventSummary, SessionKind, SessionKindSummary,
@@ -240,31 +240,20 @@ pub(crate) struct EventsListFilters {
     #[garde(skip)]
     pub events_tab: Option<EventsTab>,
     /// Number of results per page.
+    #[serde(default = "pagination::default_dashboard_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for past events.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub past_offset: Option<usize>,
     /// Pagination offset for upcoming events.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub upcoming_offset: Option<usize>,
 }
 
 impl EventsListFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.past_offset.is_none() {
-            self.past_offset = Some(0);
-        }
-        if self.upcoming_offset.is_none() {
-            self.upcoming_offset = Some(0);
-        }
-        self
-    }
-
     /// Current tab or default.
     pub(crate) fn current_tab(&self) -> EventsTab {
         self.events_tab.clone().unwrap_or_default()
@@ -281,30 +270,17 @@ pub(crate) struct PastEventsPaginationFilters {
     #[garde(skip)]
     pub events_tab: Option<EventsTab>,
     /// Number of results per page.
+    #[serde(default = "pagination::default_dashboard_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for past events.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub past_offset: Option<usize>,
     /// Pagination offset for upcoming events.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub upcoming_offset: Option<usize>,
-}
-
-impl PastEventsPaginationFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.past_offset.is_none() {
-            self.past_offset = Some(0);
-        }
-        if self.upcoming_offset.is_none() {
-            self.upcoming_offset = Some(0);
-        }
-        self
-    }
 }
 
 crate::impl_pagination_and_raw_query!(PastEventsPaginationFilters, limit, past_offset);
@@ -317,30 +293,17 @@ pub(crate) struct UpcomingEventsPaginationFilters {
     #[garde(skip)]
     pub events_tab: Option<EventsTab>,
     /// Number of results per page.
+    #[serde(default = "pagination::default_dashboard_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for past events.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub past_offset: Option<usize>,
     /// Pagination offset for upcoming events.
+    #[serde(default = "pagination::default_dashboard_offset")]
     #[garde(skip)]
     pub upcoming_offset: Option<usize>,
-}
-
-impl UpcomingEventsPaginationFilters {
-    /// Apply dashboard defaults to pagination filters.
-    pub(crate) fn with_defaults(mut self) -> Self {
-        if self.limit.is_none() {
-            self.limit = Some(DASHBOARD_PAGINATION_LIMIT);
-        }
-        if self.past_offset.is_none() {
-            self.past_offset = Some(0);
-        }
-        if self.upcoming_offset.is_none() {
-            self.upcoming_offset = Some(0);
-        }
-        self
-    }
 }
 
 crate::impl_pagination_and_raw_query!(UpcomingEventsPaginationFilters, limit, upcoming_offset);
