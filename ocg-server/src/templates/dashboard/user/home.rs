@@ -16,7 +16,6 @@ use crate::{
 };
 
 /// Home page template for the user dashboard.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/user/home.html")]
 pub(crate) struct Page {
@@ -45,13 +44,11 @@ pub(crate) enum Content {
 
 impl Content {
     /// Check if the content is the account page.
-    #[allow(dead_code)]
     fn is_account(&self) -> bool {
         matches!(self, Content::Account(_))
     }
 
     /// Check if the content is the invitations page.
-    #[allow(dead_code)]
     fn is_invitations(&self) -> bool {
         matches!(self, Content::Invitations(_))
     }

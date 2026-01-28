@@ -13,7 +13,6 @@ use crate::{
 // Pages and sections templates.
 
 /// Event page template.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/page.html")]
 pub(crate) struct Page {
@@ -30,7 +29,6 @@ pub(crate) struct Page {
 }
 
 /// Event check-in page template.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "event/check_in_page.html")]
 pub(crate) struct CheckInPage {
