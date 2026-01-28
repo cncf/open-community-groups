@@ -1,0 +1,12 @@
+{# Analytics chart container #}
+{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0) -%}
+  {% if data.len() > min_points + 0 -%}
+    <div id="{{ chart_id }}" class="{{ class }}">
+      <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
+      </svg-spinner>
+    </div>
+  {%- else -%}
+    <div class="chart-empty-state {{ class }}">No data available yet</div>
+  {%- endif %}
+{% endmacro analytics_chart -%}
+{# End analytics chart container #}

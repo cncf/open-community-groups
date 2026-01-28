@@ -1,4 +1,5 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/stats.html" as stats_macro -%}
 
 {# Page title #}
 {{ dashboard::form_title(title = "Analytics",
@@ -33,13 +34,13 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ dashboard::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, min_points = 1) -}}
+          {{ stats_macro::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, min_points = 1) -}}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ dashboard::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month) -}}
+          {{ stats_macro::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month) -}}
         </div>
       </div>
     </div>
@@ -51,13 +52,13 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ dashboard::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, min_points = 1) -}}
+          {{ stats_macro::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, min_points = 1) -}}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ dashboard::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month) -}}
+          {{ stats_macro::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month) -}}
         </div>
       </div>
     </div>
@@ -69,13 +70,13 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
       <div>
         <div class="text-sm font-semibold text-stone-500">Running total</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ dashboard::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, min_points = 1) -}}
+          {{ stats_macro::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, min_points = 1) -}}
         </div>
       </div>
       <div>
         <div class="text-sm font-semibold text-stone-500">Per month</div>
         <div class="bg-white border border-stone-200 rounded-lg p-6 mt-3">
-          {{ dashboard::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month) -}}
+          {{ stats_macro::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month) -}}
         </div>
       </div>
     </div>
