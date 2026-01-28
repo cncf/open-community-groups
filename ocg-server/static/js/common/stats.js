@@ -1,3 +1,4 @@
+import { debounce } from "/static/js/common/common.js";
 import { clearChartElement, initChart, showChartEmptyState } from "/static/js/dashboard/common.js";
 
 /**
@@ -26,6 +27,23 @@ export const renderChart = (elementId, option, hasData, options = {}) => {
   }
 
   return initChart(elementId, option);
+};
+
+/**
+ * Register a debounced resize handler for chart instances.
+ * @param {Iterable<echarts.ECharts>|Function} chartsSource - Chart list or getter.
+ * @param {number} delay - Debounce delay in milliseconds.
+ * @returns {Function} Debounced resize handler.
+ */
+export const registerChartResizeHandler = (chartsSource, delay = 200) => {
+  const getCharts = typeof chartsSource === "function" ? chartsSource : () => Array.from(chartsSource || []);
+  const resizeCharts = debounce(() => {
+    const charts = (getCharts() || []).filter(Boolean);
+    charts.forEach((chart) => chart.resize());
+  }, delay);
+
+  window.addEventListener("resize", resizeCharts);
+  return resizeCharts;
 };
 
 /**

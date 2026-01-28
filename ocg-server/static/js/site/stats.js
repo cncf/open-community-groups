@@ -6,8 +6,12 @@ import {
   hasTimeSeriesData,
   loadEChartsScript,
 } from "/static/js/dashboard/common.js";
-import { debounce } from "/static/js/common/common.js";
-import { getCategoryLabelInterval, getTimeSplitNumber, renderChart } from "/static/js/common/stats.js";
+import {
+  getCategoryLabelInterval,
+  getTimeSplitNumber,
+  registerChartResizeHandler,
+  renderChart,
+} from "/static/js/common/stats.js";
 
 /**
  * Initialize charts for a stats section.
@@ -73,9 +77,5 @@ export const initSiteStatsCharts = async (stats) => {
     charts.push(...sectionCharts);
   }
 
-  const resizeCharts = debounce(() => {
-    charts.forEach((chart) => chart.resize());
-  }, 200);
-
-  window.addEventListener("resize", resizeCharts);
+  registerChartResizeHandler(charts);
 };

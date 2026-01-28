@@ -15,8 +15,7 @@ import {
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
 } from "/static/js/dashboard/common.js";
-import { debounce } from "/static/js/common/common.js";
-import { renderChart } from "/static/js/common/stats.js";
+import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 
 /**
  * Render groups charts.
@@ -481,11 +480,7 @@ const setupAnalyticsTabs = (stats, palette) => {
     });
   });
 
-  const resizeCharts = debounce(() => {
-    allCharts.forEach((chart) => chart.resize());
-  }, 200);
-
-  window.addEventListener("resize", resizeCharts);
+  registerChartResizeHandler(() => Array.from(allCharts));
 };
 
 /**
