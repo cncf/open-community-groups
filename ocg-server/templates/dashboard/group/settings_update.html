@@ -369,15 +369,6 @@
 {# End additional content section -#}
 
 <div class="mt-6 flex items-center justify-end gap-x-6">
-  {# Cancel button -#}
-  <button id="cancel-button"
-          type="button"
-          hx-get="/dashboard/community?tab=groups"
-          hx-target="body"
-          hx-indicator="#dashboard-spinner"
-          class="btn-primary-outline">Cancel</button>
-  {# End cancel button -#}
-
   {# Save button -#}
   <button type="submit" class="btn-primary relative">
     {{ ui::btn_spinner(id = "group-settings-update-spinner", spinner_type = "2") -}}
@@ -395,13 +386,6 @@
   import '/static/js/common/location-search-field.js';
 
   const groupsForm = document.getElementById('groups-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
-    });
-  }
 
   if (groupsForm) {
     groupsForm.addEventListener('htmx:afterRequest', (e) => {

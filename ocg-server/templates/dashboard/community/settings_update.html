@@ -354,13 +354,6 @@
   } from '/static/js/common/alerts.js';
 
   const settingsForm = document.getElementById('settings-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, "Community Settings", '/dashboard/community?tab=settings');
-    });
-  }
 
   if (settingsForm) {
     settingsForm.addEventListener('htmx:afterRequest', (e) => {
