@@ -1,7 +1,6 @@
 import {
   createAreaChart,
   createMonthlyBarChart,
-  deferUntilHtmxSettled,
   getThemePalette,
   hasChartData,
   hasTimeSeriesData,
@@ -58,27 +57,25 @@ export const initSiteStatsCharts = async (stats) => {
     return;
   }
 
-  return deferUntilHtmxSettled(async () => {
-    await loadEChartsScript();
-    const palette = getThemePalette();
+  await loadEChartsScript();
+  const palette = getThemePalette();
 
-    const charts = [];
-    const sections = [
-      { key: "groups", label: "Groups" },
-      { key: "members", label: "Members" },
-      { key: "events", label: "Events" },
-      { key: "attendees", label: "Attendees" },
-    ];
+  const charts = [];
+  const sections = [
+    { key: "groups", label: "Groups" },
+    { key: "members", label: "Members" },
+    { key: "events", label: "Events" },
+    { key: "attendees", label: "Attendees" },
+  ];
 
-    for (const section of sections) {
-      const sectionCharts = await initSectionCharts(section.key, section.label, stats, palette);
-      charts.push(...sectionCharts);
-    }
+  for (const section of sections) {
+    const sectionCharts = await initSectionCharts(section.key, section.label, stats, palette);
+    charts.push(...sectionCharts);
+  }
 
-    const resizeCharts = debounce(() => {
-      charts.forEach((chart) => chart.resize());
-    }, 200);
+  const resizeCharts = debounce(() => {
+    charts.forEach((chart) => chart.resize());
+  }, 200);
 
-    window.addEventListener("resize", resizeCharts);
-  });
+  window.addEventListener("resize", resizeCharts);
 };
