@@ -164,7 +164,12 @@ export const loadMap = async (divId, lat, long, options = {}) => {
   // Ensure Leaflet is loaded
   await loadLeafletScript();
 
-  const map = L.map(divId, { zoomControl: false }).setView([lat, long], options.zoom ?? 13);
+  const map = L.map(divId, {
+    zoomControl: false,
+    minZoom: 2,
+    maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
+    maxBoundsViscosity: 1.0,
+  }).setView([lat, long], options.zoom ?? 13);
 
   const interactive = options.interactive !== false;
 
@@ -175,6 +180,7 @@ export const loadMap = async (divId, lat, long, options = {}) => {
     {
       attribution: "",
       unloadInvisibleTiles: true,
+      noWrap: true,
     },
   ).addTo(map);
 
