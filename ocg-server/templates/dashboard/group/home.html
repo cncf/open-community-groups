@@ -85,7 +85,10 @@
 {% endblock menu -%}
 
 {% block dashboard_main -%}
+  {% let current_selection = current_selection_details() -%}
   <div id="dashboard-content"
+       data-community="{{ current_selection.0.name }}"
+       data-group-slug="{{ current_selection.1.slug }}"
        hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
