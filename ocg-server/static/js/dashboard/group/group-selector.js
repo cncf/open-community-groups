@@ -333,11 +333,12 @@ export class GroupSelector extends LitWrapper {
 
                           let statusClass = "";
                           if (isDisabled) {
-                            statusClass = "opacity-50 cursor-not-allowed bg-stone-100";
+                            statusClass =
+                              "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
                           } else if (isActive) {
-                            statusClass = "cursor-pointer bg-stone-50";
+                            statusClass = "cursor-pointer text-stone-900 bg-stone-50";
                           } else {
-                            statusClass = "cursor-pointer hover:bg-stone-50";
+                            statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
                           }
 
                           return html`
@@ -353,7 +354,7 @@ export class GroupSelector extends LitWrapper {
                                 @click=${(event) => this._handleGroupClick(event, group)}
                                 @mouseover=${() => (this._activeIndex = index)}
                               >
-                                <div class="text-xs/4 text-stone-900 line-clamp-2">${group.name}</div>
+                                <div class="text-xs/4 line-clamp-2">${group.name}</div>
                               </button>
                             </li>
                           `;

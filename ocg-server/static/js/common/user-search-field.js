@@ -1,6 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 
 /**
@@ -226,7 +226,7 @@ export class UserSearchField extends LitWrapper {
           if (!disabled) this._selectUser(user);
         }}
       >
-        <avatar-image image-url=${user.photo_url || ""} placeholder=${initials}></avatar-image>
+        <logo-image image-url=${user.photo_url || ""} placeholder=${initials}></logo-image>
         <div class="flex-1 min-w-0">
           <h3 class="text-sm font-medium text-stone-900 truncate">${user.name || user.username}</h3>
           ${user.name ? html`<p class="text-xs text-stone-600 truncate">@${user.username}</p>` : ""}

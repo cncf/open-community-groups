@@ -233,7 +233,7 @@
                       <ul class="py-2 text-sm text-stone-700"
                           aria-labelledby="dropdownDefaultButton">
                         {# Publish/Unpublish button depending on status -#}
-                        {% if event.published || event.canceled -%}
+                        {% if event.published && !event.canceled -%}
                           <li>
                             <button id="unpublish-event-{{ event.event_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/unpublish"
@@ -269,7 +269,7 @@
                               }
                             </script>
                           </li>
-                        {% else -%}
+                        {% elif !event.canceled -%}
                           <li>
                             <button id="publish-event-{{ event.event_id }}"
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/publish"

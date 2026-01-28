@@ -2,22 +2,25 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
- * AvatarImage component for displaying user avatars with fallback to initials.
+ * LogoImage component for displaying images with fallback to initials.
  * Handles image loading errors gracefully by showing initials placeholder.
  * Provides smooth transition between loading, loaded, and error states.
  * @extends LitWrapper
  */
-export class AvatarImage extends LitWrapper {
+export class LogoImage extends LitWrapper {
   /**
    * Component properties definition
-   * @property {string} imageUrl - URL of the avatar image to display
-   * @property {string} placeholder - Text to show when image is not available (typically initials)
-   * @property {number} size - Size of the avatar in pixels (default: 40)
+   * @property {string} imageUrl - URL of the image to display
+   * @property {string} placeholder - Text to show when image is not available
+   *   (typically initials)
+   * @property {number} size - Size of the image in pixels (default: 40)
    * @property {string} fontSize - Tailwind text size class for initials
-   * @property {boolean} hideOnError - If true, hides the entire component when image fails to load
-   * @property {boolean} hideBorder - If true, removes the border from the avatar
+   * @property {boolean} hideOnError - If true, hides the component when image fails
+   *   to load
+   * @property {boolean} hideBorder - If true, removes the border from the image
    * @property {boolean} _hasError - Internal state tracking if image failed to load
-   * @property {boolean} _hasLoaded - Internal state tracking if image loaded successfully
+   * @property {boolean} _hasLoaded - Internal state tracking if image loaded
+   *   successfully
    */
   static get properties() {
     return {
@@ -89,7 +92,7 @@ export class AvatarImage extends LitWrapper {
   }
 
   /**
-   * Renders the avatar component with image or placeholder.
+   * Renders the image component with image or placeholder.
    * Shows placeholder during loading, on error, or when no image URL provided.
    * If hideOnError is true, hides the entire component when image fails to load.
    * @returns {TemplateResult} Lit HTML template
@@ -116,12 +119,12 @@ export class AvatarImage extends LitWrapper {
           ${this.placeholder}
         </div>
 
-        <!-- Avatar image (always rendered if URL exists, visibility controlled by load/error state) -->
+        <!-- Image (always rendered if URL exists, visibility controlled by load/error state) -->
         ${this.imageUrl
           ? html`
               <img
                 src=${this.imageUrl}
-                alt="Avatar"
+                alt="Image"
                 @load=${this._handleImageLoad}
                 @error=${this._handleImageError}
                 class="${showImage
@@ -136,4 +139,4 @@ export class AvatarImage extends LitWrapper {
   }
 }
 
-customElements.define("avatar-image", AvatarImage);
+customElements.define("logo-image", LogoImage);

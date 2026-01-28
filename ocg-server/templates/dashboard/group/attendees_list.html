@@ -18,7 +18,7 @@
             data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
             {% if let Some(start_time) = &event.starts_at -%}
               data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
-            {% endif -%}>Show QR Code</button>
+            {% endif -%}>Show check-in QR code</button>
     <button id="open-attendee-notification-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto"
@@ -61,12 +61,12 @@
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-5">
-                <avatar-image
+                <logo-image
                 {% if let Some(photo_url) = &attendee.photo_url -%}
                   image-url="{{ photo_url }}"
                 {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
-                </avatar-image>
+                </logo-image>
                 <div class="min-w-0">
                   <div class="font-medium text-stone-900 truncate mb-1">
                     {{ attendee.name|assigned_or(attendee.username) }}

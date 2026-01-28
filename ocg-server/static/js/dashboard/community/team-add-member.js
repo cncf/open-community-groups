@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/user-search-field.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 
@@ -191,12 +191,12 @@ export class TeamAddMember extends LitWrapper {
     const initials = computeUserInitials(u.name, u.username, 2);
     return html`
       <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
-        <avatar-image
+        <logo-image
           image-url=${u.photo_url || ""}
           placeholder=${initials}
           size="size-[24px]"
           hide-border
-        ></avatar-image>
+        ></logo-image>
         <span class="text-sm text-stone-700">${u.name || u.username}</span>
       </div>
     `;

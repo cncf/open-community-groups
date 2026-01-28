@@ -1,12 +1,12 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 
 /**
  * PeopleList component for displaying a list of people with avatars.
  * Features expandable list with "show more/less" functionality.
- * Uses avatar-image component for handling profile images with fallback to initials.
+ * Uses logo-image component for handling profile images with fallback to initials.
  * @extends LitWrapper
  */
 export class PeopleList extends LitWrapper {
@@ -62,7 +62,7 @@ export class PeopleList extends LitWrapper {
 
   /**
    * Renders avatar component for a person.
-   * Passes image URL and calculated initials to avatar-image component.
+   * Passes image URL and calculated initials to logo-image component.
    * @param {Object} person - Person object with photo_url and name
    * @returns {TemplateResult} Avatar component template
    * @private
@@ -70,7 +70,7 @@ export class PeopleList extends LitWrapper {
   _renderAvatar(person) {
     const initials = computeUserInitials(person.name, "", 2);
 
-    return html` <avatar-image image-url=${person.photo_url || ""} placeholder=${initials}></avatar-image> `;
+    return html` <logo-image image-url=${person.photo_url || ""} placeholder=${initials}></logo-image> `;
   }
 
   /**

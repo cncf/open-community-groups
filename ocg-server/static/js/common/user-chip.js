@@ -1,7 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 
 /**
  * UserChip shows a small user card with avatar, name, and title.
@@ -110,14 +110,14 @@ export class UserChip extends LitWrapper {
             ? "bg-amber-50/50 border border-amber-200 text-amber-800"
             : "bg-stone-100 text-stone-700"}"
         >
-          <avatar-image
+          <logo-image
             image-url=${imageUrl}
             placeholder=${initials}
             size="size-[24px]"
             font-size="text-[0.65rem]"
             hide-border="true"
           >
-          </avatar-image>
+          </logo-image>
           ${this.featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
           <span class="text-sm pe-1">${name}</span>
         </div>
@@ -135,8 +135,8 @@ export class UserChip extends LitWrapper {
         @keydown=${isClickable ? this._handleKeydown : null}
         aria-label=${isClickable ? `View ${name || username}'s profile` : ""}
       >
-        <avatar-image image-url=${imageUrl} size=${avatarSize} placeholder=${initials} font-size="text-lg">
-        </avatar-image>
+        <logo-image image-url=${imageUrl} size=${avatarSize} placeholder=${initials} font-size="text-lg">
+        </logo-image>
         <div class="leading-tight min-w-0">
           <div class="font-semibold text-stone-900 truncate ${nameSize}">${name}</div>
           ${jobTitle ? html`<div class="text-stone-600 mt-3 truncate ${jobSize}">${jobTitle}</div>` : ""}

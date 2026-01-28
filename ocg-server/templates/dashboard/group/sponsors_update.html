@@ -31,12 +31,13 @@
                    value="{{ sponsor.name }}"
                    required>
           </div>
+          <p class="form-legend">Sponsor's name. Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.</p>
         </div>
         {# End Sponsor name -#}
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-5">
-          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" value="{{ sponsor.logo_url }}" required>
+          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="logo" value="{{ sponsor.logo_url }}" target="logo" required>
         </image-field>
       </div>
       {# End Logo URL -#}

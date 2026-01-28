@@ -32,7 +32,9 @@
                    value="{{ community.display_name }}"
                    required>
           </div>
-          <p class="form-legend">Public name displayed throughout the community platform.</p>
+          <p class="form-legend">
+            Public name displayed throughout the community platform. Max {{ crate::validation::MAX_LEN_DISPLAY_NAME }} characters.
+          </p>
         </div>
         {# End display name -#}
 
@@ -42,10 +44,10 @@
             Description <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
-            <markdown-editor id="description" name="description" content="{{ community.description }}" required></markdown-editor>
+            <markdown-editor id="description" name="description" content="{{ community.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
           </div>
           <p class="form-legend">
-            Brief description of the community's purpose or focus. This information will be featured in the community site home page.
+            Brief description of the community's purpose or focus. This information will be featured in the community site home page. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
           </p>
         </div>
         {# End description -#}
@@ -65,7 +67,7 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Logo URL -#}
         <div class="col-span-full">
-          <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="avatar" required help-prefix-text="Size required 360 x 360 px." target="logo">
+          <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="logo" required help-prefix-text="Size required 360 x 360 px." target="logo">
         </image-field>
       </div>
       {# End logo URL -#}
@@ -354,13 +356,6 @@
   } from '/static/js/common/alerts.js';
 
   const settingsForm = document.getElementById('settings-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, "Community Settings", '/dashboard/community?tab=settings');
-    });
-  }
 
   if (settingsForm) {
     settingsForm.addEventListener('htmx:afterRequest', (e) => {

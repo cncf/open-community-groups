@@ -96,7 +96,9 @@
                          spellcheck="false"
                          required>
                 </div>
-                <p class="form-legend">Display name of the event (e.g. Kubernetes Amsterdam Meetup).</p>
+                <p class="form-legend">
+                  Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+                </p>
               </div>
               {# End Event name -#}
 
@@ -137,22 +139,22 @@
               {# End Event category -#}
 
               {# Logo URL -#}
-              <div class="col-span-full lg:col-span-3">
-                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" target="logo">
+              <div class="col-span-full lg:col-span-4">
+                <image-field class="w-full block" label="Logo" name="logo_url" image-kind="logo" target="logo" legend="If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.">
               </image-field>
             </div>
             {# End Logo URL -#}
 
             {# Banner URL -#}
             <div class="col-span-full">
-              <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" help-prefix-text="Size required 2428 x 192 px." target="banner">
+              <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" help-prefix-text="Size required 2428 x 192 px." target="banner" legend="If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.">
             </image-field>
           </div>
           {# End Banner URL -#}
 
           {# Banner Mobile URL -#}
           <div class="col-span-full">
-            <image-field class="w-full block" label="Banner Mobile" name="banner_mobile_url" image-kind="banner" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile">
+            <image-field class="w-full block" label="Banner Mobile" name="banner_mobile_url" image-kind="banner" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" legend="If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.">
           </image-field>
         </div>
         {# End Banner Mobile URL -#}
@@ -168,7 +170,7 @@
                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
           </div>
           <p class="form-legend">
-            Brief description used in event listings and previews (max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters).
+            Brief description used in event listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
           </p>
         </div>
         {# End Short Description -#}
@@ -179,9 +181,11 @@
             Description <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
-            <markdown-editor id="description" name="description" required></markdown-editor>
+            <markdown-editor id="description" name="description" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
           </div>
-          <p class="form-legend">Full description of the event and its purpose.</p>
+          <p class="form-legend">
+            Full description of the event and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
+          </p>
         </div>
         {# End Event Description -#}
       </div>
@@ -402,7 +406,7 @@
   <form id="sessions-form">
     <div class="pb-12">
       <div class="mt-10">
-        <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}"
+        <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
         {% if meetings_enabled %}meetings-enabled{% endif %}
         ></sessions-section>
       </div>
@@ -629,6 +633,17 @@
   const endsAtInput = document.getElementById('ends_at');
   let previousStartsAt = startsAtInput?.value || '';
   let previousEndsAt = endsAtInput?.value || '';
+
+  if (startsAtInput) {
+    startsAtInput.addEventListener('change', () => {
+      startsAtInput.setCustomValidity('');
+    });
+  }
+  if (endsAtInput) {
+    endsAtInput.addEventListener('change', () => {
+      endsAtInput.setCustomValidity('');
+    });
+  }
 
   if (startsAtInput && onlineEventDetails) {
     startsAtInput.addEventListener('change', async () => {

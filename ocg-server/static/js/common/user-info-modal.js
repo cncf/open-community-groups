@@ -1,7 +1,7 @@
 import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 
 /**
  * UserInfoModal displays detailed user information in a modal dialog.
@@ -192,12 +192,12 @@ export class UserInfoModal extends LitWrapper {
 
             <div class="p-8">
               <div class="flex items-center gap-6 mb-6">
-                <avatar-image
+                <logo-image
                   image-url=${this._userData.imageUrl || ""}
                   placeholder=${initials}
                   size="size-24"
                   font-size="text-3xl"
-                ></avatar-image>
+                ></logo-image>
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-2xl text-stone-900">
                     ${this._userData.name || this._userData.username}

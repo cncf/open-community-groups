@@ -21,6 +21,44 @@ export const hideLoadingSpinner = (id) => {
 };
 
 /**
+ * Checks if the current path is a dashboard route.
+ * @returns {boolean} True when on a dashboard page
+ */
+export const isDashboardPath = () => {
+  const path = window?.location?.pathname || "";
+  return path.startsWith("/dashboard");
+};
+
+/**
+ * Scrolls to the top of the dashboard so alerts stay visible.
+ * @returns {void}
+ */
+export const scrollToDashboardTop = () => {
+  if (!isDashboardPath() || typeof window?.scrollTo !== "function") {
+    return;
+  }
+
+  window.scrollTo({ top: 0, behavior: "auto" });
+};
+
+/**
+ * Checks whether an element is fully visible in the viewport.
+ * @param {HTMLElement} element - Element to check
+ * @returns {boolean} True if element is fully visible
+ */
+export const isElementInView = (element) => {
+  if (!element || typeof element.getBoundingClientRect !== "function") {
+    return true;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const viewHeight = window.innerHeight || document.documentElement.clientHeight;
+  const viewWidth = window.innerWidth || document.documentElement.clientWidth;
+
+  return rect.top >= 0 && rect.left >= 0 && rect.bottom <= viewHeight && rect.right <= viewWidth;
+};
+
+/**
  * Returns a debounced version of the provided function.
  * @param {Function} fn - Function to debounce
  * @param {number} delay - Debounce delay in milliseconds
@@ -126,7 +164,12 @@ export const loadMap = async (divId, lat, long, options = {}) => {
   // Ensure Leaflet is loaded
   await loadLeafletScript();
 
-  const map = L.map(divId, { zoomControl: false }).setView([lat, long], options.zoom ?? 13);
+  const map = L.map(divId, {
+    zoomControl: false,
+    minZoom: 2,
+    maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
+    maxBoundsViscosity: 1.0,
+  }).setView([lat, long], options.zoom ?? 13);
 
   const interactive = options.interactive !== false;
 
@@ -137,6 +180,7 @@ export const loadMap = async (divId, lat, long, options = {}) => {
     {
       attribution: "",
       unloadInvisibleTiles: true,
+      noWrap: true,
     },
   ).addTo(map);
 

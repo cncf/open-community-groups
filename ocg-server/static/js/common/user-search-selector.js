@@ -1,7 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
-import "/static/js/common/avatar-image.js";
+import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
 
 /**
@@ -113,17 +113,17 @@ export class UserSearchSelector extends LitWrapper {
     const initials = computeUserInitials(user.name, user.username, 2);
     if (small) {
       return html`
-        <avatar-image
+        <logo-image
           image-url=${user.photo_url || ""}
           placeholder=${initials}
           size="size-[24px]"
           font-size="text-xs"
           hide-border="true"
         >
-        </avatar-image>
+        </logo-image>
       `;
     }
-    return html` <avatar-image image-url=${user.photo_url || ""} placeholder=${initials}></avatar-image> `;
+    return html` <logo-image image-url=${user.photo_url || ""} placeholder=${initials}></logo-image> `;
   }
 
   /**

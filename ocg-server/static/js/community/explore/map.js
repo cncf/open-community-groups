@@ -98,6 +98,7 @@ export class Map {
         subdomains: "abcd",
         maxZoom: 20,
         minZoom: 0,
+        noWrap: true,
       },
     ).addTo(this.map);
 

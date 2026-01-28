@@ -31,7 +31,9 @@
                    value="{{ group.name }}"
                    required>
           </div>
-          <p class="form-legend">Display name of the group (e.g. Kubernetes Amsterdam).</p>
+          <p class="form-legend">
+            Display name of the group (e.g. Kubernetes Amsterdam). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+          </p>
         </div>
         {# End Group name -#}
 
@@ -79,21 +81,21 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-3">
-          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="avatar" value="{{ group.logo_url }}" target="logo">
+          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="logo" value="{{ group.logo_url }}" target="logo" legend="If this logo isn't provided, we'll fall back to the community logo.">
         </image-field>
       </div>
       {# End Logo URL -#}
 
       {# Banner URL -#}
       <div class="col-span-full">
-        <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}" help-prefix-text="Size required 2428 x 192 px." target="banner">
+        <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}" help-prefix-text="Size required 2428 x 192 px." target="banner" legend="If this banner isn't provided, we'll fall back to the community banner.">
       </image-field>
     </div>
     {# End Banner URL -#}
 
     {# Banner Mobile URL -#}
     <div class="col-span-full">
-      <image-field class="w-full block" label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile">
+      <image-field class="w-full block" label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" legend="If this banner isn't provided, we'll fall back to the community banner.">
     </image-field>
   </div>
   {# End Banner Mobile URL -#}
@@ -108,7 +110,9 @@
                 class="input-primary"
                 maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{% if let Some(description_short) = &group.description_short %}{{ description_short }}{% endif %}</textarea>
     </div>
-    <p class="form-legend">Brief description for group listings and previews.</p>
+    <p class="form-legend">
+      Brief description for group listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
+    </p>
   </div>
   {# End Short Description -#}
 
@@ -118,9 +122,11 @@
       Description <span class="asterisk">*</span>
     </label>
     <div class="mt-2">
-      <markdown-editor id="description" name="description" content="{%- if let Some(description) = &group.description -%}{{ description }}{%- endif -%}" required></markdown-editor>
+      <markdown-editor id="description" name="description" content="{%- if let Some(description) = &group.description -%}{{ description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
     </div>
-    <p class="form-legend">Brief description of the group and its purpose.</p>
+    <p class="form-legend">
+      Brief description of the group and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
+    </p>
   </div>
   {# End Group Description -#}
 </div>
@@ -369,15 +375,6 @@
 {# End additional content section -#}
 
 <div class="mt-6 flex items-center justify-end gap-x-6">
-  {# Cancel button -#}
-  <button id="cancel-button"
-          type="button"
-          hx-get="/dashboard/community?tab=groups"
-          hx-target="body"
-          hx-indicator="#dashboard-spinner"
-          class="btn-primary-outline">Cancel</button>
-  {# End cancel button -#}
-
   {# Save button -#}
   <button type="submit" class="btn-primary relative">
     {{ ui::btn_spinner(id = "group-settings-update-spinner", spinner_type = "2") -}}
@@ -395,13 +392,6 @@
   import '/static/js/common/location-search-field.js';
 
   const groupsForm = document.getElementById('groups-form');
-  const cancelButton = document.getElementById('cancel-button');
-
-  if (cancelButton) {
-    cancelButton.addEventListener('htmx:afterRequest', () => {
-      history.pushState({}, "Groups list", '/dashboard/community?tab=groups');
-    });
-  }
 
   if (groupsForm) {
     groupsForm.addEventListener('htmx:afterRequest', (e) => {

@@ -1,3 +1,5 @@
+import { scrollToDashboardTop } from "/static/js/common/common.js";
+
 /**
  * Returns common configuration options for all alert dialogs.
  * Includes positioning, styling, and custom CSS classes.
@@ -95,6 +97,7 @@ const stripRetryMessage = (message) => {
  */
 export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   if (!xhr) {
+    scrollToDashboardTop();
     showErrorAlert(errorMessage);
     return false;
   }
@@ -108,10 +111,12 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
 
   if (xhr.status === 422) {
     const cleanedErrorMessage = stripRetryMessage(errorMessage);
+    scrollToDashboardTop();
     showServerErrorAlert(cleanedErrorMessage, xhr.responseText?.trim());
     return false;
   }
 
+  scrollToDashboardTop();
   showErrorAlert(errorMessage);
   return false;
 };
