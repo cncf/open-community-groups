@@ -24,12 +24,8 @@
             </div>
           </div>
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "groups-running-chart", data = stats.groups.running_total, class = "h-[320px]", min_points = 1) -}}
-            </div>
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "groups-monthly-chart", data = stats.groups.per_month, class = "h-[320px]") -}}
-            </div>
+            {{ stats_macro::analytics_chart(chart_id = "groups-running-chart", data = stats.groups.running_total, class = "h-[320px]", min_points = 1) -}}
+            {{ stats_macro::analytics_chart(chart_id = "groups-monthly-chart", data = stats.groups.per_month, class = "h-[320px]") -}}
           </div>
         </section>
         {# End groups section #}
@@ -45,12 +41,8 @@
             </div>
           </div>
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, class = "h-[320px]", min_points = 1) -}}
-            </div>
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month, class = "h-[320px]") -}}
-            </div>
+            {{ stats_macro::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, class = "h-[320px]", min_points = 1) -}}
+            {{ stats_macro::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month, class = "h-[320px]") -}}
           </div>
         </section>
         {# End members section #}
@@ -66,12 +58,8 @@
             </div>
           </div>
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, class = "h-[320px]", min_points = 1) -}}
-            </div>
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month, class = "h-[320px]") -}}
-            </div>
+            {{ stats_macro::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, class = "h-[320px]", min_points = 1) -}}
+            {{ stats_macro::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month, class = "h-[320px]") -}}
           </div>
         </section>
         {# End events section #}
@@ -87,12 +75,8 @@
             </div>
           </div>
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, class = "h-[320px]", min_points = 1) -}}
-            </div>
-            <div class="bg-white border border-stone-200 rounded-lg p-6">
-              {{ stats_macro::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month, class = "h-[320px]") -}}
-            </div>
+            {{ stats_macro::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, class = "h-[320px]", min_points = 1) -}}
+            {{ stats_macro::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month, class = "h-[320px]") -}}
           </div>
         </section>
         {# End attendees section #}
