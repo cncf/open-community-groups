@@ -60,6 +60,8 @@ pub(crate) async fn list_page(
         navigation_links,
         roles,
         total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
     };
 
     // Prepare response headers

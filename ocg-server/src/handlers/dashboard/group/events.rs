@@ -114,6 +114,9 @@ pub(crate) async fn list_page(
         events_tab: filters.current_tab(),
         past_navigation_links,
         upcoming_navigation_links,
+        limit: filters.limit,
+        past_offset: filters.past_offset,
+        upcoming_offset: filters.upcoming_offset,
     };
 
     // Prepare response headers

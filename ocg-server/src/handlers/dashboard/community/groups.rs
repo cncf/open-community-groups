@@ -67,6 +67,8 @@ pub(crate) async fn list_page(
         groups: results.groups,
         navigation_links,
         total: results.total,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
         ts_query: page_filters.ts_query.clone(),
     };
 

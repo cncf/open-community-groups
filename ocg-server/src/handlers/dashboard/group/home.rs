@@ -94,6 +94,9 @@ pub(crate) async fn page(
                 events_tab: filters.current_tab(),
                 past_navigation_links,
                 upcoming_navigation_links,
+                limit: filters.limit,
+                past_offset: filters.past_offset,
+                upcoming_offset: filters.upcoming_offset,
             }))
         }
         Tab::Members => {
@@ -113,6 +116,8 @@ pub(crate) async fn page(
                 members: results.members,
                 navigation_links,
                 total: results.total,
+                limit: filters.limit,
+                offset: filters.offset,
             })
         }
         Tab::Settings => {
@@ -144,6 +149,8 @@ pub(crate) async fn page(
                 navigation_links,
                 sponsors: results.sponsors,
                 total: results.total,
+                limit: filters.limit,
+                offset: filters.offset,
             })
         }
         Tab::Team => {
@@ -168,6 +175,8 @@ pub(crate) async fn page(
                 navigation_links,
                 roles,
                 total: results.total,
+                limit: filters.limit,
+                offset: filters.offset,
             })
         }
     };

@@ -44,6 +44,10 @@ pub(crate) struct ListPage {
     /// Total number of groups in the community.
     pub total: usize,
 
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
     /// Text search query used to filter results.
     pub ts_query: Option<String>,
 }

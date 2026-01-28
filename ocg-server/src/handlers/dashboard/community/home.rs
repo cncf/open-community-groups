@@ -89,6 +89,8 @@ pub(crate) async fn page(
                 groups: results.groups,
                 navigation_links,
                 total: results.total,
+                limit: page_filters.limit,
+                offset: page_filters.offset,
                 ts_query: page_filters.ts_query,
             })
         }
@@ -113,6 +115,8 @@ pub(crate) async fn page(
                 members: results.members,
                 navigation_links,
                 total: results.total,
+                limit: page_filters.limit,
+                offset: page_filters.offset,
             })
         }
     };

@@ -31,6 +31,11 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// Total number of attendees for the selected event.
     pub total: usize,
+
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
 }
 
 // Types.

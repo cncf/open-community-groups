@@ -69,6 +69,8 @@ pub(crate) async fn list_page(
         event,
         navigation_links,
         total: search_attendees_results.total,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
     };
 
     Ok(Html(template.render()?))

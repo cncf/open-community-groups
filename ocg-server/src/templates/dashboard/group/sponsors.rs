@@ -35,6 +35,11 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// Total number of sponsors in the group.
     pub total: usize,
+
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
 }
 
 /// Update sponsor page template.

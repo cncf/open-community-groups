@@ -61,6 +61,8 @@ pub(crate) async fn list_page(
         navigation_links,
         sponsors: results.sponsors,
         total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
     };
 
     // Prepare response headers

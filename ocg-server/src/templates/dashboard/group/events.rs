@@ -64,6 +64,13 @@ pub(crate) struct ListPage {
     pub past_navigation_links: pagination::NavigationLinks,
     /// Pagination links for upcoming events.
     pub upcoming_navigation_links: pagination::NavigationLinks,
+
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for past events.
+    pub past_offset: Option<usize>,
+    /// Pagination offset for upcoming events.
+    pub upcoming_offset: Option<usize>,
 }
 
 /// Update event page template.
