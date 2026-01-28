@@ -278,6 +278,7 @@ mock! {
             &self,
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::sponsors::GroupSponsorsFilters,
+            full_list: bool,
         ) -> Result<crate::templates::dashboard::group::sponsors::GroupSponsorsOutput>;
         async fn list_group_team_members(
             &self,

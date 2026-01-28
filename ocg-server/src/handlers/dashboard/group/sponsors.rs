@@ -48,7 +48,7 @@ pub(crate) async fn list_page(
     // Fetch sponsors
     let filters: GroupSponsorsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let results = db.list_group_sponsors(group_id, &filters).await?;
+    let results = db.list_group_sponsors(group_id, &filters, false).await?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
@@ -253,12 +253,13 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id, filters| {
+            .withf(move |id, filters, full_list| {
                 *id == group_id
                     && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                     && filters.offset == Some(0)
+                    && !*full_list
             })
-            .returning(move |_, _| Ok(output.clone()));
+            .returning(move |_, _, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -325,10 +326,10 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id, filters| {
-                *id == group_id && filters.limit == Some(5) && filters.offset == Some(10)
+            .withf(move |id, filters, full_list| {
+                *id == group_id && filters.limit == Some(5) && filters.offset == Some(10) && !*full_list
             })
-            .returning(move |_, _| Ok(output.clone()));
+            .returning(move |_, _, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

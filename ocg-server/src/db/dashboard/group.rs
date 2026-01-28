@@ -88,11 +88,13 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available group roles.
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
 
-    /// Lists all sponsors for a group.
+    /// Lists sponsors for a group.
+    /// When `full_list` is true, ignores pagination filters.
     async fn list_group_sponsors(
         &self,
         group_id: Uuid,
         filters: &GroupSponsorsFilters,
+        full_list: bool,
     ) -> Result<GroupSponsorsOutput>;
 
     /// Lists all group team members.
@@ -416,14 +418,15 @@ impl DBDashboardGroup for PgDB {
         &self,
         group_id: Uuid,
         filters: &GroupSponsorsFilters,
+        full_list: bool,
     ) -> Result<GroupSponsorsOutput> {
         trace!("db: list group sponsors");
 
         let db = self.pool.get().await?;
         let row = db
             .query_one(
-                "select list_group_sponsors($1::uuid, $2::jsonb)::text",
-                &[&group_id, &Json(filters)],
+                "select list_group_sponsors($1::uuid, $2::jsonb, $3::bool)::text",
+                &[&group_id, &Json(filters), &full_list],
             )
             .await?;
         let output: GroupSponsorsOutput = serde_json::from_str(&row.get::<_, String>(0))?;

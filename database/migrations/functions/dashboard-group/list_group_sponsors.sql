@@ -1,5 +1,5 @@
--- Returns paginated sponsors for a given group.
-create or replace function list_group_sponsors(p_group_id uuid, p_filters jsonb)
+-- Returns sponsors for a given group, optionally unpaginated.
+create or replace function list_group_sponsors(p_group_id uuid, p_filters jsonb, p_full_list boolean)
 returns json as $$
     with
         filters as (
@@ -17,8 +17,8 @@ returns json as $$
             from group_sponsor gs
             where gs.group_id = p_group_id
             order by gs.name asc, gs.group_sponsor_id asc
-            offset (select offset_value from filters)
-            limit (select limit_value from filters)
+            offset case when p_full_list then 0 else (select offset_value from filters) end
+            limit case when p_full_list then null else (select limit_value from filters) end
         ),
         totals as (
             select count(*)::int as total

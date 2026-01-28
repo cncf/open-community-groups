@@ -61,7 +61,7 @@ pub(crate) async fn add_page(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
-        db.list_group_sponsors(group_id, &sponsor_filters),
+        db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones()
     )?;
 
@@ -141,7 +141,7 @@ pub(crate) async fn update_page(
         db.list_event_categories(community_id),
         db.list_event_kinds(),
         db.list_session_kinds(),
-        db.list_group_sponsors(group_id, &sponsor_filters),
+        db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones()
     )?;
     let template = events::UpdatePage {
@@ -585,12 +585,13 @@ mod tests {
             .returning(move || Ok(vec![session_kind.clone()]));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id, filters| {
+            .withf(move |id, filters, full_list| {
                 *id == group_id
                     && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                     && filters.offset == Some(0)
+                    && *full_list
             })
-            .returning(move |_, _| {
+            .returning(move |_, _, _| {
                 Ok(
                     crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
                         sponsors: vec![sponsor.clone()],
@@ -756,12 +757,13 @@ mod tests {
             .returning(move || Ok(vec![session_kind.clone()]));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id, filters| {
+            .withf(move |id, filters, full_list| {
                 *id == group_id
                     && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                     && filters.offset == Some(0)
+                    && *full_list
             })
-            .returning(move |_, _| {
+            .returning(move |_, _, _| {
                 Ok(
                     crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
                         sponsors: vec![sponsor.clone()],
