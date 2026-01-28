@@ -288,6 +288,7 @@ pub(crate) struct PaginatedEvents {
 
 /// Tab selection for the events list.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum EventsTab {
     /// Past events tab (default).

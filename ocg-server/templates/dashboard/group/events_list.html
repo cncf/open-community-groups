@@ -37,8 +37,7 @@
       <button type="button"
         id="upcoming-tab"
         data-active="{{ events_tab == EventsTab::Upcoming }}"
-        hx-get="/dashboard/group/events?events_tab=Upcoming"
-        {# hx-get="/dashboard/group/events?events_tab={{ EventsTab::Upcoming }}" #}
+        hx-get="/dashboard/group/events?events_tab={{ EventsTab::Upcoming }}"
         hx-target="#dashboard-content"
         hx-swap="innerHTML show:window:top"
         hx-indicator="#dashboard-spinner"
@@ -50,8 +49,7 @@
       <button type="button"
         id="past-tab"
         data-active="{{ events_tab == EventsTab::Past }}"
-        hx-get="/dashboard/group/events?events_tab=Past"
-        {# hx-get="/dashboard/group/events?events_tab={{ EventsTab::Past }}" #}
+        hx-get="/dashboard/group/events?events_tab={{ EventsTab::Past }}"
         hx-target="#dashboard-content"
         hx-swap="innerHTML show:window:top"
         hx-indicator="#dashboard-spinner"
