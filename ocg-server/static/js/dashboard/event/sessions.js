@@ -40,6 +40,7 @@ export class SessionsSection extends LitWrapper {
     meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
     // Whether meetings feature is enabled for the group
     meetingsEnabled: { type: Boolean, attribute: "meetings-enabled" },
+    descriptionMaxLength: { type: Number, attribute: "description-max-length" },
     // Disable editing controls
     disabled: { type: Boolean },
   };
@@ -50,6 +51,7 @@ export class SessionsSection extends LitWrapper {
     this.sessionKinds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
+    this.descriptionMaxLength = undefined;
     this.disabled = false;
     this._bindHtmxCleanup();
   }
@@ -254,6 +256,7 @@ export class SessionsSection extends LitWrapper {
           .sessionKinds=${this.sessionKinds || []}
           .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
           .meetingsEnabled=${this.meetingsEnabled}
+          .descriptionMaxLength=${this.descriptionMaxLength}
           .onDataChange=${this._onDataChange}
           .disabled=${this.disabled}
           class="w-full"
@@ -355,6 +358,7 @@ class SessionItem extends LitWrapper {
     },
     // Whether meetings feature is enabled for the group
     meetingsEnabled: { type: Boolean },
+    descriptionMaxLength: { type: Number, attribute: "description-max-length" },
     // Disable editing controls
     disabled: { type: Boolean },
   };
@@ -382,6 +386,7 @@ class SessionItem extends LitWrapper {
     this.sessionKinds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
+    this.descriptionMaxLength = undefined;
     this.disabled = false;
   }
 
@@ -539,7 +544,7 @@ class SessionItem extends LitWrapper {
             name="sessions[${this.index}][description]"
             content=${this.data.description}
             .onChange=${(value) => this._onTextareaChange(value)}
-            maxlength=${8000}
+            maxlength=${this.descriptionMaxLength}
             mini
             ?disabled=${this.disabled}
           ></markdown-editor>

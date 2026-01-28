@@ -406,7 +406,7 @@
   <form id="sessions-form">
     <div class="pb-12">
       <div class="mt-10">
-        <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}"
+        <sessions-section session-kinds="{{ session_kinds|json }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
         {% if meetings_enabled %}meetings-enabled{% endif %}
         ></sessions-section>
       </div>
