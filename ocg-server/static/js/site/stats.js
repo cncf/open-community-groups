@@ -1,65 +1,14 @@
 import {
-  clearChartElement,
   createAreaChart,
   createMonthlyBarChart,
   deferUntilHtmxSettled,
   getThemePalette,
   hasChartData,
   hasTimeSeriesData,
-  initChart,
   loadEChartsScript,
-  showChartEmptyState,
 } from "/static/js/dashboard/common.js";
 import { debounce } from "/static/js/common/common.js";
-
-/**
- * Render a chart or show an empty state based on data availability.
- * @param {string} elementId - Target chart element id.
- * @param {Object} option - ECharts option object.
- * @param {boolean} hasData - Whether the chart has data to render.
- * @returns {echarts.ECharts|null} Chart instance or null.
- */
-const renderChart = (elementId, option, hasData) => {
-  if (!hasData) {
-    showChartEmptyState(elementId);
-    return null;
-  }
-
-  const element = clearChartElement(elementId);
-  if (!element) {
-    return null;
-  }
-
-  return initChart(elementId, option);
-};
-
-/**
- * Compute a reasonable label interval for category axes.
- * @param {number} count - Total number of labels.
- * @param {number} target - Target labels to show.
- * @returns {number} ECharts interval value.
- */
-const getCategoryLabelInterval = (count, target = 12) => {
-  if (!count) {
-    return 0;
-  }
-
-  const step = Math.ceil(count / target);
-  return Math.max(step - 1, 0);
-};
-
-/**
- * Compute a reasonable split count for time axes.
- * @param {number} count - Total number of points.
- * @returns {number} ECharts splitNumber value.
- */
-const getTimeSplitNumber = (count) => {
-  if (!count) {
-    return 4;
-  }
-
-  return Math.min(6, Math.max(3, Math.round(count / 6)));
-};
+import { getCategoryLabelInterval, getTimeSplitNumber, renderChart } from "/static/js/common/stats.js";
 
 /**
  * Initialize charts for a stats section.

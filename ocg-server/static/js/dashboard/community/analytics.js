@@ -1,7 +1,6 @@
 import {
   getThemePalette,
   toCategorySeries,
-  initChart,
   createAreaChart,
   createMonthlyBarChart,
   createHorizontalBarChart,
@@ -15,35 +14,9 @@ import {
   hasChartData,
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
-  showChartEmptyState,
-  clearChartElement,
 } from "/static/js/dashboard/common.js";
 import { debounce } from "/static/js/common/common.js";
-
-/**
- * Render a chart or show an empty state based on data availability.
- * @param {string} elementId - Target chart element id.
- * @param {Object} option - ECharts option object.
- * @param {boolean} hasData - Whether the chart has data to render.
- * @returns {echarts.ECharts|null} Chart instance or null.
- */
-const renderChart = (elementId, option, hasData) => {
-  const seriesData = option?.series?.[0]?.data || [];
-  const needsTrendLine = option?.xAxis?.type === "time" && option?.series?.[0]?.type === "line";
-  const canRender = hasData && (!needsTrendLine || seriesData.length >= 2);
-
-  if (!canRender) {
-    showChartEmptyState(elementId);
-    return null;
-  }
-
-  const element = clearChartElement(elementId);
-  if (!element) {
-    return null;
-  }
-
-  return initChart(elementId, option);
-};
+import { renderChart } from "/static/js/common/stats.js";
 
 /**
  * Render groups charts.
