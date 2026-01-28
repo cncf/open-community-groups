@@ -225,7 +225,6 @@ pub struct EventFull {
 
 impl EventFull {
     /// Check if the event is currently live.
-    #[allow(dead_code)]
     pub fn is_live(&self) -> bool {
         match (self.starts_at, self.ends_at) {
             (Some(starts_at), Some(ends_at)) => {
@@ -237,7 +236,6 @@ impl EventFull {
     }
 
     /// Check if the event is in the past.
-    #[allow(dead_code)]
     pub fn is_past(&self) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);
         match reference_time {

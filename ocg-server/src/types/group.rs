@@ -171,7 +171,6 @@ pub struct GroupFull {
 
 impl GroupFull {
     /// Build a display-friendly location string from available location data.
-    #[allow(dead_code)]
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
             .city(self.city.as_ref())
