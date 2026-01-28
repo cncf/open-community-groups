@@ -68,10 +68,10 @@
                 {%- else -%}
                   {{ ui::icon_text(icon_name = "location", text = "No location provided") -}}
                 {% endif -%}
-                <span class="ml-auto">{{ badges::event_badge(kind = event.kind) -}}</span>
+                <span class="ml-auto">{{ badges::event_badge(kind = event.kind, extra_styles = Some("py-0.5 px-1") ) -}}</span>
               {% else -%}
                 {{ ui::icon_text(icon_name = "location", text = "Virtual") -}}
-                <span class="ml-auto">{{ badges::event_badge(kind = event.kind) -}}</span>
+                <span class="ml-auto">{{ badges::event_badge(kind = event.kind, extra_styles = Some("py-0.5 px-1") ) -}}</span>
               {% endif -%}
             </div>
             {# End event location - Desktop -#}
