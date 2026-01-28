@@ -532,6 +532,7 @@ mock! {
             &self,
         ) -> Result<Vec<crate::types::group::GroupSummary>>;
         async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;
+        async fn get_site_stats(&self) -> Result<crate::templates::site::stats::SiteStats>;
         async fn get_site_upcoming_events(
             &self,
             event_kinds: Vec<crate::types::event::EventKind>,

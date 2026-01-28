@@ -148,6 +148,7 @@ pub(crate) async fn setup(
         )
         .route("/explore/events/search", get(site::explore::search_events))
         .route("/explore/groups/search", get(site::explore::search_groups))
+        .route("/stats", get(site::stats::page))
         .route("/health-check", get(health_check))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))

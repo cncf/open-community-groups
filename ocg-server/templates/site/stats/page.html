@@ -1,0 +1,109 @@
+{% extends "common/base.html" -%}
+{% import "macros/dashboard.html" as dashboard -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
+    <div class="flex flex-col gap-y-10">
+      <div>
+        <div class="text-2xl lg:text-3xl font-medium text-stone-900">Stats</div>
+        <div class="mt-1 flex flex-wrap items-center gap-3">
+          <p class="text-sm/6 text-stone-500 m-0">Global growth trends across all communities.</p>
+        </div>
+      </div>
+
+      <div class="space-y-12">
+        {# Groups section #}
+        <section class="space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="text-lg lg:text-xl font-semibold text-stone-900">Groups</div>
+            <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500">
+              Total
+              <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.groups.total|num_fmt }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "groups-running-chart", data = stats.groups.running_total, class = "h-[320px]", min_points = 1) -}}
+            </div>
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "groups-monthly-chart", data = stats.groups.per_month, class = "h-[320px]") -}}
+            </div>
+          </div>
+        </section>
+        {# End groups section #}
+
+        {# Members section #}
+        <section class="space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="text-lg lg:text-xl font-semibold text-stone-900">Members</div>
+            <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500">
+              Total
+              <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.members.total|num_fmt }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, class = "h-[320px]", min_points = 1) -}}
+            </div>
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month, class = "h-[320px]") -}}
+            </div>
+          </div>
+        </section>
+        {# End members section #}
+
+        {# Events section #}
+        <section class="space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="text-lg lg:text-xl font-semibold text-stone-900">Events</div>
+            <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500">
+              Total
+              <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.events.total|num_fmt }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, class = "h-[320px]", min_points = 1) -}}
+            </div>
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month, class = "h-[320px]") -}}
+            </div>
+          </div>
+        </section>
+        {# End events section #}
+
+        {# Attendees section #}
+        <section class="space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="text-lg lg:text-xl font-semibold text-stone-900">Attendees</div>
+            <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500">
+              Total
+              <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.attendees.total|num_fmt }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, class = "h-[320px]", min_points = 1) -}}
+            </div>
+            <div class="bg-white border border-stone-200 rounded-lg p-6">
+              {{ dashboard::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month, class = "h-[320px]") -}}
+            </div>
+          </div>
+        </section>
+        {# End attendees section #}
+      </div>
+    </div>
+  </div>
+{% endblock content -%}
+
+{% block scripts -%}
+  {# djlint:off #}
+  <script type="module">
+    import { initSiteStatsCharts } from '/static/js/site/stats.js';
+
+    const stats = {{ stats | json | safe }};
+    initSiteStatsCharts(stats)
+      .catch((error) => console.error('Failed to initialize site stats charts:', error));
+</script>
+  {# djlint:on #}
+{% endblock scripts -%}

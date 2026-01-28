@@ -641,6 +641,32 @@ pub(crate) fn sample_site_settings() -> SiteSettings {
     }
 }
 
+/// Sample site stats for stats page tests.
+pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
+    crate::templates::site::stats::SiteStats {
+        attendees: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        events: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        groups: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        members: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+    }
+}
+
 /// Sample sponsor form payload used by dashboard group sponsors tests.
 pub(crate) fn sample_sponsor_form() -> Sponsor {
     Sponsor {
