@@ -81,21 +81,21 @@
 
         {# Logo URL -#}
         <div class="col-span-full lg:col-span-3">
-          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="logo" value="{{ group.logo_url }}" target="logo" legend="If this is missing we'll display the community logo.">
+          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="logo" value="{{ group.logo_url }}" target="logo" legend="If this logo isn't provided, we'll fall back to the community logo.">
         </image-field>
       </div>
       {# End Logo URL -#}
 
       {# Banner URL -#}
       <div class="col-span-full">
-        <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}" help-prefix-text="Size required 2428 x 192 px." target="banner" legend="If this is missing we'll display the community banner.">
+        <image-field class="w-full block" label="Banner" name="banner_url" image-kind="banner" value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}" help-prefix-text="Size required 2428 x 192 px." target="banner" legend="If this banner isn't provided, we'll fall back to the community banner.">
       </image-field>
     </div>
     {# End Banner URL -#}
 
     {# Banner Mobile URL -#}
     <div class="col-span-full">
-      <image-field class="w-full block" label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" legend="If this is missing we'll display the community banner.">
+      <image-field class="w-full block" label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" legend="If this banner isn't provided, we'll fall back to the community banner.">
     </image-field>
   </div>
   {# End Banner Mobile URL -#}
