@@ -89,6 +89,9 @@ select is(
     'Should return published past events ordered by date DESC as JSON'
 );
 
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 -- Finish tests and rollback transaction
 select * from finish();

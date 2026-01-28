@@ -3,25 +3,11 @@ import {
   getThemePalette,
   createAreaChart,
   createMonthlyBarChart,
-  initChart,
   deferUntilHtmxSettled,
+  hasChartData,
+  hasTimeSeriesData,
 } from "/static/js/dashboard/common.js";
-import { debounce } from "/static/js/common/common.js";
-
-/**
- * Initialize a chart if its element exists.
- * @param {string} elementId - Target chart element id.
- * @param {Object} option - ECharts option to render.
- * @returns {echarts.ECharts|null} Chart instance or null.
- */
-const renderChart = (elementId, option) => {
-  const chartElement = document.getElementById(elementId);
-  if (!chartElement) {
-    return null;
-  }
-
-  return initChart(elementId, option);
-};
+import { registerChartResizeHandler, renderChart } from "/static/js/common/stats.js";
 
 /**
  * Build charts for members metrics.
@@ -33,22 +19,22 @@ const initMembersCharts = (stats = {}, palette) => {
   const charts = [];
 
   const runningData = stats.running_total || [];
-  charts.push(
-    renderChart(
-      "members-running-chart",
-      createAreaChart("Members over time", "Members", runningData, palette),
-    ),
+  const runningChart = renderChart(
+    "members-running-chart",
+    createAreaChart("Members over time", "Members", runningData, palette),
+    hasTimeSeriesData(runningData),
   );
+  if (runningChart) charts.push(runningChart);
 
   const monthlyData = stats.per_month || [];
-  charts.push(
-    renderChart(
-      "members-monthly-chart",
-      createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette),
-    ),
+  const monthlyChart = renderChart(
+    "members-monthly-chart",
+    createMonthlyBarChart("New Members per Month", "Members", monthlyData, palette),
+    hasChartData(monthlyData),
   );
+  if (monthlyChart) charts.push(monthlyChart);
 
-  return charts.filter(Boolean);
+  return charts;
 };
 
 /**
@@ -61,19 +47,22 @@ const initEventsCharts = (stats = {}, palette) => {
   const charts = [];
 
   const runningData = stats.running_total || [];
-  charts.push(
-    renderChart("events-running-chart", createAreaChart("Events over time", "Events", runningData, palette)),
+  const runningChart = renderChart(
+    "events-running-chart",
+    createAreaChart("Events over time", "Events", runningData, palette),
+    hasTimeSeriesData(runningData),
   );
+  if (runningChart) charts.push(runningChart);
 
   const monthlyData = stats.per_month || [];
-  charts.push(
-    renderChart(
-      "events-monthly-chart",
-      createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette),
-    ),
+  const monthlyChart = renderChart(
+    "events-monthly-chart",
+    createMonthlyBarChart("New Events per Month", "Events", monthlyData, palette),
+    hasChartData(monthlyData),
   );
+  if (monthlyChart) charts.push(monthlyChart);
 
-  return charts.filter(Boolean);
+  return charts;
 };
 
 /**
@@ -86,22 +75,22 @@ const initAttendeesCharts = (stats = {}, palette) => {
   const charts = [];
 
   const runningData = stats.running_total || [];
-  charts.push(
-    renderChart(
-      "attendees-running-chart",
-      createAreaChart("Attendees over time", "Attendees", runningData, palette),
-    ),
+  const runningChart = renderChart(
+    "attendees-running-chart",
+    createAreaChart("Attendees over time", "Attendees", runningData, palette),
+    hasTimeSeriesData(runningData),
   );
+  if (runningChart) charts.push(runningChart);
 
   const monthlyData = stats.per_month || [];
-  charts.push(
-    renderChart(
-      "attendees-monthly-chart",
-      createMonthlyBarChart("New Attendees per Month", "Attendees", monthlyData, palette),
-    ),
+  const monthlyChart = renderChart(
+    "attendees-monthly-chart",
+    createMonthlyBarChart("New Attendees per Month", "Attendees", monthlyData, palette),
+    hasChartData(monthlyData),
   );
+  if (monthlyChart) charts.push(monthlyChart);
 
-  return charts.filter(Boolean);
+  return charts;
 };
 
 /**
@@ -125,10 +114,6 @@ export const initAnalyticsCharts = async (stats) => {
 
     const hydratedCharts = charts.filter(Boolean);
 
-    const resizeCharts = debounce(() => {
-      hydratedCharts.forEach((chart) => chart.resize());
-    }, 200);
-
-    window.addEventListener("resize", resizeCharts);
+    registerChartResizeHandler(hydratedCharts);
   });
 };

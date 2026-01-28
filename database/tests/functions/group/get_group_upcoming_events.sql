@@ -97,6 +97,10 @@ select is(
     'Should return empty array with non-existing group slug'
 );
 
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
 -- Finish tests and rollback transaction
 select * from finish();
 rollback;

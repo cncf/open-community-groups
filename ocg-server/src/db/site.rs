@@ -7,6 +7,7 @@ use tracing::{instrument, trace};
 use crate::{
     db::PgDB,
     templates::site::explore::{Entity, FiltersOptions},
+    templates::site::stats::SiteStats,
     types::{
         community::CommunitySummary,
         event::{EventKind, EventSummary},
@@ -36,6 +37,9 @@ pub(crate) trait DBSite {
 
     /// Retrieves the site settings.
     async fn get_site_settings(&self) -> Result<SiteSettings>;
+
+    /// Retrieves the site stats for the stats page.
+    async fn get_site_stats(&self) -> Result<SiteStats>;
 
     /// Retrieves upcoming events across all communities.
     async fn get_site_upcoming_events(&self, event_kinds: Vec<EventKind>) -> Result<Vec<EventSummary>>;
@@ -100,6 +104,17 @@ impl DBSite for PgDB {
         let settings: SiteSettings = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(settings)
+    }
+
+    #[instrument(skip(self), err)]
+    async fn get_site_stats(&self) -> Result<SiteStats> {
+        trace!("db: get site stats");
+
+        let db = self.pool.get().await?;
+        let row = db.query_one("select get_site_stats()::text", &[]).await?;
+        let stats: SiteStats = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(stats)
     }
 
     #[instrument(skip(self), err)]

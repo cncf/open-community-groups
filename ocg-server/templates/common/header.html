@@ -32,13 +32,14 @@
       <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
         {{ header::link(content = "Home", href = "/", current_path = path) -}}
         {{ header::link(content = "Explore", href = explore_events, current_path = path, path = "/explore") -}}
+        {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
       </div>
       {# End desktop links -#}
     </div>
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end">
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteStats || page_id == PageId::Community || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
@@ -119,6 +120,19 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Explore</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="/stats"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-charts bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Stats</div>
               </div>
             </a>
           </li>
@@ -210,7 +224,7 @@
             </a>
           </li>
 
-          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
+          <li class="lg:hidden" role="none">
             <a href="{{ explore_events }}"
                hx-boost="true"
                hx-target="body"
@@ -219,6 +233,19 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Explore</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
+            <a href="/stats"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-charts bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Stats</div>
               </div>
             </a>
           </li>

@@ -47,6 +47,23 @@ impl Page {
         self.groups_by_community.iter().map(|c| &c.community).collect()
     }
 
+    /// Returns the selected community and group details.
+    #[allow(dead_code)]
+    fn current_selection_details(&self) -> (&CommunitySummary, &GroupMinimal) {
+        let selected_community = self
+            .groups_by_community
+            .iter()
+            .find(|c| c.community.community_id == self.selected_community_id)
+            .expect("selected community exists");
+        let selected_group = selected_community
+            .groups
+            .iter()
+            .find(|g| g.group_id == self.selected_group_id)
+            .expect("selected group exists");
+
+        (&selected_community.community, selected_group)
+    }
+
     /// Returns groups for the currently selected community.
     fn selected_community_groups(&self) -> &[GroupMinimal] {
         self.groups_by_community
