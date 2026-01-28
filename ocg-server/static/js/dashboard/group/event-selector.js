@@ -17,6 +17,8 @@ class EventSelector extends LitWrapper {
    * - selectedEventId: currently applied event uuid
    * - selectedEvent: preloaded event payload to render selected label
    * - groupId: optional override group uuid
+   * - community: community slug for event search
+   * - groupSlug: group slug for event search
    * - buttonId: optional button id to control focus interactions
    * - _isOpen: dropdown visibility flag
    * - _query: current search term
@@ -43,6 +45,8 @@ class EventSelector extends LitWrapper {
       },
     },
     groupId: { type: String, attribute: "group-id" },
+    community: { type: String, attribute: "community" },
+    groupSlug: { type: String, attribute: "group-slug" },
     buttonId: { type: String, attribute: "button-id" },
     _isOpen: { state: true },
     _query: { state: true },
@@ -58,6 +62,8 @@ class EventSelector extends LitWrapper {
     this.selectedEventId = "";
     this.selectedEvent = null;
     this.groupId = "";
+    this.community = "";
+    this.groupSlug = "";
     this.buttonId = "";
     this._isOpen = false;
     this._query = "";
@@ -96,7 +102,7 @@ class EventSelector extends LitWrapper {
       this._hasFetched = false;
       this._primaryResults = [];
     }
-    if (changed.has("groupId")) {
+    if (changed.has("groupId") || changed.has("community") || changed.has("groupSlug")) {
       this._hasFetched = false;
       this._primaryResults = [];
     }
@@ -397,90 +403,42 @@ class EventSelector extends LitWrapper {
   }
 
   /**
-   * Reads the selected community name from the community-selector component.
-   * @returns {string} Community name or empty string if not found.
+   * Gets the group dashboard selection context from DOM.
+   * @returns {{community: string, groupSlug: string}}
    */
-  _getCommunityNameFromSelector() {
-    const selector = document.querySelector("community-selector");
-    if (!selector) {
-      return "";
-    }
-    const communities = this._normalizeSelectorItems(
-      selector.communities ?? selector.getAttribute("communities"),
-    );
-    const selectedId = selector.selectedCommunityId || selector.getAttribute("selected-community-id");
-    if (!selectedId) {
-      return "";
-    }
-    for (const item of communities) {
-      const community = item.community || item;
-      const id = community.community_id;
-      if (String(id) === String(selectedId)) {
-        return community.name || "";
-      }
-    }
-    return "";
+  _getDashboardSelection() {
+    const container = this.closest("#dashboard-content") || document.getElementById("dashboard-content");
+    return {
+      community: container?.dataset?.community || "",
+      groupSlug: container?.dataset?.groupSlug || "",
+    };
   }
 
   /**
-   * Reads the selected group slug from the group-selector component.
-   * @param {string} groupIdOverride Optional group id override.
-   * @returns {string} Group slug or empty string if not found.
+   * Gets the community name for search requests.
+   * @returns {string}
    */
-  _getGroupSlugFromSelector(groupIdOverride = "") {
-    const selector = document.querySelector("group-selector");
-    if (!selector) {
-      return "";
+  _getCommunityName() {
+    if (this.community) {
+      return this.community;
     }
-    const selectedId =
-      groupIdOverride || selector.selectedGroupId || selector.getAttribute("selected-group-id");
-    if (!selectedId) {
-      return "";
-    }
-    const safeSelectedId =
-      typeof CSS !== "undefined" && typeof CSS.escape === "function"
-        ? CSS.escape(String(selectedId))
-        : String(selectedId);
-    const selectedGroup = selector.querySelector(`[data-group-id="${safeSelectedId}"]`);
-    const slugFromAttribute = selectedGroup?.dataset?.groupSlug;
-    if (slugFromAttribute) {
-      return slugFromAttribute;
-    }
-    const groups = this._normalizeSelectorItems(selector.groups ?? selector.getAttribute("groups"));
-    for (const group of groups) {
-      if (String(group.group_id) === String(selectedId)) {
-        return group.slug || "";
-      }
-    }
-    return "";
+    return this._getDashboardSelection().community;
   }
 
   /**
-   * Normalizes selector payloads into arrays.
-   * @param {unknown} value Selector payload.
-   * @returns {Array<object>}
+   * Gets the group slug for search requests.
+   * @returns {string}
    */
-  _normalizeSelectorItems(value) {
-    if (!value) {
-      return [];
+  _getGroupSlug() {
+    if (this.groupSlug) {
+      return this.groupSlug;
     }
-    if (Array.isArray(value)) {
-      return value;
-    }
-    if (typeof value === "string") {
-      try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (_error) {
-        return [];
-      }
-    }
-    return [];
+    return this._getDashboardSelection().groupSlug;
   }
 
   /**
    * Performs a remote search using the provided config.
-   * @param {{groupId: string, sortDirection?: string, query?: string, dateFrom?: string, dateTo?: string}} config
+   * @param {{sortDirection?: string, query?: string, dateFrom?: string, dateTo?: string}} config
    * @returns {Promise<object[]>}
    */
   async _requestEvents(config) {
@@ -499,8 +457,8 @@ class EventSelector extends LitWrapper {
       params.set("ts_query", config.query);
     }
 
-    const groupSlug = this._getGroupSlugFromSelector(config.groupId);
-    const communityName = this._getCommunityNameFromSelector();
+    const groupSlug = this._getGroupSlug();
+    const communityName = this._getCommunityName();
     if (groupSlug) {
       params.append("group[]", groupSlug);
     }
@@ -567,13 +525,11 @@ class EventSelector extends LitWrapper {
 
         const [upcomingEvents, pastEvents] = await Promise.all([
           this._requestEvents({
-            groupId,
             sortDirection: "asc",
             query: "",
             dateFrom: today,
           }),
           this._requestEvents({
-            groupId,
             sortDirection: "desc",
             query: "",
             dateFrom: this.dateFrom,
@@ -648,7 +604,6 @@ class EventSelector extends LitWrapper {
 
     try {
       const events = await this._requestEvents({
-        groupId,
         sortDirection: "desc",
         query: trimmed,
         dateFrom: this.dateFrom,

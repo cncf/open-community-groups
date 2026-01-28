@@ -360,7 +360,6 @@ export class CommunitySelector extends LitWrapper {
                             type="button"
                             class="community-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
                             role="option"
-                            data-community-id=${community.community_id}
                             ?disabled=${isDisabled}
                             @click=${(event) => this._handleCommunityClick(event, community)}
                             @mouseover=${() => (this._activeIndex = index)}
