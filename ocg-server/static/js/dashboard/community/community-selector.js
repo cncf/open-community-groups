@@ -345,11 +345,12 @@ export class CommunitySelector extends LitWrapper {
 
                       let statusClass = "";
                       if (isDisabled) {
-                        statusClass = "opacity-50 cursor-not-allowed bg-stone-100";
+                        statusClass =
+                          "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
                       } else if (isActive) {
-                        statusClass = "cursor-pointer bg-stone-50";
+                        statusClass = "cursor-pointer text-stone-900 bg-stone-50";
                       } else {
-                        statusClass = "cursor-pointer hover:bg-stone-50";
+                        statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
                       }
 
                       return html`
@@ -364,7 +365,7 @@ export class CommunitySelector extends LitWrapper {
                             @click=${(event) => this._handleCommunityClick(event, community)}
                             @mouseover=${() => (this._activeIndex = index)}
                           >
-                            <div class="text-xs/4 text-stone-900 line-clamp-2">
+                            <div class="text-xs/4 line-clamp-2">
                               ${community.display_name || community.name}
                             </div>
                           </button>
