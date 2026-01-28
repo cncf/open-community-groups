@@ -26,6 +26,7 @@ export class ImageField extends LitWrapper {
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
    * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo").
+   * @property {string} legend - Optional legend text displayed under the image preview area.
    */
   static properties = {
     label: { type: String },
@@ -37,6 +38,7 @@ export class ImageField extends LitWrapper {
     previewBgClass: { type: String, attribute: "preview-bg-class" },
     helpPrefixText: { type: String, attribute: "help-prefix-text" },
     target: { type: String },
+    legend: { type: String },
   };
 
   constructor() {
@@ -53,6 +55,7 @@ export class ImageField extends LitWrapper {
     this.previewBgClass = "";
     this.helpPrefixText = "";
     this.target = "";
+    this.legend = "";
   }
 
   get _valueInputId() {
@@ -339,6 +342,7 @@ export class ImageField extends LitWrapper {
           </div>
         </div>
       </div>
+      ${this.legend ? html`<p class="form-legend mt-2">${this.legend}</p>` : ""}
       <input
         type="text"
         id=${valueInputId}
