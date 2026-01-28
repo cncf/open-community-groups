@@ -44,10 +44,10 @@
             Description <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
-            <markdown-editor id="description" name="description" content="{{ community.description }}" required></markdown-editor>
+            <markdown-editor id="description" name="description" content="{{ community.description }}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
           </div>
           <p class="form-legend">
-            Brief description of the community's purpose or focus. This information will be featured in the community site home page.
+            Brief description of the community's purpose or focus. This information will be featured in the community site home page. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
           </p>
         </div>
         {# End description -#}

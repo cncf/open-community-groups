@@ -181,9 +181,11 @@
             Description <span class="asterisk">*</span>
           </label>
           <div class="mt-2">
-            <markdown-editor id="description" name="description" required></markdown-editor>
+            <markdown-editor id="description" name="description" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
           </div>
-          <p class="form-legend">Full description of the event and its purpose.</p>
+          <p class="form-legend">
+            Full description of the event and its purpose. Max {{ crate::validation::MAX_LEN_DESCRIPTION }} characters.
+          </p>
         </div>
         {# End Event Description -#}
       </div>

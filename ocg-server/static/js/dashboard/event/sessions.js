@@ -539,6 +539,7 @@ class SessionItem extends LitWrapper {
             name="sessions[${this.index}][description]"
             content=${this.data.description}
             .onChange=${(value) => this._onTextareaChange(value)}
+            maxlength=${8000}
             mini
             ?disabled=${this.disabled}
           ></markdown-editor>
