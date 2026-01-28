@@ -48,7 +48,6 @@ impl Page {
     }
 
     /// Returns the selected community and group details.
-    #[allow(dead_code)]
     fn current_selection_details(&self) -> (&CommunitySummary, &GroupMinimal) {
         let selected_community = self
             .groups_by_community
