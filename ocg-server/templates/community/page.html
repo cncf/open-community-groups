@@ -23,7 +23,7 @@
             About this community
           </div>
           {% if !community.description.is_empty() -%}
-            <div class="font-normal text-base/8 text-stone-600 jumbotron-description">
+            <div class="font-normal text-base/8 text-stone-600 community-description">
               {{ community.description|md_to_html|safe }}
             </div>
           {% endif -%}

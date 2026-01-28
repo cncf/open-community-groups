@@ -248,6 +248,30 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 600;
 }
 
+.community-description h1,
+.community-description h2,
+.community-description h3,
+.community-description h4,
+.community-description h5,
+.community-description h6 {
+  line-height: 1.75rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-stone-400);
+}
+
+@media (min-width: 1024px) {
+  .community-description h1,
+  .community-description h2,
+  .community-description h3,
+  .community-description h4,
+  .community-description h5,
+  .community-description h6 {
+    line-height: 2rem;
+  }
+}
+
 /* Input */
 input:placeholder-shown {
   text-overflow: ellipsis;
