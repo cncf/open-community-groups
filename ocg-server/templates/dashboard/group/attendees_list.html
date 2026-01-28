@@ -18,7 +18,7 @@
             data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
             {% if let Some(start_time) = &event.starts_at -%}
               data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
-            {% endif -%}>Show QR Code</button>
+            {% endif -%}>Show check-in QR code</button>
     <button id="open-attendee-notification-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto"
