@@ -1,15 +1,9 @@
-//! Pagination-related types and helpers for the site explore page.
+//! Pagination-related types and helpers for templates.
 
 use std::fmt::Write as _;
 
 use anyhow::Result;
-use askama::Template;
 use serde::{Deserialize, Serialize};
-
-use super::explore::Entity;
-
-/// Default pagination limit.
-const DEFAULT_PAGINATION_LIMIT: usize = 10;
 
 /// Trait for types that support pagination.
 ///
@@ -26,6 +20,26 @@ pub(crate) trait Pagination {
     fn set_offset(&mut self, offset: Option<usize>);
 }
 
+/// Implement the `Pagination` trait for a type.
+#[macro_export]
+macro_rules! impl_pagination {
+    ($type:ty, $limit:ident, $offset:ident) => {
+        impl Pagination for $type {
+            fn limit(&self) -> Option<usize> {
+                self.$limit
+            }
+
+            fn offset(&self) -> Option<usize> {
+                self.$offset
+            }
+
+            fn set_offset(&mut self, offset: Option<usize>) {
+                self.$offset = offset;
+            }
+        }
+    };
+}
+
 /// Trait for converting filter structs to URL query strings.
 ///
 /// Implemented by filter types to provide custom serialization logic for URL query
@@ -35,12 +49,32 @@ pub(crate) trait ToRawQuery {
     fn to_raw_query(&self) -> Result<String>;
 }
 
+/// Implement the `ToRawQuery` trait for a type using `serde_qs`.
+#[macro_export]
+macro_rules! impl_to_raw_query {
+    ($type:ty) => {
+        impl ToRawQuery for $type {
+            fn to_raw_query(&self) -> anyhow::Result<String> {
+                serde_qs::to_string(self).map_err(anyhow::Error::from)
+            }
+        }
+    };
+}
+
+/// Implement both `Pagination` and `ToRawQuery` for a type.
+#[macro_export]
+macro_rules! impl_pagination_and_raw_query {
+    ($type:ty, $limit:ident, $offset:ident) => {
+        $crate::impl_pagination!($type, $limit, $offset);
+        $crate::impl_to_raw_query!($type);
+    };
+}
+
 /// Pagination navigation links for result sets.
 ///
 /// Provides first/last/next/previous links for navigating through paginated results.
 /// Links are only populated when applicable based on current position in the result set.
-#[derive(Debug, Clone, Default, Template, Serialize, Deserialize)]
-#[template(path = "site/explore/navigation_links.html")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct NavigationLinks {
     /// Link to first page of results.
     pub first: Option<NavigationLink>,
@@ -53,35 +87,38 @@ pub(crate) struct NavigationLinks {
 }
 
 impl NavigationLinks {
-    /// Generate navigation links based on current filters and result count.
-    ///
-    /// Calculates which navigation links should be shown based on the current offset,
-    /// limit, and total number of results. Only creates links that make sense (e.g., no
-    /// "previous" link on the first page).
-    pub(crate) fn from_filters<T>(entity: &Entity, filters: &T, total: usize) -> Result<Self>
+    /// Generate navigation links using custom base URLs.
+    pub(crate) fn from_filters<T>(
+        filters: &T,
+        total: usize,
+        base_url: &str,
+        base_hx_url: &str,
+    ) -> Result<Self>
     where
         T: Serialize + Clone + ToRawQuery + Pagination,
     {
         let mut links = NavigationLinks::default();
 
-        let offsets = NavigationLinksOffsets::new(filters.offset(), filters.limit(), total);
+        // Calculate offsets for pagination
+        let limit = filters.limit().expect("pagination limit to be set");
+        let offsets = NavigationLinksOffsets::new(filters.offset(), limit, total);
         let mut filters = filters.clone();
 
         if let Some(first_offset) = offsets.first {
             filters.set_offset(Some(first_offset));
-            links.first = Some(NavigationLink::new(entity, &filters)?);
+            links.first = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
         if let Some(last_offset) = offsets.last {
             filters.set_offset(Some(last_offset));
-            links.last = Some(NavigationLink::new(entity, &filters)?);
+            links.last = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
         if let Some(next_offset) = offsets.next {
             filters.set_offset(Some(next_offset));
-            links.next = Some(NavigationLink::new(entity, &filters)?);
+            links.next = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
         if let Some(prev_offset) = offsets.prev {
             filters.set_offset(Some(prev_offset));
-            links.prev = Some(NavigationLink::new(entity, &filters)?);
+            links.prev = Some(NavigationLink::new(base_url, base_hx_url, &filters)?);
         }
 
         Ok(links)
@@ -101,17 +138,14 @@ pub(crate) struct NavigationLink {
 }
 
 impl NavigationLink {
-    /// Create a navigation link with both standard and HTMX URLs.
-    pub(crate) fn new<T>(entity: &Entity, filters: &T) -> Result<Self>
+    /// Create a navigation link with custom base URLs.
+    pub(crate) fn new<T>(base_url: &str, base_hx_url: &str, filters: &T) -> Result<Self>
     where
         T: Serialize + ToRawQuery,
     {
-        let base_hx_url = format!("/explore/{entity}-results-section");
-        let base_url = format!("/explore?entity={entity}");
-
         Ok(NavigationLink {
-            hx_url: build_url(&base_hx_url, filters)?,
-            url: build_url(&base_url, filters)?,
+            hx_url: build_url(base_hx_url, filters)?,
+            url: build_url(base_url, filters)?,
         })
     }
 }
@@ -137,12 +171,10 @@ impl NavigationLinksOffsets {
     ///
     /// Determines which navigation links should exist based on the current offset, page
     /// size (limit), and total number of results.
-    fn new(offset: Option<usize>, limit: Option<usize>, total: usize) -> Self {
+    fn new(offset: Option<usize>, limit: usize, total: usize) -> Self {
         let mut offsets = NavigationLinksOffsets::default();
 
-        // Use default offset and limit values if not provided
         let offset = offset.unwrap_or(0);
-        let limit = limit.unwrap_or(DEFAULT_PAGINATION_LIMIT);
 
         // There are more results going backwards
         if offset > 0 {
@@ -207,11 +239,13 @@ fn get_url_filters_separator(url: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_PAGINATION_LIMIT, NavigationLinksOffsets, get_url_filters_separator};
+    use super::{NavigationLinksOffsets, get_url_filters_separator};
+
+    const TEST_PAGINATION_LIMIT: usize = 10;
 
     #[test]
     fn test_navigation_links_offsets_1() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 20);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 20);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -225,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_2() {
-        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 20);
+        let offsets = NavigationLinksOffsets::new(Some(10), TEST_PAGINATION_LIMIT, 20);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -239,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_3() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 21);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 21);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -253,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_4() {
-        let offsets = NavigationLinksOffsets::new(Some(10), Some(10), 15);
+        let offsets = NavigationLinksOffsets::new(Some(10), TEST_PAGINATION_LIMIT, 15);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -267,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_5() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 10);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 10);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -281,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_6() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 5);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -295,7 +329,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_7() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 0);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 0);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -309,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_8() {
-        let offsets = NavigationLinksOffsets::new(None, Some(10), 15);
+        let offsets = NavigationLinksOffsets::new(None, TEST_PAGINATION_LIMIT, 15);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -323,13 +357,13 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_9() {
-        let offsets = NavigationLinksOffsets::new(None, None, 15);
+        let offsets = NavigationLinksOffsets::new(None, TEST_PAGINATION_LIMIT, 15);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
                 first: None,
-                last: Some(DEFAULT_PAGINATION_LIMIT),
-                next: Some(DEFAULT_PAGINATION_LIMIT),
+                last: Some(TEST_PAGINATION_LIMIT),
+                next: Some(TEST_PAGINATION_LIMIT),
                 prev: None,
             }
         );
@@ -337,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_10() {
-        let offsets = NavigationLinksOffsets::new(Some(20), Some(10), 50);
+        let offsets = NavigationLinksOffsets::new(Some(20), TEST_PAGINATION_LIMIT, 50);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -351,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_11() {
-        let offsets = NavigationLinksOffsets::new(Some(2), Some(10), 20);
+        let offsets = NavigationLinksOffsets::new(Some(2), TEST_PAGINATION_LIMIT, 20);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -365,7 +399,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_12() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 5);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 5);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {
@@ -379,7 +413,7 @@ mod tests {
 
     #[test]
     fn test_navigation_links_offsets_13() {
-        let offsets = NavigationLinksOffsets::new(Some(0), Some(10), 11);
+        let offsets = NavigationLinksOffsets::new(Some(0), TEST_PAGINATION_LIMIT, 11);
         assert_eq!(
             offsets,
             NavigationLinksOffsets {

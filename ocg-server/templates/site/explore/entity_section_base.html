@@ -32,10 +32,10 @@
         hx-get='/explore/{{ entity }}-section'
         hx-trigger="change"
         hx-target="#entity-section"
+        hx-indicator="#loading-filters, #loading-filters-mobile"
         hx-include="[name='ts_query'], [name='sort_by'],
                     {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
                     [name='view_mode']"
-        hx-boost="true"
         hx-ext="no-empty-vals">
     {% block filters_mobile -%}
     {% endblock filters_mobile -%}
@@ -74,10 +74,10 @@
           hx-get='/explore/{{ entity }}-section'
           hx-trigger="change"
           hx-target="#entity-section"
+          hx-indicator="#loading-filters, #loading-filters-mobile"
           hx-include="[name='ts_query'], [name='sort_by'],
                       {% if entity == Entity::Events %}[name='sort_direction'],{% endif %}
                       [name='view_mode']"
-          hx-boost="true"
           hx-ext="no-empty-vals">
       {% block filters_desktop -%}
       {% endblock filters_desktop -%}
@@ -173,8 +173,8 @@
           </ul>
 
           {# Loading spinner -#}
-          <div id="loading-filters-mobile" class="block ms-3 w-6 group md:hidden">
-            {{ ui::spinner(htmx = false) -}}
+          <div id="loading-filters-mobile" class="block ms-3 w-6 lg:hidden">
+            <div class="hx-spinner">{{ ui::spinner() -}}</div>
           </div>
           {# End loading spinner -#}
         </div>
@@ -217,9 +217,6 @@
     unckeckAllKinds,
     updateDateInput
   } from '/static/js/community/explore/filters.js';
-  import {
-    showLoadingSpinner
-  } from '/static/js/common/common.js';
 
   const openFiltersBtn = document.getElementById('open-filters');
   if (openFiltersBtn) {
@@ -257,12 +254,4 @@
 
   const resetButtons = document.querySelectorAll('.reset-filters');
   resetButtons.forEach(button => button.addEventListener('click', () => resetFilters('{{ entity }}-form')));
-
-  const forms = document.querySelectorAll('.filters-form');
-  forms.forEach(form => {
-    form.addEventListener('htmx:trigger', () => {
-      showLoadingSpinner("loading-filters");
-      showLoadingSpinner("loading-filters-mobile");
-    });
-  });
 </script>

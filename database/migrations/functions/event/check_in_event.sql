@@ -19,7 +19,8 @@ begin
     and g.active = true
     and e.deleted = false
     and e.published = true
-    and e.canceled = false;
+    and e.canceled = false
+    for update of e;
     if not found then
         raise exception 'event not found or inactive';
     end if;

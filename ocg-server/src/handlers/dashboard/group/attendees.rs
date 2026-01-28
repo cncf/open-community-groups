@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
@@ -23,9 +23,14 @@ use crate::{
         extractors::{SelectedCommunityId, SelectedGroupId, ValidatedForm},
         prepare_headers,
     },
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::{dashboard::group::attendees, notifications::EventCustom},
-    validation::{MAX_LEN_M, MAX_LEN_XL, trimmed_non_empty},
+    templates::{
+        dashboard::group::attendees::{self, AttendeesFilters, AttendeesPaginationFilters},
+        notifications::EventCustom,
+        pagination::NavigationLinks,
+    },
+    validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
 // Pages handlers.
@@ -37,16 +42,36 @@ pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and attendees
-    let filters = attendees::AttendeesFilters { event_id };
-    let (event, attendees) = tokio::try_join!(
+    let page_filters: AttendeesPaginationFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    let search_filters = AttendeesFilters {
+        event_id,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
+    };
+    let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
-        db.search_event_attendees(group_id, &filters)
+        db.search_event_attendees(group_id, &search_filters)
     )?;
 
     // Prepare template
-    let template = attendees::ListPage { attendees, event };
+    let navigation_links = NavigationLinks::from_filters(
+        &page_filters,
+        search_attendees_results.total,
+        &format!("/dashboard/group/events/{event_id}/attendees"),
+        &format!("/dashboard/group/events/{event_id}/attendees"),
+    )?;
+    let template = attendees::ListPage {
+        attendees: search_attendees_results.attendees,
+        event,
+        navigation_links,
+        total: search_attendees_results.total,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
+    };
 
     Ok(Html(template.render()?))
 }
@@ -179,7 +204,7 @@ pub(crate) async fn send_event_custom_notification(
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct EventCustomNotification {
     /// Body text for the notification.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
     pub body: String,
     /// Title line for the notification email.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
@@ -209,6 +234,7 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::EventCustom,
     };
 
@@ -314,6 +340,10 @@ mod tests {
         );
         let attendee = sample_attendee();
         let event = sample_event_summary(event_id, group_id);
+        let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+            attendees: vec![attendee.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -331,8 +361,13 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(1)
-            .withf(move |gid, filters| *gid == group_id && filters.event_id == event_id)
-            .returning(move |_, _| Ok(vec![attendee.clone()]));
+            .withf(move |gid, filters| {
+                *gid == group_id
+                    && filters.event_id == event_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -346,6 +381,87 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(format!("/dashboard/group/events/{event_id}/attendees"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_page_with_pagination_params() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+        let attendee = sample_attendee();
+        let event = sample_event_summary(event_id, group_id);
+        let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+            attendees: vec![attendee.clone()],
+            total: 1,
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
+        db.expect_search_event_attendees()
+            .times(1)
+            .withf(move |gid, filters| {
+                *gid == group_id
+                    && filters.event_id == event_id
+                    && filters.limit == Some(5)
+                    && filters.offset == Some(10)
+            })
+            .returning(move |_, _| Ok(output.clone()));
+        db.expect_get_event_summary()
+            .times(1)
+            .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+            .returning(move |_, _, _| Ok(event.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!(
+                "/dashboard/group/events/{event_id}/attendees?limit=5&offset=10"
+            ))
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();
@@ -465,7 +581,12 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_search_event_attendees()
             .times(0..=1)
-            .withf(move |gid, filters| *gid == group_id && filters.event_id == event_id)
+            .withf(move |gid, filters| {
+                *gid == group_id
+                    && filters.event_id == event_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
             .returning(move |_, _| Err(anyhow!("db error")));
         db.expect_get_event_summary()
             .times(1)

@@ -1,16 +1,10 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
-  <div class="flex text-sm text-stone-600 mb-4 lg:mb-0">
-    <div>Total attendees:</div>
-    <div class="font-semibold ms-1 text-end">
-      {% if attendees.is_empty() -%}
-        -
-      {% else %}
-        {{ attendees.len() }}
-      {% endif -%}
-    </div>
+  <div class="text-sm text-stone-600 mb-4 lg:mb-0">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = attendees.len(), total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
     <button id="open-event-qr-code-modal"
@@ -28,7 +22,7 @@
     <button id="open-attendee-notification-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto"
-            {% if attendees.is_empty() -%}
+            {% if total == 0 -%}
               disabled title="No attendees to send emails to."
             {% endif -%}
             data-event-id="{{ event.event_id }}">Send email</button>
@@ -37,7 +31,7 @@
 
 {# Attendees table -#}
 <div class="relative overflow-visible pb-12">
-  <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Attendees list">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
@@ -63,7 +57,7 @@
         </tr>
       {% else -%}
         {% for attendee in attendees -%}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 last:border-b-0">
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="flex items-center space-x-5">
@@ -132,6 +126,12 @@
 </div>
 {# End attendees table -#}
 
+{# Pagination -#}
+{% if total > attendees.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#attendees-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}
+
 {# Notification modal -#}
 <div id="attendee-notification-modal"
      role="dialog"
@@ -186,7 +186,7 @@
                         name="body"
                         required
                         rows="6"
-                        maxlength="{{ crate::validation::MAX_LEN_XL }}"
+                        maxlength="{{ crate::validation::MAX_LEN_NOTIFICATION_BODY }}"
                         class="input-primary"
                         placeholder="Enter notification body (plain text only)"></textarea>
               <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>
@@ -265,7 +265,6 @@
               <a id="event-qr-code-link"
                  href="#"
                  class="text-sm font-medium text-primary-600 hover:underline break-all"
-                 hx-boost="true"
                  target="_blank"
                  rel="noopener">/check-in/</a>
             </div>

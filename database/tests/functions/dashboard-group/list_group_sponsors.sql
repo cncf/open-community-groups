@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -62,18 +62,65 @@ values
 
 -- Should return group sponsors sorted by name
 select is(
-    list_group_sponsors(:'group1ID'::uuid)::jsonb,
-    '[
-        {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
-        {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
-    ]'::jsonb,
+    list_group_sponsors(
+        :'group1ID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb,
+        false
+    )::jsonb,
+    jsonb_build_object(
+        'sponsors', '[
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
+        ]'::jsonb,
+        'total', 2
+    ),
     'Should return group sponsors sorted by name'
+);
+
+-- Should return paginated sponsors when limit and offset are provided
+select is(
+    list_group_sponsors(
+        :'group1ID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb,
+        false
+    )::jsonb,
+    jsonb_build_object(
+        'sponsors', '[
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated sponsors when limit and offset are provided'
+);
+
+-- Should return full list when full_list is true
+select is(
+    list_group_sponsors(
+        :'group1ID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb,
+        true
+    )::jsonb,
+    jsonb_build_object(
+        'sponsors', '[
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "logo_url": "https://ex.com/alpha.png", "name": "Alpha"},
+            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "logo_url": "https://ex.com/beta.png", "name": "Beta", "website_url": "https://beta.io"}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return full list when full_list is true'
 );
 
 -- Should return empty array for unknown group
 select is(
-    list_group_sponsors('00000000-0000-0000-0000-000000000099'::uuid)::jsonb,
-    '[]'::jsonb,
+    list_group_sponsors(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb,
+        false
+    )::jsonb,
+    jsonb_build_object(
+        'sponsors', '[]'::jsonb,
+        'total', 0
+    ),
     'Should return empty array for unknown group'
 );
 

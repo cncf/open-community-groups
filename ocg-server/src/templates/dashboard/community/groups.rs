@@ -9,10 +9,15 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
+    templates::{
+        dashboard,
+        pagination::{self, Pagination, ToRawQuery},
+    },
     types::group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_XL, image_url_opt, image_url_vec, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_vec, url_map_values, valid_latitude, valid_longitude,
+        MAX_LEN_COUNTRY_CODE, MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S,
+        MAX_PAGINATION_LIMIT, image_url_opt, image_url_vec, trimmed_non_empty, trimmed_non_empty_opt,
+        trimmed_non_empty_tag_vec, url_map_values, valid_latitude, valid_longitude,
     },
 };
 
@@ -34,7 +39,15 @@ pub(crate) struct AddPage {
 pub(crate) struct ListPage {
     /// List of groups in the community.
     pub groups: Vec<GroupSummary>,
+    /// Pagination navigation links.
+    pub navigation_links: pagination::NavigationLinks,
+    /// Total number of groups in the community.
+    pub total: usize,
 
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
     /// Text search query used to filter results.
     pub ts_query: Option<String>,
 }
@@ -53,6 +66,25 @@ pub(crate) struct UpdatePage {
 
 // Types.
 
+/// Filter parameters for community groups pagination.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct CommunityGroupsFilters {
+    /// Number of results per page.
+    #[serde(default = "dashboard::default_limit")]
+    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    #[serde(default = "dashboard::default_offset")]
+    #[garde(skip)]
+    pub offset: Option<usize>,
+    /// Text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
+}
+
+crate::impl_pagination_and_raw_query!(CommunityGroupsFilters, limit, offset);
+
 /// Group details for dashboard management.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
@@ -61,10 +93,10 @@ pub(crate) struct Group {
     #[garde(skip)]
     pub category_id: Uuid,
     /// Group description.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
     /// Group name.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
 
     /// URL to the group's banner image optimized for mobile devices.
@@ -77,7 +109,7 @@ pub(crate) struct Group {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
     /// ISO country code.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_COUNTRY_CODE))]
     pub country_code: Option<String>,
     /// Full country name.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
@@ -122,7 +154,7 @@ pub(crate) struct Group {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub state: Option<String>,
     /// Tags associated with the group.
-    #[garde(custom(trimmed_non_empty_vec))]
+    #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,
     /// Twitter profile URL.
     #[garde(url, length(max = MAX_LEN_L))]

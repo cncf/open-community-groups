@@ -3,8 +3,8 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
+    extract::{Path, RawQuery, State},
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -16,7 +16,12 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedGroupId, ValidatedForm},
     },
-    templates::dashboard::group::sponsors::{self, Sponsor},
+    router::serde_qs_config,
+    templates::{
+        dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
+        pagination,
+        pagination::NavigationLinks,
+    },
 };
 
 // Pages handlers.
@@ -38,12 +43,33 @@ pub(crate) async fn add_page(
 pub(crate) async fn list_page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare template
-    let sponsors = db.list_group_sponsors(group_id).await?;
-    let template = sponsors::ListPage { sponsors };
+    // Fetch sponsors
+    let filters: GroupSponsorsFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    let results = db.list_group_sponsors(group_id, &filters, false).await?;
 
-    Ok(Html(template.render()?))
+    // Prepare template
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        results.total,
+        "/dashboard/group?tab=sponsors",
+        "/dashboard/group/sponsors",
+    )?;
+    let template = sponsors::ListPage {
+        navigation_links,
+        sponsors: results.sponsors,
+        total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
+    };
+
+    // Prepare response headers
+    let url = pagination::build_url("/dashboard/group?tab=sponsors", &filters)?;
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Displays the page to update an existing sponsor.
@@ -130,7 +156,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -208,6 +234,10 @@ mod tests {
             Some(group_id),
         );
         let sponsor = sample_group_sponsor();
+        let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+            sponsors: vec![sponsor.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -225,8 +255,13 @@ mod tests {
             .returning(|_, _, _| Ok(true));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![sponsor.clone()]));
+            .withf(move |id, filters, full_list| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+                    && !*full_list
+            })
+            .returning(move |_, _, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -236,6 +271,76 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/group/sponsors")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_page_with_pagination_params() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(
+            session_id,
+            user_id,
+            &auth_hash,
+            Some(community_id),
+            Some(group_id),
+        );
+        let sponsor = sample_group_sponsor();
+        let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+            sponsors: vec![sponsor.clone()],
+            total: 1,
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_group()
+            .times(1)
+            .withf(move |cid, gid, uid| *cid == community_id && *gid == group_id && *uid == user_id)
+            .returning(|_, _, _| Ok(true));
+        db.expect_list_group_sponsors()
+            .times(1)
+            .withf(move |id, filters, full_list| {
+                *id == group_id && filters.limit == Some(5) && filters.offset == Some(10) && !*full_list
+            })
+            .returning(move |_, _, _| Ok(output.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/group/sponsors?limit=5&offset=10")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

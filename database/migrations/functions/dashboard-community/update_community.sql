@@ -3,7 +3,6 @@ create or replace function update_community(
     p_community_id uuid,
     p_data jsonb
 ) returns void as $$
-begin
     update community
     set
         banner_mobile_url = coalesce(p_data->>'banner_mobile_url', banner_mobile_url),
@@ -32,5 +31,4 @@ begin
         wechat_url = nullif(p_data->>'wechat_url', ''),
         youtube_url = nullif(p_data->>'youtube_url', '')
     where community_id = p_community_id;
-end
-$$ language plpgsql;
+$$ language sql;

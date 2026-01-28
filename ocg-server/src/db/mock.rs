@@ -115,11 +115,11 @@ mock! {
         async fn list_timezones(&self) -> Result<Vec<String>>;
         async fn search_events(
             &self,
-            filters: &crate::templates::site::explore::EventsFilters,
+            filters: &crate::templates::site::explore::SearchEventsFilters,
         ) -> Result<crate::db::common::SearchEventsOutput>;
         async fn search_groups(
             &self,
-            filters: &crate::templates::site::explore::GroupsFilters,
+            filters: &crate::templates::site::explore::SearchGroupsFilters,
         ) -> Result<crate::db::common::SearchGroupsOutput>;
     }
 
@@ -185,7 +185,8 @@ mock! {
         async fn list_community_team_members(
             &self,
             community_id: Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::community::team::CommunityTeamMember>>;
+            filters: &crate::templates::dashboard::community::team::CommunityTeamFilters,
+        ) -> Result<crate::templates::dashboard::community::team::CommunityTeamOutput>;
         async fn list_group_categories(
             &self,
             community_id: Uuid,
@@ -260,11 +261,13 @@ mock! {
         async fn list_group_events(
             &self,
             group_id: Uuid,
+            filters: &crate::templates::dashboard::group::events::EventsListFilters,
         ) -> Result<crate::templates::dashboard::group::events::GroupEvents>;
         async fn list_group_members(
             &self,
             group_id: Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::group::members::GroupMember>>;
+            filters: &crate::templates::dashboard::group::members::GroupMembersFilters,
+        ) -> Result<crate::templates::dashboard::group::members::GroupMembersOutput>;
         async fn list_group_members_ids(
             &self,
             group_id: Uuid,
@@ -274,11 +277,14 @@ mock! {
         async fn list_group_sponsors(
             &self,
             group_id: Uuid,
-        ) -> Result<Vec<crate::types::group::GroupSponsor>>;
+            filters: &crate::templates::dashboard::group::sponsors::GroupSponsorsFilters,
+            full_list: bool,
+        ) -> Result<crate::templates::dashboard::group::sponsors::GroupSponsorsOutput>;
         async fn list_group_team_members(
             &self,
             group_id: Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::group::team::GroupTeamMember>>;
+            filters: &crate::templates::dashboard::group::team::GroupTeamFilters,
+        ) -> Result<crate::templates::dashboard::group::team::GroupTeamOutput>;
         async fn list_group_team_members_ids(
             &self,
             group_id: Uuid,
@@ -299,7 +305,7 @@ mock! {
             &self,
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::attendees::AttendeesFilters,
-        ) -> Result<Vec<crate::templates::dashboard::group::attendees::Attendee>>;
+        ) -> Result<crate::templates::dashboard::group::attendees::AttendeesOutput>;
         async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn update_event(
             &self,

@@ -22,7 +22,7 @@
             <input type="text"
                    name="name"
                    id="name"
-                   maxlength="{{ crate::validation::MAX_LEN_M }}"
+                   maxlength="{{ crate::validation::MAX_LEN_DISPLAY_NAME }}"
                    value="{{ user.name }}"
                    class="input-primary"
                    autocomplete="off"
@@ -105,7 +105,7 @@
           <textarea id="bio"
                     name="bio"
                     rows="6"
-                    maxlength="{{ crate::validation::MAX_LEN_M }}"
+                    maxlength="{{ crate::validation::MAX_LEN_BIO }}"
                     class="input-primary">{% if let Some(bio) = &user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
         <p class="form-legend">A description about yourself and your background.</p>

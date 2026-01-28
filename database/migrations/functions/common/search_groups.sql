@@ -1,14 +1,14 @@
 -- Returns the groups that match the filters provided.
 create or replace function search_groups(p_filters jsonb)
-returns table(groups json, bbox json, total bigint) as $$
+returns json as $$
 declare
     v_bbox geometry;
     v_community_ids uuid[];
     v_group_category text[];
     v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
-    v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_limit int := (p_filters->>'limit')::int;
     v_max_distance real;
-    v_offset int := coalesce((p_filters->>'offset')::int, 0);
+    v_offset int := (p_filters->>'offset')::int;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'name');
     v_tsquery_with_prefix_matching tsquery;
@@ -56,12 +56,17 @@ begin
         ) into v_tsquery_with_prefix_matching;
     end if;
 
-    return query
+    return (
     with filtered_groups as (
         select
             g.community_id,
             g.created_at,
-            st_distance(g.location, v_user_location) as distance,
+            case
+                when v_sort_by = 'distance'
+                and v_user_location is not null then
+                    st_distance(g.location, v_user_location)
+                else null
+            end as distance,
             g.group_id,
             g.location,
             g.name
@@ -99,18 +104,9 @@ begin
             created_at desc
         limit v_limit
         offset v_offset
-    ),
-    filtered_groups_bbox as (
-        select st_envelope(st_union(st_envelope(location::geometry))) as bb
-        from filtered_groups
     )
-    select
-        (
-            select coalesce(json_agg(
-                get_group_summary(community_id, group_id)
-            ), '[]')
-            from filtered_groups_page
-        ),
+    select json_build_object(
+        'bbox',
         (
             case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
                 (
@@ -123,12 +119,25 @@ begin
                                 'sw_lon', st_xmin(bb)
                             )
                         else null end
-                    from filtered_groups_bbox
+                    from (
+                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
+                        from filtered_groups
+                    ) as filtered_groups_bbox
                 )
             else null end
         ),
+        'groups',
         (
-            select count(*) from filtered_groups
-        );
+            select coalesce(json_agg(
+                get_group_summary(community_id, group_id)
+            ), '[]'::json)
+            from filtered_groups_page
+        ),
+        'total',
+        (
+            select count(*)::bigint from filtered_groups
+        )
+    )
+    );
 end
 $$ language plpgsql;

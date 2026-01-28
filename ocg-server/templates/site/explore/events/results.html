@@ -1,6 +1,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/search.html" as search -%}
+{% import "macros/pagination.html" as pagination -%}
 
 {% let view_mode = self.view_mode.clone().unwrap_or_default() -%}
 
@@ -114,7 +115,9 @@
 </div>
 
 {# Pagination -#}
-{% if events.len() > 0 %}{{ navigation_links|safe }}{% endif %}
+{% if events.len() > 0 -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#cards-list", hx_swap = "innerHTML show:#header:top", hx_indicator = "#loading-filters, #loading-filters-mobile") }}
+{% endif %}
 {# End pagination -#}
 
 <script type="module">

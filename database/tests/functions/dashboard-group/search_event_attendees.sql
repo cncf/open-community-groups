@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -63,34 +63,73 @@ values
 
 -- Should return attendees for event1 with expected fields and order
 select is(
-    search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000041"}'::jsonb)::jsonb,
-    '[
-        {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
-        {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://example.com/b.png", "title": null}
-    ]'::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000041","limit":50,"offset":0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[
+            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://example.com/b.png", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
     'Should return attendees for event1 with expected fields and order'
+);
+
+-- Should return paginated attendees when limit and offset are provided
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000041","limit":1,"offset":1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated attendees when limit and offset are provided'
 );
 
 -- Should return attendees for event2
 select is(
-    search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-000000000042"}'::jsonb)::jsonb,
-    '[
-        {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
-    ]'::jsonb,
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-000000000042","limit":50,"offset":0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[
+            {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
+        ]'::jsonb,
+        'total', 1
+    ),
     'Should return attendees for event2'
 );
 
 -- Should return empty list when no event_id provided
 select is(
-    search_event_attendees(:'groupID'::uuid, '{}'::jsonb)::text,
-    '[]',
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"limit":50,"offset":0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[]'::jsonb,
+        'total', 0
+    ),
     'Should return empty list when no event_id provided'
 );
 
 -- Should return empty list for non-existing event
 select is(
-    search_event_attendees(:'groupID'::uuid, '{"event_id":"00000000-0000-0000-0000-999999999999"}'::jsonb)::text,
-    '[]',
+    search_event_attendees(
+        :'groupID'::uuid,
+        '{"event_id":"00000000-0000-0000-0000-999999999999","limit":50,"offset":0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'attendees', '[]'::jsonb,
+        'total', 0
+    ),
     'Should return empty list for non-existing event'
 );
 

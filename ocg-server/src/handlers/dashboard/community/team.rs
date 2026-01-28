@@ -3,8 +3,8 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
+    extract::{Path, RawQuery, State},
+    http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
 use garde::Validate;
@@ -19,9 +19,14 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, ValidatedForm},
     },
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
-    templates::dashboard::community::team,
     templates::notifications::CommunityTeamInvitation,
+    templates::{
+        dashboard::community::team::{self, CommunityTeamFilters},
+        pagination,
+        pagination::NavigationLinks,
+    },
 };
 
 // Pages handlers.
@@ -31,15 +36,34 @@ use crate::{
 pub(crate) async fn list_page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let members = db.list_community_team_members(community_id).await?;
-    let approved_members_count = members.iter().filter(|m| m.accepted).count();
+    // Fetch team members
+    let filters: CommunityTeamFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    let results = db.list_community_team_members(community_id, &filters).await?;
+
+    // Prepare template
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        results.total,
+        "/dashboard/community?tab=team",
+        "/dashboard/community/team",
+    )?;
     let template = team::ListPage {
-        approved_members_count,
-        members,
+        approved_members_count: results.approved_total,
+        members: results.members,
+        navigation_links,
+        total: results.total,
+        limit: filters.limit,
+        offset: filters.offset,
     };
 
-    Ok(Html(template.render()?))
+    // Prepare response headers
+    let url = pagination::build_url("/dashboard/community?tab=team", &filters)?;
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
 }
 
 // Actions handlers.
@@ -127,6 +151,7 @@ mod tests {
         handlers::tests::*,
         router::CACHE_CONTROL_NO_CACHE,
         services::notifications::{MockNotificationsManager, NotificationKind},
+        templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
         templates::notifications::CommunityTeamInvitation as CommunityTeamInvitationTemplate,
     };
 
@@ -144,6 +169,11 @@ mod tests {
             sample_community_team_member(true),
             sample_community_team_member(false),
         ];
+        let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+            approved_total: 1,
+            members: members.clone(),
+            total: members.len(),
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -161,8 +191,12 @@ mod tests {
             .returning(|_, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Ok(members.clone()));
+            .withf(move |cid, filters| {
+                *cid == community_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -172,6 +206,74 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/community/team")
+            .header(HOST, "example.test")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_list_page_with_pagination_params() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        let members = vec![
+            sample_community_team_member(true),
+            sample_community_team_member(false),
+        ];
+        let output = crate::templates::dashboard::community::team::CommunityTeamOutput {
+            approved_total: 1,
+            members: members.clone(),
+            total: members.len(),
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_user_owns_community()
+            .times(1)
+            .withf(move |cid, uid| *cid == community_id && *uid == user_id)
+            .returning(|_, _| Ok(true));
+        db.expect_list_community_team_members()
+            .times(1)
+            .withf(move |cid, filters| {
+                *cid == community_id && filters.limit == Some(5) && filters.offset == Some(10)
+            })
+            .returning(move |_, _| Ok(output.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/community/team?limit=5&offset=10")
             .header(HOST, "example.test")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
@@ -218,8 +320,12 @@ mod tests {
             .returning(|_, _| Ok(true));
         db.expect_list_community_team_members()
             .times(1)
-            .withf(move |cid| *cid == community_id)
-            .returning(move |_| Err(anyhow!("db error")));
+            .withf(move |cid, filters| {
+                *cid == community_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

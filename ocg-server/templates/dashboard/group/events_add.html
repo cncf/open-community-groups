@@ -88,7 +88,7 @@
                   <input type="text"
                          name="name"
                          id="name"
-                         maxlength="{{ crate::validation::MAX_LEN_M }}"
+                         maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
                          class="input-primary"
                          autocomplete="off"
                          autocorrect="off"
@@ -165,9 +165,11 @@
                       name="description_short"
                       rows="2"
                       class="input-primary"
-                      maxlength="{{ crate::validation::MAX_LEN_M }}"></textarea>
+                      maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
           </div>
-          <p class="form-legend">Brief description used in event listings and previews (max 200 characters).</p>
+          <p class="form-legend">
+            Brief description used in event listings and previews (max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters).
+          </p>
         </div>
         {# End Short Description -#}
 
@@ -447,7 +449,7 @@
 </div>
 
 {# Form buttons -#}
-<div class="flex items-center justify-end space-x-5 mt-6 border-t border-stone-900/10 pt-6">
+<div class="flex items-center justify-end space-x-5 mt-6">
   {# Cancel button -#}
   <div>
     <button id="cancel-button"

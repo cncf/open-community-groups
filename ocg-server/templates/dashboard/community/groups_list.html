@@ -1,4 +1,5 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
 {# Groups list header with title -#}
 {{ dashboard::form_title(title = "Groups") -}}
@@ -72,9 +73,13 @@
   </script>
 </div>
 
+<div class="text-sm text-stone-600">
+  {{ pagination::range_display(offset = offset.unwrap_or(0) , count = groups.len(), total = total, label = "group") }}
+</div>
+
 {# Groups Table -#}
-<div class="relative overflow-visible">
-  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500">
+<div class="relative overflow-visible mt-5">
+  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       {# Header -#}
       <tr>
@@ -364,3 +369,9 @@
   </script>
 </div>
 {# End Groups Table -#}
+
+{# Pagination -#}
+{% if total > groups.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}

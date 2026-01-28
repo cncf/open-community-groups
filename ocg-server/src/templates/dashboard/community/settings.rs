@@ -10,8 +10,8 @@ use serde_with::skip_serializing_none;
 use crate::{
     types::community::CommunityFull,
     validation::{
-        MAX_LEN_L, MAX_LEN_M, MAX_LEN_XL, image_url, image_url_opt, image_url_vec, trimmed_non_empty,
-        trimmed_non_empty_opt, url_map_values,
+        MAX_LEN_DESCRIPTION, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, image_url, image_url_opt, image_url_vec,
+        trimmed_non_empty, trimmed_non_empty_opt, url_map_values,
     },
 };
 
@@ -38,10 +38,10 @@ pub(crate) struct CommunityUpdate {
     #[garde(custom(image_url))]
     pub banner_url: String,
     /// Brief description of the community's purpose or focus.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
     /// Human-readable name shown in the UI (e.g., "CNCF").
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DISPLAY_NAME))]
     pub display_name: String,
     /// URL to the logo image.
     #[garde(custom(image_url))]
@@ -72,7 +72,7 @@ pub(crate) struct CommunityUpdate {
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
     /// Instructions for creating new groups.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_XL))]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
     pub new_group_details: Option<String>,
     /// Collection of photo URLs for community galleries or slideshows.
     #[garde(custom(image_url_vec))]

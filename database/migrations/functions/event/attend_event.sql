@@ -22,7 +22,8 @@ begin
     and (
         coalesce(e.ends_at, e.starts_at) is null
         or coalesce(e.ends_at, e.starts_at) >= current_timestamp
-    );
+    )
+    for update of e;
     if not found then
         raise exception 'event not found or inactive';
     end if;

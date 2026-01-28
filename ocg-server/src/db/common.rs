@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{BBox, PgDB, Total},
-    templates::site::explore,
+    templates::site::explore::{SearchEventsFilters, SearchGroupsFilters},
     types::{
         community::{CommunityFull, CommunitySummary},
         event::{EventFull, EventSummary},
@@ -51,10 +51,10 @@ pub(crate) trait DBCommon {
     async fn list_timezones(&self) -> Result<Vec<String>>;
 
     /// Searches for events based on provided filters.
-    async fn search_events(&self, filters: &explore::EventsFilters) -> Result<SearchEventsOutput>;
+    async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput>;
 
     /// Searches for groups based on provided filters.
-    async fn search_groups(&self, filters: &explore::GroupsFilters) -> Result<SearchGroupsOutput>;
+    async fn search_groups(&self, filters: &SearchGroupsFilters) -> Result<SearchGroupsOutput>;
 }
 
 #[async_trait]
@@ -198,7 +198,7 @@ impl DBCommon for PgDB {
 
     /// [`DBCommon::search_events`]
     #[instrument(skip(self), err)]
-    async fn search_events(&self, filters: &explore::EventsFilters) -> Result<SearchEventsOutput> {
+    async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput> {
         trace!("db: search events");
 
         // Query database
@@ -206,31 +206,21 @@ impl DBCommon for PgDB {
         let row = db
             .query_one(
                 "
-                select events::text, bbox::text, total
-                from search_events($1::jsonb)
+                select search_events($1::jsonb)::text
                 ",
                 &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchEventsOutput {
-            events: serde_json::from_str(&row.get::<_, String>("events"))?,
-            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-                serde_json::from_str(&bbox)?
-            } else {
-                None
-            },
-            total: row.get::<_, i64>("total") as usize,
-        };
+        let output = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(output)
     }
 
     /// [`DBCommon::search_groups`]
     #[instrument(skip(self), err)]
-    async fn search_groups(&self, filters: &explore::GroupsFilters) -> Result<SearchGroupsOutput> {
+    async fn search_groups(&self, filters: &SearchGroupsFilters) -> Result<SearchGroupsOutput> {
         trace!("db: search groups");
 
         // Query database
@@ -238,24 +228,14 @@ impl DBCommon for PgDB {
         let row = db
             .query_one(
                 "
-                select groups::text, bbox::text, total
-                from search_groups($1::jsonb)
+                select search_groups($1::jsonb)::text
                 ",
                 &[&Json(filters)],
             )
             .await?;
 
         // Prepare search output
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let output = SearchGroupsOutput {
-            groups: serde_json::from_str(&row.get::<_, String>("groups"))?,
-            bbox: if let Some(bbox) = row.get::<_, Option<String>>("bbox") {
-                serde_json::from_str(&bbox)?
-            } else {
-                None
-            },
-            total: row.get::<_, i64>("total") as usize,
-        };
+        let output = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(output)
     }

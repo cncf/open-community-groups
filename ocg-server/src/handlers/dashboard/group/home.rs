@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Query, State},
+    extract::{Query, RawQuery, State},
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -18,14 +18,20 @@ use crate::{
         error::HandlerError,
         extractors::{SelectedCommunityId, SelectedGroupId},
     },
+    router::serde_qs_config,
     templates::{
         PageId,
         auth::User,
         dashboard::group::{
-            analytics, events,
+            analytics,
+            events::{self, EventsListFilters, EventsTab},
             home::{Content, Page, Tab},
-            members, settings, sponsors, team,
+            members::{self, GroupMembersFilters},
+            settings,
+            sponsors::{self, GroupSponsorsFilters},
+            team::{self, GroupTeamFilters},
         },
+        pagination::NavigationLinks,
     },
 };
 
@@ -34,6 +40,7 @@ use crate::{
 /// This handler manages the main group dashboard page, selecting the appropriate tab
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
+#[allow(clippy::too_many_lines)]
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
@@ -41,6 +48,7 @@ pub(crate) async fn page(
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
@@ -59,12 +67,58 @@ pub(crate) async fn page(
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Events => {
-            let events = db.list_group_events(group_id).await?;
-            Content::Events(events::ListPage { events })
+            // Fetch past and upcoming events
+            let filters: EventsListFilters =
+                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+            let events = db.list_group_events(group_id, &filters).await?;
+            let mut past_filters = filters.clone();
+            past_filters.events_tab = Some(EventsTab::Past);
+            let mut upcoming_filters = filters.clone();
+            upcoming_filters.events_tab = Some(EventsTab::Upcoming);
+
+            // Prepare template content
+            let past_navigation_links = NavigationLinks::from_filters(
+                &past_filters,
+                events.past.total,
+                "/dashboard/group?tab=events",
+                "/dashboard/group/events",
+            )?;
+            let upcoming_navigation_links = NavigationLinks::from_filters(
+                &upcoming_filters,
+                events.upcoming.total,
+                "/dashboard/group?tab=events",
+                "/dashboard/group/events",
+            )?;
+            Content::Events(Box::new(events::ListPage {
+                events,
+                events_tab: filters.current_tab(),
+                past_navigation_links,
+                upcoming_navigation_links,
+                limit: filters.limit,
+                past_offset: filters.past_offset,
+                upcoming_offset: filters.upcoming_offset,
+            }))
         }
         Tab::Members => {
-            let members = db.list_group_members(group_id).await?;
-            Content::Members(members::ListPage { members })
+            // Fetch group members
+            let filters: GroupMembersFilters =
+                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+            let results = db.list_group_members(group_id, &filters).await?;
+
+            // Prepare template content
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                results.total,
+                "/dashboard/group?tab=members",
+                "/dashboard/group/members",
+            )?;
+            Content::Members(members::ListPage {
+                members: results.members,
+                navigation_links,
+                total: results.total,
+                limit: filters.limit,
+                offset: filters.offset,
+            })
         }
         Tab::Settings => {
             let (group, categories, regions) = tokio::try_join!(
@@ -79,17 +133,50 @@ pub(crate) async fn page(
             }))
         }
         Tab::Sponsors => {
-            let sponsors = db.list_group_sponsors(group_id).await?;
-            Content::Sponsors(sponsors::ListPage { sponsors })
+            // Fetch group sponsors
+            let filters: GroupSponsorsFilters =
+                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+            let results = db.list_group_sponsors(group_id, &filters, false).await?;
+
+            // Prepare template content
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                results.total,
+                "/dashboard/group?tab=sponsors",
+                "/dashboard/group/sponsors",
+            )?;
+            Content::Sponsors(sponsors::ListPage {
+                navigation_links,
+                sponsors: results.sponsors,
+                total: results.total,
+                limit: filters.limit,
+                offset: filters.offset,
+            })
         }
         Tab::Team => {
-            let (members, roles) =
-                tokio::try_join!(db.list_group_team_members(group_id), db.list_group_roles())?;
-            let approved_members_count = members.iter().filter(|m| m.accepted).count();
+            // Fetch group team members
+            let filters: GroupTeamFilters =
+                serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+            let (results, roles) = tokio::try_join!(
+                db.list_group_team_members(group_id, &filters),
+                db.list_group_roles()
+            )?;
+
+            // Prepare template content
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                results.total,
+                "/dashboard/group?tab=team",
+                "/dashboard/group/team",
+            )?;
             Content::Team(team::ListPage {
-                approved_members_count,
-                members,
+                approved_members_count: results.approved_total,
+                members: results.members,
+                navigation_links,
                 roles,
+                total: results.total,
+                limit: filters.limit,
+                offset: filters.offset,
             })
         }
     };
@@ -128,7 +215,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -242,8 +329,13 @@ mod tests {
             .returning(move |_| Ok(groups.clone()));
         db.expect_list_group_events()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(group_events.clone()));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.past_offset == Some(0)
+                    && filters.upcoming_offset == Some(0)
+            })
+            .returning(move |_, _| Ok(group_events.clone()));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
@@ -293,6 +385,10 @@ mod tests {
         );
         let groups = sample_user_groups_by_community(community_id, group_id);
         let member = sample_group_member();
+        let output = crate::templates::dashboard::group::members::GroupMembersOutput {
+            members: vec![member.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -314,8 +410,12 @@ mod tests {
             .returning(move |_| Ok(groups.clone()));
         db.expect_list_group_members()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![member.clone()]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
@@ -447,6 +547,10 @@ mod tests {
         );
         let groups = sample_user_groups_by_community(community_id, group_id);
         let sponsor = sample_group_sponsor();
+        let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
+            sponsors: vec![sponsor.clone()],
+            total: 1,
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -468,8 +572,13 @@ mod tests {
             .returning(move |_| Ok(groups.clone()));
         db.expect_list_group_sponsors()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![sponsor.clone()]));
+            .withf(move |id, filters, full_list| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+                    && !*full_list
+            })
+            .returning(move |_, _, _| Ok(output.clone()));
         db.expect_get_site_settings()
             .times(1)
             .returning(|| Ok(sample_site_settings()));
@@ -520,6 +629,12 @@ mod tests {
         let groups = sample_user_groups_by_community(community_id, group_id);
         let team_member = sample_team_member(true);
         let role = sample_group_role_summary();
+        let members = vec![team_member.clone(), sample_team_member(false)];
+        let output = crate::templates::dashboard::group::team::GroupTeamOutput {
+            approved_total: 1,
+            members: members.clone(),
+            total: members.len(),
+        };
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -541,8 +656,12 @@ mod tests {
             .returning(move |_| Ok(groups.clone()));
         db.expect_list_group_team_members()
             .times(1)
-            .withf(move |id| *id == group_id)
-            .returning(move |_| Ok(vec![team_member.clone(), sample_team_member(false)]));
+            .withf(move |id, filters| {
+                *id == group_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(output.clone()));
         db.expect_list_group_roles()
             .times(1)
             .returning(move || Ok(vec![role.clone()]));

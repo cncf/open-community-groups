@@ -1,25 +1,19 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
 {# Members header -#}
 {{ dashboard::form_title(title = "Members") -}}
 
 <div class="flex justify-between items-end my-5">
-  <div class="flex text-sm text-stone-600">
-    <div>Total members:</div>
-    <div class="font-semibold ms-1 text-end">
-      {% if members.is_empty() -%}
-        -
-      {% else %}
-        {{ members.len() }}
-      {% endif -%}
-    </div>
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
   </div>
   <div>
     <button id="open-notification-modal"
             type="button"
             class="btn-primary"
-            {% if members.is_empty() -%}
+            {% if total == 0 -%}
               disabled title="Add members to enable sending notifications."
             {% endif -%}>Send email</button>
   </div>
@@ -27,7 +21,7 @@
 
 {# Members table -#}
 <div class="relative overflow-visible">
-  <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Members list">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
@@ -96,6 +90,12 @@
   {# End table -#}
 </div>
 
+{# Pagination -#}
+{% if total > members.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}
+
 {# Notification modal -#}
 <div id="notification-modal"
      role="dialog"
@@ -151,7 +151,7 @@
                         name="body"
                         required
                         rows="6"
-                        maxlength="{{ crate::validation::MAX_LEN_XL }}"
+                        maxlength="{{ crate::validation::MAX_LEN_NOTIFICATION_BODY }}"
                         class="input-primary"
                         placeholder="Enter notification body (plain text only)"></textarea>
               <p class="mt-1 text-xs text-stone-500">Plain text only. No HTML formatting.</p>

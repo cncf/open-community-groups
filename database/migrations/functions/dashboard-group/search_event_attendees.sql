@@ -1,9 +1,12 @@
--- Returns attendees for a group's event using provided filters.
+-- Returns paginated attendees for a group's event using provided filters.
 create or replace function search_event_attendees(p_group_id uuid, p_filters jsonb)
 returns json as $$
     with
         filters as (
-            select (p_filters->>'event_id')::uuid as event_id
+            select
+                (p_filters->>'event_id')::uuid as event_id,
+                (p_filters->>'limit')::int as limit_value,
+                (p_filters->>'offset')::int as offset_value
         ),
         attendees as (
             select
@@ -22,8 +25,24 @@ returns json as $$
             join "user" u on u.user_id = ea.user_id
             where e.group_id = p_group_id
             and ea.event_id = (select event_id from filters)
-            order by coalesce(lower(u.name), lower(u.username)) asc
+            order by coalesce(lower(u.name), lower(u.username)) asc, u.user_id asc
+            offset (select offset_value from filters)
+            limit (select limit_value from filters)
+        ),
+        totals as (
+            select count(*)::int as total
+            from event_attendee ea
+            join event e on e.event_id = ea.event_id
+            where e.group_id = p_group_id
+            and ea.event_id = (select event_id from filters)
+        ),
+        attendees_json as (
+            select coalesce(json_agg(row_to_json(attendees)), '[]'::json) as attendees
+            from attendees
         )
-    select coalesce(json_agg(row_to_json(attendees)), '[]'::json)
-    from attendees;
+    select json_build_object(
+        'attendees', attendees_json.attendees,
+        'total', totals.total
+    )
+    from attendees_json, totals;
 $$ language sql;

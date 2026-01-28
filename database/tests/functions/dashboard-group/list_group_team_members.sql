@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -49,18 +49,48 @@ values
 
 -- Should return list of group team members with accepted flag
 select is(
-    list_group_team_members(:'groupID'::uuid)::jsonb,
-    '[
-        {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "organizer", "title": "Organizer"},
-        {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
-    ]'::jsonb,
+    list_group_team_members(
+        :'groupID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'approved_total', 1,
+        'members', '[
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "organizer", "title": "Organizer"},
+            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
     'Should return list of group team members with accepted flag'
+);
+
+-- Should return paginated team members when limit and offset are provided
+select is(
+    list_group_team_members(
+        :'groupID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'approved_total', 1,
+        'members', '[
+            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "organizer", "title": null}
+        ]'::jsonb,
+        'total', 2
+    ),
+    'Should return paginated team members when limit and offset are provided'
 );
 
 -- Should return empty list for non-existing group
 select is(
-    list_group_team_members('00000000-0000-0000-0000-000000000099'::uuid)::text,
-    '[]',
+    list_group_team_members(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'approved_total', 0,
+        'members', '[]'::jsonb,
+        'total', 0
+    ),
     'Should return empty list for non-existing group'
 );
 

@@ -1,9 +1,14 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
 
-{# Sponsors header with title and add button -#}
-<div class="flex items-center">
-  <div>{{ dashboard::form_title(title = "Sponsors") -}}</div>
-  <div class="ms-auto">
+{# Sponsors header -#}
+{{ dashboard::form_title(title = "Sponsors") -}}
+
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = sponsors.len(), total = total, label = "sponsor") }}
+  </div>
+  <div>
     <button id="add-sponsor-button"
             hx-get="/dashboard/group/sponsors/add"
             hx-target="#dashboard-content"
@@ -21,8 +26,8 @@
 </div>
 
 {# Sponsors table -#}
-<div class="relative overflow-visible mt-10">
-  <table class="table-fixed w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500"
+<div class="relative overflow-visible mt-5">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Sponsors list">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
@@ -66,12 +71,12 @@
             {# End sponsor -#}
 
             {# Website -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[180px]">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[180px] max-w-[240px]">
               {% if let Some(website) = &sponsor.website_url -%}
                 <a href="{{ website }}"
                    target="_blank"
                    rel="noopener"
-                   class="text-primary-600 hover:underline break-all">{{ website }}</a>
+                   class="block max-w-full truncate text-primary-600 hover:underline">{{ website }}</a>
               {% else -%}
                 -
               {% endif -%}
@@ -140,3 +145,9 @@
   {# End table -#}
 
 </div>
+
+{# Pagination -#}
+{% if total > sponsors.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}

@@ -38,10 +38,6 @@
 {# End main content -#}
 
 <script type="module">
-  import {
-    hideLoadingSpinner
-  } from '/static/js/common/common.js';
-
   const entitySection = document.getElementById('entity-section');
   if (entitySection) {
     entitySection.addEventListener('htmx:afterSwap', () => {
@@ -49,8 +45,6 @@
         top: 0,
         behavior: 'instant'
       })
-      hideLoadingSpinner("loading-filters");
-      hideLoadingSpinner("loading-filters-mobile");
     });
   }
 

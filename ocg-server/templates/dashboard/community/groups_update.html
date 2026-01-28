@@ -22,7 +22,7 @@
             <input type="text"
                    name="name"
                    id="name"
-                   maxlength="{{ crate::validation::MAX_LEN_M }}"
+                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
                    class="input-primary"
                    autocomplete="off"
                    autocorrect="off"
@@ -102,7 +102,7 @@
                 name="description_short"
                 rows="2"
                 class="input-primary"
-                maxlength="{{ crate::validation::MAX_LEN_M }}">{% if let Some(description_short) = &group.description_short %}{{ description_short }}{% endif %}</textarea>
+                maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{% if let Some(description_short) = &group.description_short %}{{ description_short }}{% endif %}</textarea>
     </div>
     <p class="form-legend">Brief description for group listings and previews.</p>
   </div>

@@ -20,8 +20,6 @@ use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::validation::trimmed_non_empty;
-
 use crate::{
     auth::{self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials},
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
@@ -36,6 +34,7 @@ use crate::{
         auth::{User, UserDetails},
         notifications::EmailVerification,
     },
+    validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
 /// Key used to store the authentication provider in the session.
@@ -585,10 +584,10 @@ pub(crate) async fn select_first_community_and_group(
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct LoginForm {
     /// Username for authentication.
-    #[garde(custom(trimmed_non_empty))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub username: String,
     /// Password for authentication.
-    #[garde(custom(trimmed_non_empty))]
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub password: String,
 }
 

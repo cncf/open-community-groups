@@ -1,6 +1,6 @@
 -- Returns the events that match the filters provided.
 create or replace function search_events(p_filters jsonb)
-returns table(events json, bbox json, total bigint) as $$
+returns json as $$
 declare
     v_bbox geometry;
     v_community_ids uuid[];
@@ -10,9 +10,9 @@ declare
     v_group_category text[];
     v_group_ids uuid[];
     v_kind text[];
-    v_limit int := coalesce((p_filters->>'limit')::int, 10);
+    v_limit int := (p_filters->>'limit')::int;
     v_max_distance real;
-    v_offset int := coalesce((p_filters->>'offset')::int, 0);
+    v_offset int := (p_filters->>'offset')::int;
     v_region text[];
     v_sort_by text := coalesce(p_filters->>'sort_by', 'date');
     v_sort_direction text := case lower(coalesce(p_filters->>'sort_direction', 'asc'))
@@ -77,7 +77,7 @@ begin
         ) into v_tsquery_with_prefix_matching;
     end if;
 
-    return query
+    return (
     with filtered_events as (
         select
             g.community_id,
@@ -85,7 +85,12 @@ begin
             e.group_id,
             e.starts_at,
             coalesce(e.location, g.location) as location,
-            st_distance(coalesce(e.location, g.location), v_user_location) as distance
+            case
+                when v_sort_by = 'distance'
+                and v_user_location is not null then
+                    st_distance(coalesce(e.location, g.location), v_user_location)
+                else null
+            end as distance
         from event e
         join "group" g using (group_id)
         join group_category gc using (group_category_id)
@@ -152,18 +157,9 @@ begin
             starts_at asc
         limit v_limit
         offset v_offset
-    ),
-    filtered_events_bbox as (
-        select st_envelope(st_union(st_envelope(location::geometry))) as bb
-        from filtered_events
     )
-    select
-        (
-            select coalesce(json_agg(
-                get_event_summary(community_id, group_id, event_id)
-            ), '[]')
-            from filtered_events_page
-        ),
+    select json_build_object(
+        'bbox',
         (
             case when p_filters ? 'include_bbox' and (p_filters->>'include_bbox')::boolean = true then
                 (
@@ -176,12 +172,25 @@ begin
                                 'sw_lon', st_xmin(bb)
                             )
                         else null end
-                    from filtered_events_bbox
+                    from (
+                        select st_envelope(st_union(st_envelope(location::geometry))) as bb
+                        from filtered_events
+                    ) as filtered_events_bbox
                 )
             else null end
         ),
+        'events',
         (
-            select count(*) from filtered_events
-        );
+            select coalesce(json_agg(
+                get_event_summary(community_id, group_id, event_id)
+            ), '[]'::json)
+            from filtered_events_page
+        ),
+        'total',
+        (
+            select count(*)::bigint from filtered_events
+        )
+    )
+    );
 end
 $$ language plpgsql;
