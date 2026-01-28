@@ -6,15 +6,8 @@
 {{ dashboard::form_title(title = "Group Team") -}}
 
 <div class="flex justify-between items-end my-5">
-  <div class="flex text-sm text-stone-600">
-    <div>Total members:</div>
-    <div class="font-semibold ms-1 text-end">
-      {% if total == 0 -%}
-        -
-      {% else %}
-        {{ total }}
-      {% endif -%}
-    </div>
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
   </div>
   <div>
     <team-add-member dashboard-type="group" selected-users='{{ members|json }}'></team-add-member>

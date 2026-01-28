@@ -66,15 +66,8 @@
      class="{% if events_tab == EventsTab::Past %}
               hidden
             {% endif %}">
-  <div class="flex text-sm text-stone-600 mb-5">
-    <div>Total events:</div>
-    <div class="font-semibold ms-1 text-end">
-      {% if events.upcoming.total == 0 -%}
-        -
-      {% else %}
-        {{ events.upcoming.total }}
-      {% endif -%}
-    </div>
+  <div class="text-sm text-stone-600 mb-5">
+    {{ pagination::range_display(offset = upcoming_offset.unwrap_or(0) , count = events.upcoming.events.len(), total = events.upcoming.total, label = "event") }}
   </div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
@@ -423,15 +416,8 @@
      class="{% if events_tab == EventsTab::Upcoming %}
               hidden
             {% endif %}">
-  <div class="flex text-sm text-stone-600 mb-5">
-    <div>Total events:</div>
-    <div class="font-semibold ms-1 text-end">
-      {% if events.past.total == 0 -%}
-        -
-      {% else %}
-        {{ events.past.total }}
-      {% endif -%}
-    </div>
+  <div class="text-sm text-stone-600 mb-5">
+    {{ pagination::range_display(offset = past_offset.unwrap_or(0) , count = events.past.events.len(), total = events.past.total, label = "event") }}
   </div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"

@@ -94,3 +94,16 @@
   {# End pagination -#}
 
 {%- endmacro navigation_links %}
+
+{% macro range_display(offset, count, total, label = "result") -%}
+  {% if count > 0 -%}
+    {% let start = offset + 1 -%}
+    {% let end = offset + count -%}
+    {{ start }} - {{ end }} of <span class="font-semibold">{{ total }}</span> {{ label }}
+    {% if count != 1 -%}
+      s
+    {% endif -%}
+  {% else -%}
+    0 {{ label }}s
+  {% endif -%}
+{%- endmacro range_display %}
