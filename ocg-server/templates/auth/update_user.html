@@ -31,7 +31,9 @@
                    spellcheck="false"
                    required>
           </div>
-          <p class="form-legend">Your display name visible to other users. Max 250 characters.</p>
+          <p class="form-legend">
+            Your display name visible to other users. Max {{ crate::validation::MAX_LEN_DISPLAY_NAME }} characters.
+          </p>
         </div>
         {# End name -#}
 
@@ -68,7 +70,9 @@
                    autocapitalize="off"
                    spellcheck="false">
           </div>
-          <p class="form-legend">The organization or company you work for. Max 100 characters.</p>
+          <p class="form-legend">
+            The organization or company you work for. Max {{ crate::validation::MAX_LEN_S }} characters.
+          </p>
         </div>
         {# End company -#}
 
@@ -88,7 +92,7 @@
                    spellcheck="false">
           </div>
           <p class="form-legend">
-            Your professional title or role (e.g. Software Engineer, Product Manager). Max 100 characters.
+            Your professional title or role (e.g. Software Engineer, Product Manager). Max {{ crate::validation::MAX_LEN_S }} characters.
           </p>
         </div>
         {# End title -#}
@@ -110,7 +114,9 @@
                     maxlength="{{ crate::validation::MAX_LEN_BIO }}"
                     class="input-primary">{% if let Some(bio) = &user.bio -%}{{ bio }}{% endif %}</textarea>
         </div>
-        <p class="form-legend">A description about yourself and your background. Max {{ crate::validation::MAX_LEN_BIO }} characters.</p>
+        <p class="form-legend">
+          A description about yourself and your background. Max {{ crate::validation::MAX_LEN_BIO }} characters.
+        </p>
       </div>
       {# End bio -#}
 
@@ -146,7 +152,7 @@
                  autocapitalize="off"
                  spellcheck="false">
         </div>
-        <p class="form-legend">The city where you're based. Max 100 characters.</p>
+        <p class="form-legend">The city where you're based. Max {{ crate::validation::MAX_LEN_S }} characters.</p>
       </div>
       {# End city -#}
 
@@ -165,7 +171,7 @@
                  autocapitalize="off"
                  spellcheck="false">
         </div>
-        <p class="form-legend">Your country of residence. Max 100 characters.</p>
+        <p class="form-legend">Your country of residence. Max {{ crate::validation::MAX_LEN_S }} characters.</p>
       </div>
       {# End country -#}
     </div>

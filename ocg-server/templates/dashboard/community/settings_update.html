@@ -32,7 +32,9 @@
                    value="{{ community.display_name }}"
                    required>
           </div>
-          <p class="form-legend">Public name displayed throughout the community platform. Max 250 characters.</p>
+          <p class="form-legend">
+            Public name displayed throughout the community platform. Max {{ crate::validation::MAX_LEN_DISPLAY_NAME }} characters.
+          </p>
         </div>
         {# End display name -#}
 

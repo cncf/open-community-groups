@@ -31,7 +31,7 @@
                    value="{{ sponsor.name }}"
                    required>
           </div>
-          <p class="form-legend">Sponsor's name. Max 250 characters.</p>
+          <p class="form-legend">Sponsor's name. Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.</p>
         </div>
         {# End Sponsor name -#}
 

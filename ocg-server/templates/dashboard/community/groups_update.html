@@ -31,7 +31,9 @@
                    value="{{ group.name }}"
                    required>
           </div>
-          <p class="form-legend">Display name of the group (e.g. Kubernetes Amsterdam). Max 250 characters.</p>
+          <p class="form-legend">
+            Display name of the group (e.g. Kubernetes Amsterdam). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
+          </p>
         </div>
         {# End Group name -#}
 
@@ -83,7 +85,9 @@
                       class="input-primary"
                       maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{% if let Some(description_short) = &group.description_short %}{{ description_short }}{% endif %}</textarea>
           </div>
-          <p class="form-legend">Brief description for group listings and previews. Max 250 characters.</p>
+          <p class="form-legend">
+            Brief description for group listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
+          </p>
         </div>
         {# End Short Description -#}
 

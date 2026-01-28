@@ -100,9 +100,9 @@
     {% let start = offset + 1 -%}
     {% let end = offset + count -%}
     {{ start }} - {{ end }} of <span class="font-semibold">{{ total }}</span> {{ label }}
-    {% if count != 1 -%}
+    {%- if count != 1 -%}
       s
-    {% endif -%}
+    {%- endif -%}
   {% else -%}
     0 {{ label }}s
   {% endif -%}
