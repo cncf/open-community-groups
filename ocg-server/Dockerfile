@@ -10,7 +10,7 @@ WORKDIR /ocg/ocg-server
 RUN cargo build --release
 
 # Final stage
-FROM alpine:3.23.2
+FROM alpine:3.23.3
 RUN apk --no-cache add ca-certificates && addgroup -S ocg && adduser -S ocg -G ocg
 USER ocg
 WORKDIR /home/ocg
