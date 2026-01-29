@@ -79,11 +79,14 @@
         <div class="col-span-full">
           <label for="description_short" class="form-label">Short Description</label>
           <div class="mt-2">
-            <textarea id="description_short"
-                      name="description_short"
-                      rows="2"
-                      class="input-primary"
-                      maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{% if let Some(description_short) = &group.description_short %}{{ description_short }}{% endif %}</textarea>
+            <input type="text"
+                   id="description_short"
+                   name="description_short"
+                   class="input-primary"
+                   maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                   value="{% if let Some(description_short) = &group.description_short %}
+                            {{ description_short }}
+                          {% endif %}" />
           </div>
           <p class="form-legend">
             Brief description for group listings and previews. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.
