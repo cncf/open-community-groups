@@ -111,7 +111,10 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     const capacityField = document.getElementById("capacity");
-    capacityField?.addEventListener("input", () => this._checkMeetingCapacity());
+    capacityField?.addEventListener("input", () => {
+      this._checkMeetingCapacity();
+      this.requestUpdate();
+    });
     this._checkMeetingCapacity();
   }
 
@@ -442,7 +445,13 @@ export class OnlineEventDetails extends LitWrapper {
             <div class="space-y-1">
               <div class="text-base font-semibold text-stone-900">${option.title}</div>
               <p class="form-legend">${option.description}</p>
-              ${option.helper ? html`<p class="form-legend font-semibold">${option.helper}</p>` : ""}
+              ${option.reasons && option.reasons.length > 0
+                ? html`
+                    <ul class="list-disc list-inside form-legend mt-2">
+                      ${option.reasons.map((r) => html`<li>${r}</li>`)}
+                    </ul>
+                  `
+                : ""}
             </div>
           </div>
         </div>
@@ -486,7 +495,7 @@ export class OnlineEventDetails extends LitWrapper {
     } else if (newMode === "automatic" && this._mode === "manual") {
       const availability = this._getAutomaticAvailability();
       if (!availability.allowed) {
-        showInfoAlert(availability.reason);
+        showInfoAlert(availability.reasons[0] || "Cannot enable automatic meetings.");
         this.requestUpdate();
         return;
       }
@@ -529,50 +538,45 @@ export class OnlineEventDetails extends LitWrapper {
 
   _getAutomaticAvailability() {
     if (this.disabled) {
-      return { allowed: false, reason: "" };
+      return { allowed: false, reasons: [] };
     }
+
+    const reasons = [];
+
     const isVirtualOrHybrid = this.kind === "virtual" || this.kind === "hybrid";
     if (!isVirtualOrHybrid) {
-      return {
-        allowed: false,
-        reason: "Automatic meetings are only available for virtual or hybrid events.",
-      };
+      reasons.push("Event must be virtual or hybrid.");
     }
 
     if (!this.startsAt || !this.endsAt) {
-      return {
-        allowed: false,
-        reason: "Set start and end times to enable automatic meetings.",
-      };
+      reasons.push("Set start and end times.");
+    } else {
+      const startDate = new Date(this.startsAt);
+      const endDate = new Date(this.endsAt);
+
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        reasons.push("Provide valid start and end times.");
+      } else {
+        const durationMinutes = (endDate - startDate) / 60000;
+        if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+          reasons.push("End time must be after start time.");
+        } else if (durationMinutes < MIN_MEETING_MINUTES || durationMinutes > MAX_MEETING_MINUTES) {
+          reasons.push(`Duration must be ${MIN_MEETING_MINUTES}-${MAX_MEETING_MINUTES} minutes.`);
+        }
+      }
     }
 
-    const startDate = new Date(this.startsAt);
-    const endDate = new Date(this.endsAt);
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      return {
-        allowed: false,
-        reason: "Provide valid start and end times to enable automatic meetings.",
-      };
+    const capacityValue = this._getCapacityValue();
+    if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
+      reasons.push("Set event capacity.");
+    } else {
+      const capacityLimit = this._getCapacityLimit();
+      if (Number.isFinite(capacityLimit) && capacityValue > capacityLimit) {
+        reasons.push(`Capacity exceeds meeting limit (${capacityLimit}).`);
+      }
     }
 
-    const durationMinutes = (endDate - startDate) / 60000;
-
-    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-      return {
-        allowed: false,
-        reason: "End time must be after the start time for automatic meetings.",
-      };
-    }
-
-    if (durationMinutes < MIN_MEETING_MINUTES || durationMinutes > MAX_MEETING_MINUTES) {
-      return {
-        allowed: false,
-        reason: `Duration must be between ${MIN_MEETING_MINUTES} and ${MAX_MEETING_MINUTES} minutes.`,
-      };
-    }
-
-    return { allowed: true, reason: "" };
+    return { allowed: reasons.length === 0, reasons };
   }
 
   /**
@@ -879,7 +883,7 @@ export class OnlineEventDetails extends LitWrapper {
         value: "automatic",
         title: "Create meeting automatically",
         description: "We will create and manage a meeting when you save this event.",
-        helper: availability.allowed ? "" : availability.reason,
+        reasons: availability.reasons,
         disabled: this.disabled || !availability.allowed,
       },
     ];
