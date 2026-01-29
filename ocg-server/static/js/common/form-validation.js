@@ -99,7 +99,7 @@ const adjustScrollForHeader = (element) => {
     return;
   }
 
-  const gap = 24;
+  const gap = 50; // Extra gap between header and target
   const rect = element.getBoundingClientRect();
   if (rect.top < headerOffset + gap) {
     window.scrollBy({

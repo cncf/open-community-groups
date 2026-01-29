@@ -228,19 +228,17 @@ const updateMarkdownContent = (content) => {
 };
 
 /**
- * Updates timezone select with a safe fallback.
+ * Updates timezone selector or select with a safe fallback.
  * @param {*} timezone Timezone value
  */
 const updateTimezone = (timezone) => {
-  const select = document.getElementById("timezone");
-  if (!select) {
-    return;
-  }
-  const options = Array.from(select.options || []);
   const normalized = toOptionalString(timezone);
-  const hasMatch = options.some((option) => option.value === normalized);
-  select.value = hasMatch ? normalized : "";
-  select.dispatchEvent(new Event("change", { bubbles: true }));
+
+  const selector = document.querySelector("timezone-selector[name='timezone']");
+  if (selector) {
+    selector.value = normalized;
+    selector.dispatchEvent(new Event("change", { bubbles: true }));
+  }
 };
 
 export {

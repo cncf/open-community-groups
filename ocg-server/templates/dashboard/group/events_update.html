@@ -325,28 +325,19 @@
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {# Timezone -#}
           <div class="col-span-full lg:col-span-3">
-            <label for="timezone" class="form-label">
+            <label class="form-label">
               Timezone <span class="asterisk">*</span>
             </label>
-            <div class="mt-2 grid grid-cols-1">
-              <select id="timezone"
-                      name="timezone"
-                      class="select-primary
-                             {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                      required
-                      {% if event.is_past() %}disabled{% endif %}>
-                <option value="">Select a timezone</option>
-                {% for timezone in timezones %}
-                  <option value="{{ timezone }}"
-                          {% if timezone.as_str() == event.timezone.to_string().as_str() %}selected{% endif %}>{{ timezone }}</option>
-                {% endfor %}
-              </select>
+            <div class="mt-2">
+              <timezone-selector name="timezone" value="{{ event.timezone }}" timezones="{{ timezones|json }}" required
+              {% if event.is_past() %}disabled{% endif %}
+              ></timezone-selector>
             </div>
             <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
           </div>
           {# End Timezone -#}
 
-          <div class="col-span-4"></div>
+          <div class="col-span-3"></div>
 
           {# Start date/time -#}
           <div class="col-span-full lg:col-span-3">
