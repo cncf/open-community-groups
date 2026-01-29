@@ -5,7 +5,12 @@
 //! functionality with application-specific formatting needs.
 
 // Askama custom filter functions should return Result types.
-#![allow(clippy::unnecessary_wraps)]
+#![allow(
+    clippy::inline_always,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_wraps,
+    clippy::unused_self
+)]
 
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
