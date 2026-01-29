@@ -15,7 +15,6 @@ use crate::{
 // Pages and sections templates.
 
 /// Group page template.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "group/page.html")]
 pub(crate) struct Page {

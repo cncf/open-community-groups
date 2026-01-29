@@ -39,17 +39,9 @@
 
         {# Timezone -#}
         <div class="col-span-3">
-          <label for="timezone" class="form-label">Timezone</label>
-          <div class="mt-2 grid grid-cols-1">
-            <select id="timezone" name="timezone" class="select-primary">
-              <option value="">Select a timezone</option>
-              {% for timezone in timezones %}
-                <option value="{{ timezone }}"
-                        {% if let Some(user_timezone) = &user.timezone %}
-                          {% if timezone.as_str() == user_timezone.as_str() %}selected{% endif %}
-                        {% endif %}>{{ timezone }}</option>
-              {% endfor %}
-            </select>
+          <label class="form-label">Timezone</label>
+          <div class="mt-2">
+            <timezone-selector name="timezone" value="{%- if let Some(tz) = &user.timezone -%}{{ tz }}{%- endif -%}" timezones="{{ timezones|json }}"></timezone-selector>
           </div>
           <p class="form-legend">Your preferred timezone.</p>
         </div>
@@ -337,8 +329,6 @@
   </form>
   {# End update user password form -#}
 {% endif -%}
-
-<script type="module" src="/static/js/common/image-field.js"></script>
 
 <script type="module">
   import {

@@ -21,6 +21,7 @@
   <script type="module" src="/static/js/common/location-search-field.js"></script>
   <script type="module" src="/static/js/common/speakers-selector.js"></script>
   <script type="module" src="/static/js/common/user-search-selector.js"></script>
+  <script type="module" src="/static/js/common/timezone-selector.js"></script>
 {% endblock scripts -%}
 
 {% block menu -%}
@@ -39,9 +40,22 @@
 
       <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}"></group-selector>
       {% if !selected_community_groups().is_empty() -%}
+        {% let current_selection = current_selection_details() -%}
+        {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + &current_selection.1.slug -%}
         <div class="mt-3 grid gap-y-0.5">
           {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
           {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
+          <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
+            <a href="{{ group_public_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="flex items-center justify-between cursor-pointer">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-eye bg-primary-500"></div>
+                <div class="text-sm/8 ms-3">Group public site</div>
+              </div>
+            </a>
+          </div>
         </div>
       {% endif -%}
     </div>
@@ -72,7 +86,10 @@
 {% endblock menu -%}
 
 {% block dashboard_main -%}
+  {% let current_selection = current_selection_details() -%}
   <div id="dashboard-content"
+       data-community="{{ current_selection.0.name }}"
+       data-group-slug="{{ current_selection.1.slug }}"
        hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"

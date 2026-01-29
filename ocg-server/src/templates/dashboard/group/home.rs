@@ -17,7 +17,6 @@ use crate::{
 };
 
 /// Home page template for the group dashboard.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/group/home.html")]
 pub(crate) struct Page {
@@ -48,7 +47,6 @@ impl Page {
     }
 
     /// Returns the selected community and group details.
-    #[allow(dead_code)]
     fn current_selection_details(&self) -> (&CommunitySummary, &GroupMinimal) {
         let selected_community = self
             .groups_by_community
@@ -92,37 +90,31 @@ pub(crate) enum Content {
 
 impl Content {
     /// Check if the content is the analytics page.
-    #[allow(dead_code)]
     fn is_analytics(&self) -> bool {
         matches!(self, Content::Analytics(_))
     }
 
     /// Check if the content is the events page.
-    #[allow(dead_code)]
     fn is_events(&self) -> bool {
         matches!(self, Content::Events(_))
     }
 
     /// Check if the content is the members page.
-    #[allow(dead_code)]
     fn is_members(&self) -> bool {
         matches!(self, Content::Members(_))
     }
 
     /// Check if the content is the settings page.
-    #[allow(dead_code)]
     fn is_settings(&self) -> bool {
         matches!(self, Content::Settings(_))
     }
 
     /// Check if the content is the sponsors page.
-    #[allow(dead_code)]
     fn is_sponsors(&self) -> bool {
         matches!(self, Content::Sponsors(_))
     }
 
     /// Check if the content is the team page.
-    #[allow(dead_code)]
     fn is_team(&self) -> bool {
         matches!(self, Content::Team(_))
     }

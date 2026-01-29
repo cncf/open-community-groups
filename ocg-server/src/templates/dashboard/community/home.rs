@@ -17,7 +17,6 @@ use crate::{
 };
 
 /// Home page template for the community dashboard.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Template)]
 #[template(path = "dashboard/community/home.html")]
 pub(crate) struct Page {
@@ -54,25 +53,21 @@ pub(crate) enum Content {
 
 impl Content {
     /// Check if the content is the analytics page.
-    #[allow(dead_code)]
     fn is_analytics(&self) -> bool {
         matches!(self, Content::Analytics(_))
     }
 
     /// Check if the content is the groups page.
-    #[allow(dead_code)]
     fn is_groups(&self) -> bool {
         matches!(self, Content::Groups(_))
     }
 
     /// Check if the content is the settings page.
-    #[allow(dead_code)]
     fn is_settings(&self) -> bool {
         matches!(self, Content::Settings(_))
     }
 
     /// Check if the content is the team page.
-    #[allow(dead_code)]
     fn is_team(&self) -> bool {
         matches!(self, Content::Team(_))
     }

@@ -12,3 +12,28 @@
   </div>
 {% endmacro analytics_chart -%}
 {# End analytics chart container #}
+
+{# Stat block -#}
+{% macro stat_block(kind, title, value, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+  <div class="{{ extra_styles_ }}">
+    <div class="flex items-center justify-center">
+      {# Icon -#}
+      <div>
+        <div class="svg-icon h-8 w-8 md:h-12 md:w-12 bg-stone-400 icon-{{ kind }}"></div>
+      </div>
+      {# End icon -#}
+
+      <div class="ms-3 md:ms-5">
+        {# Title -#}
+        <div class="text-xs text-stone-500 font-medium uppercase">{{ title }}</div>
+        {# End title -#}
+
+        {# Value -#}
+        <div class="text-xl font-semibold text-stone-900 md:text-2xl lg:text-4xl">{{ value|num_fmt }}</div>
+        {# End value -#}
+      </div>
+    </div>
+  </div>
+{% endmacro stat_block -%}
+{# End stat block -#}

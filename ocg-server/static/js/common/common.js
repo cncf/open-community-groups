@@ -74,14 +74,24 @@ export const debounce = (fn, delay = 150) => {
 
 /**
  * Locks body scroll by setting overflow to hidden. Uses a counter to handle
- * multiple modals. Only locks scroll when the first modal opens.
+ * multiple modals. Only locks scroll when the first modal opens. Adds
+ * padding-right to avoid layout shift when the scrollbar disappears.
  */
 export const lockBodyScroll = () => {
-  const current = Number.parseInt(document.body.dataset.modalOpenCount || "0", 10);
+  const body = document.body;
+  const current = Number.parseInt(body.dataset.modalOpenCount || "0", 10);
   const next = Number.isNaN(current) ? 1 : current + 1;
-  document.body.dataset.modalOpenCount = String(next);
+  body.dataset.modalOpenCount = String(next);
   if (next === 1) {
-    document.body.style.overflow = "hidden";
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    body.dataset.modalOverflow = body.style.overflow || "";
+    body.dataset.modalPaddingRight = body.style.paddingRight || "";
+    if (scrollbarWidth > 0) {
+      const currentPaddingRight = Number.parseFloat(window.getComputedStyle(body).paddingRight || "0");
+      const nextPaddingRight = currentPaddingRight + scrollbarWidth;
+      body.style.paddingRight = `${nextPaddingRight}px`;
+    }
+    body.style.overflow = "hidden";
   }
 };
 
@@ -90,11 +100,15 @@ export const lockBodyScroll = () => {
  * modals. Only unlocks scroll when all modals are closed (counter reaches 0).
  */
 export const unlockBodyScroll = () => {
-  const current = Number.parseInt(document.body.dataset.modalOpenCount || "0", 10);
+  const body = document.body;
+  const current = Number.parseInt(body.dataset.modalOpenCount || "0", 10);
   const next = Number.isNaN(current) ? 0 : Math.max(0, current - 1);
-  document.body.dataset.modalOpenCount = String(next);
+  body.dataset.modalOpenCount = String(next);
   if (next === 0) {
-    document.body.style.overflow = "";
+    const previousOverflow = body.dataset.modalOverflow ?? "";
+    const previousPaddingRight = body.dataset.modalPaddingRight ?? "";
+    body.style.overflow = previousOverflow;
+    body.style.paddingRight = previousPaddingRight;
   }
 };
 

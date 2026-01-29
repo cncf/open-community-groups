@@ -45,8 +45,11 @@
 
           {% if let Some(description_short) = &group.description_short -%}
             {# Group description -#}
-            <div class="hidden relative text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2 h-9 md:my-2 md:block">
-              {{ description_short|demoji }}
+
+            <div class="hidden md:block">
+              <div class="relative text-[0.8rem] text-stone-500 leading-[1.2rem] line-clamp-2 h-9 md:my-2">
+                {{ description_short|demoji }}
+              </div>
             </div>
             {# End group description -#}
           {% endif -%}

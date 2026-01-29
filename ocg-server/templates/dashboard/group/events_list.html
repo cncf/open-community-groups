@@ -126,7 +126,7 @@
                       <div class="max-w-full truncate">{{ event.kind }}</div>
                       {% if let Some(start_time) = &event.starts_at -%}
                         <div class="max-w-full truncate">
-                          {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
+                          {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
                         </div>
                       {% endif -%}
                     </div>
@@ -155,7 +155,7 @@
                 {% if let Some(start_time) = &event.starts_at -%}
                   <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
                   <div class="max-w-full truncate text-xs text-stone-400">
-                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
+                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p %Z") }}
                   </div>
                 {% else -%}
                   <span class="text-stone-400">TBD</span>
@@ -476,7 +476,7 @@
                       <div class="max-w-full truncate">{{ event.kind }}</div>
                       {% if let Some(start_time) = &event.starts_at -%}
                         <div class="max-w-full truncate">
-                          {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p") }}
+                          {{ start_time.with_timezone(event.timezone).format("%b %d, %Y at %I:%M %p %Z") }}
                         </div>
                       {% endif -%}
                     </div>
@@ -505,7 +505,7 @@
                 {% if let Some(start_time) = &event.starts_at -%}
                   <div class="max-w-full truncate">{{ start_time.with_timezone(event.timezone).format("%b %d, %Y") }}</div>
                   <div class="max-w-full truncate text-xs text-stone-400">
-                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p") }}
+                    {{ start_time.with_timezone(event.timezone).format("%I:%M %p %Z") }}
                   </div>
                 {% else -%}
                   <span class="text-stone-400">TBD</span>
