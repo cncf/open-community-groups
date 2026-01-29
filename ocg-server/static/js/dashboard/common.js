@@ -251,62 +251,70 @@ export const baseText = () => {
  * @returns {Object} ECharts option.
  */
 export const createAreaChart = (title, name, data, palette) => {
-  return Object.assign(baseText(), {
-    title: {
-      text: title,
-      left: "center",
-      top: 12,
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
-    },
-    color: [palette[700]],
-    tooltip: {
-      trigger: "axis",
-      backgroundColor: "#fff",
-      borderColor: palette[100],
-      borderWidth: 1,
-      textStyle: { color: "#334155" },
-    },
-    grid: { left: 70, right: 40, bottom: 90, top: 80 },
-    xAxis: {
-      type: "time",
-      boundaryGap: false,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: "#94a3b8", fontSize: 11 },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: "value",
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: "#94a3b8", fontSize: 11 },
-      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
-    },
-    series: [
-      {
-        name,
-        type: "line",
-        smooth: true,
-        symbol: "none",
-        showSymbol: false,
-        lineStyle: { width: 2, color: palette[700] },
-        areaStyle: {
-          color: {
-            type: "linear",
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              { offset: 0, color: palette[500] },
-              { offset: 1, color: "rgba(255, 255, 255, 0)" },
-            ],
+  return {
+    baseOption: Object.assign(baseText(), {
+      title: {
+        text: title,
+        left: "center",
+        top: 12,
+        textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
+      },
+      color: [palette[700]],
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: "#fff",
+        borderColor: palette[100],
+        borderWidth: 1,
+        textStyle: { color: "#334155" },
+      },
+      grid: { left: 70, right: 40, bottom: 90, top: 80 },
+      xAxis: {
+        type: "time",
+        boundaryGap: false,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "#94a3b8", fontSize: 11 },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "#94a3b8", fontSize: 11 },
+        splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
+      },
+      series: [
+        {
+          name,
+          type: "line",
+          smooth: true,
+          symbol: "none",
+          showSymbol: false,
+          lineStyle: { width: 2, color: palette[700] },
+          areaStyle: {
+            color: {
+              type: "linear",
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: palette[500] },
+                { offset: 1, color: "rgba(255, 255, 255, 0)" },
+              ],
+            },
           },
+          data: toTimeSeries(data),
         },
-        data: toTimeSeries(data),
+      ],
+    }),
+    media: [
+      {
+        query: { maxWidth: 500 },
+        option: { xAxis: { axisLabel: { rotate: 45 } } },
       },
     ],
-  });
+  };
 };
 
 /**
@@ -525,56 +533,64 @@ export const createStackedMonthlyChart = (title, months, seriesData, palette) =>
 export const createStackedAreaChart = (title, seriesData, palette) => {
   const colors = buildSeriesColors(palette, seriesData.length || 1);
 
-  return Object.assign(baseText(), {
-    title: {
-      text: title,
-      left: "center",
-      top: 12,
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
-    },
-    color: colors,
-    tooltip: {
-      trigger: "axis",
-      backgroundColor: "#fff",
-      borderColor: palette[100],
-      borderWidth: 1,
-      textStyle: { color: "#334155" },
-    },
-    legend: {
-      type: seriesData.length > 5 ? "scroll" : "plain",
-      bottom: 10,
-      left: "center",
-      textStyle: { fontFamily: dashboardFontFamily, fontSize: 12, color: "#475569" },
-    },
-    grid: { left: 70, right: 40, bottom: 90, top: 60 },
-    xAxis: {
-      type: "time",
-      boundaryGap: false,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: "#94a3b8", fontSize: 11 },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: "value",
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { color: "#94a3b8", fontSize: 11 },
-      splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
-    },
-    series: seriesData.map((series) => ({
-      name: series.name,
-      type: "line",
-      stack: "total",
-      smooth: true,
-      symbol: "none",
-      showSymbol: false,
-      areaStyle: { opacity: 0.35 },
-      lineStyle: { width: 2 },
-      emphasis: { focus: "series" },
-      data: series.data,
-    })),
-  });
+  return {
+    baseOption: Object.assign(baseText(), {
+      title: {
+        text: title,
+        left: "center",
+        top: 12,
+        textStyle: { fontFamily: dashboardFontFamily, fontSize: 14, fontWeight: 500, color: "#334155" },
+      },
+      color: colors,
+      tooltip: {
+        trigger: "axis",
+        backgroundColor: "#fff",
+        borderColor: palette[100],
+        borderWidth: 1,
+        textStyle: { color: "#334155" },
+      },
+      legend: {
+        type: seriesData.length > 5 ? "scroll" : "plain",
+        bottom: 10,
+        left: "center",
+        textStyle: { fontFamily: dashboardFontFamily, fontSize: 12, color: "#475569" },
+      },
+      grid: { left: 70, right: 40, bottom: 90, top: 60 },
+      xAxis: {
+        type: "time",
+        boundaryGap: false,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "#94a3b8", fontSize: 11 },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "#94a3b8", fontSize: 11 },
+        splitLine: { lineStyle: { color: "#f1f5f9", type: "dashed" } },
+      },
+      series: seriesData.map((series) => ({
+        name: series.name,
+        type: "line",
+        stack: "total",
+        smooth: true,
+        symbol: "none",
+        showSymbol: false,
+        areaStyle: { opacity: 0.35 },
+        lineStyle: { width: 2 },
+        emphasis: { focus: "series" },
+        data: series.data,
+      })),
+    }),
+    media: [
+      {
+        query: { maxWidth: 500 },
+        option: { xAxis: { axisLabel: { rotate: 45 } } },
+      },
+    ],
+  };
 };
 
 /**
