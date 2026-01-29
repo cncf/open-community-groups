@@ -231,6 +231,11 @@ export class Calendar {
    * @param {Array} events - Array of event objects to add to the calendar
    */
   addEvents(events) {
+    // Get primary colors from CSS variables for upcoming events
+    const styles = getComputedStyle(document.documentElement);
+    const upcomingBg = styles.getPropertyValue("--color-primary-50").trim();
+    const upcomingBorder = styles.getPropertyValue("--color-primary-200").trim();
+
     // Prepare events for calendar
     let formattedEvents = events.map((event) => {
       // Skip events without start date
@@ -238,26 +243,32 @@ export class Calendar {
         return;
       }
 
-      const color = event.group_color;
-      let isPast = false;
+      // Get start and end dates
+      const startDate = new Date(event.starts_at * 1000);
+      const endDate = event.ends_at ? new Date(event.ends_at * 1000) : startDate;
 
-      // Get end date
-      const endDate = event.ends_at ? new Date(event.ends_at * 1000) : new Date(event.starts_at * 1000);
-
-      // Get background color badge for future events
+      // Check if event is past
       const diff = new Date().getTime() - endDate.getTime();
-      if (diff > 0) {
-        isPast = true;
+      const isPast = diff > 0;
+
+      // Determine colors: past events keep group color, upcoming use primary
+      let backgroundColor, borderColor;
+      if (isPast) {
+        backgroundColor = updateColor(event.group_color);
+        borderColor = event.group_color;
+      } else {
+        backgroundColor = upcomingBg;
+        borderColor = upcomingBorder;
       }
 
       // Add event to calendar
       return {
         title: event.name,
-        start: convertDate(new Date(event.starts_at * 1000)),
+        start: convertDate(startDate),
         end: convertDate(endDate),
-        className: `cursor-pointer ${isPast ? "opacity-50" : ""}`,
-        backgroundColor: updateColor(color),
-        borderColor: color,
+        className: `cursor-pointer ${isPast ? "opacity-40" : ""}`,
+        backgroundColor,
+        borderColor,
         extendedProps: {
           event: event,
         },
