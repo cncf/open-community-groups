@@ -1,0 +1,36 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Submission update: {{ event.name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Your call for speakers submission has been updated.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Your submission for <strong>{{ event.name }}</strong> has been updated by
+    <strong>{{ event.group_name }}</strong>.
+    <br />
+    <br />
+    Status: <strong>{{ status_name }}</strong>
+  </p>
+
+  {% if let Some(action_required_message) = &action_required_message -%}
+    <p class="default mb-30">
+      <strong>Action required:</strong>
+      <br />
+      {{ action_required_message }}
+    </p>
+  {% endif -%}
+
+  {{ email::button(link = link, text = "View event") }}
+
+  <p class="default mt-30 mb-15">You can review your submissions from your dashboard.</p>
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you submitted a session proposal for this event.
+{% endblock footer -%}

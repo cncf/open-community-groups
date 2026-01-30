@@ -1,0 +1,204 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::form_title(title = "Session proposals",
+description = "Create reusable session proposals to submit to events.",
+button = "<button id='open-session-proposal-modal'
+        type='button'
+        class='btn-primary-outline'>New proposal</button>") -}}
+
+<div class="mt-10">
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Duration</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Co-speaker</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if session_proposals.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="5">
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-lg lg:text-xl">You don't have any session proposals yet.</div>
+              </div>
+            </td>
+          </tr>
+        {% else -%}
+          {% for session_proposal in session_proposals -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
+                <div class="mt-1 flex flex-wrap items-center gap-2">
+                  {{ badges::common_badge(content = session_proposal.session_proposal_level_name, extra_styles = Some("uppercase") ) -}}
+                  {% if session_proposal.has_submissions -%}
+                    {{ badges::common_badge(content = "Submitted", extra_styles = Some("uppercase") ) -}}
+                  {% endif -%}
+                </div>
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ session_proposal.duration_minutes }} min</td>
+              <td class="px-3 xl:px-5 py-4">
+                {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
+                  <div class="text-stone-700">{{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}</div>
+                  <div class="text-xs text-stone-400">@{{ co_speaker.username }}</div>
+                {% else -%}
+                  <span class="text-stone-400">—</span>
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(updated_at) = &session_proposal.updated_at -%}
+                  {{ updated_at.format("%b %d, %Y") }}
+                {% else -%}
+                  {{ session_proposal.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <button type="button"
+                          class="btn-tertiary p-2"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-action="edit-session-proposal"
+                          title="Edit proposal">
+                    <div class="svg-icon size-3 md:size-4 icon-edit"></div>
+                  </button>
+                  {% set delete_disabled = session_proposal.has_submissions
+                                    || session_proposal.linked_session_id.is_some() -%}
+                  <button type="button"
+                          class="btn-tertiary p-2
+                                 {% if delete_disabled %}opacity-50 cursor-not-allowed{% endif %}"
+                          data-action="delete-session-proposal"
+                          data-session-proposal-id="{{ session_proposal.session_proposal_id }}"
+                          hx-delete="/dashboard/user/session-proposals/{{ session_proposal.session_proposal_id }}"
+                          hx-trigger="confirmed"
+                          hx-indicator="#dashboard-spinner"
+                          hx-disabled-elt="this"
+                          {% if delete_disabled %}disabled{% endif %}
+                          title="Delete proposal">
+                    <div class="svg-icon size-3 md:size-4 icon-trash"></div>
+                  </button>
+                </div>
+                {% if delete_disabled -%}
+                  <div class="mt-1 text-xs text-stone-400">Submitted proposals cannot be deleted.</div>
+                {% endif -%}
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total > session_proposals.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+
+{# Session proposal modal -#}
+<div id="session-proposal-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="session-proposal-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-[1000]">
+  <div id="overlay-session-proposal-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="relative p-4 w-full max-w-2xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="session-proposal-modal-title"
+            class="text-xl font-semibold text-stone-900">New session proposal</h3>
+        <button id="close-session-proposal-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="p-4 md:p-6">
+        <form id="session-proposal-form"
+              hx-post="/dashboard/user/session-proposals"
+              hx-swap="none"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel">
+          <div class="space-y-5">
+            <div>
+              <label for="session-proposal-title" class="form-label">
+                Title <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <input type="text"
+                       id="session-proposal-title"
+                       name="title"
+                       maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+                       class="input-primary"
+                       required>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-6">
+              <div class="col-span-full md:col-span-3">
+                <label for="session-proposal-level" class="form-label">
+                  Level <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <select id="session-proposal-level"
+                          name="session_proposal_level_id"
+                          class="select-primary"
+                          required>
+                    <option value="">Select level</option>
+                    {% for level in session_proposal_levels -%}
+                      <option value="{{ level.session_proposal_level_id }}">{{ level.display_name }}</option>
+                    {% endfor -%}
+                  </select>
+                </div>
+              </div>
+              <div class="col-span-full md:col-span-3">
+                <label for="session-proposal-duration" class="form-label">
+                  Duration (minutes) <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <input type="number"
+                         id="session-proposal-duration"
+                         name="duration_minutes"
+                         min="1"
+                         class="input-primary"
+                         required>
+                </div>
+                <p class="form-legend">Enter the session length in minutes (e.g. 45).</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label">Co-speaker</label>
+              <input type="hidden"
+                     id="session-proposal-co-speaker"
+                     name="co_speaker_user_id">
+              <user-search-field id="session-proposal-co-speaker-search" dashboard-type="user" label="co-speaker" legend="Search by username to add an optional co-speaker."></user-search-field>
+              <div id="session-proposal-co-speaker-preview" class="mt-3"></div>
+            </div>
+
+            <div>
+              <label class="form-label">
+                Description <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <markdown-editor id="session-proposal-description" name="description" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+              <button id="session-proposal-cancel"
+                      type="button"
+                      class="btn-primary-outline">Cancel</button>
+              <button id="session-proposal-submit" type="submit" class="btn-primary">Save</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

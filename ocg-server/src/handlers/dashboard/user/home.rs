@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Query, State},
+    extract::{Query, RawQuery, State},
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -15,11 +15,15 @@ use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::error::HandlerError,
+    router::serde_qs_config,
     templates::{
         PageId,
         auth::{self, User, UserDetails},
-        dashboard::user::home::{Content, Page, Tab},
-        dashboard::user::invitations,
+        dashboard::user::{
+            home::{Content, Page, Tab},
+            invitations, session_proposals, submissions,
+        },
+        pagination::NavigationLinks,
     },
 };
 
@@ -33,11 +37,13 @@ pub(crate) async fn page(
     messages: Messages,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
 
     // Get selected tab from query
+    let raw_query = raw_query.as_deref().unwrap_or_default();
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
     // Get site settings
@@ -61,6 +67,45 @@ pub(crate) async fn page(
             Content::Invitations(invitations::ListPage {
                 community_invitations,
                 group_invitations,
+            })
+        }
+        Tab::SessionProposals => {
+            let filters: session_proposals::SessionProposalsFilters =
+                serde_qs_config().deserialize_str(raw_query)?;
+            let (session_proposal_levels, session_proposals_output) = tokio::try_join!(
+                db.list_session_proposal_levels(),
+                db.list_user_session_proposals(user.user_id, &filters)
+            )?;
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                session_proposals_output.total,
+                "/dashboard/user?tab=session-proposals",
+                "/dashboard/user/session-proposals",
+            )?;
+            Content::SessionProposals(session_proposals::ListPage {
+                session_proposal_levels,
+                session_proposals: session_proposals_output.session_proposals,
+                navigation_links,
+                total: session_proposals_output.total,
+                limit: filters.limit,
+                offset: filters.offset,
+            })
+        }
+        Tab::Submissions => {
+            let filters: submissions::CfsSubmissionsFilters = serde_qs_config().deserialize_str(raw_query)?;
+            let submissions = db.list_user_cfs_submissions(user.user_id, &filters).await?;
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                submissions.total,
+                "/dashboard/user?tab=submissions",
+                "/dashboard/user/submissions",
+            )?;
+            Content::Submissions(submissions::ListPage {
+                submissions: submissions.submissions,
+                navigation_links,
+                total: submissions.total,
+                limit: filters.limit,
+                offset: filters.offset,
             })
         }
     };

@@ -8,7 +8,7 @@ use crate::{
     templates::{
         PageId,
         auth::{self, User},
-        dashboard::user::invitations,
+        dashboard::user::{invitations, session_proposals, submissions},
         filters,
         helpers::user_initials,
     },
@@ -40,6 +40,10 @@ pub(crate) enum Content {
     Account(Box<auth::UpdateUserPage>),
     /// Invitations page.
     Invitations(invitations::ListPage),
+    /// Session proposals page.
+    SessionProposals(session_proposals::ListPage),
+    /// Submissions page.
+    Submissions(submissions::ListPage),
 }
 
 impl Content {
@@ -52,6 +56,16 @@ impl Content {
     fn is_invitations(&self) -> bool {
         matches!(self, Content::Invitations(_))
     }
+
+    /// Check if the content is the session proposals page.
+    fn is_session_proposals(&self) -> bool {
+        matches!(self, Content::SessionProposals(_))
+    }
+
+    /// Check if the content is the submissions page.
+    fn is_submissions(&self) -> bool {
+        matches!(self, Content::Submissions(_))
+    }
 }
 
 impl std::fmt::Display for Content {
@@ -59,12 +73,15 @@ impl std::fmt::Display for Content {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
+            Content::SessionProposals(template) => write!(f, "{}", template.render()?),
+            Content::Submissions(template) => write!(f, "{}", template.render()?),
         }
     }
 }
 
 /// Tab selection for the user dashboard home page.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
     /// User account tab (default).
@@ -72,4 +89,8 @@ pub(crate) enum Tab {
     Account,
     /// Invitations tab.
     Invitations,
+    /// Session proposals tab.
+    SessionProposals,
+    /// Submissions tab.
+    Submissions,
 }

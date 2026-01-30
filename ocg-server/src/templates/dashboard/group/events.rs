@@ -77,14 +77,18 @@ pub(crate) struct ListPage {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/events_update.html")]
 pub(crate) struct UpdatePage {
-    /// Group identifier.
-    pub group_id: Uuid,
-    /// Event details to update.
-    pub event: EventFull,
+    /// Approved CFS submissions for linking sessions.
+    pub approved_submissions: Vec<ApprovedSubmissionSummary>,
     /// List of available event categories.
     pub categories: Vec<EventCategory>,
+    /// CFS submission status options.
+    pub cfs_submission_statuses: Vec<CfsSubmissionStatus>,
+    /// Event details to update.
+    pub event: EventFull,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Group identifier.
+    pub group_id: Uuid,
     /// Flag indicating if meetings functionality is enabled.
     pub meetings_enabled: bool,
     /// Maximum participants per meeting provider.
@@ -98,6 +102,28 @@ pub(crate) struct UpdatePage {
 }
 
 // Types.
+
+/// Approved CFS submission summary for linking sessions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct ApprovedSubmissionSummary {
+    /// Submission identifier.
+    pub cfs_submission_id: Uuid,
+    /// Session proposal identifier.
+    pub session_proposal_id: Uuid,
+    /// Speaker display name.
+    pub speaker_name: String,
+    /// Submission title.
+    pub title: String,
+}
+
+/// CFS submission status option.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct CfsSubmissionStatus {
+    /// Submission status identifier.
+    pub cfs_submission_status_id: String,
+    /// Display name.
+    pub display_name: String,
+}
 
 /// Event details for dashboard management.
 #[skip_serializing_none]
@@ -128,6 +154,18 @@ pub(crate) struct Event {
     /// Maximum capacity for the event.
     #[garde(range(min = 0))]
     pub capacity: Option<i32>,
+    /// Call for speakers description.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
+    pub cfs_description: Option<String>,
+    /// Whether call for speakers is enabled.
+    #[garde(skip)]
+    pub cfs_enabled: Option<bool>,
+    /// Call for speakers end time.
+    #[garde(skip)]
+    pub cfs_ends_at: Option<NaiveDateTime>,
+    /// Call for speakers start time.
+    #[garde(skip)]
+    pub cfs_starts_at: Option<NaiveDateTime>,
     /// Short description of the event.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub description_short: Option<String>,
@@ -353,6 +391,9 @@ pub(crate) struct Session {
     #[garde(skip)]
     pub starts_at: NaiveDateTime,
 
+    /// Linked CFS submission identifier.
+    #[garde(skip)]
+    pub cfs_submission_id: Option<Uuid>,
     /// Session description.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
     pub description: Option<String>,

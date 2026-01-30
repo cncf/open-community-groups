@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(308);
+select plan(353);
 
 -- ============================================================================
 -- TESTS
@@ -16,6 +16,8 @@ select has_extension('postgis');
 -- Test: check expected tables exist
 select has_table('attachment');
 select has_table('auth_session');
+select has_table('cfs_submission');
+select has_table('cfs_submission_status');
 select has_table('community');
 select has_table('community_site_layout');
 select has_table('community_team');
@@ -47,6 +49,8 @@ select has_table('notification_template_data');
 select has_table('region');
 select has_table('session');
 select has_table('session_kind');
+select has_table('session_proposal');
+select has_table('session_proposal_level');
 select has_table('session_speaker');
 select has_table('site');
 select has_table('user');
@@ -66,6 +70,25 @@ select columns_are('auth_session', array[
     'auth_session_id',
     'data',
     'expires_at'
+]);
+
+-- Test: cfs_submission columns should match expected
+select columns_are('cfs_submission', array[
+    'cfs_submission_id',
+    'created_at',
+    'event_id',
+    'session_proposal_id',
+    'status_id',
+
+    'action_required_message',
+    'reviewed_by',
+    'updated_at'
+]);
+
+-- Test: cfs_submission_status columns should match expected
+select columns_are('cfs_submission_status', array[
+    'cfs_submission_status_id',
+    'display_name'
 ]);
 
 -- Test: community columns should match expected
@@ -149,6 +172,10 @@ select columns_are('event', array[
     'banner_mobile_url',
     'banner_url',
     'capacity',
+    'cfs_description',
+    'cfs_enabled',
+    'cfs_ends_at',
+    'cfs_starts_at',
     'deleted_at',
     'description_short',
     'ends_at',
@@ -358,6 +385,7 @@ select columns_are('session', array[
     'session_kind_id',
     'starts_at',
 
+    'cfs_submission_id',
     'description',
     'ends_at',
     'location',
@@ -373,6 +401,26 @@ select columns_are('session', array[
 -- Test: session_kind columns should match expected
 select columns_are('session_kind', array[
     'session_kind_id',
+    'display_name'
+]);
+
+-- Test: session_proposal columns should match expected
+select columns_are('session_proposal', array[
+    'created_at',
+    'description',
+    'duration',
+    'session_proposal_id',
+    'session_proposal_level_id',
+    'title',
+    'user_id',
+
+    'co_speaker_user_id',
+    'updated_at'
+]);
+
+-- Test: session_proposal_level columns should match expected
+select columns_are('session_proposal_level', array[
+    'session_proposal_level_id',
     'display_name'
 ]);
 
@@ -495,6 +543,8 @@ select columns_are('user', array[
 -- Test: check tables have expected primary keys
 select has_pk('attachment');
 select has_pk('auth_session');
+select has_pk('cfs_submission');
+select has_pk('cfs_submission_status');
 select has_pk('community');
 select has_pk('community_site_layout');
 select has_pk('community_team');
@@ -526,6 +576,8 @@ select has_pk('notification_template_data');
 select has_pk('region');
 select has_pk('session');
 select has_pk('session_kind');
+select has_pk('session_proposal');
+select has_pk('session_proposal_level');
 select has_pk('session_speaker');
 select has_pk('site');
 select has_pk('user');
@@ -537,6 +589,10 @@ select col_is_fk('community_team', 'user_id', 'user');
 select col_is_fk('custom_notification', 'created_by', 'user');
 select col_is_fk('custom_notification', 'event_id', 'event');
 select col_is_fk('custom_notification', 'group_id', 'group');
+select col_is_fk('cfs_submission', 'event_id', 'event');
+select col_is_fk('cfs_submission', 'reviewed_by', 'user');
+select col_is_fk('cfs_submission', 'session_proposal_id', 'session_proposal');
+select col_is_fk('cfs_submission', 'status_id', 'cfs_submission_status');
 select col_is_fk('email_verification_code', 'user_id', 'user');
 select col_is_fk('event', 'event_category_id', 'event_category');
 select col_is_fk('event', 'event_kind_id', 'event_kind');
@@ -576,8 +632,12 @@ select col_is_fk('notification_attachment', 'attachment_id', 'attachment');
 select col_is_fk('notification_attachment', 'notification_id', 'notification');
 select col_is_fk('region', 'community_id', 'community');
 select col_is_fk('session', 'event_id', 'event');
+select col_is_fk('session', 'cfs_submission_id', 'cfs_submission');
 select col_is_fk('session', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('session', 'session_kind_id', 'session_kind');
+select col_is_fk('session_proposal', 'co_speaker_user_id', 'user');
+select col_is_fk('session_proposal', 'session_proposal_level_id', 'session_proposal_level');
+select col_is_fk('session_proposal', 'user_id', 'user');
 select col_is_fk('session_speaker', 'session_id', 'session');
 select col_is_fk('session_speaker', 'user_id', 'user');
 
@@ -590,6 +650,22 @@ select indexes_are('attachment', array[
 -- Test: auth_session indexes should match expected
 select indexes_are('auth_session', array[
     'auth_session_pkey'
+]);
+
+-- Test: cfs_submission indexes should match expected
+select indexes_are('cfs_submission', array[
+    'cfs_submission_pkey',
+    'cfs_submission_event_id_idx',
+    'cfs_submission_event_id_session_proposal_id_key',
+    'cfs_submission_reviewed_by_idx',
+    'cfs_submission_session_proposal_id_idx',
+    'cfs_submission_status_id_idx'
+]);
+
+-- Test: cfs_submission_status indexes should match expected
+select indexes_are('cfs_submission_status', array[
+    'cfs_submission_status_pkey',
+    'cfs_submission_status_display_name_key'
 ]);
 
 -- Test: community indexes should match expected
@@ -808,9 +884,24 @@ select indexes_are('region', array[
 -- Test: session indexes should match expected
 select indexes_are('session', array[
     'session_pkey',
+    'session_cfs_submission_id_unique_idx',
     'session_event_id_idx',
     'session_meeting_sync_idx',
     'session_session_kind_id_idx'
+]);
+
+-- Test: session_proposal indexes should match expected
+select indexes_are('session_proposal', array[
+    'session_proposal_pkey',
+    'session_proposal_co_speaker_user_id_idx',
+    'session_proposal_session_proposal_level_id_idx',
+    'session_proposal_user_id_idx'
+]);
+
+-- Test: session_proposal_level indexes should match expected
+select indexes_are('session_proposal_level', array[
+    'session_proposal_level_display_name_key',
+    'session_proposal_level_pkey'
 ]);
 
 -- Test: session_speaker indexes should match expected
@@ -845,11 +936,13 @@ select indexes_are('user', array[
 select has_function('accept_community_team_invitation');
 select has_function('accept_group_team_invitation');
 select has_function('activate_group');
+select has_function('add_cfs_submission');
 select has_function('add_community_team_member');
 select has_function('add_event');
 select has_function('add_group');
 select has_function('add_group_sponsor');
 select has_function('add_group_team_member');
+select has_function('add_session_proposal');
 select has_function('attend_event');
 select has_function('cancel_event');
 select has_function('check_in_event');
@@ -858,7 +951,9 @@ select has_function('delete_event');
 select has_function('delete_group');
 select has_function('delete_group_sponsor');
 select has_function('delete_group_team_member');
+select has_function('delete_session_proposal');
 select has_function('generate_slug');
+select has_function('get_cfs_submission_notification_data');
 select has_function('get_community_full');
 select has_function('get_community_id_by_name');
 select has_function('get_community_name_by_id');
@@ -889,8 +984,11 @@ select has_function('join_group');
 select has_function('leave_event');
 select has_function('leave_group');
 select has_function('list_community_team_members');
+select has_function('list_cfs_submission_statuses_for_review');
+select has_function('list_event_approved_cfs_submissions');
 select has_function('list_event_attendees_ids');
 select has_function('list_event_categories');
+select has_function('list_event_cfs_submissions');
 select has_function('list_event_kinds');
 select has_function('list_group_categories');
 select has_function('list_group_events');
@@ -903,33 +1001,42 @@ select has_function('list_group_team_members_ids');
 select has_function('list_communities');
 select has_function('list_regions');
 select has_function('list_session_kinds');
+select has_function('list_session_proposal_levels');
+select has_function('list_user_cfs_submissions');
 select has_function('list_user_community_team_invitations');
 select has_function('list_user_group_team_invitations');
 select has_function('list_user_groups');
+select has_function('list_user_session_proposals');
+select has_function('list_user_session_proposals_for_cfs_event');
 select has_function('publish_event');
+select has_function('resubmit_cfs_submission');
 select has_function('search_event_attendees');
 select has_function('search_events');
 select has_function('search_groups');
 select has_function('search_user');
 select has_function('sign_up_user');
 select has_function('unpublish_event');
+select has_function('update_cfs_submission');
 select has_function('update_community');
 select has_function('update_event');
 select has_function('update_group');
 select has_function('update_group_sponsor');
 select has_function('update_group_team_member_role');
 select has_function('update_meeting_recording_url');
+select has_function('update_session_proposal');
 select has_function('update_user_details');
 select has_function('user_owns_community');
 select has_function('user_owns_group');
 select has_function('user_owns_groups_in_community');
 select has_function('verify_email');
+select has_function('withdraw_cfs_submission');
 
 -- Test: check expected trigger functions exist
 select has_function('check_event_category_community');
 select has_function('check_event_sponsor_group');
 select has_function('check_group_category_community');
 select has_function('check_group_region_community');
+select has_function('check_session_cfs_submission_approved');
 select has_function('check_session_within_event_bounds');
 
 -- Test: check expected triggers exist
@@ -937,6 +1044,7 @@ select has_trigger('event', 'event_category_community_check');
 select has_trigger('event_sponsor', 'event_sponsor_group_check');
 select has_trigger('group', 'group_category_community_check');
 select has_trigger('group', 'group_region_community_check');
+select has_trigger('session', 'session_cfs_submission_approved_check');
 select has_trigger('session', 'session_within_event_bounds_check');
 
 -- Test: custom_notification table expected constraints exist
@@ -946,6 +1054,8 @@ select has_check('custom_notification');
 select has_check('event', 'event_check');
 select has_check('event', 'event_check1');
 select has_check('event', 'event_check2');
+select has_check('event', 'event_cfs_fields_chk');
+select has_check('event', 'event_cfs_window_chk');
 select has_check('event', 'event_meeting_capacity_required_chk');
 select has_check('event', 'event_meeting_conflict_chk');
 select has_check('event', 'event_meeting_kind_chk');
@@ -981,10 +1091,24 @@ select results_eq(
     'Meeting providers should exist'
 );
 
+-- Test: CFS submission statuses should match expected values
+select results_eq(
+    'select * from cfs_submission_status order by cfs_submission_status_id',
+    $$ values
+        ('approved', 'Approved'),
+        ('information-requested', 'Information requested'),
+        ('not-reviewed', 'Not reviewed'),
+        ('rejected', 'Rejected'),
+        ('withdrawn', 'Withdrawn')
+    $$,
+    'CFS submission statuses should exist'
+);
+
 -- Test: notification kinds should match expected values
 select results_eq(
     'select name from notification_kind order by name',
     $$ values
+        ('cfs-submission-updated'),
         ('community-team-invitation'),
         ('email-verification'),
         ('event-canceled'),
@@ -1009,6 +1133,17 @@ select results_eq(
         ('virtual', 'Virtual')
     $$,
     'Session kinds should exist'
+);
+
+-- Test: session proposal levels should match expected values
+select results_eq(
+    'select * from session_proposal_level order by session_proposal_level_id',
+    $$ values
+        ('advanced', 'Advanced'),
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate')
+    $$,
+    'Session proposal levels should exist'
 );
 
 -- Test: community site layout should match expected

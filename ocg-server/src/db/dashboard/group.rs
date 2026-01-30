@@ -16,10 +16,13 @@ use crate::{
     templates::dashboard::group::{
         analytics::GroupStats,
         attendees::{AttendeesFilters, AttendeesOutput},
-        events::{Event, EventsListFilters, GroupEvents},
+        events::{ApprovedSubmissionSummary, CfsSubmissionStatus, Event, EventsListFilters, GroupEvents},
         home::UserGroupsByCommunity,
         members::{GroupMembersFilters, GroupMembersOutput},
         sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
+        submissions::{
+            CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsOutput,
+        },
         team::{GroupTeamFilters, GroupTeamOutput},
     },
     types::{
@@ -31,12 +34,6 @@ use crate::{
 /// Database trait for group dashboard operations.
 #[async_trait]
 pub(crate) trait DBDashboardGroup {
-    /// Adds a user to the group team (pending by default).
-    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()>;
-
-    /// Adds a new sponsor to the database.
-    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid>;
-
     /// Adds a new event to the database.
     async fn add_event(
         &self,
@@ -44,6 +41,12 @@ pub(crate) trait DBDashboardGroup {
         event: &Event,
         cfg_max_participants: &HashMap<MeetingProvider, i32>,
     ) -> Result<Uuid>;
+
+    /// Adds a new sponsor to the database.
+    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid>;
+
+    /// Adds a user to the group team (pending by default).
+    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()>;
 
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
@@ -57,20 +60,43 @@ pub(crate) trait DBDashboardGroup {
     /// Deletes a user from the group team.
     async fn delete_group_team_member(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
 
+    /// Gets submission notification data.
+    async fn get_cfs_submission_notification_data(
+        &self,
+        event_id: Uuid,
+        cfs_submission_id: Uuid,
+    ) -> Result<CfsSubmissionNotificationData>;
+
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor>;
 
     /// Retrieves analytics statistics for a group.
     async fn get_group_stats(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupStats>;
 
-    /// Lists all event categories for a community.
-    async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
+    /// Lists reviewer-available CFS submission statuses.
+    async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
 
-    /// Lists all available event kinds.
-    async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
+    /// Lists approved CFS submissions for an event.
+    async fn list_event_approved_cfs_submissions(
+        &self,
+        event_id: Uuid,
+    ) -> Result<Vec<ApprovedSubmissionSummary>>;
 
     /// Lists all verified attendees user ids for an event.
     async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
+
+    /// Lists all event categories for a community.
+    async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
+
+    /// Lists CFS submissions for an event.
+    async fn list_event_cfs_submissions(
+        &self,
+        event_id: Uuid,
+        filters: &CfsSubmissionsFilters,
+    ) -> Result<CfsSubmissionsOutput>;
+
+    /// Lists all available event kinds.
+    async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
     /// Lists all events for a group for management.
     async fn list_group_events(&self, group_id: Uuid, filters: &EventsListFilters) -> Result<GroupEvents>;
@@ -126,6 +152,15 @@ pub(crate) trait DBDashboardGroup {
     /// Unpublishes an event (sets published=false and clears publication metadata).
     async fn unpublish_event(&self, group_id: Uuid, event_id: Uuid) -> Result<()>;
 
+    /// Updates a CFS submission for an event.
+    async fn update_cfs_submission(
+        &self,
+        reviewer_id: Uuid,
+        event_id: Uuid,
+        cfs_submission_id: Uuid,
+        submission: &CfsSubmissionUpdate,
+    ) -> Result<()>;
+
     /// Updates an existing event.
     async fn update_event(
         &self,
@@ -154,36 +189,6 @@ pub(crate) trait DBDashboardGroup {
 
 #[async_trait]
 impl DBDashboardGroup for PgDB {
-    /// [`DBDashboardGroup::add_group_team_member`]
-    #[instrument(skip(self), err)]
-    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()> {
-        trace!("db: add group team member");
-
-        let db = self.pool.get().await?;
-        db.execute(
-            "select add_group_team_member($1::uuid, $2::uuid, $3::text)",
-            &[&group_id, &user_id, &role.to_string()],
-        )
-        .await?;
-
-        Ok(())
-    }
-    /// [`DBDashboardGroup::add_group_sponsor`]
-    #[instrument(skip(self, sponsor), err)]
-    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid> {
-        trace!("db: add group sponsor");
-
-        let db = self.pool.get().await?;
-        let id = db
-            .query_one(
-                "select add_group_sponsor($1::uuid, $2::jsonb)::uuid",
-                &[&group_id, &Json(sponsor)],
-            )
-            .await?
-            .get(0);
-
-        Ok(id)
-    }
     /// [`DBDashboardGroup::add_event`]
     #[instrument(skip(self, event, cfg_max_participants), err)]
     async fn add_event(
@@ -204,6 +209,38 @@ impl DBDashboardGroup for PgDB {
             .get(0);
 
         Ok(event_id)
+    }
+
+    /// [`DBDashboardGroup::add_group_sponsor`]
+    #[instrument(skip(self, sponsor), err)]
+    async fn add_group_sponsor(&self, group_id: Uuid, sponsor: &Sponsor) -> Result<Uuid> {
+        trace!("db: add group sponsor");
+
+        let db = self.pool.get().await?;
+        let id = db
+            .query_one(
+                "select add_group_sponsor($1::uuid, $2::jsonb)::uuid",
+                &[&group_id, &Json(sponsor)],
+            )
+            .await?
+            .get(0);
+
+        Ok(id)
+    }
+
+    /// [`DBDashboardGroup::add_group_team_member`]
+    #[instrument(skip(self), err)]
+    async fn add_group_team_member(&self, group_id: Uuid, user_id: Uuid, role: &GroupRole) -> Result<()> {
+        trace!("db: add group team member");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select add_group_team_member($1::uuid, $2::uuid, $3::text)",
+            &[&group_id, &user_id, &role.to_string()],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardGroup::cancel_event`]
@@ -260,6 +297,27 @@ impl DBDashboardGroup for PgDB {
         Ok(())
     }
 
+    /// [`DBDashboardGroup::get_cfs_submission_notification_data`]
+    #[instrument(skip(self), err)]
+    async fn get_cfs_submission_notification_data(
+        &self,
+        event_id: Uuid,
+        cfs_submission_id: Uuid,
+    ) -> Result<CfsSubmissionNotificationData> {
+        trace!("db: get cfs submission notification data");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select get_cfs_submission_notification_data($1::uuid, $2::uuid)::text",
+                &[&event_id, &cfs_submission_id],
+            )
+            .await?;
+        let data: CfsSubmissionNotificationData = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(data)
+    }
+
     /// [`DBDashboardGroup::get_group_sponsor`]
     #[instrument(skip(self), err)]
     async fn get_group_sponsor(&self, group_id: Uuid, group_sponsor_id: Uuid) -> Result<GroupSponsor> {
@@ -305,30 +363,38 @@ impl DBDashboardGroup for PgDB {
         inner(db, community_id, group_id).await
     }
 
-    /// [`DBDashboardGroup::list_event_categories`]
+    /// [`DBDashboardGroup::list_cfs_submission_statuses_for_review`]
     #[instrument(skip(self), err)]
-    async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>> {
-        trace!("db: list event categories");
+    async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>> {
+        trace!("db: list cfs submission statuses for review");
 
         let db = self.pool.get().await?;
         let row = db
-            .query_one("select list_event_categories($1::uuid)::text", &[&community_id])
+            .query_one("select list_cfs_submission_statuses_for_review()::text", &[])
             .await?;
-        let categories: Vec<EventCategory> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let statuses: Vec<CfsSubmissionStatus> = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(categories)
+        Ok(statuses)
     }
 
-    /// [`DBDashboardGroup::list_event_kinds`]
+    /// [`DBDashboardGroup::list_event_approved_cfs_submissions`]
     #[instrument(skip(self), err)]
-    async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
-        trace!("db: list event kinds");
+    async fn list_event_approved_cfs_submissions(
+        &self,
+        event_id: Uuid,
+    ) -> Result<Vec<ApprovedSubmissionSummary>> {
+        trace!("db: list event approved cfs submissions");
 
         let db = self.pool.get().await?;
-        let row = db.query_one("select list_event_kinds()::text", &[]).await?;
-        let kinds: Vec<EventKind> = serde_json::from_str(&row.get::<_, String>(0))?;
+        let row = db
+            .query_one(
+                "select list_event_approved_cfs_submissions($1::uuid)::text",
+                &[&event_id],
+            )
+            .await?;
+        let submissions: Vec<ApprovedSubmissionSummary> = serde_json::from_str(&row.get::<_, String>(0))?;
 
-        Ok(kinds)
+        Ok(submissions)
     }
 
     /// [`DBDashboardGroup::list_event_attendees_ids`]
@@ -346,6 +412,53 @@ impl DBDashboardGroup for PgDB {
         let ids: Vec<Uuid> = serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(ids)
+    }
+
+    /// [`DBDashboardGroup::list_event_categories`]
+    #[instrument(skip(self), err)]
+    async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>> {
+        trace!("db: list event categories");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one("select list_event_categories($1::uuid)::text", &[&community_id])
+            .await?;
+        let categories: Vec<EventCategory> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(categories)
+    }
+
+    /// [`DBDashboardGroup::list_event_cfs_submissions`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_event_cfs_submissions(
+        &self,
+        event_id: Uuid,
+        filters: &CfsSubmissionsFilters,
+    ) -> Result<CfsSubmissionsOutput> {
+        trace!("db: list event cfs submissions");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select list_event_cfs_submissions($1::uuid, $2::jsonb)::text",
+                &[&event_id, &Json(filters)],
+            )
+            .await?;
+        let submissions: CfsSubmissionsOutput = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(submissions)
+    }
+
+    /// [`DBDashboardGroup::list_event_kinds`]
+    #[instrument(skip(self), err)]
+    async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
+        trace!("db: list event kinds");
+
+        let db = self.pool.get().await?;
+        let row = db.query_one("select list_event_kinds()::text", &[]).await?;
+        let kinds: Vec<EventKind> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(kinds)
     }
 
     /// [`DBDashboardGroup::list_group_events`]
@@ -540,6 +653,27 @@ impl DBDashboardGroup for PgDB {
         db.execute(
             "select unpublish_event($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBDashboardGroup::update_cfs_submission`]
+    #[instrument(skip(self, submission), err)]
+    async fn update_cfs_submission(
+        &self,
+        reviewer_id: Uuid,
+        event_id: Uuid,
+        cfs_submission_id: Uuid,
+        submission: &CfsSubmissionUpdate,
+    ) -> Result<()> {
+        trace!("db: update cfs submission");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[&reviewer_id, &event_id, &cfs_submission_id, &Json(submission)],
         )
         .await?;
 

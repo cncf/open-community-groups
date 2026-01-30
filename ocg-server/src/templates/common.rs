@@ -35,3 +35,21 @@ pub(crate) struct User {
     /// Personal website URL.
     pub website_url: Option<String>,
 }
+
+/// Summary of user information used across templates.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct UserSummary {
+    /// User identifier.
+    pub user_id: Uuid,
+    /// Username.
+    pub username: String,
+
+    /// Company the user represents.
+    pub company: Option<String>,
+    /// Full name.
+    pub name: Option<String>,
+    /// URL to user's avatar.
+    pub photo_url: Option<String>,
+    /// Title held by the user.
+    pub title: Option<String>,
+}

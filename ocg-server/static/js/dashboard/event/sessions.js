@@ -35,6 +35,8 @@ export class SessionsSection extends LitWrapper {
     sessions: { type: Array },
     // List of available session kinds to render options
     sessionKinds: { type: Array, attribute: "session-kinds" },
+    // List of approved CFS submissions for linking sessions
+    approvedSubmissions: { type: Array, attribute: "approved-submissions" },
     // Timezone to render datetime-local values (e.g. "Europe/Amsterdam")
     timezone: { type: String, attribute: "timezone" },
     meetingMaxParticipants: { type: Object, attribute: "meeting-max-participants" },
@@ -49,6 +51,7 @@ export class SessionsSection extends LitWrapper {
     super();
     this.sessions = [];
     this.sessionKinds = [];
+    this.approvedSubmissions = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
     this.descriptionMaxLength = undefined;
@@ -91,6 +94,15 @@ export class SessionsSection extends LitWrapper {
       }
     }
     if (!Array.isArray(this.sessionKinds)) this.sessionKinds = [];
+
+    if (typeof this.approvedSubmissions === "string") {
+      try {
+        this.approvedSubmissions = JSON.parse(this.approvedSubmissions || "[]");
+      } catch (_) {
+        this.approvedSubmissions = [];
+      }
+    }
+    if (!Array.isArray(this.approvedSubmissions)) this.approvedSubmissions = [];
 
     if (typeof this.meetingMaxParticipants === "string") {
       try {
@@ -144,6 +156,7 @@ export class SessionsSection extends LitWrapper {
       kind: "",
       starts_at: "",
       ends_at: "",
+      cfs_submission_id: "",
       location: "",
       meeting_requested: false,
       meeting_in_sync: false,
@@ -204,6 +217,10 @@ export class SessionsSection extends LitWrapper {
    */
   _getSessionForm(index, session) {
     const hasSingleSessionItem = this.sessions.length === 1;
+    const usedSubmissionIds = this.sessions
+      .filter((_, idx) => idx !== index)
+      .map((item) => item?.cfs_submission_id)
+      .filter((value) => value);
 
     return html`<div class="mt-10">
       <div class="flex w-full max-w-5xl">
@@ -254,6 +271,8 @@ export class SessionsSection extends LitWrapper {
           .data=${session}
           .index=${index}
           .sessionKinds=${this.sessionKinds || []}
+          .approvedSubmissions=${this.approvedSubmissions || []}
+          .usedSubmissionIds=${usedSubmissionIds}
           .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
           .meetingsEnabled=${this.meetingsEnabled}
           .descriptionMaxLength=${this.descriptionMaxLength}
@@ -352,6 +371,10 @@ class SessionItem extends LitWrapper {
     onDataChange: { type: Function },
     // Session kinds list provided by parent component
     sessionKinds: { type: Array, attribute: "session-kinds" },
+    // Approved CFS submissions list provided by parent component
+    approvedSubmissions: { type: Array },
+    // Submission ids used by other sessions
+    usedSubmissionIds: { type: Array },
     meetingMaxParticipants: {
       type: Object,
       attribute: "meeting-max-participants",
@@ -384,6 +407,8 @@ class SessionItem extends LitWrapper {
     this.isObjectEmpty = true;
     this.onDataChange = () => {};
     this.sessionKinds = [];
+    this.approvedSubmissions = [];
+    this.usedSubmissionIds = [];
     this.meetingMaxParticipants = {};
     this.meetingsEnabled = false;
     this.descriptionMaxLength = undefined;
@@ -398,11 +423,19 @@ class SessionItem extends LitWrapper {
     this.data.meeting_requested =
       this.data.meeting_requested === true || this.data.meeting_requested === "true";
     this.data.meeting_in_sync = this.data.meeting_in_sync === true || this.data.meeting_in_sync === "true";
+    this.data.cfs_submission_id = this.data.cfs_submission_id || "";
     this.data.meeting_provider_id = this.data.meeting_provider_id || "";
     this.data.meeting_password = this.data.meeting_password || "";
     this.data.meeting_error = this.data.meeting_error || "";
     this.data.speakers = normalizeSpeakers(this.data.speakers);
     this.isObjectEmpty = isObjectEmpty(this.data);
+
+    if (!Array.isArray(this.approvedSubmissions)) {
+      this.approvedSubmissions = [];
+    }
+    if (!Array.isArray(this.usedSubmissionIds)) {
+      this.usedSubmissionIds = [];
+    }
 
     if (typeof this.meetingMaxParticipants === "string") {
       try {
@@ -460,6 +493,8 @@ class SessionItem extends LitWrapper {
 
   render() {
     const speakers = normalizeSpeakers(this.data?.speakers);
+    const usedSubmissionIds = new Set((this.usedSubmissionIds || []).map((id) => String(id)));
+    const currentSubmissionId = this.data?.cfs_submission_id ? String(this.data.cfs_submission_id) : "";
     return html` <div
       class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 border-2 border-stone-200 border-dashed p-8 rounded-lg bg-stone-50/25 w-full"
     >
@@ -550,6 +585,40 @@ class SessionItem extends LitWrapper {
           ></markdown-editor>
         </div>
       </div>
+
+      ${this.approvedSubmissions?.length
+        ? html`
+            <div class="col-span-full">
+              <label class="form-label"> Link to CFS submission </label>
+              <div class="mt-2">
+                <select
+                  @change=${(e) => this._onInputChange(e)}
+                  data-name="cfs_submission_id"
+                  name="sessions[${this.index}][cfs_submission_id]"
+                  class="input-primary ${this.disabled
+                    ? "bg-stone-100 text-stone-500 cursor-not-allowed"
+                    : ""}"
+                  ?disabled=${this.disabled}
+                >
+                  <option value="" ?selected=${!currentSubmissionId}>Select an approved submission</option>
+                  ${this.approvedSubmissions.map((submission) => {
+                    const submissionId = String(submission.cfs_submission_id);
+                    const isUsed = usedSubmissionIds.has(submissionId);
+                    const isCurrent = submissionId === currentSubmissionId;
+                    return html`<option
+                      value=${submissionId}
+                      ?selected=${isCurrent}
+                      ?disabled=${isUsed && !isCurrent}
+                    >
+                      ${submission.title} · ${submission.speaker_name}
+                    </option>`;
+                  })}
+                </select>
+              </div>
+              <p class="form-legend">Only approved submissions for this event can be linked.</p>
+            </div>
+          `
+        : ""}
 
       <div class="col-span-full">
         <div class="flex items-center justify-between gap-4 flex-wrap">

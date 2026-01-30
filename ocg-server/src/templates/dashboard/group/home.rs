@@ -135,6 +135,7 @@ impl std::fmt::Display for Content {
 
 /// Tab selection for the group dashboard home page.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString)]
+#[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
     /// Analytics tab (default).

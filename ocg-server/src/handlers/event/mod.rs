@@ -8,6 +8,8 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
+use garde::Validate;
+use serde::Deserialize;
 use serde_json::{json, to_value};
 use tracing::instrument;
 use uuid::Uuid;
@@ -16,12 +18,12 @@ use crate::{
     auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::prepare_headers,
+    handlers::{extractors::ValidatedForm, prepare_headers},
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
         auth::User,
-        event::{CheckInPage, Page},
+        event::{CfsModal, CheckInPage, Page},
         notifications::EventWelcome,
     },
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -87,6 +89,38 @@ pub(crate) async fn check_in_page(
         user: User::from_session(auth_session).await?,
         user_is_attendee,
         user_is_checked_in,
+    };
+
+    Ok(Html(template.render()?))
+}
+
+/// Handler that renders the CFS submission modal.
+#[instrument(skip_all, err)]
+pub(crate) async fn cfs_modal(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user_id = auth_session.user.as_ref().map(|user| user.user_id);
+    let user = User::from_session(auth_session).await?;
+
+    // Get event details and user's session proposals
+    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let session_proposals = if let Some(user_id) = user_id {
+        db.list_user_session_proposals_for_cfs_event(user_id, event_id)
+            .await?
+    } else {
+        vec![]
+    };
+
+    // Prepare template
+    let template = CfsModal {
+        event,
+        session_proposals,
+        user,
+        notice: None,
     };
 
     Ok(Html(template.render()?))
@@ -186,6 +220,50 @@ pub(crate) async fn leave_event(
     db.leave_event(community_id, event_id, user.user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Handler for submitting a CFS proposal to an event.
+#[instrument(skip_all, err)]
+pub(crate) async fn submit_cfs_submission(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    ValidatedForm(input): ValidatedForm<CfsSubmissionInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user_id = auth_session
+        .user
+        .as_ref()
+        .map(|user| user.user_id)
+        .expect("user to be logged in");
+    let user = User::from_session(auth_session).await?;
+
+    // Add CFS submission to database
+    db.add_cfs_submission(user_id, event_id, input.session_proposal_id)
+        .await?;
+
+    // Prepare template
+    let (event, session_proposals) = tokio::try_join!(
+        db.get_event_summary_by_id(community_id, event_id),
+        db.list_user_session_proposals_for_cfs_event(user_id, event_id),
+    )?;
+    let template = CfsModal {
+        event,
+        session_proposals,
+        user,
+        notice: Some("Submission received. We'll review it soon.".to_string()),
+    };
+
+    Ok(Html(template.render()?))
+}
+
+// Types.
+
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct CfsSubmissionInput {
+    #[garde(skip)]
+    session_proposal_id: Uuid,
 }
 
 // Tests.

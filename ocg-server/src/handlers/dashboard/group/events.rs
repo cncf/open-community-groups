@@ -139,16 +139,29 @@ pub(crate) async fn update_page(
     let meetings_enabled = meetings_cfg.as_ref().is_some_and(MeetingsConfig::meetings_enabled);
     let meetings_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let sponsor_filters: GroupSponsorsFilters = serde_qs_config().deserialize_str("")?;
-    let (event, categories, event_kinds, session_kinds, sponsors, timezones) = tokio::try_join!(
+    let (
+        event,
+        approved_submissions,
+        categories,
+        cfs_statuses,
+        event_kinds,
+        session_kinds,
+        sponsors,
+        timezones,
+    ) = tokio::try_join!(
         db.get_event_full(community_id, group_id, event_id),
+        db.list_event_approved_cfs_submissions(event_id),
         db.list_event_categories(community_id),
+        db.list_cfs_submission_statuses_for_review(),
         db.list_event_kinds(),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
-        db.list_timezones()
+        db.list_timezones(),
     )?;
     let template = events::UpdatePage {
         group_id,
+        approved_submissions,
+        cfs_submission_statuses: cfs_statuses,
         event,
         categories,
         event_kinds,
@@ -777,6 +790,13 @@ mod tests {
         db.expect_list_timezones()
             .times(1)
             .returning(move || Ok(timezones.clone()));
+        db.expect_list_event_approved_cfs_submissions()
+            .times(1)
+            .withf(move |eid| *eid == event_id)
+            .returning(|_| Ok(vec![]));
+        db.expect_list_cfs_submission_statuses_for_review()
+            .times(1)
+            .returning(|| Ok(vec![]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

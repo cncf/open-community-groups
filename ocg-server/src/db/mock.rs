@@ -237,6 +237,11 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn get_cfs_submission_notification_data(
+            &self,
+            event_id: Uuid,
+            cfs_submission_id: Uuid,
+        ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData>;
         async fn get_group_sponsor(
             &self,
             group_id: Uuid,
@@ -256,6 +261,15 @@ mock! {
             &self,
             community_id: Uuid,
         ) -> Result<Vec<crate::types::event::EventCategory>>;
+        async fn list_event_approved_cfs_submissions(
+            &self,
+            event_id: Uuid,
+        ) -> Result<Vec<crate::templates::dashboard::group::events::ApprovedSubmissionSummary>>;
+        async fn list_event_cfs_submissions(
+            &self,
+            event_id: Uuid,
+            filters: &crate::templates::dashboard::group::submissions::CfsSubmissionsFilters,
+        ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionsOutput>;
         async fn list_event_kinds(&self)
             -> Result<Vec<crate::types::event::EventKindSummary>>;
         async fn list_group_events(
@@ -289,6 +303,9 @@ mock! {
             &self,
             group_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_cfs_submission_statuses_for_review(
+            &self,
+        ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
         async fn list_session_kinds(&self)
             -> Result<Vec<crate::types::event::SessionKindSummary>>;
         async fn list_user_groups(
@@ -313,6 +330,13 @@ mock! {
             event_id: Uuid,
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
+        ) -> Result<()>;
+        async fn update_cfs_submission(
+            &self,
+            reviewer_id: Uuid,
+            event_id: Uuid,
+            cfs_submission_id: Uuid,
+            submission: &crate::templates::dashboard::group::submissions::CfsSubmissionUpdate,
         ) -> Result<()>;
         async fn update_group_sponsor(
             &self,
@@ -340,6 +364,24 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn add_session_proposal(
+            &self,
+            user_id: Uuid,
+            session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
+        ) -> Result<Uuid>;
+        async fn delete_session_proposal(
+            &self,
+            user_id: Uuid,
+            session_proposal_id: Uuid,
+        ) -> Result<()>;
+        async fn list_session_proposal_levels(
+            &self,
+        ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
+        async fn list_user_cfs_submissions(
+            &self,
+            user_id: Uuid,
+            filters: &crate::templates::dashboard::user::submissions::CfsSubmissionsFilters,
+        ) -> Result<crate::templates::dashboard::user::submissions::CfsSubmissionsOutput>;
         async fn list_user_community_team_invitations(
             &self,
             user_id: Uuid,
@@ -352,10 +394,37 @@ mock! {
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::GroupTeamInvitation,
         >>;
+        async fn list_user_session_proposals(
+            &self,
+            user_id: Uuid,
+            filters: &crate::templates::dashboard::user::session_proposals::SessionProposalsFilters,
+        ) -> Result<crate::templates::dashboard::user::session_proposals::SessionProposalsOutput>;
+        async fn resubmit_cfs_submission(
+            &self,
+            user_id: Uuid,
+            cfs_submission_id: Uuid,
+        ) -> Result<()>;
+        async fn update_session_proposal(
+            &self,
+            user_id: Uuid,
+            session_proposal_id: Uuid,
+            session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
+        ) -> Result<()>;
+        async fn withdraw_cfs_submission(
+            &self,
+            user_id: Uuid,
+            cfs_submission_id: Uuid,
+        ) -> Result<()>;
     }
 
     #[async_trait]
     impl crate::db::event::DBEvent for DB {
+        async fn add_cfs_submission(
+            &self,
+            user_id: Uuid,
+            event_id: Uuid,
+            session_proposal_id: Uuid,
+        ) -> Result<Uuid>;
         async fn attend_event(
             &self,
             community_id: Uuid,
@@ -397,6 +466,11 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn list_user_session_proposals_for_cfs_event(
+            &self,
+            user_id: Uuid,
+            event_id: Uuid,
+        ) -> Result<Vec<crate::templates::event::SessionProposal>>;
     }
 
     #[async_trait]

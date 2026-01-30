@@ -1,0 +1,104 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::form_title(title = "Submissions",
+description = "Track and manage your call for speakers submissions.") -}}
+
+<div class="mt-10">
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if submissions.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="5">
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-lg lg:text-xl">You don't have any submissions yet.</div>
+              </div>
+            </td>
+          </tr>
+        {% else -%}
+          {% for submission in submissions -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <td class="px-3 xl:px-5 py-4">
+                <a href="/{{ submission.event.community_name }}/group/{{ submission.event.group_slug }}/event/{{ submission.event.slug }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="font-medium text-stone-900 hover:underline line-clamp-1">
+                  {{ submission.event.name }}
+                </a>
+                <div class="text-xs text-stone-400">{{ submission.event.group_name }}</div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
+                {% if let Some(level) = &submission.session_proposal.session_proposal_level_name -%}
+                  <div class="mt-1">{{ badges::common_badge(content = level, extra_styles = Some("uppercase") ) -}}</div>
+                {% endif -%}
+                {% if let Some(message) = &submission.action_required_message -%}
+                  <div class="mt-2 text-xs text-amber-700 line-clamp-2">Action required: {{ message }}</div>
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                {{ badges::common_badge(content = submission.status_name, extra_styles = Some("uppercase") ) -}}
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(updated_at) = &submission.updated_at -%}
+                  {{ updated_at.format("%b %d, %Y") }}
+                {% else -%}
+                  {{ submission.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  {% if submission.linked_session_id.is_some() -%}
+                    <span class="text-xs text-stone-400">Linked to session</span>
+                  {% else -%}
+                    {% if submission.status_id == "information-requested" -%}
+                      <button type="button"
+                              class="btn-tertiary p-2"
+                              data-action="resubmit-submission"
+                              data-submission-id="{{ submission.cfs_submission_id }}"
+                              hx-put="/dashboard/user/submissions/{{ submission.cfs_submission_id }}/resubmit"
+                              hx-indicator="#dashboard-spinner"
+                              hx-disabled-elt="this"
+                              title="Resubmit">
+                        <div class="svg-icon size-3 md:size-4 icon-refresh"></div>
+                      </button>
+                    {% elif submission.status_id != "withdrawn" -%}
+                      <button type="button"
+                              class="btn-tertiary p-2"
+                              data-action="withdraw-submission"
+                              data-submission-id="{{ submission.cfs_submission_id }}"
+                              hx-put="/dashboard/user/submissions/{{ submission.cfs_submission_id }}/withdraw"
+                              hx-trigger="confirmed"
+                              hx-indicator="#dashboard-spinner"
+                              hx-disabled-elt="this"
+                              title="Withdraw">
+                        <div class="svg-icon size-3 md:size-4 icon-cancel"></div>
+                      </button>
+                    {% else -%}
+                      <span class="text-xs text-stone-400">Withdrawn</span>
+                    {% endif -%}
+                  {% endif -%}
+                </div>
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total > submissions.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
