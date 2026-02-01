@@ -24,7 +24,7 @@ axum-login = "0.18.0"
 axum-messages = "0.8.0"
 bytes = "1.11.0"
 cached = { version = "0.56.0", features = ["async"] }
-clap = { version = "4.5.55", features = ["derive"] }
+clap = { version = "4.5.56", features = ["derive"] }
 chrono = { version = "0.4.43", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
