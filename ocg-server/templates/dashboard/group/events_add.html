@@ -560,6 +560,7 @@
   } from '/static/js/dashboard/group/meeting-validations.js';
   import {
     parseLocalDate,
+    validateCfsWindow,
     validateEventDates,
     validateSessionDateBounds
   } from '/static/js/common/form-validation.js';
@@ -777,8 +778,15 @@
           allowPastDates: false,
           onDateSection: () => displayActiveSection('date-venue'),
         });
+        const cfsValid = validateCfsWindow({
+          cfsEnabledInput,
+          cfsStartsInput: cfsStartsAtInput,
+          cfsEndsInput: cfsEndsAtInput,
+          eventStartsInput: startsAtInput,
+          onDateSection: () => displayActiveSection('date-venue'),
+        });
 
-        if (!datesValid) {
+        if (!datesValid || !cfsValid) {
           e.preventDefault();
           e.stopImmediatePropagation();
           return false;
@@ -805,6 +813,7 @@
         if (
           !isValid ||
           !datesValid ||
+          !cfsValid ||
           !onlineValid ||
           !sessionsOnlineValid ||
           !sessionBoundsValid
@@ -827,7 +836,7 @@
           return;
         }
         Object.keys(e.detail.parameters).forEach((key) => {
-          const isEventDate = key.match(/^(starts_at|ends_at)$/);
+          const isEventDate = key.match(/^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/);
           const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
           if (isEventDate || isSessionDate) {
             if (e.detail.parameters[key]) {
