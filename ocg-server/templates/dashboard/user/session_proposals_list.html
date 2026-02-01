@@ -64,7 +64,7 @@ button = "<button id='open-session-proposal-modal'
                           data-session-proposal='{{ session_proposal|json }}'
                           data-action="edit-session-proposal"
                           title="Edit proposal">
-                    <div class="svg-icon size-3 md:size-4 icon-edit"></div>
+                    <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
                   </button>
                   {% set delete_disabled = session_proposal.has_submissions
                                     || session_proposal.linked_session_id.is_some() -%}
