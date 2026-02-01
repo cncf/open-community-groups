@@ -84,6 +84,9 @@ const initializeCfsSubmissions = () => {
         "hx-put",
         `/dashboard/group/events/${eventId}/submissions/${submission.cfs_submission_id}`,
       );
+      if (window.htmx && typeof window.htmx.process === "function") {
+        window.htmx.process(form);
+      }
     }
   };
 
