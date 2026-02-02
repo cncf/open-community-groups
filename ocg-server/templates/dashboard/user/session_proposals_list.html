@@ -20,16 +20,18 @@ description = "Create reusable session proposals to submit to events.") -}}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Level</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Duration</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Co-speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
         </tr>
       </thead>
       <tbody>
         {% if session_proposals.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="5">
+            <td class="px-8 py-16 text-center" colspan="7">
               <div class="flex flex-col items-center justify-center min-h-[125px]">
                 <div class="text-lg lg:text-xl">You don't have any session proposals yet.</div>
               </div>
@@ -40,12 +42,9 @@ description = "Create reusable session proposals to submit to events.") -}}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
-                <div class="mt-1 flex flex-wrap items-center gap-2">
-                  {{ badges::common_badge(content = session_proposal.session_proposal_level_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
-                  {% if session_proposal.has_submissions -%}
-                    {{ badges::common_badge(content = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
-                  {% endif -%}
-                </div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                {{ badges::common_badge(content = session_proposal.session_proposal_level_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ session_proposal.duration_minutes }} min</td>
               <td class="px-3 xl:px-5 py-4">
@@ -61,6 +60,11 @@ description = "Create reusable session proposals to submit to events.") -}}
                   {{ updated_at.format("%b %d, %Y") }}
                 {% else -%}
                   {{ session_proposal.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                {% if session_proposal.has_submissions -%}
+                  {{ badges::common_badge(content = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
