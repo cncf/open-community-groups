@@ -384,6 +384,8 @@ class SessionItem extends LitWrapper {
     descriptionMaxLength: { type: Number, attribute: "description-max-length" },
     // Disable editing controls
     disabled: { type: Boolean },
+    // Input mode for session details: 'cfs' or 'manual'
+    inputMode: { type: String },
   };
 
   constructor() {
@@ -413,6 +415,7 @@ class SessionItem extends LitWrapper {
     this.meetingsEnabled = false;
     this.descriptionMaxLength = undefined;
     this.disabled = false;
+    this.inputMode = "manual";
   }
 
   connectedCallback() {
@@ -446,6 +449,13 @@ class SessionItem extends LitWrapper {
     }
     if (!this.meetingMaxParticipants || typeof this.meetingMaxParticipants !== "object") {
       this.meetingMaxParticipants = {};
+    }
+
+    // Initialize input mode based on existing data
+    if (this.data.cfs_submission_id) {
+      this.inputMode = "cfs";
+    } else {
+      this.inputMode = "manual";
     }
   }
 
@@ -486,6 +496,28 @@ class SessionItem extends LitWrapper {
      */
     const speakers = normalizeSpeakers(event.detail?.speakers || []);
     this.data = { ...this.data, speakers };
+    this.isObjectEmpty = isObjectEmpty(this.data);
+    this.onDataChange(this.data, this.index);
+    this.requestUpdate();
+  };
+
+  /**
+   * Handles input mode radio button changes.
+   * @param {Event} event - Change event from radio input
+   * @private
+   */
+  _onModeChange = (event) => {
+    if (this.disabled) return;
+    const newMode = event.target.value;
+    this.inputMode = newMode;
+
+    // Clear fields from the other mode when switching
+    if (newMode === "cfs") {
+      this.data = { ...this.data, description: "", speakers: [] };
+    } else {
+      this.data = { ...this.data, cfs_submission_id: "" };
+    }
+
     this.isObjectEmpty = isObjectEmpty(this.data);
     this.onDataChange(this.data, this.index);
     this.requestUpdate();
@@ -572,21 +604,113 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-full">
-        <label for="summary" class="form-label"> Description </label>
+        <label class="form-label"> Location </label>
         <div class="mt-2">
-          <markdown-editor
-            id="sessions[${this.index}][description]"
-            name="sessions[${this.index}][description]"
-            content=${this.data.description}
-            .onChange=${(value) => this._onTextareaChange(value)}
-            maxlength=${this.descriptionMaxLength}
-            mini
+          <input
+            @input=${(e) => this._onInputChange(e)}
+            data-name="location"
+            type="text"
+            name="sessions[${this.index}][location]"
+            class="input-primary"
+            value=${this.data.location}
+            placeholder="Optional - physical location or meeting room"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
             ?disabled=${this.disabled}
-          ></markdown-editor>
+          />
         </div>
       </div>
 
       ${this.approvedSubmissions?.length
+        ? html`
+            <div class="col-span-full">
+              <label class="form-label">Session details</label>
+              <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label class="block h-full">
+                  <input
+                    type="radio"
+                    name="sessions[${this.index}][input_mode]"
+                    value="cfs"
+                    class="sr-only"
+                    .checked=${this.inputMode === "cfs"}
+                    @change=${this._onModeChange}
+                    ?disabled=${this.disabled}
+                  />
+                  <div
+                    class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${this.inputMode ===
+                    "cfs"
+                      ? "border-primary-400 ring-2 ring-primary-200"
+                      : "border-stone-200"} ${this.disabled
+                      ? "opacity-60 cursor-not-allowed"
+                      : "hover:border-primary-300"}"
+                  >
+                    <div class="flex items-start gap-3">
+                      <span class="mt-1 inline-flex">
+                        <span
+                          class="relative flex h-5 w-5 items-center justify-center rounded-full border ${this
+                            .inputMode === "cfs"
+                            ? "border-primary-500"
+                            : "border-stone-300"}"
+                        >
+                          ${this.inputMode === "cfs"
+                            ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
+                            : ""}
+                        </span>
+                      </span>
+                      <div class="space-y-1">
+                        <div class="text-base font-semibold text-stone-900">
+                          From Call for Speakers submission
+                        </div>
+                        <p class="form-legend">Link an approved CFS submission to this session.</p>
+                      </div>
+                    </div>
+                  </div>
+                </label>
+                <label class="block h-full">
+                  <input
+                    type="radio"
+                    name="sessions[${this.index}][input_mode]"
+                    value="manual"
+                    class="sr-only"
+                    .checked=${this.inputMode === "manual"}
+                    @change=${this._onModeChange}
+                    ?disabled=${this.disabled}
+                  />
+                  <div
+                    class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${this.inputMode ===
+                    "manual"
+                      ? "border-primary-400 ring-2 ring-primary-200"
+                      : "border-stone-200"} ${this.disabled
+                      ? "opacity-60 cursor-not-allowed"
+                      : "hover:border-primary-300"}"
+                  >
+                    <div class="flex items-start gap-3">
+                      <span class="mt-1 inline-flex">
+                        <span
+                          class="relative flex h-5 w-5 items-center justify-center rounded-full border ${this
+                            .inputMode === "manual"
+                            ? "border-primary-500"
+                            : "border-stone-300"}"
+                        >
+                          ${this.inputMode === "manual"
+                            ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
+                            : ""}
+                        </span>
+                      </span>
+                      <div class="space-y-1">
+                        <div class="text-base font-semibold text-stone-900">Manual</div>
+                        <p class="form-legend">Add description and speakers manually.</p>
+                      </div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          `
+        : ""}
+      ${this.inputMode === "cfs" && this.approvedSubmissions?.length
         ? html`
             <div class="col-span-full">
               <label class="form-label"> Link to CFS submission </label>
@@ -619,43 +743,40 @@ class SessionItem extends LitWrapper {
             </div>
           `
         : ""}
+      ${this.inputMode === "manual" || !this.approvedSubmissions?.length
+        ? html`
+            <div class="col-span-full">
+              <label for="summary" class="form-label"> Description </label>
+              <div class="mt-2">
+                <markdown-editor
+                  id="sessions[${this.index}][description]"
+                  name="sessions[${this.index}][description]"
+                  content=${this.data.description}
+                  .onChange=${(value) => this._onTextareaChange(value)}
+                  maxlength=${this.descriptionMaxLength}
+                  mini
+                  ?disabled=${this.disabled}
+                ></markdown-editor>
+              </div>
+            </div>
 
-      <div class="col-span-full">
-        <div class="flex items-center justify-between gap-4 flex-wrap">
-          <speakers-selector
-            selected-speakers=${JSON.stringify(this.data.speakers || [])}
-            dashboard-type="group"
-            field-name-prefix=${`sessions[${this.index}][speakers]`}
-            show-add-button
-            label="Speakers"
-            help-text="Add speakers or presenters for this session."
-            class="w-full"
-            @speakers-changed=${this._handleSpeakersChanged}
-            ?disabled=${this.disabled}
-          ></speakers-selector>
-        </div>
-      </div>
-
-      <div class="col-span-full">
-        <label class="form-label"> Location </label>
-        <div class="mt-2">
-          <input
-            @input=${(e) => this._onInputChange(e)}
-            data-name="location"
-            type="text"
-            name="sessions[${this.index}][location]"
-            class="input-primary"
-            value=${this.data.location}
-            placeholder="Optional - physical location or meeting room"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            spellcheck="false"
-            ?disabled=${this.disabled}
-          />
-        </div>
-      </div>
-
+            <div class="col-span-full">
+              <div class="flex items-center justify-between gap-4 flex-wrap">
+                <speakers-selector
+                  selected-speakers=${JSON.stringify(this.data.speakers || [])}
+                  dashboard-type="group"
+                  field-name-prefix=${`sessions[${this.index}][speakers]`}
+                  show-add-button
+                  label="Speakers"
+                  help-text="Add speakers or presenters for this session."
+                  class="w-full"
+                  @speakers-changed=${this._handleSpeakersChanged}
+                  ?disabled=${this.disabled}
+                ></speakers-selector>
+              </div>
+            </div>
+          `
+        : ""}
       ${this.data.kind !== "in-person"
         ? html`
             <div class="col-span-full">
