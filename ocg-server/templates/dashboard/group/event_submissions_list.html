@@ -67,6 +67,11 @@ description = "Review and manage call for speakers submissions.") -}}
                         class="btn-tertiary p-2"
                         data-action="open-cfs-submission-modal"
                         data-submission='{{ submission|json }}'
+                        data-proposal-description-html='{% if let Some(description) = &submission.session_proposal.description %}
+                                                          {{ description|md_to_html|json }}
+                                                        {% else %}
+                                                          ""
+                                                        {% endif %}'
                         title="Review submission">
                   <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
                 </button>
@@ -82,99 +87,3 @@ description = "Review and manage call for speakers submissions.") -}}
 {% if total > submissions.len() -%}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#submissions-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
-
-{# Review modal -#}
-<div id="cfs-submission-modal"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="cfs-submission-modal-title"
-     data-event-id="{{ event_id }}"
-     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 max-h-full flex z-[1000]">
-  <div id="overlay-cfs-submission-modal"
-       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
-  <div class="relative p-4 w-full max-w-4xl max-h-full">
-    <div class="relative bg-white rounded-lg shadow">
-      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 id="cfs-submission-modal-title"
-            class="text-xl font-semibold text-stone-900">Review submission</h3>
-        <button id="close-cfs-submission-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
-      <div class="p-4 md:p-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div class="space-y-5">
-          <div>
-            <div class="text-xs uppercase text-stone-400">Speaker</div>
-            <div id="cfs-submission-speaker-name"
-                 class="text-lg font-semibold text-stone-900"></div>
-            <div id="cfs-submission-speaker-username" class="text-sm text-stone-500"></div>
-          </div>
-
-          <div>
-            <div class="text-xs uppercase text-stone-400">Proposal</div>
-            <div id="cfs-submission-proposal-title"
-                 class="text-lg font-semibold text-stone-900"></div>
-            <div id="cfs-submission-proposal-meta" class="text-sm text-stone-500"></div>
-          </div>
-
-          <div>
-            <div class="text-xs uppercase text-stone-400">Description</div>
-            <div id="cfs-submission-proposal-description"
-                 class="text-sm/6 text-stone-600 whitespace-pre-wrap"></div>
-          </div>
-
-          <div id="cfs-submission-co-speaker" class="hidden">
-            <div class="text-xs uppercase text-stone-400">Co-speaker</div>
-            <div id="cfs-submission-co-speaker-name" class="text-sm text-stone-600"></div>
-          </div>
-        </div>
-
-        <div>
-          <form id="cfs-submission-form"
-                hx-swap="none"
-                hx-indicator="#dashboard-spinner"
-                hx-disabled-elt="#cfs-submission-submit, #cfs-submission-cancel">
-            <div class="space-y-5">
-              <div>
-                <label for="cfs-submission-status" class="form-label">
-                  Status <span class="asterisk">*</span>
-                </label>
-                <div class="mt-2">
-                  <select id="cfs-submission-status"
-                          name="status_id"
-                          class="select-primary"
-                          required>
-                    <option value="">Select status</option>
-                    {% for status in statuses -%}
-                      <option value="{{ status.cfs_submission_status_id }}">{{ status.display_name }}</option>
-                    {% endfor -%}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label for="cfs-submission-message" class="form-label">Action required message</label>
-                <div class="mt-2">
-                  <textarea id="cfs-submission-message"
-                            name="action_required_message"
-                            class="textarea-primary"
-                            maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
-                            rows="6"
-                            placeholder="Optional message for the speaker"></textarea>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-end gap-3">
-                <button id="cfs-submission-cancel" type="button" class="btn-primary-outline">Cancel</button>
-                <button id="cfs-submission-submit" type="submit" class="btn-primary">Update</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>

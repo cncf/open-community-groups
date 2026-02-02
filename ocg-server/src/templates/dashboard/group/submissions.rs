@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
+use crate::templates::filters;
 use crate::{
     templates::{
         common::UserSummary,
