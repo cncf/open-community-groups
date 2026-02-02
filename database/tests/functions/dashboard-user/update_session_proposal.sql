@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -195,6 +195,24 @@ select throws_ok(
     ),
     'session proposal linked to a session',
     'Should reject updating proposals linked to sessions'
+);
+
+-- Should not leak linked sessions for other users
+select throws_ok(
+    format(
+        'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
+        :'user2ID',
+        :'proposal_id',
+        jsonb_build_object(
+            'co_speaker_user_id', null,
+            'description', 'Updated description',
+            'duration_minutes', 60,
+            'session_proposal_level_id', 'advanced',
+            'title', 'Zig 202'
+        )::text
+    ),
+    'session proposal not found',
+    'Should not leak linked sessions for other users'
 );
 
 -- ============================================================================

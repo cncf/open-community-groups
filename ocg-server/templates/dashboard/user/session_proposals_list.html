@@ -171,6 +171,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                          id="session-proposal-duration"
                          name="duration_minutes"
                          min="1"
+                         max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"
                          class="input-primary"
                          required>
                 </div>

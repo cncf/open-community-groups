@@ -13,7 +13,10 @@ use crate::{
         dashboard,
         pagination::{self, Pagination, ToRawQuery},
     },
-    validation::{MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_PAGINATION_LIMIT, trimmed_non_empty},
+    validation::{
+        MAX_LEN_DESCRIPTION, MAX_LEN_ENTITY_NAME, MAX_PAGINATION_LIMIT,
+        MAX_SESSION_PROPOSAL_DURATION_MINUTES, trimmed_non_empty,
+    },
 };
 
 // Pages templates.
@@ -38,6 +41,7 @@ pub(crate) struct ListPage {
 }
 
 // Types.
+
 /// Session proposal summary information.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +81,7 @@ pub(crate) struct SessionProposalInput {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
     /// Duration in minutes.
-    #[garde(range(min = 1))]
+    #[garde(range(min = 1, max = MAX_SESSION_PROPOSAL_DURATION_MINUTES))]
     pub duration_minutes: i32,
     /// Session proposal level identifier.
     #[garde(custom(trimmed_non_empty))]

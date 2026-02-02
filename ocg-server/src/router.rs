@@ -451,7 +451,7 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-/// Returns the standard `serde_qs` configuration for query string parsing.
+/// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {
     serde_qs::Config::new(3, false)
 }

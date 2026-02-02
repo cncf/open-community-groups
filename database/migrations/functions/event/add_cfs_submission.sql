@@ -1,7 +1,8 @@
 -- Adds a new CFS submission for an event.
 create or replace function add_cfs_submission(
-    p_user_id uuid,
+    p_community_id uuid,
     p_event_id uuid,
+    p_user_id uuid,
     p_session_proposal_id uuid
 )
 returns uuid as $$
@@ -15,7 +16,10 @@ begin
     select e.cfs_ends_at, e.cfs_enabled, e.cfs_starts_at
     into v_cfs_ends_at, v_cfs_enabled, v_cfs_starts_at
     from event e
+    join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
+    and g.community_id = p_community_id
+    and g.active = true
     and e.canceled = false
     and e.deleted = false
     and e.published = true;

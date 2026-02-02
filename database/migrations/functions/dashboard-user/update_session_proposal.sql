@@ -6,6 +6,16 @@ create or replace function update_session_proposal(
 )
 returns void as $$
 begin
+    -- Ensure the session proposal belongs to the user
+    perform 1
+    from session_proposal sp
+    where sp.session_proposal_id = p_session_proposal_id
+    and sp.user_id = p_user_id;
+
+    if not found then
+        raise exception 'session proposal not found';
+    end if;
+
     -- Ensure the session proposal is not linked to an accepted session
     perform 1
     from cfs_submission cs

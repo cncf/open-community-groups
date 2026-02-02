@@ -52,6 +52,9 @@ use crate::{
             },
             user::{
                 invitations::{CommunityTeamInvitation, GroupTeamInvitation},
+                session_proposals::{
+                    SessionProposal as UserSessionProposal, SessionProposalLevel as UserSessionProposalLevel,
+                },
                 submissions::{
                     CfsSessionProposal as UserCfsSessionProposal, CfsSubmission as UserCfsSubmission,
                 },
@@ -661,6 +664,32 @@ pub(crate) fn sample_session_kind_summary() -> SessionKindSummary {
         display_name: "Keynote".to_string(),
         session_kind_id: "hybrid".to_string(),
     }
+}
+
+/// Sample session proposal used in user session proposals tests.
+pub(crate) fn sample_session_proposal(session_proposal_id: Uuid) -> UserSessionProposal {
+    UserSessionProposal {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        description: "Session about Rust".to_string(),
+        duration_minutes: 45,
+        has_submissions: false,
+        session_proposal_id,
+        session_proposal_level_id: "beginner".to_string(),
+        session_proposal_level_name: "Beginner".to_string(),
+        title: "Rust 101".to_string(),
+
+        co_speaker: None,
+        linked_session_id: None,
+        updated_at: None,
+    }
+}
+
+/// Sample session proposal levels used in user session proposals tests.
+pub(crate) fn sample_session_proposal_levels() -> Vec<UserSessionProposalLevel> {
+    vec![UserSessionProposalLevel {
+        display_name: "Beginner".to_string(),
+        session_proposal_level_id: "beginner".to_string(),
+    }]
 }
 
 /// Sample session record used across tests.

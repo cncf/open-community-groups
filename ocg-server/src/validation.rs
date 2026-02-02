@@ -71,6 +71,9 @@ pub const MAX_LEN_TIMEZONE: usize = 64;
 /// Maximum pagination limit for results per page.
 pub const MAX_PAGINATION_LIMIT: usize = 100;
 
+/// Maximum duration for session proposals (minutes).
+pub const MAX_SESSION_PROPOSAL_DURATION_MINUTES: i32 = 480;
+
 /// Minimum length for passwords.
 pub const MIN_PASSWORD_LEN: usize = 8;
 

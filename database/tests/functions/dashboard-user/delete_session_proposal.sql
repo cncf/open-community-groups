@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,7 @@ select plan(2);
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set userID '00000000-0000-0000-0000-000000000071'
+\set user2ID '00000000-0000-0000-0000-000000000072'
 
 -- ============================================================================
 -- SEED DATA
@@ -22,7 +23,8 @@ select plan(2);
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, 'Bob');
 
 -- Community
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
@@ -119,6 +121,30 @@ returning session_proposal_id as proposal_with_submission_id \gset
 insert into cfs_submission (event_id, session_proposal_id, status_id)
 values (:'eventID', :'proposal_with_submission_id'::uuid, 'not-reviewed');
 
+-- Session proposal (other user)
+insert into session_proposal (
+    session_proposal_id,
+    created_at,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id
+) values (
+    gen_random_uuid(),
+    '2024-01-04 00:00:00+00',
+    'Session about Python',
+    make_interval(mins => 45),
+    'beginner',
+    'Python 101',
+    :'user2ID'
+)
+returning session_proposal_id as other_user_proposal_id \gset
+
+-- CFS submission (other user)
+insert into cfs_submission (event_id, session_proposal_id, status_id)
+values (:'eventID', :'other_user_proposal_id'::uuid, 'not-reviewed');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -142,6 +168,17 @@ select throws_ok(
     ),
     'session proposal has submissions',
     'Should reject deleting proposals with submissions'
+);
+
+-- Should not leak linked sessions for other users
+select throws_ok(
+    format(
+        'select delete_session_proposal(%L::uuid, %L::uuid)',
+        :'userID',
+        :'other_user_proposal_id'
+    ),
+    'session proposal not found',
+    'Should not leak submissions for other users'
 );
 
 -- ============================================================================

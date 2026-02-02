@@ -17,8 +17,9 @@ pub(crate) trait DBEvent {
     /// Adds a new CFS submission for an event.
     async fn add_cfs_submission(
         &self,
-        user_id: Uuid,
+        community_id: Uuid,
         event_id: Uuid,
+        user_id: Uuid,
         session_proposal_id: Uuid,
     ) -> Result<Uuid>;
 
@@ -73,8 +74,9 @@ impl DBEvent for PgDB {
     #[instrument(skip(self), err)]
     async fn add_cfs_submission(
         &self,
-        user_id: Uuid,
+        community_id: Uuid,
         event_id: Uuid,
+        user_id: Uuid,
         session_proposal_id: Uuid,
     ) -> Result<Uuid> {
         trace!("db: add cfs submission");
@@ -82,8 +84,8 @@ impl DBEvent for PgDB {
         let db = self.pool.get().await?;
         let id = db
             .query_one(
-                "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid)::uuid",
-                &[&user_id, &event_id, &session_proposal_id],
+                "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid)::uuid",
+                &[&community_id, &event_id, &user_id, &session_proposal_id],
             )
             .await?
             .get(0);

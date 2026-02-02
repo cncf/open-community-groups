@@ -421,8 +421,9 @@ mock! {
     impl crate::db::event::DBEvent for DB {
         async fn add_cfs_submission(
             &self,
-            user_id: Uuid,
+            community_id: Uuid,
             event_id: Uuid,
+            user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<Uuid>;
         async fn attend_event(

@@ -5,6 +5,16 @@ create or replace function delete_session_proposal(
 )
 returns void as $$
 begin
+    -- Ensure the session proposal belongs to the user
+    perform 1
+    from session_proposal sp
+    where sp.session_proposal_id = p_session_proposal_id
+    and sp.user_id = p_user_id;
+
+    if not found then
+        raise exception 'session proposal not found';
+    end if;
+
     -- Do not allow deletion if there are associated submissions
     perform 1
     from cfs_submission cs
