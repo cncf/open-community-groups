@@ -261,40 +261,16 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @param {string} statusId
    * @returns {Object}
    */
-  _getStatusColors(statusId) {
+  _getStatusColor(statusId) {
     switch (statusId) {
       case "rejected":
-        return {
-          bg: "bg-white",
-          border: "border-stone-200",
-          borderSelected: "border-red-600 ring-2 ring-red-200",
-          text: "text-stone-700",
-          dot: "bg-red-600",
-        };
+        return { border: "border-red-600", ring: "ring-2 ring-red-200", dot: "bg-red-600" };
       case "information-requested":
-        return {
-          bg: "bg-white",
-          border: "border-stone-200",
-          borderSelected: "border-amber-600 ring-2 ring-amber-200",
-          text: "text-stone-700",
-          dot: "bg-amber-600",
-        };
+        return { border: "border-orange-600", ring: "ring-2 ring-orange-200", dot: "bg-orange-600" };
       case "approved":
-        return {
-          bg: "bg-white",
-          border: "border-stone-200",
-          borderSelected: "border-green-600 ring-2 ring-green-200",
-          text: "text-stone-700",
-          dot: "bg-green-600",
-        };
+        return { border: "border-emerald-600", ring: "ring-2 ring-emerald-200", dot: "bg-emerald-600" };
       default:
-        return {
-          bg: "bg-white",
-          border: "border-stone-200",
-          borderSelected: "border-primary-500 ring-2 ring-primary-200",
-          text: "text-stone-700",
-          dot: "bg-primary-500",
-        };
+        return { border: "border-primary-500", ring: "ring-2 ring-primary-200", dot: "bg-primary-500" };
     }
   }
 
@@ -331,7 +307,7 @@ export class ReviewSubmissionModal extends LitWrapper {
         ${reviewStatuses.map((status) => {
           const statusId = status?.cfs_submission_status_id || "";
           const isSelected = this._statusId === statusId;
-          const colors = this._getStatusColors(statusId);
+          const color = this._getStatusColor(statusId);
 
           return html`
             <label class="block cursor-pointer">
@@ -344,19 +320,19 @@ export class ReviewSubmissionModal extends LitWrapper {
                 @change=${(e) => this._onStatusCheckChange(e, statusId)}
               />
               <div
-                class="rounded-lg border p-3 transition ${colors.bg} ${isSelected
-                  ? colors.borderSelected
-                  : colors.border}"
+                class="rounded-lg border p-3 transition bg-white ${isSelected
+                  ? `${color.border} ${color.ring}`
+                  : "border-stone-200"}"
               >
                 <div class="flex items-center gap-2">
                   <span
                     class="relative flex h-4 w-4 items-center justify-center rounded border ${isSelected
-                      ? colors.borderSelected.split(" ")[0]
-                      : colors.border}"
+                      ? color.border
+                      : "border-stone-200"}"
                   >
-                    ${isSelected ? html`<div class="svg-icon size-3 icon-check ${colors.dot}"></div>` : ""}
+                    ${isSelected ? html`<div class="svg-icon size-3 icon-check ${color.dot}"></div>` : ""}
                   </span>
-                  <span class="text-sm font-medium ${colors.text}"> ${status?.display_name || ""} </span>
+                  <span class="text-sm font-medium text-stone-700">${status?.display_name || ""}</span>
                 </div>
               </div>
             </label>
