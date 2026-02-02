@@ -312,7 +312,6 @@ export class ReviewSubmissionModal extends LitWrapper {
             <label class="block cursor-pointer">
               <input
                 type="checkbox"
-                name="status_id"
                 value=${statusId}
                 class="sr-only"
                 .checked=${isSelected}
