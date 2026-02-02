@@ -44,14 +44,16 @@ description = "Review and manage call for speakers submissions.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
                 {% if let Some(level) = &submission.session_proposal.session_proposal_level_name -%}
-                  <div class="mt-1">{{ badges::common_badge(content = level, extra_styles = Some("uppercase") ) -}}</div>
+                  <div class="mt-1">
+                    {{ badges::common_badge(content = level, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                  </div>
                 {% endif -%}
                 {% if let Some(message) = &submission.action_required_message -%}
                   <div class="mt-2 text-xs text-amber-700 line-clamp-2">Action required: {{ message }}</div>
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
-                {{ badges::common_badge(content = submission.status_name, extra_styles = Some("uppercase") ) -}}
+                {{ badges::common_badge(content = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(updated_at) = &submission.updated_at -%}

@@ -35,9 +35,9 @@ button = "<button id='open-session-proposal-modal'
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
                 <div class="mt-1 flex flex-wrap items-center gap-2">
-                  {{ badges::common_badge(content = session_proposal.session_proposal_level_name, extra_styles = Some("uppercase") ) -}}
+                  {{ badges::common_badge(content = session_proposal.session_proposal_level_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                   {% if session_proposal.has_submissions -%}
-                    {{ badges::common_badge(content = "Submitted", extra_styles = Some("uppercase") ) -}}
+                    {{ badges::common_badge(content = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                   {% endif -%}
                 </div>
               </td>
@@ -77,14 +77,14 @@ button = "<button id='open-session-proposal-modal'
                           hx-trigger="confirmed"
                           hx-indicator="#dashboard-spinner"
                           hx-disabled-elt="this"
-                          {% if delete_disabled %}disabled{% endif %}
-                          title="Delete proposal">
+                          {% if delete_disabled %}
+                            disabled title="Submitted proposals cannot be deleted"
+                          {% else %}
+                            title="Delete proposal"
+                          {% endif %}>
                     <div class="svg-icon size-3 md:size-4 icon-trash"></div>
                   </button>
                 </div>
-                {% if delete_disabled -%}
-                  <div class="mt-1 text-xs text-stone-400">Submitted proposals cannot be deleted.</div>
-                {% endif -%}
               </td>
             </tr>
           {% endfor -%}
