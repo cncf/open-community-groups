@@ -23,7 +23,6 @@ export class ReviewSubmissionModal extends LitWrapper {
       eventId: { type: String, attribute: "event-id" },
       messageMaxLength: { type: Number, attribute: "message-max-length" },
       statuses: { type: Array, attribute: false },
-      _activeTab: { type: String },
       _isOpen: { type: Boolean },
       _message: { type: String },
       _statusId: { type: String },
@@ -36,7 +35,6 @@ export class ReviewSubmissionModal extends LitWrapper {
     this.eventId = "";
     this.messageMaxLength = 5000;
     this.statuses = [];
-    this._activeTab = "proposal";
     this._isOpen = false;
     this._message = "";
     this._statusId = "";
@@ -70,7 +68,6 @@ export class ReviewSubmissionModal extends LitWrapper {
     }
     const shouldLockScroll = !this._isOpen;
     this._submission = submission;
-    this._activeTab = "proposal";
     this._message = submission.action_required_message || "";
     this._statusId = String(submission.status_id || "");
     this._isOpen = true;
@@ -88,7 +85,6 @@ export class ReviewSubmissionModal extends LitWrapper {
     }
     this._isOpen = false;
     this._submission = null;
-    this._activeTab = "proposal";
     this._message = "";
     this._statusId = "";
     this._removeAfterRequestListener();
@@ -215,15 +211,19 @@ export class ReviewSubmissionModal extends LitWrapper {
     const initials = computeUserInitials(name, person?.username || "", 2);
 
     return html`
-      <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
+      <div
+        class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1 max-w-full"
+        title=${name}
+      >
         <logo-image
+          class="shrink-0"
           image-url=${photoUrl}
           placeholder=${initials}
           size="size-[24px]"
           font-size="text-xs"
           hide-border
         ></logo-image>
-        <span class="text-sm text-stone-700">${name}</span>
+        <span class="text-sm text-stone-700 truncate">${name}</span>
       </div>
     `;
   }
@@ -257,14 +257,114 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Renders status options.
-   * @returns {import("lit").TemplateResult[]}
+   * Returns the color classes for a status.
+   * @param {string} statusId
+   * @returns {Object}
    */
-  _renderStatusOptions() {
-    return this.statuses.map((status) => {
-      const statusId = String(status?.cfs_submission_status_id || "");
-      return html` <option value=${statusId}>${status?.display_name || ""}</option> `;
-    });
+  _getStatusColors(statusId) {
+    switch (statusId) {
+      case "rejected":
+        return {
+          bg: "bg-white",
+          border: "border-stone-200",
+          borderSelected: "border-red-600 ring-2 ring-red-200",
+          text: "text-stone-700",
+          dot: "bg-red-600",
+        };
+      case "information-requested":
+        return {
+          bg: "bg-white",
+          border: "border-stone-200",
+          borderSelected: "border-amber-600 ring-2 ring-amber-200",
+          text: "text-stone-700",
+          dot: "bg-amber-600",
+        };
+      case "approved":
+        return {
+          bg: "bg-white",
+          border: "border-stone-200",
+          borderSelected: "border-green-600 ring-2 ring-green-200",
+          text: "text-stone-700",
+          dot: "bg-green-600",
+        };
+      default:
+        return {
+          bg: "bg-white",
+          border: "border-stone-200",
+          borderSelected: "border-primary-500 ring-2 ring-primary-200",
+          text: "text-stone-700",
+          dot: "bg-primary-500",
+        };
+    }
+  }
+
+  /**
+   * Checks if the message textarea should be required.
+   * @returns {boolean}
+   */
+  _isMessageRequired() {
+    return this._statusId === "information-requested";
+  }
+
+  /**
+   * Handles status checkbox changes.
+   * @param {Event} event
+   * @param {string} statusId
+   */
+  _onStatusCheckChange(event, statusId) {
+    if (event.target?.checked) {
+      this._statusId = statusId;
+    } else {
+      this._statusId = "not-reviewed";
+    }
+  }
+
+  /**
+   * Renders status selection boxes.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderStatusBoxes() {
+    const reviewStatuses = this.statuses.filter((s) => s.cfs_submission_status_id !== "not-reviewed");
+
+    return html`
+      <div class="grid grid-cols-3 gap-3">
+        ${reviewStatuses.map((status) => {
+          const statusId = status?.cfs_submission_status_id || "";
+          const isSelected = this._statusId === statusId;
+          const colors = this._getStatusColors(statusId);
+
+          return html`
+            <label class="block cursor-pointer">
+              <input
+                type="checkbox"
+                name="status_id"
+                value=${statusId}
+                class="sr-only"
+                .checked=${isSelected}
+                @change=${(e) => this._onStatusCheckChange(e, statusId)}
+              />
+              <div
+                class="rounded-lg border p-3 transition ${colors.bg} ${isSelected
+                  ? colors.borderSelected
+                  : colors.border}"
+              >
+                <div class="flex items-center gap-2">
+                  <span
+                    class="relative flex h-4 w-4 items-center justify-center rounded border ${isSelected
+                      ? colors.borderSelected.split(" ")[0]
+                      : colors.border}"
+                  >
+                    ${isSelected ? html`<div class="svg-icon size-3 icon-check ${colors.dot}"></div>` : ""}
+                  </span>
+                  <span class="text-sm font-medium ${colors.text}"> ${status?.display_name || ""} </span>
+                </div>
+              </div>
+            </label>
+          `;
+        })}
+      </div>
+      <input type="hidden" name="status_id" .value=${this._statusId} />
+    `;
   }
 
   /**
@@ -279,7 +379,6 @@ export class ReviewSubmissionModal extends LitWrapper {
     const proposal = this._submission.session_proposal || {};
     const submissionEndpoint = this._buildSubmissionEndpoint();
     const coSpeaker = proposal?.co_speaker;
-    const isProposalTab = this._activeTab === "proposal";
 
     return html`
       <div
@@ -292,7 +391,7 @@ export class ReviewSubmissionModal extends LitWrapper {
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
           @click=${() => this.close()}
         ></div>
-        <div class="relative p-4 w-full max-w-3xl max-h-full">
+        <div class="relative p-4 w-full max-w-5xl max-h-full">
           <div class="relative bg-white rounded-2xl shadow-lg">
             <div class="flex items-center justify-between p-5 border-b border-stone-200">
               <h3 id="cfs-submission-modal-title" class="text-xl font-semibold text-stone-900">
@@ -310,156 +409,95 @@ export class ReviewSubmissionModal extends LitWrapper {
               </button>
             </div>
 
-            <div class="mt-8 p-5 pt-0">
-              <ul
-                class="flex flex-wrap space-x-2 -mb-px text-xs lg:text-sm font-medium text-center border-b border-stone-900/10 w-full mb-5"
+            <div class="px-8 py-5">
+              <form
+                id="cfs-submission-form"
+                hx-put=${submissionEndpoint}
+                hx-swap="none"
+                hx-indicator="#dashboard-spinner"
+                hx-disabled-elt="#cfs-submission-submit"
               >
-                <li>
-                  <button
-                    type="button"
-                    data-active=${isProposalTab ? "true" : "false"}
-                    class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap ${isProposalTab
-                      ? "active"
-                      : ""}"
-                    @click=${() => {
-                      this._activeTab = "proposal";
-                    }}
-                  >
-                    <div
-                      class="svg-icon size-3 me-2 icon-proposal bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0"
-                    ></div>
-                    Proposal
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    data-active=${isProposalTab ? "false" : "true"}
-                    class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap ${!isProposalTab
-                      ? "active"
-                      : ""}"
-                    @click=${() => {
-                      this._activeTab = "decision";
-                    }}
-                  >
-                    <div
-                      class="svg-icon size-3 me-2 icon-check bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0"
-                    ></div>
-                    Decision
-                  </button>
-                </li>
-              </ul>
-
-              <div class="h-[520px]">
-                <div ?hidden=${!isProposalTab} class="h-full overflow-y-auto pe-1">
-                  <div class="space-y-5">
+                <div class="flex flex-col md:flex-row gap-6">
+                  <div class="flex-1 space-y-4 min-w-0">
                     <div>
-                      <label class=${PROPOSAL_SECTION_TITLE_CLASS}>Title</label>
-                      <div class="mt-2 text-stone-700">${proposal?.title || ""}</div>
-                      <div class="mt-3 space-y-3">${this._renderProposalMeta(proposal)}</div>
+                      <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Title</div>
+                      <div class="mt-2 text-lg text-stone-800 font-medium">${proposal?.title || ""}</div>
                     </div>
 
                     <div>
-                      <label class=${PROPOSAL_SECTION_TITLE_CLASS}>Speaker</label>
+                      <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Description</div>
+                      <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-500 text-sm/6 markdown">
+                        ${proposal?.description_html
+                          ? unsafeHTML(proposal.description_html)
+                          : proposal?.description || ""}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
+                    ${this._renderProposalMeta(proposal)}
+
+                    <div>
+                      <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Speaker</div>
                       <div class="mt-2">
-                        <div class="flex flex-wrap gap-2">
-                          ${this._submission?.speaker ? this._renderPersonRow(this._submission.speaker) : ""}
-                        </div>
+                        ${this._submission?.speaker ? this._renderPersonRow(this._submission.speaker) : ""}
                       </div>
                     </div>
 
                     ${coSpeaker
                       ? html`
                           <div>
-                            <label class=${PROPOSAL_SECTION_TITLE_CLASS}>Co-speaker</label>
-                            <div class="mt-2">
-                              <div class="flex flex-wrap gap-2">${this._renderPersonRow(coSpeaker)}</div>
-                            </div>
+                            <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Co-speaker</div>
+                            <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
                           </div>
                         `
                       : ""}
+                  </div>
+                </div>
+
+                <div class="border-t border-stone-200 pt-5 mt-5">
+                  <div class="space-y-5">
+                    <div>
+                      <label class="form-label">Decision</label>
+                      <div class="mt-3">${this._renderStatusBoxes()}</div>
+                    </div>
 
                     <div>
-                      <label class=${PROPOSAL_SECTION_TITLE_CLASS}>Description</label>
+                      <label for="cfs-submission-message" class="form-label">
+                        Message for speaker
+                        ${this._isMessageRequired() ? html`<span class="asterisk">*</span>` : ""}
+                      </label>
                       <div class="mt-2">
-                        <div class="text-sm/6 text-stone-600 markdown">
-                          ${proposal?.description_html
-                            ? unsafeHTML(proposal.description_html)
-                            : proposal?.description || ""}
-                        </div>
+                        <textarea
+                          id="cfs-submission-message"
+                          name="action_required_message"
+                          class="input-primary"
+                          maxlength=${this.messageMaxLength}
+                          rows="3"
+                          placeholder="Add a note for the speaker..."
+                          .value=${this._message}
+                          @input=${(e) => this._onMessageInput(e)}
+                          ?required=${this._isMessageRequired()}
+                        ></textarea>
                       </div>
+                      <p class="form-legend">
+                        Required when requesting changes. Explain what information or changes are needed.
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                <div ?hidden=${isProposalTab} class="h-full">
-                  <form
-                    id="cfs-submission-form"
-                    class="h-full flex flex-col"
-                    hx-put=${submissionEndpoint}
-                    hx-swap="none"
-                    hx-indicator="#dashboard-spinner"
-                    hx-disabled-elt="#cfs-submission-submit, #cfs-submission-cancel"
+                <div class="flex items-center justify-end gap-3 pt-3 mt-4 border-t border-stone-100">
+                  <button
+                    id="cfs-submission-submit"
+                    type="submit"
+                    class="btn-primary"
+                    ?disabled=${!submissionEndpoint}
                   >
-                    <div class="flex-1 overflow-y-auto pe-1">
-                      <div class="space-y-5">
-                        <div>
-                          <label class="form-label">Status <span class="asterisk">*</span></label>
-                          <div class="mt-2">
-                            <select
-                              id="cfs-submission-status"
-                              name="status_id"
-                              class="select-primary"
-                              .value=${this._statusId}
-                              @change=${(event) => this._onStatusChange(event)}
-                              required
-                            >
-                              <option value="" disabled>Select status</option>
-                              ${this._renderStatusOptions()}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label for="cfs-submission-message" class="form-label">Message for speaker</label>
-                          <div class="mt-2">
-                            <textarea
-                              id="cfs-submission-message"
-                              name="action_required_message"
-                              class="input-primary"
-                              maxlength=${this.messageMaxLength}
-                              rows="4"
-                              placeholder="Add a note for the speaker..."
-                              .value=${this._message}
-                              @input=${(event) => this._onMessageInput(event)}
-                            ></textarea>
-                          </div>
-                          <p class="form-legend">Optional message to include when notifying the speaker.</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 pt-3 mt-4 border-t border-stone-100">
-                      <button
-                        id="cfs-submission-cancel"
-                        type="button"
-                        class="btn-primary-outline"
-                        @click=${() => this.close()}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        id="cfs-submission-submit"
-                        type="submit"
-                        class="btn-primary"
-                        ?disabled=${!submissionEndpoint}
-                      >
-                        Update
-                      </button>
-                    </div>
-                  </form>
+                    Save
+                  </button>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
