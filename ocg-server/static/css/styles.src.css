@@ -469,6 +469,7 @@ input:placeholder-shown {
 .icon-plus-bottom { --icon-url: url('/static/images/icons/plus_bottom.svg'); }
 .icon-power { --icon-url: url('/static/images/icons/power.svg'); }
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
+.icon-proposal { --icon-url: url('/static/images/icons/proposal.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
@@ -478,6 +479,7 @@ input:placeholder-shown {
 .icon-share { --icon-url: url('/static/images/icons/share.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
 .icon-star { --icon-url: url('/static/images/icons/star.svg'); }
+.icon-submission { --icon-url: url('/static/images/icons/submission.svg'); }
 .icon-team { --icon-url: url('/static/images/icons/team.svg'); }
 .icon-trash { --icon-url: url('/static/images/icons/trash.svg'); }
 .icon-twitter { --icon-url: url('/static/images/icons/twitter.svg'); }

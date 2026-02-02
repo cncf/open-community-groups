@@ -31,8 +31,8 @@
     {# Call for Speakers -#}
     <div class="leading-10 grid gap-y-0.5">
       {{ dashboard::menu_title(text = "Call for Speakers", extra_styles = "py-1.5") -}}
-      {{ dashboard::menu_item(name = "Session proposals", icon = "presentation", is_active = content.is_session_proposals() , href = "/dashboard/user?tab=session-proposals") -}}
-      {{ dashboard::menu_item(name = "Submissions", icon = "list", is_active = content.is_submissions() , href = "/dashboard/user?tab=submissions") -}}
+      {{ dashboard::menu_item(name = "Session proposals", icon = "proposal", is_active = content.is_session_proposals() , href = "/dashboard/user?tab=session-proposals") -}}
+      {{ dashboard::menu_item(name = "Submissions", icon = "submission", is_active = content.is_submissions() , href = "/dashboard/user?tab=submissions") -}}
     </div>
     {# End Call for Speakers -#}
   </div>
