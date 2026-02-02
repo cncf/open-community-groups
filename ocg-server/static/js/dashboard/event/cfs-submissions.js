@@ -165,7 +165,6 @@ export class ReviewSubmissionModal extends LitWrapper {
       });
       if (ok) {
         this.close();
-        document.body?.dispatchEvent(new CustomEvent("refresh-event-submissions", { bubbles: true }));
       }
     };
     form.addEventListener("htmx:afterRequest", this._afterRequestHandler);
