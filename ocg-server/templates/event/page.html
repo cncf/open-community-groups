@@ -255,29 +255,21 @@
       {# Call for Speakers -#}
       {% if event.cfs_is_enabled() -%}
         <div>
-          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2">
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
             Call for Speakers
           </div>
+          {% if let Some(cfs_starts_at) = &event.cfs_starts_at -%}
+            {% let cfs_start_tz = cfs_starts_at.with_timezone(event.timezone) -%}
+            {% if let Some(cfs_ends_at) = &event.cfs_ends_at -%}
+              {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
+              <p class="text-sm text-stone-700 pb-4">
+                <span class="text-xs uppercase text-stone-500 me-2">Submissions open:</span> {{ cfs_start_tz.format("%b %-e, %l:%M %p") }} – {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}
+              </p>
+            {% endif -%}
+          {% endif -%}
           <div class="space-y-4">
             {% if let Some(cfs_description) = &event.cfs_description -%}
               <div class="text-stone-500 text-sm/6 markdown">{{ cfs_description|md_to_html|safe }}</div>
-            {% endif -%}
-
-            {% if let Some(cfs_starts_at) = &event.cfs_starts_at -%}
-              {% let cfs_start_tz = cfs_starts_at.with_timezone(event.timezone) -%}
-              {% if let Some(cfs_ends_at) = &event.cfs_ends_at -%}
-                {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
-                <div class="flex flex-col gap-2 text-sm text-stone-600">
-                  <div class="flex items-center gap-2">
-                    <div class="svg-icon size-3 bg-stone-500 icon-calendar"></div>
-                    <span>Opens: {{ cfs_start_tz.format("%B %e, %G · %I:%M %p %Z") }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <div class="svg-icon size-3 bg-stone-500 icon-clock"></div>
-                    <span>Closes: {{ cfs_end_tz.format("%B %e, %G · %I:%M %p %Z") }}</span>
-                  </div>
-                </div>
-              {% endif -%}
             {% endif -%}
 
             {% if event.cfs_is_open() -%}
