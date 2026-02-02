@@ -3,12 +3,18 @@
 {% import "macros/pagination.html" as pagination -%}
 
 {{ dashboard::form_title(title = "Session proposals",
-description = "Create reusable session proposals to submit to events.",
-button = "<button id='open-session-proposal-modal'
-        type='button'
-        class='btn-primary-outline'>New proposal</button>") -}}
+description = "Create reusable session proposals to submit to events.") -}}
 
-<div class="mt-10">
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
+  </div>
+  <div>
+    <button id="open-session-proposal-modal" type="button" class="btn-primary">New proposal</button>
+  </div>
+</div>
+
+<div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">

@@ -5,7 +5,13 @@
 {{ dashboard::form_title(title = "Submissions",
 description = "Track and manage your call for speakers submissions.") -}}
 
-<div class="mt-10">
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = submissions.len(), total = total, label = "submission") }}
+  </div>
+</div>
+
+<div>
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
