@@ -448,6 +448,117 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_cfs_modal_success_anonymous() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let event_summary = sample_event_summary(event_id, group_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/test-community/event/{event_id}/cfs-modal"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cfs_modal_success_authenticated() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let session_proposal_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let event_summary = sample_event_summary(event_id, group_id);
+        let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_user_session_proposals_for_cfs_event()
+            .times(1)
+            .withf(move |uid, eid| *uid == user_id && *eid == event_id)
+            .returning(move |_, _| Ok(proposals.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/test-community/event/{event_id}/cfs-modal"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
     async fn test_attend_event_success() {
         // Setup identifiers and data structures
         let community_id = Uuid::new_v4();
@@ -672,5 +783,78 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_submit_cfs_submission_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let session_proposal_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let event_summary = sample_event_summary(event_id, group_id);
+        let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
+        let form_data = format!("session_proposal_id={session_proposal_id}");
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_add_cfs_submission()
+            .times(1)
+            .withf(move |uid, eid, proposal_id| {
+                *uid == user_id && *eid == event_id && *proposal_id == session_proposal_id
+            })
+            .returning(|_, _, _| Ok(Uuid::new_v4()));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_user_session_proposals_for_cfs_event()
+            .times(1)
+            .withf(move |uid, eid| *uid == user_id && *eid == event_id)
+            .returning(move |_, _| Ok(proposals.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/test-community/event/{event_id}/cfs-submissions"))
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(form_data))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(!bytes.is_empty());
     }
 }
