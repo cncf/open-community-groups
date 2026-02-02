@@ -473,6 +473,7 @@ input:placeholder-shown {
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
 .icon-reddit { --icon-url: url('/static/images/icons/reddit.svg'); }
+.icon-refresh { --icon-url: url('/static/images/icons/refresh.svg'); }
 .icon-search { --icon-url: url('/static/images/icons/search.svg'); }
 .icon-share { --icon-url: url('/static/images/icons/share.svg'); }
 .icon-slack { --icon-url: url('/static/images/icons/slack.svg'); }
