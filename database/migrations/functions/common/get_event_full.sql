@@ -133,7 +133,7 @@ returns json as $$
                             'starts_at', floor(extract(epoch from s.starts_at)),
 
                             'cfs_submission_id', s.cfs_submission_id,
-                            'description', s.description,
+                            'description', coalesce(s.description, sp.description),
                             'ends_at', floor(extract(epoch from s.ends_at)),
                             'location', s.location,
                             'meeting_error', s.meeting_error,
@@ -145,29 +145,56 @@ returns json as $$
                             'meeting_recording_url', coalesce(m_session.recording_url, s.meeting_recording_url),
                             'meeting_requested', s.meeting_requested,
 
-                            'speakers', (
-                                select coalesce(json_agg(json_strip_nulls(json_build_object(
-                                    'user_id', u.user_id,
-                                    'username', u.username,
+                            'speakers', coalesce(
+                                (
+                                    select json_agg(json_strip_nulls(json_build_object(
+                                        'user_id', u.user_id,
+                                        'username', u.username,
 
-                                    'bio', u.bio,
-                                    'company', u.company,
-                                    'facebook_url', u.facebook_url,
-                                    'featured', ss.featured,
-                                    'linkedin_url', u.linkedin_url,
-                                    'name', u.name,
-                                    'photo_url', u.photo_url,
-                                    'title', u.title,
-                                    'twitter_url', u.twitter_url,
-                                    'website_url', u.website_url
-                                )) order by ss.featured desc, u.name), '[]')
-                                from session_speaker ss
-                                join "user" u using (user_id)
-                                where ss.session_id = s.session_id
+                                        'bio', u.bio,
+                                        'company', u.company,
+                                        'facebook_url', u.facebook_url,
+                                        'featured', ss.featured,
+                                        'linkedin_url', u.linkedin_url,
+                                        'name', u.name,
+                                        'photo_url', u.photo_url,
+                                        'title', u.title,
+                                        'twitter_url', u.twitter_url,
+                                        'website_url', u.website_url
+                                    )) order by ss.featured desc, u.name)
+                                    from session_speaker ss
+                                    join "user" u using (user_id)
+                                    where ss.session_id = s.session_id
+                                ),
+                                (
+                                    select json_agg(json_strip_nulls(json_build_object(
+                                        'user_id', u.user_id,
+                                        'username', u.username,
+
+                                        'bio', u.bio,
+                                        'company', u.company,
+                                        'facebook_url', u.facebook_url,
+                                        'featured', false,
+                                        'linkedin_url', u.linkedin_url,
+                                        'name', u.name,
+                                        'photo_url', u.photo_url,
+                                        'title', u.title,
+                                        'twitter_url', u.twitter_url,
+                                        'website_url', u.website_url
+                                    )) order by
+                                        case when u.user_id = sp.user_id then 0 else 1 end,
+                                        u.name
+                                    )
+                                    from "user" u
+                                    where u.user_id in (sp.user_id, sp.co_speaker_user_id)
+                                ),
+                                '[]'
                             )
                         )) as session_json
                     from session s
                     left join meeting m_session on m_session.session_id = s.session_id
+                    left join cfs_submission cs on cs.cfs_submission_id = s.cfs_submission_id
+                    left join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
                     where s.event_id = e.event_id
                 ),
                 event_sessions_grouped as (
