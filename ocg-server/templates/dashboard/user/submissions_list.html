@@ -48,9 +48,6 @@ description = "Track and manage your call for speakers submissions.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
-                {% if let Some(message) = &submission.action_required_message -%}
-                  <div class="mt-2 text-xs text-amber-700 line-clamp-2">Action required: {{ message }}</div>
-                {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 {% if let Some(level) = &submission.session_proposal.session_proposal_level_name -%}
@@ -63,7 +60,34 @@ description = "Track and manage your call for speakers submissions.") -}}
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
-                {{ badges::common_badge(content = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                <div class="inline-flex items-center gap-2">
+                  {% if submission.status_id == "not-reviewed" -%}
+                    {{ badges::common_badge(content = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                  {% else if submission.status_id == "approved" -%}
+                    <span class="custom-badge px-2.5 py-0.5 uppercase bg-white border-emerald-600 text-emerald-700">
+                      {{ submission.status_name }}
+                    </span>
+                  {% else if submission.status_id == "information-requested" -%}
+                    <span class="custom-badge px-2.5 py-0.5 uppercase bg-white border-orange-600 text-orange-700">
+                      {{ submission.status_name }}
+                    </span>
+                  {% else if submission.status_id == "rejected" -%}
+                    <span class="custom-badge px-2.5 py-0.5 uppercase bg-white border-red-600 text-red-700">
+                      {{ submission.status_name }}
+                    </span>
+                  {% else -%}
+                    <span class="custom-badge px-2.5 py-0.5 uppercase bg-white border-primary-500 text-primary-700">
+                      {{ submission.status_name }}
+                    </span>
+                  {% endif -%}
+                  {% if let Some(message) = &submission.action_required_message -%}
+                    <span class="inline-flex cursor-help"
+                          title="Action required: {{ message }}"
+                          aria-label="Action required: {{ message }}">
+                      <div class="svg-icon size-3 icon-warning bg-amber-600"></div>
+                    </span>
+                  {% endif -%}
+                </div>
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(updated_at) = &submission.updated_at -%}

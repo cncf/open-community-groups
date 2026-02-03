@@ -32,6 +32,34 @@
 {% endmacro status_badge -%}
 {# End status badge -#}
 
+{# Submission status badge -#}
+{% macro submission_status_badge(status_id, label, extra_styles = None) -%}
+  {% let extra_styles_ = extra_styles.unwrap_or("") -%}
+
+  {% if status_id == "not-reviewed" -%}
+    {{ common_badge(content = label, extra_styles = extra_styles) -}}
+  {% else if status_id == "approved" -%}
+    <span class="custom-badge bg-green-100 border-green-800 text-green-800 px-2.5 py-0.5 {{ extra_styles_ }}">
+      {{ label }}
+    </span>
+  {% else if status_id == "rejected" -%}
+    <span class="custom-badge bg-red-100 border-red-800 text-red-800 px-2.5 py-0.5 {{ extra_styles_ }}">
+      {{ label }}
+    </span>
+  {% else if status_id == "information-requested" -%}
+    <span class="custom-badge bg-amber-100 border-amber-800 text-amber-800 px-2.5 py-0.5 {{ extra_styles_ }}">
+      {{ label }}
+    </span>
+  {% else if status_id == "withdrawn" -%}
+    <span class="custom-badge bg-stone-100 border-stone-500 text-stone-700 px-2.5 py-0.5 {{ extra_styles_ }}">
+      {{ label }}
+    </span>
+  {% else -%}
+    {{ common_badge(content = label, extra_styles = extra_styles) -}}
+  {% endif -%}
+{% endmacro submission_status_badge -%}
+{# End submission status badge -#}
+
 {# Sold out overlay badge -#}
 {% macro sold_out_overlay(remaining_capacity, capacity = None, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
   {% let outer_classes_ = outer_classes.unwrap_or("") -%}
