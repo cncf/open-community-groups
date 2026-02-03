@@ -253,7 +253,7 @@
       {# End event date and location -#}
 
       {# Call for Speakers -#}
-      {% if event.cfs_is_enabled() -%}
+      {% if event.cfs_is_enabled() && !event.cfs_is_closed() -%}
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-6 pb-6 lg:pt-2 lg:pb-14">
             Call for Speakers
@@ -262,9 +262,26 @@
             {% let cfs_start_tz = cfs_starts_at.with_timezone(event.timezone) -%}
             {% if let Some(cfs_ends_at) = &event.cfs_ends_at -%}
               {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
-              <p class="text-sm text-stone-700 pb-4">
-                <span class="text-xs uppercase text-stone-500 me-2">Submissions open:</span> {{ cfs_start_tz.format("%b %-e, %l:%M %p") }} – {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}
-              </p>
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 pb-4 text-sm text-stone-700">
+                <span>
+                  <span class="text-xs uppercase text-stone-500 me-2">Submissions open:</span>
+                  {{ cfs_start_tz.format("%b %-e, %l:%M %p") }} – {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}
+                </span>
+                {% if event.cfs_is_open() -%}
+                  <button id="open-cfs-modal"
+                          hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/cfs-modal"
+                          hx-target="#cfs-modal-root"
+                          hx-swap="innerHTML"
+                          class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center">
+                    Submit a proposal
+                  </button>
+                {% elif event.cfs_is_upcoming() -%}
+                  <button id="open-cfs-modal"
+                          type="button"
+                          class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center opacity-50 cursor-not-allowed"
+                          disabled>Submit a proposal</button>
+                {% endif -%}
+              </div>
             {% endif -%}
           {% endif -%}
           <div class="space-y-4">
@@ -272,18 +289,8 @@
               <div class="text-stone-500 text-sm/6 markdown">{{ cfs_description|md_to_html|safe }}</div>
             {% endif -%}
 
-            {% if event.cfs_is_open() -%}
-              <button id="open-cfs-modal"
-                      hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/cfs-modal"
-                      hx-target="#cfs-modal-root"
-                      hx-swap="innerHTML"
-                      class="btn-primary w-full sm:w-auto">Submit a proposal</button>
-            {% elif event.cfs_is_upcoming() -%}
+            {% if event.cfs_is_upcoming() -%}
               <p class="text-sm text-stone-500">Call for Speakers has not opened yet.</p>
-              <button id="open-cfs-modal"
-                      type="button"
-                      class="btn-primary w-full sm:w-auto opacity-50 cursor-not-allowed"
-                      disabled>Submit a proposal</button>
             {% elif event.cfs_is_closed() -%}
               <p class="text-sm text-stone-500">Call for Speakers is now closed.</p>
             {% endif -%}
