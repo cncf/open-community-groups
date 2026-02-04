@@ -20,7 +20,7 @@
       <button type="button"
               data-section="details"
               data-active="true"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
         <div class="svg-icon size-3 me-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         Details
@@ -28,9 +28,19 @@
     </li>
     <li>
       <button type="button"
+              data-section="cfs"
+              data-active="false"
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+        <div class="svg-icon size-3 me-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        CFS
+      </button>
+    </li>
+    <li>
+      <button type="button"
               data-section="date-venue"
               data-active="false"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
         <div class="svg-icon size-3 me-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="hidden lg:inline">Date & Venue</span>
@@ -41,7 +51,7 @@
       <button type="button"
               data-section="hosts-sponsors"
               data-active="false"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
         <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="hidden xl:inline">Hosts & Speakers</span>
@@ -57,7 +67,7 @@
               hx-target="#submissions-content"
               hx-swap="innerHTML"
               hx-indicator="#submissions-loading"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
         <div class="svg-icon size-3 me-2 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         Submissions
@@ -67,7 +77,7 @@
       <button type="button"
               data-section="sessions"
               data-active="false"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
         <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         Sessions
@@ -82,7 +92,7 @@
               hx-target="#attendees-content"
               hx-swap="innerHTML"
               hx-indicator="#attendees-loading"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
+              class="px-2 lg:px-3 xl:w-[150px] xl:px-0 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
         <div class="svg-icon size-3 me-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         Attendees
@@ -229,85 +239,6 @@
       </div>
     </div>
 
-    {# Call for Speakers section -#}
-    <div class="border-t border-stone-900/10 py-12">
-      {{ dashboard::form_title(title = "Call for Speakers", description = "Collect session proposals ahead of the event.") -}}
-
-      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-        {# Enable CFS toggle -#}
-        <div class="col-span-full lg:col-span-3">
-          <label class="inline-flex items-center cursor-pointer">
-            <input id="toggle_cfs_enabled"
-                   name="toggle_cfs_enabled"
-                   value="enabled"
-                   type="checkbox"
-                   class="sr-only peer
-                          {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
-                   {% if let Some(cfs_enabled) = &event.cfs_enabled %}
-                     {% if cfs_enabled %}checked{% endif %}
-                   {% endif %}
-                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
-            <input type="hidden"
-                   id="cfs_enabled"
-                   name="cfs_enabled"
-                   value="{%- if let Some(cfs_enabled) = &event.cfs_enabled -%} {{ cfs_enabled }} {%- else -%} false {%- endif -%}">
-            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-            </div>
-            <span class="ms-3 text-sm font-medium text-stone-900">Enable Call for Speakers</span>
-          </label>
-          <p class="form-legend">Allow speakers to submit session proposals.</p>
-        </div>
-        {# End Enable CFS toggle -#}
-
-        <div class="col-span-3"></div>
-
-        {# Opens at -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="cfs_starts_at" class="form-label">Opens at</label>
-          <div class="mt-2">
-            <input type="datetime-local"
-                   name="cfs_starts_at"
-                   id="cfs_starts_at"
-                   class="input-primary
-                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
-          </div>
-          <p class="form-legend">When submissions open.</p>
-        </div>
-        {# End Opens at -#}
-
-        {# Closes at -#}
-        <div class="col-span-full lg:col-span-3">
-          <label for="cfs_ends_at" class="form-label">Closes at</label>
-          <div class="mt-2">
-            <input type="datetime-local"
-                   name="cfs_ends_at"
-                   id="cfs_ends_at"
-                   class="input-primary
-                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
-          </div>
-          <p class="form-legend">When submissions close.</p>
-        </div>
-        {# End Closes at -#}
-
-        {# CFS description -#}
-        <div class="col-span-full">
-          <label for="cfs_description" class="form-label">CFS description</label>
-          <div class="mt-2">
-            <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
-            {% if event.is_past() %}disabled data-locked="true"{% endif %}
-            ></markdown-editor>
-          </div>
-          <p class="form-legend">Shown on the event page to invite speakers.</p>
-        </div>
-        {# End CFS description -#}
-      </div>
-    </div>
-    {# End Call for Speakers section -#}
-
     {# Additional Information section -#}
     <div class="border-t border-stone-900/10 pt-12">
       {{ dashboard::form_title(title = "Additional Information", description = "Optional event settings and external links.") -}}
@@ -408,6 +339,89 @@
   </form>
 </div>
 {# End Event Details Tab -#}
+
+{# CFS Tab -#}
+<div data-content="cfs" class="hidden">
+  <form id="cfs-form">
+    <div class="pb-12">
+      <p class="mt-1 text-sm/6 text-stone-500">Collect session proposals ahead of the event.</p>
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Enable CFS toggle -#}
+        <div class="col-span-full lg:col-span-3">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_cfs_enabled"
+                   name="toggle_cfs_enabled"
+                   value="enabled"
+                   type="checkbox"
+                   class="sr-only peer
+                          {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
+                   {% if let Some(cfs_enabled) = &event.cfs_enabled %}
+                     {% if cfs_enabled %}checked{% endif %}
+                   {% endif %}
+                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+            <input type="hidden"
+                   id="cfs_enabled"
+                   name="cfs_enabled"
+                   value="{%- if let Some(cfs_enabled) = &event.cfs_enabled -%} {{ cfs_enabled }} {%- else -%} false {%- endif -%}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Enable Call for Speakers</span>
+          </label>
+          <p class="form-legend">Allow speakers to submit session proposals.</p>
+        </div>
+        {# End Enable CFS toggle -#}
+
+        <div class="col-span-3"></div>
+
+        {# Opens at -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="cfs_starts_at" class="form-label">Opens at</label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   name="cfs_starts_at"
+                   id="cfs_starts_at"
+                   class="input-primary
+                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+          </div>
+          <p class="form-legend">When submissions open.</p>
+        </div>
+        {# End Opens at -#}
+
+        {# Closes at -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="cfs_ends_at" class="form-label">Closes at</label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   name="cfs_ends_at"
+                   id="cfs_ends_at"
+                   class="input-primary
+                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+          </div>
+          <p class="form-legend">When submissions close.</p>
+        </div>
+        {# End Closes at -#}
+
+        {# CFS description -#}
+        <div class="col-span-full">
+          <label for="cfs_description" class="form-label">CFS description</label>
+          <div class="mt-2">
+            <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+            {% if event.is_past() %}disabled data-locked="true"{% endif %}
+            ></markdown-editor>
+          </div>
+          <p class="form-legend">Shown on the event page to invite speakers.</p>
+        </div>
+        {# End CFS description -#}
+      </div>
+    </div>
+  </form>
+</div>
+{# End CFS Tab -#}
 
 {# Date & Venue Tab -#}
 <div data-content="date-venue" class="hidden">
@@ -702,9 +716,9 @@
             hx-put="/dashboard/group/events/{{ event.event_id }}/update"
             hx-ext="no-empty-vals"
             hx-include="{% if event.is_past() %}
-                          #details-form, #date-venue-form
+                          #details-form, #cfs-form, #date-venue-form
                         {% else %}
-                          #details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+                          #details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
                         {% endif %}"
             hx-target="#dashboard-content"
             hx-indicator="#dashboard-spinner"
@@ -867,7 +881,7 @@
 
   // Validate multiple forms
   function validateEventForms() {
-    const formSections = ["details", "date-venue", "sessions", "hosts-sponsors"];
+    const formSections = ["details", "cfs", "date-venue", "sessions", "hosts-sponsors"];
 
 
     for (const formName of formSections) {

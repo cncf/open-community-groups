@@ -79,6 +79,7 @@ const bindOpenButton = () => {
       return;
     }
 
+    // Reopen uses cached modal markup, so block duplicate fetches once present.
     event.preventDefault();
   });
 };
