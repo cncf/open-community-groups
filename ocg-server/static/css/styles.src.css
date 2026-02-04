@@ -413,6 +413,7 @@ input:placeholder-shown {
 .icon-arrow-right-double { --icon-url: url('/static/images/icons/arrow_right_double.svg'); }
 .icon-arrow-right { --icon-url: url('/static/images/icons/arrow_right.svg'); }
 .icon-attendees { --icon-url: url('/static/images/icons/attendees.svg'); }
+.icon-ban { --icon-url: url('/static/images/icons/ban.svg'); }
 .icon-bluesky { --icon-url: url('/static/images/icons/bluesky.svg'); }
 .icon-buildings { --icon-url: url('/static/images/icons/buildings.svg'); }
 .icon-handshake { --icon-url: url('/static/images/icons/handshake.svg'); }
@@ -443,6 +444,7 @@ input:placeholder-shown {
 .icon-groups-add { --icon-url: url('/static/images/icons/groups_add.svg'); }
 .icon-home { --icon-url: url('/static/images/icons/home.svg'); }
 .icon-image { --icon-url: url('/static/images/icons/image.svg'); }
+.icon-info { --icon-url: url('/static/images/icons/info.svg'); }
 .icon-in-person { --icon-url: url('/static/images/icons/in_person.svg'); }
 .icon-instagram { --icon-url: url('/static/images/icons/instagram.svg'); }
 .icon-lfx { --icon-url: url('/static/images/icons/lfx.svg'); }

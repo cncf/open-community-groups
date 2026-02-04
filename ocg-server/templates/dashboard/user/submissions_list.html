@@ -67,11 +67,12 @@ description = "Track and manage your call for speakers submissions.") -}}
                       <button type="button"
                               class="inline-flex cursor-help"
                               aria-label="Action required: {{ message }}">
-                        <div class="svg-icon size-3 icon-warning bg-amber-600"></div>
+                        <div class="svg-icon size-5 icon-info bg-stone-500"></div>
                       </button>
                       <span role="tooltip"
-                            class="absolute left-0 top-full z-20 mt-2 hidden w-72 rounded-lg border border-stone-200 bg-white p-2 text-xs normal-case text-stone-700 shadow-lg group-hover:block group-focus-within:block">
-                        <span class="font-medium">Action required:</span>
+                            class="absolute left-0 top-full z-20 mt-2 -ml-2 hidden w-72 rounded-lg border border-stone-200 bg-white p-2 text-xs normal-case text-stone-700 shadow-lg group-hover:block group-focus-within:block">
+                        <span class="absolute -top-1 left-3 h-2.5 w-2.5 rotate-45 border-l border-t border-stone-200 bg-white"></span>
+                        <div class="font-medium uppercase text-[0.6rem] text-stone-400 mb-1">Action required:</div>
                         {{ message }}
                       </span>
                     </span>
@@ -88,7 +89,13 @@ description = "Track and manage your call for speakers submissions.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center justify-end gap-2">
                   {% if submission.linked_session_id.is_some() -%}
-                    <span class="text-xs text-stone-400">Linked to session</span>
+                    <button type="button"
+                            class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                            disabled
+                            title="This submission has been linked to a session and cannot be modified."
+                            aria-label="This submission has been linked to a session and cannot be modified.">
+                      <div class="svg-icon size-3 md:size-4 icon-ban"></div>
+                    </button>
                   {% else -%}
                     {% if submission.status_id == "information-requested" -%}
                       <button type="button"
