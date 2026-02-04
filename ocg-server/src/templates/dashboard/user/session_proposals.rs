@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     templates::{
         common::UserSummary,
-        dashboard,
+        dashboard, filters,
         pagination::{self, Pagination, ToRawQuery},
     },
     validation::{

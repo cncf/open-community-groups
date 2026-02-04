@@ -1,8 +1,11 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
+
+const PROPOSAL_SECTION_TITLE_CLASS = "form-label uppercase text-xs text-stone-400";
 
 /**
  * Modal component for creating, editing, and viewing session proposals.
@@ -441,16 +444,232 @@ export class SessionProposalModal extends LitWrapper {
   }
 
   /**
-   * Returns whether linked-session warning should be shown.
-   * @returns {boolean}
+   * Renders a badge row for a person.
+   * @param {Object} person
+   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
    */
-  _showWarning() {
-    return this._isReadOnly() && Boolean(this._activeProposal?.linked_session_id);
+  _renderPersonRow(person) {
+    const name = person?.name || person?.username || "";
+    const photoUrl = person?.photo_url || "";
+    const initials = computeUserInitials(name, person?.username || "", 2);
+
+    return html`
+      <div
+        class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1 max-w-full"
+        title=${name}
+      >
+        <logo-image
+          class="shrink-0"
+          image-url=${photoUrl}
+          placeholder=${initials}
+          size="size-[24px]"
+          font-size="text-xs"
+          hide-border
+        ></logo-image>
+        <span class="text-sm text-stone-700 truncate">${name}</span>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders proposal metadata blocks.
+   * @param {Object} proposal
+   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   */
+  _renderProposalMeta(proposal) {
+    const level = proposal?.session_proposal_level_name;
+    const duration = proposal?.duration_minutes;
+    return html`
+      ${level
+        ? html`
+            <div>
+              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Level</div>
+              <div class="mt-1 text-sm text-stone-700">${level}</div>
+            </div>
+          `
+        : ""}
+      ${duration
+        ? html`
+            <div>
+              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Duration</div>
+              <div class="mt-1 text-sm text-stone-700">${duration} min</div>
+            </div>
+          `
+        : ""}
+    `;
+  }
+
+  /**
+   * Renders read-only proposal details.
+   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   */
+  _renderViewContent() {
+    const proposal = this._activeProposal || {};
+    const coSpeaker = proposal?.co_speaker;
+
+    return html`
+      <div class="px-8 py-5">
+        <div class="flex flex-col md:flex-row gap-6">
+          <div class="flex-1 space-y-4 min-w-0">
+            <div>
+              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Title</div>
+              <div class="mt-2 text-lg text-stone-800 font-medium">${proposal?.title || ""}</div>
+            </div>
+            <div>
+              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Description</div>
+              <div class="mt-2 text-stone-500 text-sm/6 markdown">
+                ${proposal?.description_html
+                  ? unsafeHTML(proposal.description_html)
+                  : proposal?.description || ""}
+              </div>
+            </div>
+          </div>
+          <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
+            ${this._renderProposalMeta(proposal)}
+            ${coSpeaker
+              ? html`
+                  <div>
+                    <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Co-speaker</div>
+                    <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
+                  </div>
+                `
+              : ""}
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 mt-4 border-t border-stone-100">
+          <button id="session-proposal-cancel" type="button" class="btn-primary-outline" @click=${this.close}>
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders editable proposal form.
+   * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
+   */
+  _renderFormContent() {
+    return html`
+      <div class="p-4 md:p-6">
+        <form
+          id="session-proposal-form"
+          hx-swap="none"
+          hx-indicator="#dashboard-spinner"
+          hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel"
+        >
+          <div class="space-y-5">
+            <div>
+              <label for="session-proposal-title" class="form-label">
+                Title <span class="asterisk">*</span>
+              </label>
+              <div class="mt-2">
+                <input
+                  type="text"
+                  id="session-proposal-title"
+                  name="title"
+                  maxlength=${this.titleMaxLength}
+                  class="input-primary"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-6">
+              <div class="col-span-full md:col-span-3">
+                <label for="session-proposal-level" class="form-label">
+                  Level <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <select
+                    id="session-proposal-level"
+                    name="session_proposal_level_id"
+                    class="select-primary"
+                    required
+                  >
+                    <option value="">Select level</option>
+                    ${this._sessionProposalLevels.map(
+                      (level) =>
+                        html`<option value=${level.session_proposal_level_id}>${level.display_name}</option>`,
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div class="col-span-full md:col-span-3">
+                <label for="session-proposal-duration" class="form-label">
+                  Duration (minutes) <span class="asterisk">*</span>
+                </label>
+                <div class="mt-2">
+                  <input
+                    type="number"
+                    id="session-proposal-duration"
+                    name="duration_minutes"
+                    min="1"
+                    max=${this.durationMax}
+                    class="input-primary"
+                    required
+                  />
+                </div>
+                <p class="form-legend">Enter the session length in minutes (e.g. 45).</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label">Co-speaker</label>
+              <input
+                type="hidden"
+                id="session-proposal-co-speaker"
+                name="co_speaker_user_id"
+                value=${this._selectedCoSpeaker?.user_id || ""}
+                ?disabled=${!this._selectedCoSpeaker}
+              />
+              <user-search-field
+                id="session-proposal-co-speaker-search"
+                dashboard-type="user"
+                label="co-speaker"
+                legend="Search by username to add an optional co-speaker."
+                @user-selected=${this._handleCoSpeakerSelected}
+              ></user-search-field>
+              <div id="session-proposal-co-speaker-preview" class="mt-3">
+                ${this._renderCoSpeakerPreview()}
+              </div>
+            </div>
+
+            <div>
+              <label class="form-label"> Description <span class="asterisk">*</span> </label>
+              <div class="mt-2">
+                <markdown-editor
+                  id="session-proposal-description"
+                  name="description"
+                  maxlength=${this.descriptionMaxLength}
+                  required
+                ></markdown-editor>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+              <button
+                id="session-proposal-cancel"
+                type="button"
+                class="btn-primary-outline"
+                @click=${this.close}
+              >
+                Cancel
+              </button>
+              <button id="session-proposal-submit" type="submit" class="btn-primary">
+                ${this._getSubmitLabel()}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    `;
   }
 
   render() {
     const isReadOnly = this._isReadOnly();
     const modalVisibilityClass = this._isOpen ? "flex" : "hidden";
+    const widthClass = isReadOnly ? "max-w-5xl" : "max-w-2xl";
 
     return html`
       <div
@@ -463,7 +682,7 @@ export class SessionProposalModal extends LitWrapper {
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
           @click=${this.close}
         ></div>
-        <div class="relative p-4 w-full max-w-2xl max-h-full">
+        <div class="relative p-4 w-full ${widthClass} max-h-full">
           <div class="relative bg-white rounded-lg shadow">
             <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
               <h3 id="session-proposal-modal-title" class="text-xl font-semibold text-stone-900">
@@ -480,135 +699,7 @@ export class SessionProposalModal extends LitWrapper {
                 <span class="sr-only">Close modal</span>
               </button>
             </div>
-            <div class="p-4 md:p-6">
-              <div
-                class="${this._showWarning()
-                  ? "mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-                  : "hidden"}"
-              >
-                It is not possible to edit proposals linked to sessions.
-              </div>
-              <form
-                id="session-proposal-form"
-                hx-swap="none"
-                hx-indicator="#dashboard-spinner"
-                hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel"
-              >
-                <div class="space-y-5">
-                  <div>
-                    <label for="session-proposal-title" class="form-label">
-                      Title <span class="asterisk">*</span>
-                    </label>
-                    <div class="mt-2">
-                      <input
-                        type="text"
-                        id="session-proposal-title"
-                        name="title"
-                        maxlength=${this.titleMaxLength}
-                        class="input-primary"
-                        ?required=${!isReadOnly}
-                        ?disabled=${isReadOnly}
-                      />
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-x-6 gap-y-5 md:grid-cols-6">
-                    <div class="col-span-full md:col-span-3">
-                      <label for="session-proposal-level" class="form-label">
-                        Level <span class="asterisk">*</span>
-                      </label>
-                      <div class="mt-2">
-                        <select
-                          id="session-proposal-level"
-                          name="session_proposal_level_id"
-                          class="select-primary"
-                          ?required=${!isReadOnly}
-                          ?disabled=${isReadOnly}
-                        >
-                          <option value="">Select level</option>
-                          ${this._sessionProposalLevels.map(
-                            (level) =>
-                              html`<option value=${level.session_proposal_level_id}>
-                                ${level.display_name}
-                              </option>`,
-                          )}
-                        </select>
-                      </div>
-                    </div>
-                    <div class="col-span-full md:col-span-3">
-                      <label for="session-proposal-duration" class="form-label">
-                        Duration (minutes) <span class="asterisk">*</span>
-                      </label>
-                      <div class="mt-2">
-                        <input
-                          type="number"
-                          id="session-proposal-duration"
-                          name="duration_minutes"
-                          min="1"
-                          max=${this.durationMax}
-                          class="input-primary"
-                          ?required=${!isReadOnly}
-                          ?disabled=${isReadOnly}
-                        />
-                      </div>
-                      <p class="form-legend">Enter the session length in minutes (e.g. 45).</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label class="form-label">Co-speaker</label>
-                    <input
-                      type="hidden"
-                      id="session-proposal-co-speaker"
-                      name="co_speaker_user_id"
-                      value=${this._selectedCoSpeaker?.user_id || ""}
-                      ?disabled=${isReadOnly || !this._selectedCoSpeaker}
-                    />
-                    <user-search-field
-                      id="session-proposal-co-speaker-search"
-                      dashboard-type="user"
-                      label="co-speaker"
-                      legend="Search by username to add an optional co-speaker."
-                      ?disabled=${isReadOnly}
-                      @user-selected=${this._handleCoSpeakerSelected}
-                    ></user-search-field>
-                    <div id="session-proposal-co-speaker-preview" class="mt-3">
-                      ${this._renderCoSpeakerPreview()}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label class="form-label"> Description <span class="asterisk">*</span> </label>
-                    <div class="mt-2">
-                      <markdown-editor
-                        id="session-proposal-description"
-                        name="description"
-                        maxlength=${this.descriptionMaxLength}
-                        ?required=${!isReadOnly}
-                      ></markdown-editor>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center justify-end gap-3">
-                    <button
-                      id="session-proposal-cancel"
-                      type="button"
-                      class="btn-primary-outline"
-                      @click=${this.close}
-                    >
-                      ${isReadOnly ? "Close" : "Cancel"}
-                    </button>
-                    ${isReadOnly
-                      ? html``
-                      : html`
-                          <button id="session-proposal-submit" type="submit" class="btn-primary">
-                            ${this._getSubmitLabel()}
-                          </button>
-                        `}
-                  </div>
-                </div>
-              </form>
-            </div>
+            ${isReadOnly ? this._renderViewContent() : this._renderFormContent()}
           </div>
         </div>
       </div>

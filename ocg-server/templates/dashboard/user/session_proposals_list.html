@@ -67,6 +67,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                           class="btn-tertiary p-2
                                  {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
                           data-session-proposal='{{ session_proposal|json }}'
+                          data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
                           data-action="edit-session-proposal"
                           {% if edit_disabled %}
                             disabled title="Submitted or linked proposals cannot be edited"
@@ -78,6 +79,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                   <button type="button"
                           class="btn-tertiary p-2"
                           data-session-proposal='{{ session_proposal|json }}'
+                          data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
                           data-action="view-session-proposal"
                           title="View proposal">
                     <div class="svg-icon size-3 md:size-4 icon-eye"></div>

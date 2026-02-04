@@ -19,6 +19,22 @@ const parseSessionProposal = (payload) => {
   }
 };
 
+const applyDescriptionHtml = (button, sessionProposal) => {
+  const payload = button?.dataset?.proposalDescriptionHtml;
+  if (!payload || !sessionProposal) {
+    return;
+  }
+
+  try {
+    const descriptionHtml = JSON.parse(payload);
+    if (typeof descriptionHtml === "string") {
+      sessionProposal.description_html = descriptionHtml;
+    }
+  } catch (error) {
+    console.error("Invalid proposal description html payload", error);
+  }
+};
+
 const initializeSessionProposals = () => {
   const modalComponent = getModalComponent();
   if (!modalComponent) {
@@ -46,6 +62,7 @@ const initializeSessionProposals = () => {
       if (!sessionProposal) {
         return;
       }
+      applyDescriptionHtml(button, sessionProposal);
       modalComponent.openEdit(sessionProposal);
     });
   });
@@ -61,6 +78,7 @@ const initializeSessionProposals = () => {
       if (!sessionProposal) {
         return;
       }
+      applyDescriptionHtml(button, sessionProposal);
       modalComponent.openView(sessionProposal);
     });
   });
