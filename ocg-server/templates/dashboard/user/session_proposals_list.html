@@ -51,8 +51,6 @@ description = "Create reusable session proposals to submit to events.") -}}
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
                   <div class="text-stone-700">{{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}</div>
                   <div class="text-xs text-stone-400">@{{ co_speaker.username }}</div>
-                {% else -%}
-                  <span class="text-stone-400">—</span>
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
