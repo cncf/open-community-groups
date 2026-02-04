@@ -3,7 +3,24 @@ import { toggleModalVisibility, unlockBodyScroll } from "/static/js/common/commo
 const ROOT_ID = "cfs-modal-root";
 const MODAL_ID = "cfs-modal";
 const DATA_KEY = "cfsModalReady";
+const OPEN_BUTTON_ID = "open-cfs-modal";
+const OPEN_BUTTON_DATA_KEY = "cfsModalOpenReady";
+const BODY_DATA_KEY = "cfsModalBodyReady";
 
+/**
+ * Opens the CFS modal only when it is present and currently hidden.
+ */
+const openModal = () => {
+  const modal = document.getElementById(MODAL_ID);
+  if (!modal || !modal.classList.contains("hidden")) {
+    return;
+  }
+  toggleModalVisibility(MODAL_ID);
+};
+
+/**
+ * Wires close and form-state behavior for the CFS modal once per modal swap.
+ */
 const initializeCfsModal = () => {
   const modal = document.getElementById(MODAL_ID);
   if (!modal || modal.dataset[DATA_KEY] === "true") {
@@ -34,15 +51,54 @@ const initializeCfsModal = () => {
   }
 };
 
+/**
+ * Binds open-button behavior once so reopen uses the cached modal content.
+ */
+const bindOpenButton = () => {
+  const openButton = document.getElementById(OPEN_BUTTON_ID);
+  if (!openButton || openButton.dataset[OPEN_BUTTON_DATA_KEY] === "true") {
+    return;
+  }
+
+  openButton.dataset[OPEN_BUTTON_DATA_KEY] = "true";
+  openButton.addEventListener("click", (event) => {
+    const modal = document.getElementById(MODAL_ID);
+    if (!modal || !modal.classList.contains("hidden")) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    openModal();
+  });
+
+  openButton.addEventListener("htmx:configRequest", (event) => {
+    const modal = document.getElementById(MODAL_ID);
+    if (!modal) {
+      return;
+    }
+
+    event.preventDefault();
+  });
+};
+
+/**
+ * Handles modal content swaps and opens the modal after htmx injects it.
+ * @param {Event} event - The htmx:afterSwap event.
+ */
 const handleModalSwap = (event) => {
   if (event?.target?.id !== ROOT_ID) {
     return;
   }
   initializeCfsModal();
   unlockBodyScroll();
-  toggleModalVisibility(MODAL_ID);
+  openModal();
 };
 
-if (document.body) {
+if (document.body && document.body.dataset[BODY_DATA_KEY] !== "true") {
+  document.body.dataset[BODY_DATA_KEY] = "true";
   document.body.addEventListener("htmx:afterSwap", handleModalSwap);
 }
+
+bindOpenButton();
