@@ -100,6 +100,31 @@
     </li>
   </ul>
 
+  <div id="pending-changes-alert" class="hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
+      <div class="flex min-w-0 flex-1 items-start gap-3">
+        <div class="svg-icon size-5 bg-primary-700 icon-clock mt-0.5 shrink-0"></div>
+        <p class="text-sm/6">You have pending changes. If you leave without saving, changes will be lost.</p>
+      </div>
+      <button id="update-event-button"
+              type="button"
+              class="btn-primary w-24 text-nowrap ms-auto"
+              hx-put="/dashboard/group/events/{{ event.event_id }}/update"
+              hx-ext="no-empty-vals"
+              hx-include="{% if event.is_past() %}
+                            #details-form, #cfs-form, #date-venue-form
+                          {% else %}
+                            #details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+                          {% endif %}"
+              hx-target="#dashboard-content"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="#update-event-button, #cancel-button"
+              hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_cfs_enabled]">
+        Save
+      </button>
+    </div>
+  </div>
+
   <div>
     <div class="space-y-12">
       {# Event Details Tab -#}
@@ -696,38 +721,14 @@
 </div>
 
 {# Form buttons -#}
-<div class="flex items-center justify-end space-x-5 mt-6">
-  {# Cancel button -#}
-  <div>
-    <button id="cancel-button"
-            type="button"
-            hx-get="/dashboard/group?tab=events"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline w-24">Cancel</button>
-  </div>
-  {# End cancel button -#}
-
-  {# Save button -#}
-  <div>
-    <button id="update-event-button"
-            type="button"
-            class="btn-primary w-24 text-nowrap"
-            hx-put="/dashboard/group/events/{{ event.event_id }}/update"
-            hx-ext="no-empty-vals"
-            hx-include="{% if event.is_past() %}
-                          #details-form, #cfs-form, #date-venue-form
-                        {% else %}
-                          #details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                        {% endif %}"
-            hx-target="#dashboard-content"
-            hx-indicator="#dashboard-spinner"
-            hx-disabled-elt="#update-event-button, #cancel-button"
-            hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_cfs_enabled]">
-      Update
-    </button>
-  </div>
-  {# End save button -#}
+<div class="flex items-center justify-end mt-6">
+  <button id="cancel-button"
+          type="button"
+          hx-get="/dashboard/group?tab=events"
+          hx-trigger="click, confirmed"
+          hx-target="body"
+          hx-indicator="#dashboard-spinner"
+          class="btn-primary-outline w-24">Cancel</button>
 </div>
 {# End form buttons -#}
 </div>
@@ -754,6 +755,9 @@
     validateEventDates,
     validateSessionDateBounds
   } from '/static/js/common/form-validation.js';
+  import {
+    initializePendingChangesAlert
+  } from '/static/js/dashboard/group/pending-changes-alert.js';
 
   const updateEventButton = document.getElementById('update-event-button');
   const cancelButton = document.getElementById('cancel-button');
@@ -762,6 +766,7 @@
   const clearLocationButton = document.getElementById('clear-location-fields');
   const locationSearchField = document.querySelector('location-search-field');
   const approvedSubmissionsEvent = 'event-approved-submissions-updated';
+
   const syncSessionsDateRange = () => {
     const sessionsSection = document.querySelector('sessions-section');
     if (!sessionsSection) {
@@ -1055,6 +1060,14 @@
       history.pushState({}, "Events list", '/dashboard/group?tab=events');
     });
   }
+
+  initializePendingChangesAlert({
+    alertId: 'pending-changes-alert',
+    formIds: ['details-form', 'cfs-form', 'date-venue-form', 'sessions-form', 'hosts-sponsors-form'],
+    cancelButtonId: 'cancel-button',
+    confirmMessage: 'You have pending changes. If you continue, unsaved changes will be lost.',
+    confirmText: 'Leave',
+  });
 
   if (updateEventButton) {
     // Validation before form submission
