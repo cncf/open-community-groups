@@ -70,7 +70,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center justify-end gap-2">
                   {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
-                  {% if !session_proposal.has_submissions -%}
+                  {% if !edit_disabled -%}
                     <button type="button"
                             class="btn-tertiary p-2
                                    {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
