@@ -20,8 +20,6 @@ description = "Create reusable session proposals to submit to events.") -}}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Level</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Duration</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Co-speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
@@ -31,7 +29,7 @@ description = "Create reusable session proposals to submit to events.") -}}
       <tbody>
         {% if session_proposals.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="7">
+            <td class="px-8 py-16 text-center" colspan="5">
               <div class="flex flex-col items-center justify-center min-h-[125px]">
                 <div class="text-lg lg:text-xl">You don't have any session proposals yet.</div>
               </div>
@@ -43,10 +41,6 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
               </td>
-              <td class="px-3 xl:px-5 py-4">
-                {{ badges::common_badge(content = session_proposal.session_proposal_level_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
-              </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ session_proposal.duration_minutes }} min</td>
               <td class="px-3 xl:px-5 py-4">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
                   <div class="text-stone-700">{{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}</div>
@@ -62,35 +56,32 @@ description = "Create reusable session proposals to submit to events.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 {% if session_proposal.has_submissions -%}
-                  {{ badges::status_badge(label = "Submitted", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center justify-end gap-2">
-                  {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
-                  {% if !edit_disabled -%}
-                    <button type="button"
-                            class="btn-tertiary p-2
-                                   {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
-                            data-session-proposal='{{ session_proposal|json }}'
-                            data-action="edit-session-proposal"
-                            {% if edit_disabled %}
-                              disabled title="Proposals linked to a session cannot be edited"
-                            {% else %}
-                              title="Edit proposal"
-                            {% endif %}>
-                      <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
-                    </button>
-                  {% endif -%}
-                  {% if edit_disabled -%}
-                    <button type="button"
-                            class="btn-tertiary p-2"
-                            data-session-proposal='{{ session_proposal|json }}'
-                            data-action="view-session-proposal"
-                            title="View proposal">
-                      <div class="svg-icon size-3 md:size-4 icon-eye"></div>
-                    </button>
-                  {% endif -%}
+                  {% set edit_disabled = session_proposal.has_submissions
+                                    || session_proposal.linked_session_id.is_some() -%}
+                  <button type="button"
+                          class="btn-tertiary p-2
+                                 {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-action="edit-session-proposal"
+                          {% if edit_disabled %}
+                            disabled title="Submitted or linked proposals cannot be edited"
+                          {% else %}
+                            title="Edit proposal"
+                          {% endif %}>
+                    <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
+                  </button>
+                  <button type="button"
+                          class="btn-tertiary p-2"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-action="view-session-proposal"
+                          title="View proposal">
+                    <div class="svg-icon size-3 md:size-4 icon-eye"></div>
+                  </button>
                   {% set delete_disabled = session_proposal.has_submissions
                                     || session_proposal.linked_session_id.is_some() -%}
                   <button type="button"
