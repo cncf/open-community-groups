@@ -460,41 +460,45 @@ export class SessionsSection extends LitWrapper {
 
     return html`
       <div class="space-y-4">
-        <div class="flex items-start justify-between gap-4">
-          <div class="text-sm/6 text-stone-500">
-            Manage sessions for your event. Sessions are displayed sorted by start time.
-          </div>
-          <button
-            type="button"
-            class="btn-primary-outline btn-mini shrink-0 ${this.disabled
-              ? "opacity-60 cursor-not-allowed"
-              : ""}"
-            @click=${() => this._openAddModal(eventDate)}
-            ?disabled=${this.disabled}
-          >
-            Add session
-          </button>
+        <div class="text-sm/6 text-stone-500">
+          Manage sessions for your event. Sessions are displayed sorted by start time.
         </div>
 
-        ${sortedSessions.length === 0
-          ? this._renderEmptyState()
-          : html`
-              <div class="grid gap-3">
-                ${repeat(
-                  sortedSessions,
-                  (s) => s.id,
-                  (s) => html`
-                    <session-card
-                      .session=${s}
-                      .sessionKinds=${this.sessionKinds}
-                      .disabled=${this.disabled}
-                      @edit=${() => this._openEditModal(s)}
-                      @delete=${() => this._deleteSession(s)}
-                    ></session-card>
-                  `,
-                )}
-              </div>
-            `}
+        <div class="pt-4">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(eventDate)}</h3>
+            <button
+              type="button"
+              class="btn-primary-outline btn-mini shrink-0 ${this.disabled
+                ? "opacity-60 cursor-not-allowed"
+                : ""}"
+              @click=${() => this._openAddModal(eventDate)}
+              ?disabled=${this.disabled}
+            >
+              Add session
+            </button>
+          </div>
+
+          ${sortedSessions.length === 0
+            ? this._renderEmptyState()
+            : html`
+                <div class="grid gap-3">
+                  ${repeat(
+                    sortedSessions,
+                    (s) => s.id,
+                    (s) => html`
+                      <session-card
+                        .session=${s}
+                        .sessionKinds=${this.sessionKinds}
+                        .disabled=${this.disabled}
+                        @edit=${() => this._openEditModal(s)}
+                        @delete=${() => this._deleteSession(s)}
+                      ></session-card>
+                    `,
+                  )}
+                </div>
+              `}
+        </div>
       </div>
     `;
   }
@@ -517,8 +521,8 @@ export class SessionsSection extends LitWrapper {
 
         ${days.map(
           (day) => html`
-            <div class="border-t border-stone-200 pt-6 first:border-t-0 first:pt-0">
-              <div class="flex items-center justify-between mb-4">
+            <div class="pt-8 first:pt-0">
+              <div class="flex items-center justify-between mb-6">
                 <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(day)}</h3>
                 <button
                   type="button"
@@ -778,7 +782,7 @@ class SessionCard extends LitWrapper {
         <div class="flex items-center gap-3 shrink-0">
           <div class="text-right w-14">
             <div class="text-sm font-medium text-stone-700">${startTime || "--:--"}</div>
-            <div class="text-sm text-stone-400">${endTime || "--:--"}</div>
+            <div class="text-sm text-stone-400">${endTime || html`&nbsp;`}</div>
           </div>
           <div class="w-0.5 h-10 bg-primary-300 rounded-full"></div>
         </div>
