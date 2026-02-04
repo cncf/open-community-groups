@@ -94,7 +94,7 @@ description = "Track and manage your call for speakers submissions.") -}}
                             disabled
                             title="This submission has been linked to a session and cannot be modified."
                             aria-label="This submission has been linked to a session and cannot be modified.">
-                      <div class="svg-icon size-3 md:size-4 icon-ban"></div>
+                      <div class="svg-icon size-3 md:size-4 icon-trash"></div>
                     </button>
                   {% else -%}
                     {% if submission.status_id == "information-requested" -%}
@@ -118,7 +118,7 @@ description = "Track and manage your call for speakers submissions.") -}}
                               hx-indicator="#dashboard-spinner"
                               hx-disabled-elt="this"
                               title="Withdraw">
-                        <div class="svg-icon size-3 md:size-4 icon-cancel"></div>
+                        <div class="svg-icon size-3 md:size-4 icon-trash"></div>
                       </button>
                     {% else -%}
                       <span class="text-xs text-stone-400">Withdrawn</span>

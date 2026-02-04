@@ -45,9 +45,6 @@ description = "Review and manage call for speakers submissions.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
-                {% if let Some(message) = &submission.action_required_message -%}
-                  <div class="mt-2 text-xs text-amber-700 line-clamp-2">Action required: {{ message }}</div>
-                {% endif -%}
               </td>
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
                 {% if let Some(level) = &submission.session_proposal.session_proposal_level_name -%}
