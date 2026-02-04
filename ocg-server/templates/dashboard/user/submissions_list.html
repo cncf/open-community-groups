@@ -18,8 +18,6 @@ description = "Track and manage your call for speakers submissions.") -}}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Level</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Duration</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
@@ -28,7 +26,7 @@ description = "Track and manage your call for speakers submissions.") -}}
       <tbody>
         {% if submissions.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="7">
+            <td class="px-8 py-16 text-center" colspan="5">
               <div class="flex flex-col items-center justify-center min-h-[125px]">
                 <div class="text-lg lg:text-xl">You don't have any submissions yet.</div>
               </div>
@@ -48,16 +46,6 @@ description = "Track and manage your call for speakers submissions.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
-              </td>
-              <td class="px-3 xl:px-5 py-4">
-                {% if let Some(level) = &submission.session_proposal.session_proposal_level_name -%}
-                  {{ badges::common_badge(content = level, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
-                {% endif -%}
-              </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {% if let Some(minutes) = submission.session_proposal.duration_minutes -%}
-                  {{ minutes }} min
-                {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="inline-flex items-center gap-2">
@@ -84,12 +72,12 @@ description = "Track and manage your call for speakers submissions.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center justify-end gap-2">
-                  {% if submission.linked_session_id.is_some() -%}
+                  {% if submission.linked_session_id.is_some() || submission.status_id == "approved" -%}
                     <button type="button"
                             class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
                             disabled
-                            title="This submission has been linked to a session and cannot be modified."
-                            aria-label="This submission has been linked to a session and cannot be modified.">
+                            title="This submission has been approved and cannot be removed."
+                            aria-label="This submission has been approved and cannot be removed.">
                       <div class="svg-icon size-3 md:size-4 icon-trash"></div>
                     </button>
                   {% else -%}
