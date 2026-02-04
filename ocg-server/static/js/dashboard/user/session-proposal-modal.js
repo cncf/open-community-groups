@@ -562,7 +562,7 @@ export class SessionProposalModal extends LitWrapper {
                       id="session-proposal-co-speaker"
                       name="co_speaker_user_id"
                       value=${this._selectedCoSpeaker?.user_id || ""}
-                      ?disabled=${isReadOnly}
+                      ?disabled=${isReadOnly || !this._selectedCoSpeaker}
                     />
                     <user-search-field
                       id="session-proposal-co-speaker-search"
