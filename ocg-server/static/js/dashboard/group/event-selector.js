@@ -311,7 +311,7 @@ class EventSelector extends LitWrapper {
     setTextValue("venue_zip_code", details.venue_zip_code);
     setHosts(details.hosts);
     setSponsors(details.sponsors);
-    setSessions(details.sessions);
+    setSessions([]);
   }
 
   /**
