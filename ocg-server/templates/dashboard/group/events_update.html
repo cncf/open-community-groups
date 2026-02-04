@@ -747,6 +747,18 @@
   const onlineEventDetails = document.getElementById('online-event-details');
   const clearLocationButton = document.getElementById('clear-location-fields');
   const locationSearchField = document.querySelector('location-search-field');
+  const syncSessionsDateRange = () => {
+    const sessionsSection = document.querySelector('sessions-section');
+    if (!sessionsSection) {
+      return;
+    }
+
+    const startsAtValue = document.getElementById('starts_at')?.value || '';
+    const endsAtValue = document.getElementById('ends_at')?.value || '';
+    sessionsSection.eventStartsAt = startsAtValue;
+    sessionsSection.eventEndsAt = endsAtValue;
+    sessionsSection.requestUpdate?.();
+  };
   const showLocationMapIfNeeded = () => {
     if (locationSearchField && typeof locationSearchField.showMapPreview === 'function') {
       locationSearchField.showMapPreview();
@@ -785,6 +797,10 @@
 
     if (sectionName === 'date-venue') {
       showLocationMapIfNeeded();
+    }
+
+    if (sectionName === 'sessions') {
+      syncSessionsDateRange();
     }
   }
 
@@ -928,11 +944,13 @@
   if (startsAtInput) {
     startsAtInput.addEventListener('change', () => {
       startsAtInput.setCustomValidity('');
+      syncSessionsDateRange();
     });
   }
   if (endsAtInput) {
     endsAtInput.addEventListener('change', () => {
       endsAtInput.setCustomValidity('');
+      syncSessionsDateRange();
     });
   }
 

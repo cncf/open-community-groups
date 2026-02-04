@@ -569,6 +569,18 @@
   const cancelButton = document.getElementById('cancel-button');
   const kindSelect = document.getElementById('kind_id');
   const onlineEventDetails = document.getElementById('online-event-details');
+  const syncSessionsDateRange = () => {
+    const sessionsSection = document.querySelector('sessions-section');
+    if (!sessionsSection) {
+      return;
+    }
+
+    const startsAtValue = document.getElementById('starts_at')?.value || '';
+    const endsAtValue = document.getElementById('ends_at')?.value || '';
+    sessionsSection.eventStartsAt = startsAtValue;
+    sessionsSection.eventEndsAt = endsAtValue;
+    sessionsSection.requestUpdate?.();
+  };
 
   // Tab switching functionality
   function displayActiveSection(sectionName) {
@@ -593,6 +605,10 @@
         section.classList.add('hidden');
       }
     });
+
+    if (sectionName === 'sessions') {
+      syncSessionsDateRange();
+    }
   }
 
   // Validate multiple forms
@@ -729,11 +745,13 @@
   if (startsAtInput) {
     startsAtInput.addEventListener('change', () => {
       startsAtInput.setCustomValidity('');
+      syncSessionsDateRange();
     });
   }
   if (endsAtInput) {
     endsAtInput.addEventListener('change', () => {
       endsAtInput.setCustomValidity('');
+      syncSessionsDateRange();
     });
   }
 
