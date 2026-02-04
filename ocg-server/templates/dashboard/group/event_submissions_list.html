@@ -18,8 +18,8 @@ description = "Review and manage call for speakers submissions.") -}}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Level</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Duration</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Level</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Duration</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-24"></th>
@@ -49,18 +49,18 @@ description = "Review and manage call for speakers submissions.") -}}
                   <div class="mt-2 text-xs text-amber-700 line-clamp-2">Action required: {{ message }}</div>
                 {% endif -%}
               </td>
-              <td class="px-3 xl:px-5 py-4">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
                 {% if let Some(level) = &submission.session_proposal.session_proposal_level_name -%}
                   {{ badges::common_badge(content = level, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                 {% endif -%}
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(minutes) = submission.session_proposal.duration_minutes -%}
                   {{ minutes }} min
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
-                {{ badges::common_badge(content = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(updated_at) = &submission.updated_at -%}
