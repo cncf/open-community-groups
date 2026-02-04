@@ -747,6 +747,7 @@
   const onlineEventDetails = document.getElementById('online-event-details');
   const clearLocationButton = document.getElementById('clear-location-fields');
   const locationSearchField = document.querySelector('location-search-field');
+  const approvedSubmissionsEvent = 'event-approved-submissions-updated';
   const syncSessionsDateRange = () => {
     const sessionsSection = document.querySelector('sessions-section');
     if (!sessionsSection) {
@@ -764,6 +765,66 @@
       locationSearchField.showMapPreview();
     }
   };
+
+  const getApprovedSubmissions = (sessionsSection) => {
+    if (Array.isArray(sessionsSection.approvedSubmissions)) {
+      return [...sessionsSection.approvedSubmissions];
+    }
+
+    const payload = sessionsSection.getAttribute('approved-submissions');
+    if (!payload) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(payload);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const sortApprovedSubmissions = (submissions) => submissions.sort((a, b) => {
+    const leftTitle = String(a?.title || '').toLowerCase();
+    const rightTitle = String(b?.title || '').toLowerCase();
+    if (leftTitle !== rightTitle) {
+      return leftTitle.localeCompare(rightTitle);
+    }
+
+    const leftId = String(a?.cfs_submission_id || '');
+    const rightId = String(b?.cfs_submission_id || '');
+    return leftId.localeCompare(rightId);
+  });
+
+  if (document.body && document.body.dataset.approvedSubmissionsSyncBound !== 'true') {
+    document.body.dataset.approvedSubmissionsSyncBound = 'true';
+    document.body.addEventListener(approvedSubmissionsEvent, (event) => {
+      const sessionsSection = document.querySelector('sessions-section');
+      if (!sessionsSection) {
+        return;
+      }
+
+      const detail = event?.detail || {};
+      const submissionId = String(detail.cfsSubmissionId || detail.submission?.cfs_submission_id || '');
+      if (!submissionId) {
+        return;
+      }
+
+      const currentSubmissions = getApprovedSubmissions(sessionsSection);
+      const nextSubmissions = currentSubmissions.filter(
+        (submission) => String(submission?.cfs_submission_id || '') !== submissionId,
+      );
+
+      if (detail.approved && detail.submission) {
+        nextSubmissions.push(detail.submission);
+      }
+
+      const sortedSubmissions = sortApprovedSubmissions(nextSubmissions);
+      sessionsSection.approvedSubmissions = sortedSubmissions;
+      sessionsSection.setAttribute('approved-submissions', JSON.stringify(sortedSubmissions));
+      sessionsSection.requestUpdate?.();
+    });
+  }
 
   if (clearLocationButton) {
     clearLocationButton.addEventListener('click', () => {

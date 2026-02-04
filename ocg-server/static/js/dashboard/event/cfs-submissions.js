@@ -7,6 +7,7 @@ import "/static/js/common/logo-image.js";
 const MODAL_ELEMENT_ID = "review-submission-modal";
 const OPEN_ACTION = "open-cfs-submission-modal";
 const DATA_KEY = "cfsSubmissionModalReady";
+const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
 const PROPOSAL_SECTION_TITLE_CLASS = "form-label uppercase text-xs text-stone-400";
 
 /**
@@ -164,10 +165,47 @@ export class ReviewSubmissionModal extends LitWrapper {
         errorMessage: "Unable to update this submission. Please try again later.",
       });
       if (ok) {
+        this._emitApprovedSubmissionsUpdate();
         this.close();
       }
     };
     form.addEventListener("htmx:afterRequest", this._afterRequestHandler);
+  }
+
+  /**
+   * Emits approved submissions updates for sessions synchronization.
+   */
+  _emitApprovedSubmissionsUpdate() {
+    if (typeof document === "undefined" || !document.body) {
+      return;
+    }
+
+    const submission = this._submission;
+    if (!submission?.cfs_submission_id) {
+      return;
+    }
+
+    const proposal = submission.session_proposal || {};
+    const speakerName = submission.speaker?.name || submission.speaker?.username || "";
+    const summary =
+      this._statusId === "approved" && proposal?.session_proposal_id && proposal?.title && speakerName
+        ? {
+            cfs_submission_id: String(submission.cfs_submission_id),
+            session_proposal_id: String(proposal.session_proposal_id),
+            title: proposal.title,
+            speaker_name: speakerName,
+          }
+        : null;
+
+    document.body.dispatchEvent(
+      new CustomEvent(APPROVED_SUBMISSIONS_EVENT, {
+        detail: {
+          approved: this._statusId === "approved",
+          cfsSubmissionId: String(submission.cfs_submission_id),
+          submission: summary,
+        },
+      }),
+    );
   }
 
   /**
