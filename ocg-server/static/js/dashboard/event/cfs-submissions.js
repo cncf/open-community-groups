@@ -69,7 +69,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     const shouldLockScroll = !this._isOpen;
     this._submission = submission;
     this._message = submission.action_required_message || "";
-    this._statusId = String(submission.status_id || "");
+    this._statusId = submission.linked_session_id ? "approved" : String(submission.status_id || "");
     this._isOpen = true;
     if (shouldLockScroll) {
       lockBodyScroll();
@@ -282,15 +282,46 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
+   * Checks whether the submission is linked to an event session.
+   * @returns {boolean}
+   */
+  _isLinkedToSession() {
+    return Boolean(this._submission?.linked_session_id);
+  }
+
+  /**
+   * Checks whether a status can be selected for the current submission.
+   * @param {string} statusId
+   * @returns {boolean}
+   */
+  _isStatusAllowed(statusId) {
+    if (!this._isLinkedToSession()) {
+      return true;
+    }
+    return statusId === "approved";
+  }
+
+  /**
+   * Checks whether the current status selection can be submitted.
+   * @returns {boolean}
+   */
+  _isStatusSelectionValid() {
+    return this._isStatusAllowed(this._statusId);
+  }
+
+  /**
    * Handles status checkbox changes.
    * @param {Event} event
    * @param {string} statusId
    */
   _onStatusCheckChange(event, statusId) {
     if (event.target?.checked) {
+      if (!this._isStatusAllowed(statusId)) {
+        return;
+      }
       this._statusId = statusId;
     } else {
-      this._statusId = "not-reviewed";
+      this._statusId = this._isLinkedToSession() ? "approved" : "not-reviewed";
     }
   }
 
@@ -300,6 +331,7 @@ export class ReviewSubmissionModal extends LitWrapper {
    */
   _renderStatusBoxes() {
     const reviewStatuses = this.statuses.filter((s) => s.cfs_submission_status_id !== "not-reviewed");
+    const isLinked = this._isLinkedToSession();
 
     return html`
       <div class="grid grid-cols-3 gap-3">
@@ -307,15 +339,17 @@ export class ReviewSubmissionModal extends LitWrapper {
           const statusId = status?.cfs_submission_status_id || "";
           const isSelected = this._statusId === statusId;
           const color = this._getStatusColor(statusId);
+          const isDisabled = isLinked && statusId !== "approved";
 
           return html`
-            <label class="block cursor-pointer">
+            <label class="block ${isDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}">
               <input
                 type="checkbox"
                 value=${statusId}
                 class="sr-only"
                 .checked=${isSelected}
                 @change=${(e) => this._onStatusCheckChange(e, statusId)}
+                ?disabled=${isDisabled}
               />
               <div
                 class="rounded-lg border p-3 transition bg-white ${isSelected
@@ -434,6 +468,14 @@ export class ReviewSubmissionModal extends LitWrapper {
                     <div>
                       <label class="form-label">Decision</label>
                       <div class="mt-3">${this._renderStatusBoxes()}</div>
+                      ${this._isLinkedToSession()
+                        ? html`
+                            <p class="form-legend mt-2">
+                              This submission is linked to a session. Unlink it from the session before
+                              choosing a non-approved status.
+                            </p>
+                          `
+                        : ""}
                     </div>
 
                     <div>
@@ -466,7 +508,7 @@ export class ReviewSubmissionModal extends LitWrapper {
                     id="cfs-submission-submit"
                     type="submit"
                     class="btn-primary"
-                    ?disabled=${!submissionEndpoint}
+                    ?disabled=${!submissionEndpoint || !this._isStatusSelectionValid()}
                   >
                     Save
                   </button>
