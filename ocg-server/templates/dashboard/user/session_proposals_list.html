@@ -56,7 +56,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 {% if session_proposal.has_submissions -%}
-                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">

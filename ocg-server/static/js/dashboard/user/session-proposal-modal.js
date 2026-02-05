@@ -517,7 +517,7 @@ export class SessionProposalModal extends LitWrapper {
             </div>
             <div>
               <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Description</div>
-              <div class="mt-2 text-stone-500 text-sm/6 markdown">
+              <div class="mt-2 text-stone-700 text-sm/6 markdown">
                 ${proposal?.description_html
                   ? unsafeHTML(proposal.description_html)
                   : proposal?.description || ""}
