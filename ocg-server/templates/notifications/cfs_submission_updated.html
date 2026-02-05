@@ -10,7 +10,7 @@
 {% endblock preheader -%}
 
 {% block content -%}
-  <p class="default mb-30">
+  <p class="default mb-15">
     Your submission for <strong>{{ event.name }}</strong> has been updated by
     <strong>{{ event.group_name }}</strong>.
     <br />
@@ -18,17 +18,35 @@
     Status: <strong>{{ status_name }}</strong>
   </p>
 
-  {% if let Some(action_required_message) = &action_required_message -%}
-    <p class="default preline mb-30">
-      <strong>Action required:</strong>
-      <br />
-      {{ action_required_message }}
-    </p>
+  {% if action_required_message.is_none() -%}
+    {% if status_name == "Approved" -%}
+      <p class="default mb-15">
+        Congratulations! Your submission has been approved and you're one step closer to taking the stage.
+      </p>
+    {% elif status_name == "Information requested" -%}
+      <p class="default mb-15">
+        A bit more information is needed to continue the review. Please check the reviewer notes and update your proposal.
+      </p>
+    {% elif status_name == "Rejected" -%}
+      <p class="default mb-15">
+        Thank you so much for taking the time to submit. After careful review, your proposal wasn't selected this time, but we truly appreciate your effort and hope you'll consider submitting again in the future.
+      </p>
+    {% elif status_name == "Withdrawn" -%}
+      <p class="default mb-15">Your submission has been marked as withdrawn.</p>
+    {% else -%}
+      <p class="default mb-15">
+        Your submission status has been updated to <strong>{{ status_name }}</strong>.
+      </p>
+    {% endif -%}
   {% endif -%}
 
-  {{ email::button(link = link, text = "View event") }}
+  {% if let Some(action_required_message) = &action_required_message -%}
+    <p class="default preline mb-30">{{ action_required_message }}</p>
+  {% endif -%}
 
-  <p class="default mt-30 mb-15">You can review your submissions from your dashboard.</p>
+  <p class="default mt-30 mb-15">
+    You can review your submissions from your <a href="{{ link }}">dashboard</a>.
+  </p>
 {% endblock content -%}
 
 {% block footer -%}
