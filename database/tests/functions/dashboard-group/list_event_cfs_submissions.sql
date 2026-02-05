@@ -17,8 +17,10 @@ select plan(3);
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set proposalID '00000000-0000-0000-0000-000000000061'
 \set proposal2ID '00000000-0000-0000-0000-000000000062'
+\set proposal3ID '00000000-0000-0000-0000-000000000063'
 \set submissionID '00000000-0000-0000-0000-000000000071'
 \set submission2ID '00000000-0000-0000-0000-000000000072'
+\set submission3ID '00000000-0000-0000-0000-000000000073'
 \set reviewerID '00000000-0000-0000-0000-000000000083'
 \set sessionID '00000000-0000-0000-0000-000000000091'
 \set userID '00000000-0000-0000-0000-000000000081'
@@ -77,6 +79,15 @@ insert into session_proposal (
         'intermediate',
         'Go Intro',
         :'user2ID'
+    ),
+    (
+        :'proposal3ID',
+        '2024-01-04 00:00:00+00',
+        'Talk about SQL',
+        make_interval(mins => 30),
+        'beginner',
+        'SQL Tuning',
+        :'userID'
     );
 
 -- Event
@@ -155,6 +166,16 @@ insert into cfs_submission (
         'Looks good',
         :'reviewerID',
         '2024-01-06 00:00:00+00'
+    ),
+    (
+        :'submission3ID',
+        '2024-01-06 00:00:00+00',
+        :'eventID',
+        :'proposal3ID',
+        'withdrawn',
+        null,
+        null,
+        '2024-01-07 00:00:00+00'
     );
 
 -- Session

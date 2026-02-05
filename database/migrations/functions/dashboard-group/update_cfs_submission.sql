@@ -25,7 +25,8 @@ begin
         status_id = p_submission->>'status_id',
         updated_at = current_timestamp
     where cfs_submission_id = p_cfs_submission_id
-    and event_id = p_event_id;
+    and event_id = p_event_id
+    and status_id <> 'withdrawn';
 
     if not found then
         raise exception 'submission not found';

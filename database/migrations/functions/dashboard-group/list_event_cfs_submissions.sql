@@ -70,6 +70,7 @@ returns json as $$
             left join "user" reviewer on reviewer.user_id = cs.reviewed_by
             left join session s on s.cfs_submission_id = cs.cfs_submission_id
             where cs.event_id = p_event_id
+            and cs.status_id <> 'withdrawn'
             order by
                 cs.updated_at desc nulls last,
                 cs.created_at desc,
@@ -82,6 +83,7 @@ returns json as $$
             select count(*)::int as total
             from cfs_submission cs
             where cs.event_id = p_event_id
+            and cs.status_id <> 'withdrawn'
         ),
         -- Aggregate submissions to JSON
         submissions_json as (

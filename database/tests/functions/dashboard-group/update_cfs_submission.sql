@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,7 +15,9 @@ select plan(4);
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set proposalID '00000000-0000-0000-0000-000000000061'
+\set proposal2ID '00000000-0000-0000-0000-000000000062'
 \set submissionID '00000000-0000-0000-0000-000000000071'
+\set submission2ID '00000000-0000-0000-0000-000000000072'
 \set reviewerID '00000000-0000-0000-0000-000000000081'
 \set userID '00000000-0000-0000-0000-000000000091'
 
@@ -61,6 +63,14 @@ insert into session_proposal (
     'beginner',
     'Rust Intro',
     :'userID'
+), (
+    :'proposal2ID',
+    '2024-01-03 00:00:00+00',
+    'Talk about SQL',
+    make_interval(mins => 30),
+    'beginner',
+    'SQL Tuning',
+    :'userID'
 );
 
 -- Event
@@ -88,7 +98,9 @@ insert into event (
 
 -- CFS submission
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
-values (:'submissionID', :'eventID', :'proposalID', 'not-reviewed');
+values
+    (:'submissionID', :'eventID', :'proposalID', 'not-reviewed'),
+    (:'submission2ID', :'eventID', :'proposal2ID', 'withdrawn');
 
 -- ============================================================================
 -- TESTS
@@ -142,6 +154,24 @@ select throws_ok(
     ),
     'invalid submission status',
     'Should reject withdrawn status updates'
+);
+
+-- Should reject updating withdrawn submissions
+select throws_ok(
+    format(
+        $$select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::jsonb
+        )$$,
+        :'reviewerID',
+        :'eventID',
+        :'submission2ID',
+        '{"status_id":"approved"}'
+    ),
+    'submission not found',
+    'Should reject updating withdrawn submissions'
 );
 
 -- ============================================================================
