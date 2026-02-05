@@ -586,6 +586,8 @@
     updateSectionVisibility
   } from '/static/js/dashboard/group/meeting-validations.js';
   import {
+    clearCfsWindowValidity,
+    clearSessionDateBoundsValidity,
     parseLocalDate,
     validateCfsWindow,
     validateEventDates,
@@ -645,6 +647,13 @@
   // Validate multiple forms
   function validateEventForms() {
     const formSections = ['details', 'date-venue', 'hosts-sponsors', 'sessions', 'cfs'];
+    clearCfsWindowValidity({
+      cfsStartsInput: cfsStartsAtInput,
+      cfsEndsInput: cfsEndsAtInput,
+    });
+    clearSessionDateBoundsValidity({
+      sessionForm: document.getElementById('sessions-form'),
+    });
 
     for (const formName of formSections) {
       const formElement = document.getElementById(`${formName}-form`);
@@ -733,6 +742,10 @@
   if (toggleCfsEnabled) {
     updateCfsFields(toggleCfsEnabled.checked);
     toggleCfsEnabled.addEventListener('change', () => {
+      clearCfsWindowValidity({
+        cfsStartsInput: cfsStartsAtInput,
+        cfsEndsInput: cfsEndsAtInput,
+      });
       updateCfsFields(toggleCfsEnabled.checked);
     });
   }
@@ -787,13 +800,39 @@
   if (startsAtInput) {
     startsAtInput.addEventListener('change', () => {
       startsAtInput.setCustomValidity('');
+      clearCfsWindowValidity({
+        cfsStartsInput: cfsStartsAtInput,
+        cfsEndsInput: cfsEndsAtInput,
+      });
+      clearSessionDateBoundsValidity({
+        sessionForm: document.getElementById('sessions-form'),
+      });
       syncSessionsDateRange();
     });
   }
   if (endsAtInput) {
     endsAtInput.addEventListener('change', () => {
       endsAtInput.setCustomValidity('');
+      clearCfsWindowValidity({
+        cfsStartsInput: cfsStartsAtInput,
+        cfsEndsInput: cfsEndsAtInput,
+      });
+      clearSessionDateBoundsValidity({
+        sessionForm: document.getElementById('sessions-form'),
+      });
       syncSessionsDateRange();
+    });
+  }
+
+  if (cfsStartsAtInput) {
+    cfsStartsAtInput.addEventListener('change', () => {
+      cfsStartsAtInput.setCustomValidity('');
+    });
+  }
+
+  if (cfsEndsAtInput) {
+    cfsEndsAtInput.addEventListener('change', () => {
+      cfsEndsAtInput.setCustomValidity('');
     });
   }
 
@@ -852,6 +891,7 @@
           cfsEndsInput: cfsEndsAtInput,
           eventStartsInput: startsAtInput,
           onDateSection: () => displayActiveSection('date-venue'),
+          onCfsSection: () => displayActiveSection('cfs'),
         });
 
         if (!datesValid || !cfsValid) {
