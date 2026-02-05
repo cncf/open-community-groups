@@ -291,6 +291,7 @@
                       disabled>Submit session proposal</button>
             {% endif -%}
           </div>
+          <div id="cfs-modal-root"></div>
         </div>
       {% endif -%}
       {# End Call for Speakers -#}
@@ -350,8 +351,6 @@
         {% endif -%}
       </div>
       {# End event description -#}
-
-      <div id="cfs-modal-root"></div>
 
       {# Tags if available -#}
       {% if let Some(tags) = &event.tags -%}
