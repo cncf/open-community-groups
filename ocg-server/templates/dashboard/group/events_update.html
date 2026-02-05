@@ -21,19 +21,9 @@
               data-section="details"
               data-active="true"
               class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs">Details</span>
-      </button>
-    </li>
-    <li>
-      <button type="button"
-              data-section="cfs"
-              data-active="false"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] lg:text-xs">CFS</span>
       </button>
     </li>
     <li>
@@ -41,7 +31,7 @@
               data-section="date-venue"
               data-active="false"
               class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs hidden lg:inline">Date & Venue</span>
         <span class="text-[10px] lg:hidden">Schedule</span>
@@ -52,10 +42,30 @@
               data-section="hosts-sponsors"
               data-active="false"
               class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs hidden xl:inline">Hosts & Speakers</span>
         <span class="text-[10px] lg:text-xs xl:hidden">Hosts</span>
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="sessions"
+              data-active="false"
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="text-[10px] lg:text-xs">Sessions</span>
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="cfs"
+              data-active="false"
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="text-[10px] lg:text-xs">CFS</span>
       </button>
     </li>
     <li>
@@ -68,19 +78,9 @@
               hx-swap="innerHTML"
               hx-indicator="#submissions-loading"
               class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs">Submissions</span>
-      </button>
-    </li>
-    <li>
-      <button type="button"
-              data-section="sessions"
-              data-active="false"
-              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
-        </div>
-        <span class="text-[10px] lg:text-xs">Sessions</span>
       </button>
     </li>
     <li>
@@ -93,7 +93,7 @@
               hx-swap="innerHTML"
               hx-indicator="#attendees-loading"
               class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
-        <div class="svg-icon size-4 lg:size-5 mb-1 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
         <span class="text-[10px] lg:text-xs">Attendees</span>
       </button>
@@ -886,7 +886,7 @@
 
   // Validate multiple forms
   function validateEventForms() {
-    const formSections = ["details", "cfs", "date-venue", "sessions", "hosts-sponsors"];
+    const formSections = ["details", "date-venue", "hosts-sponsors", "sessions", "cfs"];
 
 
     for (const formName of formSections) {
@@ -1063,7 +1063,7 @@
 
   initializePendingChangesAlert({
     alertId: 'pending-changes-alert',
-    formIds: ['details-form', 'cfs-form', 'date-venue-form', 'sessions-form', 'hosts-sponsors-form'],
+    formIds: ['details-form', 'date-venue-form', 'hosts-sponsors-form', 'sessions-form', 'cfs-form'],
     cancelButtonId: 'cancel-button',
     confirmMessage: 'You have pending changes. If you continue, unsaved changes will be lost.',
     confirmText: 'Leave',
