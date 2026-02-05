@@ -18,6 +18,16 @@ begin
         raise exception 'invalid submission status';
     end if;
 
+    -- Prevent status changes for linked submissions
+    if p_submission->>'status_id' <> 'approved'
+        and exists (
+            select 1
+            from session s
+            where s.cfs_submission_id = p_cfs_submission_id
+        ) then
+        raise exception 'linked submissions must remain approved';
+    end if;
+
     -- Update submission
     update cfs_submission set
         action_required_message = nullif(p_submission->>'action_required_message', ''),

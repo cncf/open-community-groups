@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,8 +16,10 @@ select plan(5);
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set proposalID '00000000-0000-0000-0000-000000000061'
 \set proposal2ID '00000000-0000-0000-0000-000000000062'
+\set proposal3ID '00000000-0000-0000-0000-000000000063'
 \set submissionID '00000000-0000-0000-0000-000000000071'
 \set submission2ID '00000000-0000-0000-0000-000000000072'
+\set submission3ID '00000000-0000-0000-0000-000000000073'
 \set reviewerID '00000000-0000-0000-0000-000000000081'
 \set userID '00000000-0000-0000-0000-000000000091'
 
@@ -71,6 +73,14 @@ insert into session_proposal (
     'beginner',
     'SQL Tuning',
     :'userID'
+), (
+    :'proposal3ID',
+    '2024-01-04 00:00:00+00',
+    'Talk about Postgres',
+    make_interval(mins => 40),
+    'beginner',
+    'Postgres Basics',
+    :'userID'
 );
 
 -- Event
@@ -100,7 +110,25 @@ insert into event (
 insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
 values
     (:'submissionID', :'eventID', :'proposalID', 'not-reviewed'),
-    (:'submission2ID', :'eventID', :'proposal2ID', 'withdrawn');
+    (:'submission2ID', :'eventID', :'proposal2ID', 'withdrawn'),
+    (:'submission3ID', :'eventID', :'proposal3ID', 'approved');
+
+-- Session
+insert into session (
+    event_id,
+    name,
+    session_kind_id,
+    starts_at,
+    ends_at,
+    cfs_submission_id
+) values (
+    :'eventID',
+    'Session 1',
+    'in-person',
+    '2024-01-02 10:00:00+00',
+    '2024-01-02 11:00:00+00',
+    :'submission3ID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -136,6 +164,24 @@ select is(
     (select reviewed_by from cfs_submission where cfs_submission_id = :'submissionID'::uuid),
     :'reviewerID'::uuid,
     'Should store reviewer'
+);
+
+-- Should reject status changes for linked submissions
+select throws_ok(
+    format(
+        $$select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::jsonb
+        )$$,
+        :'reviewerID',
+        :'eventID',
+        :'submission3ID',
+        '{"status_id":"rejected"}'
+    ),
+    'linked submissions must remain approved',
+    'Should reject status changes for linked submissions'
 );
 
 -- Should reject withdrawn status updates
