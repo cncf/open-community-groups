@@ -408,6 +408,7 @@ input:placeholder-shown {
   -webkit-mask-image: var(--icon-url);
 }
 
+.icon-archive { --icon-url: url('/static/images/icons/archive.svg'); }
 .icon-arrow-left-double { --icon-url: url('/static/images/icons/arrow_left_double.svg'); }
 .icon-arrow-left { --icon-url: url('/static/images/icons/arrow_left.svg'); }
 .icon-arrow-right-double { --icon-url: url('/static/images/icons/arrow_right_double.svg'); }
