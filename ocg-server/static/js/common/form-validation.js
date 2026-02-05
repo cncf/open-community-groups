@@ -331,6 +331,7 @@ const reportWithSection = (input, message, onSection) => {
  * @param {HTMLInputElement|null} params.startsInput - Start datetime input
  * @param {HTMLInputElement|null} params.endsInput - End datetime input
  * @param {boolean} [params.allowPastDates=false] - Allow past dates (updates)
+ * @param {Date|null} [params.latestDate=null] - Latest allowed date
  * @param {Function} [params.onDateSection] - Callback to show date tab
  * @returns {boolean} True when valid
  */
@@ -338,6 +339,7 @@ export const validateEventDates = ({
   startsInput,
   endsInput,
   allowPastDates = false,
+  latestDate = null,
   onDateSection,
 } = {}) => {
   if (startsInput) startsInput.setCustomValidity("");
@@ -345,6 +347,7 @@ export const validateEventDates = ({
 
   const startsAtDate = parseLocalDate(startsInput?.value);
   const endsAtDate = parseLocalDate(endsInput?.value);
+  const latestAllowed = latestDate instanceof Date && !Number.isNaN(latestDate.getTime()) ? latestDate : null;
 
   if (endsInput?.value && !startsInput?.value) {
     return reportWithSection(startsInput, "Start date is required when end date is set.", onDateSection);
@@ -357,6 +360,15 @@ export const validateEventDates = ({
     }
     if (endsAtDate && endsAtDate < now) {
       return reportWithSection(endsInput, "End date cannot be in the past.", onDateSection);
+    }
+  }
+
+  if (latestAllowed) {
+    if (startsAtDate && startsAtDate > latestAllowed) {
+      return reportWithSection(startsInput, "Start date cannot be in the future.", onDateSection);
+    }
+    if (endsAtDate && endsAtDate > latestAllowed) {
+      return reportWithSection(endsInput, "End date cannot be in the future.", onDateSection);
     }
   }
 

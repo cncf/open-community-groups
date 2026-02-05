@@ -66,63 +66,80 @@ begin
         to_timestamp((v_event_before->>'starts_at')::bigint)
     ) < current_timestamp;
 
-    -- Handle past events: only allow updating specific fields
+    -- Events that were in the past should not be updated to have future dates
     if v_is_past_event then
-        -- Update only allowed fields for past events
-        update event set
-            banner_mobile_url = nullif(p_event->>'banner_mobile_url', ''),
-            banner_url = nullif(p_event->>'banner_url', ''),
-            description = p_event->>'description',
-            description_short = nullif(p_event->>'description_short', ''),
-            logo_url = nullif(p_event->>'logo_url', ''),
-            meeting_recording_url = nullif(p_event->>'meeting_recording_url', ''),
-            photos_urls = case when p_event->'photos_urls' is not null then array(select jsonb_array_elements_text(p_event->'photos_urls')) else null end,
-            tags = case when p_event->'tags' is not null then array(select jsonb_array_elements_text(p_event->'tags')) else null end
-        where event_id = p_event_id
-        and group_id = p_group_id
-        and deleted = false
-        and canceled = false;
-
-        return;
-    end if;
-
-    -- Validate event dates are not in the past (only for non-past events)
-    if p_event->>'starts_at' is not null then
-        v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
-        -- For events that haven't started yet: starts_at cannot be in the past
-        -- For events already started (live): starts_at cannot be earlier than current value
-        if v_starts_at < current_timestamp then
-            if to_timestamp((v_event_before->>'starts_at')::bigint) >= current_timestamp then
-                raise exception 'event starts_at cannot be in the past';
-            elsif v_starts_at < to_timestamp((v_event_before->>'starts_at')::bigint) then
-                raise exception 'event starts_at cannot be earlier than current value';
+        -- Validate event dates are not in the future (only for past events)
+        if p_event->>'starts_at' is not null then
+            v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+            if v_starts_at > current_timestamp then
+                raise exception 'event starts_at cannot be in the future';
             end if;
+        end if;
+        if p_event->>'ends_at' is not null then
+            v_ends_at := (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone');
+            if v_ends_at > current_timestamp then
+                raise exception 'event ends_at cannot be in the future';
+            end if;
+        end if;
+
+        -- Validate session dates are not in the future
+        if p_event->'sessions' is not null then
+            for v_session in select jsonb_array_elements(p_event->'sessions')
+            loop
+                v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+                if v_session_starts_at > current_timestamp then
+                    raise exception 'session starts_at cannot be in the future';
+                end if;
+
+                if v_session->>'ends_at' is not null then
+                    v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone');
+                    if v_session_ends_at > current_timestamp then
+                        raise exception 'session ends_at cannot be in the future';
+                    end if;
+                end if;
+            end loop;
         end if;
     end if;
 
-    if p_event->>'ends_at' is not null then
-        v_ends_at := (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone');
-        if v_ends_at < current_timestamp then
-            raise exception 'event ends_at cannot be in the past';
-        end if;
-    end if;
-
-    -- Validate session dates are not in the past
-    if p_event->'sessions' is not null then
-        for v_session in select jsonb_array_elements(p_event->'sessions')
-        loop
-            v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone');
-            if v_session_starts_at < current_timestamp then
-                raise exception 'session starts_at cannot be in the past';
-            end if;
-
-            if v_session->>'ends_at' is not null then
-                v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone');
-                if v_session_ends_at < current_timestamp then
-                    raise exception 'session ends_at cannot be in the past';
+    -- Event that were not in the past should not be updated to have past dates
+    if not v_is_past_event then
+        -- Validate event dates are not in the past (only for non-past events)
+        if p_event->>'starts_at' is not null then
+            v_starts_at := (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+            -- For events that haven't started yet: starts_at cannot be in the past
+            -- For events already started (live): starts_at cannot be earlier than current value
+            if v_starts_at < current_timestamp then
+                if to_timestamp((v_event_before->>'starts_at')::bigint) >= current_timestamp then
+                    raise exception 'event starts_at cannot be in the past';
+                elsif v_starts_at < to_timestamp((v_event_before->>'starts_at')::bigint) then
+                    raise exception 'event starts_at cannot be earlier than current value';
                 end if;
             end if;
-        end loop;
+        end if;
+        if p_event->>'ends_at' is not null then
+            v_ends_at := (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone');
+            if v_ends_at < current_timestamp then
+                raise exception 'event ends_at cannot be in the past';
+            end if;
+        end if;
+
+        -- Validate session dates are not in the past
+        if p_event->'sessions' is not null then
+            for v_session in select jsonb_array_elements(p_event->'sessions')
+            loop
+                v_session_starts_at := (v_session->>'starts_at')::timestamp at time zone (p_event->>'timezone');
+                if v_session_starts_at < current_timestamp then
+                    raise exception 'session starts_at cannot be in the past';
+                end if;
+
+                if v_session->>'ends_at' is not null then
+                    v_session_ends_at := (v_session->>'ends_at')::timestamp at time zone (p_event->>'timezone');
+                    if v_session_ends_at < current_timestamp then
+                        raise exception 'session ends_at cannot be in the past';
+                    end if;
+                end if;
+            end loop;
+        end if;
     end if;
 
     -- Validate event capacity against max_participants when meeting is requested

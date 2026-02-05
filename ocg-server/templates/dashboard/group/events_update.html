@@ -2,19 +2,7 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
 {# Events update form -#}
-<div class="space-y-12">
-  {% if event.is_past() -%}
-    <div class="flex items-start space-x-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
-      <div class="svg-icon size-5 bg-amber-900 icon-clock mt-0.5"></div>
-      <div class="space-y-1">
-        <div class="font-medium">This event has already happened.</div>
-        <p class="text-sm/6 text-amber-900/80">
-          Only the banner, logo, photos, descriptions, recording link, tags, and venue fields
-          can be updated. All other details are locked.
-        </p>
-      </div>
-    </div>
-  {%- endif %}
+<div class="space-y-12" data-event-past="{{ event.is_past() }}">
   <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
     <li>
       <button type="button"
@@ -111,11 +99,7 @@
               class="btn-primary w-24 text-nowrap ms-auto"
               hx-put="/dashboard/group/events/{{ event.event_id }}/update"
               hx-ext="no-empty-vals"
-              hx-include="{% if event.is_past() %}
-                            #details-form, #cfs-form, #date-venue-form
-                          {% else %}
-                            #details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                          {% endif %}"
+              hx-include="#details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form"
               hx-target="#dashboard-content"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="#update-event-button, #cancel-button"
@@ -144,15 +128,13 @@
                          name="name"
                          id="name"
                          maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
-                         class="input-primary
-                                {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                         class="input-primary"
                          autocomplete="off"
                          autocorrect="off"
                          autocapitalize="off"
                          spellcheck="false"
                          value="{{ event.name }}"
-                         required
-                         {% if event.is_past() %}disabled{% endif %}>
+                         required>
                 </div>
                 <p class="form-legend">
                   Display name of the event (e.g. Kubernetes Amsterdam Meetup). Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
@@ -168,12 +150,7 @@
                   Event Type <span class="asterisk">*</span>
                 </label>
                 <div class="mt-2 grid grid-cols-1">
-                  <select id="kind_id"
-                          name="kind_id"
-                          class="select-primary
-                                 {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                          required
-                          {% if event.is_past() %}disabled{% endif %}>
+                  <select id="kind_id" name="kind_id" class="select-primary" required>
                     <option value="">Select an event type</option>
                     {% for kind in event_kinds %}
                       <option value="{{ kind.event_kind_id }}"
@@ -191,12 +168,7 @@
                   Category <span class="asterisk">*</span>
                 </label>
                 <div class="mt-2 grid grid-cols-1">
-                  <select id="category_id"
-                          name="category_id"
-                          class="select-primary
-                                 {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                          required
-                          {% if event.is_past() %}disabled{% endif %}>
+                  <select id="category_id" name="category_id" class="select-primary" required>
                     <option value="">Select a category</option>
                     {% for category in categories %}
                       <option value="{{ category.event_category_id }}"
@@ -282,11 +254,9 @@
                    name="capacity"
                    id="capacity"
                    min="1"
-                   class="input-primary
-                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                   class="input-primary"
                    placeholder="100"
-                   {% if let Some(capacity) = &event.capacity %}value="{{ capacity }}"{% endif %}
-                   {% if event.is_past() %}disabled{% endif %}>
+                   {% if let Some(capacity) = &event.capacity %}value="{{ capacity }}"{% endif %}>
           </div>
           <p class="form-legend">
             Maximum number of attendees.
@@ -306,12 +276,10 @@
                    name="toggle_registration_required"
                    value="required"
                    type="checkbox"
-                   class="sr-only peer
-                          {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
+                   class="sr-only peer"
                    {% if let Some(registration_required) = &event.registration_required %}
                      {% if registration_required %}checked{% endif %}
-                   {% endif %}
-                   {% if event.is_past() %}disabled{% endif %}>
+                   {% endif %}>
             <input type="hidden"
                    id="registration_required"
                    name="registration_required"
@@ -331,11 +299,9 @@
             <input type="url"
                    name="meetup_url"
                    id="meetup_url"
-                   class="input-primary
-                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                   class="input-primary"
                    placeholder="https://meetup.com/group/events/123456"
-                   {% if let Some(meetup_url) = &event.meetup_url %}value="{{ meetup_url }}"{% endif %}
-                   {% if event.is_past() %}disabled{% endif %}>
+                   {% if let Some(meetup_url) = &event.meetup_url %}value="{{ meetup_url }}"{% endif %}>
           </div>
           <p class="form-legend">Link to the Meetup.com event page.</p>
         </div>
@@ -379,12 +345,10 @@
                    name="toggle_cfs_enabled"
                    value="enabled"
                    type="checkbox"
-                   class="sr-only peer
-                          {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
+                   class="sr-only peer"
                    {% if let Some(cfs_enabled) = &event.cfs_enabled %}
                      {% if cfs_enabled %}checked{% endif %}
-                   {% endif %}
-                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+                   {% endif %}>
             <input type="hidden"
                    id="cfs_enabled"
                    name="cfs_enabled"
@@ -409,10 +373,8 @@
             <input type="datetime-local"
                    name="cfs_starts_at"
                    id="cfs_starts_at"
-                   class="input-primary
-                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+                   class="input-primary"
+                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
           </div>
           <p class="form-legend">When submissions open.</p>
         </div>
@@ -428,10 +390,8 @@
             <input type="datetime-local"
                    name="cfs_ends_at"
                    id="cfs_ends_at"
-                   class="input-primary
-                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+                   class="input-primary"
+                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
           </div>
           <p class="form-legend">When submissions close.</p>
         </div>
@@ -444,9 +404,7 @@
             <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
           </label>
           <div class="mt-2">
-            <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
-            {% if event.is_past() %}disabled data-locked="true"{% endif %}
-            ></markdown-editor>
+            <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></markdown-editor>
           </div>
           <p class="form-legend">Shown on the event page to invite speakers.</p>
         </div>
@@ -464,6 +422,11 @@
       {# Date and Time section -#}
       <div>
         <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
+        {% if event.is_past() -%}
+          <p class="mt-2 text-xs text-stone-500">
+            Past events can be edited, but dates cannot be moved into the future.
+          </p>
+        {%- endif %}
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {# Timezone -#}
@@ -472,9 +435,7 @@
               Timezone <span class="asterisk">*</span>
             </label>
             <div class="mt-2">
-              <timezone-selector name="timezone" value="{{ event.timezone }}" timezones="{{ timezones|json }}" required
-              {% if event.is_past() %}disabled{% endif %}
-              ></timezone-selector>
+              <timezone-selector name="timezone" value="{{ event.timezone }}" timezones="{{ timezones|json }}" required></timezone-selector>
             </div>
             <p class="form-legend">Timezone for event times (e.g. America/New_York, Europe/Amsterdam).</p>
           </div>
@@ -489,10 +450,8 @@
               <input type="datetime-local"
                      name="starts_at"
                      id="starts_at"
-                     class="input-primary
-                            {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                     value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-                     {% if event.is_past() %}disabled{% endif %}>
+                     class="input-primary"
+                     value="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
             </div>
             <p class="form-legend">When the event starts.</p>
           </div>
@@ -505,10 +464,8 @@
               <input type="datetime-local"
                      name="ends_at"
                      id="ends_at"
-                     class="input-primary
-                            {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
-                     value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-                     {% if event.is_past() %}disabled{% endif %}>
+                     class="input-primary"
+                     value="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
             </div>
             <p class="form-legend">When the event ends.</p>
           </div>
@@ -520,29 +477,17 @@
       {# Venue Information section -#}
       <div id="venue-information-section"
            class="border-t border-stone-900/10 pt-12">
-        {% if event.is_past() %}
-          {{ dashboard::form_title(title = "Venue Information",
-                    description = "Location details for in-person and hybrid events.",
-                    button = "<button id='clear-location-fields'
-                  type='button'
-                  class='btn-primary-outline btn-mini whitespace-nowrap'
-                  aria-label='Clear location details'
-                  disabled>Clear location</button>") -}}
-        {% else %}
-          {{ dashboard::form_title(title = "Venue Information",
-                    description = "Location details for in-person and hybrid events.",
-                    button = "<button id='clear-location-fields'
-                  type='button'
-                  class='btn-primary-outline btn-mini whitespace-nowrap'
-                  aria-label='Clear location details'>Clear location</button>") -}}
-        {% endif %}
+        {{ dashboard::form_title(title = "Venue Information",
+                description = "Location details for in-person and hybrid events.",
+                button = "<button id='clear-location-fields'
+                type='button'
+                class='btn-primary-outline btn-mini whitespace-nowrap'
+                aria-label='Clear location details'>Clear location</button>") -}}
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {# Location search -#}
           <div class="col-span-full">
             <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
-            {% if event.is_past() %}disabled{% endif %}
-
             {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}
 
             {% if let Some(venue_address) = &event.venue_address %}
@@ -596,9 +541,7 @@
             {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
 
             {% if let Some(meeting_hosts) = &event.meeting_hosts %}meeting-hosts="{{ meeting_hosts|json }}"{% endif %}
-            meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
-            {% if event.is_past() %}disabled{% endif %}
-            ></online-event-details>
+            meeting-max-participants="{{ meetings_max_participants|json }}" starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"></online-event-details>
           {% else %}
             <div class="space-y-6">
               <div class="grid grid-cols-1 gap-6">
@@ -610,8 +553,7 @@
                            name="meeting_join_url"
                            class="input-primary"
                            placeholder="https://meet.example.com/123456789"
-                           {% if let Some(meeting_join_url) = &event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}
-                           {% if event.is_past() %}disabled{% endif %}>
+                           {% if let Some(meeting_join_url) = &event.meeting_join_url %}value="{{ meeting_join_url }}"{% endif %}>
                   </div>
                   <p class="form-legend">Teams, Meet, or any other video link.</p>
                 </div>
@@ -663,8 +605,6 @@
       <div class="mt-10">
         <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
         {% if meetings_enabled %}meetings-enabled{% endif %}
-
-        {% if event.is_past() %}disabled{% endif %}
         ></sessions-section>
       </div>
     </div>
@@ -680,9 +620,7 @@
       <div class="border-b border-stone-900/10 pb-12">
         <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
         <div class="mt-5">
-          <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"
-          {% if event.is_past() %}disabled{% endif %}
-          ></user-search-selector>
+          <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
         </div>
       </div>
       {# End Hosts Section -#}
@@ -691,9 +629,7 @@
       <div class="border-b border-stone-900/10 pb-12">
         <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Speakers</div>
         <div class="mt-5">
-          <speakers-selector selected-speakers="{{ event.speakers|json }}" dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."
-          {% if event.is_past() %}disabled{% endif %}
-          ></speakers-selector>
+          <speakers-selector selected-speakers="{{ event.speakers|json }}" dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
         </div>
       </div>
       {# End Event Speakers Section -#}
@@ -702,9 +638,7 @@
       <div class="pb-12">
         <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Sponsors</div>
         <div class="mt-5">
-          <sponsors-section sponsors="{{ sponsors|json }}" selected-sponsors="{{ event.sponsors|json }}" event-id="{{ event.event_id }}"
-          {% if event.is_past() %}disabled{% endif %}
-          ></sponsors-section>
+          <sponsors-section sponsors="{{ sponsors|json }}" selected-sponsors="{{ event.sponsors|json }}" event-id="{{ event.event_id }}"></sponsors-section>
         </div>
       </div>
       {# End Sponsors Section -#}
@@ -778,6 +712,7 @@
   const clearLocationButton = document.getElementById('clear-location-fields');
   const locationSearchField = document.querySelector('location-search-field');
   const approvedSubmissionsEvent = 'event-approved-submissions-updated';
+  const isPastEvent = document.querySelector('[data-event-past]')?.dataset.eventPast === 'true';
 
   const syncSessionsDateRange = () => {
     const sessionsSection = document.querySelector('sessions-section');
@@ -1141,6 +1076,7 @@
           startsInput: startsAtInput,
           endsInput: endsAtInput,
           allowPastDates: true,
+          latestDate: isPastEvent ? new Date() : null,
           onDateSection: () => displayActiveSection('date-venue'),
         });
         const cfsValid = validateCfsWindow({
