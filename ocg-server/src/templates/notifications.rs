@@ -13,7 +13,7 @@ use crate::types::{event::EventSummary, group::GroupSummary, site::Theme};
 pub(crate) struct CfsSubmissionUpdated {
     /// Event summary data.
     pub event: EventSummary,
-    /// Link to the event page.
+    /// Link to the user dashboard submissions page.
     pub link: String,
     /// Submission status name.
     pub status_name: String,

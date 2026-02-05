@@ -24,7 +24,6 @@ use crate::{
         notifications::CfsSubmissionUpdated,
         pagination::{self, NavigationLinks},
     },
-    util::build_event_page_link,
 };
 
 // Pages handlers.
@@ -97,7 +96,7 @@ pub(crate) async fn update(
         db.get_site_settings(),
     )?;
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let link = build_event_page_link(base_url, &event);
+    let link = format!("{base_url}/dashboard/user?tab=submissions");
     let template_data = CfsSubmissionUpdated {
         action_required_message: notification_data.action_required_message,
         event,
@@ -414,7 +413,7 @@ mod tests {
                 action_required_message: update.action_required_message.clone(),
             };
         let site_settings = sample_site_settings();
-        let expected_link = "/test-community/group/def5678/event/ghi9abc".to_string();
+        let expected_link = "/dashboard/user?tab=submissions".to_string();
         let theme_primary_color = site_settings.theme.primary_color.clone();
 
         // Setup database mock
