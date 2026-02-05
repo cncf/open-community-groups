@@ -133,7 +133,8 @@ insert into cfs_submission (
     session_proposal_id,
     status_id,
     action_required_message,
-    reviewed_by
+    reviewed_by,
+    updated_at
 ) values
     (
         :'submissionID',
@@ -142,7 +143,8 @@ insert into cfs_submission (
         :'proposalID',
         'not-reviewed',
         null,
-        null
+        null,
+        '2024-02-01 00:00:00+00'
     ),
     (
         :'submission2ID',
@@ -151,7 +153,8 @@ insert into cfs_submission (
         :'proposal2ID',
         'approved',
         'Looks good',
-        :'reviewerID'
+        :'reviewerID',
+        '2024-01-06 00:00:00+00'
     );
 
 -- Session
@@ -181,6 +184,30 @@ select is(
     jsonb_build_object(
         'submissions', jsonb_build_array(
             jsonb_build_object(
+                'action_required_message', null,
+                'cfs_submission_id', :'submissionID'::uuid,
+                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+                    where cfs_submission_id = :'submissionID'::uuid),
+                'linked_session_id', null,
+                'session_proposal', jsonb_build_object(
+                    'description', 'Talk about Rust',
+                    'duration_minutes', 45,
+                    'session_proposal_id', :'proposalID'::uuid,
+                    'session_proposal_level_id', 'beginner',
+                    'session_proposal_level_name', 'Beginner',
+                    'title', 'Rust Intro'
+                ),
+                'reviewed_by', null,
+                'speaker', jsonb_build_object(
+                    'user_id', :'userID'::uuid,
+                    'username', 'alice'
+                ),
+                'status_id', 'not-reviewed',
+                'status_name', 'Not reviewed',
+                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                    where cfs_submission_id = :'submissionID'::uuid)
+            ),
+            jsonb_build_object(
                 'action_required_message', 'Looks good',
                 'cfs_submission_id', :'submission2ID'::uuid,
                 'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
@@ -204,30 +231,8 @@ select is(
                 ),
                 'status_id', 'approved',
                 'status_name', 'Approved',
-                'updated_at', null
-            ),
-            jsonb_build_object(
-                'action_required_message', null,
-                'cfs_submission_id', :'submissionID'::uuid,
-                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
-                    where cfs_submission_id = :'submissionID'::uuid),
-                'linked_session_id', null,
-                'session_proposal', jsonb_build_object(
-                    'description', 'Talk about Rust',
-                    'duration_minutes', 45,
-                    'session_proposal_id', :'proposalID'::uuid,
-                    'session_proposal_level_id', 'beginner',
-                    'session_proposal_level_name', 'Beginner',
-                    'title', 'Rust Intro'
-                ),
-                'reviewed_by', null,
-                'speaker', jsonb_build_object(
-                    'user_id', :'userID'::uuid,
-                    'username', 'alice'
-                ),
-                'status_id', 'not-reviewed',
-                'status_name', 'Not reviewed',
-                'updated_at', null
+                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                    where cfs_submission_id = :'submission2ID'::uuid)
             )
         ),
         'total', 2
@@ -240,27 +245,31 @@ select is(
     list_event_cfs_submissions(:'eventID'::uuid, '{"limit": 1, "offset": 1}'::jsonb)::jsonb,
     jsonb_build_object(
         'submissions', jsonb_build_array(jsonb_build_object(
-            'action_required_message', null,
-            'cfs_submission_id', :'submissionID'::uuid,
+            'action_required_message', 'Looks good',
+            'cfs_submission_id', :'submission2ID'::uuid,
             'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
-                where cfs_submission_id = :'submissionID'::uuid),
-            'linked_session_id', null,
+                where cfs_submission_id = :'submission2ID'::uuid),
+            'linked_session_id', :'sessionID'::uuid,
             'session_proposal', jsonb_build_object(
-                'description', 'Talk about Rust',
-                'duration_minutes', 45,
-                'session_proposal_id', :'proposalID'::uuid,
-                'session_proposal_level_id', 'beginner',
-                'session_proposal_level_name', 'Beginner',
-                'title', 'Rust Intro'
+                'description', 'Talk about Go',
+                'duration_minutes', 60,
+                'session_proposal_id', :'proposal2ID'::uuid,
+                'session_proposal_level_id', 'intermediate',
+                'session_proposal_level_name', 'Intermediate',
+                'title', 'Go Intro'
             ),
-            'reviewed_by', null,
+            'reviewed_by', jsonb_build_object(
+                'user_id', :'reviewerID'::uuid,
+                'username', 'reviewer'
+            ),
             'speaker', jsonb_build_object(
-                'user_id', :'userID'::uuid,
-                'username', 'alice'
+                'user_id', :'user2ID'::uuid,
+                'username', 'bob'
             ),
-            'status_id', 'not-reviewed',
-            'status_name', 'Not reviewed',
-            'updated_at', null
+            'status_id', 'approved',
+            'status_name', 'Approved',
+            'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                where cfs_submission_id = :'submission2ID'::uuid)
         )),
         'total', 2
     ),

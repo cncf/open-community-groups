@@ -70,7 +70,10 @@ returns json as $$
             left join "user" reviewer on reviewer.user_id = cs.reviewed_by
             left join session s on s.cfs_submission_id = cs.cfs_submission_id
             where cs.event_id = p_event_id
-            order by cs.created_at desc, cs.cfs_submission_id asc
+            order by
+                cs.updated_at desc nulls last,
+                cs.created_at desc,
+                cs.cfs_submission_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),
