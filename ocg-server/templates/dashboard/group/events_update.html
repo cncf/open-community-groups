@@ -740,7 +740,8 @@
     convertDateTimeLocalToISO
   } from '/static/js/common/common.js';
   import {
-    handleHtmxResponse
+    handleHtmxResponse,
+    showErrorAlert
   } from '/static/js/common/alerts.js';
   import {
     validateMeetingRequest,
@@ -920,6 +921,17 @@
     }
 
     return true;
+  }
+
+  function showSessionBoundsError() {
+    const sessionsForm = document.getElementById('sessions-form');
+    const sessionDateInputs = sessionsForm?.querySelectorAll(
+      'input[name^="sessions"][name$="[starts_at]"], input[name^="sessions"][name$="[ends_at]"]',
+    );
+    const invalidInput = sessionDateInputs ?
+      Array.from(sessionDateInputs).find((input) => !!input.validationMessage) :
+      null;
+    showErrorAlert(invalidInput?.validationMessage || 'Session dates must be within the event start and end dates.');
   }
 
   // Add event listeners to tab buttons
@@ -1114,6 +1126,10 @@
             onSessionsSection: () => displayActiveSection('sessions'),
           }) :
           true;
+
+        if (!sessionBoundsValid) {
+          showSessionBoundsError();
+        }
 
         if (
           !isValid ||
