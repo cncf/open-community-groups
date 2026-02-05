@@ -43,8 +43,17 @@ description = "Create reusable session proposals to submit to events.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
-                  <div class="text-stone-700">{{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}</div>
-                  <div class="text-xs text-stone-400">@{{ co_speaker.username }}</div>
+                  <div class="flex items-center space-x-3">
+                    <logo-image
+                    {% if let Some(photo_url) = &co_speaker.photo_url -%}
+                      image-url="{{ photo_url }}"
+                    {% endif -%}
+                    size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
+                    </logo-image>
+                    <div class="font-medium text-stone-900">
+                      {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
+                    </div>
+                  </div>
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">

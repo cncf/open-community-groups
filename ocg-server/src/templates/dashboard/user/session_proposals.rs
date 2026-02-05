@@ -11,6 +11,7 @@ use crate::{
     templates::{
         common::UserSummary,
         dashboard, filters,
+        helpers::user_initials,
         pagination::{self, Pagination, ToRawQuery},
     },
     validation::{
