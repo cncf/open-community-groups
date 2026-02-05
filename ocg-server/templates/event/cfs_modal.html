@@ -67,20 +67,12 @@
                             required>
                       <option value="">Select a proposal</option>
                       {% for proposal in session_proposals -%}
-                        {% let label = format!("{} · {} · {} min", proposal.title, proposal.session_proposal_level_name, proposal.duration_minutes) -%}
-                        {% if proposal.is_submitted -%}
-                          <option value="{{ proposal.session_proposal_id }}" disabled>
-                            {{ label }} (already submitted
-                            {% if let Some(status) = &proposal.submission_status_name %}: {{ status }}{% endif %}
-                            )
-                          </option>
-                        {% else -%}
-                          <option value="{{ proposal.session_proposal_id }}">{{ label }}</option>
-                        {% endif -%}
+                        <option value="{{ proposal.session_proposal_id }}"
+                                {% if proposal.is_submitted -%}disabled{%- endif %}>{{ proposal.title }}</option>
                       {% endfor -%}
                     </select>
                   </div>
-                  <p class="form-legend">Already submitted proposals are disabled.</p>
+                  <p class="form-legend">Proposals already submitted to this event will appear disabled.</p>
                 </div>
 
                 <div class="flex items-center justify-end gap-3">
