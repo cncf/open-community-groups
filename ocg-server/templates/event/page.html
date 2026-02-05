@@ -265,8 +265,8 @@
             {% let cfs_start_tz = cfs_starts_at.with_timezone(event.timezone) -%}
             {% if let Some(cfs_ends_at) = &event.cfs_ends_at -%}
               {% let cfs_end_tz = cfs_ends_at.with_timezone(event.timezone) -%}
-              <div class="text-base text-stone-700 pt-6">
-                <span class="text-sm uppercase text-stone-500 me-2">Submissions open:</span>
+              <div class="text-lg text-stone-700 pt-9">
+                <span class="uppercase text-stone-500 me-2">Submissions open:</span>
                 <span class="font-semibold">{{ cfs_start_tz.format("%b %-e, %l:%M %p") }} - {{ cfs_end_tz.format("%b %-e, %l:%M %p %Z, %G") }}</span>
               </div>
             {% endif -%}
@@ -280,13 +280,15 @@
                       class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center">
                 Submit session proposal
               </button>
-            {% elif event.cfs_is_upcoming() -%}
-              <button id="open-cfs-modal"
-                      type="button"
+            {% else -%}
+              <button type="button"
                       class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center opacity-50 cursor-not-allowed"
+                      {% if event.cfs_is_upcoming() -%}
+                      title="Call for Speakers will open soon"
+                      {% elif event.cfs_is_closed() -%}
+                      title="Call for Speakers is now closed"
+                      {%- endif -%}
                       disabled>Submit session proposal</button>
-            {% elif event.cfs_is_closed() -%}
-              <p class="text-sm text-stone-500">Call for Speakers is now closed.</p>
             {% endif -%}
           </div>
         </div>
