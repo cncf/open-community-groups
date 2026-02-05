@@ -472,7 +472,7 @@ export class ReviewSubmissionModal extends LitWrapper {
 
                     <div>
                       <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Description</div>
-                      <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-500 text-sm/6 markdown">
+                      <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-700 text-sm/6 markdown">
                         ${proposal?.description_html
                           ? unsafeHTML(proposal.description_html)
                           : proposal?.description || ""}

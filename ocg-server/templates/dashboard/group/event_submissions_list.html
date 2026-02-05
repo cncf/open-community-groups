@@ -36,10 +36,17 @@ description = "Review and manage call for speakers submissions.") -}}
           {% for submission in submissions -%}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <td class="px-3 xl:px-5 py-4">
-                <div class="font-medium text-stone-900">
-                  {{ submission.speaker.name.as_deref().unwrap_or(&submission.speaker.username) }}
+                <div class="flex items-center space-x-3">
+                  <logo-image
+                  {% if let Some(photo_url) = &submission.speaker.photo_url -%}
+                    image-url="{{ photo_url }}"
+                  {% endif -%}
+                  size="size-8" placeholder="{{ self::user_initials(submission.speaker.name.as_deref() , submission.speaker.username.as_str()) }}">
+                  </logo-image>
+                  <div class="font-medium text-stone-900">
+                    {{ submission.speaker.name.as_deref().unwrap_or(&submission.speaker.username) }}
+                  </div>
                 </div>
-                <div class="text-xs text-stone-400">@{{ submission.speaker.username }}</div>
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
