@@ -69,6 +69,18 @@ const initializeSubmissionActions = () => {
       return;
     }
     button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      if (!button.id) {
+        button.id = `resubmit-submission-${button.dataset.submissionId}`;
+      }
+      showConfirmAlert(
+        "Before resubmitting, please make sure all required changes have been addressed.<br><br>You can see more details about the information requested by clicking on the info icon next to the badge.",
+        button.id,
+        "Resubmit",
+        "Cancel",
+        true,
+      );
+    });
     button.addEventListener("htmx:afterRequest", (event) => {
       handleHtmxResponse({
         xhr: event.detail?.xhr,

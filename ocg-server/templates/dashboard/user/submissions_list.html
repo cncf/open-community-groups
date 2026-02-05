@@ -80,6 +80,14 @@ description = "Track and manage your call for speakers submissions.") -}}
                             aria-label="This submission has been approved and cannot be removed.">
                       <div class="svg-icon size-3 md:size-4 icon-trash"></div>
                     </button>
+                  {% elif submission.status_id == "rejected" -%}
+                    <button type="button"
+                            class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                            disabled
+                            title="This submission has been rejected and cannot be removed."
+                            aria-label="This submission has been rejected and cannot be removed.">
+                      <div class="svg-icon size-3 md:size-4 icon-trash"></div>
+                    </button>
                   {% else -%}
                     {% if submission.status_id == "information-requested" -%}
                       <button type="button"
@@ -87,6 +95,7 @@ description = "Track and manage your call for speakers submissions.") -}}
                               data-action="resubmit-submission"
                               data-submission-id="{{ submission.cfs_submission_id }}"
                               hx-put="/dashboard/user/submissions/{{ submission.cfs_submission_id }}/resubmit"
+                              hx-trigger="confirmed"
                               hx-indicator="#dashboard-spinner"
                               hx-disabled-elt="this"
                               title="Resubmit">
@@ -105,7 +114,13 @@ description = "Track and manage your call for speakers submissions.") -}}
                         <div class="svg-icon size-3 md:size-4 icon-trash"></div>
                       </button>
                     {% else -%}
-                      <span class="text-xs text-stone-400">Withdrawn</span>
+                      <button type="button"
+                              class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                              disabled
+                              title="This submission has been withdrawn and cannot be removed."
+                              aria-label="This submission has been withdrawn and cannot be removed.">
+                        <div class="svg-icon size-3 md:size-4 icon-trash"></div>
+                      </button>
                     {% endif -%}
                   {% endif -%}
                 </div>
