@@ -447,7 +447,8 @@ export class OnlineEventDetails extends LitWrapper {
               <p class="form-legend">${option.description}</p>
               ${option.reasons && option.reasons.length > 0
                 ? html`
-                    <ul class="list-disc list-inside form-legend mt-2">
+                    <p class="form-legend mt-2">Complete these requirements to enable this option:</p>
+                    <ul class="list-disc list-inside form-legend mt-1">
                       ${option.reasons.map((r) => html`<li>${r}</li>`)}
                     </ul>
                   `
