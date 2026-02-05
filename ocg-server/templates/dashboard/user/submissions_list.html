@@ -53,11 +53,12 @@ description = "Track and manage your call for speakers submissions.") -}}
                   {% if let Some(message) = &submission.action_required_message -%}
                     <span class="relative inline-flex">
                       <button type="button"
-                              class="inline-flex"
+                              class="inline-flex items-center justify-center size-5 border rounded-full {{ badges::submission_status_action_required_icon_button_styles(status_id = submission.status_id) }}"
                               data-action="open-action-required-modal"
                               data-action-required-message="{{ message }}"
                               aria-label="View action required details">
-                        <div class="svg-icon size-5 icon-info bg-stone-500"></div>
+                        <div class="svg-icon size-2.5 icon-info {{ badges::submission_status_action_required_icon_styles(status_id = submission.status_id) }}">
+                        </div>
                       </button>
                     </span>
                   {% endif -%}

@@ -60,6 +60,38 @@
 {% endmacro submission_status_badge -%}
 {# End submission status badge -#}
 
+{# Submission action required icon badge styles -#}
+{% macro submission_status_action_required_icon_button_styles(status_id) -%}
+  {% if status_id == "approved" -%}
+    border-green-800 bg-green-100
+  {% else if status_id == "rejected" -%}
+    border-red-800 bg-red-100
+  {% else if status_id == "information-requested" -%}
+    border-amber-800 bg-amber-100
+  {% else if status_id == "withdrawn" -%}
+    border-stone-500 bg-stone-100
+  {% else -%}
+    border-stone-200 bg-stone-100
+  {% endif -%}
+{% endmacro submission_status_action_required_icon_button_styles -%}
+{# End submission action required icon badge styles -#}
+
+{# Submission action required icon styles -#}
+{% macro submission_status_action_required_icon_styles(status_id) -%}
+  {% if status_id == "approved" -%}
+    bg-green-800
+  {% else if status_id == "rejected" -%}
+    bg-red-800
+  {% else if status_id == "information-requested" -%}
+    bg-amber-800
+  {% else if status_id == "withdrawn" -%}
+    bg-stone-700
+  {% else -%}
+    bg-stone-500
+  {% endif -%}
+{% endmacro submission_status_action_required_icon_styles -%}
+{# End submission action required icon styles -#}
+
 {# Sold out overlay badge -#}
 {% macro sold_out_overlay(remaining_capacity, capacity = None, outer_classes = None, inner_classes = None, label = "Sold out", orientation = "top-left") -%}
   {% let outer_classes_ = outer_classes.unwrap_or("") -%}
