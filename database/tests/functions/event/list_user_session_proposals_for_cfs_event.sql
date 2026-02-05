@@ -118,6 +118,16 @@ select is(
     list_user_session_proposals_for_cfs_event(:'userID'::uuid, :'eventID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
+            'created_at', 1704153600,
+            'description', 'Talk about Rust',
+            'duration_minutes', 45,
+            'is_submitted', false,
+            'session_proposal_id', :'proposalRustID'::uuid,
+            'session_proposal_level_id', 'beginner',
+            'session_proposal_level_name', 'Beginner',
+            'title', 'Rust Intro'
+        ),
+        jsonb_build_object(
             'created_at', 1704240000,
             'description', 'Talk about Zig',
             'duration_minutes', 60,
@@ -128,16 +138,6 @@ select is(
             'submission_status_id', 'not-reviewed',
             'submission_status_name', 'Not reviewed',
             'title', 'Zig Intro'
-        ),
-        jsonb_build_object(
-            'created_at', 1704153600,
-            'description', 'Talk about Rust',
-            'duration_minutes', 45,
-            'is_submitted', false,
-            'session_proposal_id', :'proposalRustID'::uuid,
-            'session_proposal_level_id', 'beginner',
-            'session_proposal_level_name', 'Beginner',
-            'title', 'Rust Intro'
         )
     ),
     'Should list proposals with submission status for event'

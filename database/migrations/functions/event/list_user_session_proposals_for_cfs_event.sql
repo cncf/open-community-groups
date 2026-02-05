@@ -33,7 +33,7 @@ returns json as $$
 
                 'is_submitted', cs.cfs_submission_id is not null
             ))
-            order by coalesce(sp.updated_at, sp.created_at) desc, sp.title asc, sp.session_proposal_id asc
+            order by sp.title asc, sp.session_proposal_id asc
         ),
         '[]'::json
     )
