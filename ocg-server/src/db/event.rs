@@ -7,12 +7,22 @@ use uuid::Uuid;
 
 use crate::{
     db::PgDB,
+    templates::event::SessionProposal,
     types::event::{EventFull, EventSummary},
 };
 
 /// Database trait defining all data access operations for event page.
 #[async_trait]
 pub(crate) trait DBEvent {
+    /// Adds a new CFS submission for an event.
+    async fn add_cfs_submission(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<Uuid>;
+
     /// Adds a user as an attendee of an event.
     async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
 
@@ -49,10 +59,40 @@ pub(crate) trait DBEvent {
 
     /// Removes a user from an event attendees.
     async fn leave_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()>;
+
+    /// Lists session proposals with submission status for a given event.
+    async fn list_user_session_proposals_for_cfs_event(
+        &self,
+        user_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<SessionProposal>>;
 }
 
 #[async_trait]
 impl DBEvent for PgDB {
+    /// [`DBEvent::add_cfs_submission`]
+    #[instrument(skip(self), err)]
+    async fn add_cfs_submission(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<Uuid> {
+        trace!("db: add cfs submission");
+
+        let db = self.pool.get().await?;
+        let id = db
+            .query_one(
+                "select add_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::uuid)::uuid",
+                &[&community_id, &event_id, &user_id, &session_proposal_id],
+            )
+            .await?
+            .get(0);
+
+        Ok(id)
+    }
+
     /// [`DB::attend_event`]
     #[instrument(skip(self), err)]
     async fn attend_event(&self, community_id: Uuid, event_id: Uuid, user_id: Uuid) -> Result<()> {
@@ -181,5 +221,27 @@ impl DBEvent for PgDB {
         .await?;
 
         Ok(())
+    }
+
+    /// [`DBEvent::list_user_session_proposals_for_cfs_event`]
+    #[instrument(skip(self), err)]
+    async fn list_user_session_proposals_for_cfs_event(
+        &self,
+        user_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<SessionProposal>> {
+        trace!("db: list user session proposals for cfs event");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select list_user_session_proposals_for_cfs_event($1::uuid, $2::uuid)::text",
+                &[&user_id, &event_id],
+            )
+            .await?;
+        let proposals_json: String = row.get(0);
+        let proposals: Vec<SessionProposal> = serde_json::from_str(&proposals_json)?;
+
+        Ok(proposals)
     }
 }

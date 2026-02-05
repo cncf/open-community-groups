@@ -7,6 +7,23 @@ use crate::types::{event::EventSummary, group::GroupSummary, site::Theme};
 
 // Emails templates.
 
+/// Template for CFS submission update notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/cfs_submission_updated.html")]
+pub(crate) struct CfsSubmissionUpdated {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the user dashboard submissions page.
+    pub link: String,
+    /// Submission status name.
+    pub status_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Action required message for the speaker.
+    pub action_required_message: Option<String>,
+}
+
 /// Template for community team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/community_team_invitation.html")]

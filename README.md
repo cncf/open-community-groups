@@ -30,6 +30,7 @@
 
 - Host in-person, virtual, or hybrid events
 - Multi-session agendas with per-session timing and speakers
+- Call for speakers and session proposals
 - Featured speakers at event and session levels
 - Track registrations and attendance with QR code check-in
 - Capacity management with sold-out indicators

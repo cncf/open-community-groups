@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{Query, State},
+    extract::{Query, RawQuery, State},
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -15,11 +15,15 @@ use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::error::HandlerError,
+    router::serde_qs_config,
     templates::{
         PageId,
         auth::{self, User, UserDetails},
-        dashboard::user::home::{Content, Page, Tab},
-        dashboard::user::invitations,
+        dashboard::user::{
+            home::{Content, Page, Tab},
+            invitations, session_proposals, submissions,
+        },
+        pagination::NavigationLinks,
     },
 };
 
@@ -33,11 +37,13 @@ pub(crate) async fn page(
     messages: Messages,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
+    RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
 
     // Get selected tab from query
+    let raw_query = raw_query.as_deref().unwrap_or_default();
     let tab: Tab = query.get("tab").unwrap_or(&String::new()).parse().unwrap_or_default();
 
     // Get site settings
@@ -61,6 +67,45 @@ pub(crate) async fn page(
             Content::Invitations(invitations::ListPage {
                 community_invitations,
                 group_invitations,
+            })
+        }
+        Tab::SessionProposals => {
+            let filters: session_proposals::SessionProposalsFilters =
+                serde_qs_config().deserialize_str(raw_query)?;
+            let (session_proposal_levels, session_proposals_output) = tokio::try_join!(
+                db.list_session_proposal_levels(),
+                db.list_user_session_proposals(user.user_id, &filters)
+            )?;
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                session_proposals_output.total,
+                "/dashboard/user?tab=session-proposals",
+                "/dashboard/user/session-proposals",
+            )?;
+            Content::SessionProposals(session_proposals::ListPage {
+                session_proposal_levels,
+                session_proposals: session_proposals_output.session_proposals,
+                navigation_links,
+                total: session_proposals_output.total,
+                limit: filters.limit,
+                offset: filters.offset,
+            })
+        }
+        Tab::Submissions => {
+            let filters: submissions::CfsSubmissionsFilters = serde_qs_config().deserialize_str(raw_query)?;
+            let submissions = db.list_user_cfs_submissions(user.user_id, &filters).await?;
+            let navigation_links = NavigationLinks::from_filters(
+                &filters,
+                submissions.total,
+                "/dashboard/user?tab=submissions",
+                "/dashboard/user/submissions",
+            )?;
+            Content::Submissions(submissions::ListPage {
+                submissions: submissions.submissions,
+                navigation_links,
+                total: submissions.total,
+                limit: filters.limit,
+                offset: filters.offset,
             })
         }
     };
@@ -97,7 +142,7 @@ mod tests {
 
     use crate::{
         db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_NO_CACHE,
-        services::notifications::MockNotificationsManager,
+        services::notifications::MockNotificationsManager, templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
     };
 
     #[tokio::test]
@@ -195,6 +240,68 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri("/dashboard/user?tab=invitations")
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8"),
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL).unwrap(),
+            &HeaderValue::from_static(CACHE_CONTROL_NO_CACHE),
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_page_submissions_tab_success() {
+        // Setup identifiers and data structures
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let submissions_output = crate::templates::dashboard::user::submissions::CfsSubmissionsOutput {
+            submissions: vec![],
+            total: 0,
+        };
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_list_user_cfs_submissions()
+            .times(1)
+            .withf(move |uid, filters| {
+                *uid == user_id
+                    && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                    && filters.offset == Some(0)
+            })
+            .returning(move |_, _| Ok(submissions_output.clone()));
+        db.expect_get_site_settings()
+            .times(1)
+            .returning(|| Ok(sample_site_settings()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/dashboard/user?tab=submissions")
             .header(COOKIE, format!("id={session_id}"))
             .body(Body::empty())
             .unwrap();

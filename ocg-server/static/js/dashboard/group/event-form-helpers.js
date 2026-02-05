@@ -178,6 +178,7 @@ const buildSessionEntries = (sessionsData) => {
         meeting_error: "",
         starts_at: "",
         ends_at: "",
+        cfs_submission_id: toOptionalString(session.cfs_submission_id),
         speakers: normalizeSpeakers(session.speakers),
       });
     });

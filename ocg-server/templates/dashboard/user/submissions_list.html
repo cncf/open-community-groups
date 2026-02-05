@@ -1,0 +1,171 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::form_title(title = "Submissions",
+description = "Track and manage your call for speakers submissions.") -}}
+
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = submissions.len(), total = total, label = "submission") }}
+  </div>
+</div>
+
+<div>
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if submissions.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="5">
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-lg lg:text-xl">You don't have any submissions yet.</div>
+              </div>
+            </td>
+          </tr>
+        {% else -%}
+          {% for submission in submissions -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <td class="px-3 xl:px-5 py-4">
+                <a href="/{{ submission.event.community_name }}/group/{{ submission.event.group_slug }}/event/{{ submission.event.slug }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="font-medium text-stone-900 hover:underline line-clamp-1">
+                  {{ submission.event.name }}
+                </a>
+                <div class="text-xs text-stone-400">{{ submission.event.group_name }}</div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="inline-flex items-center gap-2">
+                  {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+                  {% if let Some(message) = &submission.action_required_message -%}
+                    <span class="relative inline-flex">
+                      <button type="button"
+                              class="inline-flex items-center justify-center size-5 border rounded-full {{ badges::submission_status_action_required_icon_button_styles(status_id = submission.status_id) }}"
+                              data-action="open-action-required-modal"
+                              data-action-required-message="{{ message }}"
+                              aria-label="View action required details">
+                        <div class="svg-icon size-2.5 icon-info {{ badges::submission_status_action_required_icon_styles(status_id = submission.status_id) }}">
+                        </div>
+                      </button>
+                    </span>
+                  {% endif -%}
+                </div>
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(updated_at) = &submission.updated_at -%}
+                  {{ updated_at.format("%b %d, %Y") }}
+                {% else -%}
+                  {{ submission.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  {% if submission.status_id == "information-requested" -%}
+                    <button type="button"
+                            class="btn-tertiary p-2"
+                            data-action="resubmit-submission"
+                            data-submission-id="{{ submission.cfs_submission_id }}"
+                            hx-put="/dashboard/user/submissions/{{ submission.cfs_submission_id }}/resubmit"
+                            hx-trigger="confirmed"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="this"
+                            title="Resubmit">
+                      <div class="svg-icon size-3 md:size-4 icon-refresh"></div>
+                    </button>
+                  {% endif -%}
+                  {% if submission.linked_session_id.is_some() || submission.status_id == "approved" -%}
+                    <button type="button"
+                            class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                            disabled
+                            title="This submission has been approved and cannot be removed."
+                            aria-label="This submission has been approved and cannot be removed.">
+                      <div class="svg-icon size-3 md:size-4 icon-archive"></div>
+                    </button>
+                  {% elif submission.status_id == "rejected" -%}
+                    <button type="button"
+                            class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                            disabled
+                            title="This submission has been rejected and cannot be removed."
+                            aria-label="This submission has been rejected and cannot be removed.">
+                      <div class="svg-icon size-3 md:size-4 icon-archive"></div>
+                    </button>
+                  {% elif submission.status_id == "withdrawn" -%}
+                    <button type="button"
+                            class="btn-tertiary p-2 opacity-50 cursor-not-allowed"
+                            disabled
+                            title="This submission has been withdrawn and cannot be removed."
+                            aria-label="This submission has been withdrawn and cannot be removed.">
+                      <div class="svg-icon size-3 md:size-4 icon-archive"></div>
+                    </button>
+                  {% else -%}
+                    <button type="button"
+                            class="btn-tertiary p-2"
+                            data-action="withdraw-submission"
+                            data-submission-id="{{ submission.cfs_submission_id }}"
+                            hx-put="/dashboard/user/submissions/{{ submission.cfs_submission_id }}/withdraw"
+                            hx-trigger="confirmed"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="this"
+                            title="Withdraw">
+                      <div class="svg-icon size-3 md:size-4 icon-archive"></div>
+                    </button>
+                  {% endif -%}
+                </div>
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total > submissions.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+
+<div id="action-required-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="action-required-modal-title"
+     aria-describedby="action-required-modal-message"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[1000] justify-center items-center w-full md:inset-0 max-h-full flex">
+  <div id="overlay-action-required-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="relative p-4 w-full max-w-2xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="action-required-modal-title"
+            class="text-xl font-semibold text-stone-900">Action required</h3>
+        <button id="close-action-required-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="p-4 md:p-8">
+        <p id="action-required-modal-message"
+           class="text-sm text-stone-700 whitespace-pre-line"></p>
+        <div class="flex justify-end pt-6 border-t border-stone-200 mt-6">
+          <button id="cancel-action-required-modal"
+                  type="button"
+                  class="btn-primary-outline">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

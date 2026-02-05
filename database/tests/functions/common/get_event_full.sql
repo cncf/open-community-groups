@@ -24,6 +24,8 @@ select plan(6);
 \set session1ID '00000000-0000-0000-0000-000000000051'
 \set session2ID '00000000-0000-0000-0000-000000000052'
 \set session3ID '00000000-0000-0000-0000-000000000053'
+\set sessionProposalID '00000000-0000-0000-0000-000000000081'
+\set cfsSubmissionID '00000000-0000-0000-0000-000000000082'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
 \set sponsor2ID '00000000-0000-0000-0000-000000000062'
 \set user1ID '00000000-0000-0000-0000-000000000041'
@@ -191,6 +193,42 @@ insert into event (
     '2024-04-01 10:00:00+00'
 );
 
+-- Session proposal linked to a session
+insert into session_proposal (
+    session_proposal_id,
+    created_at,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id,
+
+    co_speaker_user_id
+) values (
+    :'sessionProposalID',
+    '2024-04-20 10:00:00+00',
+    'Proposal description for breakfast and registration details',
+    make_interval(mins => 45),
+    'beginner',
+    'Breakfast & Registration',
+    :'user1ID',
+
+    :'user2ID'
+);
+
+-- CFS submission linked to the session proposal
+insert into cfs_submission (
+    cfs_submission_id,
+    event_id,
+    session_proposal_id,
+    status_id
+) values (
+    :'cfsSubmissionID',
+    :'eventID',
+    :'sessionProposalID',
+    'approved'
+);
+
 -- Event Host
 insert into event_host (event_id, user_id)
 values (:'eventID', :'user1ID');
@@ -218,6 +256,7 @@ insert into session (
     event_id,
     name,
     description,
+    cfs_submission_id,
     session_kind_id,
     starts_at,
     ends_at,
@@ -232,6 +271,7 @@ insert into session (
     :'eventID',
     'Opening Keynote: The Future of Cloud Native',
     'Welcome keynote exploring the evolving landscape of cloud native technologies',
+    null,
     'in-person',
     '2024-06-15 09:00:00+00',
     '2024-06-15 10:00:00+00',
@@ -247,6 +287,7 @@ insert into session (
     :'eventID',
     'Workshop: Kubernetes Security Best Practices',
     'Hands-on workshop covering security fundamentals for Kubernetes deployments',
+    null,
     'virtual',
     '2024-06-16 10:30:00+00',
     '2024-06-16 11:30:00+00',
@@ -264,6 +305,7 @@ insert into session (
     event_id,
     name,
     description,
+    cfs_submission_id,
     session_kind_id,
     starts_at,
     ends_at,
@@ -277,7 +319,8 @@ insert into session (
     :'session3ID',
     :'eventID',
     'Breakfast & Registration',
-    'Start your day and pick up badges',
+    null,
+    :'cfsSubmissionID',
     'in-person',
     '2024-06-15 08:00:00+00',
     '2024-06-15 08:45:00+00',
@@ -565,7 +608,8 @@ select is(
         "sessions": {
             "2024-06-15": [
                 {
-                    "description": "Start your day and pick up badges",
+                    "cfs_submission_id": "00000000-0000-0000-0000-000000000082",
+                    "description": "Proposal description for breakfast and registration details",
                     "ends_at": 1718441100,
                     "session_id": "00000000-0000-0000-0000-000000000053",
                     "kind": "in-person",
@@ -573,7 +617,36 @@ select is(
                     "starts_at": 1718438400,
                     "meeting_requested": false,
                     "location": "Lobby",
-                    "speakers": []
+                    "speakers": [
+                        {
+                            "user_id": "00000000-0000-0000-0000-000000000041",
+                            "username": "sarah-host",
+                            "bio": "Cloud native community leader",
+                            "name": "Sarah Chen",
+                            "company": "Microsoft",
+                            "facebook_url": "https://facebook.com/sarahchen",
+                            "featured": false,
+                            "linkedin_url": "https://linkedin.com/in/sarahchen",
+                            "photo_url": "https://example.com/sarah.png",
+                            "title": "Principal Engineer",
+                            "twitter_url": "https://twitter.com/sarahchen",
+                            "website_url": "https://sarahchen.dev"
+                        },
+                        {
+                            "user_id": "00000000-0000-0000-0000-000000000042",
+                            "username": "mike-organizer",
+                            "bio": "Event organizer and speaker",
+                            "name": "Mike Rodriguez",
+                            "company": "AWS",
+                            "facebook_url": "https://facebook.com/mikerod",
+                            "featured": false,
+                            "linkedin_url": "https://linkedin.com/in/mikerod",
+                            "photo_url": "https://example.com/mike.png",
+                            "title": "Solutions Architect",
+                            "twitter_url": "https://twitter.com/mikerod",
+                            "website_url": "https://mikerodriguez.io"
+                        }
+                    ]
                 },
                 {
                     "description": "Welcome keynote exploring the evolving landscape of cloud native technologies",

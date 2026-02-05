@@ -1,0 +1,128 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::form_title(title = "Session proposals",
+description = "Create reusable session proposals to submit to events.") -}}
+
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
+  </div>
+  <div>
+    <button id="open-session-proposal-modal" type="button" class="btn-primary">New proposal</button>
+  </div>
+</div>
+
+<div>
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Co-speaker</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if session_proposals.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="5">
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-lg lg:text-xl">You don't have any session proposals yet.</div>
+              </div>
+            </td>
+          </tr>
+        {% else -%}
+          {% for session_proposal in session_proposals -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
+                  <div class="flex items-center space-x-3">
+                    <logo-image
+                    {% if let Some(photo_url) = &co_speaker.photo_url -%}
+                      image-url="{{ photo_url }}"
+                    {% endif -%}
+                    size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
+                    </logo-image>
+                    <div class="font-medium text-stone-900">
+                      {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
+                    </div>
+                  </div>
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(updated_at) = &session_proposal.updated_at -%}
+                  {{ updated_at.format("%b %d, %Y") }}
+                {% else -%}
+                  {{ session_proposal.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                {% if session_proposal.linked_session_id.is_some() -%}
+                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
+                  <button type="button"
+                          class="btn-tertiary p-2
+                                 {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
+                          data-action="edit-session-proposal"
+                          {% if edit_disabled %}
+                            disabled title="Linked proposals cannot be edited"
+                          {% else %}
+                            title="Edit proposal"
+                          {% endif %}>
+                    <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
+                  </button>
+                  <button type="button"
+                          class="btn-tertiary p-2"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
+                          data-action="view-session-proposal"
+                          title="View proposal">
+                    <div class="svg-icon size-3 md:size-4 icon-eye"></div>
+                  </button>
+                  {% set delete_disabled = session_proposal.has_submissions
+                                    || session_proposal.linked_session_id.is_some() -%}
+                  <button type="button"
+                          class="btn-tertiary p-2
+                                 {% if delete_disabled %}opacity-50 cursor-not-allowed{% endif %}"
+                          data-action="delete-session-proposal"
+                          data-session-proposal-id="{{ session_proposal.session_proposal_id }}"
+                          hx-delete="/dashboard/user/session-proposals/{{ session_proposal.session_proposal_id }}"
+                          hx-trigger="confirmed"
+                          hx-indicator="#dashboard-spinner"
+                          hx-disabled-elt="this"
+                          {% if delete_disabled %}
+                            disabled title="Submitted proposals cannot be deleted"
+                          {% else %}
+                            title="Delete proposal"
+                          {% endif %}>
+                    <div class="svg-icon size-3 md:size-4 icon-trash"></div>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total > session_proposals.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+
+{# Session proposal modal -#}
+<session-proposal-modal id="session-proposal-modal-component" session-proposal-levels='{{ session_proposal_levels|json }}' title-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" duration-max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"></session-proposal-modal>

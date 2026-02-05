@@ -25,6 +25,7 @@ pub(crate) mod home;
 pub(crate) mod members;
 pub(crate) mod settings;
 pub(crate) mod sponsors;
+pub(crate) mod submissions;
 pub(crate) mod team;
 
 /// Sets the selected community and auto-selects the first group in session.

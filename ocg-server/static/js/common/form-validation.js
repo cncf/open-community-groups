@@ -368,6 +368,82 @@ export const validateEventDates = ({
 };
 
 /**
+ * Clears CFS custom validity state.
+ * @param {Object} params - Inputs to clear
+ * @param {HTMLInputElement|null} params.cfsStartsInput - CFS start input
+ * @param {HTMLInputElement|null} params.cfsEndsInput - CFS end input
+ */
+export const clearCfsWindowValidity = ({ cfsStartsInput, cfsEndsInput } = {}) => {
+  if (cfsStartsInput) cfsStartsInput.setCustomValidity("");
+  if (cfsEndsInput) cfsEndsInput.setCustomValidity("");
+};
+
+/**
+ * Validates CFS date window against the event start date.
+ * @param {Object} params - Validation params
+ * @param {HTMLInputElement|null} params.cfsEnabledInput - CFS enabled input
+ * @param {HTMLInputElement|null} params.cfsStartsInput - CFS start input
+ * @param {HTMLInputElement|null} params.cfsEndsInput - CFS end input
+ * @param {HTMLInputElement|null} params.eventStartsInput - Event start input
+ * @param {Function} [params.onDateSection] - Callback to show date tab
+ * @param {Function} [params.onCfsSection] - Callback to show CFS tab
+ * @returns {boolean} True when valid
+ */
+export const validateCfsWindow = ({
+  cfsEnabledInput,
+  cfsStartsInput,
+  cfsEndsInput,
+  eventStartsInput,
+  onDateSection,
+  onCfsSection,
+} = {}) => {
+  clearCfsWindowValidity({ cfsStartsInput, cfsEndsInput });
+
+  // Treat any non-true value as disabled to avoid accidental validation errors.
+  const enabledValue = String(cfsEnabledInput?.value || "")
+    .trim()
+    .toLowerCase();
+  if (enabledValue !== "true") {
+    return true;
+  }
+
+  const eventStartsAt = parseLocalDate(eventStartsInput?.value);
+  const cfsStartsAt = parseLocalDate(cfsStartsInput?.value);
+  const cfsEndsAt = parseLocalDate(cfsEndsInput?.value);
+
+  // CFS window depends on the event start date to enforce DB constraints.
+  if (!eventStartsAt) {
+    return reportWithSection(
+      eventStartsInput || cfsStartsInput,
+      "Event start date is required when CFS is enabled.",
+      onDateSection,
+    );
+  }
+
+  if (cfsStartsAt && cfsEndsAt && cfsEndsAt <= cfsStartsAt) {
+    return reportWithSection(cfsEndsInput, "CFS close date must be after CFS open date.", onCfsSection);
+  }
+
+  if (cfsStartsAt && cfsStartsAt >= eventStartsAt) {
+    return reportWithSection(
+      cfsStartsInput,
+      "CFS open date must be before the event start date.",
+      onCfsSection,
+    );
+  }
+
+  if (cfsEndsAt && cfsEndsAt >= eventStartsAt) {
+    return reportWithSection(
+      cfsEndsInput,
+      "CFS close date must be before the event start date.",
+      onCfsSection,
+    );
+  }
+
+  return true;
+};
+
+/**
  * Builds a map of session date inputs grouped by index.
  * @param {HTMLElement|Document} root - Root element to query
  * @returns {Object} Map keyed by session index
@@ -389,6 +465,20 @@ const buildSessionDateMap = (root) => {
 };
 
 /**
+ * Clears session date custom validity state.
+ * @param {Object} params - Validation params
+ * @param {HTMLElement|Document} [params.sessionForm=document] - Root element for inputs
+ * @returns {void}
+ */
+export const clearSessionDateBoundsValidity = ({ sessionForm = document } = {}) => {
+  const sessionsMap = buildSessionDateMap(sessionForm);
+  Object.values(sessionsMap).forEach(({ starts_at, ends_at }) => {
+    if (starts_at) starts_at.setCustomValidity("");
+    if (ends_at) ends_at.setCustomValidity("");
+  });
+};
+
+/**
  * Validates that session dates fall within event bounds and are ordered.
  * @param {Object} params - Validation params
  * @param {Date|null} params.eventStartsAt - Event start date
@@ -407,10 +497,7 @@ export const validateSessionDateBounds = ({
   const sessionEntries = Object.values(sessionsMap);
   if (sessionEntries.length === 0) return true;
 
-  sessionEntries.forEach(({ starts_at, ends_at }) => {
-    if (starts_at) starts_at.setCustomValidity("");
-    if (ends_at) ends_at.setCustomValidity("");
-  });
+  clearSessionDateBoundsValidity({ sessionForm });
 
   for (const session of sessionEntries) {
     const startDate = parseLocalDate(session.starts_at?.value);

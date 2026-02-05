@@ -1,0 +1,101 @@
+{% import "macros/ui.html" as ui -%}
+
+<div id="cfs-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="cfs-modal-title"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 max-h-full flex z-[1000]">
+  <div id="overlay-cfs-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="relative p-4 w-full max-w-2xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      {# Modal header -#}
+      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+        <h3 id="cfs-modal-title" class="text-xl font-semibold text-stone-900">Submit a proposal</h3>
+        <button id="close-cfs-modal"
+                type="button"
+                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      {# Modal body -#}
+      <div class="p-4 md:p-6 space-y-6">
+        {% if let Some(notice) = &notice -%}
+          <div class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
+            <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"></div>
+            <div class="text-sm">{{ notice }}</div>
+          </div>
+        {% endif -%}
+
+        {% if !user.logged_in -%}
+          <div class="space-y-3">
+            <p class="text-base text-stone-600">You need to sign in to submit a proposal for this event.</p>
+            {% let next_url = "/".to_owned() + &event.community_name + "/group/" + &event.group_slug + "/event/" + &event.slug -%}
+            <div class="flex justify-center mt-9">
+              <a class="btn-primary-outline-anchor inline-flex items-center"
+                 href="/log-in?next_url={{ next_url }}">
+                <div class="svg-icon size-3 me-2 icon-user-plus"></div>
+                Sign in
+              </a>
+            </div>
+          </div>
+        {% else -%}
+          {% if session_proposals.is_empty() -%}
+            <div class="space-y-3">
+              <p class="text-base text-stone-600">
+                It looks like you haven't created any session proposals yet.
+                <br>
+                <br>
+                You can manage your session proposals from the dashboard
+              </p>
+              <div class="flex justify-center mt-9">
+                <a class="btn-primary-outline-anchor inline-flex items-center"
+                   href="/dashboard/user?tab=session-proposals">
+                  <div class="svg-icon size-3 me-2 icon-presentation"></div>
+                  Manage session proposals
+                </a>
+              </div>
+            </div>
+          {% else -%}
+            <form id="cfs-submission-form"
+                  hx-post="/{{ event.community_name }}/event/{{ event.event_id }}/cfs-submissions"
+                  hx-target="#cfs-modal-root"
+                  hx-swap="innerHTML"
+                  hx-indicator="#cfs-submit-spinner"
+                  hx-disabled-elt="#cfs-submit-button">
+              <div class="space-y-4">
+                <div>
+                  <label for="session_proposal_id" class="form-label">Session proposal</label>
+                  <div class="mt-2">
+                    <select id="session_proposal_id"
+                            name="session_proposal_id"
+                            class="select-primary"
+                            required>
+                      <option value="">Select a proposal</option>
+                      {% for proposal in session_proposals -%}
+                        <option value="{{ proposal.session_proposal_id }}"
+                                {% if proposal.is_submitted -%}disabled{%- endif %}>{{ proposal.title }}</option>
+                      {% endfor -%}
+                    </select>
+                  </div>
+                  <p class="form-legend">Proposals already submitted to this event will appear disabled.</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                  <button id="cancel-cfs-modal" type="button" class="btn-primary-outline">Cancel</button>
+                  <button id="cfs-submit-button"
+                          type="submit"
+                          class="btn-primary inline-flex items-center">
+                    <span>Submit proposal</span>
+                    <span id="cfs-submit-spinner" class="ms-2 hidden hx-spinner">{{ ui::spinner(size = "size-4") -}}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          {% endif -%}
+        {% endif -%}
+      </div>
+    </div>
+  </div>
+</div>

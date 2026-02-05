@@ -1,0 +1,88 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/badges.html" as badges -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::form_title(title = "Submissions",
+description = "Review and manage call for speakers submissions.") -}}
+
+<div id="submissions-refresh"
+     hx-get="{{ refresh_url }}"
+     hx-trigger="refresh-event-submissions from:body"
+     hx-target="#submissions-content"
+     hx-swap="innerHTML"></div>
+
+<div class="mt-10">
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Speaker</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-24"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if submissions.is_empty() -%}
+          <tr class="bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="5">
+              <div class="flex flex-col items-center justify-center min-h-[125px]">
+                <div class="text-lg lg:text-xl">No submissions have been received yet.</div>
+              </div>
+            </td>
+          </tr>
+        {% else -%}
+          {% for submission in submissions -%}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              <td class="px-3 xl:px-5 py-4">
+                <div class="flex items-center space-x-3">
+                  <logo-image
+                  {% if let Some(photo_url) = &submission.speaker.photo_url -%}
+                    image-url="{{ photo_url }}"
+                  {% endif -%}
+                  size="size-8" placeholder="{{ self::user_initials(submission.speaker.name.as_deref() , submission.speaker.username.as_str()) }}">
+                  </logo-image>
+                  <div class="font-medium text-stone-900">
+                    {{ submission.speaker.name.as_deref().unwrap_or(&submission.speaker.username) }}
+                  </div>
+                </div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+              </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                {% if let Some(updated_at) = &submission.updated_at -%}
+                  {{ updated_at.format("%b %d, %Y") }}
+                {% else -%}
+                  {{ submission.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              <td class="px-3 xl:px-5 py-4">
+                <button type="button"
+                        class="btn-tertiary p-2"
+                        data-action="open-cfs-submission-modal"
+                        data-submission='{{ submission|json }}'
+                        data-proposal-description-html='{% if let Some(description) = &submission.session_proposal.description %}
+                                                          {{ description|md_to_html|json }}
+                                                        {% else %}
+                                                          ""
+                                                        {% endif %}'
+                        title="Review submission">
+                  <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
+                </button>
+              </td>
+            </tr>
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total > submissions.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#submissions-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}

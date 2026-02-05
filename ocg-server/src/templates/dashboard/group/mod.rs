@@ -7,4 +7,5 @@ pub(crate) mod home;
 pub(crate) mod members;
 pub(crate) mod settings;
 pub(crate) mod sponsors;
+pub(crate) mod submissions;
 pub(crate) mod team;

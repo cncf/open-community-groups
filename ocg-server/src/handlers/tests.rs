@@ -29,7 +29,7 @@ use crate::{
         notifications::{DynNotificationsManager, MockNotificationsManager},
     },
     templates::{
-        common::User as TemplateUser,
+        common::{User as TemplateUser, UserSummary},
         dashboard::{
             community::{
                 analytics::{AttendeesStats, CommunityStats, EventsStats, GroupsStats, MembersStats},
@@ -40,15 +40,27 @@ use crate::{
             group::{
                 analytics::{GroupAttendeesStats, GroupEventsStats, GroupMembersStats, GroupStats},
                 attendees::Attendee,
-                events::{Event as GroupEventForm, GroupEvents},
+                events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
                 home::UserGroupsByCommunity,
                 members::GroupMember,
                 settings::GroupUpdate,
                 sponsors::Sponsor,
+                submissions::{
+                    CfsSessionProposal as GroupCfsSessionProposal, CfsSubmission as GroupCfsSubmission,
+                },
                 team::GroupTeamMember,
             },
-            user::invitations::{CommunityTeamInvitation, GroupTeamInvitation},
+            user::{
+                invitations::{CommunityTeamInvitation, GroupTeamInvitation},
+                session_proposals::{
+                    SessionProposal as UserSessionProposal, SessionProposalLevel as UserSessionProposalLevel,
+                },
+                submissions::{
+                    CfsSessionProposal as UserCfsSessionProposal, CfsSubmission as UserCfsSubmission,
+                },
+            },
         },
+        event::SessionProposal as EventSessionProposal,
     },
     types::{
         community::{CommunityFull, CommunitySummary},
@@ -261,6 +273,25 @@ pub(crate) fn sample_event_category() -> EventCategory {
     }
 }
 
+/// Sample CFS session proposal used in event handlers tests.
+pub(crate) fn sample_event_cfs_session_proposal(session_proposal_id: Uuid) -> EventSessionProposal {
+    EventSessionProposal {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        description: "Talk description".to_string(),
+        duration_minutes: 45,
+        is_submitted: false,
+        session_proposal_id,
+        session_proposal_level_id: "intermediate".to_string(),
+        session_proposal_level_name: "Intermediate".to_string(),
+        title: "Sample Proposal".to_string(),
+
+        co_speaker: None,
+        submission_status_id: None,
+        submission_status_name: None,
+        updated_at: None,
+    }
+}
+
 /// Sample event form payload submitted from the dashboard.
 pub(crate) fn sample_event_form() -> GroupEventForm {
     GroupEventForm {
@@ -379,6 +410,49 @@ pub(crate) fn sample_group_category() -> GroupCategory {
         name: "Meetup".to_string(),
         normalized_name: "meetup".to_string(),
         order: Some(1),
+    }
+}
+
+/// Sample CFS session proposal used in group dashboard tests.
+pub(crate) fn sample_group_cfs_session_proposal(session_proposal_id: Uuid) -> GroupCfsSessionProposal {
+    GroupCfsSessionProposal {
+        session_proposal_id,
+        title: "Proposal title".to_string(),
+
+        co_speaker: None,
+        description: Some("Proposal description".to_string()),
+        duration_minutes: Some(45),
+        session_proposal_level_id: Some("intermediate".to_string()),
+        session_proposal_level_name: Some("Intermediate".to_string()),
+    }
+}
+
+/// Sample CFS submission used in group dashboard tests.
+pub(crate) fn sample_group_cfs_submission(
+    cfs_submission_id: Uuid,
+    session_proposal_id: Uuid,
+    speaker_id: Uuid,
+) -> GroupCfsSubmission {
+    GroupCfsSubmission {
+        cfs_submission_id,
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        session_proposal: sample_group_cfs_session_proposal(session_proposal_id),
+        speaker: sample_user_summary(speaker_id, "speaker"),
+        status_id: "submitted".to_string(),
+        status_name: "Submitted".to_string(),
+
+        action_required_message: None,
+        linked_session_id: None,
+        reviewed_by: None,
+        updated_at: None,
+    }
+}
+
+/// Sample CFS submission status used in group dashboard tests.
+pub(crate) fn sample_group_cfs_submission_status(status_id: &str, display_name: &str) -> CfsSubmissionStatus {
+    CfsSubmissionStatus {
+        cfs_submission_status_id: status_id.to_string(),
+        display_name: display_name.to_string(),
     }
 }
 
@@ -592,6 +666,32 @@ pub(crate) fn sample_session_kind_summary() -> SessionKindSummary {
     }
 }
 
+/// Sample session proposal used in user session proposals tests.
+pub(crate) fn sample_session_proposal(session_proposal_id: Uuid) -> UserSessionProposal {
+    UserSessionProposal {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        description: "Session about Rust".to_string(),
+        duration_minutes: 45,
+        has_submissions: false,
+        session_proposal_id,
+        session_proposal_level_id: "beginner".to_string(),
+        session_proposal_level_name: "Beginner".to_string(),
+        title: "Rust 101".to_string(),
+
+        co_speaker: None,
+        linked_session_id: None,
+        updated_at: None,
+    }
+}
+
+/// Sample session proposal levels used in user session proposals tests.
+pub(crate) fn sample_session_proposal_levels() -> Vec<UserSessionProposalLevel> {
+    vec![UserSessionProposalLevel {
+        display_name: "Beginner".to_string(),
+        session_proposal_level_id: "beginner".to_string(),
+    }]
+}
+
 /// Sample session record used across tests.
 pub(crate) fn sample_session_record(
     session_id: session::Id,
@@ -714,6 +814,41 @@ pub(crate) fn sample_template_user_with_id(user_id: Uuid) -> TemplateUser {
     }
 }
 
+/// Sample CFS session proposal used in user dashboard tests.
+pub(crate) fn sample_user_cfs_session_proposal(session_proposal_id: Uuid) -> UserCfsSessionProposal {
+    UserCfsSessionProposal {
+        session_proposal_id,
+        title: "Proposal title".to_string(),
+
+        co_speaker: Some(sample_user_summary(Uuid::new_v4(), "co-speaker")),
+        description: Some("Proposal description".to_string()),
+        duration_minutes: Some(30),
+        session_proposal_level_id: Some("beginner".to_string()),
+        session_proposal_level_name: Some("Beginner".to_string()),
+    }
+}
+
+/// Sample CFS submission used in user dashboard tests.
+pub(crate) fn sample_user_cfs_submission(
+    cfs_submission_id: Uuid,
+    event_id: Uuid,
+    group_id: Uuid,
+    session_proposal_id: Uuid,
+) -> UserCfsSubmission {
+    UserCfsSubmission {
+        cfs_submission_id,
+        created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        event: sample_event_summary(event_id, group_id),
+        session_proposal: sample_user_cfs_session_proposal(session_proposal_id),
+        status_id: "submitted".to_string(),
+        status_name: "Submitted".to_string(),
+
+        action_required_message: None,
+        linked_session_id: None,
+        updated_at: None,
+    }
+}
+
 /// Sample user communities used in dashboard community tests.
 pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<CommunitySummary> {
     vec![CommunitySummary {
@@ -742,6 +877,19 @@ pub(crate) fn sample_user_groups_by_community(
         },
         groups: vec![sample_group_minimal(group_id)],
     }]
+}
+
+/// Sample user summary used across dashboard tests.
+pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary {
+    UserSummary {
+        user_id,
+        username: username.to_string(),
+
+        company: None,
+        name: None,
+        photo_url: None,
+        title: None,
+    }
 }
 
 /// Builder for test router configuration.

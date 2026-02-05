@@ -8,6 +8,8 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use chrono::Duration;
+use garde::Validate;
+use serde::Deserialize;
 use serde_json::{json, to_value};
 use tracing::instrument;
 use uuid::Uuid;
@@ -16,12 +18,12 @@ use crate::{
     auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::prepare_headers,
+    handlers::{extractors::ValidatedForm, prepare_headers},
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
         auth::User,
-        event::{CheckInPage, Page},
+        event::{CfsModal, CheckInPage, Page},
         notifications::EventWelcome,
     },
     util::{build_event_calendar_attachment, build_event_page_link},
@@ -87,6 +89,38 @@ pub(crate) async fn check_in_page(
         user: User::from_session(auth_session).await?,
         user_is_attendee,
         user_is_checked_in,
+    };
+
+    Ok(Html(template.render()?))
+}
+
+/// Handler that renders the CFS submission modal.
+#[instrument(skip_all, err)]
+pub(crate) async fn cfs_modal(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user_id = auth_session.user.as_ref().map(|user| user.user_id);
+    let user = User::from_session(auth_session).await?;
+
+    // Get event details and user's session proposals
+    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let session_proposals = if let Some(user_id) = user_id {
+        db.list_user_session_proposals_for_cfs_event(user_id, event_id)
+            .await?
+    } else {
+        vec![]
+    };
+
+    // Prepare template
+    let template = CfsModal {
+        event,
+        session_proposals,
+        user,
+        notice: None,
     };
 
     Ok(Html(template.render()?))
@@ -186,6 +220,50 @@ pub(crate) async fn leave_event(
     db.leave_event(community_id, event_id, user.user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Handler for submitting a CFS proposal to an event.
+#[instrument(skip_all, err)]
+pub(crate) async fn submit_cfs_submission(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    ValidatedForm(input): ValidatedForm<CfsSubmissionInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user_id = auth_session
+        .user
+        .as_ref()
+        .map(|user| user.user_id)
+        .expect("user to be logged in");
+    let user = User::from_session(auth_session).await?;
+
+    // Add CFS submission to database
+    db.add_cfs_submission(community_id, event_id, user_id, input.session_proposal_id)
+        .await?;
+
+    // Prepare template
+    let (event, session_proposals) = tokio::try_join!(
+        db.get_event_summary_by_id(community_id, event_id),
+        db.list_user_session_proposals_for_cfs_event(user_id, event_id),
+    )?;
+    let template = CfsModal {
+        event,
+        session_proposals,
+        user,
+        notice: Some("Submission received. We'll review it soon.".to_string()),
+    };
+
+    Ok(Html(template.render()?))
+}
+
+// Types.
+
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct CfsSubmissionInput {
+    #[garde(skip)]
+    session_proposal_id: Uuid,
 }
 
 // Tests.
@@ -367,6 +445,153 @@ mod tests {
             Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
         );
         assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cfs_modal_success_anonymous() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let event_summary = sample_event_summary(event_id, group_id);
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/test-community/event/{event_id}/cfs-modal"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cfs_modal_success_authenticated() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let session_proposal_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let event_summary = sample_event_summary(event_id, group_id);
+        let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_user_session_proposals_for_cfs_event()
+            .times(1)
+            .withf(move |uid, eid| *uid == user_id && *eid == event_id)
+            .returning(move |_, _| Ok(proposals.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/test-community/event/{event_id}/cfs-modal"))
+            .header(COOKIE, format!("id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_cfs_modal_db_error() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Err(anyhow!("db error")));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("GET")
+            .uri(format!("/test-community/event/{event_id}/cfs-modal"))
+            .body(Body::empty())
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(bytes.is_empty());
     }
 
     #[tokio::test]
@@ -593,6 +818,139 @@ mod tests {
 
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert!(bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_submit_cfs_submission_success() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let group_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let session_proposal_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let event_summary = sample_event_summary(event_id, group_id);
+        let proposals = vec![sample_event_cfs_session_proposal(session_proposal_id)];
+        let form_data = format!("session_proposal_id={session_proposal_id}");
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_add_cfs_submission()
+            .times(1)
+            .withf(move |cid, eid, uid, proposal_id| {
+                *cid == community_id
+                    && *eid == event_id
+                    && *uid == user_id
+                    && *proposal_id == session_proposal_id
+            })
+            .returning(|_, _, _, _| Ok(Uuid::new_v4()));
+        db.expect_get_event_summary_by_id()
+            .times(1)
+            .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+            .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_user_session_proposals_for_cfs_event()
+            .times(1)
+            .withf(move |uid, eid| *uid == user_id && *eid == event_id)
+            .returning(move |_, _| Ok(proposals.clone()));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/test-community/event/{event_id}/cfs-submissions"))
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(form_data))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::OK);
+        assert_eq!(
+            parts.headers.get(CONTENT_TYPE).unwrap(),
+            &HeaderValue::from_static("text/html; charset=utf-8")
+        );
+        assert_eq!(
+            parts.headers.get(CACHE_CONTROL),
+            Some(&HeaderValue::from_static(CACHE_CONTROL_NO_CACHE))
+        );
+        assert!(!bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_submit_cfs_submission_db_error() {
+        // Setup identifiers and data structures
+        let community_id = Uuid::new_v4();
+        let event_id = Uuid::new_v4();
+        let session_id = session::Id::default();
+        let user_id = Uuid::new_v4();
+        let session_proposal_id = Uuid::new_v4();
+        let auth_hash = "hash".to_string();
+        let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+        let form_data = format!("session_proposal_id={session_proposal_id}");
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_get_session()
+            .times(1)
+            .withf(move |id| *id == session_id)
+            .returning(move |_| Ok(Some(session_record.clone())));
+        db.expect_get_user_by_id()
+            .times(1)
+            .withf(move |id| *id == user_id)
+            .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        db.expect_get_community_id_by_name()
+            .times(1)
+            .withf(|name| name == "test-community")
+            .returning(move |_| Ok(Some(community_id)));
+        db.expect_add_cfs_submission()
+            .times(1)
+            .withf(move |cid, eid, uid, proposal_id| {
+                *cid == community_id
+                    && *eid == event_id
+                    && *uid == user_id
+                    && *proposal_id == session_proposal_id
+            })
+            .returning(|_, _, _, _| Err(anyhow!("db error")));
+
+        // Setup notifications manager mock
+        let nm = MockNotificationsManager::new();
+
+        // Setup router and send request
+        let router = TestRouterBuilder::new(db, nm).build().await;
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!("/test-community/event/{event_id}/cfs-submissions"))
+            .header(COOKIE, format!("id={session_id}"))
+            .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .body(Body::from(form_data))
+            .unwrap();
+        let response = router.oneshot(request).await.unwrap();
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+        // Check response matches expectations
+        assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
         assert!(bytes.is_empty());
     }
 }

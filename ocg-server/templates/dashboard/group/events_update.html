@@ -15,47 +15,72 @@
       </div>
     </div>
   {%- endif %}
-  <ul class="flex flex-wrap space-x-2 -mb-px text-xs lg:text-sm font-medium text-center border-b border-stone-900/10 w-full mb-10">
+  <ul class="flex flex-wrap space-x-1 lg:space-x-2 -mb-px font-medium text-center border-b border-stone-900/10 w-full mb-10">
     <li>
       <button type="button"
               data-section="details"
               data-active="true"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-        <div class="svg-icon size-3 me-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 active data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-event bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        Details
+        <span class="text-[10px] lg:text-xs">Details</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="date-venue"
               data-active="false"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-        <div class="svg-icon size-3 me-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-calendar bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="hidden lg:inline">Date & Venue</span>
-        <span class="lg:hidden">Schedule</span>
+        <span class="text-[10px] lg:text-xs hidden lg:inline">Date & Venue</span>
+        <span class="text-[10px] lg:hidden">Schedule</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="hosts-sponsors"
               data-active="false"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-        <div class="svg-icon size-3 me-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-user-plus bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        <span class="hidden xl:inline">Hosts & Speakers</span>
-        <span class="xl:hidden">Hosts</span>
+        <span class="text-[10px] lg:text-xs hidden xl:inline">Hosts & Speakers</span>
+        <span class="text-[10px] lg:text-xs xl:hidden">Hosts</span>
       </button>
     </li>
     <li>
       <button type="button"
               data-section="sessions"
               data-active="false"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-        <div class="svg-icon size-3 me-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-presentation bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        Sessions
+        <span class="text-[10px] lg:text-xs">Sessions</span>
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="cfs"
+              data-active="false"
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-megaphone bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="text-[10px] lg:text-xs">CFS</span>
+      </button>
+    </li>
+    <li>
+      <button type="button"
+              data-section="submissions"
+              data-active="false"
+              hx-get="/dashboard/group/events/{{ event.event_id }}/submissions"
+              hx-trigger="click once"
+              hx-target="#submissions-content"
+              hx-swap="innerHTML"
+              hx-indicator="#submissions-loading"
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-submission bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="text-[10px] lg:text-xs">Submissions</span>
       </button>
     </li>
     <li>
@@ -67,13 +92,38 @@
               hx-target="#attendees-content"
               hx-swap="innerHTML"
               hx-indicator="#attendees-loading"
-              class="w-20 lg:w-28 xl:w-40 cursor-pointer inline-flex items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group text-nowrap">
-        <div class="svg-icon size-3 me-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+              class="px-3 xl:w-[120px] xl:px-0 cursor-pointer inline-flex flex-col items-center justify-center p-4 pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 group">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-attendees bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
         </div>
-        Attendees
+        <span class="text-[10px] lg:text-xs">Attendees</span>
       </button>
     </li>
   </ul>
+
+  <div id="pending-changes-alert" class="hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
+      <div class="flex min-w-0 flex-1 items-start gap-3">
+        <div class="svg-icon size-5 bg-primary-700 icon-clock mt-0.5 shrink-0"></div>
+        <p class="text-sm/6">You have pending changes. If you leave without saving, changes will be lost.</p>
+      </div>
+      <button id="update-event-button"
+              type="button"
+              class="btn-primary w-24 text-nowrap ms-auto"
+              hx-put="/dashboard/group/events/{{ event.event_id }}/update"
+              hx-ext="no-empty-vals"
+              hx-include="{% if event.is_past() %}
+                            #details-form, #cfs-form, #date-venue-form
+                          {% else %}
+                            #details-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
+                          {% endif %}"
+              hx-target="#dashboard-content"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="#update-event-button, #cancel-button"
+              hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested], [name=toggle_cfs_enabled]">
+        Save
+      </button>
+    </div>
+  </div>
 
   <div>
     <div class="space-y-12">
@@ -274,8 +324,6 @@
         </div>
         {# End Registration required -#}
 
-        <div class="col-span-3"></div>
-
         {# Meetup URL -#}
         <div class="col-span-full lg:col-span-3">
           <label for="meetup_url" class="form-label">Meetup.com URL</label>
@@ -316,6 +364,98 @@
   </form>
 </div>
 {# End Event Details Tab -#}
+
+{# CFS Tab -#}
+<div data-content="cfs" class="hidden">
+  <form id="cfs-form">
+    <div class="pb-12">
+      <p class="mt-1 text-sm/6 text-stone-500">Collect session proposals ahead of the event.</p>
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Enable CFS toggle -#}
+        <div class="col-span-full lg:col-span-3">
+          <label class="inline-flex items-center cursor-pointer">
+            <input id="toggle_cfs_enabled"
+                   name="toggle_cfs_enabled"
+                   value="enabled"
+                   type="checkbox"
+                   class="sr-only peer
+                          {% if event.is_past() %}cursor-not-allowed opacity-75{% endif %}"
+                   {% if let Some(cfs_enabled) = &event.cfs_enabled %}
+                     {% if cfs_enabled %}checked{% endif %}
+                   {% endif %}
+                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+            <input type="hidden"
+                   id="cfs_enabled"
+                   name="cfs_enabled"
+                   value="{%- if let Some(cfs_enabled) = &event.cfs_enabled -%} {{ cfs_enabled }} {%- else -%} false {%- endif -%}">
+            <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+            </div>
+            <span class="ms-3 text-sm font-medium text-stone-900">Enable Call for Speakers</span>
+          </label>
+          <p class="form-legend">Allow speakers to submit session proposals.</p>
+        </div>
+        {# End Enable CFS toggle -#}
+
+        <div class="col-span-3"></div>
+
+        {# Opens at -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="cfs_starts_at" class="form-label">
+            Opens at
+            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
+          </label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   name="cfs_starts_at"
+                   id="cfs_starts_at"
+                   class="input-primary
+                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                   value="{{ event.cfs_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+          </div>
+          <p class="form-legend">When submissions open.</p>
+        </div>
+        {# End Opens at -#}
+
+        {# Closes at -#}
+        <div class="col-span-full lg:col-span-3">
+          <label for="cfs_ends_at" class="form-label">
+            Closes at
+            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
+          </label>
+          <div class="mt-2">
+            <input type="datetime-local"
+                   name="cfs_ends_at"
+                   id="cfs_ends_at"
+                   class="input-primary
+                          {% if event.is_past() %}cursor-not-allowed bg-stone-100 text-stone-500{% endif %}"
+                   value="{{ event.cfs_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
+                   {% if event.is_past() %}disabled data-locked="true"{% endif %}>
+          </div>
+          <p class="form-legend">When submissions close.</p>
+        </div>
+        {# End Closes at -#}
+
+        {# CFS description -#}
+        <div class="col-span-full">
+          <label for="cfs_description" class="form-label">
+            CFS description
+            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
+          </label>
+          <div class="mt-2">
+            <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+            {% if event.is_past() %}disabled data-locked="true"{% endif %}
+            ></markdown-editor>
+          </div>
+          <p class="form-legend">Shown on the event page to invite speakers.</p>
+        </div>
+        {# End CFS description -#}
+      </div>
+    </div>
+  </form>
+</div>
+{# End CFS Tab -#}
 
 {# Date & Venue Tab -#}
 <div data-content="date-venue" class="hidden">
@@ -500,12 +640,28 @@
 </div>
 {# End Date & Venue Tab -#}
 
+{# Submissions Tab -#}
+<div data-content="submissions" class="hidden">
+  <div id="submissions-content">
+    {# Loading placeholder -#}
+    <div id="submissions-loading"
+         class="flex items-center justify-center py-12">
+      <div class="flex flex-col items-center space-y-4">
+        {{ ui::spinner(size = "size-10") -}}
+        <div class="text-sm text-stone-500">Loading submissions...</div>
+      </div>
+    </div>
+  </div>
+  <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
+</div>
+{# End Submissions Tab -#}
+
 {# Sessions Tab -#}
 <div data-content="sessions" class="hidden">
   <form id="sessions-form">
     <div class="pb-12">
       <div class="mt-10">
-        <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+        <sessions-section event-id="{{ event.event_id }}" sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
         {% if meetings_enabled %}meetings-enabled{% endif %}
 
         {% if event.is_past() %}disabled{% endif %}
@@ -574,36 +730,14 @@
 </div>
 
 {# Form buttons -#}
-<div class="flex items-center justify-end space-x-5 mt-6">
-  {# Cancel button -#}
-  <div>
-    <button id="cancel-button"
-            type="button"
-            hx-get="/dashboard/group?tab=events"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline w-24">Cancel</button>
-  </div>
-  {# End cancel button -#}
-
-  {# Save button -#}
-  <div>
-    <button id="update-event-button"
-            type="button"
-            class="btn-primary w-24 text-nowrap"
-            hx-put="/dashboard/group/events/{{ event.event_id }}/update"
-            hx-ext="no-empty-vals"
-            hx-include="{% if event.is_past() %}
-                          #details-form, #date-venue-form
-                        {% else %}
-                          #details-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
-                        {% endif %}"
-            hx-target="#dashboard-content"
-            hx-indicator="#dashboard-spinner"
-            hx-disabled-elt="#update-event-button, #cancel-button"
-            hx-exclude="[name=toggle_registration_required], [name=toggle_meeting_requested]">Update</button>
-  </div>
-  {# End save button -#}
+<div class="flex items-center justify-end mt-6">
+  <button id="cancel-button"
+          type="button"
+          hx-get="/dashboard/group?tab=events"
+          hx-trigger="click, confirmed"
+          hx-target="body"
+          hx-indicator="#dashboard-spinner"
+          class="btn-primary-outline w-24">Cancel</button>
 </div>
 {# End form buttons -#}
 </div>
@@ -615,7 +749,8 @@
     convertDateTimeLocalToISO
   } from '/static/js/common/common.js';
   import {
-    handleHtmxResponse
+    handleHtmxResponse,
+    showErrorAlert
   } from '/static/js/common/alerts.js';
   import {
     validateMeetingRequest,
@@ -625,10 +760,16 @@
     updateSectionVisibility
   } from '/static/js/dashboard/group/meeting-validations.js';
   import {
+    clearCfsWindowValidity,
+    clearSessionDateBoundsValidity,
     parseLocalDate,
+    validateCfsWindow,
     validateEventDates,
     validateSessionDateBounds
   } from '/static/js/common/form-validation.js';
+  import {
+    initializePendingChangesAlert
+  } from '/static/js/dashboard/group/pending-changes-alert.js';
 
   const updateEventButton = document.getElementById('update-event-button');
   const cancelButton = document.getElementById('cancel-button');
@@ -636,11 +777,85 @@
   const onlineEventDetails = document.getElementById('online-event-details');
   const clearLocationButton = document.getElementById('clear-location-fields');
   const locationSearchField = document.querySelector('location-search-field');
+  const approvedSubmissionsEvent = 'event-approved-submissions-updated';
+
+  const syncSessionsDateRange = () => {
+    const sessionsSection = document.querySelector('sessions-section');
+    if (!sessionsSection) {
+      return;
+    }
+
+    const startsAtValue = document.getElementById('starts_at')?.value || '';
+    const endsAtValue = document.getElementById('ends_at')?.value || '';
+    sessionsSection.eventStartsAt = startsAtValue;
+    sessionsSection.eventEndsAt = endsAtValue;
+    sessionsSection.requestUpdate?.();
+  };
   const showLocationMapIfNeeded = () => {
     if (locationSearchField && typeof locationSearchField.showMapPreview === 'function') {
       locationSearchField.showMapPreview();
     }
   };
+
+  const getApprovedSubmissions = (sessionsSection) => {
+    if (Array.isArray(sessionsSection.approvedSubmissions)) {
+      return [...sessionsSection.approvedSubmissions];
+    }
+
+    const payload = sessionsSection.getAttribute('approved-submissions');
+    if (!payload) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(payload);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  };
+
+  const sortApprovedSubmissions = (submissions) => submissions.sort((a, b) => {
+    const leftTitle = String(a?.title || '').toLowerCase();
+    const rightTitle = String(b?.title || '').toLowerCase();
+    if (leftTitle !== rightTitle) {
+      return leftTitle.localeCompare(rightTitle);
+    }
+
+    const leftId = String(a?.cfs_submission_id || '');
+    const rightId = String(b?.cfs_submission_id || '');
+    return leftId.localeCompare(rightId);
+  });
+
+  if (document.body && document.body.dataset.approvedSubmissionsSyncBound !== 'true') {
+    document.body.dataset.approvedSubmissionsSyncBound = 'true';
+    document.body.addEventListener(approvedSubmissionsEvent, (event) => {
+      const sessionsSection = document.querySelector('sessions-section');
+      if (!sessionsSection) {
+        return;
+      }
+
+      const detail = event?.detail || {};
+      const submissionId = String(detail.cfsSubmissionId || detail.submission?.cfs_submission_id || '');
+      if (!submissionId) {
+        return;
+      }
+
+      const currentSubmissions = getApprovedSubmissions(sessionsSection);
+      const nextSubmissions = currentSubmissions.filter(
+        (submission) => String(submission?.cfs_submission_id || '') !== submissionId,
+      );
+
+      if (detail.approved && detail.submission) {
+        nextSubmissions.push(detail.submission);
+      }
+
+      const sortedSubmissions = sortApprovedSubmissions(nextSubmissions);
+      sessionsSection.approvedSubmissions = sortedSubmissions;
+      sessionsSection.setAttribute('approved-submissions', JSON.stringify(sortedSubmissions));
+      sessionsSection.requestUpdate?.();
+    });
+  }
 
   if (clearLocationButton) {
     clearLocationButton.addEventListener('click', () => {
@@ -675,11 +890,22 @@
     if (sectionName === 'date-venue') {
       showLocationMapIfNeeded();
     }
+
+    if (sectionName === 'sessions') {
+      syncSessionsDateRange();
+    }
   }
 
   // Validate multiple forms
   function validateEventForms() {
-    const formSections = ["details", "date-venue", "sessions", "hosts-sponsors"];
+    const formSections = ["details", "date-venue", "hosts-sponsors", "sessions", "cfs"];
+    clearCfsWindowValidity({
+      cfsStartsInput: cfsStartsAtInput,
+      cfsEndsInput: cfsEndsAtInput,
+    });
+    clearSessionDateBoundsValidity({
+      sessionForm: document.getElementById('sessions-form'),
+    });
 
 
     for (const formName of formSections) {
@@ -715,6 +941,17 @@
     return true;
   }
 
+  function showSessionBoundsError() {
+    const sessionsForm = document.getElementById('sessions-form');
+    const sessionDateInputs = sessionsForm?.querySelectorAll(
+      'input[name^="sessions"][name$="[starts_at]"], input[name^="sessions"][name$="[ends_at]"]',
+    );
+    const invalidInput = sessionDateInputs ?
+      Array.from(sessionDateInputs).find((input) => !!input.validationMessage) :
+      null;
+    showErrorAlert(invalidInput?.validationMessage || 'Session dates must be within the event start and end dates.');
+  }
+
   // Add event listeners to tab buttons
   const sectionsBtn = document.querySelectorAll('[data-section]');
   sectionsBtn.forEach((btn) => {
@@ -729,6 +966,45 @@
   if (toggleRegistrationRequired) {
     toggleRegistrationRequired.addEventListener('change', () => {
       document.getElementById('registration_required').value = toggleRegistrationRequired.checked;
+    });
+  }
+
+  const toggleCfsEnabled = document.getElementById('toggle_cfs_enabled');
+  const cfsEnabledInput = document.getElementById('cfs_enabled');
+  const cfsStartsAtInput = document.getElementById('cfs_starts_at');
+  const cfsEndsAtInput = document.getElementById('cfs_ends_at');
+  const cfsDescriptionInput = document.getElementById('cfs_description');
+
+  const updateCfsFields = (enabled) => {
+    const isLocked = (field) => field?.dataset?.locked === 'true';
+    if (cfsEnabledInput) {
+      cfsEnabledInput.value = enabled ? 'true' : 'false';
+    }
+    if (cfsStartsAtInput) {
+      const locked = isLocked(cfsStartsAtInput);
+      cfsStartsAtInput.disabled = locked || !enabled;
+      cfsStartsAtInput.required = enabled && !locked;
+    }
+    if (cfsEndsAtInput) {
+      const locked = isLocked(cfsEndsAtInput);
+      cfsEndsAtInput.disabled = locked || !enabled;
+      cfsEndsAtInput.required = enabled && !locked;
+    }
+    if (cfsDescriptionInput) {
+      const locked = isLocked(cfsDescriptionInput);
+      cfsDescriptionInput.disabled = locked || !enabled;
+      cfsDescriptionInput.required = enabled && !locked;
+    }
+  };
+
+  if (toggleCfsEnabled && !toggleCfsEnabled.disabled) {
+    updateCfsFields(toggleCfsEnabled.checked);
+    toggleCfsEnabled.addEventListener('change', () => {
+      clearCfsWindowValidity({
+        cfsStartsInput: cfsStartsAtInput,
+        cfsEndsInput: cfsEndsAtInput,
+      });
+      updateCfsFields(toggleCfsEnabled.checked);
     });
   }
 
@@ -782,11 +1058,39 @@
   if (startsAtInput) {
     startsAtInput.addEventListener('change', () => {
       startsAtInput.setCustomValidity('');
+      clearCfsWindowValidity({
+        cfsStartsInput: cfsStartsAtInput,
+        cfsEndsInput: cfsEndsAtInput,
+      });
+      clearSessionDateBoundsValidity({
+        sessionForm: document.getElementById('sessions-form'),
+      });
+      syncSessionsDateRange();
     });
   }
   if (endsAtInput) {
     endsAtInput.addEventListener('change', () => {
       endsAtInput.setCustomValidity('');
+      clearCfsWindowValidity({
+        cfsStartsInput: cfsStartsAtInput,
+        cfsEndsInput: cfsEndsAtInput,
+      });
+      clearSessionDateBoundsValidity({
+        sessionForm: document.getElementById('sessions-form'),
+      });
+      syncSessionsDateRange();
+    });
+  }
+
+  if (cfsStartsAtInput) {
+    cfsStartsAtInput.addEventListener('change', () => {
+      cfsStartsAtInput.setCustomValidity('');
+    });
+  }
+
+  if (cfsEndsAtInput) {
+    cfsEndsAtInput.addEventListener('change', () => {
+      cfsEndsAtInput.setCustomValidity('');
     });
   }
 
@@ -817,6 +1121,14 @@
     });
   }
 
+  initializePendingChangesAlert({
+    alertId: 'pending-changes-alert',
+    formIds: ['details-form', 'date-venue-form', 'hosts-sponsors-form', 'sessions-form', 'cfs-form'],
+    cancelButtonId: 'cancel-button',
+    confirmMessage: 'You have pending changes. If you continue, unsaved changes will be lost.',
+    confirmText: 'Leave',
+  });
+
   if (updateEventButton) {
     // Validation before form submission
     updateEventButton.addEventListener('htmx:beforeRequest', (e) => {
@@ -831,8 +1143,16 @@
           allowPastDates: true,
           onDateSection: () => displayActiveSection('date-venue'),
         });
+        const cfsValid = validateCfsWindow({
+          cfsEnabledInput,
+          cfsStartsInput: cfsStartsAtInput,
+          cfsEndsInput: cfsEndsAtInput,
+          eventStartsInput: startsAtInput,
+          onDateSection: () => displayActiveSection('date-venue'),
+          onCfsSection: () => displayActiveSection('cfs'),
+        });
 
-        if (!datesValid) {
+        if (!datesValid || !cfsValid) {
           e.preventDefault();
           e.stopImmediatePropagation();
           return false;
@@ -856,9 +1176,14 @@
           }) :
           true;
 
+        if (!sessionBoundsValid) {
+          showSessionBoundsError();
+        }
+
         if (
           !isValid ||
           !datesValid ||
+          !cfsValid ||
           !onlineValid ||
           !sessionsOnlineValid ||
           !sessionBoundsValid
@@ -883,7 +1208,7 @@
 
         // Convert datetime-local values to proper ISO format for PostgreSQL
         Object.keys(e.detail.parameters).forEach((key) => {
-          const isEventDate = key.match(/^(starts_at|ends_at)$/);
+          const isEventDate = key.match(/^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/);
           const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
           if (isEventDate || isSessionDate) {
             if (e.detail.parameters[key]) {

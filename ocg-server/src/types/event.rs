@@ -162,6 +162,16 @@ pub struct EventFull {
     pub banner_url: Option<String>,
     /// Maximum capacity for the event.
     pub capacity: Option<i32>,
+    /// Call for speakers description.
+    pub cfs_description: Option<String>,
+    /// Whether call for speakers is enabled.
+    pub cfs_enabled: Option<bool>,
+    /// Call for speakers end time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub cfs_ends_at: Option<DateTime<Utc>>,
+    /// Call for speakers start time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub cfs_starts_at: Option<DateTime<Utc>>,
     /// Brief event description.
     pub description_short: Option<String>,
     /// Event end time in UTC.
@@ -224,6 +234,42 @@ pub struct EventFull {
 }
 
 impl EventFull {
+    /// Check if call for speakers has closed.
+    pub fn cfs_is_closed(&self) -> bool {
+        if self.cfs_enabled.unwrap_or(false)
+            && let Some(ends_at) = self.cfs_ends_at
+        {
+            return Utc::now() >= ends_at;
+        }
+        false
+    }
+
+    /// Check if call for speakers is enabled.
+    pub fn cfs_is_enabled(&self) -> bool {
+        self.cfs_enabled.unwrap_or(false)
+    }
+
+    /// Check if call for speakers is open.
+    pub fn cfs_is_open(&self) -> bool {
+        if self.cfs_enabled.unwrap_or(false)
+            && let (Some(starts_at), Some(ends_at)) = (self.cfs_starts_at, self.cfs_ends_at)
+        {
+            let now = Utc::now();
+            return now >= starts_at && now < ends_at;
+        }
+        false
+    }
+
+    /// Check if call for speakers has not started yet.
+    pub fn cfs_is_upcoming(&self) -> bool {
+        if self.cfs_enabled.unwrap_or(false)
+            && let Some(starts_at) = self.cfs_starts_at
+        {
+            return Utc::now() < starts_at;
+        }
+        false
+    }
+
     /// Check if the event is currently live.
     pub fn is_live(&self) -> bool {
         match (self.starts_at, self.ends_at) {
@@ -399,6 +445,8 @@ pub struct Session {
     #[serde(with = "chrono::serde::ts_seconds")]
     pub starts_at: DateTime<Utc>,
 
+    /// Linked CFS submission identifier.
+    pub cfs_submission_id: Option<Uuid>,
     /// Full session description.
     pub description: Option<String>,
     /// Session end time in UTC.
@@ -477,6 +525,78 @@ mod tests {
     use chrono::{Duration, Utc};
 
     use super::*;
+
+    #[test]
+    fn event_full_cfs_is_enabled_returns_false_when_flag_missing() {
+        let event = EventFull {
+            cfs_enabled: None,
+            ..Default::default()
+        };
+        assert!(!event.cfs_is_enabled());
+    }
+
+    #[test]
+    fn event_full_cfs_is_enabled_returns_true_when_flag_set() {
+        let event = EventFull {
+            cfs_enabled: Some(true),
+            ..Default::default()
+        };
+        assert!(event.cfs_is_enabled());
+    }
+
+    #[test]
+    fn event_full_cfs_is_open_returns_false_when_disabled() {
+        let now = Utc::now();
+        let event = EventFull {
+            cfs_enabled: Some(false),
+            cfs_starts_at: Some(now - Duration::hours(1)),
+            cfs_ends_at: Some(now + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.cfs_is_open());
+    }
+
+    #[test]
+    fn event_full_cfs_is_open_returns_true_when_within_window() {
+        let now = Utc::now();
+        let event = EventFull {
+            cfs_enabled: Some(true),
+            cfs_starts_at: Some(now - Duration::hours(1)),
+            cfs_ends_at: Some(now + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.cfs_is_open());
+    }
+
+    #[test]
+    fn event_full_cfs_is_closed_returns_true_when_window_ended() {
+        let event = EventFull {
+            cfs_enabled: Some(true),
+            cfs_ends_at: Some(Utc::now() - Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.cfs_is_closed());
+    }
+
+    #[test]
+    fn event_full_cfs_is_upcoming_returns_false_when_started() {
+        let event = EventFull {
+            cfs_enabled: Some(true),
+            cfs_starts_at: Some(Utc::now() - Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(!event.cfs_is_upcoming());
+    }
+
+    #[test]
+    fn event_full_cfs_is_upcoming_returns_true_when_start_in_future() {
+        let event = EventFull {
+            cfs_enabled: Some(true),
+            cfs_starts_at: Some(Utc::now() + Duration::hours(1)),
+            ..Default::default()
+        };
+        assert!(event.cfs_is_upcoming());
+    }
 
     #[test]
     fn event_full_is_live_returns_false_when_ends_at_is_none() {

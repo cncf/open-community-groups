@@ -25,8 +25,9 @@ use crate::{
     config::EmailConfig,
     db::DynDB,
     templates::notifications::{
-        CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom, EventPublished,
-        EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome, SpeakerWelcome,
+        CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
+        EventPublished, EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
+        SpeakerWelcome,
     },
 };
 
@@ -200,6 +201,12 @@ impl Worker {
             NotificationKind::CommunityTeamInvitation => {
                 let subject = "You have been invited to join a community team".to_string();
                 let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::CfsSubmissionUpdated => {
+                let template: CfsSubmissionUpdated = serde_json::from_value(template_data)?;
+                let subject = format!("Submission update: {}", template.event.name);
                 let body = template.render()?;
                 (subject, body)
             }
@@ -398,6 +405,8 @@ pub(crate) struct Notification {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum NotificationKind {
+    /// Notification for a CFS submission update.
+    CfsSubmissionUpdated,
     /// Notification for a community team invitation.
     CommunityTeamInvitation,
     /// Notification for email verification.

@@ -97,7 +97,7 @@ pub(crate) async fn setup(
     // Setup router
     // Routes that require login are placed before the login_required middleware layer.
     let mut router = Router::new()
-        // Protected community-prefixed routes
+        // Community-prefixed protected routes
         .route(
             "/{community}/check-in/{event_id}",
             get(event::check_in_page).post(event::check_in),
@@ -108,6 +108,10 @@ pub(crate) async fn setup(
             get(event::attendance_status),
         )
         .route("/{community}/event/{event_id}/leave", delete(event::leave_event))
+        .route(
+            "/{community}/event/{event_id}/cfs-submissions",
+            post(event::submit_cfs_submission),
+        )
         .route("/{community}/group/{group_id}/join", post(group::join_group))
         .route("/{community}/group/{group_id}/leave", delete(group::leave_group))
         .route(
@@ -155,6 +159,7 @@ pub(crate) async fn setup(
         // Community-prefixed public routes
         .route("/{community}", get(community::page))
         .route("/{community}/group/{group_slug}", get(group::page))
+        .route("/{community}/event/{event_id}/cfs-modal", get(event::cfs_modal))
         .route(
             "/{community}/group/{group_slug}/event/{event_slug}",
             get(event::page),
@@ -298,6 +303,14 @@ fn setup_group_dashboard_router(state: State) -> Router<State> {
             put(dashboard::group::events::publish),
         )
         .route(
+            "/events/{event_id}/submissions",
+            get(dashboard::group::submissions::list_page),
+        )
+        .route(
+            "/events/{event_id}/submissions/{cfs_submission_id}",
+            put(dashboard::group::submissions::update),
+        )
+        .route(
             "/events/{event_id}/unpublish",
             put(dashboard::group::events::unpublish),
         )
@@ -372,6 +385,25 @@ fn setup_user_dashboard_router() -> Router<State> {
             "/invitations/group/{group_id}/reject",
             put(dashboard::user::invitations::reject_group_team_invitation),
         )
+        .route(
+            "/session-proposals",
+            get(dashboard::user::session_proposals::list_page).post(dashboard::user::session_proposals::add),
+        )
+        .route(
+            "/session-proposals/{session_proposal_id}",
+            put(dashboard::user::session_proposals::update)
+                .delete(dashboard::user::session_proposals::delete),
+        )
+        .route("/submissions", get(dashboard::user::submissions::list_page))
+        .route(
+            "/submissions/{cfs_submission_id}/resubmit",
+            put(dashboard::user::submissions::resubmit),
+        )
+        .route(
+            "/submissions/{cfs_submission_id}/withdraw",
+            put(dashboard::user::submissions::withdraw),
+        )
+        .route("/users/search", get(dashboard::common::search_user))
 }
 
 /// Health check endpoint handler.
@@ -419,7 +451,7 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-/// Returns the standard `serde_qs` configuration for query string parsing.
+/// Returns the `serde_qs` configuration for query string parsing.
 pub(crate) fn serde_qs_config() -> serde_qs::Config {
     serde_qs::Config::new(3, false)
 }
