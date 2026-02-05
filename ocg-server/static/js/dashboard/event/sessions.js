@@ -5,6 +5,7 @@ import {
   convertTimestampToDateTimeLocalInTz,
   lockBodyScroll,
   unlockBodyScroll,
+  computeUserInitials,
 } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/logo-image.js";
@@ -450,6 +451,66 @@ export class SessionsSection extends LitWrapper {
   }
 
   /**
+   * Renders session cards as a grid.
+   * @param {Array} sessions - Sessions to render
+   * @param {string} [gridClass] - Grid classes for wrapper spacing
+   * @returns {import('lit').TemplateResult}
+   * @private
+   */
+  _renderSessionsGrid(sessions, gridClass = "grid gap-3 pt-3") {
+    return html`
+      <div class="${gridClass}">
+        ${repeat(
+          sessions,
+          (s) => s.id,
+          (s) => html`
+            <session-card
+              .session=${s}
+              .sessionKinds=${this.sessionKinds}
+              .disabled=${this.disabled}
+              @edit=${() => this._openEditModal(s)}
+              @delete=${() => this._deleteSession(s)}
+            ></session-card>
+          `,
+        )}
+      </div>
+    `;
+  }
+
+  /**
+   * Renders a day section with sessions and add button.
+   * @param {object} options - Day section options
+   * @param {string} options.day - Day key in YYYY-MM-DD format
+   * @param {Array} options.sessions - Sessions for the day
+   * @param {string} [options.containerClass] - Wrapper spacing classes
+   * @param {string} [options.buttonClass] - Additional button classes
+   * @param {import('lit').TemplateResult} options.emptyContent - Empty state content
+   * @returns {import('lit').TemplateResult}
+   * @private
+   */
+  _renderDaySection({ day, sessions, containerClass = "", buttonClass = "", emptyContent }) {
+    return html`
+      <div class="${containerClass}">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(day)}</h3>
+          <button
+            type="button"
+            class="btn-primary-outline btn-mini ${buttonClass} ${this.disabled
+              ? "opacity-60 cursor-not-allowed"
+              : ""}"
+            @click=${() => this._openAddModal(day)}
+            ?disabled=${this.disabled}
+          >
+            Add session
+          </button>
+        </div>
+
+        ${sessions.length === 0 ? emptyContent : this._renderSessionsGrid(sessions)}
+      </div>
+    `;
+  }
+
+  /**
    * Renders the single-day view.
    * @returns {import('lit').TemplateResult}
    * @private
@@ -464,41 +525,13 @@ export class SessionsSection extends LitWrapper {
           Manage sessions for your event. Sessions are displayed sorted by start time.
         </div>
 
-        <div class="pt-4">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(eventDate)}</h3>
-            <button
-              type="button"
-              class="btn-primary-outline btn-mini shrink-0 ${this.disabled
-                ? "opacity-60 cursor-not-allowed"
-                : ""}"
-              @click=${() => this._openAddModal(eventDate)}
-              ?disabled=${this.disabled}
-            >
-              Add session
-            </button>
-          </div>
-
-          ${sortedSessions.length === 0
-            ? this._renderEmptyState()
-            : html`
-                <div class="grid gap-3">
-                  ${repeat(
-                    sortedSessions,
-                    (s) => s.id,
-                    (s) => html`
-                      <session-card
-                        .session=${s}
-                        .sessionKinds=${this.sessionKinds}
-                        .disabled=${this.disabled}
-                        @edit=${() => this._openEditModal(s)}
-                        @delete=${() => this._deleteSession(s)}
-                      ></session-card>
-                    `,
-                  )}
-                </div>
-              `}
-        </div>
+        ${this._renderDaySection({
+          day: eventDate,
+          sessions: sortedSessions,
+          containerClass: "pt-4",
+          buttonClass: "shrink-0",
+          emptyContent: this._renderEmptyState(),
+        })}
       </div>
     `;
   }
@@ -519,44 +552,15 @@ export class SessionsSection extends LitWrapper {
           Manage sessions for each day of your event. Sessions are displayed sorted by start time.
         </div>
 
-        ${days.map(
-          (day) => html`
-            <div class="pt-8 first:pt-0">
-              <div class="flex items-center justify-between mb-6">
-                <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(day)}</h3>
-                <button
-                  type="button"
-                  class="btn-primary-outline btn-mini ${this.disabled ? "opacity-60 cursor-not-allowed" : ""}"
-                  @click=${() => this._openAddModal(day)}
-                  ?disabled=${this.disabled}
-                >
-                  Add session
-                </button>
-              </div>
-
-              ${sessionsByDay.get(day)?.length > 0
-                ? html`
-                    <div class="grid gap-3">
-                      ${repeat(
-                        sessionsByDay.get(day),
-                        (s) => s.id,
-                        (s) => html`
-                          <session-card
-                            .session=${s}
-                            .sessionKinds=${this.sessionKinds}
-                            .disabled=${this.disabled}
-                            @edit=${() => this._openEditModal(s)}
-                            @delete=${() => this._deleteSession(s)}
-                          ></session-card>
-                        `,
-                      )}
-                    </div>
-                  `
-                : html`
-                    <div class="text-sm text-stone-400 italic py-4">No sessions scheduled for this day.</div>
-                  `}
-            </div>
-          `,
+        ${days.map((day) =>
+          this._renderDaySection({
+            day,
+            sessions: sessionsByDay.get(day) || [],
+            containerClass: "pt-8 first:pt-0",
+            emptyContent: html`
+              <div class="text-sm text-stone-400 italic py-4">No sessions scheduled for this day.</div>
+            `,
+          }),
         )}
         ${outOfRangeSessions.length > 0
           ? html`
@@ -565,21 +569,7 @@ export class SessionsSection extends LitWrapper {
                 <p class="text-sm text-stone-500 mt-1">
                   These sessions do not match the event date range. You can edit or delete them.
                 </p>
-                <div class="grid gap-3 mt-4">
-                  ${repeat(
-                    outOfRangeSessions,
-                    (s) => s.id,
-                    (s) => html`
-                      <session-card
-                        .session=${s}
-                        .sessionKinds=${this.sessionKinds}
-                        .disabled=${this.disabled}
-                        @edit=${() => this._openEditModal(s)}
-                        @delete=${() => this._deleteSession(s)}
-                      ></session-card>
-                    `,
-                  )}
-                </div>
+                ${this._renderSessionsGrid(outOfRangeSessions, "grid gap-3 mt-4")}
               </div>
             `
           : ""}
@@ -768,6 +758,43 @@ class SessionCard extends LitWrapper {
     this.dispatchEvent(new CustomEvent("delete", { bubbles: true, composed: true }));
   }
 
+  /**
+   * Renders speaker avatars with overflow indicator.
+   * @returns {import('lit').TemplateResult}
+   * @private
+   */
+  _renderSpeakerAvatars() {
+    const speakers = this.session?.speakers || [];
+    if (speakers.length === 0) return "";
+
+    const sortedSpeakers = [...speakers].sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+    const maxDisplay = 5;
+    const displaySpeakers = sortedSpeakers.slice(0, maxDisplay);
+    const remainingCount = speakers.length - maxDisplay;
+
+    return html`
+      <div class="flex items-center gap-1 ml-3 shrink-0">
+        ${displaySpeakers.map((speaker) => {
+          const initials = computeUserInitials(speaker.name, speaker.username, 1);
+          return html`
+            <div class="rounded-full">
+              <logo-image
+                image-url=${speaker.photo_url || ""}
+                placeholder=${initials}
+                size="size-5"
+                font-size="text-[0.5rem]"
+                hide-border
+              ></logo-image>
+            </div>
+          `;
+        })}
+        ${remainingCount > 0
+          ? html` <div class="text-xs font-semibold text-stone-700">+${remainingCount}</div> `
+          : ""}
+      </div>
+    `;
+  }
+
   render() {
     const { session } = this;
     const startTime = formatTimeDisplay(session.starts_at);
@@ -788,16 +815,16 @@ class SessionCard extends LitWrapper {
         </div>
 
         <div class="flex-1 w-0 min-w-0 overflow-hidden">
-          <div class="font-medium text-stone-900 truncate w-full">${session.name || "Untitled Session"}</div>
+          <div class="flex items-center min-w-0">
+            <span class="font-medium text-stone-900 truncate">${session.name || "Untitled Session"}</span>
+            ${this._renderSpeakerAvatars()}
+          </div>
           <div class="text-sm text-stone-500 truncate w-full">
             ${kindName}${session.location ? html` · ${session.location}` : ""}
           </div>
         </div>
 
         <div class="flex items-center gap-3 shrink-0">
-          ${hasApprovedProposal
-            ? html`<span class="custom-badge px-2.5 py-0.5 uppercase shrink-0"> Approved proposal </span>`
-            : ""}
           <div class="flex items-center gap-1 shrink-0">
             <button
               type="button"
@@ -1405,7 +1432,7 @@ class SessionItem extends LitWrapper {
       ${this.approvedSubmissions?.length
         ? html`
             <div class="col-span-full">
-              <label class="form-label">Session details</label>
+              <label class="form-label">Description and speakers</label>
               <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label class="block h-full">
                   <input
