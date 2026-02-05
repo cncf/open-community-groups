@@ -30,25 +30,32 @@
 
         {% if !user.logged_in -%}
           <div class="space-y-3">
-            <p class="text-sm/6 text-stone-600">You need to sign in to submit a proposal for this event.</p>
+            <p class="text-base text-stone-600">You need to sign in to submit a proposal for this event.</p>
             {% let next_url = "/".to_owned() + &event.community_name + "/group/" + &event.group_slug + "/event/" + &event.slug -%}
-            <a class="btn-primary-outline-anchor inline-flex items-center"
-               href="/log-in?next_url={{ next_url }}">
-              <div class="svg-icon size-3 me-2 icon-user-plus"></div>
-              Sign in
-            </a>
+            <div class="flex justify-center mt-9">
+              <a class="btn-primary-outline-anchor inline-flex items-center"
+                 href="/log-in?next_url={{ next_url }}">
+                <div class="svg-icon size-3 me-2 icon-user-plus"></div>
+                Sign in
+              </a>
+            </div>
           </div>
         {% else -%}
           {% if session_proposals.is_empty() -%}
             <div class="space-y-3">
-              <p class="text-sm/6 text-stone-600">
-                You don't have any session proposals yet. Create one from your dashboard and come back to submit it.
+              <p class="text-base text-stone-600">
+                It looks like you haven't created any session proposals yet.
+                <br>
+                <br>
+                You can manage your session proposals from the dashboard
               </p>
-              <a class="btn-primary-outline-anchor inline-flex items-center"
-                 href="/dashboard/user?tab=session-proposals">
-                <div class="svg-icon size-3 me-2 icon-presentation"></div>
-                Manage session proposals
-              </a>
+              <div class="flex justify-center mt-9">
+                <a class="btn-primary-outline-anchor inline-flex items-center"
+                   href="/dashboard/user?tab=session-proposals">
+                  <div class="svg-icon size-3 me-2 icon-presentation"></div>
+                  Manage session proposals
+                </a>
+              </div>
             </div>
           {% else -%}
             <form id="cfs-submission-form"
