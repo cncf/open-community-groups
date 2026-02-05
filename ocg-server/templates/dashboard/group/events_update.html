@@ -401,7 +401,10 @@
 
         {# Opens at -#}
         <div class="col-span-full lg:col-span-3">
-          <label for="cfs_starts_at" class="form-label">Opens at</label>
+          <label for="cfs_starts_at" class="form-label">
+            Opens at
+            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
+          </label>
           <div class="mt-2">
             <input type="datetime-local"
                    name="cfs_starts_at"
@@ -417,7 +420,10 @@
 
         {# Closes at -#}
         <div class="col-span-full lg:col-span-3">
-          <label for="cfs_ends_at" class="form-label">Closes at</label>
+          <label for="cfs_ends_at" class="form-label">
+            Closes at
+            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
+          </label>
           <div class="mt-2">
             <input type="datetime-local"
                    name="cfs_ends_at"
@@ -433,7 +439,10 @@
 
         {# CFS description -#}
         <div class="col-span-full">
-          <label for="cfs_description" class="form-label">CFS description</label>
+          <label for="cfs_description" class="form-label">
+            CFS description
+            <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
+          </label>
           <div class="mt-2">
             <markdown-editor id="cfs_description" name="cfs_description" content="{%- if let Some(cfs_description) = &event.cfs_description -%}{{ cfs_description }}{%- endif -%}" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
             {% if event.is_past() %}disabled data-locked="true"{% endif %}
