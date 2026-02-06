@@ -30,7 +30,7 @@ use crate::{
     },
     templates::{
         dashboard::group::{
-            events::{self, Event, EventsListFilters, EventsTab, PastEventUpdate},
+            events::{self, Event, EventsListFilters, EventsTab},
             sponsors::GroupSponsorsFilters,
         },
         notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
@@ -425,26 +425,7 @@ pub(crate) async fn update(
     // Load event summary before update to detect reschedule and if it is past
     let before = db.get_event_summary(community_id, group_id, event_id).await?;
 
-    // For past events, deserialize as PastEventUpdate (limited fields)
-    if before.is_past() {
-        let event: PastEventUpdate = serde_qs_de
-            .deserialize_str(&body)
-            .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
-        event.validate()?;
-
-        // Update event in database (no reschedule notifications for past events)
-        let event_json = serde_json::to_value(&event)?;
-        db.update_event(group_id, event_id, &event_json, &HashMap::new())
-            .await?;
-
-        return Ok((
-            StatusCode::NO_CONTENT,
-            [("HX-Trigger", "refresh-group-dashboard-table")],
-        )
-            .into_response());
-    }
-
-    // For non-past events, deserialize as full Event
+    // Deserialize and validate provided event
     let event: Event = serde_qs_de
         .deserialize_str(&body)
         .map_err(|e| HandlerError::Deserialization(e.to_string()))?;
@@ -456,48 +437,52 @@ pub(crate) async fn update(
     db.update_event(group_id, event_id, &event_json, &cfg_max_participants)
         .await?;
 
-    // Notify attendees and speakers if event was rescheduled
-    let after = db.get_event_summary(community_id, group_id, event_id).await?;
-    let should_notify = match (before.published, before.starts_at, after.starts_at) {
-        (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
-            (a_starts_at - b_starts_at).abs() >= MIN_RESCHEDULE_SHIFT
-        }
-        _ => false,
-    };
-    if should_notify {
-        // Fetch event full and attendee IDs concurrently
-        let (event_full, attendee_ids) = tokio::try_join!(
-            db.get_event_full(community_id, group_id, event_id),
-            db.list_event_attendees_ids(group_id, event_id)
-        )?;
+    // Notify attendees and speakers if event was rescheduled (only if not past)
+    if !before.is_past() {
+        // Fetch updated event summary to compare start times and detect reschedule
+        let after = db.get_event_summary(community_id, group_id, event_id).await?;
+        let should_notify = match (before.published, before.starts_at, after.starts_at) {
+            (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
+                (a_starts_at - b_starts_at).abs() >= MIN_RESCHEDULE_SHIFT
+            }
+            _ => false,
+        };
 
-        // Combine attendee and speaker IDs (deduplicated)
-        let speaker_ids = event_full.speakers_ids();
-        let recipients: Vec<Uuid> = attendee_ids
-            .into_iter()
-            .chain(speaker_ids)
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
+        if should_notify {
+            // Fetch event full and attendee IDs concurrently
+            let (event_full, attendee_ids) = tokio::try_join!(
+                db.get_event_full(community_id, group_id, event_id),
+                db.list_event_attendees_ids(group_id, event_id)
+            )?;
 
-        if !recipients.is_empty() {
-            let site_settings = db.get_site_settings().await?;
-            let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-            let event_summary = EventSummary::from(&event_full);
-            let link = build_event_page_link(base, &event_summary);
-            let calendar_ics = build_event_calendar_attachment(base, &event_summary);
-            let template_data = EventRescheduled {
-                event: event_summary,
-                link,
-                theme: site_settings.theme,
-            };
-            let notification = NewNotification {
-                attachments: vec![calendar_ics],
-                kind: NotificationKind::EventRescheduled,
-                recipients,
-                template_data: Some(serde_json::to_value(&template_data)?),
-            };
-            notifications_manager.enqueue(&notification).await?;
+            // Combine attendee and speaker IDs (deduplicated)
+            let speaker_ids = event_full.speakers_ids();
+            let recipients: Vec<Uuid> = attendee_ids
+                .into_iter()
+                .chain(speaker_ids)
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect();
+
+            if !recipients.is_empty() {
+                let site_settings = db.get_site_settings().await?;
+                let base = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+                let event_summary = EventSummary::from(&event_full);
+                let link = build_event_page_link(base, &event_summary);
+                let calendar_ics = build_event_calendar_attachment(base, &event_summary);
+                let template_data = EventRescheduled {
+                    event: event_summary,
+                    link,
+                    theme: site_settings.theme,
+                };
+                let notification = NewNotification {
+                    attachments: vec![calendar_ics],
+                    kind: NotificationKind::EventRescheduled,
+                    recipients,
+                    template_data: Some(serde_json::to_value(&template_data)?),
+                };
+                notifications_manager.enqueue(&notification).await?;
+            }
         }
     }
 
@@ -548,7 +533,7 @@ mod tests {
             notifications::{MockNotificationsManager, NotificationKind},
         },
         templates::{
-            dashboard::{DASHBOARD_PAGINATION_LIMIT, group::events::PastEventUpdate},
+            dashboard::DASHBOARD_PAGINATION_LIMIT,
             notifications::{EventCanceled, EventPublished, EventRescheduled, SpeakerWelcome},
         },
         types::event::{EventFull, EventSummary, Speaker},
@@ -1889,13 +1874,10 @@ mod tests {
                 ..sample_event_summary(event_id, group_id)
             }
         };
-        let past_event_update = PastEventUpdate {
-            description: "Updated past event description".to_string(),
-            banner_url: Some("https://example.test/new-banner.png".to_string()),
-            description_short: Some("Updated short".to_string()),
-            ..Default::default()
-        };
-        let body = serde_qs::to_string(&past_event_update).unwrap();
+        let mut past_event_form = sample_event_form();
+        past_event_form.description = "Updated past event description".to_string();
+        past_event_form.name = "Past Event Updated".to_string();
+        let body = serde_qs::to_string(&past_event_form).unwrap();
 
         // Setup database mock
         let mut db = MockDB::new();
@@ -1922,6 +1904,7 @@ mod tests {
                     && *eid == event_id
                     && event.get("description").and_then(|v| v.as_str())
                         == Some("Updated past event description")
+                    && event.get("name").and_then(|v| v.as_str()) == Some("Past Event Updated")
                     && cfg_max_participants.is_empty()
             })
             .returning(move |_, _, _, _| Ok(()));

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(45);
+select plan(49);
 
 -- ============================================================================
 -- VARIABLES
@@ -264,7 +264,7 @@ insert into event (
     true
 );
 
--- Past Event (for testing limited updates)
+-- Past Event (for testing past updates)
 insert into event (
     event_id,
     group_id,
@@ -951,126 +951,221 @@ select lives_ok(
     'Should succeed when session is within event bounds'
 );
 
--- Should update allowed fields and ignore restricted fields on past events
+-- Should update all fields on past events
 select update_event(
     :'group1ID'::uuid,
     :'event8ID'::uuid,
     '{
-        "name": "Attempted Name Change",
+        "name": "Past Event Updated",
         "description": "Updated description for past event",
-        "description_short": "Updated short description",
-        "timezone": "Asia/Tokyo",
+        "timezone": "UTC",
         "category_id": "00000000-0000-0000-0000-000000000012",
         "kind_id": "virtual",
-        "capacity": 999,
-        "starts_at": "2030-06-01T10:00:00",
-        "ends_at": "2030-06-01T12:00:00",
-        "meeting_requested": true,
-        "meeting_provider_id": "zoom",
-        "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "meeting_recording_url": "https://youtube.com/recording",
-        "tags": ["updated", "past", "event"],
+        "capacity": 150,
+        "starts_at": "2020-01-02T10:00:00",
+        "ends_at": "2020-01-02T12:30:00",
+        "banner_mobile_url": "https://example.com/banner-mobile.jpg",
         "banner_url": "https://example.com/banner.jpg",
-        "logo_url": "https://example.com/logo.png",
-        "venue_address": "123 Updated St",
-        "venue_city": "Updated City",
-        "venue_name": "Updated Venue",
-        "venue_zip_code": "12345"
-    }'::jsonb
-);
--- Verify allowed fields were updated
-select is(
-    (
-        select jsonb_build_object(
-            'banner_url', banner_url,
-            'description', description,
-            'description_short', description_short,
-            'logo_url', logo_url,
-            'meeting_recording_url', meeting_recording_url,
-            'photos_urls', photos_urls,
-            'tags', tags
-        )
-        from event
-        where event_id = :'event8ID'::uuid
-    ),
-    '{
-        "banner_url": "https://example.com/banner.jpg",
-        "description": "Updated description for past event",
         "description_short": "Updated short description",
         "logo_url": "https://example.com/logo.png",
+        "meetup_url": "https://meetup.com/group/events/123456",
+        "meeting_join_url": "https://meet.example.com/room",
+        "meeting_provider_id": "zoom",
         "meeting_recording_url": "https://youtube.com/recording",
+        "meeting_requested": false,
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "tags": ["updated", "past", "event"]
-    }'::jsonb,
-    'Should update allowed fields on past events'
+        "registration_required": true,
+        "tags": ["updated", "past", "event"],
+        "venue_address": "123 Updated St",
+        "venue_city": "Updated City",
+        "venue_country_code": "US",
+        "venue_country_name": "United States",
+        "venue_name": "Updated Venue",
+        "venue_state": "CA",
+        "venue_zip_code": "12345",
+        "hosts": ["00000000-0000-0000-0000-000000000020"],
+        "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}],
+        "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}],
+        "sessions": [{"name": "Past Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]
+    }'::jsonb
 );
 
--- Verify restricted fields were ignored despite being in payload
+-- Verify past event fields were updated
 select is(
     (
         select jsonb_build_object(
+            'banner_mobile_url', banner_mobile_url,
+            'banner_url', banner_url,
             'capacity', capacity,
+            'description', description,
+            'description_short', description_short,
             'ends_at', ends_at,
             'event_category_id', event_category_id,
             'event_kind_id', event_kind_id,
+            'logo_url', logo_url,
+            'meeting_join_url', meeting_join_url,
             'meeting_provider_id', meeting_provider_id,
+            'meeting_recording_url', meeting_recording_url,
             'meeting_requested', meeting_requested,
+            'meetup_url', meetup_url,
             'name', name,
+            'photos_urls', photos_urls,
+            'registration_required', registration_required,
             'starts_at', starts_at,
+            'tags', tags,
             'timezone', timezone,
-
             'venue_address', venue_address,
             'venue_city', venue_city,
+            'venue_country_code', venue_country_code,
+            'venue_country_name', venue_country_name,
             'venue_name', venue_name,
+            'venue_state', venue_state,
             'venue_zip_code', venue_zip_code
         )
         from event
         where event_id = :'event8ID'::uuid
     ),
     jsonb_build_object(
-        'capacity', null,
-        'ends_at', '2020-01-01 17:00:00+00'::timestamptz,
-        'event_category_id', :'category1ID'::uuid,
-        'event_kind_id', 'in-person',
-        'meeting_provider_id', null,
-        'meeting_requested', null,
-        'name', 'Past Event',
-        'starts_at', '2020-01-01 15:00:00+00'::timestamptz,
-        'timezone', 'America/New_York',
-
-        'venue_address', null,
-        'venue_city', null,
-        'venue_name', 'Original Venue',
-        'venue_zip_code', null
+        'banner_mobile_url', 'https://example.com/banner-mobile.jpg',
+        'banner_url', 'https://example.com/banner.jpg',
+        'capacity', 150,
+        'description', 'Updated description for past event',
+        'description_short', 'Updated short description',
+        'ends_at', '2020-01-02 12:30:00+00'::timestamptz,
+        'event_category_id', :'category2ID'::uuid,
+        'event_kind_id', 'virtual',
+        'logo_url', 'https://example.com/logo.png',
+        'meeting_join_url', 'https://meet.example.com/room',
+        'meeting_provider_id', 'zoom',
+        'meeting_recording_url', 'https://youtube.com/recording',
+        'meeting_requested', false,
+        'meetup_url', 'https://meetup.com/group/events/123456',
+        'name', 'Past Event Updated',
+        'photos_urls', array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+        'registration_required', true,
+        'starts_at', '2020-01-02 10:00:00+00'::timestamptz,
+        'tags', array['updated', 'past', 'event'],
+        'timezone', 'UTC',
+        'venue_address', '123 Updated St',
+        'venue_city', 'Updated City',
+        'venue_country_code', 'US',
+        'venue_country_name', 'United States',
+        'venue_name', 'Updated Venue',
+        'venue_state', 'CA',
+        'venue_zip_code', '12345'
     ),
-    'Should ignore restricted fields on past events despite being in payload'
+    'Should update past event fields'
 );
 
--- Should ignore hosts/speakers/sponsors on past events despite being in payload
-select update_event(
-    :'group1ID'::uuid,
-    :'event8ID'::uuid,
-    '{
-        "description": "Another update with hosts",
-        "hosts": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"],
-        "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}],
-        "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}]
-    }'::jsonb
-);
+-- Should update hosts on past events
 select is(
-    (select count(*) from event_host where event_id = :'event8ID'::uuid),
-    0::bigint,
-    'Should ignore hosts on past events despite being in payload'
+    (
+        select array_agg(user_id order by user_id)
+        from event_host
+        where event_id = :'event8ID'::uuid
+    ),
+    array['00000000-0000-0000-0000-000000000020']::uuid[],
+    'Should update hosts on past events'
 );
+
+-- Should update speakers on past events
 select is(
-    (select count(*) from event_speaker where event_id = :'event8ID'::uuid),
-    0::bigint,
-    'Should ignore speakers on past events despite being in payload'
+    (
+        select jsonb_agg(
+            jsonb_build_object(
+                'featured', featured,
+                'user_id', user_id
+            )
+            order by user_id
+        )
+        from event_speaker
+        where event_id = :'event8ID'::uuid
+    ),
+    '[{"featured": true, "user_id": "00000000-0000-0000-0000-000000000022"}]'::jsonb,
+    'Should update speakers on past events'
 );
+
+-- Should update sponsors on past events
 select is(
-    (select count(*) from event_sponsor where event_id = :'event8ID'::uuid),
-    0::bigint,
-    'Should ignore sponsors on past events despite being in payload'
+    (
+        select jsonb_agg(
+            jsonb_build_object(
+                'group_sponsor_id', group_sponsor_id,
+                'level', level
+            )
+            order by group_sponsor_id
+        )
+        from event_sponsor
+        where event_id = :'event8ID'::uuid
+    ),
+    '[{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}]'::jsonb,
+    'Should update sponsors on past events'
+);
+
+-- Should update sessions on past events
+select is(
+    (
+        select jsonb_build_object(
+            'ends_at', ends_at,
+            'name', name,
+            'session_kind_id', session_kind_id,
+            'starts_at', starts_at
+        )
+        from session
+        where event_id = :'event8ID'::uuid
+        limit 1
+    ),
+    jsonb_build_object(
+        'ends_at', '2020-01-02 11:30:00+00'::timestamptz,
+        'name', 'Past Session',
+        'session_kind_id', 'virtual',
+        'starts_at', '2020-01-02 10:30:00+00'::timestamptz
+    ),
+    'Should update sessions on past events'
+);
+
+-- Should throw error when past event starts_at is in the future
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000008'::uuid,
+        '{"name": "Future Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2099-01-01T10:00:00", "ends_at": "2020-01-02T12:30:00"}'::jsonb
+    )$$,
+    'event starts_at cannot be in the future',
+    'Should throw error when past event starts_at is in the future'
+);
+
+-- Should throw error when past event ends_at is in the future
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000008'::uuid,
+        '{"name": "Future Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2099-01-02T12:30:00"}'::jsonb
+    )$$,
+    'event ends_at cannot be in the future',
+    'Should throw error when past event ends_at is in the future'
+);
+
+-- Should throw error when past event session starts_at is in the future
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000008'::uuid,
+        '{"name": "Future Past Session", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2020-01-02T12:30:00", "sessions": [{"name": "Future Session", "starts_at": "2099-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]}'::jsonb
+    )$$,
+    'session starts_at cannot be in the future',
+    'Should throw error when past event session starts_at is in the future'
+);
+
+-- Should throw error when past event session ends_at is in the future
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000008'::uuid,
+        '{"name": "Future Past Session", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000012", "kind_id": "virtual", "starts_at": "2020-01-02T10:00:00", "ends_at": "2020-01-02T12:30:00", "sessions": [{"name": "Future Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2099-01-02T11:30:00", "kind": "virtual"}]}'::jsonb
+    )$$,
+    'session ends_at cannot be in the future',
+    'Should throw error when past event session ends_at is in the future'
 );
 
 -- Should succeed updating live event when starts_at is unchanged

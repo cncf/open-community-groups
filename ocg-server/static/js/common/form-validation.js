@@ -4,7 +4,11 @@
  * @module form-validation
  */
 
-import { isDashboardPath, isElementInView } from "/static/js/common/common.js";
+import {
+  convertTimestampToDateTimeLocalInTz,
+  isDashboardPath,
+  isElementInView,
+} from "/static/js/common/common.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
@@ -325,26 +329,75 @@ const reportWithSection = (input, message, onSection) => {
 };
 
 /**
+ * Resolves timezone string from explicit value or event date form inputs.
+ * @param {Object} params - Resolver params
+ * @param {HTMLInputElement|null} params.endsInput - End datetime input
+ * @param {HTMLInputElement|null} params.startsInput - Start datetime input
+ * @param {string|null} [params.timezone=null] - Explicit timezone override
+ * @returns {string} IANA timezone when available
+ */
+const resolveTimezone = ({ endsInput, startsInput, timezone = null } = {}) => {
+  if (typeof timezone === "string" && timezone.trim().length > 0) {
+    return timezone.trim();
+  }
+
+  const ownerForm = startsInput?.form || endsInput?.form || null;
+  const timezoneField = ownerForm?.querySelector('[name="timezone"]');
+  if (typeof timezoneField?.value !== "string") {
+    return "";
+  }
+
+  return timezoneField.value.trim();
+};
+
+/**
+ * Converts a Date to datetime-local format in the provided timezone.
+ * @param {Date|null} dateValue - Date value to convert
+ * @param {string} timezone - IANA timezone identifier
+ * @returns {string} Datetime-local string in timezone or empty when invalid
+ */
+const toDateTimeLocalInTimezone = (dateValue, timezone) => {
+  if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) {
+    return "";
+  }
+  if (typeof timezone !== "string" || timezone.length === 0) {
+    return "";
+  }
+
+  try {
+    return convertTimestampToDateTimeLocalInTz(dateValue.getTime() / 1000, timezone);
+  } catch (_) {
+    return "";
+  }
+};
+
+/**
  * Validates event-level start/end dates.
  * Sets custom validity messages on provided inputs.
  * @param {Object} params - Validation params
  * @param {HTMLInputElement|null} params.startsInput - Start datetime input
  * @param {HTMLInputElement|null} params.endsInput - End datetime input
  * @param {boolean} [params.allowPastDates=false] - Allow past dates (updates)
+ * @param {Date|null} [params.latestDate=null] - Latest allowed date
  * @param {Function} [params.onDateSection] - Callback to show date tab
+ * @param {string|null} [params.timezone=null] - Event timezone for date comparisons
  * @returns {boolean} True when valid
  */
 export const validateEventDates = ({
   startsInput,
   endsInput,
   allowPastDates = false,
+  latestDate = null,
   onDateSection,
+  timezone = null,
 } = {}) => {
   if (startsInput) startsInput.setCustomValidity("");
   if (endsInput) endsInput.setCustomValidity("");
 
   const startsAtDate = parseLocalDate(startsInput?.value);
   const endsAtDate = parseLocalDate(endsInput?.value);
+  const latestAllowed = latestDate instanceof Date && !Number.isNaN(latestDate.getTime()) ? latestDate : null;
+  const eventTimezone = resolveTimezone({ endsInput, startsInput, timezone });
 
   if (endsInput?.value && !startsInput?.value) {
     return reportWithSection(startsInput, "Start date is required when end date is set.", onDateSection);
@@ -357,6 +410,28 @@ export const validateEventDates = ({
     }
     if (endsAtDate && endsAtDate < now) {
       return reportWithSection(endsInput, "End date cannot be in the past.", onDateSection);
+    }
+  }
+
+  if (latestAllowed) {
+    const latestAllowedInTimezone = toDateTimeLocalInTimezone(latestAllowed, eventTimezone);
+    if (latestAllowedInTimezone) {
+      const startsAtValue = startsInput?.value || "";
+      if (startsAtValue && startsAtValue > latestAllowedInTimezone) {
+        return reportWithSection(startsInput, "Start date cannot be in the future.", onDateSection);
+      }
+
+      const endsAtValue = endsInput?.value || "";
+      if (endsAtValue && endsAtValue > latestAllowedInTimezone) {
+        return reportWithSection(endsInput, "End date cannot be in the future.", onDateSection);
+      }
+    } else {
+      if (startsAtDate && startsAtDate > latestAllowed) {
+        return reportWithSection(startsInput, "Start date cannot be in the future.", onDateSection);
+      }
+      if (endsAtDate && endsAtDate > latestAllowed) {
+        return reportWithSection(endsInput, "End date cannot be in the future.", onDateSection);
+      }
     }
   }
 
