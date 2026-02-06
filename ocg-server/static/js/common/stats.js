@@ -1,3 +1,4 @@
+import "/static/js/common/svg-spinner.js";
 import { debounce } from "/static/js/common/common.js";
 import { clearChartElement, initChart, showChartEmptyState } from "/static/js/dashboard/common.js";
 
