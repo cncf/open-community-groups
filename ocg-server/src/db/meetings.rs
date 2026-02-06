@@ -160,24 +160,17 @@ impl DBMeetings for PgDB {
             Arc::clone(tx)
         };
 
-        // Update meeting error and mark as synced
-        if let Some(event_id) = meeting.event_id {
-            tx.execute(
-                "update event set meeting_error = $1, meeting_in_sync = true where event_id = $2",
-                &[&error, &event_id],
-            )
-            .await?;
-        } else if let Some(session_id) = meeting.session_id {
-            tx.execute(
-                "update session set meeting_error = $1, meeting_in_sync = true where session_id = $2",
-                &[&error, &session_id],
-            )
-            .await?;
-        } else if let Some(meeting_id) = meeting.meeting_id {
-            // Orphan meeting: no event/session to record error on, delete the row
-            tx.execute("delete from meeting where meeting_id = $1", &[&meeting_id])
-                .await?;
-        }
+        // Update meeting error and mark the target as synced
+        tx.execute(
+            "select set_meeting_error($1::text, $2::uuid, $3::uuid, $4::uuid)",
+            &[
+                &error,
+                &meeting.event_id,
+                &meeting.meeting_id,
+                &meeting.session_id,
+            ],
+        )
+        .await?;
 
         Ok(())
     }

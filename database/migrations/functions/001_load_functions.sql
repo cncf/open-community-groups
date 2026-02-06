@@ -1,6 +1,10 @@
-{{ template "auth/get_user_by_id.sql" }}
+{{ template "auth/get_user_by_id.sql" }} -- Do not sort alphabetically, has dependency
+{{ template "auth/get_user_by_email.sql" }}
+{{ template "auth/get_user_by_id_verified.sql" }}
+{{ template "auth/get_user_by_username.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
+{{ template "auth/update_user_password.sql" }}
 {{ template "auth/user_owns_community.sql" }}
 {{ template "auth/user_owns_group.sql" }}
 {{ template "auth/user_owns_groups_in_community.sql" }}
@@ -105,9 +109,11 @@
 {{ template "meetings/add_meeting.sql" }}
 {{ template "meetings/delete_meeting.sql" }}
 {{ template "meetings/get_meeting_out_of_sync.sql" }}
+{{ template "meetings/set_meeting_error.sql" }}
 {{ template "meetings/update_meeting.sql" }}
 {{ template "meetings/update_meeting_recording_url.sql" }}
 
+{{ template "notifications/enqueue_notification.sql" }}
 {{ template "notifications/get_pending_notification.sql" }}
 
 {{ template "site/get_filters_options.sql" }}
