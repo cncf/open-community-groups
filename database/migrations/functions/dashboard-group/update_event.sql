@@ -101,7 +101,7 @@ begin
         end if;
     end if;
 
-    -- Event that were not in the past should not be updated to have past dates
+    -- Events that were not in the past should not be updated to have past dates
     if not v_is_past_event then
         -- Validate event dates are not in the past (only for non-past events)
         if p_event->>'starts_at' is not null then
