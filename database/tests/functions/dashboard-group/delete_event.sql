@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -183,11 +183,18 @@ insert into session (
 -- ============================================================================
 
 -- Should set deleted=true
-select delete_event(:'groupID'::uuid, :'eventID'::uuid);
+select lives_ok(
+    format(
+        'select delete_event(%L::uuid, %L::uuid)',
+        :'groupID',
+        :'eventID'
+    ),
+    'Should execute delete_event successfully'
+);
 select is(
     (select deleted from event where event_id = :'eventID'),
     true,
-    'Should set deleted=true'
+    'Should mark event as deleted'
 );
 
 -- Should set deleted_at timestamp
@@ -226,11 +233,18 @@ select is(
 );
 
 -- Should not change event meeting_in_sync when meeting_requested=false
-select delete_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid);
+select lives_ok(
+    format(
+        'select delete_event(%L::uuid, %L::uuid)',
+        :'groupID',
+        :'eventNoMeetingID'
+    ),
+    'Should delete event when meeting_requested=false'
+);
 select is(
     (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
     null,
-    'Should not change event meeting_in_sync when meeting_requested=false'
+    'Should keep event meeting_in_sync unchanged when meeting_requested=false'
 );
 
 -- Should keep event in database (soft delete)

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -181,20 +181,26 @@ insert into session (
 -- ============================================================================
 
 -- Should clear published flags and metadata
-select unpublish_event(:'groupID'::uuid, :'eventID'::uuid);
+select lives_ok(
+    $$select unpublish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    'Should clear published flags and metadata'
+);
 
+-- Should set published=false
 select is(
     (select published from event where event_id = :'eventID'),
     false,
     'Should set published=false'
 );
 
+-- Should set published_at to null
 select is(
     (select published_at from event where event_id = :'eventID'),
     null,
     'Should set published_at to null'
 );
 
+-- Should set published_by to null
 select is(
     (select published_by from event where event_id = :'eventID'),
     null,
@@ -222,12 +228,17 @@ select is(
     'Should not change session meeting_in_sync when meeting_requested=false'
 );
 
--- Should not change event meeting_in_sync when meeting_requested=false
-select unpublish_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid);
+-- Should unpublish event when meeting_requested=false
+select lives_ok(
+    $$select unpublish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    'Should unpublish event when meeting_requested=false'
+);
+
+-- Should keep event meeting_in_sync unchanged when meeting_requested=false
 select is(
     (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
     null,
-    'Should not change event meeting_in_sync when meeting_requested=false'
+    'Should keep event meeting_in_sync unchanged when meeting_requested=false'
 );
 
 -- Should throw error when group_id does not match

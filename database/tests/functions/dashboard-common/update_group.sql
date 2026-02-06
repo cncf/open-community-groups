@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -119,24 +119,27 @@ insert into "group" (
 -- ============================================================================
 
 -- Should update all provided fields correctly
-select update_group(
-    :'communityID'::uuid,
-    :'groupID'::uuid,
-    '{
-        "name": "Updated Group",
-        "category_id": "00000000-0000-0000-0000-000000000012",
-        "description": "Updated description",
-        "description_short": "Updated brief description",
-        "city": "New York",
-        "state": "NY",
-        "country_code": "US",
-        "country_name": "United States",
-        "website_url": "https://updated.example.com",
-        "facebook_url": "https://facebook.com/updated",
-        "twitter_url": "https://twitter.com/updated",
-        "tags": ["updated", "test"],
-        "logo_url": "https://example.com/updated-logo.png"
-    }'::jsonb
+select lives_ok(
+    $$select update_group(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000021'::uuid,
+        '{
+            "name": "Updated Group",
+            "category_id": "00000000-0000-0000-0000-000000000012",
+            "description": "Updated description",
+            "description_short": "Updated brief description",
+            "city": "New York",
+            "state": "NY",
+            "country_code": "US",
+            "country_name": "United States",
+            "website_url": "https://updated.example.com",
+            "facebook_url": "https://facebook.com/updated",
+            "twitter_url": "https://twitter.com/updated",
+            "tags": ["updated", "test"],
+            "logo_url": "https://example.com/updated-logo.png"
+        }'::jsonb
+    )$$,
+    'Should update all provided fields correctly'
 );
 
 -- Should return expected structure after update
@@ -218,32 +221,35 @@ insert into "group" (
     '2024-01-15 10:00:00+00'
 );
 
-select update_group(
-    :'communityID'::uuid,
-    :'group2ID'::uuid,
-    '{
-        "name": "Updated Group Empty Strings",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "description": "",
-        "description_short": "",
-        "banner_url": "",
-        "city": "",
-        "state": "",
-        "country_code": "",
-        "country_name": "",
-        "website_url": "",
-        "facebook_url": "",
-        "twitter_url": "",
-        "linkedin_url": "",
-        "github_url": "",
-        "slack_url": "",
-        "youtube_url": "",
-        "instagram_url": "",
-        "flickr_url": "",
-        "wechat_url": "",
-        "logo_url": "",
-        "region_id": ""
-    }'::jsonb
+select lives_ok(
+    $$select update_group(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000023'::uuid,
+        '{
+            "name": "Updated Group Empty Strings",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "",
+            "description_short": "",
+            "banner_url": "",
+            "city": "",
+            "state": "",
+            "country_code": "",
+            "country_name": "",
+            "website_url": "",
+            "facebook_url": "",
+            "twitter_url": "",
+            "linkedin_url": "",
+            "github_url": "",
+            "slack_url": "",
+            "youtube_url": "",
+            "instagram_url": "",
+            "flickr_url": "",
+            "wechat_url": "",
+            "logo_url": "",
+            "region_id": ""
+        }'::jsonb
+    )$$,
+    'Should convert empty strings to null for nullable fields'
 );
 
 -- Should keep minimal fields after empty-string conversion
@@ -254,7 +260,7 @@ select is(
         "slug": "pqr4jkl",
         "logo_url": "https://example.com/logo.png"
     }'::jsonb,
-    'Should convert empty strings to null for nullable fields'
+    'Should persist nulls after empty-string conversion'
 );
 
 -- Should throw error when community_id mismatches
@@ -269,16 +275,19 @@ select throws_ok(
 );
 
 -- Should handle explicit null values for array fields
-select update_group(
-    :'communityID'::uuid,
-    :'group3ID'::uuid,
-    '{
-        "name": "Updated Group Null Arrays",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "description": "Updated description",
-        "tags": null,
-        "photos_urls": null
-    }'::jsonb
+select lives_ok(
+    $$select update_group(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000024'::uuid,
+        '{
+            "name": "Updated Group Null Arrays",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "description": "Updated description",
+            "tags": null,
+            "photos_urls": null
+        }'::jsonb
+    )$$,
+    'Should handle explicit null values for array fields'
 );
 
 -- Should persist explicit null arrays in result

@@ -3,15 +3,13 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should set email_verified to true for valid verification code
-
--- Create user with unverified email
 with test_user as (
     select * from sign_up_user(
         jsonb_build_object(
@@ -22,16 +20,22 @@ with test_user as (
         false
     )
 )
--- Use the verification code
-select verify_email(verification_code) from test_user;
 
--- Now check that email was verified
+select lives_ok(
+    format('select verify_email(%L::uuid)', verification_code),
+    'Should verify email for valid verification code'
+)
+from test_user;
+
 select is(
-    email_verified,
+    (
+        select email_verified
+        from "user"
+        where email = 'test1@example.com'
+    ),
     true,
     'Should set email_verified to true for valid verification code'
-) from "user"
-where email = 'test1@example.com';
+);
 
 -- Should delete verification code after use
 with test_user as (
@@ -43,19 +47,19 @@ with test_user as (
         ),
         false
     )
-),
-verification_result as (
-    select
-        verification_code,
-        verify_email(verification_code) as verify_result
-    from test_user
 )
+
+select verification_code as "verificationCodeToDelete"
+from test_user \gset
+
+select verify_email(:'verificationCodeToDelete'::uuid);
+
 select is(
     count(*)::integer,
     0,
     'Should delete verification code after use'
 ) from email_verification_code
-where email_verification_code_id = (select verification_code from verification_result);
+where email_verification_code_id = :'verificationCodeToDelete'::uuid;
 
 -- Should raise exception for invalid verification code
 select throws_ok(
@@ -65,8 +69,6 @@ select throws_ok(
 );
 
 -- Should raise exception for expired verification code
-
--- Create user and expire their code
 with test_user as (
     select * from sign_up_user(
         jsonb_build_object(
@@ -76,15 +78,17 @@ with test_user as (
         ),
         false
     )
-),
-expired_code_update as (
-    update email_verification_code
-    set created_at = current_timestamp - interval '25 hours'
-    where email_verification_code_id = (select verification_code from test_user)
-    returning email_verification_code_id
 )
+
+select verification_code as "expiredVerificationCode"
+from test_user \gset
+
+update email_verification_code
+set created_at = current_timestamp - interval '25 hours'
+where email_verification_code_id = :'expiredVerificationCode'::uuid;
+
 select throws_ok(
-    'select verify_email(''' || coalesce((select email_verification_code_id::text from expired_code_update), '00000000-0000-0000-0000-000000000098') || '''::uuid)',
+    format('select verify_email(''%s''::uuid)', :'expiredVerificationCode'),
     'email verification failed: invalid code',
     'Should raise exception for expired verification code'
 );
@@ -99,15 +103,15 @@ with test_user as (
         ),
         false
     )
-),
-first_use as (
-    select
-        verification_code,
-        verify_email(verification_code) as verify_result
-    from test_user
 )
+
+select verification_code as "usedVerificationCode"
+from test_user \gset
+
+select verify_email(:'usedVerificationCode'::uuid);
+
 select throws_ok(
-    format('select verify_email(''%s''::uuid)', (select verification_code from first_use)),
+    format('select verify_email(''%s''::uuid)', :'usedVerificationCode'),
     'email verification failed: invalid code',
     'Should raise exception for already used verification code'
 );

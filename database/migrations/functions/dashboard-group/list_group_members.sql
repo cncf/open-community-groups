@@ -2,11 +2,13 @@
 create or replace function list_group_members(p_group_id uuid, p_filters jsonb)
 returns json as $$
     with
+        -- Parse pagination filters
         filters as (
             select
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value
         ),
+        -- Select the paginated member list
         members as (
             select
                 extract(epoch from gm.created_at)::bigint as created_at,
@@ -23,15 +25,18 @@ returns json as $$
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),
+        -- Count total members before pagination
         totals as (
             select count(*)::int as total
             from group_member gm
             where gm.group_id = p_group_id
         ),
+        -- Render members as JSON
         members_json as (
             select coalesce(json_agg(row_to_json(members)), '[]'::json) as members
             from members
         )
+    -- Build final payload
     select json_build_object(
         'members', members_json.members,
         'total', totals.total

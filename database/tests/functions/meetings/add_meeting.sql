@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -178,7 +178,13 @@ insert into session (
 -- ============================================================================
 
 -- Should create meeting record when linked to event
-select add_meeting('zoom', '123456789', 'https://zoom.us/j/123456789', 'pass123', :'eventID', null);
+select lives_ok(
+    format(
+        'select add_meeting(''zoom'', ''123456789'', ''https://zoom.us/j/123456789'', ''pass123'', %L, null)',
+        :'eventID'
+    ),
+    'Should create meeting record when linked to event'
+);
 select is(
     (select count(*) from meeting where event_id = :'eventID'),
     1::bigint,
@@ -193,7 +199,13 @@ select is(
 );
 
 -- Should create meeting record when linked to session
-select add_meeting('zoom', '987654321', 'https://zoom.us/j/987654321', 'sesspass', null, :'sessionID');
+select lives_ok(
+    format(
+        'select add_meeting(''zoom'', ''987654321'', ''https://zoom.us/j/987654321'', ''sesspass'', null, %L)',
+        :'sessionID'
+    ),
+    'Should create meeting record when linked to session'
+);
 select is(
     (select count(*) from meeting where session_id = :'sessionID'),
     1::bigint,
@@ -212,7 +224,7 @@ select throws_ok(
     format('select add_meeting(''zoom'', ''duplicate123'', ''https://zoom.us/j/duplicate123'', ''pass'', %L, null)', :'eventID'),
     '23505',
     null,
-    'Should fail with unique constraint violation'
+    'Should fail with unique constraint violation for duplicate event meeting'
 );
 
 -- Should fail with unique violation when adding duplicate meeting for same session
@@ -220,11 +232,17 @@ select throws_ok(
     format('select add_meeting(''zoom'', ''duplicate456'', ''https://zoom.us/j/duplicate456'', ''pass'', null, %L)', :'sessionID'),
     '23505',
     null,
-    'Should fail with unique constraint violation'
+    'Should fail with unique constraint violation for duplicate session meeting'
 );
 
 -- Should clear error when adding meeting to event with previous error
-select add_meeting('zoom', '111111111', 'https://zoom.us/j/111111111', 'pass111', :'eventWithErrorID', null);
+select lives_ok(
+    format(
+        'select add_meeting(''zoom'', ''111111111'', ''https://zoom.us/j/111111111'', ''pass111'', %L, null)',
+        :'eventWithErrorID'
+    ),
+    'Should clear error when adding meeting to event with previous error'
+);
 select is(
     (select meeting_error from event where event_id = :'eventWithErrorID'),
     null,
@@ -232,7 +250,13 @@ select is(
 );
 
 -- Should clear error when adding meeting to session with previous error
-select add_meeting('zoom', '222222222', 'https://zoom.us/j/222222222', 'pass222', null, :'sessionWithErrorID');
+select lives_ok(
+    format(
+        'select add_meeting(''zoom'', ''222222222'', ''https://zoom.us/j/222222222'', ''pass222'', null, %L)',
+        :'sessionWithErrorID'
+    ),
+    'Should clear error when adding meeting to session with previous error'
+);
 select is(
     (select meeting_error from session where session_id = :'sessionWithErrorID'),
     null,

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -121,23 +121,27 @@ insert into "user" (
 -- ============================================================================
 
 -- Update user with all updateable fields
-select update_user_details(
-    :'userID'::uuid,
-    '{
-        "name": "Updated User",
-        "bio": "This is my bio",
-        "city": "San Francisco",
-        "company": "Example Corp",
-        "country": "USA",
-        "facebook_url": "https://facebook.com/updateduser",
-        "interests": ["programming", "music", "sports"],
-        "linkedin_url": "https://linkedin.com/in/updateduser",
-        "photo_url": "https://example.com/photo.jpg",
-        "timezone": "America/Los_Angeles",
-        "title": "Software Engineer",
-        "twitter_url": "https://twitter.com/updateduser",
-        "website_url": "https://example.com/updateduser"
-    }'::jsonb
+select lives_ok(
+    format(
+        $$select update_user_details(%L::uuid, %L::jsonb)$$,
+        :'userID',
+        $${
+            "name": "Updated User",
+            "bio": "This is my bio",
+            "city": "San Francisco",
+            "company": "Example Corp",
+            "country": "USA",
+            "facebook_url": "https://facebook.com/updateduser",
+            "interests": ["programming", "music", "sports"],
+            "linkedin_url": "https://linkedin.com/in/updateduser",
+            "photo_url": "https://example.com/photo.jpg",
+            "timezone": "America/Los_Angeles",
+            "title": "Software Engineer",
+            "twitter_url": "https://twitter.com/updateduser",
+            "website_url": "https://example.com/updateduser"
+        }$$
+    ),
+    'Should execute update with all provided user fields'
 );
 
 -- Should update all provided user fields
@@ -166,15 +170,19 @@ select is(
         "twitter_url": "https://twitter.com/updateduser",
         "website_url": "https://example.com/updateduser"
     }'::jsonb,
-    'Should update all provided user fields'
+    'Should persist all provided user fields'
 );
 
 -- Update user with only required field (name), rest are null
-select update_user_details(
-    :'user2ID'::uuid,
-    '{
-        "name": "Updated Name Only"
-    }'::jsonb
+select lives_ok(
+    format(
+        $$select update_user_details(%L::uuid, %L::jsonb)$$,
+        :'user2ID',
+        $${
+            "name": "Updated Name Only"
+        }$$
+    ),
+    'Should execute update when only name is provided'
 );
 
 -- Should clear optional fields when only name is provided
@@ -195,23 +203,27 @@ select is(
 );
 
 -- Update user with required field and explicit null values for optional fields
-select update_user_details(
-    :'user3ID'::uuid,
-    '{
-        "name": "Explicitly Nulled User",
-        "bio": null,
-        "city": null,
-        "company": null,
-        "country": null,
-        "facebook_url": null,
-        "interests": null,
-        "linkedin_url": null,
-        "photo_url": null,
-        "timezone": null,
-        "title": null,
-        "twitter_url": null,
-        "website_url": null
-    }'::jsonb
+select lives_ok(
+    format(
+        $$select update_user_details(%L::uuid, %L::jsonb)$$,
+        :'user3ID',
+        $${
+            "name": "Explicitly Nulled User",
+            "bio": null,
+            "city": null,
+            "company": null,
+            "country": null,
+            "facebook_url": null,
+            "interests": null,
+            "linkedin_url": null,
+            "photo_url": null,
+            "timezone": null,
+            "title": null,
+            "twitter_url": null,
+            "website_url": null
+        }$$
+    ),
+    'Should execute update with explicit null optional fields'
 );
 
 -- Should handle explicit null values same as omitted fields
@@ -228,7 +240,7 @@ select is(
         "name": "Explicitly Nulled User",
         "username": "testuser3"
     }'::jsonb,
-    'Should handle explicit null values same as omitted fields'
+    'Should treat explicit null values the same as omitted fields'
 );
 
 -- ============================================================================

@@ -4,7 +4,9 @@ create or replace function get_group_summary(
     p_group_id uuid
 )
 returns json as $$
+    -- Build group summary payload
     select json_strip_nulls(json_build_object(
+        -- Include core summary fields
         'active', g.active,
         'category', json_build_object(
             'group_category_id', gc.group_category_id,
@@ -19,6 +21,7 @@ returns json as $$
         'name', g.name,
         'slug', g.slug,
 
+        -- Include optional group profile fields
         'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'city', g.city,

@@ -5,6 +5,7 @@ create or replace function delete_group(
 )
 returns void as $$
 begin
+    -- Soft-delete the target group
     update "group" set
         active = false,
         deleted = true,
@@ -13,6 +14,7 @@ begin
     and community_id = p_community_id
     and deleted = false;
 
+    -- Ensure the target group exists and is active
     if not found then
         raise exception 'group not found or inactive';
     end if;

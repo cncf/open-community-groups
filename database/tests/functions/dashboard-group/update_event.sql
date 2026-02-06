@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(49);
+select plan(57);
 
 -- ============================================================================
 -- VARIABLES
@@ -335,21 +335,24 @@ insert into event_attendee (event_id, user_id) values
 -- ============================================================================
 
 -- Should update basic fields and clear hosts/sponsors/sessions when not provided
-select update_event(
-    '00000000-0000-0000-0000-000000000002'::uuid,
-    '00000000-0000-0000-0000-000000000003'::uuid,
-    '{
-        "name": "Updated Event Name",
-        "description": "Updated description",
-        "timezone": "America/Los_Angeles",
-        "category_id": "00000000-0000-0000-0000-000000000012",
-        "kind_id": "virtual",
-        "capacity": 100,
-        "starts_at": "2030-02-01T14:00:00",
-        "ends_at": "2030-02-01T16:00:00",
-        "meeting_provider_id": "zoom",
-        "meeting_requested": true
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000003'::uuid,
+        '{
+            "name": "Updated Event Name",
+            "description": "Updated description",
+            "timezone": "America/Los_Angeles",
+            "category_id": "00000000-0000-0000-0000-000000000012",
+            "kind_id": "virtual",
+            "capacity": 100,
+            "starts_at": "2030-02-01T14:00:00",
+            "ends_at": "2030-02-01T16:00:00",
+            "meeting_provider_id": "zoom",
+            "meeting_requested": true
+        }'::jsonb
+    )$$,
+    'Should execute basic update and clear omitted hosts, sponsors, and sessions'
 );
 select is(
     (select (
@@ -382,7 +385,7 @@ select is(
         "sessions": {},
         "starts_at": 1896213600
     }'::jsonb,
-    'Should update basic fields and clear hosts/sponsors/sessions when not provided'
+    'Should persist basic update and clear omitted hosts, sponsors, and sessions'
 );
 
 -- Should initialize meeting flags for requested event without sessions
@@ -403,56 +406,59 @@ select is(
 );
 
 -- Should update all fields (excluding sessions) with full payload
-select update_event(
-    '00000000-0000-0000-0000-000000000002'::uuid,
-    '00000000-0000-0000-0000-000000000003'::uuid,
-    '{
-        "name": "Fully Updated Event",
-        "description": "Fully updated description",
-        "timezone": "Asia/Tokyo",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "kind_id": "hybrid",
-        "meeting_requested": false,
-        "banner_url": "https://example.com/new-banner.jpg",
-        "capacity": 200,
-        "description_short": "Updated short description",
-        "starts_at": "2030-02-01T14:00:00",
-        "ends_at": "2030-02-01T16:00:00",
-        "logo_url": "https://example.com/new-logo.png",
-        "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
-        "meeting_join_url": "https://youtube.com/new-live",
-        "meeting_recording_url": "https://youtube.com/new-recording",
-        "meetup_url": "https://meetup.com/new-event",
-        "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
-        "registration_required": false,
-        "tags": ["updated", "event", "tags"],
-        "venue_address": "456 New St",
-        "venue_city": "Tokyo",
-        "venue_country_code": "JP",
-        "venue_country_name": "Japan",
-        "venue_name": "New Venue",
-        "venue_state": "TK",
-        "venue_zip_code": "100-0001",
-        "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
-        "speakers": [
-            {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true},
-            {"user_id": "00000000-0000-0000-0000-000000000022", "featured": false}
-        ],
-        "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum"}],
-        "sessions": [
-            {
-                "name": "Updated Session",
-                "description": "This is an updated session",
-                "starts_at": "2030-02-01T14:30:00",
-                "ends_at": "2030-02-01T15:30:00",
-                "kind": "virtual",
-                "meeting_hosts": ["session-althost@example.com"],
-                "meeting_provider_id": "zoom",
-                "meeting_requested": true,
-                "speakers": [{"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}]
-            }
-        ]
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000003'::uuid,
+        '{
+            "name": "Fully Updated Event",
+            "description": "Fully updated description",
+            "timezone": "Asia/Tokyo",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "hybrid",
+            "meeting_requested": false,
+            "banner_url": "https://example.com/new-banner.jpg",
+            "capacity": 200,
+            "description_short": "Updated short description",
+            "starts_at": "2030-02-01T14:00:00",
+            "ends_at": "2030-02-01T16:00:00",
+            "logo_url": "https://example.com/new-logo.png",
+            "meeting_hosts": ["althost1@example.com", "althost2@example.com"],
+            "meeting_join_url": "https://youtube.com/new-live",
+            "meeting_recording_url": "https://youtube.com/new-recording",
+            "meetup_url": "https://meetup.com/new-event",
+            "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
+            "registration_required": false,
+            "tags": ["updated", "event", "tags"],
+            "venue_address": "456 New St",
+            "venue_city": "Tokyo",
+            "venue_country_code": "JP",
+            "venue_country_name": "Japan",
+            "venue_name": "New Venue",
+            "venue_state": "TK",
+            "venue_zip_code": "100-0001",
+            "hosts": ["00000000-0000-0000-0000-000000000021", "00000000-0000-0000-0000-000000000022"],
+            "speakers": [
+                {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true},
+                {"user_id": "00000000-0000-0000-0000-000000000022", "featured": false}
+            ],
+            "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Platinum"}],
+            "sessions": [
+                {
+                    "name": "Updated Session",
+                    "description": "This is an updated session",
+                    "starts_at": "2030-02-01T14:30:00",
+                    "ends_at": "2030-02-01T15:30:00",
+                    "kind": "virtual",
+                    "meeting_hosts": ["session-althost@example.com"],
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true,
+                    "speakers": [{"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}]
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should update all fields (excluding sessions) with full payload'
 );
 
 -- Check event fields except sessions
@@ -584,105 +590,117 @@ select throws_ok(
 );
 
 -- Should preserve meeting_in_sync=false when updating unrelated fields
-select update_event(
-    :'group1ID'::uuid,
-    :'event5ID'::uuid,
-    '{
-        "name": "Event With Pending Sync",
-        "description": "Updated description - unrelated to meeting",
-        "timezone": "America/New_York",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "kind_id": "virtual",
-        "capacity": 100,
-        "meeting_provider_id": "zoom",
-        "meeting_requested": true,
-        "starts_at": "2030-03-01T10:00:00",
-        "ends_at": "2030-03-01T12:00:00"
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{
+            "name": "Event With Pending Sync",
+            "description": "Updated description - unrelated to meeting",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "capacity": 100,
+            "meeting_provider_id": "zoom",
+            "meeting_requested": true,
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T12:00:00"
+        }'::jsonb
+    )$$,
+    'Should execute unrelated update with pending event meeting sync'
 );
 select is(
     (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
     false,
-    'Should preserve meeting_in_sync=false when updating unrelated fields'
+    'Should keep event meeting_in_sync=false after unrelated update'
 );
 
 -- Should keep meeting_in_sync=false when meeting_requested changes to false
-select update_event(
-    :'group1ID'::uuid,
-    :'event5ID'::uuid,
-    '{
-        "name": "Event With Pending Sync",
-        "description": "Updated description",
-        "timezone": "America/New_York",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "kind_id": "virtual",
-        "meeting_requested": false,
-        "starts_at": "2030-03-01T10:00:00",
-        "ends_at": "2030-03-01T12:00:00"
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000005'::uuid,
+        '{
+            "name": "Event With Pending Sync",
+            "description": "Updated description",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "meeting_requested": false,
+            "starts_at": "2030-03-01T10:00:00",
+            "ends_at": "2030-03-01T12:00:00"
+        }'::jsonb
+    )$$,
+    'Should execute update when event meeting_requested changes to false'
 );
 select is(
     (select meeting_in_sync from event where event_id = :'event5ID'::uuid),
     false,
-    'Should keep meeting_in_sync=false when meeting_requested changes to false'
+    'Should keep event meeting_in_sync=false when meeting_requested changes to false'
 );
 
 -- Should preserve session meeting_in_sync=false when updating unrelated fields
-select update_event(
-    :'group1ID'::uuid,
-    :'event6ID'::uuid,
-    '{
-        "name": "Event With Session Pending Sync",
-        "description": "Updated event description - unrelated to session meeting",
-        "timezone": "America/New_York",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "kind_id": "virtual",
-        "starts_at": "2030-04-01T09:00:00",
-        "ends_at": "2030-04-01T17:00:00",
-        "sessions": [
-            {
-                "session_id": "00000000-0000-0000-0000-000000000101",
-                "name": "Session With Pending Sync",
-                "description": "Updated session description - unrelated to meeting",
-                "starts_at": "2030-04-01T10:00:00",
-                "ends_at": "2030-04-01T11:00:00",
-                "kind": "virtual",
-                "meeting_provider_id": "zoom",
-                "meeting_requested": true
-            }
-        ]
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000006'::uuid,
+        '{
+            "name": "Event With Session Pending Sync",
+            "description": "Updated event description - unrelated to session meeting",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "starts_at": "2030-04-01T09:00:00",
+            "ends_at": "2030-04-01T17:00:00",
+            "sessions": [
+                {
+                    "session_id": "00000000-0000-0000-0000-000000000101",
+                    "name": "Session With Pending Sync",
+                    "description": "Updated session description - unrelated to meeting",
+                    "starts_at": "2030-04-01T10:00:00",
+                    "ends_at": "2030-04-01T11:00:00",
+                    "kind": "virtual",
+                    "meeting_provider_id": "zoom",
+                    "meeting_requested": true
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should execute unrelated update with pending session meeting sync'
 );
 select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
     false,
-    'Should preserve session meeting_in_sync=false when updating unrelated fields'
+    'Should keep session meeting_in_sync=false after unrelated update'
 );
 
 -- Should keep session meeting_in_sync=false when meeting_requested changes to false
-select update_event(
-    :'group1ID'::uuid,
-    :'event6ID'::uuid,
-    '{
-        "name": "Event With Session Pending Sync",
-        "description": "Updated event description",
-        "timezone": "America/New_York",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "kind_id": "virtual",
-        "starts_at": "2030-04-01T09:00:00",
-        "ends_at": "2030-04-01T17:00:00",
-        "sessions": [
-            {
-                "session_id": "00000000-0000-0000-0000-000000000101",
-                "name": "Session With Pending Sync",
-                "description": "Updated session description",
-                "starts_at": "2030-04-01T10:00:00",
-                "ends_at": "2030-04-01T11:00:00",
-                "kind": "virtual",
-                "meeting_requested": false
-            }
-        ]
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000006'::uuid,
+        '{
+            "name": "Event With Session Pending Sync",
+            "description": "Updated event description",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "starts_at": "2030-04-01T09:00:00",
+            "ends_at": "2030-04-01T17:00:00",
+            "sessions": [
+                {
+                    "session_id": "00000000-0000-0000-0000-000000000101",
+                    "name": "Session With Pending Sync",
+                    "description": "Updated session description",
+                    "starts_at": "2030-04-01T10:00:00",
+                    "ends_at": "2030-04-01T11:00:00",
+                    "kind": "virtual",
+                    "meeting_requested": false
+                }
+            ]
+        }'::jsonb
+    )$$,
+    'Should execute update when session meeting_requested changes to false'
 );
 select is(
     (select meeting_in_sync from session where session_id = :'session1ID'::uuid),
@@ -690,6 +708,7 @@ select is(
     'Should keep session meeting_in_sync=false when meeting_requested changes to false'
 );
 
+-- Should throw error when updating cancelled event
 select throws_ok(
     $$select update_event(
         '00000000-0000-0000-0000-000000000002'::uuid,
@@ -730,19 +749,22 @@ select ok(
     'Session exists before update'
 );
 -- Update event without the session (removes it via cascade)
-select update_event(
-    :'group1ID'::uuid,
-    :'event7ID'::uuid,
-    '{
-        "name": "Event For Session Removal Test",
-        "description": "This event has a session with a meeting",
-        "timezone": "America/New_York",
-        "category_id": "00000000-0000-0000-0000-000000000011",
-        "kind_id": "virtual",
-        "starts_at": "2030-05-01T09:00:00",
-        "ends_at": "2030-05-01T17:00:00",
-        "sessions": []
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000007'::uuid,
+        '{
+            "name": "Event For Session Removal Test",
+            "description": "This event has a session with a meeting",
+            "timezone": "America/New_York",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "starts_at": "2030-05-01T09:00:00",
+            "ends_at": "2030-05-01T17:00:00",
+            "sessions": []
+        }'::jsonb
+    )$$,
+    'Should remove omitted sessions on update'
 );
 -- Should verify session is deleted and meeting is orphan after update
 select is(
@@ -952,42 +974,45 @@ select lives_ok(
 );
 
 -- Should update all fields on past events
-select update_event(
-    :'group1ID'::uuid,
-    :'event8ID'::uuid,
-    '{
-        "name": "Past Event Updated",
-        "description": "Updated description for past event",
-        "timezone": "UTC",
-        "category_id": "00000000-0000-0000-0000-000000000012",
-        "kind_id": "virtual",
-        "capacity": 150,
-        "starts_at": "2020-01-02T10:00:00",
-        "ends_at": "2020-01-02T12:30:00",
-        "banner_mobile_url": "https://example.com/banner-mobile.jpg",
-        "banner_url": "https://example.com/banner.jpg",
-        "description_short": "Updated short description",
-        "logo_url": "https://example.com/logo.png",
-        "meetup_url": "https://meetup.com/group/events/123456",
-        "meeting_join_url": "https://meet.example.com/room",
-        "meeting_provider_id": "zoom",
-        "meeting_recording_url": "https://youtube.com/recording",
-        "meeting_requested": false,
-        "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
-        "registration_required": true,
-        "tags": ["updated", "past", "event"],
-        "venue_address": "123 Updated St",
-        "venue_city": "Updated City",
-        "venue_country_code": "US",
-        "venue_country_name": "United States",
-        "venue_name": "Updated Venue",
-        "venue_state": "CA",
-        "venue_zip_code": "12345",
-        "hosts": ["00000000-0000-0000-0000-000000000020"],
-        "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}],
-        "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}],
-        "sessions": [{"name": "Past Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]
-    }'::jsonb
+select lives_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000008'::uuid,
+        '{
+            "name": "Past Event Updated",
+            "description": "Updated description for past event",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000012",
+            "kind_id": "virtual",
+            "capacity": 150,
+            "starts_at": "2020-01-02T10:00:00",
+            "ends_at": "2020-01-02T12:30:00",
+            "banner_mobile_url": "https://example.com/banner-mobile.jpg",
+            "banner_url": "https://example.com/banner.jpg",
+            "description_short": "Updated short description",
+            "logo_url": "https://example.com/logo.png",
+            "meetup_url": "https://meetup.com/group/events/123456",
+            "meeting_join_url": "https://meet.example.com/room",
+            "meeting_provider_id": "zoom",
+            "meeting_recording_url": "https://youtube.com/recording",
+            "meeting_requested": false,
+            "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+            "registration_required": true,
+            "tags": ["updated", "past", "event"],
+            "venue_address": "123 Updated St",
+            "venue_city": "Updated City",
+            "venue_country_code": "US",
+            "venue_country_name": "United States",
+            "venue_name": "Updated Venue",
+            "venue_state": "CA",
+            "venue_zip_code": "12345",
+            "hosts": ["00000000-0000-0000-0000-000000000020"],
+            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}],
+            "sponsors": [{"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"}],
+            "sessions": [{"name": "Past Session", "starts_at": "2020-01-02T10:30:00", "ends_at": "2020-01-02T11:30:00", "kind": "virtual"}]
+        }'::jsonb
+    )$$,
+    'Should update all fields on past events'
 );
 
 -- Verify past event fields were updated

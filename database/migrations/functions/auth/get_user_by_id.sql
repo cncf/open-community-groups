@@ -5,7 +5,9 @@ create or replace function get_user_by_id(
     p_include_password boolean
 )
 returns json as $$
+    -- Build user payload with optional and computed fields
     select json_strip_nulls(json_build_object(
+        -- Include core identity fields
         'auth_hash', auth_hash,
         'email', email,
         'email_verified', email_verified,
@@ -13,6 +15,7 @@ returns json as $$
         'user_id', user_id,
         'username', username,
 
+        -- Include optional profile fields
         'bio', bio,
         'city', city,
         'company', company,
@@ -28,6 +31,7 @@ returns json as $$
         'twitter_url', twitter_url,
         'website_url', website_url,
 
+        -- Include computed membership flags
         'belongs_to_any_group_team', exists (
             select 1
             from group_team gt

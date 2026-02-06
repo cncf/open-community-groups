@@ -1,7 +1,9 @@
 -- Returns all information about the community provided.
 create or replace function get_community_full(p_community_id uuid)
 returns json as $$
+    -- Build full community payload
     select json_strip_nulls(json_build_object(
+        -- Include core community fields
         'active', active,
         'banner_mobile_url', banner_mobile_url,
         'banner_url', banner_url,
@@ -13,6 +15,7 @@ returns json as $$
         'logo_url', logo_url,
         'name', name,
 
+        -- Include optional community profile fields
         'ad_banner_link_url', ad_banner_link_url,
         'ad_banner_url', ad_banner_url,
         'extra_links', extra_links,

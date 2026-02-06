@@ -5,8 +5,10 @@ use std::{sync::Arc, time::Duration};
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::proc_macro::cached;
 use deadpool_postgres::Client;
+use serde::Serialize;
 use tracing::{instrument, trace};
 use uuid::Uuid;
 
@@ -14,7 +16,6 @@ use crate::{
     PgDB,
     db::TX_CLIENT_NOT_FOUND,
     services::notifications::{Attachment, NewNotification, Notification},
-    util::compute_hash,
 };
 
 /// Trait that defines database operations used to manage notifications.
@@ -59,91 +60,39 @@ impl DBNotifications for PgDB {
             return Ok(());
         }
 
-        // Insert notification records, expanding recipients (one record per recipient)
-        let mut db = self.pool.get().await?;
-        let tx = db.transaction().await?;
-
-        // Insert template (if present) using hash-based deduplication
-        let notification_template_data_id: Option<Uuid> =
-            if let Some(template_data) = &notification.template_data {
-                let template_data_json = serde_json::to_string(template_data)?;
-                let hash = compute_hash(template_data_json.as_bytes());
-                Some(
-                    tx.query_one(
-                        "
-                        insert into notification_template_data (data, hash)
-                        values ($1, $2)
-                        on conflict (hash) do update set hash = notification_template_data.hash
-                        returning notification_template_data_id;
-                        ",
-                        &[template_data, &hash],
-                    )
-                    .await?
-                    .get("notification_template_data_id"),
-                )
-            } else {
-                None
-            };
-
-        // Insert notifications referencing the template
-        let rows = tx
-            .query(
-                "
-                insert into notification (kind, notification_template_data_id, user_id)
-                select $1::text, $2::uuid, unnest($3::uuid[])
-                returning notification_id;
-                ",
-                &[
-                    &notification.kind.to_string(),
-                    &notification_template_data_id,
-                    &notification.recipients,
-                ],
-            )
-            .await?;
-        if notification.attachments.is_empty() {
-            tx.commit().await?;
-            return Ok(());
-        }
-
-        // Get inserted notification IDs
-        let notification_ids = rows
-            .into_iter()
-            .map(|row| row.get::<_, Uuid>("notification_id"))
+        // Prepare attachments payload
+        let attachments = notification
+            .attachments
+            .iter()
+            .map(|attachment| EnqueueNotificationAttachment {
+                content_type: &attachment.content_type,
+                data_base64: BASE64.encode(&attachment.data),
+                file_name: &attachment.file_name,
+            })
             .collect::<Vec<_>>();
+        let attachments = serde_json::to_value(attachments)?;
 
-        // Insert attachments and link them to notifications
-        for attachment in &notification.attachments {
-            // Insert attachment (if not already present)
-            let hash = compute_hash(&attachment.data);
-            let attachment_id = tx
-                .query_one(
-                    "
-                    insert into attachment (content_type, data, file_name, hash)
-                    values ($1, $2, $3, $4)
-                    on conflict (hash) do update set hash = attachment.hash
-                    returning attachment_id;
-                    ",
-                    &[
-                        &attachment.content_type,
-                        &attachment.data,
-                        &attachment.file_name,
-                        &hash,
-                    ],
-                )
-                .await?
-                .get::<_, Uuid>("attachment_id");
+        // Enqueue notification in database
+        let kind = notification.kind.to_string();
+        let db = self.pool.get().await?;
+        db.execute(
+            "
+            select enqueue_notification(
+                $1::text,
+                $2::jsonb,
+                $3::jsonb,
+                $4::uuid[]
+            );
+            ",
+            &[
+                &kind,
+                &notification.template_data,
+                &attachments,
+                &notification.recipients,
+            ],
+        )
+        .await?;
 
-            // Link attachment to notifications
-            tx.execute(
-                "
-                insert into notification_attachment (notification_id, attachment_id)
-                select unnest($1::uuid[]), $2;
-                ",
-                &[&notification_ids, &attachment_id],
-            )
-            .await?;
-        }
-        tx.commit().await?;
         Ok(())
     }
 
@@ -282,4 +231,12 @@ impl DBNotifications for PgDB {
 
         Ok(())
     }
+}
+
+/// Serialized attachment payload passed to `enqueue_notification`.
+#[derive(Serialize)]
+struct EnqueueNotificationAttachment<'a> {
+    content_type: &'a str,
+    data_base64: String,
+    file_name: &'a str,
 }

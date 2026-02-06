@@ -12,6 +12,7 @@ declare
 begin
     -- Insert group with unique slug generation and collision retry
     loop
+        -- Generate a candidate slug for the new group
         v_slug := generate_slug(7);
 
         begin
@@ -82,8 +83,10 @@ begin
             )
             returning group_id into v_group_id;
 
+            -- Return immediately once insertion succeeds
             return v_group_id;
         exception when unique_violation then
+            -- Retry slug generation when a collision occurs
             v_retries := v_retries + 1;
             if v_retries >= v_max_retries then
                 raise exception 'failed to generate unique slug after % attempts', v_max_retries;

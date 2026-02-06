@@ -24,7 +24,7 @@ select plan(5);
 
 -- Community
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c', 'C', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
 insert into group_category (group_category_id, name, community_id)
@@ -35,14 +35,14 @@ insert into event_category (event_category_id, name, slug, community_id)
 values (:'eventCategoryID', 'General', 'general', :'communityID');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
-values (:'groupID', :'communityID', :'categoryID', 'G', 'g', true, false);
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (auth_hash, email, user_id, username, company, name, photo_url, title)
 values
-    ('h', 'alice@example.com', :'user1ID', 'alice', 'Cloud Corp', 'Alice', 'https://example.com/a.png', 'Principal Engineer'),
-    ('h', 'bob@example.com', :'user2ID', 'bob', null, null, 'https://example.com/b.png', null);
+    (gen_random_bytes(32), 'alice@example.com', :'user1ID', 'alice', 'Cloud Corp', 'Alice', 'https://e/u1.png', 'Principal Engineer'),
+    (gen_random_bytes(32), 'bob@example.com', :'user2ID', 'bob', null, null, 'https://e/u2.png', null);
 
 -- Events
 insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted)
@@ -69,8 +69,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://example.com/b.png", "title": null}
+            {"checked_in": true,  "created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "checked_in_at": 1704103200, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob",   "checked_in_at": null,       "company": null,        "name": null,    "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -85,7 +85,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
+            {"checked_in": false, "created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": null, "company": null, "name": null, "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -100,7 +100,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
-            {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://example.com/b.png", "title": null}
+            {"checked_in": true, "created_at": 1704240000, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "checked_in_at": 1704294000, "company": null, "name": null, "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
         'total', 1
     ),

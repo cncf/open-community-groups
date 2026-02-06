@@ -5,12 +5,14 @@ create or replace function deactivate_group(
 )
 returns void as $$
 begin
+    -- Deactivate the target group
     update "group" set
         active = false
     where group_id = p_group_id
     and community_id = p_community_id
     and deleted = false;
 
+    -- Ensure the target group exists and is active
     if not found then
         raise exception 'group not found or inactive';
     end if;

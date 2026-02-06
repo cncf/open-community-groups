@@ -138,20 +138,7 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         let user = db
-            .query_one(
-                r#"
-                select get_user_by_id(
-                    (
-                        select user_id
-                        from "user"
-                        where email = $1::text
-                        and email_verified = true
-                    ),
-                    false
-                );
-                "#,
-                &[&email],
-            )
+            .query_one("select get_user_by_email($1::text);", &[&email])
             .await?
             .get::<_, Option<serde_json::Value>>(0)
             .map(serde_json::from_value)
@@ -166,19 +153,7 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         let user = db
-            .query_one(
-                r#"
-                select get_user_by_id(
-                    (
-                        select user_id from "user"
-                        where user_id = $1::uuid
-                        and email_verified = true
-                    ),
-                    false
-                );
-                "#,
-                &[&user_id],
-            )
+            .query_one("select get_user_by_id_verified($1::uuid);", &[&user_id])
             .await?
             .get::<_, Option<serde_json::Value>>(0)
             .map(serde_json::from_value)
@@ -193,20 +168,7 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         let user = db
-            .query_one(
-                r#"
-                select get_user_by_id(
-                    (
-                        select user_id from "user"
-                        where username = $1::text
-                        and email_verified = true
-                        and password is not null
-                    ),
-                    true
-                );
-                "#,
-                &[&username],
-            )
+            .query_one("select get_user_by_username($1::text);", &[&username])
             .await?
             .get::<_, Option<serde_json::Value>>(0)
             .map(serde_json::from_value)
@@ -293,12 +255,7 @@ impl DBAuth for PgDB {
 
         let db = self.pool.get().await?;
         db.execute(
-            r#"
-            update "user" set
-                auth_hash = encode(gen_random_bytes(32), 'hex'),
-                password = $2::text
-            where user_id = $1::uuid;
-            "#,
+            "select update_user_password($1::uuid, $2::text);",
             &[&user_id, &new_password],
         )
         .await?;

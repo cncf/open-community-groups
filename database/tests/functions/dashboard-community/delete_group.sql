@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,70 +19,45 @@ select plan(6);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
 insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+values (:'categoryID', 'Tech', :'communityID');
 
 -- Active group
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
-    description,
-    created_at
+    name,
+    slug
 ) values (
     :'groupID',
-    'Kubernetes Study Group',
-    'kubernetes-study-group',
     :'communityID',
     :'categoryID',
-    'A study group focused on Kubernetes best practices and implementation',
-    '2024-01-15 10:00:00+00'
+    'G1',
+    'g1'
 );
 
 -- Already deleted group
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
-    description,
+    name,
+    slug,
     active,
-    deleted,
-    deleted_at,
-    created_at
+    deleted
 ) values (
     :'groupAlreadyDeletedID',
-    'Docker Meetup',
-    'docker-meetup-deleted',
     :'communityID',
     :'categoryID',
-    'A Docker-focused meetup group that was previously deleted',
+    'G2',
+    'g2',
     false,
-    true,
-    '2024-02-15 10:00:00+00',
-    '2024-01-15 10:00:00+00'
+    true
 );
 
 -- ============================================================================
@@ -90,7 +65,14 @@ insert into "group" (
 -- ============================================================================
 
 -- Should perform soft delete
-select delete_group(:'communityID'::uuid, :'groupID'::uuid);
+select lives_ok(
+    format(
+        'select delete_group(%L::uuid, %L::uuid)',
+        :'communityID',
+        :'groupID'
+    ),
+    'Should perform soft delete'
+);
 
 select is(
     (select deleted from "group" where group_id = :'groupID'::uuid),

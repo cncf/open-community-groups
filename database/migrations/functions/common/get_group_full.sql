@@ -4,7 +4,9 @@ create or replace function get_group_full(
     p_group_id uuid
 )
 returns json as $$
+    -- Build full group payload with related entities and computed fields
     select json_strip_nulls(json_build_object(
+        -- Include core group fields
         'active', g.active,
         'category', json_build_object(
             'group_category_id', gc.group_category_id,
@@ -22,6 +24,7 @@ returns json as $$
         'name', g.name,
         'slug', g.slug,
 
+        -- Include optional group profile fields
         'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'city', g.city,
@@ -55,6 +58,7 @@ returns json as $$
         'website_url', g.website_url,
         'youtube_url', g.youtube_url,
 
+        -- Include community summary and related collections
         'community', get_community_summary(g.community_id),
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
@@ -77,6 +81,7 @@ returns json as $$
             and gt.role = 'organizer'
             and gt.accepted = true
         ),
+        -- Include group sponsors
         'sponsors', (
             select coalesce(
                 json_agg(

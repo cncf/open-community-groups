@@ -77,6 +77,7 @@ begin
         ) into v_tsquery_with_prefix_matching;
     end if;
 
+    -- Filter, paginate and aggregate matching events
     return (
     with filtered_events as (
         select
@@ -134,6 +135,7 @@ begin
                 v_tsquery_with_prefix_matching @@ e.tsdoc
             else true end
     ),
+    -- Select the requested page with the selected sort strategy
     filtered_events_page as (
         select community_id, event_id, group_id
         from filtered_events
@@ -158,6 +160,7 @@ begin
         limit v_limit
         offset v_offset
     )
+    -- Build response payload with optional bbox and total count
     select json_build_object(
         'bbox',
         (
@@ -173,6 +176,7 @@ begin
                             )
                         else null end
                     from (
+                        -- Build a bounding box from the filtered events locations
                         select st_envelope(st_union(st_envelope(location::geometry))) as bb
                         from filtered_events
                     ) as filtered_events_bbox
@@ -181,6 +185,7 @@ begin
         ),
         'events',
         (
+            -- Render paginated events as summaries
             select coalesce(json_agg(
                 get_event_summary(community_id, group_id, event_id)
             ), '[]'::json)
@@ -188,6 +193,7 @@ begin
         ),
         'total',
         (
+            -- Count total events before pagination
             select count(*)::bigint from filtered_events
         )
     )

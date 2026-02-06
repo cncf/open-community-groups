@@ -2,6 +2,7 @@
 create or replace function get_community_site_stats(p_community_id uuid)
 returns json as $$
     select json_build_object(
+        -- Count active groups in the community
         'groups', (
             select count(*)
             from "group"
@@ -9,6 +10,7 @@ returns json as $$
             and active = true
             and deleted = false
         ),
+        -- Count members across active community groups
         'groups_members', (
             select count(*)
             from group_member gm
@@ -17,6 +19,7 @@ returns json as $$
             and g.active = true
             and g.deleted = false
         ),
+        -- Count active published community events
         'events', (
             select count(*)
             from event e
@@ -28,6 +31,7 @@ returns json as $$
             and e.deleted = false
             and e.published = true
         ),
+        -- Count attendees across active published community events
         'events_attendees', (
             select count(*)
             from event_attendee ea
