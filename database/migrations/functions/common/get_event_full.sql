@@ -5,8 +5,10 @@ create or replace function get_event_full(
     p_event_id uuid
 )
 returns json as $$
+    -- Build full event payload with related entities and computed fields
     select jsonb_strip_nulls(
         jsonb_build_object(
+            -- Include core event fields
             'canceled', e.canceled,
             'category_name', ec.name,
             'created_at', floor(extract(epoch from e.created_at)),
@@ -18,6 +20,7 @@ returns json as $$
             'slug', e.slug,
             'timezone', e.timezone
         )
+        -- Include optional fields and nested related collections
         || jsonb_build_object(
             'banner_mobile_url', e.banner_mobile_url,
             'banner_url', e.banner_url,
@@ -53,8 +56,10 @@ returns json as $$
             'venue_state', e.venue_state,
             'venue_zip_code', e.venue_zip_code,
 
+            -- Include community and group summaries
             'community', get_community_summary(g.community_id),
             'group', get_group_summary(g.community_id, g.group_id),
+            -- Include event hosts profiles
             'hosts', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'user_id', u.user_id,
@@ -74,6 +79,7 @@ returns json as $$
                 join "user" u using (user_id)
                 where eh.event_id = e.event_id
             ),
+            -- Include legacy hosts for backward compatibility
             'legacy_hosts', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'bio', leh.bio,
@@ -84,6 +90,7 @@ returns json as $$
                 from legacy_event_host leh
                 where leh.event_id = e.event_id
             ),
+            -- Include legacy speakers for backward compatibility
             'legacy_speakers', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'bio', les.bio,
@@ -94,6 +101,7 @@ returns json as $$
                 from legacy_event_speaker les
                 where les.event_id = e.event_id
             ),
+            -- Include group organizers
             'organizers', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'user_id', u.user_id,
@@ -115,13 +123,16 @@ returns json as $$
                 and gt.role = 'organizer'
                 and gt.accepted = true
             ),
+            -- Include remaining capacity when event capacity is set
             'remaining_capacity',
                 case
                     when e.capacity is null then null
                     else greatest(e.capacity - coalesce(ea.attendee_count, 0), 0)
                 end,
+            -- Include sessions grouped by local event day
             'sessions', (
                 with
+                -- Build session payloads for this event
                 event_sessions as (
                     select
                         to_char((s.starts_at at time zone e.timezone)::date, 'YYYY-MM-DD') as day,
@@ -197,6 +208,7 @@ returns json as $$
                     left join session_proposal sp on sp.session_proposal_id = cs.session_proposal_id
                     where s.event_id = e.event_id
                 ),
+                -- Group session payloads by day
                 event_sessions_grouped as (
                     select day, json_agg(session_json order by starts_at) as sessions
                     from event_sessions
@@ -207,6 +219,7 @@ returns json as $$
                     '{}'::jsonb
                 )::json
             ),
+            -- Include event speakers
             'speakers', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'user_id', u.user_id,
@@ -227,6 +240,7 @@ returns json as $$
                 join "user" u using (user_id)
                 where es.event_id = e.event_id
             ),
+            -- Include event sponsors
             'sponsors', (
                 select coalesce(json_agg(json_strip_nulls(json_build_object(
                     'group_sponsor_id', gs.group_sponsor_id,

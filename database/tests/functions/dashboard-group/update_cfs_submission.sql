@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,13 +14,13 @@ select plan(6);
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
-\set proposalID '00000000-0000-0000-0000-000000000061'
 \set proposal2ID '00000000-0000-0000-0000-000000000062'
 \set proposal3ID '00000000-0000-0000-0000-000000000063'
-\set submissionID '00000000-0000-0000-0000-000000000071'
+\set proposalID '00000000-0000-0000-0000-000000000061'
+\set reviewerID '00000000-0000-0000-0000-000000000081'
 \set submission2ID '00000000-0000-0000-0000-000000000072'
 \set submission3ID '00000000-0000-0000-0000-000000000073'
-\set reviewerID '00000000-0000-0000-0000-000000000081'
+\set submissionID '00000000-0000-0000-0000-000000000071'
 \set userID '00000000-0000-0000-0000-000000000091'
 
 -- ============================================================================
@@ -135,14 +135,23 @@ insert into session (
 -- ============================================================================
 
 -- Update submission details
-select update_cfs_submission(
-    :'reviewerID'::uuid,
-    :'eventID'::uuid,
-    :'submissionID'::uuid,
-    jsonb_build_object(
-        'action_required_message', 'Need more info',
-        'status_id', 'information-requested'
-    )
+select lives_ok(
+    format(
+        $$select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::jsonb
+        )$$,
+        :'reviewerID',
+        :'eventID',
+        :'submissionID',
+        jsonb_build_object(
+            'action_required_message', 'Need more info',
+            'status_id', 'information-requested'
+        )::text
+    ),
+    'Should update submission details'
 );
 
 -- Should update submission status

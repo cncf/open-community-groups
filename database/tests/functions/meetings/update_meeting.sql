@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -128,7 +128,14 @@ values (:'meetingSessionID', :'sessionID', 'zoom', '987654321', 'https://zoom.us
 -- ============================================================================
 
 -- Should update meeting record when linked to event
-select update_meeting(:'meetingEventID', '111222333', 'https://zoom.us/j/111222333', 'newpass', :'eventID', null);
+select lives_ok(
+    format(
+        'select update_meeting(%L, ''111222333'', ''https://zoom.us/j/111222333'', ''newpass'', %L, null)',
+        :'meetingEventID',
+        :'eventID'
+    ),
+    'Should update meeting record when linked to event'
+);
 select is(
     (select provider_meeting_id from meeting where meeting_id = :'meetingEventID'),
     '111222333',
@@ -146,7 +153,14 @@ select is(
 update event set meeting_in_sync = false where event_id = :'eventID';
 
 -- Should update meeting record when linked to session
-select update_meeting(:'meetingSessionID', '444555666', 'https://zoom.us/j/444555666', 'newsesspass', null, :'sessionID');
+select lives_ok(
+    format(
+        'select update_meeting(%L, ''444555666'', ''https://zoom.us/j/444555666'', ''newsesspass'', null, %L)',
+        :'meetingSessionID',
+        :'sessionID'
+    ),
+    'Should update meeting record when linked to session'
+);
 select is(
     (select provider_meeting_id from meeting where meeting_id = :'meetingSessionID'),
     '444555666',

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,72 +19,47 @@ select plan(4);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-nyc',
-    'Cloud Native NYC',
-    'A community for cloud native technologies and practices in NYC',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+values (:'categoryID', 'Tech', :'communityID');
 
 -- Group (inactive)
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
-    description,
-    active,
-    created_at
+    name,
+    slug,
+    active
 ) values (
     :'groupID',
-    'Service Mesh Study Group',
-    'service-mesh-study-group',
     :'communityID',
     :'categoryID',
-    'A study group focused on service meshes',
-    false,
-    '2024-01-15 10:00:00+00'
+    'G1',
+    'g1',
+    false
 );
 
 -- Group (deleted)
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
-    description,
+    name,
+    slug,
     active,
-    deleted,
-    deleted_at,
-    created_at
+    deleted
 ) values (
     :'groupAlreadyDeletedID',
-    'CNF Meetup',
-    'cnf-meetup-deleted',
     :'communityID',
     :'categoryID',
-    'A deleted meetup group',
+    'G2',
+    'g2',
     false,
-    true,
-    '2024-02-15 10:00:00+00',
-    '2024-01-15 10:00:00+00'
+    true
 );
 
 
@@ -93,13 +68,20 @@ insert into "group" (
 -- ============================================================================
 
 -- Should set active to true
-select activate_group(:'communityID'::uuid, :'groupID'::uuid);
+select lives_ok(
+    format(
+        'select activate_group(%L::uuid, %L::uuid)',
+        :'communityID',
+        :'groupID'
+    ),
+    'Should execute activate_group successfully'
+);
 
 -- Should set active to true
 select is(
     (select active from "group" where group_id = :'groupID'::uuid),
     true,
-    'Should set active to true'
+    'Should set active flag to true'
 );
 
 -- Should throw error for already deleted group

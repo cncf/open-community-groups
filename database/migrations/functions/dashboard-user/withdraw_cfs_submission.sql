@@ -20,6 +20,7 @@ begin
         where s.cfs_submission_id = cs.cfs_submission_id
     );
 
+    -- Ensure submission exists and can be withdrawn
     if not found then
         raise exception 'submission not found or cannot be withdrawn';
     end if;

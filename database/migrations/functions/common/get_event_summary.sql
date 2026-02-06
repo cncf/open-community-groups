@@ -5,7 +5,9 @@ create or replace function get_event_summary(
     p_event_id uuid
 )
 returns json as $$
+    -- Build event summary payload
     select json_strip_nulls(json_build_object(
+        -- Include core summary fields
         'canceled', e.canceled,
         'community_display_name', c.display_name,
         'community_name', c.name,
@@ -19,6 +21,7 @@ returns json as $$
         'slug', e.slug,
         'timezone', e.timezone,
 
+        -- Include optional event details
         'capacity', e.capacity,
         'description_short', e.description_short,
         'ends_at', floor(extract(epoch from e.ends_at)),
@@ -37,6 +40,7 @@ returns json as $$
         'venue_state', e.venue_state,
         'zip_code', e.venue_zip_code,
 
+        -- Include computed capacity values
         'remaining_capacity',
             case
                 when e.capacity is null then null

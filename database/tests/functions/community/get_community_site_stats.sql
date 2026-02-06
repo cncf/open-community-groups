@@ -28,45 +28,30 @@ select plan(3);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+values (:'categoryID', 'Tech', :'communityID');
 
 -- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, active, deleted)
 values
-    (:'group1ID', 'Seattle Kubernetes Meetup', 'seattle-kubernetes-meetup', :'communityID', :'categoryID', true, false),
-    (:'group2ID', 'Cloud Native DevOps Group', 'cloud-native-devops-group', :'communityID', :'categoryID', true, false),
-    (:'group3ID', 'Deleted Group', 'deleted-group', :'communityID', :'categoryID', false, true);
+    (:'group1ID', 'G1', 'g1', :'communityID', :'categoryID', true, false),
+    (:'group2ID', 'G2', 'g2', :'communityID', :'categoryID', true, false),
+    (:'group3ID', 'G3', 'g3', :'communityID', :'categoryID', false, true);
 
 -- User
 insert into "user" (user_id, email, username, name, email_verified, auth_hash, created_at)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-member', 'Alice Johnson', false, 'test_hash', '2024-01-01 00:00:00'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-member', 'Bob Wilson', false, 'test_hash', '2024-01-01 00:00:00'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', 'Charlie Brown', false, 'test_hash', '2024-01-01 00:00:00');
+    (:'user1ID', 'u1@e', 'u1', 'U1', true, gen_random_bytes(32), '2024-01-01 00:00:00'),
+    (:'user2ID', 'u2@e', 'u2', 'U2', true, gen_random_bytes(32), '2024-01-01 00:00:00'),
+    (:'user3ID', 'u3@e', 'u3', 'U3', true, gen_random_bytes(32), '2024-01-01 00:00:00');
 
 -- Event Category
 insert into event_category (event_category_id, name, slug, community_id)
-values ('00000000-0000-0000-0000-000000000061', 'Tech Talks', 'tech-talks', :'communityID');
+values (:'eventCategoryID', 'Cat', 'cat', :'communityID');
 
 -- Event
 insert into event (
@@ -82,10 +67,10 @@ insert into event (
     deleted,
     published
 ) values
-    (:'event1ID', 'KubeCon Seattle 2024', 'kubecon-seattle-2024', 'Annual Kubernetes conference', 'America/Los_Angeles', :'eventCategoryID', 'in-person', :'group1ID', false, false, true),
-    (:'event2ID', 'Unpublished Event', 'unpublished-event', 'Draft event', 'America/Los_Angeles', :'eventCategoryID', 'in-person', :'group1ID', false, false, false),
-    (:'event3ID', 'Canceled Event', 'canceled-event', 'Canceled event', 'America/Los_Angeles', :'eventCategoryID', 'in-person', :'group2ID', true, false, false),
-    (:'event4ID', 'Deleted Event', 'deleted-event', 'Deleted event', 'America/Los_Angeles', :'eventCategoryID', 'in-person', :'group2ID', false, true, false);
+    (:'event1ID', 'E1', 'e1', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group1ID', false, false, true),
+    (:'event2ID', 'E2', 'e2', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group1ID', false, false, false),
+    (:'event3ID', 'E3', 'e3', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group2ID', true, false, false),
+    (:'event4ID', 'E4', 'e4', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group2ID', false, true, false);
 
 -- Group Member
 insert into group_member (group_id, user_id, created_at)

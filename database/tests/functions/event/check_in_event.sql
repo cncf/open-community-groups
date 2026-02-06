@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -322,19 +322,31 @@ select throws_ok(
 );
 
 -- Should allow check-in to multi-day event within window
-select check_in_event(:'communityID'::uuid, :'multiDayEventID'::uuid, :'userID'::uuid, false);
+select lives_ok(
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
+        :'communityID', :'multiDayEventID', :'userID'
+    ),
+    'Should allow check-in for ongoing multi-day event'
+);
 select is(
     (select checked_in from event_attendee where event_id = :'multiDayEventID' and user_id = :'userID'),
     true,
-    'Should allow check-in for ongoing multi-day event'
+    'Should mark attendee checked in for ongoing multi-day event'
 );
 
 -- Should allow check-in to same-day event with ends_at within window
-select check_in_event(:'communityID'::uuid, :'sameDayWithEndsAtEventID'::uuid, :'userID'::uuid, false);
+select lives_ok(
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
+        :'communityID', :'sameDayWithEndsAtEventID', :'userID'
+    ),
+    'Should allow check-in for same-day event with ends_at'
+);
 select is(
     (select checked_in from event_attendee where event_id = :'sameDayWithEndsAtEventID' and user_id = :'userID'),
     true,
-    'Should allow check-in for same-day event with ends_at'
+    'Should mark attendee checked in for same-day event with ends_at'
 );
 
 -- Should error when event has no start time
@@ -348,42 +360,66 @@ select throws_ok(
 );
 
 -- Should be idempotent - can call multiple times
-select check_in_event(:'communityID'::uuid, :'checkInWindowEventID'::uuid, :'userID'::uuid, false);
+select lives_ok(
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
+        :'communityID', :'checkInWindowEventID', :'userID'
+    ),
+    'Should allow repeated check_in_event calls'
+);
 select is(
     (select count(*)::int from event_attendee where event_id = :'checkInWindowEventID' and user_id = :'userID' and checked_in = true),
     1,
-    'Should be idempotent'
+    'Should keep only one checked-in attendee record'
 );
 
 -- Should not update checked_in_at on subsequent check-ins
-select checked_in_at
+select checked_in_at as "checkedInAt"
 from event_attendee
-where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid \gset previous_
-select check_in_event(:'communityID'::uuid, :'checkInWindowEventID'::uuid, :'userID'::uuid, false);
+where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid \gset previousCheckIn_
+select lives_ok(
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
+        :'communityID', :'checkInWindowEventID', :'userID'
+    ),
+    'Should allow subsequent check-ins without error'
+);
 select is(
     (
         select checked_in_at
         from event_attendee
         where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
     ),
-    :'previous_checked_in_at'::timestamptz,
-    'Should not update checked_in_at on subsequent check-ins'
+    :'previousCheckIn_checkedInAt'::timestamptz,
+    'Should keep original checked_in_at on subsequent check-ins'
 );
 
 -- Should succeed with bypass_window for future event (outside check-in window)
-select check_in_event(:'communityID'::uuid, :'futureEventID'::uuid, :'userID'::uuid, true);
+select lives_ok(
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,true)',
+        :'communityID', :'futureEventID', :'userID'
+    ),
+    'Should allow check-in with bypass_window for future event'
+);
 select is(
     (select checked_in from event_attendee where event_id = :'futureEventID' and user_id = :'userID'),
     true,
-    'Should allow check-in with bypass_window for future event'
+    'Should mark attendee checked in with bypass_window for future event'
 );
 
 -- Should succeed with bypass_window for event without start time
-select check_in_event(:'communityID'::uuid, :'noStartTimeEventID'::uuid, :'userID'::uuid, true);
+select lives_ok(
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,true)',
+        :'communityID', :'noStartTimeEventID', :'userID'
+    ),
+    'Should allow check-in with bypass_window for event without start time'
+);
 select is(
     (select checked_in from event_attendee where event_id = :'noStartTimeEventID' and user_id = :'userID'),
     true,
-    'Should allow check-in with bypass_window for event without start time'
+    'Should mark attendee checked in with bypass_window for event without start time'
 );
 
 -- Should still require user to be registered even with bypass_window

@@ -6,6 +6,7 @@ create or replace function update_group(
 )
 returns void as $$
 begin
+    -- Update the group fields from the payload
     update "group" set
         name = p_group->>'name',
         group_category_id = (p_group->>'category_id')::uuid,
@@ -50,6 +51,7 @@ begin
     and community_id = p_community_id
     and deleted = false;
 
+    -- Ensure the target group exists and is active
     if not found then
         raise exception 'group not found or inactive';
     end if;

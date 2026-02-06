@@ -12,7 +12,7 @@ select plan(4);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
-\set userID '00000000-0000-0000-0000-000000000031'
+\set user1ID '00000000-0000-0000-0000-000000000031'
 
 -- ============================================================================
 -- SEED DATA
@@ -20,7 +20,7 @@ select plan(4);
 
 -- Community
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -31,12 +31,12 @@ insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name)
-values (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+insert into "user" (user_id, auth_hash, email, username, email_verified)
+values (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true);
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
-values (:'groupID', :'userID', 'organizer', true);
+values (:'groupID', :'user1ID', 'organizer', true);
 
 -- ============================================================================
 -- TESTS

@@ -4,9 +4,11 @@ create or replace function list_user_session_proposals_for_cfs_event(
     p_event_id uuid
 )
 returns json as $$
+    -- Build user proposals payload with submission status for the event
     select coalesce(
         json_agg(
             json_strip_nulls(json_build_object(
+                -- Include core proposal fields
                 'created_at', extract(epoch from sp.created_at)::bigint,
                 'description', sp.description,
                 'duration_minutes', floor(extract(epoch from sp.duration) / 60)::int,
@@ -15,6 +17,7 @@ returns json as $$
                 'session_proposal_level_name', spl.display_name,
                 'title', sp.title,
 
+                -- Include optional co-speaker details
                 'co_speaker', case
                     when co.user_id is null then null
                     else json_strip_nulls(json_build_object(
@@ -27,6 +30,7 @@ returns json as $$
                         'title', co.title
                     ))
                 end,
+                -- Include submission status and derived flags
                 'submission_status_id', cs.status_id,
                 'submission_status_name', css.display_name,
                 'updated_at', extract(epoch from sp.updated_at)::bigint,

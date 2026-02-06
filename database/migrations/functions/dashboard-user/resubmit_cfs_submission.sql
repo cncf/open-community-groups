@@ -21,6 +21,7 @@ begin
         where s.cfs_submission_id = cs.cfs_submission_id
     );
 
+    -- Ensure submission exists and can be resubmitted
     if not found then
         raise exception 'submission not found or cannot be resubmitted';
     end if;

@@ -24,7 +24,7 @@ select plan(3);
 
 -- Community
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -38,15 +38,15 @@ values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 insert into "user" (user_id, auth_hash, email, name, username, email_verified, photo_url)
 values
     (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice',
-        'alice', true, 'https://example.com/alice.png'),
+        'alice', true, 'https://e/u1.png'),
     (:'user2ID', gen_random_bytes(32), 'bob@example.com', null,
-        'bob', true, 'https://example.com/bob.png'),
+        'bob', true, 'https://e/u2.png'),
     (:'user3ID', gen_random_bytes(32), 'aaron@example.com', null,
-        'aaron', true, 'https://example.com/aaron.png'),
+        'aaron', true, 'https://e/u3.png'),
     (:'user4ID', gen_random_bytes(32), 'alice2@example.com', 'Alice',
-        'alice2', true, 'https://example.com/alice2.png'),
+        'alice2', true, 'https://e/u4.png'),
     (:'user5ID', gen_random_bytes(32), 'bobby@example.com', 'Bob',
-        'bobby', true, 'https://example.com/bobby.png');
+        'bobby', true, 'https://e/u5.png');
 
 -- Group members
 insert into group_member (group_id, user_id, created_at)
@@ -70,15 +70,15 @@ select is(
     jsonb_build_object(
         'members', '[
             {"created_at": 1704067200, "username": "alice", "company": null, "name": "Alice",
-                "photo_url": "https://example.com/alice.png", "title": null},
+                "photo_url": "https://e/u1.png", "title": null},
             {"created_at": 1704326400, "username": "alice2", "company": null, "name": "Alice",
-                "photo_url": "https://example.com/alice2.png", "title": null},
+                "photo_url": "https://e/u4.png", "title": null},
             {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
-                "photo_url": "https://example.com/bobby.png", "title": null},
+                "photo_url": "https://e/u5.png", "title": null},
             {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
-                "photo_url": "https://example.com/aaron.png", "title": null},
+                "photo_url": "https://e/u3.png", "title": null},
             {"created_at": 1704153600, "username": "bob", "company": null, "name": null,
-                "photo_url": "https://example.com/bob.png", "title": null}
+                "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
         'total', 5
     ),
@@ -94,9 +94,9 @@ select is(
     jsonb_build_object(
         'members', '[
             {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
-                "photo_url": "https://example.com/bobby.png", "title": null},
+                "photo_url": "https://e/u5.png", "title": null},
             {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
-                "photo_url": "https://example.com/aaron.png", "title": null}
+                "photo_url": "https://e/u3.png", "title": null}
         ]'::jsonb,
         'total', 5
     ),

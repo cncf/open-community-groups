@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -135,7 +135,14 @@ values (:'meetingOrphanID', 'zoom', '555666777', 'https://zoom.us/j/555666777');
 -- ============================================================================
 
 -- Should delete meeting record when linked to event
-select delete_meeting(:'meetingEventID', :'eventID', null);
+select lives_ok(
+    format(
+        'select delete_meeting(%L, %L, null)',
+        :'meetingEventID',
+        :'eventID'
+    ),
+    'Should delete meeting record when linked to event'
+);
 select is(
     (select count(*) from meeting where meeting_id = :'meetingEventID'),
     0::bigint,
@@ -150,7 +157,14 @@ select is(
 );
 
 -- Should delete meeting record when linked to session
-select delete_meeting(:'meetingSessionID', null, :'sessionID');
+select lives_ok(
+    format(
+        'select delete_meeting(%L, null, %L)',
+        :'meetingSessionID',
+        :'sessionID'
+    ),
+    'Should delete meeting record when linked to session'
+);
 select is(
     (select count(*) from meeting where meeting_id = :'meetingSessionID'),
     0::bigint,
@@ -165,7 +179,13 @@ select is(
 );
 
 -- Should delete orphan meeting record
-select delete_meeting(:'meetingOrphanID', null, null);
+select lives_ok(
+    format(
+        'select delete_meeting(%L, null, null)',
+        :'meetingOrphanID'
+    ),
+    'Should delete orphan meeting record'
+);
 select is(
     (select count(*) from meeting where meeting_id = :'meetingOrphanID'),
     0::bigint,

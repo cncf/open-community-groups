@@ -56,6 +56,7 @@ begin
         ) into v_tsquery_with_prefix_matching;
     end if;
 
+    -- Filter, paginate and aggregate matching groups
     return (
     with filtered_groups as (
         select
@@ -94,6 +95,7 @@ begin
                 v_tsquery_with_prefix_matching @@ g.tsdoc
             else true end
     ),
+    -- Select the requested page with the selected sort strategy
     filtered_groups_page as (
         select community_id, group_id
         from filtered_groups
@@ -105,6 +107,7 @@ begin
         limit v_limit
         offset v_offset
     )
+    -- Build response payload with optional bbox and total count
     select json_build_object(
         'bbox',
         (
@@ -120,6 +123,7 @@ begin
                             )
                         else null end
                     from (
+                        -- Build a bounding box from the filtered groups locations
                         select st_envelope(st_union(st_envelope(location::geometry))) as bb
                         from filtered_groups
                     ) as filtered_groups_bbox
@@ -128,6 +132,7 @@ begin
         ),
         'groups',
         (
+            -- Render paginated groups as summaries
             select coalesce(json_agg(
                 get_group_summary(community_id, group_id)
             ), '[]'::json)
@@ -135,6 +140,7 @@ begin
         ),
         'total',
         (
+            -- Count total groups before pagination
             select count(*)::bigint from filtered_groups
         )
     )

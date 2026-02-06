@@ -3,18 +3,18 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
 \set eventClosedID '00000000-0000-0000-0000-000000000052'
 \set eventDisabledID '00000000-0000-0000-0000-000000000053'
+\set eventID '00000000-0000-0000-0000-000000000051'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000054'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
@@ -263,18 +263,26 @@ select throws_ok(
 );
 
 -- Add CFS submission
-select add_cfs_submission(
-    :'communityID'::uuid,
-    :'eventID'::uuid,
-    :'userID'::uuid,
-    :'proposalID'::uuid
-) as submission_id \gset
+select lives_ok(
+    format(
+        'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
+        :'communityID',
+        :'eventID',
+        :'userID',
+        :'proposalID'
+    ),
+    'Should execute add_cfs_submission successfully'
+);
 
 -- Should add CFS submission
 select is(
-    (select count(*) from cfs_submission where cfs_submission_id = :'submission_id'::uuid),
+    (
+        select count(*)
+        from cfs_submission
+        where event_id = :'eventID'::uuid and session_proposal_id = :'proposalID'::uuid
+    ),
     1::bigint,
-    'Should add CFS submission'
+    'Should create a CFS submission record'
 );
 
 -- Should reject duplicate CFS submissions

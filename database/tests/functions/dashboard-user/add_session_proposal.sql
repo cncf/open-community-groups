@@ -9,8 +9,8 @@ select plan(1);
 -- VARIABLES
 -- ============================================================================
 
-\set userID '00000000-0000-0000-0000-000000000071'
 \set coSpeakerUserID '00000000-0000-0000-0000-000000000072'
+\set userID '00000000-0000-0000-0000-000000000071'
 
 -- ============================================================================
 -- SEED DATA
@@ -25,7 +25,7 @@ insert into "user" (user_id, auth_hash, email, username, email_verified, name) v
 -- TESTS
 -- ============================================================================
 
--- Create session proposal
+-- Should store proposal details
 select add_session_proposal(
     :'userID'::uuid,
     jsonb_build_object(
@@ -35,9 +35,7 @@ select add_session_proposal(
         'session_proposal_level_id', 'beginner',
         'title', 'Rust 101'
     )
-) as session_proposal_id \gset
-
--- Should store proposal details
+) as "sessionProposalID" \gset
 select is(
     (
         select jsonb_build_object(
@@ -49,7 +47,7 @@ select is(
             'user_id', user_id
         )
         from session_proposal
-        where session_proposal_id = :'session_proposal_id'::uuid
+        where session_proposal_id = :'sessionProposalID'::uuid
     ),
     jsonb_build_object(
         'co_speaker_user_id', :'coSpeakerUserID'::uuid,

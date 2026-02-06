@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -83,7 +83,10 @@ values (:'meetingID', :'eventID', 'zoom', '123456789', 'https://zoom.us/j/123456
 -- ============================================================================
 
 -- Should set recording_url when updating
-select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123');
+select lives_ok(
+    $$select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/abc123')$$,
+    'Should set recording_url when updating'
+);
 select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
     'https://zoom.us/rec/share/abc123',
@@ -98,7 +101,10 @@ select isnt(
 );
 
 -- Should overwrite recording URL when updating with different URL
-select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789');
+select lives_ok(
+    $$select update_meeting_recording_url('zoom', '123456789', 'https://zoom.us/rec/share/xyz789')$$,
+    'Should overwrite recording URL when updating with different URL'
+);
 select is(
     (select recording_url from meeting where meeting_id = :'meetingID'),
     'https://zoom.us/rec/share/xyz789',

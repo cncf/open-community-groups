@@ -9,16 +9,16 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
+\set categoryID '00000000-0000-0000-0000-000000000021'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000041'
 \set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set proposalRustID '00000000-0000-0000-0000-000000000061'
 \set proposalZigID '00000000-0000-0000-0000-000000000062'
 \set submissionID '00000000-0000-0000-0000-000000000071'
-\set userID '00000000-0000-0000-0000-000000000081'
-\set userEmptyID '00000000-0000-0000-0000-000000000099'
+\set user1ID '00000000-0000-0000-0000-000000000081'
+\set user2ID '00000000-0000-0000-0000-000000000099'
 
 -- ============================================================================
 -- SEED DATA
@@ -26,15 +26,15 @@ select plan(2);
 
 -- Community
 insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
+    (:'categoryID', :'communityID', 'Tech');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+    (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name, slug) values
@@ -42,7 +42,7 @@ insert into event_category (event_category_id, community_id, name, slug) values
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
 
 -- Session proposals
 insert into session_proposal (
@@ -61,7 +61,7 @@ insert into session_proposal (
         make_interval(mins => 45),
         'beginner',
         'Rust Intro',
-        :'userID'
+        :'user1ID'
     ),
     (
         :'proposalZigID',
@@ -70,7 +70,7 @@ insert into session_proposal (
         make_interval(mins => 60),
         'intermediate',
         'Zig Intro',
-        :'userID'
+        :'user1ID'
     );
 
 -- Event
@@ -115,7 +115,7 @@ insert into cfs_submission (
 
 -- Should list proposals with submission status for event
 select is(
-    list_user_session_proposals_for_cfs_event(:'userID'::uuid, :'eventID'::uuid)::jsonb,
+    list_user_session_proposals_for_cfs_event(:'user1ID'::uuid, :'eventID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
             'created_at', 1704153600,
@@ -145,7 +145,7 @@ select is(
 
 -- Should return empty list for users without proposals
 select is(
-    list_user_session_proposals_for_cfs_event(:'userEmptyID'::uuid, :'eventID'::uuid)::jsonb,
+    list_user_session_proposals_for_cfs_event(:'user2ID'::uuid, :'eventID'::uuid)::jsonb,
     '[]'::jsonb,
     'Should return empty list for users without proposals'
 );

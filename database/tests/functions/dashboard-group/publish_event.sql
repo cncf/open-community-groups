@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -197,20 +197,26 @@ insert into session (
 -- ============================================================================
 
 -- Should set published and metadata
-select publish_event(:'groupID'::uuid, :'eventID'::uuid, :'userID'::uuid);
+select lives_ok(
+    $$select publish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    'Should set published and metadata'
+);
 
+-- Should set published=true
 select is(
     (select published from event where event_id = :'eventID'),
     true,
     'Should set published=true'
 );
 
+-- Should set published_at timestamp
 select isnt(
     (select published_at from event where event_id = :'eventID'),
     null,
     'Should set published_at timestamp'
 );
 
+-- Should set published_by to the user
 select is(
     (select published_by from event where event_id = :'eventID')::text,
     :'userID',
@@ -238,12 +244,17 @@ select is(
     'Should not change session meeting_in_sync when meeting_requested=false'
 );
 
--- Should not change event meeting_in_sync when meeting_requested=false
-select publish_event(:'groupID'::uuid, :'eventNoMeetingID'::uuid, :'userID'::uuid);
+-- Should publish event when meeting_requested=false
+select lives_ok(
+    $$select publish_event('00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, '00000000-0000-0000-0000-000000000041'::uuid)$$,
+    'Should publish event when meeting_requested=false'
+);
+
+-- Should keep event meeting_in_sync unchanged when meeting_requested=false
 select is(
     (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
     null,
-    'Should not change event meeting_in_sync when meeting_requested=false'
+    'Should keep event meeting_in_sync unchanged when meeting_requested=false'
 );
 
 -- Should throw error when group_id does not match
@@ -266,4 +277,3 @@ select throws_ok(
 
 select * from finish();
 rollback;
-

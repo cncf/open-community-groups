@@ -18,23 +18,8 @@ select plan(3);
 -- ============================================================================
 
 -- Community
-insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
+insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Users
 insert into "user" (
@@ -48,8 +33,8 @@ insert into "user" (
     email_verified,
     photo_url
 ) values
-    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://example.com/a.png'),
-    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://example.com/b.png');
+    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://e/u1.png'),
+    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://e/u2.png');
 
 -- Team
 insert into community_team (accepted, community_id, user_id) values
@@ -69,8 +54,8 @@ select is(
     jsonb_build_object(
         'approved_total', 2,
         'members', '[
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/a.png", "title": "Principal Engineer"},
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://example.com/b.png", "title": null}
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -86,7 +71,7 @@ select is(
     jsonb_build_object(
         'approved_total', 2,
         'members', '[
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://example.com/b.png", "title": null}
+            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),

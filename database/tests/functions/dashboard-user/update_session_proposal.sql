@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,8 +14,8 @@ select plan(3);
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
-\set userID '00000000-0000-0000-0000-000000000071'
 \set user2ID '00000000-0000-0000-0000-000000000072'
+\set userID '00000000-0000-0000-0000-000000000071'
 
 -- ============================================================================
 -- SEED DATA
@@ -95,7 +95,7 @@ insert into session_proposal (
     'Rust 101',
     :'userID'
 )
-returning session_proposal_id as proposal_rust_id \gset
+returning session_proposal_id as "proposalRustID" \gset
 
 -- Session proposal
 insert into session_proposal (
@@ -115,12 +115,12 @@ insert into session_proposal (
     'Zig 201',
     :'userID'
 )
-returning session_proposal_id as proposal_id \gset
+returning session_proposal_id as "proposalID" \gset
 
 -- CFS submission
 insert into cfs_submission (event_id, session_proposal_id, status_id)
-values (:'eventID', :'proposal_id'::uuid, 'approved')
-returning cfs_submission_id as linked_submission_id \gset
+values (:'eventID', :'proposalID'::uuid, 'approved')
+returning cfs_submission_id as "linkedSubmissionID" \gset
 
 -- Session
 insert into session (
@@ -130,7 +130,7 @@ insert into session (
     session_kind_id,
     starts_at
 ) values (
-    :'linked_submission_id',
+    :'linkedSubmissionID',
     :'eventID',
     'Linked Session',
     'in-person',
@@ -142,16 +142,20 @@ insert into session (
 -- ============================================================================
 
 -- Update session proposal
-select update_session_proposal(
-    :'userID'::uuid,
-    :'proposal_rust_id'::uuid,
-    jsonb_build_object(
-        'co_speaker_user_id', :'user2ID'::uuid,
-        'description', 'Updated description',
-        'duration_minutes', 60,
-        'session_proposal_level_id', 'intermediate',
-        'title', 'Rust 102'
-    )
+select lives_ok(
+    format(
+        'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
+        :'userID',
+        :'proposalRustID',
+        jsonb_build_object(
+            'co_speaker_user_id', :'user2ID'::uuid,
+            'description', 'Updated description',
+            'duration_minutes', 60,
+            'session_proposal_level_id', 'intermediate',
+            'title', 'Rust 102'
+        )::text
+    ),
+    'Should execute update_session_proposal successfully'
 );
 
 -- Should update session proposal
@@ -166,7 +170,7 @@ select is(
             'user_id', user_id
         )
         from session_proposal
-        where session_proposal_id = :'proposal_rust_id'::uuid
+        where session_proposal_id = :'proposalRustID'::uuid
     ),
     jsonb_build_object(
         'co_speaker_user_id', :'user2ID'::uuid,
@@ -176,7 +180,7 @@ select is(
         'title', 'Rust 102',
         'user_id', :'userID'::uuid
     ),
-    'Should update session proposal'
+    'Should persist updated session proposal fields'
 );
 
 -- Should reject updating proposals linked to sessions
@@ -184,7 +188,7 @@ select throws_ok(
     format(
         'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
         :'userID',
-        :'proposal_id',
+        :'proposalID',
         jsonb_build_object(
             'co_speaker_user_id', null,
             'description', 'Updated description',
@@ -202,7 +206,7 @@ select throws_ok(
     format(
         'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
         :'user2ID',
-        :'proposal_id',
+        :'proposalID',
         jsonb_build_object(
             'co_speaker_user_id', null,
             'description', 'Updated description',

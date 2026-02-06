@@ -179,14 +179,14 @@ with new_event as (
         }'::jsonb
     ) as event_id
 )
-select event_id from new_event \gset
+select event_id as "eventID" from new_event \gset
 
 -- Check event fields except sessions
 select ok(
     (select get_event_full(
         :'communityID'::uuid,
         :'groupID'::uuid,
-        :'event_id'::uuid
+        :'eventID'::uuid
     )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug') = '{
         "canceled": false,
         "category_name": "Conference",
@@ -239,7 +239,7 @@ select ok(
         get_event_full(
             :'communityID'::uuid,
             :'groupID'::uuid,
-            :'event_id'::uuid
+            :'eventID'::uuid
         )::jsonb->'sessions'->'2030-01-01'
     ) @>
         '[
@@ -303,7 +303,7 @@ with request_event as (
         }'::jsonb
     ) as event_id
 )
-select event_id as event_request_id from request_event \gset
+select event_id as "eventRequestID" from request_event \gset
 select is(
     (
         select jsonb_build_object(
@@ -319,11 +319,11 @@ select is(
                     'meeting_in_sync', meeting_in_sync
                 )
                 from session
-                where event_id = :'event_request_id'::uuid
+                where event_id = :'eventRequestID'::uuid
             )
         )
         from event
-        where event_id = :'event_request_id'::uuid
+        where event_id = :'eventRequestID'::uuid
     ),
     '{
         "event": {

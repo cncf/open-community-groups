@@ -180,6 +180,7 @@ select columns_are('event', array[
     'description_short',
     'ends_at',
     'legacy_id',
+    'legacy_url',
     'location',
     'logo_url',
     'meeting_error',
@@ -302,6 +303,7 @@ select columns_are('group', array[
     'github_url',
     'instagram_url',
     'legacy_id',
+    'legacy_url',
     'linkedin_url',
     'location',
     'logo_url',
@@ -685,7 +687,8 @@ select indexes_are('community_site_layout', array[
 select indexes_are('community_team', array[
     'community_team_pkey',
     'community_team_community_id_idx',
-    'community_team_user_id_idx'
+    'community_team_user_id_idx',
+    'community_team_pending_user_created_at_idx'
 ]);
 
 -- Test: custom_notification indexes should match expected
@@ -715,7 +718,8 @@ select indexes_are('event', array[
     'event_published_by_idx',
     'event_search_idx',
     'event_starts_at_idx',
-    'event_tsdoc_idx'
+    'event_tsdoc_idx',
+    'event_group_not_deleted_starts_at_idx'
 ]);
 
 -- Test: event_attendee indexes should match expected
@@ -757,7 +761,9 @@ select indexes_are('group', array[
     'group_group_site_layout_id_idx',
     'group_location_idx',
     'group_search_idx',
-    'group_tsdoc_idx'
+    'group_tsdoc_idx',
+    'group_active_created_at_idx',
+    'group_community_active_created_at_idx'
 ]);
 
 -- Test: group_category indexes should match expected
@@ -812,7 +818,8 @@ select indexes_are('group_team', array[
     'group_team_pkey',
     'group_team_group_id_idx',
     'group_team_user_id_idx',
-    'group_team_role_idx'
+    'group_team_role_idx',
+    'group_team_pending_user_created_at_idx'
 ]);
 
 -- Test: images indexes should match expected

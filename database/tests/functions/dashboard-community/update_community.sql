@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -73,13 +73,16 @@ insert into community (
 -- ============================================================================
 
 -- Should update required fields and set optional fields to null when not provided
-select update_community(
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '{
-        "description": "Updated description for Seattle cloud native community",
-        "display_name": "Cloud Native Seattle Updated",
-        "logo_url": "https://updated.com/logo.png"
-    }'::jsonb
+select lives_ok(
+    $$select update_community(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '{
+            "description": "Updated description for Seattle cloud native community",
+            "display_name": "Cloud Native Seattle Updated",
+            "logo_url": "https://updated.com/logo.png"
+        }'::jsonb
+    )$$,
+    'Should execute update with only required fields'
 );
 
 select is(
@@ -94,34 +97,37 @@ select is(
         "logo_url": "https://updated.com/logo.png",
         "name": "cloud-native-seattle"
     }'::jsonb,
-    'Should update required fields and set optional fields to null when not provided'
+    'Should persist required fields and clear omitted optional fields'
 );
 
 -- Should update all fields including optional ones
-select update_community(
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '{
-        "description": "Comprehensive cloud native community in Seattle",
-        "display_name": "Cloud Native Seattle Complete",
-        "logo_url": "https://new.com/logo.png",
-        "ad_banner_url": "https://new.com/banner.png",
-        "ad_banner_link_url": "https://new.com/link",
-        "banner_mobile_url": "https://new.com/community-banner_mobile.png",
-        "banner_url": "https://new.com/community-banner.png",
-        "extra_links": {"blog": "https://blog.new.com", "forum": "https://forum.new.com"},
-        "facebook_url": "https://facebook.com/new",
-        "flickr_url": "https://flickr.com/new",
-        "github_url": "https://github.com/new",
-        "instagram_url": "https://instagram.com/new",
-        "linkedin_url": "https://linkedin.com/new",
-        "new_group_details": "New groups welcome!",
-        "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
-        "slack_url": "https://new.slack.com",
-        "twitter_url": "https://twitter.com/new",
-        "website_url": "https://new.com",
-        "wechat_url": "https://wechat.com/new",
-        "youtube_url": "https://youtube.com/new"
-    }'::jsonb
+select lives_ok(
+    $$select update_community(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '{
+            "description": "Comprehensive cloud native community in Seattle",
+            "display_name": "Cloud Native Seattle Complete",
+            "logo_url": "https://new.com/logo.png",
+            "ad_banner_url": "https://new.com/banner.png",
+            "ad_banner_link_url": "https://new.com/link",
+            "banner_mobile_url": "https://new.com/community-banner_mobile.png",
+            "banner_url": "https://new.com/community-banner.png",
+            "extra_links": {"blog": "https://blog.new.com", "forum": "https://forum.new.com"},
+            "facebook_url": "https://facebook.com/new",
+            "flickr_url": "https://flickr.com/new",
+            "github_url": "https://github.com/new",
+            "instagram_url": "https://instagram.com/new",
+            "linkedin_url": "https://linkedin.com/new",
+            "new_group_details": "New groups welcome!",
+            "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
+            "slack_url": "https://new.slack.com",
+            "twitter_url": "https://twitter.com/new",
+            "website_url": "https://new.com",
+            "wechat_url": "https://wechat.com/new",
+            "youtube_url": "https://youtube.com/new"
+        }'::jsonb
+    )$$,
+    'Should update all fields including optional ones'
 );
 
 select is(
@@ -155,23 +161,26 @@ select is(
 );
 
 -- Should convert empty strings to null for nullable fields
-select update_community(
-    '00000000-0000-0000-0000-000000000001'::uuid,
-    '{
-        "ad_banner_url": "",
-        "ad_banner_link_url": "",
-        "facebook_url": "",
-        "flickr_url": "",
-        "github_url": "",
-        "instagram_url": "",
-        "linkedin_url": "",
-        "new_group_details": "",
-        "slack_url": "",
-        "twitter_url": "",
-        "website_url": "",
-        "wechat_url": "",
-        "youtube_url": ""
-    }'::jsonb
+select lives_ok(
+    $$select update_community(
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '{
+            "ad_banner_url": "",
+            "ad_banner_link_url": "",
+            "facebook_url": "",
+            "flickr_url": "",
+            "github_url": "",
+            "instagram_url": "",
+            "linkedin_url": "",
+            "new_group_details": "",
+            "slack_url": "",
+            "twitter_url": "",
+            "website_url": "",
+            "wechat_url": "",
+            "youtube_url": ""
+        }'::jsonb
+    )$$,
+    'Should execute update converting empty strings to null'
 );
 
 select is(
@@ -195,7 +204,7 @@ select is(
         "wechat_url": null,
         "youtube_url": null
     }'::jsonb,
-    'Should convert empty strings to null for nullable fields'
+    'Should persist nulls for empty-string nullable fields'
 );
 
 -- ============================================================================

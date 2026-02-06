@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,8 +14,8 @@ select plan(3);
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
-\set userID '00000000-0000-0000-0000-000000000071'
 \set user2ID '00000000-0000-0000-0000-000000000072'
+\set userID '00000000-0000-0000-0000-000000000071'
 
 -- ============================================================================
 -- SEED DATA
@@ -95,7 +95,7 @@ insert into session_proposal (
     'Rust 101',
     :'userID'
 )
-returning session_proposal_id as session_proposal_id \gset
+returning session_proposal_id as "sessionProposalID" \gset
 
 -- Session proposal
 insert into session_proposal (
@@ -115,11 +115,11 @@ insert into session_proposal (
     'Go 101',
     :'userID'
 )
-returning session_proposal_id as proposal_with_submission_id \gset
+returning session_proposal_id as "proposalWithSubmissionID" \gset
 
 -- CFS submission
 insert into cfs_submission (event_id, session_proposal_id, status_id)
-values (:'eventID', :'proposal_with_submission_id'::uuid, 'not-reviewed');
+values (:'eventID', :'proposalWithSubmissionID'::uuid, 'not-reviewed');
 
 -- Session proposal (other user)
 insert into session_proposal (
@@ -139,24 +139,31 @@ insert into session_proposal (
     'Python 101',
     :'user2ID'
 )
-returning session_proposal_id as other_user_proposal_id \gset
+returning session_proposal_id as "otherUserProposalID" \gset
 
 -- CFS submission (other user)
 insert into cfs_submission (event_id, session_proposal_id, status_id)
-values (:'eventID', :'other_user_proposal_id'::uuid, 'not-reviewed');
+values (:'eventID', :'otherUserProposalID'::uuid, 'not-reviewed');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Delete session proposal
-select delete_session_proposal(:'userID'::uuid, :'session_proposal_id'::uuid);
+select lives_ok(
+    format(
+        'select delete_session_proposal(%L::uuid, %L::uuid)',
+        :'userID',
+        :'sessionProposalID'
+    ),
+    'Should execute delete_session_proposal successfully'
+);
 
 -- Should delete session proposal
 select is(
-    (select count(*) from session_proposal where session_proposal_id = :'session_proposal_id'::uuid),
+    (select count(*) from session_proposal where session_proposal_id = :'sessionProposalID'::uuid),
     0::bigint,
-    'Should delete session proposal'
+    'Should remove session proposal record'
 );
 
 -- Should reject deleting proposals with submissions
@@ -164,7 +171,7 @@ select throws_ok(
     format(
         'select delete_session_proposal(%L::uuid, %L::uuid)',
         :'userID',
-        :'proposal_with_submission_id'
+        :'proposalWithSubmissionID'
     ),
     'session proposal has submissions',
     'Should reject deleting proposals with submissions'
@@ -175,7 +182,7 @@ select throws_ok(
     format(
         'select delete_session_proposal(%L::uuid, %L::uuid)',
         :'userID',
-        :'other_user_proposal_id'
+        :'otherUserProposalID'
     ),
     'session proposal not found',
     'Should not leak submissions for other users'

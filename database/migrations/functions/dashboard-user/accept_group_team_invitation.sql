@@ -2,12 +2,14 @@
 create or replace function accept_group_team_invitation(p_group_id uuid, p_user_id uuid)
 returns void as $$
 begin
+    -- Accept the pending invitation
     update group_team gt
     set accepted = true
     where gt.group_id = p_group_id
       and gt.user_id = p_user_id
       and gt.accepted = false;
 
+    -- Ensure a pending invitation exists
     if not found then
         raise exception 'no pending group invitation found';
     end if;
