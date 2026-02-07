@@ -1,4 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -13,6 +14,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  *   community_name and display_name keys
  * @property {string} selectedCommunityId Currently selected community identifier
  * @property {string} selectEndpoint API endpoint for selecting community
+ * @property {string} redirectPath Dashboard path used after selection
  */
 export class CommunitySelector extends LitWrapper {
   static properties = {
@@ -22,6 +24,7 @@ export class CommunitySelector extends LitWrapper {
     },
     selectedCommunityId: { type: String, attribute: "selected-community-id" },
     selectEndpoint: { type: String, attribute: "select-endpoint" },
+    redirectPath: { type: String, attribute: "redirect-path" },
     _isOpen: { state: true },
     _query: { state: true },
     _isSubmitting: { state: true },
@@ -33,6 +36,7 @@ export class CommunitySelector extends LitWrapper {
     this.communities = [];
     this.selectedCommunityId = "";
     this.selectEndpoint = "/dashboard/community";
+    this.redirectPath = "/dashboard/community";
     this._isOpen = false;
     this._query = "";
     this._isSubmitting = false;
@@ -90,21 +94,13 @@ export class CommunitySelector extends LitWrapper {
   }
 
   /**
-   * Triggers dashboard community selection via HTMX or falls back to reloading.
+   * Triggers dashboard community selection and keeps the selected dashboard tab.
    * @param {string|number} communityId Identifier of the community to select
-   * @returns {XMLHttpRequest|null} Active HTMX request when available
+   * @returns {Promise<void>}
    */
-  _selectDashboardCommunity(communityId) {
+  async _selectDashboardCommunity(communityId) {
     const url = `${this.selectEndpoint}/${communityId}/select`;
-
-    if (typeof window !== "undefined" && window.htmx && typeof window.htmx.ajax === "function") {
-      const request = window.htmx.ajax("PUT", url, {
-        target: "body",
-        indicator: "#dashboard-spinner",
-      });
-      return request ?? null;
-    }
-    return null;
+    await selectDashboardAndKeepTab(url, this.redirectPath);
   }
 
   /**
@@ -112,15 +108,21 @@ export class CommunitySelector extends LitWrapper {
    * @param {MouseEvent} event Option click event
    * @param {object} community Associated community data
    */
-  _handleCommunityClick(event, community) {
+  async _handleCommunityClick(event, community) {
     if (this._isSelected(community) || this._isSubmitting) {
       event.preventDefault();
       return;
     }
     event.preventDefault();
     this._isSubmitting = true;
-    this._selectDashboardCommunity(community.community_id);
     this._closeDropdown();
+    try {
+      await this._selectDashboardCommunity(community.community_id);
+    } catch (_) {
+      // Keep the current selector usable when the request fails.
+    } finally {
+      this._isSubmitting = false;
+    }
   }
 
   /**
