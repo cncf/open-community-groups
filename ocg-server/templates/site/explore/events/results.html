@@ -44,8 +44,11 @@
   <div class="relative">
     {# Placeholder calendar -#}
     {% if events.len() == 0 -%}
-      <div class="absolute mt-10 z-[10]">
-        {{ feedback::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
+      <div class="absolute mt-10 z-[10] no-results-default hidden">
+        {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
+      </div>
+      <div class="absolute mt-10 z-[10] no-results-filtered hidden">
+        {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
       </div>
     {% endif -%}
     {# End placeholder calendar -#}
@@ -105,7 +108,12 @@
             {% if events.len() > 0 %}border-b{% endif %}">
   {# Placeholder cards -#}
   {% if events.len() == 0 -%}
-    {{ feedback::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
+    <div class="no-results-default hidden">
+      {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
+    </div>
+    <div class="no-results-filtered hidden">
+      {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
+    </div>
   {% endif -%}
   {# End placeholder cards -#}
 
@@ -139,8 +147,11 @@
 
     {# Placeholder map -#}
     {% if events.len() == 0 -%}
-      <div class="absolute mt-10 z-[425]">
-        {{ feedback::alert(title = "We're sorry!", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
+      <div class="absolute mt-10 z-[425] no-results-default hidden">
+        {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
+      </div>
+      <div class="absolute mt-10 z-[425] no-results-filtered hidden">
+        {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
       </div>
     {% endif -%}
     {# End placeholder map -#}
@@ -172,3 +183,17 @@
 {# End map view -#}
 
 {% endmatch -%}
+
+{% if events.len() == 0 -%}
+  {# djlint:off #}
+<script type="module">
+  import { hasActiveFilters } from '/static/js/community/explore/filters.js';
+
+  const filtered = hasActiveFilters('events-form');
+  document.querySelectorAll('.no-results-default')
+    .forEach((el) => el.classList.toggle('hidden', filtered));
+  document.querySelectorAll('.no-results-filtered')
+    .forEach((el) => el.classList.toggle('hidden', !filtered));
+</script>
+  {# djlint:on #}
+{% endif -%}
