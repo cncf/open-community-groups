@@ -97,7 +97,7 @@ const initializeSessionProposals = () => {
       if (!button.id) {
         button.id = `delete-session-proposal-${button.dataset.sessionProposalId}`;
       }
-      showConfirmAlert("Delete this session proposal?", button.id, "Delete");
+      showConfirmAlert("Are you sure you want to delete this session proposal?", button.id, "Delete");
     });
 
     button.addEventListener("htmx:afterRequest", (event) => {
@@ -139,7 +139,7 @@ const initializeSessionProposals = () => {
         button.id = `reject-co-speaker-invitation-${button.dataset.sessionProposalId}`;
       }
 
-      showConfirmAlert("Decline this co-speaker invitation?", button.id, "Decline");
+      showConfirmAlert("Are you sure you want to decline this co-speaker invitation?", button.id, "Decline");
     });
 
     button.addEventListener("htmx:afterRequest", (event) => {
