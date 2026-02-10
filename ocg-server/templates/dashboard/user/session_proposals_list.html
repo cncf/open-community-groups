@@ -39,6 +39,14 @@ description = "Create reusable session proposals to submit to events.") -}}
                   <div class="flex items-center justify-end gap-2">
                     <button type="button"
                             class="btn-tertiary p-2"
+                            data-action="view-pending-session-proposal"
+                            data-session-proposal-id="{{ invitation.session_proposal_id }}"
+                            data-session-proposal-title="{{ invitation.title }}"
+                            title="View proposal">
+                      <div class="svg-icon size-3 md:size-4 icon-eye"></div>
+                    </button>
+                    <button type="button"
+                            class="btn-tertiary p-2"
                             data-action="accept-co-speaker-invitation"
                             hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal_id }}/co-speaker-invitation/accept"
                             hx-indicator="#dashboard-spinner"

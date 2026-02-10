@@ -35,6 +35,17 @@ const applyDescriptionHtml = (button, sessionProposal) => {
   }
 };
 
+const buildPendingInvitationProposal = (button) => {
+  return {
+    session_proposal_id: button?.dataset?.sessionProposalId || "",
+    title: button?.dataset?.sessionProposalTitle || "",
+    description: "",
+    session_proposal_level_id: "",
+    duration_minutes: "",
+    co_speaker: null,
+  };
+};
+
 const initializeSessionProposals = () => {
   const modalComponent = getModalComponent();
   if (!modalComponent) {
@@ -78,6 +89,20 @@ const initializeSessionProposals = () => {
       if (!sessionProposal) {
         return;
       }
+      applyDescriptionHtml(button, sessionProposal);
+      modalComponent.openView(sessionProposal);
+    });
+  });
+
+  document.querySelectorAll('[data-action="view-pending-session-proposal"]').forEach((button) => {
+    if (button.dataset.bound === "true") {
+      return;
+    }
+
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      const sessionProposal =
+        parseSessionProposal(button.dataset.sessionProposal) || buildPendingInvitationProposal(button);
       applyDescriptionHtml(button, sessionProposal);
       modalComponent.openView(sessionProposal);
     });
