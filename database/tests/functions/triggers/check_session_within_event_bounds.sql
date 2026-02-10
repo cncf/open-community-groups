@@ -3,12 +3,13 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set bypassSessionID '00000000-0000-0000-0000-000000000202'
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventNoBoundsID '00000000-0000-0000-0000-000000000102'
@@ -185,6 +186,38 @@ select throws_ok(
     ),
     'session ends_at must be within event bounds',
     'Should fail when updating session ends_at to after event ends_at'
+);
+
+-- Should succeed when bypassing bounds check in local transaction scope
+select lives_ok(
+    format(
+        $sql$
+            do $do$
+            begin
+                perform set_config('ocg.skip_session_bounds_check', 'on', true);
+
+                insert into session (
+                    session_id,
+                    event_id,
+                    name,
+                    starts_at,
+                    ends_at,
+                    session_kind_id
+                ) values (
+                    %L,
+                    %L,
+                    'Bypassed Bounds Session',
+                    '2030-01-01 05:00:00+00',
+                    '2030-01-01 23:00:00+00',
+                    'in-person'
+                );
+            end;
+            $do$;
+        $sql$,
+        :'bypassSessionID',
+        :'eventWithBoundsID'
+    ),
+    'Should succeed when bypassing bounds check in local transaction scope'
 );
 
 -- ============================================================================
