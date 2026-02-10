@@ -550,6 +550,10 @@ export class SessionProposalModal extends LitWrapper {
    * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
    */
   _renderFormContent() {
+    const showPendingCoSpeakerWarning =
+      this._mode === SessionProposalModal.FORM_MODE.EDIT &&
+      this._activeProposal?.session_proposal_status_id === "pending-co-speaker-response";
+
     return html`
       <div class="p-4 md:p-6">
         <form
@@ -559,6 +563,15 @@ export class SessionProposalModal extends LitWrapper {
           hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel"
         >
           <div class="space-y-5">
+            ${showPendingCoSpeakerWarning
+              ? html`
+                  <div
+                    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                  >
+                    This proposal is awaiting co-speaker invitation response.
+                  </div>
+                `
+              : ""}
             <div>
               <label for="session-proposal-title" class="form-label">
                 Title <span class="asterisk">*</span>
