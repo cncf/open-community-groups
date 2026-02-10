@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(353);
+select plan(361);
 
 -- ============================================================================
 -- TESTS
@@ -51,6 +51,7 @@ select has_table('session');
 select has_table('session_kind');
 select has_table('session_proposal');
 select has_table('session_proposal_level');
+select has_table('session_proposal_status');
 select has_table('session_speaker');
 select has_table('site');
 select has_table('user');
@@ -417,12 +418,19 @@ select columns_are('session_proposal', array[
     'user_id',
 
     'co_speaker_user_id',
+    'session_proposal_status_id',
     'updated_at'
 ]);
 
 -- Test: session_proposal_level columns should match expected
 select columns_are('session_proposal_level', array[
     'session_proposal_level_id',
+    'display_name'
+]);
+
+-- Test: session_proposal_status columns should match expected
+select columns_are('session_proposal_status', array[
+    'session_proposal_status_id',
     'display_name'
 ]);
 
@@ -580,6 +588,7 @@ select has_pk('session');
 select has_pk('session_kind');
 select has_pk('session_proposal');
 select has_pk('session_proposal_level');
+select has_pk('session_proposal_status');
 select has_pk('session_speaker');
 select has_pk('site');
 select has_pk('user');
@@ -639,6 +648,7 @@ select col_is_fk('session', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('session', 'session_kind_id', 'session_kind');
 select col_is_fk('session_proposal', 'co_speaker_user_id', 'user');
 select col_is_fk('session_proposal', 'session_proposal_level_id', 'session_proposal_level');
+select col_is_fk('session_proposal', 'session_proposal_status_id', 'session_proposal_status');
 select col_is_fk('session_proposal', 'user_id', 'user');
 select col_is_fk('session_speaker', 'session_id', 'session');
 select col_is_fk('session_speaker', 'user_id', 'user');
@@ -902,6 +912,7 @@ select indexes_are('session_proposal', array[
     'session_proposal_pkey',
     'session_proposal_co_speaker_user_id_idx',
     'session_proposal_session_proposal_level_id_idx',
+    'session_proposal_status_id_idx',
     'session_proposal_user_id_idx'
 ]);
 
@@ -909,6 +920,12 @@ select indexes_are('session_proposal', array[
 select indexes_are('session_proposal_level', array[
     'session_proposal_level_display_name_key',
     'session_proposal_level_pkey'
+]);
+
+-- Test: session_proposal_status indexes should match expected
+select indexes_are('session_proposal_status', array[
+    'session_proposal_status_display_name_key',
+    'session_proposal_status_pkey'
 ]);
 
 -- Test: session_speaker indexes should match expected
@@ -942,6 +959,7 @@ select indexes_are('user', array[
 -- Test: check expected functions exist
 select has_function('accept_community_team_invitation');
 select has_function('accept_group_team_invitation');
+select has_function('accept_session_proposal_co_speaker_invitation');
 select has_function('activate_group');
 select has_function('add_cfs_submission');
 select has_function('add_community_team_member');
@@ -1016,6 +1034,7 @@ select has_function('list_user_groups');
 select has_function('list_user_session_proposals');
 select has_function('list_user_session_proposals_for_cfs_event');
 select has_function('publish_event');
+select has_function('reject_session_proposal_co_speaker_invitation');
 select has_function('resubmit_cfs_submission');
 select has_function('search_event_attendees');
 select has_function('search_events');
@@ -1126,6 +1145,7 @@ select results_eq(
         ('group-custom'),
         ('group-team-invitation'),
         ('group-welcome'),
+        ('session-proposal-co-speaker-invitation'),
         ('speaker-welcome')
     $$,
     'Notification kinds should exist'
@@ -1151,6 +1171,17 @@ select results_eq(
         ('intermediate', 'Intermediate')
     $$,
     'Session proposal levels should exist'
+);
+
+-- Test: session proposal statuses should match expected values
+select results_eq(
+    'select * from session_proposal_status order by session_proposal_status_id',
+    $$ values
+        ('declined-by-co-speaker', 'Declined by co-speaker'),
+        ('pending-co-speaker-response', 'Awaiting co-speaker response'),
+        ('ready-for-submission', 'Ready for submission')
+    $$,
+    'Session proposal statuses should exist'
 );
 
 -- Test: community site layout should match expected

@@ -53,7 +53,8 @@ use crate::{
             user::{
                 invitations::{CommunityTeamInvitation, GroupTeamInvitation},
                 session_proposals::{
-                    SessionProposal as UserSessionProposal, SessionProposalLevel as UserSessionProposalLevel,
+                    PendingCoSpeakerInvitation, SessionProposal as UserSessionProposal,
+                    SessionProposalLevel as UserSessionProposalLevel,
                 },
                 submissions::{
                     CfsSessionProposal as UserCfsSessionProposal, CfsSubmission as UserCfsSubmission,
@@ -283,6 +284,8 @@ pub(crate) fn sample_event_cfs_session_proposal(session_proposal_id: Uuid) -> Ev
         session_proposal_id,
         session_proposal_level_id: "intermediate".to_string(),
         session_proposal_level_name: "Intermediate".to_string(),
+        session_proposal_status_id: "ready-for-submission".to_string(),
+        status_name: "Ready for submission".to_string(),
         title: "Sample Proposal".to_string(),
 
         co_speaker: None,
@@ -640,6 +643,16 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
     }
 }
 
+/// Sample pending co-speaker invitation used in user dashboard tests.
+pub(crate) fn sample_pending_co_speaker_invitation(session_proposal_id: Uuid) -> PendingCoSpeakerInvitation {
+    PendingCoSpeakerInvitation {
+        session_proposal_id,
+        speaker_name: "Speaker".to_string(),
+        title: "Rust 201".to_string(),
+        updated_at: Utc.with_ymd_and_hms(2024, 1, 4, 12, 0, 0).unwrap(),
+    }
+}
+
 /// Sample search output for events.
 pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput {
     SearchEventsOutput {
@@ -676,6 +689,8 @@ pub(crate) fn sample_session_proposal(session_proposal_id: Uuid) -> UserSessionP
         session_proposal_id,
         session_proposal_level_id: "beginner".to_string(),
         session_proposal_level_name: "Beginner".to_string(),
+        session_proposal_status_id: "ready-for-submission".to_string(),
+        status_name: "Ready for submission".to_string(),
         title: "Rust 101".to_string(),
 
         co_speaker: None,

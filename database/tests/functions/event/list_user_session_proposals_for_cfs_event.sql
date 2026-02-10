@@ -15,6 +15,7 @@ select plan(2);
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set proposalRustID '00000000-0000-0000-0000-000000000061'
+\set proposalPendingID '00000000-0000-0000-0000-000000000063'
 \set proposalZigID '00000000-0000-0000-0000-000000000062'
 \set submissionID '00000000-0000-0000-0000-000000000071'
 \set user1ID '00000000-0000-0000-0000-000000000081'
@@ -73,6 +74,26 @@ insert into session_proposal (
         :'user1ID'
     );
 
+insert into session_proposal (
+    session_proposal_id,
+    created_at,
+    description,
+    duration,
+    session_proposal_level_id,
+    session_proposal_status_id,
+    title,
+    user_id
+) values (
+    :'proposalPendingID',
+    '2024-01-04 00:00:00+00',
+    'Talk about Python',
+    make_interval(mins => 30),
+    'advanced',
+    'pending-co-speaker-response',
+    'Python Intro',
+    :'user1ID'
+);
+
 -- Event
 insert into event (
     event_id,
@@ -125,6 +146,8 @@ select is(
             'session_proposal_id', :'proposalRustID'::uuid,
             'session_proposal_level_id', 'beginner',
             'session_proposal_level_name', 'Beginner',
+            'session_proposal_status_id', 'ready-for-submission',
+            'status_name', 'Ready for submission',
             'title', 'Rust Intro'
         ),
         jsonb_build_object(
@@ -135,6 +158,8 @@ select is(
             'session_proposal_id', :'proposalZigID'::uuid,
             'session_proposal_level_id', 'intermediate',
             'session_proposal_level_name', 'Intermediate',
+            'session_proposal_status_id', 'ready-for-submission',
+            'status_name', 'Ready for submission',
             'submission_status_id', 'not-reviewed',
             'submission_status_name', 'Not reviewed',
             'title', 'Zig Intro'

@@ -27,7 +27,7 @@ use crate::{
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
         EventPublished, EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SpeakerWelcome,
+        SessionProposalCoSpeakerInvitation, SpeakerWelcome,
     },
 };
 
@@ -264,6 +264,12 @@ impl Worker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::SessionProposalCoSpeakerInvitation => {
+                let subject = "Session proposal co-speaker invitation".to_string();
+                let template: SessionProposalCoSpeakerInvitation = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::SpeakerWelcome => {
                 let subject = "You're speaking at an event".to_string();
                 let template: SpeakerWelcome = serde_json::from_value(template_data)?;
@@ -427,6 +433,8 @@ pub(crate) enum NotificationKind {
     GroupTeamInvitation,
     /// Notification welcoming a new group member.
     GroupWelcome,
+    /// Notification inviting a co-speaker to respond to a session proposal invitation.
+    SessionProposalCoSpeakerInvitation,
     /// Notification welcoming a speaker to an event.
     SpeakerWelcome,
 }

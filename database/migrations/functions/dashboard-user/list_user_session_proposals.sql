@@ -27,6 +27,8 @@ returns json as $$
                 sp.session_proposal_id,
                 sp.session_proposal_level_id,
                 spl.display_name as session_proposal_level_name,
+                sp.session_proposal_status_id as session_proposal_status_id,
+                sps.display_name as status_name,
                 sp.title,
 
                 case
@@ -49,6 +51,8 @@ returns json as $$
                 extract(epoch from sp.updated_at)::bigint as updated_at
             from session_proposal sp
             join session_proposal_level spl using (session_proposal_level_id)
+            join session_proposal_status sps
+                on sps.session_proposal_status_id = sp.session_proposal_status_id
             left join session_proposal_links pl on pl.session_proposal_id = sp.session_proposal_id
             left join "user" co on co.user_id = sp.co_speaker_user_id
             where sp.user_id = p_user_id

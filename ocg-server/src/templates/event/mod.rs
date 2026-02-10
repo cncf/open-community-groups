@@ -88,6 +88,10 @@ pub(crate) struct SessionProposal {
     pub session_proposal_level_id: String,
     /// Session proposal level display name.
     pub session_proposal_level_name: String,
+    /// Proposal status identifier.
+    pub session_proposal_status_id: String,
+    /// Proposal status name.
+    pub status_name: String,
     /// Proposal title.
     pub title: String,
 

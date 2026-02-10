@@ -43,6 +43,7 @@ select is(
             'description', description,
             'duration', duration,
             'session_proposal_level_id', session_proposal_level_id,
+            'status_id', session_proposal_status_id,
             'title', title,
             'user_id', user_id
         )
@@ -54,6 +55,7 @@ select is(
         'description', 'Session about Rust',
         'duration', make_interval(mins => 45),
         'session_proposal_level_id', 'beginner',
+        'status_id', 'pending-co-speaker-response',
         'title', 'Rust 101',
         'user_id', :'userID'::uuid
     ),

@@ -108,6 +108,48 @@ const initializeSessionProposals = () => {
       });
     });
   });
+
+  document.querySelectorAll('[data-action="accept-co-speaker-invitation"]').forEach((button) => {
+    if (button.dataset.bound === "true") {
+      return;
+    }
+
+    button.dataset.bound = "true";
+    button.addEventListener("htmx:afterRequest", (event) => {
+      handleHtmxResponse({
+        xhr: event.detail?.xhr,
+        successMessage: "",
+        errorMessage: "Unable to accept this invitation. Please try again later.",
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-action="reject-co-speaker-invitation"]').forEach((button) => {
+    if (button.dataset.bound === "true") {
+      return;
+    }
+
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      if (button.disabled) {
+        return;
+      }
+
+      if (!button.id) {
+        button.id = `reject-co-speaker-invitation-${button.dataset.sessionProposalId}`;
+      }
+
+      showConfirmAlert("Decline this co-speaker invitation?", button.id, "Decline");
+    });
+
+    button.addEventListener("htmx:afterRequest", (event) => {
+      handleHtmxResponse({
+        xhr: event.detail?.xhr,
+        successMessage: "",
+        errorMessage: "Unable to decline this invitation. Please try again later.",
+      });
+    });
+  });
 };
 
 initializeSessionProposals();
