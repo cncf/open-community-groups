@@ -128,6 +128,8 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4">
                 {% if session_proposal.linked_session_id.is_some() -%}
                   {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
+                {% else if session_proposal.has_submissions -%}
+                  {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
