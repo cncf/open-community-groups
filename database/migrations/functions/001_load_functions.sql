@@ -124,6 +124,8 @@
 {{ template "site/get_site_upcoming_events.sql" }}
 {{ template "site/list_communities.sql" }}
 
+{{ template "triggers/check_session_within_event_bounds.sql" }}
+
 ---- create above / drop below ----
 
 -- Nothing to do
