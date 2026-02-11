@@ -566,7 +566,6 @@ export class SessionProposalModal extends LitWrapper {
    */
   _renderFormContent() {
     const isCoSpeakerLocked = this._isCoSpeakerLocked();
-    const showSubmittedWarning = isCoSpeakerLocked;
     const showDeclinedCoSpeakerWarning =
       this._mode === SessionProposalModal.FORM_MODE.EDIT &&
       this._activeProposal?.session_proposal_status_id === "declined-by-co-speaker";
@@ -583,9 +582,10 @@ export class SessionProposalModal extends LitWrapper {
           hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel"
         >
           <div class="space-y-5">
-            ${showSubmittedWarning
+            ${isCoSpeakerLocked
               ? html`
                   <div
+                    role="status"
                     class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                   >
                     This proposal has already been submitted. Co-speaker changes are disabled.
@@ -594,7 +594,10 @@ export class SessionProposalModal extends LitWrapper {
               : ""}
             ${showDeclinedCoSpeakerWarning
               ? html`
-                  <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+                  <div
+                    role="alert"
+                    class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                  >
                     The invited co-speaker declined this proposal. Please update it before submitting.
                   </div>
                 `
@@ -602,6 +605,7 @@ export class SessionProposalModal extends LitWrapper {
             ${showPendingCoSpeakerWarning
               ? html`
                   <div
+                    role="status"
                     class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
                   >
                     This proposal is awaiting co-speaker invitation response.
