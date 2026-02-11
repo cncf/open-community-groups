@@ -364,6 +364,11 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn accept_session_proposal_co_speaker_invitation(
+            &self,
+            user_id: Uuid,
+            session_proposal_id: Uuid,
+        ) -> Result<()>;
         async fn add_session_proposal(
             &self,
             user_id: Uuid,
@@ -374,6 +379,11 @@ mock! {
             user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<()>;
+        async fn get_session_proposal_co_speaker_user_id(
+            &self,
+            user_id: Uuid,
+            session_proposal_id: Uuid,
+        ) -> Result<Option<crate::db::dashboard::user::SessionProposalCoSpeakerUser>>;
         async fn list_session_proposal_levels(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
@@ -394,11 +404,22 @@ mock! {
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::GroupTeamInvitation,
         >>;
+        async fn list_user_pending_session_proposal_co_speaker_invitations(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<
+            crate::templates::dashboard::user::session_proposals::PendingCoSpeakerInvitation,
+        >>;
         async fn list_user_session_proposals(
             &self,
             user_id: Uuid,
             filters: &crate::templates::dashboard::user::session_proposals::SessionProposalsFilters,
         ) -> Result<crate::templates::dashboard::user::session_proposals::SessionProposalsOutput>;
+        async fn reject_session_proposal_co_speaker_invitation(
+            &self,
+            user_id: Uuid,
+            session_proposal_id: Uuid,
+        ) -> Result<()>;
         async fn resubmit_cfs_submission(
             &self,
             user_id: Uuid,

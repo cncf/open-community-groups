@@ -71,6 +71,8 @@ select is(
                 'session_proposal_id', :'proposal2ID'::uuid,
                 'session_proposal_level_id', 'intermediate',
                 'session_proposal_level_name', 'Intermediate',
+                'session_proposal_status_id', 'ready-for-submission',
+                'status_name', 'Ready for submission',
                 'title', 'Go 101',
                 'updated_at', null
             ),
@@ -85,6 +87,8 @@ select is(
                 'session_proposal_id', :'proposal1ID'::uuid,
                 'session_proposal_level_id', 'beginner',
                 'session_proposal_level_name', 'Beginner',
+                'session_proposal_status_id', 'ready-for-submission',
+                'status_name', 'Ready for submission',
                 'title', 'Rust 101',
                 'updated_at', null
             )
@@ -110,6 +114,8 @@ select is(
                 'session_proposal_id', :'proposal1ID'::uuid,
                 'session_proposal_level_id', 'beginner',
                 'session_proposal_level_name', 'Beginner',
+                'session_proposal_status_id', 'ready-for-submission',
+                'status_name', 'Ready for submission',
                 'title', 'Rust 101',
                 'updated_at', null
             )

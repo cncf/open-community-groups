@@ -1,0 +1,28 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You have been invited as a co-speaker
+{% endblock subject -%}
+
+{% block preheader -%}
+  Confirm your participation for "{{ session_proposal_title }}".
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    <strong>{{ speaker_name }}</strong> invited you to co-speak on the session
+    proposal <strong>{{ session_proposal_title }}</strong> on
+    <strong>Open Community Groups</strong>.
+    <br />
+    <br />
+    Use the link below to review the proposal and accept or decline the
+    invitation.
+  </p>
+
+  {{ email::button(link = link, text = "Review invitation") }}
+{% endblock content -%}
+
+{% block footer -%}
+  If this invitation does not look familiar, you can ignore this message.
+{% endblock footer -%}

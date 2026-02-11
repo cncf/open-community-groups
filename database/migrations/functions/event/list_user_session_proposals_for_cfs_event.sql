@@ -15,6 +15,8 @@ returns json as $$
                 'session_proposal_id', sp.session_proposal_id,
                 'session_proposal_level_id', sp.session_proposal_level_id,
                 'session_proposal_level_name', spl.display_name,
+                'session_proposal_status_id', sp.session_proposal_status_id,
+                'status_name', sps.display_name,
                 'title', sp.title,
 
                 -- Include optional co-speaker details
@@ -43,6 +45,7 @@ returns json as $$
     )
     from session_proposal sp
     join session_proposal_level spl using (session_proposal_level_id)
+    join session_proposal_status sps on sps.session_proposal_status_id = sp.session_proposal_status_id
     left join cfs_submission cs
         on cs.session_proposal_id = sp.session_proposal_id
         and cs.event_id = p_event_id
@@ -50,5 +53,6 @@ returns json as $$
         on css.cfs_submission_status_id = cs.status_id
     left join "user" co
         on co.user_id = sp.co_speaker_user_id
-    where sp.user_id = p_user_id;
+    where sp.user_id = p_user_id
+    and sp.session_proposal_status_id = 'ready-for-submission';
 $$ language sql;

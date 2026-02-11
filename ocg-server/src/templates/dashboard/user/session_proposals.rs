@@ -28,6 +28,8 @@ use crate::{
 pub(crate) struct ListPage {
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
+    /// Pending co-speaker invitations for this user.
+    pub pending_co_speaker_invitations: Vec<PendingCoSpeakerInvitation>,
     /// Available session proposal levels.
     pub session_proposal_levels: Vec<SessionProposalLevel>,
     /// List of session proposals.
@@ -42,6 +44,19 @@ pub(crate) struct ListPage {
 }
 
 // Types.
+
+/// Pending invitation to join a session proposal as co-speaker.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct PendingCoSpeakerInvitation {
+    /// Session proposal summary information.
+    #[serde(flatten)]
+    pub session_proposal: SessionProposal,
+    /// Display name of the speaker that sent this invitation.
+    pub speaker_name: String,
+
+    /// Profile photo URL of the speaker that sent this invitation.
+    pub speaker_photo_url: Option<String>,
+}
 
 /// Session proposal summary information.
 #[skip_serializing_none]
@@ -62,6 +77,10 @@ pub(crate) struct SessionProposal {
     pub session_proposal_level_id: String,
     /// Session proposal level display name.
     pub session_proposal_level_name: String,
+    /// Proposal status identifier.
+    pub session_proposal_status_id: String,
+    /// Proposal status display name.
+    pub status_name: String,
     /// Proposal title.
     pub title: String,
 

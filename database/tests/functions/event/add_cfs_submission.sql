@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(7);
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set proposalID '00000000-0000-0000-0000-000000000061'
+\set proposalPendingID '00000000-0000-0000-0000-000000000062'
 \set userID '00000000-0000-0000-0000-000000000071'
 
 -- ============================================================================
@@ -63,6 +64,27 @@ insert into session_proposal (
     make_interval(mins => 45),
     'beginner',
     'Rust Intro',
+    :'userID'
+);
+
+-- Session proposal
+insert into session_proposal (
+    session_proposal_id,
+    created_at,
+    description,
+    duration,
+    session_proposal_level_id,
+    session_proposal_status_id,
+    title,
+    user_id
+) values (
+    :'proposalPendingID',
+    '2024-01-03 00:00:00+00',
+    'Talk about Zig',
+    make_interval(mins => 60),
+    'intermediate',
+    'pending-co-speaker-response',
+    'Zig Intro',
     :'userID'
 );
 
@@ -297,6 +319,19 @@ select throws_ok(
     '23505',
     null,
     'Should reject duplicate CFS submissions'
+);
+
+-- Should reject submissions for proposals not ready for submission
+select throws_ok(
+    format(
+        'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
+        :'communityID',
+        :'eventID',
+        :'userID',
+        :'proposalPendingID'
+    ),
+    'session proposal not ready for submission',
+    'Should reject submissions for proposals not ready for submission'
 );
 
 -- ============================================================================

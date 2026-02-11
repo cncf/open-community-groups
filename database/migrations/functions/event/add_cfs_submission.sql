@@ -49,6 +49,16 @@ begin
         raise exception 'session proposal not found';
     end if;
 
+    -- Validate proposal can be submitted
+    perform 1
+    from session_proposal sp
+    where sp.session_proposal_id = p_session_proposal_id
+    and sp.session_proposal_status_id = 'ready-for-submission';
+
+    if not found then
+        raise exception 'session proposal not ready for submission';
+    end if;
+
     -- Create submission
     insert into cfs_submission (
         event_id,

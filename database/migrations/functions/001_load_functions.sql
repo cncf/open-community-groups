@@ -78,13 +78,16 @@
 
 {{ template "dashboard-user/accept_community_team_invitation.sql" }}
 {{ template "dashboard-user/accept_group_team_invitation.sql" }}
+{{ template "dashboard-user/accept_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/add_session_proposal.sql" }}
 {{ template "dashboard-user/delete_session_proposal.sql" }}
 {{ template "dashboard-user/list_session_proposal_levels.sql" }}
 {{ template "dashboard-user/list_user_cfs_submissions.sql" }}
 {{ template "dashboard-user/list_user_community_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
+{{ template "dashboard-user/list_user_pending_session_proposal_co_speaker_invitations.sql" }}
 {{ template "dashboard-user/list_user_session_proposals.sql" }}
+{{ template "dashboard-user/reject_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/resubmit_cfs_submission.sql" }}
 {{ template "dashboard-user/update_session_proposal.sql" }}
 {{ template "dashboard-user/withdraw_cfs_submission.sql" }}

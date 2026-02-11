@@ -394,6 +394,14 @@ fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::session_proposals::update)
                 .delete(dashboard::user::session_proposals::delete),
         )
+        .route(
+            "/session-proposals/{session_proposal_id}/co-speaker-invitation/accept",
+            put(dashboard::user::session_proposals::accept_co_speaker_invitation),
+        )
+        .route(
+            "/session-proposals/{session_proposal_id}/co-speaker-invitation/reject",
+            put(dashboard::user::session_proposals::reject_co_speaker_invitation),
+        )
         .route("/submissions", get(dashboard::user::submissions::list_page))
         .route(
             "/submissions/{cfs_submission_id}/resubmit",

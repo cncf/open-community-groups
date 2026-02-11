@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -117,10 +117,34 @@ insert into session_proposal (
 )
 returning session_proposal_id as "proposalID" \gset
 
+-- Session proposal
+insert into session_proposal (
+    session_proposal_id,
+    created_at,
+    description,
+    duration,
+    session_proposal_level_id,
+    title,
+    user_id
+) values (
+    gen_random_uuid(),
+    '2024-01-04 00:00:00+00',
+    'Session about Python',
+    make_interval(mins => 30),
+    'beginner',
+    'Python 101',
+    :'userID'
+)
+returning session_proposal_id as "proposalWithSubmissionID" \gset
+
 -- CFS submission
 insert into cfs_submission (event_id, session_proposal_id, status_id)
 values (:'eventID', :'proposalID'::uuid, 'approved')
 returning cfs_submission_id as "linkedSubmissionID" \gset
+
+-- CFS submission
+insert into cfs_submission (event_id, session_proposal_id, status_id)
+values (:'eventID', :'proposalWithSubmissionID'::uuid, 'not-reviewed');
 
 -- Session
 insert into session (
@@ -166,6 +190,7 @@ select is(
             'description', description,
             'duration', duration,
             'session_proposal_level_id', session_proposal_level_id,
+            'status_id', session_proposal_status_id,
             'title', title,
             'user_id', user_id
         )
@@ -177,10 +202,29 @@ select is(
         'description', 'Updated description',
         'duration', make_interval(mins => 60),
         'session_proposal_level_id', 'intermediate',
+        'status_id', 'pending-co-speaker-response',
         'title', 'Rust 102',
         'user_id', :'userID'::uuid
     ),
     'Should persist updated session proposal fields'
+);
+
+-- Should reject changing co-speaker for proposals with submissions
+select throws_ok(
+    format(
+        'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
+        :'userID',
+        :'proposalWithSubmissionID',
+        jsonb_build_object(
+            'co_speaker_user_id', :'user2ID'::uuid,
+            'description', 'Updated description',
+            'duration_minutes', 45,
+            'session_proposal_level_id', 'beginner',
+            'title', 'Python 102'
+        )::text
+    ),
+    'session proposal with submissions cannot change co-speaker',
+    'Should reject changing co-speaker for proposals with submissions'
 );
 
 -- Should reject updating proposals linked to sessions

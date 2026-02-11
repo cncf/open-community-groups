@@ -11,7 +11,8 @@ use crate::{
     templates::dashboard::user::{
         invitations::{CommunityTeamInvitation, GroupTeamInvitation},
         session_proposals::{
-            SessionProposalInput, SessionProposalLevel, SessionProposalsFilters, SessionProposalsOutput,
+            PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel, SessionProposalsFilters,
+            SessionProposalsOutput,
         },
         submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
     },
@@ -26,6 +27,13 @@ pub(crate) trait DBDashboardUser {
     /// Accepts a pending group team invitation.
     async fn accept_group_team_invitation(&self, group_id: Uuid, user_id: Uuid) -> Result<()>;
 
+    /// Accepts a pending co-speaker invitation for a session proposal.
+    async fn accept_session_proposal_co_speaker_invitation(
+        &self,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<()>;
+
     /// Adds a new session proposal for the user.
     async fn add_session_proposal(
         &self,
@@ -35,6 +43,13 @@ pub(crate) trait DBDashboardUser {
 
     /// Deletes a session proposal for the user.
     async fn delete_session_proposal(&self, user_id: Uuid, session_proposal_id: Uuid) -> Result<()>;
+
+    /// Gets the co-speaker user id for one of the user's session proposals.
+    async fn get_session_proposal_co_speaker_user_id(
+        &self,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<Option<SessionProposalCoSpeakerUser>>;
 
     /// Lists all available session proposal levels.
     async fn list_session_proposal_levels(&self) -> Result<Vec<SessionProposalLevel>>;
@@ -55,12 +70,25 @@ pub(crate) trait DBDashboardUser {
     /// Lists all pending group team invitations for the user.
     async fn list_user_group_team_invitations(&self, user_id: Uuid) -> Result<Vec<GroupTeamInvitation>>;
 
+    /// Lists pending co-speaker invitations for the user.
+    async fn list_user_pending_session_proposal_co_speaker_invitations(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<PendingCoSpeakerInvitation>>;
+
     /// Lists session proposals for the user.
     async fn list_user_session_proposals(
         &self,
         user_id: Uuid,
         filters: &SessionProposalsFilters,
     ) -> Result<SessionProposalsOutput>;
+
+    /// Rejects a pending co-speaker invitation for a session proposal.
+    async fn reject_session_proposal_co_speaker_invitation(
+        &self,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<()>;
 
     /// Resubmits a CFS submission for the user.
     async fn resubmit_cfs_submission(&self, user_id: Uuid, cfs_submission_id: Uuid) -> Result<()>;
@@ -109,6 +137,25 @@ impl DBDashboardUser for PgDB {
         Ok(())
     }
 
+    /// [`DBDashboardUser::accept_session_proposal_co_speaker_invitation`]
+    #[instrument(skip(self), err)]
+    async fn accept_session_proposal_co_speaker_invitation(
+        &self,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<()> {
+        trace!("db: accept session proposal co-speaker invitation");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select accept_session_proposal_co_speaker_invitation($1::uuid, $2::uuid)",
+            &[&user_id, &session_proposal_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     /// [`DBDashboardUser::add_session_proposal`]
     #[instrument(skip(self, session_proposal), err)]
     async fn add_session_proposal(
@@ -143,6 +190,33 @@ impl DBDashboardUser for PgDB {
         .await?;
 
         Ok(())
+    }
+
+    /// [`DBDashboardUser::get_session_proposal_co_speaker_user_id`]
+    #[instrument(skip(self), err)]
+    async fn get_session_proposal_co_speaker_user_id(
+        &self,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<Option<SessionProposalCoSpeakerUser>> {
+        trace!("db: get session proposal co-speaker user id");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_opt(
+                "
+                select co_speaker_user_id
+                from session_proposal
+                where session_proposal_id = $1::uuid
+                and user_id = $2::uuid
+                ",
+                &[&session_proposal_id, &user_id],
+            )
+            .await?;
+
+        Ok(row.map(|row| SessionProposalCoSpeakerUser {
+            co_speaker_user_id: row.get("co_speaker_user_id"),
+        }))
     }
 
     /// [`DBDashboardUser::list_session_proposal_levels`]
@@ -217,6 +291,26 @@ impl DBDashboardUser for PgDB {
         Ok(invitations)
     }
 
+    /// [`DBDashboardUser::list_user_pending_session_proposal_co_speaker_invitations`]
+    #[instrument(skip(self), err)]
+    async fn list_user_pending_session_proposal_co_speaker_invitations(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<PendingCoSpeakerInvitation>> {
+        trace!("db: list user pending session proposal co-speaker invitations");
+
+        let db = self.pool.get().await?;
+        let row = db
+            .query_one(
+                "select list_user_pending_session_proposal_co_speaker_invitations($1::uuid)::text",
+                &[&user_id],
+            )
+            .await?;
+        let invitations: Vec<PendingCoSpeakerInvitation> = serde_json::from_str(&row.get::<_, String>(0))?;
+
+        Ok(invitations)
+    }
+
     /// [`DBDashboardUser::list_user_session_proposals`]
     #[instrument(skip(self, filters), err)]
     async fn list_user_session_proposals(
@@ -237,6 +331,25 @@ impl DBDashboardUser for PgDB {
             serde_json::from_str(&row.get::<_, String>(0))?;
 
         Ok(session_proposals_output)
+    }
+
+    /// [`DBDashboardUser::reject_session_proposal_co_speaker_invitation`]
+    #[instrument(skip(self), err)]
+    async fn reject_session_proposal_co_speaker_invitation(
+        &self,
+        user_id: Uuid,
+        session_proposal_id: Uuid,
+    ) -> Result<()> {
+        trace!("db: reject session proposal co-speaker invitation");
+
+        let db = self.pool.get().await?;
+        db.execute(
+            "select reject_session_proposal_co_speaker_invitation($1::uuid, $2::uuid)",
+            &[&user_id, &session_proposal_id],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// [`DBDashboardUser::resubmit_cfs_submission`]
@@ -288,4 +401,10 @@ impl DBDashboardUser for PgDB {
 
         Ok(())
     }
+}
+
+/// Co-speaker identifier for a session proposal.
+#[derive(Debug, Clone)]
+pub(crate) struct SessionProposalCoSpeakerUser {
+    pub co_speaker_user_id: Option<Uuid>,
 }

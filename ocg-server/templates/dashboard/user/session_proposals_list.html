@@ -5,6 +5,102 @@
 {{ dashboard::form_title(title = "Session proposals",
 description = "Create reusable session proposals to submit to events.") -}}
 
+{% if !pending_co_speaker_invitations.is_empty() -%}
+  <div class="mt-8 mb-4">
+    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900"
+         role="alert">
+      <p class="text-sm">
+        You have <span class="font-semibold">{{ pending_co_speaker_invitations.len() }}</span> co-speaker
+        invitation
+        {%- if pending_co_speaker_invitations.len() != 1 -%}s{% endif %}
+        waiting for your
+        response
+      </p>
+    </div>
+  </div>
+  <div class="mb-10">
+    <div class="overflow-hidden bg-white">
+      <div class="relative overflow-visible">
+        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+            <tr>
+              <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Invited by</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Updated</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invitation in pending_co_speaker_invitations -%}
+              <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+                <td class="px-3 xl:px-5 py-4">
+                  <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
+                </td>
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                  <div class="flex items-center space-x-3">
+                    <logo-image
+                    {% if let Some(photo_url) = &invitation.speaker_photo_url -%}
+                      image-url="{{ photo_url }}"
+                    {% endif -%}
+                    size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str() ) }}">
+                    </logo-image>
+                    <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
+                  </div>
+                </td>
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden xl:table-cell">
+                  {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
+                    {{ updated_at.format("%b %d, %Y") }}
+                  {% else -%}
+                    {{ invitation.session_proposal.created_at.format("%b %d, %Y") }}
+                  {% endif -%}
+                </td>
+                <td class="px-3 xl:px-5 py-4">
+                  <div class="flex items-center justify-end gap-2">
+                    <button type="button"
+                            class="btn-tertiary p-2"
+                            data-action="view-pending-session-proposal"
+                            data-session-proposal='{{ invitation.session_proposal|json }}'
+                            data-speaker-name="{{ invitation.speaker_name }}"
+                            data-speaker-photo-url="{{ invitation.speaker_photo_url.as_deref().unwrap_or("") }}"
+                            data-proposal-description-html='{{ invitation.session_proposal.description|md_to_html|json }}'
+                            aria-label="View proposal"
+                            title="View proposal">
+                      <div class="svg-icon size-3 md:size-4 icon-eye"></div>
+                    </button>
+                    <button type="button"
+                            class="btn-tertiary p-2"
+                            data-action="accept-co-speaker-invitation"
+                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/accept"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="this"
+                            aria-label="Accept invitation"
+                            title="Accept invitation">
+                      <div class="svg-icon size-3 md:size-4 icon-check"></div>
+                    </button>
+                    <button id="reject-co-speaker-invitation-{{ invitation.session_proposal.session_proposal_id }}"
+                            type="button"
+                            class="btn-tertiary p-2"
+                            data-action="reject-co-speaker-invitation"
+                            data-session-proposal-id="{{ invitation.session_proposal.session_proposal_id }}"
+                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/reject"
+                            hx-trigger="confirmed"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="this"
+                            aria-label="Decline invitation"
+                            title="Decline invitation">
+                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {% endfor -%}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endif -%}
+
 <div class="flex justify-between items-end my-5">
   <div class="text-sm text-stone-600">
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
@@ -20,8 +116,8 @@ description = "Create reusable session proposals to submit to events.") -}}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Co-speaker</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Co-speaker</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 hidden 2xl:table-cell">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
         </tr>
@@ -41,7 +137,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
               </td>
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
                   <div class="flex items-center space-x-3">
                     <logo-image
@@ -56,7 +152,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                   </div>
                 {% endif -%}
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden 2xl:table-cell">
                 {% if let Some(updated_at) = &session_proposal.updated_at -%}
                   {{ updated_at.format("%b %d, %Y") }}
                 {% else -%}
@@ -66,6 +162,14 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4">
                 {% if session_proposal.linked_session_id.is_some() -%}
                   {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
+                {% else if session_proposal.has_submissions -%}
+                  {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
+                {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
+                {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
+                {% else -%}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
                 {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">

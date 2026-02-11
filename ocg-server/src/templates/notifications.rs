@@ -150,6 +150,20 @@ pub(crate) struct GroupWelcome {
     pub theme: Theme,
 }
 
+/// Template for session proposal co-speaker invitation notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/session_proposal_co_speaker_invitation.html")]
+pub(crate) struct SessionProposalCoSpeakerInvitation {
+    /// Link to review and respond to the invitation.
+    pub link: String,
+    /// Session proposal title included in the invitation.
+    pub session_proposal_title: String,
+    /// Name of the speaker who sent the invitation.
+    pub speaker_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for speaker welcome notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/speaker_welcome.html")]
