@@ -368,7 +368,7 @@ export class SessionProposalModal extends LitWrapper {
    * @param {CustomEvent} event
    */
   _handleCoSpeakerSelected(event) {
-    if (this._isReadOnly()) {
+    if (this._isReadOnly() || this._isCoSpeakerLocked()) {
       return;
     }
 
@@ -384,7 +384,20 @@ export class SessionProposalModal extends LitWrapper {
    * Clears the selected co-speaker from the form state.
    */
   _clearCoSpeaker() {
+    if (this._isCoSpeakerLocked()) {
+      return;
+    }
     this._selectedCoSpeaker = null;
+  }
+
+  /**
+   * Returns whether co-speaker changes are locked for the current proposal.
+   * @returns {boolean}
+   */
+  _isCoSpeakerLocked() {
+    return (
+      this._mode === SessionProposalModal.FORM_MODE.EDIT && Boolean(this._activeProposal?.has_submissions)
+    );
   }
 
   /**
@@ -397,8 +410,10 @@ export class SessionProposalModal extends LitWrapper {
     }
 
     const displayName = this._selectedCoSpeaker.name || this._selectedCoSpeaker.username;
+    const isReadOnly = this._isReadOnly();
+    const isCoSpeakerLocked = this._isCoSpeakerLocked();
 
-    if (this._isReadOnly()) {
+    if (isReadOnly || isCoSpeakerLocked) {
       return html`
         <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full px-3 py-1">
           <span class="text-sm text-stone-700">${displayName}</span>
@@ -550,6 +565,8 @@ export class SessionProposalModal extends LitWrapper {
    * @returns {import("/static/vendor/js/lit-all.v3.3.1.min.js").TemplateResult}
    */
   _renderFormContent() {
+    const isCoSpeakerLocked = this._isCoSpeakerLocked();
+    const showSubmittedWarning = isCoSpeakerLocked;
     const showPendingCoSpeakerWarning =
       this._mode === SessionProposalModal.FORM_MODE.EDIT &&
       this._activeProposal?.session_proposal_status_id === "pending-co-speaker-response";
@@ -563,6 +580,15 @@ export class SessionProposalModal extends LitWrapper {
           hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel"
         >
           <div class="space-y-5">
+            ${showSubmittedWarning
+              ? html`
+                  <div
+                    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                  >
+                    This proposal has already been submitted. Co-speaker changes are disabled.
+                  </div>
+                `
+              : ""}
             ${showPendingCoSpeakerWarning
               ? html`
                   <div
@@ -641,6 +667,7 @@ export class SessionProposalModal extends LitWrapper {
                 dashboard-type="user"
                 label="co-speaker"
                 legend="Search by username to add an optional co-speaker."
+                ?disabled=${isCoSpeakerLocked}
                 @user-selected=${this._handleCoSpeakerSelected}
               ></user-search-field>
               <div id="session-proposal-co-speaker-preview" class="mt-3">
