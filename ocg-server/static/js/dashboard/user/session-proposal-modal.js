@@ -605,7 +605,8 @@ export class SessionProposalModal extends LitWrapper {
                     role="alert"
                     class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
                   >
-                    The invited co-speaker declined this proposal. Please update it before submitting.
+                    The invited co-speaker declined this proposal. You must remove the co-speaker to be able
+                    to submit this proposal to any event.
                   </div>
                 `
               : ""}
