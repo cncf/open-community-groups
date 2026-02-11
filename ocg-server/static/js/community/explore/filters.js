@@ -251,6 +251,52 @@ export const getDefaultDateRange = () => {
 };
 
 /**
+ * Checks if any filters have been actively applied by the user.
+ * @param {string} formId - The ID of the form to check
+ * @returns {boolean} True if any filter is active
+ */
+export const hasActiveFilters = (formId) => {
+  const form = document.getElementById(formId);
+  if (!form) return false;
+
+  const defaultDateRange = getDefaultDateRange();
+
+  // Check kind checkboxes
+  const checkedKinds = form.querySelectorAll('input[name="kind[]"]:checked');
+  if (checkedKinds.length > 0) return true;
+
+  // Check date range
+  const dateFromInput = form.querySelector('input[name="date_from"]');
+  const dateToInput = form.querySelector('input[name="date_to"]');
+  const dateFrom = dateFromInput ? dateFromInput.value.trim() : "";
+  const dateTo = dateToInput ? dateToInput.value.trim() : "";
+  if (dateFrom && dateFrom !== defaultDateRange.from) return true;
+  if (dateTo && dateTo !== defaultDateRange.to) return true;
+
+  // Check custom filter components
+  const customFilters = form.querySelectorAll(
+    'collapsible-filter:not([name="community"]), multi-select-filter',
+  );
+  for (const f of customFilters) {
+    const selected = f.getAttribute("selected");
+    if (selected) {
+      try {
+        const arr = JSON.parse(selected);
+        if (Array.isArray(arr) && arr.length > 0) return true;
+      } catch {
+        // Ignore parse errors
+      }
+    }
+  }
+
+  // Check text search (outside the form)
+  const tsQuery = document.querySelector('input[name="ts_query"]');
+  if (tsQuery && tsQuery.value.trim() !== "") return true;
+
+  return false;
+};
+
+/**
  * Unchecks all 'kind' filter options.
  */
 export const unckeckAllKinds = () => {

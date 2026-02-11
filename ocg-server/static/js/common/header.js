@@ -50,25 +50,34 @@ const ensureDocumentHandlers = () => {
 };
 
 /**
- * Determines if a body swap should reset scroll for the group dashboard.
+ * Determines if a swap should reset scroll for dashboard pages.
  * @param {Event} event - HTMX afterSwap event.
- * @returns {boolean} True when the swap targets the group dashboard body.
+ * @returns {boolean} True when the swap targets dashboard content.
  */
-const shouldResetGroupScroll = (event) => {
-  if (!event || event.target !== document.body) {
+const shouldResetDashboardScroll = (event) => {
+  if (!event) {
+    return false;
+  }
+
+  const swapTarget = event.detail?.target || event.target;
+  if (!swapTarget) {
     return false;
   }
 
   const path = window.location?.pathname || "";
-  return path.startsWith("/dashboard/");
+  if (!path.startsWith("/dashboard/")) {
+    return false;
+  }
+
+  return swapTarget === document.body || swapTarget.id === "dashboard-content";
 };
 
 /**
- * Scrolls to the top after full-body swaps on the group dashboard.
+ * Scrolls to the top after dashboard swaps.
  * @param {Event} event - HTMX afterSwap event.
  */
-const scrollToTopOnGroupSwap = (event) => {
-  if (!shouldResetGroupScroll(event) || typeof window.scrollTo !== "function") {
+const scrollToTopOnDashboardSwap = (event) => {
+  if (!shouldResetDashboardScroll(event) || typeof window.scrollTo !== "function") {
     return;
   }
 
@@ -83,7 +92,7 @@ const bindLifecycleListeners = () => {
 
   document.addEventListener("htmx:historyRestore", initUserDropdown);
   document.addEventListener("htmx:afterSwap", initUserDropdown);
-  document.addEventListener("htmx:afterSwap", scrollToTopOnGroupSwap);
+  document.addEventListener("htmx:afterSwap", scrollToTopOnDashboardSwap);
   window.addEventListener("pageshow", () => initUserDropdown());
 
   lifecycleListenersBound = true;

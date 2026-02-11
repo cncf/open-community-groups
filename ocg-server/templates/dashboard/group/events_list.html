@@ -404,7 +404,7 @@
   </div>
   {# Pagination -#}
   {% if events.upcoming.total > events.upcoming.events.len() -%}
-    {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+    {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "upcoming-events-pagination-") }}
   {% endif -%}
   {# End pagination -#}
 </div>
@@ -641,7 +641,7 @@
 
   {# Pagination -#}
   {% if events.past.total > events.past.events.len() -%}
-    {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+    {{ pagination::navigation_links(links = past_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "past-events-pagination") }}
   {% endif -%}
   {# End pagination -#}
 </div>

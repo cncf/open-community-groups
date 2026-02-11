@@ -1,4 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -78,25 +79,13 @@ export class GroupSelector extends LitWrapper {
   }
 
   /**
-   * Triggers dashboard group selection via HTMX or falls back to reloading.
+   * Triggers dashboard group selection and keeps the selected dashboard tab.
    * @param {string|number} groupId Identifier of the group to select
-   * @returns {XMLHttpRequest|null} Active HTMX request when available
+   * @returns {Promise<void>}
    */
-  _selectDashboardGroup(groupId) {
+  async _selectDashboardGroup(groupId) {
     const url = `/dashboard/group/${groupId}/select`;
-
-    if (typeof window !== "undefined" && window.htmx && typeof window.htmx.ajax === "function") {
-      const request = window.htmx.ajax("PUT", url, {
-        target: "#dashboard-content",
-        indicator: "#dashboard-spinner",
-      });
-      return request ?? null;
-    }
-
-    if (typeof window !== "undefined") {
-      window.location.assign("/dashboard/group");
-    }
-    return null;
+    await selectDashboardAndKeepTab(url, "/dashboard/group");
   }
 
   /**
@@ -104,18 +93,21 @@ export class GroupSelector extends LitWrapper {
    * @param {MouseEvent} event Option click event
    * @param {object} group Associated group data
    */
-  _handleGroupClick(event, group) {
+  async _handleGroupClick(event, group) {
     if (this._isSelected(group) || this._isSubmitting) {
       event.preventDefault();
       return;
     }
     event.preventDefault();
     this._isSubmitting = true;
-    this._selectDashboardGroup(group.group_id, {
-      target: "#dashboard-content",
-      indicator: "#dashboard-spinner",
-    });
     this._closeDropdown();
+    try {
+      await this._selectDashboardGroup(group.group_id);
+    } catch (_) {
+      // Keep the current selector usable when the request fails.
+    } finally {
+      this._isSubmitting = false;
+    }
   }
 
   /**
