@@ -5,8 +5,6 @@ import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/j
 import "/static/js/common/logo-image.js";
 import "/static/js/common/user-search-field.js";
 
-const PROPOSAL_SECTION_TITLE_CLASS = "form-label uppercase text-xs text-stone-400";
-
 /**
  * Modal component for creating, editing, and viewing session proposals.
  * Keeps HTMX submit behavior while centralizing UI state in a Lit component.
@@ -498,7 +496,7 @@ export class SessionProposalModal extends LitWrapper {
       ${level
         ? html`
             <div>
-              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Level</div>
+              <div class="proposal-section-title">Level</div>
               <div class="mt-1 text-sm text-stone-700">${level}</div>
             </div>
           `
@@ -506,7 +504,7 @@ export class SessionProposalModal extends LitWrapper {
       ${duration
         ? html`
             <div>
-              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Duration</div>
+              <div class="proposal-section-title">Duration</div>
               <div class="mt-1 text-sm text-stone-700">${duration} min</div>
             </div>
           `
@@ -521,17 +519,18 @@ export class SessionProposalModal extends LitWrapper {
   _renderViewContent() {
     const proposal = this._activeProposal || {};
     const coSpeaker = proposal?.co_speaker;
+    const speakerName = proposal?.speaker_name;
 
     return html`
       <div class="px-8 py-5">
         <div class="flex flex-col md:flex-row gap-6">
           <div class="flex-1 space-y-4 min-w-0">
             <div>
-              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Title</div>
+              <div class="proposal-section-title">Title</div>
               <div class="mt-2 text-lg text-stone-800 font-medium">${proposal?.title || ""}</div>
             </div>
             <div>
-              <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Description</div>
+              <div class="proposal-section-title">Description</div>
               <div class="mt-2 text-stone-700 text-sm/6 markdown">
                 ${proposal?.description_html
                   ? unsafeHTML(proposal.description_html)
@@ -541,10 +540,18 @@ export class SessionProposalModal extends LitWrapper {
           </div>
           <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
             ${this._renderProposalMeta(proposal)}
+            ${speakerName
+              ? html`
+                  <div>
+                    <div class="proposal-section-title">Invited by</div>
+                    <div class="mt-1 text-sm text-stone-700">${speakerName}</div>
+                  </div>
+                `
+              : ""}
             ${coSpeaker
               ? html`
                   <div>
-                    <div class=${PROPOSAL_SECTION_TITLE_CLASS}>Co-speaker</div>
+                    <div class="proposal-section-title">Co-speaker</div>
                     <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
                   </div>
                 `

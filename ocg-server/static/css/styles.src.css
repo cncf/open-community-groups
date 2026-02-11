@@ -168,6 +168,10 @@
     @apply block text-sm/6 font-medium text-stone-900;
   }
 
+  .proposal-section-title {
+    @apply block font-medium uppercase text-xs text-stone-400;
+  }
+
   .form-legend {
     @apply mt-1 text-xs/6 text-stone-600;
   }
