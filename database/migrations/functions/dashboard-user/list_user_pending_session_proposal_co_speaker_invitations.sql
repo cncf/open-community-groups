@@ -27,6 +27,7 @@ returns json as $$
                     ))
                 end as co_speaker,
                 null::uuid as linked_session_id,
+                speaker.photo_url as speaker_photo_url,
                 extract(epoch from sp.updated_at)::bigint as updated_at,
 
                 extract(epoch from sp.created_at)::bigint as created_at,

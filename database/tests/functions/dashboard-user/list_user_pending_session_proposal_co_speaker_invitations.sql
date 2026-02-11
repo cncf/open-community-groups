@@ -23,10 +23,18 @@ select plan(2);
 -- ============================================================================
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'coSpeakerID', gen_random_bytes(32), 'co-speaker@example.com', 'co-speaker', true, 'Co Speaker'),
-    (:'speakerID', gen_random_bytes(32), 'speaker@example.com', 'speaker', true, 'Speaker'),
-    (:'userOtherID', gen_random_bytes(32), 'other@example.com', 'other-user', true, 'Other User');
+insert into "user" (user_id, auth_hash, email, username, email_verified, name, photo_url) values
+    (:'coSpeakerID', gen_random_bytes(32), 'co-speaker@example.com', 'co-speaker', true, 'Co Speaker', null),
+    (
+        :'speakerID',
+        gen_random_bytes(32),
+        'speaker@example.com',
+        'speaker',
+        true,
+        'Speaker',
+        'https://example.test/speaker.png'
+    ),
+    (:'userOtherID', gen_random_bytes(32), 'other@example.com', 'other-user', true, 'Other User', null);
 
 -- Session proposals
 insert into session_proposal (
@@ -122,6 +130,7 @@ select is(
             ),
             'session_proposal_status_id', 'pending-co-speaker-response',
             'speaker_name', 'Speaker',
+            'speaker_photo_url', 'https://example.test/speaker.png',
             'status_name', (
                 select display_name
                 from session_proposal_status
@@ -158,6 +167,7 @@ select is(
             ),
             'session_proposal_status_id', 'pending-co-speaker-response',
             'speaker_name', 'Speaker',
+            'speaker_photo_url', 'https://example.test/speaker.png',
             'status_name', (
                 select display_name
                 from session_proposal_status

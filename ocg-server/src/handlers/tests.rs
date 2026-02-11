@@ -663,6 +663,8 @@ pub(crate) fn sample_pending_co_speaker_invitation(session_proposal_id: Uuid) ->
             updated_at: Some(Utc.with_ymd_and_hms(2024, 1, 4, 12, 0, 0).unwrap()),
         },
         speaker_name: "Speaker".to_string(),
+
+        speaker_photo_url: Some("https://example.test/speaker.png".to_string()),
     }
 }
 

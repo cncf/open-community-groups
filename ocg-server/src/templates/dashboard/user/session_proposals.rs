@@ -53,6 +53,9 @@ pub(crate) struct PendingCoSpeakerInvitation {
     pub session_proposal: SessionProposal,
     /// Display name of the speaker that sent this invitation.
     pub speaker_name: String,
+
+    /// Profile photo URL of the speaker that sent this invitation.
+    pub speaker_photo_url: Option<String>,
 }
 
 /// Session proposal summary information.
