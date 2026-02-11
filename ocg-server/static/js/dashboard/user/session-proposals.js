@@ -101,8 +101,7 @@ const initializeSessionProposals = () => {
 
     button.dataset.bound = "true";
     button.addEventListener("click", () => {
-      const sessionProposal =
-        parseSessionProposal(button.dataset.sessionProposal) || buildPendingInvitationProposal(button);
+      const sessionProposal = buildPendingInvitationProposal(button);
       applyDescriptionHtml(button, sessionProposal);
       modalComponent.openView(sessionProposal);
     });
@@ -164,7 +163,12 @@ const initializeSessionProposals = () => {
         button.id = `reject-co-speaker-invitation-${button.dataset.sessionProposalId}`;
       }
 
-      showConfirmAlert("Are you sure you want to decline this co-speaker invitation?", button.id, "Decline");
+      showConfirmAlert(
+        "Are you sure you want to decline this co-speaker invitation?",
+        button.id,
+        "Decline",
+        "Cancel",
+      );
     });
 
     button.addEventListener("htmx:afterRequest", (event) => {
