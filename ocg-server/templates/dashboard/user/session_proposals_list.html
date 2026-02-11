@@ -36,7 +36,17 @@ description = "Create reusable session proposals to submit to events.") -}}
                 <td class="px-3 xl:px-5 py-4">
                   <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
                 </td>
-                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.speaker_name }}</td>
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                  <div class="flex items-center space-x-3">
+                    <logo-image
+                    {% if let Some(photo_url) = &invitation.speaker_photo_url -%}
+                      image-url="{{ photo_url }}"
+                    {% endif -%}
+                    size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str() ) }}">
+                    </logo-image>
+                    <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
+                  </div>
+                </td>
                 <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden xl:table-cell">
                   {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
                     {{ updated_at.format("%b %d, %Y") }}
@@ -51,6 +61,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                             data-action="view-pending-session-proposal"
                             data-session-proposal='{{ invitation.session_proposal|json }}'
                             data-speaker-name="{{ invitation.speaker_name }}"
+                            data-speaker-photo-url="{{ invitation.speaker_photo_url.as_deref().unwrap_or("") }}"
                             data-proposal-description-html='{{ invitation.session_proposal.description|md_to_html|json }}'
                             aria-label="View proposal"
                             title="View proposal">
@@ -156,7 +167,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                 {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. You must remove the co-speaker to be able to submit this proposal to any event.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
                 {% else -%}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
                 {% endif -%}

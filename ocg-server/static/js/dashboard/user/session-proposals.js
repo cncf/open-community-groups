@@ -78,6 +78,12 @@ const initializeSessionProposals = () => {
       if (!sessionProposal) {
         return;
       }
+      if (button.dataset.speakerName) {
+        sessionProposal.speaker_name = button.dataset.speakerName;
+      }
+      if (button.dataset.speakerPhotoUrl) {
+        sessionProposal.speaker_photo_url = button.dataset.speakerPhotoUrl;
+      }
       applyDescriptionHtml(button, sessionProposal);
       modalComponent.openView(sessionProposal);
     });
@@ -96,6 +102,9 @@ const initializeSessionProposals = () => {
       }
       if (button.dataset.speakerName) {
         sessionProposal.speaker_name = button.dataset.speakerName;
+      }
+      if (button.dataset.speakerPhotoUrl) {
+        sessionProposal.speaker_photo_url = button.dataset.speakerPhotoUrl;
       }
       applyDescriptionHtml(button, sessionProposal);
       modalComponent.openView(sessionProposal);

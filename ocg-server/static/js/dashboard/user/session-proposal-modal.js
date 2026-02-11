@@ -520,6 +520,14 @@ export class SessionProposalModal extends LitWrapper {
     const proposal = this._activeProposal || {};
     const coSpeaker = proposal?.co_speaker;
     const speakerName = proposal?.speaker_name;
+    const speaker =
+      typeof speakerName === "string" && speakerName.length > 0
+        ? {
+            name: speakerName,
+            username: speakerName,
+            photo_url: proposal?.speaker_photo_url || "",
+          }
+        : null;
 
     return html`
       <div class="px-8 py-5">
@@ -540,11 +548,11 @@ export class SessionProposalModal extends LitWrapper {
           </div>
           <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
             ${this._renderProposalMeta(proposal)}
-            ${speakerName
+            ${speaker
               ? html`
                   <div>
-                    <div class="proposal-section-title">Invited by</div>
-                    <div class="mt-1 text-sm text-stone-700">${speakerName}</div>
+                    <div class="proposal-section-title">Speaker</div>
+                    <div class="mt-2">${this._renderPersonRow(speaker)}</div>
                   </div>
                 `
               : ""}
@@ -605,8 +613,8 @@ export class SessionProposalModal extends LitWrapper {
                     role="alert"
                     class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
                   >
-                    The invited co-speaker declined this proposal. You must remove the co-speaker to be able
-                    to submit this proposal to any event.
+                    <span class="font-semibold">The invited co-speaker declined this proposal.</span> To
+                    submit it to any event, you'll need to remove the co-speaker.
                   </div>
                 `
               : ""}
