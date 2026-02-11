@@ -646,10 +646,23 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
 /// Sample pending co-speaker invitation used in user dashboard tests.
 pub(crate) fn sample_pending_co_speaker_invitation(session_proposal_id: Uuid) -> PendingCoSpeakerInvitation {
     PendingCoSpeakerInvitation {
-        session_proposal_id,
+        session_proposal: UserSessionProposal {
+            created_at: Utc.with_ymd_and_hms(2024, 1, 3, 12, 0, 0).unwrap(),
+            description: "Session about Rust ownership".to_string(),
+            duration_minutes: 45,
+            has_submissions: false,
+            session_proposal_id,
+            session_proposal_level_id: "intermediate".to_string(),
+            session_proposal_level_name: "Intermediate".to_string(),
+            session_proposal_status_id: "pending-co-speaker-response".to_string(),
+            status_name: "Pending co-speaker response".to_string(),
+            title: "Rust 201".to_string(),
+
+            co_speaker: Some(sample_user_summary(Uuid::new_v4(), "co-speaker")),
+            linked_session_id: None,
+            updated_at: Some(Utc.with_ymd_and_hms(2024, 1, 4, 12, 0, 0).unwrap()),
+        },
         speaker_name: "Speaker".to_string(),
-        title: "Rust 201".to_string(),
-        updated_at: Utc.with_ymd_and_hms(2024, 1, 4, 12, 0, 0).unwrap(),
     }
 }
 

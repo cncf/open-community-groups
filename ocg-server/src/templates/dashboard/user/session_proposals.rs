@@ -48,15 +48,11 @@ pub(crate) struct ListPage {
 /// Pending invitation to join a session proposal as co-speaker.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct PendingCoSpeakerInvitation {
-    /// Session proposal identifier.
-    pub session_proposal_id: Uuid,
+    /// Session proposal summary information.
+    #[serde(flatten)]
+    pub session_proposal: SessionProposal,
     /// Display name of the speaker that sent this invitation.
     pub speaker_name: String,
-    /// Session proposal title.
-    pub title: String,
-    /// Invitation update time.
-    #[serde(with = "chrono::serde::ts_seconds")]
-    pub updated_at: DateTime<Utc>,
 }
 
 /// Session proposal summary information.

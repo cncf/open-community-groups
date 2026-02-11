@@ -31,17 +31,23 @@ description = "Create reusable session proposals to submit to events.") -}}
             {% for invitation in pending_co_speaker_invitations -%}
               <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
                 <td class="px-3 xl:px-5 py-4">
-                  <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.title }}</div>
+                  <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
                 </td>
                 <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.speaker_name }}</td>
-                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.updated_at.format("%b %d, %Y") }}</td>
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                  {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
+                    {{ updated_at.format("%b %d, %Y") }}
+                  {% else -%}
+                    {{ invitation.session_proposal.created_at.format("%b %d, %Y") }}
+                  {% endif -%}
+                </td>
                 <td class="px-3 xl:px-5 py-4">
                   <div class="flex items-center justify-end gap-2">
                     <button type="button"
                             class="btn-tertiary p-2"
                             data-action="view-pending-session-proposal"
-                            data-session-proposal-id="{{ invitation.session_proposal_id }}"
-                            data-session-proposal-title="{{ invitation.title }}"
+                            data-session-proposal-id="{{ invitation.session_proposal.session_proposal_id }}"
+                            data-session-proposal-title="{{ invitation.session_proposal.title }}"
                             aria-label="View proposal"
                             title="View proposal">
                       <div class="svg-icon size-3 md:size-4 icon-eye"></div>
@@ -49,19 +55,19 @@ description = "Create reusable session proposals to submit to events.") -}}
                     <button type="button"
                             class="btn-tertiary p-2"
                             data-action="accept-co-speaker-invitation"
-                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal_id }}/co-speaker-invitation/accept"
+                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/accept"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
                             aria-label="Accept invitation"
                             title="Accept invitation">
                       <div class="svg-icon size-3 md:size-4 icon-check"></div>
                     </button>
-                    <button id="reject-co-speaker-invitation-{{ invitation.session_proposal_id }}"
+                    <button id="reject-co-speaker-invitation-{{ invitation.session_proposal.session_proposal_id }}"
                             type="button"
                             class="btn-tertiary p-2"
                             data-action="reject-co-speaker-invitation"
-                            data-session-proposal-id="{{ invitation.session_proposal_id }}"
-                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal_id }}/co-speaker-invitation/reject"
+                            data-session-proposal-id="{{ invitation.session_proposal.session_proposal_id }}"
+                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/reject"
                             hx-trigger="confirmed"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"

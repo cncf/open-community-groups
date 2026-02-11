@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(361);
+select plan(362);
 
 -- ============================================================================
 -- TESTS
@@ -1031,6 +1031,7 @@ select has_function('list_user_cfs_submissions');
 select has_function('list_user_community_team_invitations');
 select has_function('list_user_group_team_invitations');
 select has_function('list_user_groups');
+select has_function('list_user_pending_session_proposal_co_speaker_invitations');
 select has_function('list_user_session_proposals');
 select has_function('list_user_session_proposals_for_cfs_event');
 select has_function('publish_event');

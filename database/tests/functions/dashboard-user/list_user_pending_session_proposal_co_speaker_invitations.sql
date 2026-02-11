@@ -99,24 +99,72 @@ select is(
     list_user_pending_session_proposal_co_speaker_invitations(:'coSpeakerID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
+            'co_speaker', jsonb_build_object(
+                'name', 'Co Speaker',
+                'user_id', :'coSpeakerID'::uuid,
+                'username', 'co-speaker'
+            ),
+            'created_at', (
+                select extract(epoch from created_at)::bigint
+                from session_proposal
+                where session_proposal_id = :'proposalPending2ID'::uuid
+            ),
+            'description', 'Pending invitation two',
+            'duration_minutes', 45,
+            'has_submissions', false,
+            'linked_session_id', null,
             'session_proposal_id', :'proposalPending2ID'::uuid,
+            'session_proposal_level_id', 'intermediate',
+            'session_proposal_level_name', (
+                select display_name
+                from session_proposal_level
+                where session_proposal_level_id = 'intermediate'
+            ),
+            'session_proposal_status_id', 'pending-co-speaker-response',
             'speaker_name', 'Speaker',
+            'status_name', (
+                select display_name
+                from session_proposal_status
+                where session_proposal_status_id = 'pending-co-speaker-response'
+            ),
             'title', 'Advanced Rust',
             'updated_at', (
-                select extract(epoch from coalesce(updated_at, created_at))::bigint
+                select extract(epoch from updated_at)::bigint
                 from session_proposal
                 where session_proposal_id = :'proposalPending2ID'::uuid
             )
         ),
         jsonb_build_object(
-            'session_proposal_id', :'proposalPending1ID'::uuid,
-            'speaker_name', 'Speaker',
-            'title', 'Rust for Beginners',
-            'updated_at', (
-                select extract(epoch from coalesce(updated_at, created_at))::bigint
+            'co_speaker', jsonb_build_object(
+                'name', 'Co Speaker',
+                'user_id', :'coSpeakerID'::uuid,
+                'username', 'co-speaker'
+            ),
+            'created_at', (
+                select extract(epoch from created_at)::bigint
                 from session_proposal
                 where session_proposal_id = :'proposalPending1ID'::uuid
-            )
+            ),
+            'description', 'Pending invitation one',
+            'duration_minutes', 30,
+            'has_submissions', false,
+            'linked_session_id', null,
+            'session_proposal_id', :'proposalPending1ID'::uuid,
+            'session_proposal_level_id', 'beginner',
+            'session_proposal_level_name', (
+                select display_name
+                from session_proposal_level
+                where session_proposal_level_id = 'beginner'
+            ),
+            'session_proposal_status_id', 'pending-co-speaker-response',
+            'speaker_name', 'Speaker',
+            'status_name', (
+                select display_name
+                from session_proposal_status
+                where session_proposal_status_id = 'pending-co-speaker-response'
+            ),
+            'title', 'Rust for Beginners',
+            'updated_at', null
         )
     ),
     'Should list pending co-speaker invitations ordered by latest update'

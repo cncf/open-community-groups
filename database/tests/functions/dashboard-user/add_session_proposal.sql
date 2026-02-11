@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(1);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
@@ -60,6 +60,42 @@ select is(
         'user_id', :'userID'::uuid
     ),
     'Should store proposal details'
+);
+
+-- Should set ready-for-submission when no co-speaker is provided
+select add_session_proposal(
+    :'userID'::uuid,
+    jsonb_build_object(
+        'description', 'Session without co-speaker',
+        'duration_minutes', 30,
+        'session_proposal_level_id', 'intermediate',
+        'title', 'Rust Solo'
+    )
+) as "sessionProposalNoCoSpeakerID" \gset
+select is(
+    (
+        select jsonb_build_object(
+            'co_speaker_user_id', co_speaker_user_id,
+            'description', description,
+            'duration', duration,
+            'session_proposal_level_id', session_proposal_level_id,
+            'status_id', session_proposal_status_id,
+            'title', title,
+            'user_id', user_id
+        )
+        from session_proposal
+        where session_proposal_id = :'sessionProposalNoCoSpeakerID'::uuid
+    ),
+    jsonb_build_object(
+        'co_speaker_user_id', null,
+        'description', 'Session without co-speaker',
+        'duration', make_interval(mins => 30),
+        'session_proposal_level_id', 'intermediate',
+        'status_id', 'ready-for-submission',
+        'title', 'Rust Solo',
+        'user_id', :'userID'::uuid
+    ),
+    'Should set ready-for-submission when no co-speaker is provided'
 );
 
 -- ============================================================================
