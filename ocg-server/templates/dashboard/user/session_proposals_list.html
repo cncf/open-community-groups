@@ -26,7 +26,7 @@ description = "Create reusable session proposals to submit to events.") -}}
             <tr>
               <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
               <th scope="col" class="px-3 xl:px-5 py-3">Invited by</th>
-              <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Updated</th>
               <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
             </tr>
           </thead>
@@ -37,7 +37,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                   <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
                 </td>
                 <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ invitation.speaker_name }}</td>
-                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden xl:table-cell">
                   {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
                     {{ updated_at.format("%b %d, %Y") }}
                   {% else -%}
@@ -105,8 +105,8 @@ description = "Create reusable session proposals to submit to events.") -}}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Co-speaker</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Co-speaker</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 hidden 2xl:table-cell">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-28"></th>
         </tr>
@@ -126,7 +126,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
               </td>
-              <td class="px-3 xl:px-5 py-4">
+              <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
                   <div class="flex items-center space-x-3">
                     <logo-image
@@ -141,7 +141,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                   </div>
                 {% endif -%}
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden 2xl:table-cell">
                 {% if let Some(updated_at) = &session_proposal.updated_at -%}
                   {{ updated_at.format("%b %d, %Y") }}
                 {% else -%}
@@ -156,7 +156,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                 {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
                 {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
-                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal.") -}}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. You must remove the co-speaker to be able to submit this proposal to any event.") -}}
                 {% else -%}
                   {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
                 {% endif -%}
