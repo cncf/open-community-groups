@@ -6,7 +6,43 @@ on:
       - main
 
 jobs:
+  changes:
+    permissions:
+      pull-requests: read
+    runs-on: ubuntu-latest
+    outputs:
+      database: ${{ steps.filter.outputs.database }}
+      javascript: ${{ steps.filter.outputs.javascript }}
+      server: ${{ steps.filter.outputs.server }}
+      templates: ${{ steps.filter.outputs.templates }}
+    steps:
+      - name: Determine changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            database:
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/tern.conf'
+              - 'database/**'
+            javascript:
+              - '.github/workflows/ci.yml'
+              - 'ocg-server/static/js/**'
+              - 'ocg-server/static/js/.prettierrc.yaml'
+            server:
+              - '.github/workflows/ci.yml'
+              - '.rustfmt.toml'
+              - 'Cargo.lock'
+              - 'Cargo.toml'
+              - 'ocg-server/**'
+            templates:
+              - '.github/workflows/ci.yml'
+              - 'ocg-server/templates/**'
+              - 'ocg-server/templates/.djlintrc'
+
   lint-and-test-server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     runs-on:
       labels: ubuntu-latest
     steps:
@@ -29,6 +65,8 @@ jobs:
         run: cargo test
 
   lint-templates:
+    needs: changes
+    if: needs.changes.outputs.templates == 'true'
     runs-on:
       labels: ubuntu-latest
     steps:
@@ -44,6 +82,8 @@ jobs:
             ocg-server/templates
 
   check-js-files-format:
+    needs: changes
+    if: needs.changes.outputs.javascript == 'true'
     runs-on:
       labels: ubuntu-latest
     steps:
@@ -56,6 +96,8 @@ jobs:
           prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
 
   test-database:
+    needs: changes
+    if: needs.changes.outputs.database == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
