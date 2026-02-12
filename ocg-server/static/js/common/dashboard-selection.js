@@ -19,8 +19,8 @@ export const currentDashboardTabQuery = () => {
 };
 
 /**
- * Persists dashboard selection and redirects while preserving the current tab.
- * Uses HTMX when available and falls back to fetch otherwise.
+ * Persists dashboard selection and refreshes dashboard content while preserving
+ * the current tab.
  *
  * @param {string} selectUrl Endpoint URL used to persist the selected entity
  * @param {string} redirectPath Dashboard page path to navigate to
@@ -33,25 +33,10 @@ export const selectDashboardAndKeepTab = async (selectUrl, redirectPath) => {
 
   const destination = `${redirectPath}${currentDashboardTabQuery()}`;
 
-  if (window.htmx && typeof window.htmx.ajax === "function") {
-    let statusCode = 0;
-    await window.htmx.ajax("PUT", selectUrl, {
-      target: "body",
-      indicator: "#dashboard-spinner",
-      handler: (_, responseInfo) => {
-        statusCode = responseInfo.xhr.status;
-      },
-    });
-    if (statusCode < 200 || statusCode >= 300) {
-      throw new Error(`Dashboard selection failed with status ${statusCode}`);
-    }
-    window.location.assign(destination);
-    return;
-  }
-
   if (typeof window.fetch !== "function") {
     return;
   }
+
   const response = await window.fetch(selectUrl, {
     method: "PUT",
     credentials: "same-origin",
@@ -59,5 +44,14 @@ export const selectDashboardAndKeepTab = async (selectUrl, redirectPath) => {
   if (!response.ok) {
     throw new Error(`Dashboard selection failed with status ${response.status}`);
   }
+
+  if (window.htmx && typeof window.htmx.ajax === "function") {
+    await window.htmx.ajax("GET", destination, {
+      target: "body",
+      indicator: "#dashboard-spinner",
+    });
+    return;
+  }
+
   window.location.assign(destination);
 };
