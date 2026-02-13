@@ -60,10 +60,9 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get
+       hx-get="/dashboard/community/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_analytics() -%}analytics{%- else -%}groups{%- endif -%}"
        hx-trigger="refresh-community-dashboard-table"
-       hx-select="#dashboard-content"
-       hx-swap="outerHTML show:window:top"
+       hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}

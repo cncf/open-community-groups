@@ -55,11 +55,7 @@ pub(crate) async fn update(
     // Update group in database
     db.update_group(community_id, group_id, &group_update).await?;
 
-    Ok((
-        StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    )
-        .into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
 // Tests.
@@ -271,7 +267,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-group-dashboard-table"),
+            &HeaderValue::from_static("refresh-body"),
         );
         assert!(bytes.is_empty());
     }
