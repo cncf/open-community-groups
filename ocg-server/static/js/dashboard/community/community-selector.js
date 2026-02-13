@@ -14,7 +14,6 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  *   community_name and display_name keys
  * @property {string} selectedCommunityId Currently selected community identifier
  * @property {string} selectEndpoint API endpoint for selecting community
- * @property {string} redirectPath Dashboard path used after selection
  */
 export class CommunitySelector extends LitWrapper {
   static properties = {
@@ -24,7 +23,6 @@ export class CommunitySelector extends LitWrapper {
     },
     selectedCommunityId: { type: String, attribute: "selected-community-id" },
     selectEndpoint: { type: String, attribute: "select-endpoint" },
-    redirectPath: { type: String, attribute: "redirect-path" },
     _isOpen: { state: true },
     _query: { state: true },
     _isSubmitting: { state: true },
@@ -36,7 +34,6 @@ export class CommunitySelector extends LitWrapper {
     this.communities = [];
     this.selectedCommunityId = "";
     this.selectEndpoint = "/dashboard/community";
-    this.redirectPath = "/dashboard/community";
     this._isOpen = false;
     this._query = "";
     this._isSubmitting = false;
@@ -100,7 +97,7 @@ export class CommunitySelector extends LitWrapper {
    */
   async _selectDashboardCommunity(communityId) {
     const url = `${this.selectEndpoint}/${communityId}/select`;
-    await selectDashboardAndKeepTab(url, this.redirectPath);
+    await selectDashboardAndKeepTab(url);
   }
 
   /**

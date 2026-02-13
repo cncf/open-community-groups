@@ -27,7 +27,7 @@
     <div>
       {{ dashboard::menu_title(text = "Community", extra_styles = "py-1.5") -}}
       <div class="mt-2 mb-6">
-        <community-selector communities="{{ communities|json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/community" redirect-path="/dashboard/community">
+        <community-selector communities="{{ communities|json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/community">
         {{ dashboard::selector_loading_button() -}}
         </community-selector>
       </div>

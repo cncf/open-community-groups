@@ -48,7 +48,7 @@ pub(crate) async fn select_community(
         session.remove::<uuid::Uuid>(SELECTED_GROUP_ID_KEY).await?;
     }
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Refresh", "true")]))
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
 }
 
 // Tests.
@@ -135,8 +135,8 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
-            parts.headers.get("HX-Refresh").unwrap(),
-            &HeaderValue::from_static("true"),
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-body"),
         );
         assert!(bytes.is_empty());
     }
@@ -200,8 +200,8 @@ mod tests {
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
-            parts.headers.get("HX-Refresh").unwrap(),
-            &HeaderValue::from_static("true"),
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-body"),
         );
         assert!(bytes.is_empty());
     }

@@ -85,7 +85,7 @@ export class GroupSelector extends LitWrapper {
    */
   async _selectDashboardGroup(groupId) {
     const url = `/dashboard/group/${groupId}/select`;
-    await selectDashboardAndKeepTab(url, "/dashboard/group");
+    await selectDashboardAndKeepTab(url);
   }
 
   /**
