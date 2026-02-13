@@ -32,7 +32,7 @@
                 hx-trigger="click"
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
-                class="cursor-pointer mt-[2px]">
+                class="cursor-pointer mt-0.5">
           <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
         </button>
       </div>
@@ -124,12 +124,10 @@
                 <div class="min-w-0">
                   {# Group name with inactive badge if needed -#}
                   <div class="max-w-full truncate flex items-center gap-x-2">
-                    <div hx-put="/dashboard/group/{{ group.group_id }}/select"
-                         hx-trigger="click"
-                         hx-target="#dashboard-content"
-                         hx-indicator="#dashboard-spinner"
-                         role="button"
-                         class="truncate cursor-pointer">{{ group.name }}</div>
+                    <button type="button"
+                            data-select-group-id="{{ group.group_id }}"
+                            class="truncate cursor-pointer text-left bg-transparent border-0 p-0"
+                            aria-label="Open group dashboard: {{ group.name }}">{{ group.name }}</button>
                     {% if !group.active -%}
                       <span class="inline-block px-2 py-0.5 bg-amber-600 text-white text-[10px] leading-4 rounded-full uppercase whitespace-nowrap">Inactive</span>
                     {% endif -%}
@@ -355,6 +353,42 @@
     </tbody>
   </table>
   <script type="module">
+    import {
+      selectDashboardAndSwapBody
+    } from '/static/js/common/dashboard-selection.js';
+
+    let isSelectingGroup = false;
+    const groupsList = document.getElementById('groups-list');
+    if (groupsList) {
+      groupsList.addEventListener('click', async (event) => {
+        const selectGroupButton = event.target.closest('[data-select-group-id]');
+        if (!selectGroupButton) {
+          return;
+        }
+
+        event.preventDefault();
+        if (isSelectingGroup) {
+          return;
+        }
+
+        const groupId = selectGroupButton.dataset.selectGroupId;
+        if (!groupId) {
+          return;
+        }
+
+        isSelectingGroup = true;
+        selectGroupButton.setAttribute('disabled', 'disabled');
+        try {
+          await selectDashboardAndSwapBody(`/dashboard/group/${groupId}/select`, '/dashboard/group');
+        } catch (error) {
+          console.warn('Failed to select group from groups list:', error);
+        } finally {
+          selectGroupButton.removeAttribute('disabled');
+          isSelectingGroup = false;
+        }
+      });
+    }
+
     const btnGroupActions = document.querySelectorAll('.btn-group-actions');
     btnGroupActions.forEach((btnAction) => {
       btnAction.addEventListener('click', () => {

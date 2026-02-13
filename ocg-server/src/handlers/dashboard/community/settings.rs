@@ -45,7 +45,7 @@ pub(crate) async fn update(
     // Update community in database
     db.update_community(community_id, &community_update).await?;
 
-    Ok(StatusCode::NO_CONTENT.into_response())
+    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
 
 // Tests.
@@ -226,6 +226,10 @@ mod tests {
 
         // Check response matches expectations
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
+        assert_eq!(
+            parts.headers.get("HX-Trigger").unwrap(),
+            &HeaderValue::from_static("refresh-body"),
+        );
         assert!(bytes.is_empty());
     }
 
