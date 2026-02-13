@@ -1,5 +1,7 @@
 .DS_Store
+.playwright-cli
 .vscode
+/playwright
 /target
 Chart.lock
 chart/charts
