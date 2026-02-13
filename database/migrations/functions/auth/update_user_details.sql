@@ -7,6 +7,7 @@ create or replace function update_user_details(
     set
         name = p_user->>'name',
         bio = nullif(p_user->>'bio', ''),
+        bluesky_url = nullif(p_user->>'bluesky_url', ''),
         city = nullif(p_user->>'city', ''),
         company = nullif(p_user->>'company', ''),
         country = nullif(p_user->>'country', ''),

@@ -13,6 +13,7 @@ create or replace function update_community(
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),
         ad_banner_url = nullif(p_data->>'ad_banner_url', ''),
+        bluesky_url = nullif(p_data->>'bluesky_url', ''),
         extra_links = nullif(p_data->'extra_links', 'null'::jsonb),
         facebook_url = nullif(p_data->>'facebook_url', ''),
         flickr_url = nullif(p_data->>'flickr_url', ''),

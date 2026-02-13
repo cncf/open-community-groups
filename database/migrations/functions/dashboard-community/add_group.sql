@@ -24,6 +24,7 @@ begin
 
                 banner_mobile_url,
                 banner_url,
+                bluesky_url,
                 city,
                 country_code,
                 country_name,
@@ -54,6 +55,7 @@ begin
 
                 nullif(p_group->>'banner_mobile_url', ''),
                 nullif(p_group->>'banner_url', ''),
+                nullif(p_group->>'bluesky_url', ''),
                 nullif(p_group->>'city', ''),
                 nullif(p_group->>'country_code', ''),
                 nullif(p_group->>'country_name', ''),

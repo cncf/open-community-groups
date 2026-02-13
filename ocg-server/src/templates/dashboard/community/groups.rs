@@ -105,6 +105,9 @@ pub(crate) struct Group {
     /// Banner image URL.
     #[garde(custom(image_url_opt))]
     pub banner_url: Option<String>,
+    /// Bluesky profile URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub bluesky_url: Option<String>,
     /// City where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,

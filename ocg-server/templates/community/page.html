@@ -17,7 +17,7 @@
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col pb-4 sm:pb-8 w-full">
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
         {# About this community -#}
-        {% let has_social_links = community.twitter_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
+        {% let has_social_links = community.twitter_url.is_some() || community.bluesky_url.is_some() || community.github_url.is_some() || community.linkedin_url.is_some() || community.instagram_url.is_some() || community.wechat_url.is_some() || community.youtube_url.is_some() || community.flickr_url.is_some() || community.facebook_url.is_some() || community.slack_url.is_some() -%}
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-10">
             About this community
@@ -50,6 +50,9 @@
             <div class="mt-10 lg:mt-12 flex flex-wrap gap-3 justify-center">
               {% if let Some(twitter_url) = &community.twitter_url -%}
                 {{ social::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter", big = true) -}}
+              {% endif -%}
+              {% if let Some(bluesky_url) = &community.bluesky_url -%}
+                {{ social::social_link(url = bluesky_url, icon_name = "bluesky", platform_name = "Bluesky", big = true) -}}
               {% endif -%}
               {% if let Some(github_url) = &community.github_url -%}
                 {{ social::social_link(url = github_url, icon_name = "github", platform_name = "GitHub", big = true) -}}

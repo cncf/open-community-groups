@@ -18,6 +18,7 @@ returns json as $$
         -- Include optional community profile fields
         'ad_banner_link_url', ad_banner_link_url,
         'ad_banner_url', ad_banner_url,
+        'bluesky_url', bluesky_url,
         'extra_links', extra_links,
         'facebook_url', facebook_url,
         'flickr_url', flickr_url,

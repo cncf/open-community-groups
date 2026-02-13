@@ -45,6 +45,7 @@ insert into community (
 -- User with all team memberships
 insert into "user" (
     user_id,
+    bluesky_url,
     email,
     username,
     email_verified,
@@ -53,6 +54,7 @@ insert into "user" (
     password
 ) values (
     :'userWithTeamsID',
+    'https://bsky.app/profile/testuser',
     'test@example.com',
     'testuser',
     true,
@@ -240,6 +242,7 @@ select is(
         "auth_hash": "test_hash",
         "belongs_to_any_group_team": true,
         "belongs_to_community_team": true,
+        "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,
@@ -257,6 +260,7 @@ select is(
         "auth_hash": "test_hash",
         "belongs_to_any_group_team": true,
         "belongs_to_community_team": true,
+        "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
         "has_password": true,

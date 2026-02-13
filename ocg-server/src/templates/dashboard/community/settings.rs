@@ -53,6 +53,9 @@ pub(crate) struct CommunityUpdate {
     /// URL to the advertisement banner image.
     #[garde(custom(image_url_opt))]
     pub ad_banner_url: Option<String>,
+    /// Link to the community's Bluesky profile.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub bluesky_url: Option<String>,
     /// Additional custom links displayed in the community navigation.
     #[garde(custom(url_map_values))]
     pub extra_links: Option<BTreeMap<String, String>>,

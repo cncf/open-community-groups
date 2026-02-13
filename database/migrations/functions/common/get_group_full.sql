@@ -27,6 +27,7 @@ returns json as $$
         -- Include optional group profile fields
         'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
+        'bluesky_url', g.bluesky_url,
         'city', g.city,
         'country_code', g.country_code,
         'country_name', g.country_name,
@@ -66,6 +67,7 @@ returns json as $$
                 'username', u.username,
 
                 'bio', u.bio,
+                'bluesky_url', u.bluesky_url,
                 'company', u.company,
                 'facebook_url', u.facebook_url,
                 'linkedin_url', u.linkedin_url,

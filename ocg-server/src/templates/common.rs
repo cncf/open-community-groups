@@ -18,6 +18,8 @@ pub(crate) struct User {
 
     /// Short biography.
     pub bio: Option<String>,
+    /// Bluesky profile URL.
+    pub bluesky_url: Option<String>,
     /// Company the user works for.
     pub company: Option<String>,
     /// Facebook profile URL.

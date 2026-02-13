@@ -130,6 +130,9 @@ pub(crate) struct UserDetails {
     /// User's biography.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_BIO))]
     pub bio: Option<String>,
+    /// User's Bluesky URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub bluesky_url: Option<String>,
     /// User's city.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
@@ -170,6 +173,7 @@ impl From<crate::auth::User> for UserDetails {
         Self {
             name: user.name,
             bio: user.bio,
+            bluesky_url: user.bluesky_url,
             city: user.city,
             company: user.company,
             country: user.country,

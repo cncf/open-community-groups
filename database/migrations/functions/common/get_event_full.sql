@@ -66,6 +66,7 @@ returns json as $$
                     'username', u.username,
 
                     'bio', u.bio,
+                    'bluesky_url', u.bluesky_url,
                     'company', u.company,
                     'facebook_url', u.facebook_url,
                     'linkedin_url', u.linkedin_url,
@@ -108,6 +109,7 @@ returns json as $$
                     'username', u.username,
 
                     'bio', u.bio,
+                    'bluesky_url', u.bluesky_url,
                     'company', u.company,
                     'facebook_url', u.facebook_url,
                     'linkedin_url', u.linkedin_url,
@@ -163,6 +165,7 @@ returns json as $$
                                         'username', u.username,
 
                                         'bio', u.bio,
+                                        'bluesky_url', u.bluesky_url,
                                         'company', u.company,
                                         'facebook_url', u.facebook_url,
                                         'featured', ss.featured,
@@ -183,6 +186,7 @@ returns json as $$
                                         'username', u.username,
 
                                         'bio', u.bio,
+                                        'bluesky_url', u.bluesky_url,
                                         'company', u.company,
                                         'facebook_url', u.facebook_url,
                                         'featured', false,
@@ -226,6 +230,7 @@ returns json as $$
                     'username', u.username,
 
                     'bio', u.bio,
+                    'bluesky_url', u.bluesky_url,
                     'company', u.company,
                     'facebook_url', u.facebook_url,
                     'featured', es.featured,
