@@ -48,7 +48,7 @@
         {% for member in members -%}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Member -#}
-            <td class="px-3 xl:px-5 py-4">
+            <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
                 <logo-image
                 {% if let Some(photo_url) = &member.photo_url -%}
@@ -67,7 +67,7 @@
             {# End member -#}
 
             {# Position -#}
-            <td class="px-3 xl:px-5 py-4">
+            <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex flex-col space-y-1">
                 <div class="font-medium text-stone-900 truncate">{{ member.company.as_deref() |assigned_or("-") }}</div>
                 {% if let Some(title) = &member.title -%}
