@@ -94,7 +94,7 @@ export class CommunitySelector extends LitWrapper {
   }
 
   /**
-   * Triggers dashboard community selection and keeps the selected dashboard tab.
+   * Triggers dashboard community selection and lets HTMX refresh the current URL.
    * @param {string|number} communityId Identifier of the community to select
    * @returns {Promise<void>}
    */

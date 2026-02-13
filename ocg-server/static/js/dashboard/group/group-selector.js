@@ -79,7 +79,7 @@ export class GroupSelector extends LitWrapper {
   }
 
   /**
-   * Triggers dashboard group selection and keeps the selected dashboard tab.
+   * Triggers dashboard group selection and lets HTMX refresh the current URL.
    * @param {string|number} groupId Identifier of the group to select
    * @returns {Promise<void>}
    */
