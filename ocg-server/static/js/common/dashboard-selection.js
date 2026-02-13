@@ -43,4 +43,9 @@ export const selectDashboardAndSwapBody = async (selectUrl, dashboardUrl) => {
     target: "body",
     indicator: "#dashboard-spinner",
   });
+
+  // Keep browser URL aligned with the swapped dashboard view.
+  if (window.history && typeof window.history.pushState === "function") {
+    window.history.pushState({}, "", dashboardUrl);
+  }
 };
