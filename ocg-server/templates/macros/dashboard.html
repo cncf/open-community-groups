@@ -1,8 +1,24 @@
+{% import "macros/ui.html" as ui -%}
+
 {# Menu title -#}
 {% macro menu_title(text, extra_styles = "") -%}
   <div class="text-xs/6 text-stone-500 uppercase px-3 {{ extra_styles }}">{{ text }}</div>
 {% endmacro menu_title -%}
 {# End menu title -#}
+
+{# Selector loading button -#}
+{% macro selector_loading_button(extra_styles = "", spinner_size = "size-4") -%}
+  <button type="button"
+          class="select select-primary relative text-left pe-9 cursor-not-allowed {{ extra_styles }}"
+          disabled
+          aria-disabled="true">
+    <div class="flex items-center min-h-10 ps-1">{{ ui::spinner(size = spinner_size) -}}</div>
+    <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+      <div class="svg-icon size-3 icon-caret-down bg-stone-400"></div>
+    </div>
+  </button>
+{% endmacro selector_loading_button -%}
+{# End selector loading button -#}
 
 {# Menu item -#}
 {% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0 ) -%}

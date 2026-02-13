@@ -36,10 +36,14 @@
     <div>
       {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
       <div class="mt-2">
-        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community" redirect-path="/dashboard/group"></community-selector>
+        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community" redirect-path="/dashboard/group">
+        {{ dashboard::selector_loading_button() -}}
+        </community-selector>
       </div>
 
-      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}"></group-selector>
+      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}">
+      <div class="my-4">{{ dashboard::selector_loading_button() -}}</div>
+      </group-selector>
       {% if !selected_community_groups().is_empty() -%}
         {% let current_selection = current_selection_details() -%}
         {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + &current_selection.1.slug -%}
