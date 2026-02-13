@@ -296,7 +296,8 @@ select is(
         "venue_address": "123 Main St",
         "venue_zip_code": "10001",
         "description_short": "Annual tech conference",
-        "registration_required": true
+        "registration_required": true,
+        "event_reminder_enabled": true
     }'::jsonb,
     'Should return correct event data as JSON'
 );

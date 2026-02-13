@@ -283,6 +283,7 @@ class EventSelector extends LitWrapper {
     const {
       appendCopySuffix,
       setCategoryValue,
+      setEventReminderEnabled,
       setGalleryImages,
       setTags,
       setRegistrationRequired,
@@ -300,6 +301,7 @@ class EventSelector extends LitWrapper {
     setTextValue("description_short", details.description_short);
     updateMarkdownContent(details.description);
     setTextValue("capacity", details.capacity);
+    setEventReminderEnabled(details.event_reminder_enabled !== false);
     setRegistrationRequired(details.registration_required === true);
     setTextValue("meetup_url", details.meetup_url);
     setGalleryImages(details.photos_urls);

@@ -172,6 +172,9 @@ pub(crate) struct Event {
     /// Event end time.
     #[garde(skip)]
     pub ends_at: Option<NaiveDateTime>,
+    /// Whether event reminder notifications are enabled.
+    #[garde(skip)]
+    pub event_reminder_enabled: Option<bool>,
     /// User IDs of event hosts.
     #[garde(skip)]
     pub hosts: Option<Vec<Uuid>>,

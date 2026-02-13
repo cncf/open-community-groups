@@ -126,6 +126,7 @@ async fn main() -> Result<()> {
     let notifications_manager = Arc::new(PgNotificationsManager::new(
         db.clone(),
         &cfg.email,
+        &cfg.server.base_url,
         &email_sender,
         &task_tracker,
         &cancellation_token,

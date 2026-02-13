@@ -94,6 +94,7 @@ begin
                 cfs_starts_at,
                 description_short,
                 ends_at,
+                event_reminder_enabled,
                 location,
                 logo_url,
                 meeting_hosts,
@@ -132,6 +133,7 @@ begin
                 (p_event->>'cfs_starts_at')::timestamp at time zone (p_event->>'timezone'),
                 p_event->>'description_short',
                 (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
+                coalesce((p_event->>'event_reminder_enabled')::boolean, true),
                 case
                     when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
                     then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography

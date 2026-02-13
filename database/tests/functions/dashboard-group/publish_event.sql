@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -118,8 +118,8 @@ insert into event (
     'UTC',
     :'eventCategoryID',
     'in-person',
-    '2025-06-02 10:00:00+00',
-    '2025-06-02 11:00:00+00',
+    current_timestamp + interval '12 hours',
+    current_timestamp + interval '13 hours',
     null,
     false,
     false
@@ -255,6 +255,13 @@ select is(
     (select meeting_in_sync from event where event_id = :'eventNoMeetingID'),
     null,
     'Should keep event meeting_in_sync unchanged when meeting_requested=false'
+);
+
+-- Should mark reminder as evaluated when publishing event within 24 hours
+select is(
+    (select event_reminder_evaluated_for_starts_at from event where event_id = :'eventNoMeetingID'),
+    (select starts_at from event where event_id = :'eventNoMeetingID'),
+    'Should mark reminder as evaluated when publishing event within 24 hours'
 );
 
 -- Should throw error when group_id does not match

@@ -36,7 +36,16 @@ begin
         end,
         published = true,
         published_at = now(),
-        published_by = p_user_id
+        published_by = p_user_id,
+        -- Mark reminder as evaluated when publish happens inside the 24-hour window
+        event_reminder_evaluated_for_starts_at = case
+            when event_reminder_enabled = true
+                 and event_reminder_sent_at is null
+                 and starts_at > current_timestamp
+                 and starts_at <= current_timestamp + interval '24 hours'
+            then starts_at
+            else event_reminder_evaluated_for_starts_at
+        end
     where event_id = p_event_id
     and group_id = p_group_id
     and deleted = false

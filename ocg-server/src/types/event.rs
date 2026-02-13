@@ -177,6 +177,8 @@ pub struct EventFull {
     /// Event end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub ends_at: Option<DateTime<Utc>>,
+    /// Whether event reminder notifications are enabled.
+    pub event_reminder_enabled: Option<bool>,
     /// Latitude of the event's location.
     pub latitude: Option<f64>,
     /// Legacy event hosts.
@@ -268,6 +270,11 @@ impl EventFull {
             return Utc::now() < starts_at;
         }
         false
+    }
+
+    /// Check if event reminders are enabled.
+    pub fn event_reminder_is_enabled(&self) -> bool {
+        self.event_reminder_enabled.unwrap_or(true)
     }
 
     /// Check if the event is currently live.
