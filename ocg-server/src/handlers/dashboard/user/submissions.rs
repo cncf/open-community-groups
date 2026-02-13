@@ -74,7 +74,10 @@ pub(crate) async fn resubmit(
     db.resubmit_cfs_submission(user.user_id, cfs_submission_id).await?;
     messages.success("Submission resubmitted.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 /// Withdraws a CFS submission for the authenticated user.
@@ -92,7 +95,10 @@ pub(crate) async fn withdraw(
     db.withdraw_cfs_submission(user.user_id, cfs_submission_id).await?;
     messages.success("Submission withdrawn.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 // Tests.
@@ -339,7 +345,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -393,7 +399,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }

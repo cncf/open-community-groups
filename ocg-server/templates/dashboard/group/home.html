@@ -92,9 +92,11 @@
   <div id="dashboard-content"
        data-community="{{ current_selection.0.name }}"
        data-group-slug="{{ current_selection.1.slug }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
+       hx-get
        hx-trigger="refresh-group-dashboard-table"
-       hx-swap="innerHTML show:window:top"
+       hx-select="#dashboard-content"
+       hx-swap="outerHTML show:window:top"
+       hx-indicator="#dashboard-spinner"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}

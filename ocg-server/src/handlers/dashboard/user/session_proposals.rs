@@ -89,7 +89,10 @@ pub(crate) async fn accept_co_speaker_invitation(
         .await?;
     messages.success("Co-speaker invitation accepted.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 /// Adds a session proposal for the authenticated user.
@@ -123,7 +126,10 @@ pub(crate) async fn add(
 
     messages.success("Session proposal added.");
 
-    Ok((StatusCode::CREATED, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 /// Deletes a session proposal for the authenticated user.
@@ -141,7 +147,10 @@ pub(crate) async fn delete(
     db.delete_session_proposal(user.user_id, session_proposal_id).await?;
     messages.success("Session proposal deleted.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 /// Rejects a pending co-speaker invitation.
@@ -160,7 +169,10 @@ pub(crate) async fn reject_co_speaker_invitation(
         .await?;
     messages.success("Co-speaker invitation declined.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 /// Updates a session proposal for the authenticated user.
@@ -208,7 +220,10 @@ pub(crate) async fn update(
 
     messages.success("Session proposal updated.");
 
-    Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-user-dashboard-content")],
+    ))
 }
 
 // Helpers.
@@ -452,7 +467,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -519,7 +534,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::CREATED);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -606,7 +621,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::CREATED);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -717,7 +732,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -817,7 +832,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -894,7 +909,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }
@@ -990,7 +1005,7 @@ mod tests {
         assert_eq!(parts.status, StatusCode::NO_CONTENT);
         assert_eq!(
             parts.headers.get("HX-Trigger").unwrap(),
-            &HeaderValue::from_static("refresh-body"),
+            &HeaderValue::from_static("refresh-user-dashboard-content"),
         );
         assert!(bytes.is_empty());
     }

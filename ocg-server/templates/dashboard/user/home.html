@@ -40,7 +40,11 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-swap="innerHTML show:window:top"
+       hx-get
+       hx-trigger="refresh-user-dashboard-content"
+       hx-select="#dashboard-content"
+       hx-swap="outerHTML show:window:top"
+       hx-indicator="#dashboard-spinner"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}
