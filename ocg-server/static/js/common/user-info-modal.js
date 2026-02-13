@@ -99,6 +99,13 @@ export class UserInfoModal extends LitWrapper {
         label: "LinkedIn",
       });
     }
+    if (this._userData.blueskyUrl) {
+      links.push({
+        url: this._userData.blueskyUrl,
+        icon: "bluesky",
+        label: "Bluesky",
+      });
+    }
     if (this._userData.twitterUrl) {
       links.push({
         url: this._userData.twitterUrl,

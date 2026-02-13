@@ -123,6 +123,8 @@ pub struct GroupFull {
     pub banner_mobile_url: Option<String>,
     /// Banner image URL for the group page.
     pub banner_url: Option<String>,
+    /// Bluesky profile URL.
+    pub bluesky_url: Option<String>,
     /// City where the group is based.
     pub city: Option<String>,
     /// ISO country code of the group.

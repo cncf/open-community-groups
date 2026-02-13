@@ -107,6 +107,7 @@ select columns_are('community', array[
 
     'ad_banner_link_url',
     'ad_banner_url',
+    'bluesky_url',
     'extra_links',
     'facebook_url',
     'flickr_url',
@@ -292,6 +293,7 @@ select columns_are('group', array[
 
     'banner_mobile_url',
     'banner_url',
+    'bluesky_url',
     'city',
     'country_code',
     'country_name',
@@ -534,6 +536,7 @@ select columns_are('user', array[
     'username',
 
     'bio',
+    'bluesky_url',
     'city',
     'company',
     'country',

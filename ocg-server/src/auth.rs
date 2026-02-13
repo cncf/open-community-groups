@@ -421,6 +421,8 @@ pub(crate) struct User {
     pub belongs_to_community_team: Option<bool>,
     /// User's biography.
     pub bio: Option<String>,
+    /// User's Bluesky URL.
+    pub bluesky_url: Option<String>,
     /// User's city.
     pub city: Option<String>,
     /// User's company.

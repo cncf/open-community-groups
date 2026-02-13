@@ -631,6 +631,7 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
         country_code: Some("US".to_string()),
         country_name: Some("United States".to_string()),
         extra_links: Some(BTreeMap::new()),
+        bluesky_url: Some("https://bsky.app/profile/test".to_string()),
         facebook_url: Some("https://facebook.com/test".to_string()),
         github_url: Some("https://github.com/test".to_string()),
         linkedin_url: Some("https://linkedin.com/company/test".to_string()),

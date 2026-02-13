@@ -31,6 +31,7 @@ insert into community (
 
     ad_banner_link_url,
     ad_banner_url,
+    bluesky_url,
     extra_links,
     facebook_url,
     flickr_url,
@@ -57,6 +58,7 @@ insert into community (
 
     'https://example.com/banner-link',
     'https://example.com/ad-banner.png',
+    'https://bsky.app/profile/testcommunity',
     '{"docs": "https://docs.example.com", "blog": "https://blog.example.com"}'::jsonb,
     'https://facebook.com/testcommunity',
     'https://flickr.com/testcommunity',
@@ -104,6 +106,7 @@ select is(
         "ad_banner_url": "https://example.com/ad-banner.png",
         "banner_mobile_url": "https://example.com/banner_mobile.png",
         "banner_url": "https://example.com/banner.png",
+        "bluesky_url": "https://bsky.app/profile/testcommunity",
         "community_site_layout_id": "default",
         "description": "A vibrant community for cloud native technologies and practices in Seattle",
         "display_name": "Cloud Native Seattle",

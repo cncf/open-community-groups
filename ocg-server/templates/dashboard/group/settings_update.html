@@ -188,6 +188,23 @@
     </div>
     {# End Website URL -#}
 
+    {# Bluesky URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="bluesky_url" class="form-label">Bluesky</label>
+      <div class="mt-2 relative">
+        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+          <div class="svg-icon size-4 icon-bluesky bg-stone-300"></div>
+        </div>
+        <input type="url"
+               name="bluesky_url"
+               id="bluesky_url"
+               class="input-primary ps-10"
+               placeholder="https://bsky.app/profile/username"
+               {% if let Some(bluesky_url) = &group.bluesky_url %}value="{{ bluesky_url }}"{% endif %}>
+      </div>
+    </div>
+    {# End Bluesky URL -#}
+
     {# Facebook URL -#}
     <div class="col-span-full lg:col-span-3">
       <label for="facebook_url" class="form-label">Facebook</label>

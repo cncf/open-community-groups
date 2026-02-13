@@ -4,6 +4,9 @@
 {% if let Some(twitter_url) = &group.twitter_url -%}
   {{ social::social_link(url = twitter_url, icon_name = "twitter", platform_name = "Twitter") -}}
 {% endif -%}
+{% if let Some(bluesky_url) = &group.bluesky_url -%}
+  {{ social::social_link(url = bluesky_url, icon_name = "bluesky", platform_name = "Bluesky") -}}
+{% endif -%}
 {% if let Some(facebook_url) = &group.facebook_url -%}
   {{ social::social_link(url = facebook_url, icon_name = "facebook", platform_name = "Facebook") -}}
 {% endif -%}

@@ -17,6 +17,7 @@ returns json as $$
 
         -- Include optional profile fields
         'bio', bio,
+        'bluesky_url', bluesky_url,
         'city', city,
         'company', company,
         'country', country,

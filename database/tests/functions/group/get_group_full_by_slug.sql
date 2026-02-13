@@ -58,6 +58,7 @@ insert into "group" (
     location,
     tags,
     website_url,
+    bluesky_url,
     facebook_url,
     twitter_url,
     linkedin_url,
@@ -79,6 +80,7 @@ insert into "group" (
     ST_GeogFromText('POINT(-74.0060 40.7128)'),
     array['kubernetes', 'cloud-native', 'devops'],
     'https://k8s-nyc.example.com',
+    'https://bsky.app/profile/k8snyc',
     'https://facebook.com/k8snyc',
     'https://twitter.com/k8snyc',
     'https://linkedin.com/company/k8snyc',
@@ -153,6 +155,7 @@ select is(
             "name": "North America",
             "normalized_name": "north-america"
         },
+        "bluesky_url": "https://bsky.app/profile/k8snyc",
         "twitter_url": "https://twitter.com/k8snyc",
         "website_url": "https://k8s-nyc.example.com",
         "country_code": "US",

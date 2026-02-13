@@ -13,6 +13,7 @@ begin
 
         banner_mobile_url = nullif(p_group->>'banner_mobile_url', ''),
         banner_url = nullif(p_group->>'banner_url', ''),
+        bluesky_url = nullif(p_group->>'bluesky_url', ''),
         city = nullif(p_group->>'city', ''),
         country_code = nullif(p_group->>'country_code', ''),
         country_name = nullif(p_group->>'country_name', ''),

@@ -53,12 +53,12 @@ insert into group_category (group_category_id, name, community_id)
 values (:'categoryID', 'Technology', :'communityID');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, bio, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
+insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, company, title, facebook_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, 'Charlie Brown', null, null, null, null, null, null, null),
-    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, 'Diana Prince', null, null, null, null, null, null, null);
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'https://bsky.app/profile/alice', 'Alice Johnson', 'https://example.com/alice.png', 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
+    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', null, 'Bob Wilson', 'https://example.com/bob.png', 'StartUp', 'Engineer', null, 'https://linkedin.com/in/bob', null, 'https://bob.com'),
+    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, null, 'Charlie Brown', null, null, null, null, null, null, null),
+    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, null, 'Diana Prince', null, null, null, null, null, null, null);
 
 -- Group
 insert into "group" (
@@ -80,6 +80,7 @@ insert into "group" (
     location,
     tags,
     website_url,
+    bluesky_url,
     facebook_url,
     twitter_url,
     linkedin_url,
@@ -111,6 +112,7 @@ insert into "group" (
     ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     array['kubernetes', 'cloud-native', 'containers'],
     'https://seattle.kubernetes.com',
+    'https://bsky.app/profile/seattlek8s',
     'https://facebook.com/seattlek8s',
     'https://twitter.com/seattlek8s',
     'https://linkedin.com/company/seattlek8s',
@@ -198,6 +200,7 @@ select is(
         "description": "A technology group focused on Kubernetes and cloud native technologies",
         "description_short": "A brief overview of the Seattle Kubernetes group",
         "extra_links": [{"name": "Discord", "url": "https://discord.gg/seattlek8s"}, {"name": "Forum", "url": "https://forum.seattlek8s.com"}],
+        "bluesky_url": "https://bsky.app/profile/seattlek8s",
         "facebook_url": "https://facebook.com/seattlek8s",
         "flickr_url": "https://flickr.com/seattlek8s",
         "github_url": "https://github.com/seattlek8s",
@@ -232,6 +235,7 @@ select is(
                 "user_id": "00000000-0000-0000-0000-000000000031",
                 "username": "alice-organizer",
                 "bio": "Community meetup organizer",
+                "bluesky_url": "https://bsky.app/profile/alice",
                 "name": "Alice Johnson",
                 "company": "Cloud Co",
                 "facebook_url": "https://facebook.com/alice",
