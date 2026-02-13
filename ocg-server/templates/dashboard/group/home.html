@@ -36,10 +36,14 @@
     <div>
       {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
       <div class="mt-2">
-        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community" redirect-path="/dashboard/group"></community-selector>
+        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community">
+        {{ dashboard::selector_loading_button() -}}
+        </community-selector>
       </div>
 
-      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}"></group-selector>
+      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}">
+      <div class="my-4">{{ dashboard::selector_loading_button() -}}</div>
+      </group-selector>
       {% if !selected_community_groups().is_empty() -%}
         {% let current_selection = current_selection_details() -%}
         {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + &current_selection.1.slug -%}
@@ -92,9 +96,11 @@
   <div id="dashboard-content"
        data-community="{{ current_selection.0.name }}"
        data-group-slug="{{ current_selection.1.slug }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else -%}events{%- endif -%}"
+       hx-get
        hx-trigger="refresh-group-dashboard-table"
-       hx-swap="innerHTML show:window:top"
+       hx-select="#dashboard-content"
+       hx-swap="outerHTML show:window:top"
+       hx-indicator="#dashboard-spinner"
        class="p-4 sm:p-6 lg:p-12">
     {# Content -#}
     {{ content|safe }}
