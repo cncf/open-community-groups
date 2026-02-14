@@ -26,19 +26,28 @@ use crate::{
     db::DynDB,
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventCanceled, EventCustom,
-        EventPublished, EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SessionProposalCoSpeakerInvitation, SpeakerWelcome,
+        EventPublished, EventReminder, EventRescheduled, EventWelcome, GroupCustom, GroupTeamInvitation,
+        GroupWelcome, SessionProposalCoSpeakerInvitation, SpeakerWelcome,
     },
 };
 
 /// Number of concurrent workers that deliver notifications.
-const NUM_WORKERS: usize = 2;
+const NUM_DELIVERY_WORKERS: usize = 2;
+
+/// Number of workers that enqueue due notifications.
+const NUM_ENQUEUE_WORKERS: usize = 1;
 
 /// Time to wait after a delivery error before retrying.
-const PAUSE_ON_ERROR: Duration = Duration::from_secs(10);
+const PAUSE_ON_DELIVERY_ERROR: Duration = Duration::from_secs(10);
 
 /// Time to wait when there are no notifications to deliver.
-const PAUSE_ON_NONE: Duration = Duration::from_secs(15);
+const PAUSE_ON_DELIVERY_NONE: Duration = Duration::from_secs(15);
+
+/// Time to wait after an enqueue error before retrying.
+const PAUSE_ON_ENQUEUE_ERROR: Duration = Duration::from_secs(30);
+
+/// Time to wait when there are no due notifications to enqueue.
+const PAUSE_ON_ENQUEUE_NONE: Duration = Duration::from_secs(300);
 
 /// Trait for a notifications manager, responsible for delivering notifications.
 #[async_trait]
@@ -62,13 +71,26 @@ impl PgNotificationsManager {
     pub(crate) fn new(
         db: DynDB,
         cfg: &EmailConfig,
+        base_url: &str,
         email_sender: &DynEmailSender,
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
     ) -> Self {
-        // Setup and run some workers to deliver notifications
-        for _ in 1..=NUM_WORKERS {
-            let mut worker = Worker {
+        // Setup and run workers to enqueue due notifications
+        for _ in 1..=NUM_ENQUEUE_WORKERS {
+            let worker = EnqueueWorker {
+                db: db.clone(),
+                base_url: base_url.to_string(),
+                cancellation_token: cancellation_token.clone(),
+            };
+            task_tracker.spawn(async move {
+                worker.run().await;
+            });
+        }
+
+        // Setup and run workers to deliver notifications
+        for _ in 1..=NUM_DELIVERY_WORKERS {
+            let mut worker = DeliveryWorker {
                 db: db.clone(),
                 cfg: cfg.clone(),
                 cancellation_token: cancellation_token.clone(),
@@ -91,8 +113,46 @@ impl NotificationsManager for PgNotificationsManager {
     }
 }
 
+/// Worker responsible for enqueuing due notifications.
+struct EnqueueWorker {
+    /// Database handle for notification queries.
+    db: DynDB,
+    /// Base URL used for generated links in reminders.
+    base_url: String,
+    /// Token to signal worker shutdown.
+    cancellation_token: CancellationToken,
+}
+
+impl EnqueueWorker {
+    /// Main worker loop: enqueues due notifications until cancelled.
+    async fn run(&self) {
+        loop {
+            // Enqueue due notifications and pick next pause interval
+            let pause = match self.enqueue_due_notifications().await {
+                Ok(_) => PAUSE_ON_ENQUEUE_NONE,
+                Err(err) => {
+                    error!(?err, "error enqueueing due notifications");
+                    PAUSE_ON_ENQUEUE_ERROR
+                }
+            };
+
+            // Exit if the worker has been asked to stop
+            tokio::select! {
+                () = sleep(pause) => {},
+                () = self.cancellation_token.cancelled() => break,
+            }
+        }
+    }
+
+    /// Enqueue due notifications and return the number enqueued.
+    #[instrument(skip(self), err)]
+    async fn enqueue_due_notifications(&self) -> Result<usize> {
+        self.db.enqueue_due_event_reminders(&self.base_url).await
+    }
+}
+
 /// Worker responsible for delivering notifications from the queue.
-struct Worker {
+struct DeliveryWorker {
     /// Database handle for notification queries.
     db: DynDB,
     /// Email configuration for sending notifications.
@@ -103,7 +163,7 @@ struct Worker {
     email_sender: DynEmailSender,
 }
 
-impl Worker {
+impl DeliveryWorker {
     /// Main worker loop: delivers notifications until cancelled.
     async fn run(&mut self) {
         loop {
@@ -116,7 +176,7 @@ impl Worker {
                 Ok(false) => tokio::select! {
                     // No pending notifications, pause unless we've been asked
                     // to stop
-                    () = sleep(PAUSE_ON_NONE) => {},
+                    () = sleep(PAUSE_ON_DELIVERY_NONE) => {},
                     () = self.cancellation_token.cancelled() => break,
                 },
                 Err(err) => {
@@ -124,7 +184,7 @@ impl Worker {
                     // unless we've been asked to stop
                     error!(?err, "error delivering notification");
                     tokio::select! {
-                        () = sleep(PAUSE_ON_ERROR) => {},
+                        () = sleep(PAUSE_ON_DELIVERY_ERROR) => {},
                         () = self.cancellation_token.cancelled() => break,
                     }
                 }
@@ -231,6 +291,12 @@ impl Worker {
             NotificationKind::EventPublished => {
                 let subject = "New event published".to_string();
                 let template: EventPublished = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::EventReminder => {
+                let template: EventReminder = serde_json::from_value(template_data)?;
+                let subject = format!("Reminder: {} starts in 24 hours", template.event.name);
                 let body = template.render()?;
                 (subject, body)
             }
@@ -423,6 +489,8 @@ pub(crate) enum NotificationKind {
     EventCustom,
     /// Notification for an event published.
     EventPublished,
+    /// Notification reminding users about an upcoming event.
+    EventReminder,
     /// Notification for an event rescheduled.
     EventRescheduled,
     /// Notification welcoming a new event attendee.
@@ -454,8 +522,8 @@ mod tests {
     };
 
     use super::{
-        Attachment, DynEmailSender, MockEmailSender, NewNotification, Notification, NotificationKind,
-        NotificationsManager, PgNotificationsManager, Worker,
+        Attachment, DeliveryWorker, DynEmailSender, EnqueueWorker, MockEmailSender, NewNotification,
+        Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
     };
 
     #[tokio::test]
@@ -489,7 +557,109 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_worker_deliver_notification_sends_pending_notification() {
+    async fn test_enqueue_worker_enqueue_due_notifications() {
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_enqueue_due_event_reminders()
+            .times(1)
+            .withf(|base_url| base_url == "https://example.test")
+            .returning(|_| Ok(2));
+        let db: DynDB = Arc::new(db);
+
+        // Setup worker and enqueue due notifications
+        let worker = EnqueueWorker {
+            db,
+            base_url: "https://example.test".to_string(),
+            cancellation_token: CancellationToken::new(),
+        };
+        let enqueued = worker.enqueue_due_notifications().await.unwrap();
+
+        // Check result matches expectations
+        assert_eq!(enqueued, 2);
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_worker_enqueue_due_notifications_error() {
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_enqueue_due_event_reminders()
+            .times(1)
+            .withf(|base_url| base_url == "https://example.test")
+            .returning(|_| Err(anyhow!("enqueue error")));
+        let db: DynDB = Arc::new(db);
+
+        // Setup worker and enqueue due notifications
+        let worker = EnqueueWorker {
+            db,
+            base_url: "https://example.test".to_string(),
+            cancellation_token: CancellationToken::new(),
+        };
+        let err = worker.enqueue_due_notifications().await.unwrap_err();
+
+        // Check error matches expectations
+        assert!(err.to_string().contains("enqueue error"));
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_error() {
+        // Setup cancellation token
+        let cancellation_token = CancellationToken::new();
+        let cancellation_token_for_mock = cancellation_token.clone();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_enqueue_due_event_reminders()
+            .times(1)
+            .withf(|base_url| base_url == "https://example.test")
+            .returning(move |_| {
+                cancellation_token_for_mock.cancel();
+                Err(anyhow!("enqueue error"))
+            });
+        let db: DynDB = Arc::new(db);
+
+        // Setup worker and execute loop
+        let worker = EnqueueWorker {
+            db,
+            base_url: "https://example.test".to_string(),
+            cancellation_token: cancellation_token.clone(),
+        };
+        worker.run().await;
+
+        // Check cancellation state
+        assert!(cancellation_token.is_cancelled());
+    }
+
+    #[tokio::test]
+    async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_success() {
+        // Setup cancellation token
+        let cancellation_token = CancellationToken::new();
+        let cancellation_token_for_mock = cancellation_token.clone();
+
+        // Setup database mock
+        let mut db = MockDB::new();
+        db.expect_enqueue_due_event_reminders()
+            .times(1)
+            .withf(|base_url| base_url == "https://example.test")
+            .returning(move |_| {
+                cancellation_token_for_mock.cancel();
+                Ok(1)
+            });
+        let db: DynDB = Arc::new(db);
+
+        // Setup worker and execute loop
+        let worker = EnqueueWorker {
+            db,
+            base_url: "https://example.test".to_string(),
+            cancellation_token: cancellation_token.clone(),
+        };
+        worker.run().await;
+
+        // Check cancellation state
+        assert!(cancellation_token.is_cancelled());
+    }
+
+    #[tokio::test]
+    async fn test_delivery_worker_deliver_notification_sends_pending_notification() {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let notification = Notification {
@@ -536,7 +706,7 @@ mod tests {
         let es: DynEmailSender = Arc::new(es);
 
         // Setup worker and deliver notification
-        let mut worker = Worker {
+        let mut worker = DeliveryWorker {
             db,
             cfg: sample_email_config(None),
             cancellation_token: CancellationToken::new(),
@@ -549,7 +719,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_worker_deliver_notification_sends_pending_notification_with_attachment() {
+    async fn test_delivery_worker_deliver_notification_sends_pending_notification_with_attachment() {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let attachments = vec![Attachment {
@@ -601,7 +771,7 @@ mod tests {
         let es: DynEmailSender = Arc::new(es);
 
         // Setup worker and deliver notification
-        let mut worker = Worker {
+        let mut worker = DeliveryWorker {
             db,
             cfg: sample_email_config(None),
             cancellation_token: CancellationToken::new(),
@@ -614,7 +784,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_worker_deliver_notification_no_pending_notifications() {
+    async fn test_delivery_worker_deliver_notification_no_pending_notifications() {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
 
@@ -637,7 +807,7 @@ mod tests {
         let es: DynEmailSender = Arc::new(es);
 
         // Setup worker and deliver notification
-        let mut worker = Worker {
+        let mut worker = DeliveryWorker {
             db,
             cfg: sample_email_config(None),
             cancellation_token: CancellationToken::new(),
@@ -650,7 +820,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_worker_deliver_notification_records_send_error() {
+    async fn test_delivery_worker_deliver_notification_records_send_error() {
         // Setup identifiers and data structures
         let client_id = Uuid::new_v4();
         let notification = Notification {
@@ -691,7 +861,7 @@ mod tests {
         let es: DynEmailSender = Arc::new(es);
 
         // Setup worker and deliver notification
-        let mut worker = Worker {
+        let mut worker = DeliveryWorker {
             db,
             cfg: sample_email_config(None),
             cancellation_token: CancellationToken::new(),
@@ -704,7 +874,7 @@ mod tests {
     }
 
     #[test]
-    fn test_worker_prepare_content_email_verification() {
+    fn test_delivery_worker_prepare_content_email_verification() {
         // Setup notification
         let notification = Notification {
             attachments: vec![],
@@ -715,7 +885,7 @@ mod tests {
         };
 
         // Prepare content
-        let (subject, body) = Worker::prepare_content(&notification).unwrap();
+        let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
 
         // Check content matches expectations
         assert_eq!(subject, "Verify your email address");
@@ -724,7 +894,7 @@ mod tests {
     }
 
     #[test]
-    fn test_worker_prepare_content_event_custom() {
+    fn test_delivery_worker_prepare_content_event_custom() {
         // Setup notification
         let notification = Notification {
             attachments: vec![],
@@ -735,7 +905,7 @@ mod tests {
         };
 
         // Prepare content
-        let (subject, body) = Worker::prepare_content(&notification).unwrap();
+        let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
 
         // Check content matches expectations
         assert_eq!(subject, "Notification Group: Custom Event");
@@ -743,7 +913,31 @@ mod tests {
     }
 
     #[test]
-    fn test_worker_prepare_content_group_custom() {
+    fn test_delivery_worker_prepare_content_event_reminder() {
+        // Setup notification
+        let notification = Notification {
+            attachments: vec![],
+            email: "user@example.test".to_string(),
+            kind: NotificationKind::EventReminder,
+            notification_id: Uuid::new_v4(),
+            template_data: Some(sample_event_reminder_template_data()),
+        };
+
+        // Prepare content
+        let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+        // Check content matches expectations
+        assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
+        assert!(body.contains("Reminder Event"));
+        assert!(
+            body.contains(
+                "https://example.test/test-community/group/notification-group/event/reminder-event"
+            )
+        );
+    }
+
+    #[test]
+    fn test_delivery_worker_prepare_content_group_custom() {
         // Setup notification
         let notification = Notification {
             attachments: vec![],
@@ -754,7 +948,7 @@ mod tests {
         };
 
         // Prepare content
-        let (subject, body) = Worker::prepare_content(&notification).unwrap();
+        let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
 
         // Check content matches expectations
         assert_eq!(subject, "Hello Group");
@@ -762,7 +956,7 @@ mod tests {
     }
 
     #[test]
-    fn test_worker_prepare_content_missing_data() {
+    fn test_delivery_worker_prepare_content_missing_data() {
         // Setup notification
         let notification = Notification {
             attachments: vec![],
@@ -773,14 +967,14 @@ mod tests {
         };
 
         // Prepare content and expect an error
-        let err = Worker::prepare_content(&notification).unwrap_err();
+        let err = DeliveryWorker::prepare_content(&notification).unwrap_err();
 
         // Check error message
         assert!(err.to_string().contains("missing template data"));
     }
 
     #[tokio::test]
-    async fn test_worker_send_email_allows_whitelisted_recipient() {
+    async fn test_delivery_worker_send_email_allows_whitelisted_recipient() {
         // Setup email config and sender mock
         let cfg = sample_email_config(Some(vec!["notify@example.test".to_string()]));
         let mut es = MockEmailSender::new();
@@ -797,7 +991,7 @@ mod tests {
         let es: DynEmailSender = Arc::new(es);
 
         // Setup worker and send email
-        let worker = sample_worker(cfg, es);
+        let worker = sample_delivery_worker(cfg, es);
         worker
             .send_email(
                 "notify@example.test",
@@ -810,7 +1004,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_worker_send_email_blocks_non_whitelisted_recipient() {
+    async fn test_delivery_worker_send_email_blocks_non_whitelisted_recipient() {
         // Setup email config and sender mock
         let cfg = sample_email_config(Some(vec!["notify@example.test".to_string()]));
         let mut es = MockEmailSender::new();
@@ -818,7 +1012,7 @@ mod tests {
         let es: DynEmailSender = Arc::new(es);
 
         // Setup worker and send email
-        let worker = sample_worker(cfg, es);
+        let worker = sample_delivery_worker(cfg, es);
         worker
             .send_email(
                 "other@example.test",
@@ -849,10 +1043,10 @@ mod tests {
     }
 
     /// Create a sample worker with mock dependencies.
-    fn sample_worker(cfg: EmailConfig, email_sender: DynEmailSender) -> Worker {
+    fn sample_delivery_worker(cfg: EmailConfig, email_sender: DynEmailSender) -> DeliveryWorker {
         let db: DynDB = Arc::new(MockDB::new());
 
-        Worker {
+        DeliveryWorker {
             db,
             cfg,
             cancellation_token: CancellationToken::new(),
@@ -891,6 +1085,33 @@ mod tests {
                 "timezone": "UTC"
             },
             "link": "https://example.test/test-community/group/notification-group/event/custom-event",
+            "theme": {
+                "primary_color": "#000000"
+            }
+        })
+    }
+
+    /// Sample template payload for event reminder notifications.
+    fn sample_event_reminder_template_data() -> serde_json::Value {
+        json!({
+            "event": {
+                "canceled": false,
+                "community_display_name": "Test Community",
+                "community_name": "test-community",
+                "event_id": "11111111-1111-1111-1111-111111111111",
+                "group_category_name": "Community",
+                "group_name": "Notification Group",
+                "group_slug": "notification-group",
+                "kind": "hybrid",
+                "logo_url": "https://example.com/logo.png",
+                "name": "Reminder Event",
+                "published": true,
+                "slug": "reminder-event",
+                "starts_at": 1_914_724_800,
+                "timezone": "UTC",
+                "venue_name": "Conference Hall"
+            },
+            "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
             "theme": {
                 "primary_color": "#000000"
             }

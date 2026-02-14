@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(57);
+select plan(61);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,8 @@ select plan(57);
 \set event7ID '00000000-0000-0000-0000-000000000007'
 \set event8ID '00000000-0000-0000-0000-000000000008'
 \set event9ID '00000000-0000-0000-0000-000000000009'
+\set event10ID '00000000-0000-0000-0000-000000000010'
+\set event11ID '00000000-0000-0000-0000-000000000013'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set meeting1ID '00000000-0000-0000-0000-000000000301'
@@ -330,6 +332,60 @@ insert into event_attendee (event_id, user_id) values
     (:'event5ID', :'user2ID'),
     (:'event5ID', :'user3ID');
 
+-- Published event used for reminder evaluation checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+    published
+) values (
+    :'event10ID',
+    :'group1ID',
+    'Reminder Event',
+    'yz12abc',
+    'Published event for reminder evaluation checks',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    current_timestamp + interval '2 days',
+    current_timestamp + interval '2 days 2 hours',
+    true
+);
+
+-- Published soon-starting event used for reminder regression checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+    published
+) values (
+    :'event11ID',
+    :'group1ID',
+    'Reminder Event Soon',
+    'lmn45op',
+    'Published soon event for reminder regression checks',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    current_timestamp + interval '10 hours',
+    current_timestamp + interval '12 hours',
+    true
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -379,6 +435,7 @@ select is(
         "capacity": 100,
         "remaining_capacity": 100,
         "ends_at": 1896220800,
+        "event_reminder_enabled": true,
         "meeting_in_sync": false,
         "meeting_provider": "zoom",
         "meeting_requested": true,
@@ -502,6 +559,7 @@ select is(
         "meetup_url": "https://meetup.com/new-event",
         "photos_urls": ["https://example.com/new-photo1.jpg", "https://example.com/new-photo2.jpg"],
         "registration_required": false,
+        "event_reminder_enabled": true,
         "tags": ["updated", "event", "tags"],
         "venue_address": "456 New St",
         "venue_city": "Tokyo",
@@ -1286,6 +1344,64 @@ select lives_ok(
         '{"name": "Event With Pending Sync", "description": "Test capacity exceeds", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 100}'::jsonb
     )$$,
     'Should succeed when capacity exceeds attendee count'
+);
+
+-- Should evaluate reminder immediately when published event starts within 24 hours
+select lives_ok(
+    format(
+        $$select update_event(
+            '%s'::uuid,
+            '%s'::uuid,
+            jsonb_build_object(
+                'name', 'Reminder Event Updated',
+                'description', 'Reminder evaluation check',
+                'timezone', 'UTC',
+                'category_id', '%s',
+                'kind_id', 'virtual',
+                'event_reminder_enabled', true,
+                'starts_at', to_char(current_timestamp + interval '12 hours', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                'ends_at', to_char(current_timestamp + interval '14 hours', 'YYYY-MM-DD"T"HH24:MI:SS')
+            )
+        )$$,
+        :'group1ID', :'event10ID', :'category1ID'
+    ),
+    'Should evaluate reminder immediately when published event starts within 24 hours'
+);
+
+-- Should mark reminder as evaluated for the updated start date
+select is(
+    (select event_reminder_evaluated_for_starts_at from event where event_id = :'event10ID'),
+    (select starts_at from event where event_id = :'event10ID'),
+    'Should mark reminder as evaluated for the updated start date'
+);
+
+-- Should not evaluate reminder when starts_at remains unchanged inside 24 hours
+select lives_ok(
+    format(
+        $$select update_event(
+            '%s'::uuid,
+            '%s'::uuid,
+            jsonb_build_object(
+                'name', 'Reminder Event Soon Updated',
+                'description', 'Reminder regression check',
+                'timezone', 'UTC',
+                'category_id', '%s',
+                'kind_id', 'virtual',
+                'event_reminder_enabled', true,
+                'starts_at', to_char((select starts_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'),
+                'ends_at', to_char((select ends_at from event where event_id = '%s'::uuid) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
+            )
+        )$$,
+        :'group1ID', :'event11ID', :'category1ID', :'event11ID', :'event11ID'
+    ),
+    'Should not evaluate reminder when starts_at remains unchanged inside 24 hours'
+);
+
+-- Should keep reminder unevaluated when starts_at remains unchanged inside 24 hours
+select is(
+    (select event_reminder_evaluated_for_starts_at from event where event_id = :'event11ID'),
+    null::timestamptz,
+    'Should keep reminder unevaluated when starts_at remains unchanged inside 24 hours'
 );
 
 -- ============================================================================

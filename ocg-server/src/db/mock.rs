@@ -588,6 +588,10 @@ mock! {
 
     #[async_trait]
     impl crate::db::notifications::DBNotifications for DB {
+        async fn enqueue_due_event_reminders(
+            &self,
+            base_url: &str,
+        ) -> Result<usize>;
         async fn enqueue_notification(
             &self,
             notification: &crate::services::notifications::NewNotification,

@@ -31,6 +31,7 @@ returns json as $$
             'cfs_starts_at', floor(extract(epoch from e.cfs_starts_at)),
             'description_short', e.description_short,
             'ends_at', floor(extract(epoch from e.ends_at)),
+            'event_reminder_enabled', e.event_reminder_enabled,
             'latitude', st_y(e.location::geometry),
             'logo_url', coalesce(e.logo_url, g.logo_url, c.logo_url),
             'longitude', st_x(e.location::geometry),

@@ -96,6 +96,21 @@ const setRegistrationRequired = (isRequired) => {
 };
 
 /**
+ * Sets event reminder toggle and hidden input.
+ * @param {boolean} isEnabled Whether event reminders are enabled
+ */
+const setEventReminderEnabled = (isEnabled) => {
+  const toggle = document.getElementById("toggle_event_reminder_enabled");
+  const hidden = document.getElementById("event_reminder_enabled");
+  if (toggle) {
+    toggle.checked = !!isEnabled;
+  }
+  if (hidden) {
+    hidden.value = isEnabled ? "true" : "false";
+  }
+};
+
+/**
  * Sets selected hosts on the hosts selector component.
  * @param {*} hosts Hosts payload
  */
@@ -247,6 +262,7 @@ export {
   buildSessionEntries,
   normalizeSpeakers,
   setCategoryValue,
+  setEventReminderEnabled,
   setGalleryImages,
   setHosts,
   setRegistrationRequired,

@@ -1,0 +1,48 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  Reminder: {{ event.name }} starts in 24 hours
+{% endblock subject -%}
+
+{% block preheader -%}
+  {{ event.name }} starts soon. Review the event details.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30">
+    Friendly reminder that <strong>{{ event.name }}</strong> from
+    <strong>{{ event.group_name }}</strong> starts in less than 24 hours.
+    <br />
+    <br />
+    {% if let Some(starts_at) = &event.starts_at -%}
+      Date &amp; time:
+      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+      <br />
+    {% endif -%}
+    {% if let Some(location) = &self.event.location(90) -%}
+      Location: {{ location }}
+      <br />
+    {% endif -%}
+    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
+      Meeting link:
+      <a href="{{ meeting_join_url }}"
+         target="_blank"
+         rel="noopener noreferrer">{{ meeting_join_url }}</a>
+      <br />
+      {% if let Some(meeting_password) = &event.meeting_password -%}
+        Meeting password:
+        <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
+          {{ meeting_password }}
+        </code>
+        <br />
+      {% endif -%}
+    {% endif -%}
+  </p>
+
+  {{ email::button(link = link, text = "View event") }}
+{% endblock content -%}
+
+{% block footer -%}
+  You are receiving this because you are attending or speaking at {{ event.name }}.
+{% endblock footer -%}

@@ -117,6 +117,7 @@
 {{ template "meetings/update_meeting.sql" }}
 {{ template "meetings/update_meeting_recording_url.sql" }}
 
+{{ template "notifications/enqueue_due_event_reminders.sql" }}
 {{ template "notifications/enqueue_notification.sql" }}
 {{ template "notifications/get_pending_notification.sql" }}
 

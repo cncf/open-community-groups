@@ -3,7 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use anyhow::{Result, bail};
+use anyhow::{Result, anyhow, bail};
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::proc_macro::cached;
@@ -21,6 +21,9 @@ use crate::{
 /// Trait that defines database operations used to manage notifications.
 #[async_trait]
 pub(crate) trait DBNotifications {
+    /// Enqueues due event reminders and returns the number of notifications created.
+    async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize>;
+
     /// Enqueues a notification to be delivered.
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()>;
 
@@ -51,6 +54,26 @@ pub(crate) trait DBNotifications {
 
 #[async_trait]
 impl DBNotifications for PgDB {
+    #[instrument(skip(self), err)]
+    async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize> {
+        trace!("db: enqueue due event reminders");
+
+        let db = self.pool.get().await?;
+        let count = db
+            .query_one(
+                "
+                select enqueue_due_event_reminders($1::text)::int;
+                ",
+                &[&base_url],
+            )
+            .await?
+            .get::<_, i32>(0);
+        let count =
+            usize::try_from(count).map_err(|_| anyhow!("enqueued reminders count cannot be negative"))?;
+
+        Ok(count)
+    }
+
     #[instrument(skip(self, notification), err)]
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()> {
         trace!("db: enqueue notification");

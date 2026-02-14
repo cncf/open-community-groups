@@ -183,6 +183,25 @@ begin
         cfs_starts_at = (p_event->>'cfs_starts_at')::timestamp at time zone (p_event->>'timezone'),
         description_short = nullif(p_event->>'description_short', ''),
         ends_at = (p_event->>'ends_at')::timestamp at time zone (p_event->>'timezone'),
+        event_reminder_enabled = coalesce((p_event->>'event_reminder_enabled')::boolean, true),
+        -- Mark reminder as evaluated when update moves start time inside the 24-hour window
+        event_reminder_evaluated_for_starts_at = case
+            when coalesce((p_event->>'event_reminder_enabled')::boolean, true) = true
+                 and event_reminder_sent_at is null
+                 and starts_at is distinct from (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
+                 and (
+                     starts_at is null
+                     or starts_at <= current_timestamp
+                     or starts_at > current_timestamp + interval '24 hours'
+                 )
+                 and (p_event->>'starts_at') is not null
+                 and (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
+                     > current_timestamp
+                 and (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
+                     <= current_timestamp + interval '24 hours'
+            then (p_event->>'starts_at')::timestamp at time zone (p_event->>'timezone')
+            else event_reminder_evaluated_for_starts_at
+        end,
         location = case
             when (p_event->>'latitude') is not null and (p_event->>'longitude') is not null
             then ST_SetSRID(ST_MakePoint((p_event->>'longitude')::float, (p_event->>'latitude')::float), 4326)::geography

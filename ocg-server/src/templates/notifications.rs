@@ -86,6 +86,18 @@ pub(crate) struct EventPublished {
     pub theme: Theme,
 }
 
+/// Template for event reminder notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/event_reminder.html")]
+pub(crate) struct EventReminder {
+    /// Event summary data.
+    pub event: EventSummary,
+    /// Link to the event page.
+    pub link: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for event rescheduled notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_rescheduled.html")]
