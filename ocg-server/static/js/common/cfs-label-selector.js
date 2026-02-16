@@ -247,7 +247,9 @@ export class CfsLabelSelector extends LitWrapper {
       });
     }
 
-    this.labels = normalizedLabels;
+    if (!this._areLabelsEqual(this.labels, normalizedLabels)) {
+      this.labels = normalizedLabels;
+    }
   }
 
   /**
@@ -255,7 +257,12 @@ export class CfsLabelSelector extends LitWrapper {
    */
   _normalizeSelected() {
     if (Array.isArray(this.selected)) {
-      this.selected = this.selected.map((value) => String(value || "")).filter((value) => value.length > 0);
+      const normalizedSelected = this.selected
+        .map((value) => String(value || ""))
+        .filter((value) => value.length > 0);
+      if (!this._areStringArraysEqual(this.selected, normalizedSelected)) {
+        this.selected = normalizedSelected;
+      }
       return;
     }
 
@@ -266,6 +273,41 @@ export class CfsLabelSelector extends LitWrapper {
 
     const value = String(this.selected || "");
     this.selected = value ? [value] : [];
+  }
+
+  /**
+   * Checks whether two labels arrays contain the same values in order.
+   * @param {Array<Object>} left
+   * @param {Array<Object>} right
+   * @returns {boolean}
+   */
+  _areLabelsEqual(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((leftLabel, index) => {
+      const rightLabel = right[index];
+      return (
+        String(leftLabel?.event_cfs_label_id || "") === String(rightLabel?.event_cfs_label_id || "") &&
+        String(leftLabel?.name || "").trim() === String(rightLabel?.name || "").trim() &&
+        String(leftLabel?.color || "").trim() === String(rightLabel?.color || "").trim()
+      );
+    });
+  }
+
+  /**
+   * Checks whether two string arrays contain the same values in order.
+   * @param {Array<string>} left
+   * @param {Array<string>} right
+   * @returns {boolean}
+   */
+  _areStringArraysEqual(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+      return false;
+    }
+
+    return left.every((leftValue, index) => leftValue === right[index]);
   }
 
   /**

@@ -1208,11 +1208,14 @@
     updateEventButton.addEventListener('htmx:afterRequest', (e) => {
       if (e.detail.elt.id === 'update-event-button') {
         const xhr = e.detail?.xhr;
-        handleHtmxResponse({
+        const ok = handleHtmxResponse({
           xhr,
           successMessage: 'You have successfully updated the event.',
           errorMessage: 'Something went wrong updating the event. Please try again later.',
         });
+        if (ok) {
+          document.body.dispatchEvent(new CustomEvent('refresh-event-submissions'));
+        }
       }
     });
   }

@@ -9,6 +9,8 @@ const MODAL_ELEMENT_ID = "review-submission-modal";
 const OPEN_ACTION = "open-cfs-submission-modal";
 const DATA_KEY = "cfsSubmissionModalReady";
 const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
+const SUBMISSIONS_CONTENT_ID = "submissions-content";
+const SUBMISSIONS_FILTER_ID = "submissions-label-filter";
 
 /**
  * ReviewSubmissionModal renders and handles the CFS submission review modal.
@@ -73,6 +75,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       return;
     }
     const shouldLockScroll = !this._isOpen;
+    this.syncLabelsFromFilter();
     this._submission = submission;
     this._message = submission.action_required_message || "";
     this._selectedLabelIds = (submission.labels || [])
@@ -161,6 +164,36 @@ export class ReviewSubmissionModal extends LitWrapper {
       }
     } catch (error) {
       console.error("Invalid labels payload", error);
+    }
+  }
+
+  /**
+   * Synchronizes labels from the submissions filter component.
+   */
+  syncLabelsFromFilter() {
+    const labelsFilter = document.getElementById(SUBMISSIONS_FILTER_ID);
+    if (!labelsFilter) {
+      this.labels = [];
+      return;
+    }
+
+    if (Array.isArray(labelsFilter.labels)) {
+      this.labels = this._normalizeLabels(labelsFilter.labels);
+      return;
+    }
+
+    const labelsAttr = labelsFilter.getAttribute("labels");
+    if (!labelsAttr) {
+      this.labels = [];
+      return;
+    }
+
+    try {
+      const parsedLabels = JSON.parse(labelsAttr);
+      this.labels = this._normalizeLabels(parsedLabels);
+    } catch (error) {
+      console.error("Invalid labels payload", error);
+      this.labels = [];
     }
   }
 
@@ -381,6 +414,27 @@ export class ReviewSubmissionModal extends LitWrapper {
    */
   _isStatusSelectionValid() {
     return this._isStatusAllowed(this._statusId);
+  }
+
+  /**
+   * Normalizes available labels payload.
+   * @param {Array<Object>} labels
+   * @returns {Array<Object>}
+   */
+  _normalizeLabels(labels) {
+    if (!Array.isArray(labels)) {
+      return [];
+    }
+
+    return labels
+      .map((label) => {
+        return {
+          color: String(label?.color || "").trim(),
+          event_cfs_label_id: String(label?.event_cfs_label_id || "").trim(),
+          name: String(label?.name || "").trim(),
+        };
+      })
+      .filter((label) => label.event_cfs_label_id && label.name);
   }
 
   /**
@@ -633,6 +687,20 @@ const initializeCfsSubmissions = () => {
     return;
   }
   document.body.dataset[DATA_KEY] = "true";
+  document.body.addEventListener("htmx:afterSwap", (event) => {
+    const target = event?.detail?.target || event?.detail?.elt;
+    if (!(target instanceof Element) || target.id !== SUBMISSIONS_CONTENT_ID) {
+      return;
+    }
+
+    const modal = document.getElementById(MODAL_ELEMENT_ID);
+    if (!modal || typeof modal.syncLabelsFromFilter !== "function") {
+      return;
+    }
+
+    modal.syncLabelsFromFilter();
+  });
+
   document.body.addEventListener("click", (event) => {
     if (!(event.target instanceof Element)) {
       return;
