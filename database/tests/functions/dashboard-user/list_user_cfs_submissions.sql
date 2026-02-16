@@ -14,6 +14,8 @@ select plan(3);
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
+\set label1ID '00000000-0000-0000-0000-000000000101'
+\set label2ID '00000000-0000-0000-0000-000000000102'
 \set proposal1ID '00000000-0000-0000-0000-000000000061'
 \set proposal2ID '00000000-0000-0000-0000-000000000062'
 \set submission1ID '00000000-0000-0000-0000-000000000071'
@@ -109,6 +111,11 @@ insert into event (
     current_timestamp + interval '8 days'
 );
 
+-- Event CFS labels
+insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
+    (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
+    (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2');
+
 -- CFS submissions
 insert into cfs_submission (
     cfs_submission_id,
@@ -135,6 +142,12 @@ insert into cfs_submission (
         null
     );
 
+-- CFS submission labels
+insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id) values
+    (:'submission1ID', :'label1ID'),
+    (:'submission2ID', :'label1ID'),
+    (:'submission2ID', :'label2ID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -154,6 +167,17 @@ select is(
                 extract(epoch from '2024-01-04 00:00:00+00'::timestamptz)::bigint,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+                'labels',
+                jsonb_build_array(
+                    jsonb_build_object(
+                        'color',
+                        '#DBEAFE',
+                        'event_cfs_label_id',
+                        :'label1ID'::uuid,
+                        'name',
+                        'track / backend'
+                    )
+                ),
                 'linked_session_id',
                 null,
                 'session_proposal',
@@ -187,6 +211,25 @@ select is(
                 extract(epoch from '2024-01-03 00:00:00+00'::timestamptz)::bigint,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+                'labels',
+                jsonb_build_array(
+                    jsonb_build_object(
+                        'color',
+                        '#DBEAFE',
+                        'event_cfs_label_id',
+                        :'label1ID'::uuid,
+                        'name',
+                        'track / backend'
+                    ),
+                    jsonb_build_object(
+                        'color',
+                        '#FEE2E2',
+                        'event_cfs_label_id',
+                        :'label2ID'::uuid,
+                        'name',
+                        'track / frontend'
+                    )
+                ),
                 'linked_session_id',
                 null,
                 'session_proposal',
@@ -233,6 +276,25 @@ select is(
                 extract(epoch from '2024-01-03 00:00:00+00'::timestamptz)::bigint,
                 'event',
                 get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+                'labels',
+                jsonb_build_array(
+                    jsonb_build_object(
+                        'color',
+                        '#DBEAFE',
+                        'event_cfs_label_id',
+                        :'label1ID'::uuid,
+                        'name',
+                        'track / backend'
+                    ),
+                    jsonb_build_object(
+                        'color',
+                        '#FEE2E2',
+                        'event_cfs_label_id',
+                        :'label2ID'::uuid,
+                        'name',
+                        'track / frontend'
+                    )
+                ),
                 'linked_session_id',
                 null,
                 'session_proposal',

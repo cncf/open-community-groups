@@ -8,6 +8,8 @@ create or replace function update_event(
 returns void as $$
 declare
     v_attendee_count int;
+    v_cfs_label jsonb;
+    v_cfs_label_id uuid;
     v_community_id uuid;
     v_ends_at timestamptz;
     v_event_before jsonb;
@@ -16,6 +18,7 @@ declare
     v_is_past_event boolean;
     v_processed_session_ids uuid[] := '{}';
     v_provider_max_participants int;
+    v_processed_cfs_label_ids uuid[] := '{}';
     v_session jsonb;
     v_session_before jsonb;
     v_session_ends_at timestamptz;
@@ -166,6 +169,13 @@ begin
         end if;
     end if;
 
+    -- Validate CFS labels payload
+    if p_event->'cfs_labels' is not null then
+        if jsonb_array_length(p_event->'cfs_labels') > 200 then
+            raise exception 'too many cfs labels';
+        end if;
+    end if;
+
     -- Update event
     update event set
         name = p_event->>'name',
@@ -235,6 +245,47 @@ begin
     and group_id = p_group_id
     and deleted = false
     and canceled = false;
+
+    -- Insert/update event CFS labels
+    if p_event->'cfs_labels' is not null then
+        for v_cfs_label in select jsonb_array_elements(p_event->'cfs_labels')
+        loop
+            v_cfs_label_id := nullif(v_cfs_label->>'event_cfs_label_id', '')::uuid;
+
+            -- New label - insert
+            if v_cfs_label_id is null then
+                insert into event_cfs_label (event_id, name, color)
+                values (
+                    p_event_id,
+                    nullif(v_cfs_label->>'name', ''),
+                    v_cfs_label->>'color'
+                )
+                returning event_cfs_label_id into v_cfs_label_id;
+            -- Existing label - update
+            else
+                update event_cfs_label set
+                    color = v_cfs_label->>'color',
+                    name = nullif(v_cfs_label->>'name', '')
+                where event_cfs_label_id = v_cfs_label_id
+                and event_id = p_event_id;
+
+                if not found then
+                    raise exception 'event CFS label % not found for event %', v_cfs_label_id, p_event_id;
+                end if;
+            end if;
+
+            -- Keep track of processed label IDs to identify deletions
+            v_processed_cfs_label_ids := array_append(v_processed_cfs_label_ids, v_cfs_label_id);
+        end loop;
+
+        -- Delete event CFS labels no longer present in payload
+        delete from event_cfs_label
+        where event_id = p_event_id
+        and not (event_cfs_label_id = any(v_processed_cfs_label_ids));
+    else
+        -- No labels in payload - delete all existing labels
+        delete from event_cfs_label where event_id = p_event_id;
+    end if;
 
     -- Delete existing hosts, sponsors, sessions and speakers
     delete from event_host where event_id = p_event_id;

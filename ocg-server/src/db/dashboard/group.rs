@@ -159,7 +159,7 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
         cfs_submission_id: Uuid,
         submission: &CfsSubmissionUpdate,
-    ) -> Result<()>;
+    ) -> Result<bool>;
 
     /// Updates an existing event.
     async fn update_event(
@@ -667,17 +667,19 @@ impl DBDashboardGroup for PgDB {
         event_id: Uuid,
         cfs_submission_id: Uuid,
         submission: &CfsSubmissionUpdate,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         trace!("db: update cfs submission");
 
         let db = self.pool.get().await?;
-        db.execute(
-            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
-            &[&reviewer_id, &event_id, &cfs_submission_id, &Json(submission)],
-        )
-        .await?;
+        let should_notify = db
+            .query_one(
+                "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::bool",
+                &[&reviewer_id, &event_id, &cfs_submission_id, &Json(submission)],
+            )
+            .await?
+            .get::<_, bool>(0);
 
-        Ok(())
+        Ok(should_notify)
     }
 
     /// [`DBDashboardGroup::update_event`]

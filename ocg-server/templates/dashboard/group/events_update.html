@@ -409,6 +409,24 @@
           <p class="form-legend">Shown on the event page to invite speakers.</p>
         </div>
         {# End CFS description -#}
+
+        {# CFS labels -#}
+        <div class="col-span-full">
+          <label for="cfs-labels-editor" class="form-label">Submission labels</label>
+          <div class="mt-2">
+            <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" labels="{{ event.cfs_labels|json }}" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}"></cfs-labels-editor>
+          </div>
+          <p class="form-legend">
+            Updating a label name or color updates it across all submissions using it.
+            Deleting a label also removes it from those submissions.
+          </p>
+          <p class="form-legend mt-1">
+            If you need a different category, create a new label instead.
+            Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
+            <span class="font-semibold">/</span> as the separator for consistency.
+          </p>
+        </div>
+        {# End CFS labels -#}
       </div>
     </div>
   </form>
@@ -615,7 +633,7 @@
       </div>
     </div>
   </div>
-  <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
+  <review-submission-modal id="review-submission-modal" event-id="{{ event.event_id }}" statuses="{{ cfs_submission_statuses|json }}" labels="{{ event.cfs_labels|json }}" message-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}"></review-submission-modal>
 </div>
 {# End Submissions Tab -#}
 
@@ -937,6 +955,7 @@
   const cfsStartsAtInput = document.getElementById('cfs_starts_at');
   const cfsEndsAtInput = document.getElementById('cfs_ends_at');
   const cfsDescriptionInput = document.getElementById('cfs_description');
+  const cfsLabelsEditor = document.getElementById('cfs-labels-editor');
 
   const updateCfsFields = (enabled) => {
     const isLocked = (field) => field?.dataset?.locked === 'true';
@@ -957,6 +976,9 @@
       const locked = isLocked(cfsDescriptionInput);
       cfsDescriptionInput.disabled = locked || !enabled;
       cfsDescriptionInput.required = enabled && !locked;
+    }
+    if (cfsLabelsEditor) {
+      cfsLabelsEditor.disabled = !enabled;
     }
   };
 

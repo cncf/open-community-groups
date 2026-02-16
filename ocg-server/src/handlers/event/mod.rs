@@ -18,7 +18,7 @@ use crate::{
     auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
-    handlers::{extractors::ValidatedForm, prepare_headers},
+    handlers::{extractors::ValidatedFormQs, prepare_headers},
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
@@ -27,6 +27,7 @@ use crate::{
         notifications::EventWelcome,
     },
     util::{build_event_calendar_attachment, build_event_page_link},
+    validation::MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -106,18 +107,23 @@ pub(crate) async fn cfs_modal(
     let user_id = auth_session.user.as_ref().map(|user| user.user_id);
     let user = User::from_session(auth_session).await?;
 
-    // Get event details and user's session proposals
-    let event = db.get_event_summary_by_id(community_id, event_id).await?;
-    let session_proposals = if let Some(user_id) = user_id {
-        db.list_user_session_proposals_for_cfs_event(user_id, event_id)
-            .await?
-    } else {
-        vec![]
-    };
+    // Get event details, labels and user's session proposals
+    let (event, labels, session_proposals) = tokio::try_join!(
+        db.get_event_summary_by_id(community_id, event_id),
+        db.list_event_cfs_labels(event_id),
+        async {
+            if let Some(user_id) = user_id {
+                db.list_user_session_proposals_for_cfs_event(user_id, event_id).await
+            } else {
+                Ok(vec![])
+            }
+        }
+    )?;
 
     // Prepare template
     let template = CfsModal {
         event,
+        labels,
         session_proposals,
         user,
         notice: None,
@@ -229,7 +235,7 @@ pub(crate) async fn submit_cfs_submission(
     State(db): State<DynDB>,
     CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
-    ValidatedForm(input): ValidatedForm<CfsSubmissionInput>,
+    ValidatedFormQs(input): ValidatedFormQs<CfsSubmissionInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user_id = auth_session
@@ -240,16 +246,24 @@ pub(crate) async fn submit_cfs_submission(
     let user = User::from_session(auth_session).await?;
 
     // Add CFS submission to database
-    db.add_cfs_submission(community_id, event_id, user_id, input.session_proposal_id)
-        .await?;
+    db.add_cfs_submission(
+        community_id,
+        event_id,
+        user_id,
+        input.session_proposal_id,
+        &input.label_ids,
+    )
+    .await?;
 
     // Prepare template
-    let (event, session_proposals) = tokio::try_join!(
+    let (event, labels, session_proposals) = tokio::try_join!(
         db.get_event_summary_by_id(community_id, event_id),
+        db.list_event_cfs_labels(event_id),
         db.list_user_session_proposals_for_cfs_event(user_id, event_id),
     )?;
     let template = CfsModal {
         event,
+        labels,
         session_proposals,
         user,
         notice: Some("Submission received. We'll review it soon.".to_string()),
@@ -262,6 +276,9 @@ pub(crate) async fn submit_cfs_submission(
 
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct CfsSubmissionInput {
+    #[serde(default)]
+    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_SUBMISSION))]
+    label_ids: Vec<Uuid>,
     #[garde(skip)]
     session_proposal_id: Uuid,
 }
@@ -465,6 +482,10 @@ mod tests {
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)
             .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_event_cfs_labels()
+            .times(1)
+            .withf(move |eid| *eid == event_id)
+            .returning(|_| Ok(vec![]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -525,6 +546,10 @@ mod tests {
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)
             .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_event_cfs_labels()
+            .times(1)
+            .withf(move |eid| *eid == event_id)
+            .returning(|_| Ok(vec![]));
         db.expect_list_user_session_proposals_for_cfs_event()
             .times(1)
             .withf(move |uid, eid| *uid == user_id && *eid == event_id)
@@ -574,6 +599,9 @@ mod tests {
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)
             .returning(move |_, _| Err(anyhow!("db error")));
+        db.expect_list_event_cfs_labels()
+            .times(0..=1)
+            .returning(|_| Ok(vec![]));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();
@@ -852,17 +880,22 @@ mod tests {
             .returning(move |_| Ok(Some(community_id)));
         db.expect_add_cfs_submission()
             .times(1)
-            .withf(move |cid, eid, uid, proposal_id| {
+            .withf(move |cid, eid, uid, proposal_id, label_ids| {
                 *cid == community_id
                     && *eid == event_id
                     && *uid == user_id
                     && *proposal_id == session_proposal_id
+                    && label_ids.is_empty()
             })
-            .returning(|_, _, _, _| Ok(Uuid::new_v4()));
+            .returning(|_, _, _, _, _| Ok(Uuid::new_v4()));
         db.expect_get_event_summary_by_id()
             .times(1)
             .withf(move |cid, eid| *cid == community_id && *eid == event_id)
             .returning(move |_, _| Ok(event_summary.clone()));
+        db.expect_list_event_cfs_labels()
+            .times(1)
+            .withf(move |eid| *eid == event_id)
+            .returning(|_| Ok(vec![]));
         db.expect_list_user_session_proposals_for_cfs_event()
             .times(1)
             .withf(move |uid, eid| *uid == user_id && *eid == event_id)
@@ -925,13 +958,14 @@ mod tests {
             .returning(move |_| Ok(Some(community_id)));
         db.expect_add_cfs_submission()
             .times(1)
-            .withf(move |cid, eid, uid, proposal_id| {
+            .withf(move |cid, eid, uid, proposal_id, label_ids| {
                 *cid == community_id
                     && *eid == event_id
                     && *uid == user_id
                     && *proposal_id == session_proposal_id
+                    && label_ids.is_empty()
             })
-            .returning(|_, _, _, _| Err(anyhow!("db error")));
+            .returning(|_, _, _, _, _| Err(anyhow!("db error")));
 
         // Setup notifications manager mock
         let nm = MockNotificationsManager::new();

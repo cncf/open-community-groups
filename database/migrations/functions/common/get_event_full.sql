@@ -28,6 +28,15 @@ returns json as $$
             'cfs_description', e.cfs_description,
             'cfs_enabled', e.cfs_enabled,
             'cfs_ends_at', floor(extract(epoch from e.cfs_ends_at)),
+            'cfs_labels', (
+                select coalesce(json_agg(json_build_object(
+                    'color', ecl.color,
+                    'event_cfs_label_id', ecl.event_cfs_label_id,
+                    'name', ecl.name
+                ) order by ecl.name asc, ecl.event_cfs_label_id asc), '[]')
+                from event_cfs_label ecl
+                where ecl.event_id = e.event_id
+            ),
             'cfs_starts_at', floor(extract(epoch from e.cfs_starts_at)),
             'description_short', e.description_short,
             'ends_at', floor(extract(epoch from e.ends_at)),

@@ -13,7 +13,7 @@ use crate::{
         dashboard,
         pagination::{self, Pagination, ToRawQuery},
     },
-    types::event::EventSummary,
+    types::event::{EventCfsLabel, EventSummary},
     validation::MAX_PAGINATION_LIMIT,
 };
 
@@ -70,6 +70,8 @@ pub(crate) struct CfsSubmission {
     pub created_at: DateTime<Utc>,
     /// Event summary information.
     pub event: EventSummary,
+    /// Labels assigned to the submission.
+    pub labels: Vec<EventCfsLabel>,
     /// Session proposal summary information.
     pub session_proposal: CfsSessionProposal,
     /// Submission status identifier.

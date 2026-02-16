@@ -14,6 +14,12 @@ use std::collections::BTreeMap;
 use garde::rules::email::parse_email;
 use reqwest::Url;
 
+/// Allowed CFS label colors.
+pub const CFS_LABEL_COLORS: [&str; 10] = [
+    "#CCFBF1", "#CFFAFE", "#DBEAFE", "#DCFCE7", "#ECFCCB", "#EDE9FE", "#FCE7F3", "#FEE2E2", "#FEF3C7",
+    "#FFEDD5",
+];
+
 // Maximum length constants for validation.
 
 // Generic size-based limits
@@ -52,6 +58,15 @@ pub const MAX_LEN_DISPLAY_NAME: usize = 80;
 
 /// Maximum length for entity names (groups, events, sessions, sponsors, venues).
 pub const MAX_LEN_ENTITY_NAME: usize = 120;
+
+/// Maximum length for CFS label names.
+pub const MAX_LEN_EVENT_LABEL_NAME: usize = 80;
+
+/// Maximum number of labels allowed per event.
+pub const MAX_LEN_EVENT_LABELS_PER_EVENT: usize = 200;
+
+/// Maximum number of labels allowed per submission.
+pub const MAX_LEN_EVENT_LABELS_PER_SUBMISSION: usize = 10;
 
 /// Maximum length for link labels in custom link maps.
 pub const MAX_LEN_LINK_LABEL: usize = 80;
@@ -182,6 +197,14 @@ pub fn url_map_values(value: &Option<BTreeMap<String, String>>, _ctx: &()) -> ga
                 return Err(garde::Error::new(format!("invalid URL for '{key}': {url}")));
             }
         }
+    }
+    Ok(())
+}
+
+/// Validates that a CFS label color belongs to the predefined palette.
+pub fn valid_cfs_label_color(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
+    if !CFS_LABEL_COLORS.contains(&value.as_ref()) {
+        return Err(garde::Error::new("invalid cfs label color"));
     }
     Ok(())
 }

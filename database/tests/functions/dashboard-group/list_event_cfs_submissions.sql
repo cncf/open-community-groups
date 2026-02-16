@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,8 @@ select plan(3);
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
+\set label1ID '00000000-0000-0000-0000-000000000101'
+\set label2ID '00000000-0000-0000-0000-000000000102'
 \set proposal2ID '00000000-0000-0000-0000-000000000062'
 \set proposal3ID '00000000-0000-0000-0000-000000000063'
 \set proposalID '00000000-0000-0000-0000-000000000061'
@@ -113,6 +115,11 @@ insert into event (
     true
 );
 
+-- Event CFS labels
+insert into event_cfs_label (event_cfs_label_id, event_id, name, color) values
+    (:'label1ID', :'eventID', 'track / backend', '#DBEAFE'),
+    (:'label2ID', :'eventID', 'track / frontend', '#FEE2E2');
+
 -- Event (empty)
 insert into event (
     event_id,
@@ -195,6 +202,12 @@ insert into session (
     '2024-02-01 10:00:00+00'
 );
 
+-- CFS submission labels
+insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id) values
+    (:'submissionID', :'label1ID'),
+    (:'submission2ID', :'label1ID'),
+    (:'submission2ID', :'label2ID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -209,6 +222,13 @@ select is(
                 'cfs_submission_id', :'submissionID'::uuid,
                 'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
                     where cfs_submission_id = :'submissionID'::uuid),
+                'labels', jsonb_build_array(
+                    jsonb_build_object(
+                        'color', '#DBEAFE',
+                        'event_cfs_label_id', :'label1ID'::uuid,
+                        'name', 'track / backend'
+                    )
+                ),
                 'linked_session_id', null,
                 'session_proposal', jsonb_build_object(
                     'description', 'Talk about Rust',
@@ -233,6 +253,18 @@ select is(
                 'cfs_submission_id', :'submission2ID'::uuid,
                 'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
                     where cfs_submission_id = :'submission2ID'::uuid),
+                'labels', jsonb_build_array(
+                    jsonb_build_object(
+                        'color', '#DBEAFE',
+                        'event_cfs_label_id', :'label1ID'::uuid,
+                        'name', 'track / backend'
+                    ),
+                    jsonb_build_object(
+                        'color', '#FEE2E2',
+                        'event_cfs_label_id', :'label2ID'::uuid,
+                        'name', 'track / frontend'
+                    )
+                ),
                 'linked_session_id', :'sessionID'::uuid,
                 'session_proposal', jsonb_build_object(
                     'description', 'Talk about Go',
@@ -270,6 +302,18 @@ select is(
             'cfs_submission_id', :'submission2ID'::uuid,
             'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
                 where cfs_submission_id = :'submission2ID'::uuid),
+            'labels', jsonb_build_array(
+                jsonb_build_object(
+                    'color', '#DBEAFE',
+                    'event_cfs_label_id', :'label1ID'::uuid,
+                    'name', 'track / backend'
+                ),
+                jsonb_build_object(
+                    'color', '#FEE2E2',
+                    'event_cfs_label_id', :'label2ID'::uuid,
+                    'name', 'track / frontend'
+                )
+            ),
             'linked_session_id', :'sessionID'::uuid,
             'session_proposal', jsonb_build_object(
                 'description', 'Talk about Go',
@@ -305,6 +349,63 @@ select is(
         'total', 0
     ),
     'Should return empty submissions for events without submissions'
+);
+
+-- Should filter submissions requiring all selected labels
+select is(
+    list_event_cfs_submissions(
+        :'eventID'::uuid,
+        format(
+            '{"limit": 10, "offset": 0, "label_ids": ["%s", "%s"]}',
+            :'label1ID',
+            :'label2ID'
+        )::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'submissions', jsonb_build_array(
+            jsonb_build_object(
+                'action_required_message', 'Looks good',
+                'cfs_submission_id', :'submission2ID'::uuid,
+                'created_at', (select extract(epoch from created_at)::bigint from cfs_submission
+                    where cfs_submission_id = :'submission2ID'::uuid),
+                'labels', jsonb_build_array(
+                    jsonb_build_object(
+                        'color', '#DBEAFE',
+                        'event_cfs_label_id', :'label1ID'::uuid,
+                        'name', 'track / backend'
+                    ),
+                    jsonb_build_object(
+                        'color', '#FEE2E2',
+                        'event_cfs_label_id', :'label2ID'::uuid,
+                        'name', 'track / frontend'
+                    )
+                ),
+                'linked_session_id', :'sessionID'::uuid,
+                'session_proposal', jsonb_build_object(
+                    'description', 'Talk about Go',
+                    'duration_minutes', 60,
+                    'session_proposal_id', :'proposal2ID'::uuid,
+                    'session_proposal_level_id', 'intermediate',
+                    'session_proposal_level_name', 'Intermediate',
+                    'title', 'Go Intro'
+                ),
+                'reviewed_by', jsonb_build_object(
+                    'user_id', :'reviewerID'::uuid,
+                    'username', 'reviewer'
+                ),
+                'speaker', jsonb_build_object(
+                    'user_id', :'user2ID'::uuid,
+                    'username', 'bob'
+                ),
+                'status_id', 'approved',
+                'status_name', 'Approved',
+                'updated_at', (select extract(epoch from updated_at)::bigint from cfs_submission
+                    where cfs_submission_id = :'submission2ID'::uuid)
+            )
+        ),
+        'total', 1
+    ),
+    'Should filter submissions requiring all selected labels'
 );
 
 -- ============================================================================

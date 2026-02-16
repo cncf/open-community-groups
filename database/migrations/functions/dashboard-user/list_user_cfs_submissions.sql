@@ -35,6 +35,16 @@ returns json as $$
                         ))
                     end
                 )) as session_proposal,
+                (
+                    select coalesce(json_agg(json_build_object(
+                        'color', ecl.color,
+                        'event_cfs_label_id', ecl.event_cfs_label_id,
+                        'name', ecl.name
+                    ) order by ecl.name asc, ecl.event_cfs_label_id asc), '[]'::json)
+                    from cfs_submission_label csl
+                    join event_cfs_label ecl on ecl.event_cfs_label_id = csl.event_cfs_label_id
+                    where csl.cfs_submission_id = cs.cfs_submission_id
+                ) as labels,
                 cs.status_id,
                 css.display_name as status_name,
 

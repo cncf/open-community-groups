@@ -8,6 +8,16 @@ returns json as $$
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value
         ),
+        -- Parse label filter
+        label_filter as (
+            select
+                count(*)::int as labels_total,
+                coalesce(array_agg(label_id), '{}') as selected_label_ids
+            from (
+                select value::uuid as label_id
+                from jsonb_array_elements_text(coalesce(p_filters->'label_ids', '[]'::jsonb))
+            ) input_labels
+        ),
         -- Gather paginated submissions
         submissions as (
             select
@@ -34,6 +44,16 @@ returns json as $$
                         ))
                     end
                 )) as session_proposal,
+                (
+                    select coalesce(json_agg(json_build_object(
+                        'color', ecl.color,
+                        'event_cfs_label_id', ecl.event_cfs_label_id,
+                        'name', ecl.name
+                    ) order by ecl.name asc, ecl.event_cfs_label_id asc), '[]'::json)
+                    from cfs_submission_label csl
+                    join event_cfs_label ecl on ecl.event_cfs_label_id = csl.event_cfs_label_id
+                    where csl.cfs_submission_id = cs.cfs_submission_id
+                ) as labels,
                 json_strip_nulls(json_build_object(
                     'user_id', u.user_id,
                     'username', u.username,
@@ -71,6 +91,19 @@ returns json as $$
             left join session s on s.cfs_submission_id = cs.cfs_submission_id
             where cs.event_id = p_event_id
             and cs.status_id <> 'withdrawn'
+            and (
+                (select labels_total from label_filter) = 0
+                or cs.cfs_submission_id in (
+                    select csl.cfs_submission_id
+                    from cfs_submission_label csl
+                    where csl.event_cfs_label_id in (
+                        select unnest(selected_label_ids)
+                        from label_filter
+                    )
+                    group by csl.cfs_submission_id
+                    having count(distinct csl.event_cfs_label_id) = (select labels_total from label_filter)
+                )
+            )
             order by
                 cs.updated_at desc nulls last,
                 cs.created_at desc,
@@ -84,6 +117,19 @@ returns json as $$
             from cfs_submission cs
             where cs.event_id = p_event_id
             and cs.status_id <> 'withdrawn'
+            and (
+                (select labels_total from label_filter) = 0
+                or cs.cfs_submission_id in (
+                    select csl.cfs_submission_id
+                    from cfs_submission_label csl
+                    where csl.event_cfs_label_id in (
+                        select unnest(selected_label_ids)
+                        from label_filter
+                    )
+                    group by csl.cfs_submission_id
+                    having count(distinct csl.event_cfs_label_id) = (select labels_total from label_filter)
+                )
+            )
         ),
         -- Aggregate submissions to JSON
         submissions_json as (

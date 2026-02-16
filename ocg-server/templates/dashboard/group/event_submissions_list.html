@@ -11,6 +11,35 @@ description = "Review and manage call for speakers submissions.") -}}
      hx-target="#submissions-content"
      hx-swap="innerHTML"></div>
 
+{% if !event_cfs_labels.is_empty() -%}
+  <div class="mt-6">
+    <form id="submissions-filters-form"
+          class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-4"
+          hx-get="/dashboard/group/events/{{ event_id }}/submissions"
+          hx-target="#submissions-content"
+          hx-swap="innerHTML"
+          hx-indicator="#dashboard-spinner">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+        <div class="flex-1">
+          <label for="submissions-label-filter" class="form-label">Filter by labels</label>
+          <div class="mt-2">
+            <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels"></cfs-label-selector>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="submit" class="btn-primary">Apply</button>
+          <button type="button"
+                  class="btn-primary-outline"
+                  hx-get="/dashboard/group/events/{{ event_id }}/submissions"
+                  hx-target="#submissions-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">Clear</button>
+        </div>
+      </div>
+    </form>
+  </div>
+{% endif -%}
+
 <div class="mt-10">
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
@@ -50,6 +79,14 @@ description = "Review and manage call for speakers submissions.") -}}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
+                {% if !submission.labels.is_empty() -%}
+                  <div class="mt-2 flex flex-wrap gap-1.5">
+                    {% for label in submission.labels -%}
+                      <span class="inline-flex items-center rounded-full border border-stone-300 px-2 py-0.5 text-[11px] font-medium text-stone-900"
+                            style="background-color: {{ label.color }}">{{ label.name }}</span>
+                    {% endfor -%}
+                  </div>
+                {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4">
                 {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}

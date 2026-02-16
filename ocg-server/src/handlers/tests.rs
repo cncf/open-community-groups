@@ -439,6 +439,7 @@ pub(crate) fn sample_group_cfs_submission(
     GroupCfsSubmission {
         cfs_submission_id,
         created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
+        labels: vec![],
         session_proposal: sample_group_cfs_session_proposal(session_proposal_id),
         speaker: sample_user_summary(speaker_id, "speaker"),
         status_id: "submitted".to_string(),
@@ -870,6 +871,7 @@ pub(crate) fn sample_user_cfs_submission(
         cfs_submission_id,
         created_at: Utc.with_ymd_and_hms(2024, 1, 2, 12, 0, 0).unwrap(),
         event: sample_event_summary(event_id, group_id),
+        labels: vec![],
         session_proposal: sample_user_cfs_session_proposal(session_proposal_id),
         status_id: "submitted".to_string(),
         status_name: "Submitted".to_string(),

@@ -3,7 +3,8 @@ create or replace function add_cfs_submission(
     p_community_id uuid,
     p_event_id uuid,
     p_user_id uuid,
-    p_session_proposal_id uuid
+    p_session_proposal_id uuid,
+    p_label_ids uuid[] default null
 )
 returns uuid as $$
 declare
@@ -59,6 +60,26 @@ begin
         raise exception 'session proposal not ready for submission';
     end if;
 
+    -- Validate labels payload
+    if coalesce(array_length(p_label_ids, 1), 0) > 10 then
+        raise exception 'too many submission labels';
+    end if;
+
+    if p_label_ids is not null then
+        perform 1
+        from unnest(p_label_ids) as input_label_id
+        where not exists (
+            select 1
+            from event_cfs_label ecl
+            where ecl.event_cfs_label_id = input_label_id
+            and ecl.event_id = p_event_id
+        );
+
+        if found then
+            raise exception 'invalid event CFS labels';
+        end if;
+    end if;
+
     -- Create submission
     insert into cfs_submission (
         event_id,
@@ -70,6 +91,14 @@ begin
         'not-reviewed'
     )
     returning cfs_submission_id into v_submission_id;
+
+    -- Link labels to submission
+    if p_label_ids is not null then
+        insert into cfs_submission_label (cfs_submission_id, event_cfs_label_id)
+        select v_submission_id, input_label_id
+        from unnest(p_label_ids) as input_label_id
+        group by input_label_id;
+    end if;
 
     return v_submission_id;
 end;

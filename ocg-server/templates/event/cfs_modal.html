@@ -61,6 +61,19 @@
           <p class="form-legend">Proposals already submitted to this event will appear disabled.</p>
         </div>
 
+        {% if !labels.is_empty() -%}
+          <div>
+            <label for="cfs-label-selector" class="form-label">Labels</label>
+            <div class="mt-2">
+              <cfs-label-selector id="cfs-label-selector" name="label_ids" labels="{{ labels|json }}" max-selected="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_SUBMISSION }}" placeholder="Search labels"></cfs-label-selector>
+            </div>
+            <p class="form-legend">
+              Optional labels help organizers categorize your submission.
+              You can select up to {{ crate::validation::MAX_LEN_EVENT_LABELS_PER_SUBMISSION }} labels.
+            </p>
+          </div>
+        {% endif -%}
+
         <div class="flex items-center justify-end gap-3">
           <button id="cancel-cfs-modal" type="button" class="btn-primary-outline">Cancel</button>
           <button id="cfs-submit-button"

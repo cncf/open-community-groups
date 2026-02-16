@@ -2,6 +2,7 @@ import { html, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
 
 const MODAL_ELEMENT_ID = "review-submission-modal";
@@ -21,10 +22,12 @@ export class ReviewSubmissionModal extends LitWrapper {
   static get properties() {
     return {
       eventId: { type: String, attribute: "event-id" },
+      labels: { type: Array, attribute: false },
       messageMaxLength: { type: Number, attribute: "message-max-length" },
       statuses: { type: Array, attribute: false },
       _isOpen: { type: Boolean },
       _message: { type: String },
+      _selectedLabelIds: { type: Array },
       _statusId: { type: String },
       _submission: { type: Object },
     };
@@ -33,10 +36,12 @@ export class ReviewSubmissionModal extends LitWrapper {
   constructor() {
     super();
     this.eventId = "";
+    this.labels = [];
     this.messageMaxLength = 5000;
     this.statuses = [];
     this._isOpen = false;
     this._message = "";
+    this._selectedLabelIds = [];
     this._statusId = "";
     this._submission = null;
     this._afterRequestHandler = null;
@@ -45,6 +50,7 @@ export class ReviewSubmissionModal extends LitWrapper {
 
   connectedCallback() {
     super.connectedCallback();
+    this._loadLabelsFromAttribute();
     this._loadStatusesFromAttribute();
     document.addEventListener("keydown", this._onKeydown);
   }
@@ -69,6 +75,9 @@ export class ReviewSubmissionModal extends LitWrapper {
     const shouldLockScroll = !this._isOpen;
     this._submission = submission;
     this._message = submission.action_required_message || "";
+    this._selectedLabelIds = (submission.labels || [])
+      .map((label) => String(label?.event_cfs_label_id || ""))
+      .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
     this._statusId = submission.linked_session_id ? "approved" : String(submission.status_id || "");
     this._isOpen = true;
     if (shouldLockScroll) {
@@ -86,6 +95,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._isOpen = false;
     this._submission = null;
     this._message = "";
+    this._selectedLabelIds = [];
     this._statusId = "";
     this._removeAfterRequestListener();
     unlockBodyScroll();
@@ -133,6 +143,24 @@ export class ReviewSubmissionModal extends LitWrapper {
       }
     } catch (error) {
       console.error("Invalid statuses payload", error);
+    }
+  }
+
+  /**
+   * Loads available labels from the labels attribute.
+   */
+  _loadLabelsFromAttribute() {
+    const labelsAttr = this.getAttribute("labels");
+    if (!labelsAttr || this.labels.length > 0) {
+      return;
+    }
+    try {
+      const parsedLabels = JSON.parse(labelsAttr);
+      if (Array.isArray(parsedLabels)) {
+        this.labels = parsedLabels;
+      }
+    } catch (error) {
+      console.error("Invalid labels payload", error);
     }
   }
 
@@ -234,6 +262,15 @@ export class ReviewSubmissionModal extends LitWrapper {
    */
   _onStatusChange(event) {
     this._statusId = String(event.target?.value || "");
+  }
+
+  /**
+   * Handles label selection changes from cfs-label-selector.
+   * @param {Event} event
+   */
+  _onLabelsChange(event) {
+    const selected = event.target?.selected;
+    this._selectedLabelIds = Array.isArray(selected) ? [...selected] : [];
   }
 
   /**
@@ -514,6 +551,26 @@ export class ReviewSubmissionModal extends LitWrapper {
                           `
                         : ""}
                     </div>
+
+                    ${this.labels.length > 0
+                      ? html`
+                          <div>
+                            <label for="cfs-submission-labels" class="form-label">Labels</label>
+                            <div class="mt-2">
+                              <cfs-label-selector
+                                id="cfs-submission-labels"
+                                name="label_ids"
+                                .labels=${this.labels}
+                                .selected=${this._selectedLabelIds}
+                                max-selected="10"
+                                placeholder="Search labels"
+                                @change=${(event) => this._onLabelsChange(event)}
+                              ></cfs-label-selector>
+                            </div>
+                            <p class="form-legend">Use labels to keep submissions organized by category.</p>
+                          </div>
+                        `
+                      : ""}
 
                     <div>
                       <label for="cfs-submission-message" class="form-label">
