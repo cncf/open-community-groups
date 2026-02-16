@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(66);
+select plan(67);
 
 -- ============================================================================
 -- VARIABLES
@@ -786,6 +786,33 @@ select is(
         {"color": "#FEE2E2", "name": "track / web"}
     ]'::jsonb,
     'Should return updated CFS labels in event payload'
+);
+
+-- Should throw error when CFS labels contain duplicate names
+select throws_ok(
+    $$select update_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000014'::uuid,
+        '{
+            "name": "Event With Labels",
+            "description": "Event seeded for CFS labels update tests",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_description": "Updated CFS description",
+            "cfs_enabled": true,
+            "cfs_starts_at": "2029-12-22T00:00:00",
+            "cfs_ends_at": "2030-01-07T00:00:00",
+            "starts_at": "2030-01-15T10:00:00",
+            "ends_at": "2030-01-15T12:00:00",
+            "cfs_labels": [
+                {"name": "track / data", "color": "#DBEAFE"},
+                {"name": "track / data", "color": "#FEE2E2"}
+            ]
+        }'::jsonb
+    )$$,
+    'duplicate cfs label names',
+    'Should throw error when CFS labels contain duplicate names'
 );
 
 -- Should throw error when group_id does not match

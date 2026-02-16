@@ -84,6 +84,8 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<EventCategory>,
     /// CFS submission status options.
     pub cfs_submission_statuses: Vec<CfsSubmissionStatus>,
+    /// Current authenticated user identifier.
+    pub current_user_id: Uuid,
     /// Event details to update.
     pub event: EventFull,
     /// List of available event kinds.

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(24);
+select plan(25);
 
 -- ============================================================================
 -- VARIABLES
@@ -342,6 +342,26 @@ select is(
         {"color": "#FEE2E2", "name": "track / web"}
     ]'::jsonb,
     'Should return created CFS labels in event payload'
+);
+
+-- Should throw error when CFS labels contain duplicate names
+select throws_ok(
+    $$select add_event(
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '{
+            "name": "CloudNativeCon Duplicate Labels Event",
+            "description": "Event with duplicate CFS labels",
+            "timezone": "UTC",
+            "category_id": "00000000-0000-0000-0000-000000000011",
+            "kind_id": "virtual",
+            "cfs_labels": [
+                {"name": "track / web", "color": "#FEE2E2"},
+                {"name": "track / web", "color": "#DBEAFE"}
+            ]
+        }'::jsonb
+    )$$,
+    'duplicate cfs label names',
+    'Should throw error when CFS labels contain duplicate names'
 );
 
 -- Should set meeting flags consistently for events and sessions when requested

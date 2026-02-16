@@ -11,6 +11,11 @@ const DATA_KEY = "cfsSubmissionModalReady";
 const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
 const SUBMISSIONS_CONTENT_ID = "submissions-content";
 const SUBMISSIONS_FILTER_ID = "submissions-label-filter";
+const STAR_PATH =
+  "M259.3 17.8L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5" +
+  "c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7" +
+  "l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8" +
+  "c-11.7-23.6-45.6-23.9-57.4 0z";
 
 /**
  * ReviewSubmissionModal renders and handles the CFS submission review modal.
@@ -23,12 +28,16 @@ export class ReviewSubmissionModal extends LitWrapper {
    */
   static get properties() {
     return {
+      currentUserId: { type: String, attribute: "current-user-id" },
       eventId: { type: String, attribute: "event-id" },
       labels: { type: Array, attribute: false },
       messageMaxLength: { type: Number, attribute: "message-max-length" },
       statuses: { type: Array, attribute: false },
+      _hoverRatingStars: { type: Number },
       _isOpen: { type: Boolean },
       _message: { type: String },
+      _ratingComment: { type: String },
+      _ratingStars: { type: Number },
       _selectedLabelIds: { type: Array },
       _statusId: { type: String },
       _submission: { type: Object },
@@ -37,12 +46,16 @@ export class ReviewSubmissionModal extends LitWrapper {
 
   constructor() {
     super();
+    this.currentUserId = "";
     this.eventId = "";
     this.labels = [];
     this.messageMaxLength = 5000;
     this.statuses = [];
+    this._hoverRatingStars = 0;
     this._isOpen = false;
     this._message = "";
+    this._ratingComment = "";
+    this._ratingStars = 0;
     this._selectedLabelIds = [];
     this._statusId = "";
     this._submission = null;
@@ -74,10 +87,14 @@ export class ReviewSubmissionModal extends LitWrapper {
     if (!submission) {
       return;
     }
+    const currentUserRating = this._findCurrentUserRating(submission);
     const shouldLockScroll = !this._isOpen;
     this.syncLabelsFromFilter();
     this._submission = submission;
+    this._hoverRatingStars = 0;
     this._message = submission.action_required_message || "";
+    this._ratingComment = currentUserRating?.comments || "";
+    this._ratingStars = Number(currentUserRating?.stars || 0);
     this._selectedLabelIds = (submission.labels || [])
       .map((label) => String(label?.event_cfs_label_id || ""))
       .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
@@ -97,7 +114,10 @@ export class ReviewSubmissionModal extends LitWrapper {
     }
     this._isOpen = false;
     this._submission = null;
+    this._hoverRatingStars = 0;
     this._message = "";
+    this._ratingComment = "";
+    this._ratingStars = 0;
     this._selectedLabelIds = [];
     this._statusId = "";
     this._removeAfterRequestListener();
@@ -304,6 +324,201 @@ export class ReviewSubmissionModal extends LitWrapper {
   _onLabelsChange(event) {
     const selected = event.target?.selected;
     this._selectedLabelIds = Array.isArray(selected) ? [...selected] : [];
+  }
+
+  /**
+   * Finds the rating created by the current user.
+   * @param {Object} submission
+   * @returns {Object|null}
+   */
+  _findCurrentUserRating(submission) {
+    const ratings = Array.isArray(submission?.ratings) ? submission.ratings : [];
+    const currentUserId = String(this.currentUserId || "");
+    if (!currentUserId) {
+      return null;
+    }
+    return ratings.find((rating) => String(rating?.reviewer?.user_id || "") === currentUserId) || null;
+  }
+
+  /**
+   * Clears the selected rating and rating comment.
+   */
+  _clearRating() {
+    this._hoverRatingStars = 0;
+    this._ratingComment = "";
+    this._ratingStars = 0;
+  }
+
+  /**
+   * Handles rating comment updates.
+   * @param {Event} event
+   */
+  _onRatingCommentInput(event) {
+    this._ratingComment = event.target?.value || "";
+  }
+
+  /**
+   * Handles rating star hover.
+   * @param {number} stars
+   */
+  _onRatingStarEnter(stars) {
+    this._hoverRatingStars = stars;
+  }
+
+  /**
+   * Handles rating star selection.
+   * @param {number} stars
+   */
+  _onRatingStarSelect(stars) {
+    this._hoverRatingStars = 0;
+    this._ratingStars = stars;
+  }
+
+  /**
+   * Resets hover state for the star selector.
+   */
+  _onRatingStarsLeave() {
+    this._hoverRatingStars = 0;
+  }
+
+  /**
+   * Renders a single star icon.
+   * @param {boolean} isFilled
+   * @param {string} size
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderStarIcon(isFilled, size = "size-5") {
+    return html`
+      <svg class=${size} viewBox="0 0 576 512" aria-hidden="true">
+        <path
+          d=${STAR_PATH}
+          fill=${isFilled ? "#F59E0B" : "transparent"}
+          stroke="#F59E0B"
+          stroke-linejoin="round"
+          stroke-width="24"
+        ></path>
+      </svg>
+    `;
+  }
+
+  /**
+   * Renders stars for an existing rating.
+   * @param {number} stars
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderReadOnlyStars(stars) {
+    const selectedStars = Number(stars || 0);
+    return html`
+      <div class="inline-flex items-center gap-1">
+        ${[1, 2, 3, 4, 5].map((star) => this._renderStarIcon(star <= selectedStars, "size-4"))}
+      </div>
+    `;
+  }
+
+  /**
+   * Renders the current user's rating editor.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderRatingEditor() {
+    const highlightedStars = this._hoverRatingStars || this._ratingStars;
+    const hasRating = this._ratingStars > 0;
+
+    return html`
+      <div>
+        <label class="form-label">Internal rating</label>
+        <div class="mt-2 flex flex-wrap items-center gap-2" @mouseleave=${() => this._onRatingStarsLeave()}>
+          ${[1, 2, 3, 4, 5].map((star) => {
+            const isFilled = star <= highlightedStars;
+            return html`
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded p-0.5 transition hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-400"
+                title=${`${star} ${star === 1 ? "star" : "stars"}`}
+                @click=${() => this._onRatingStarSelect(star)}
+                @focus=${() => this._onRatingStarEnter(star)}
+                @mouseenter=${() => this._onRatingStarEnter(star)}
+              >
+                <span class="sr-only">${star} ${star === 1 ? "star" : "stars"}</span>
+                ${this._renderStarIcon(isFilled, "size-6")}
+              </button>
+            `;
+          })}
+          <button
+            type="button"
+            class="btn-tertiary text-xs px-2 py-1"
+            @click=${() => this._clearRating()}
+            ?disabled=${!hasRating}
+          >
+            Clear
+          </button>
+          <input type="hidden" name="rating_stars" .value=${String(this._ratingStars)} />
+        </div>
+        <p class="form-legend mt-2">Internal only. Speakers never see this rating.</p>
+      </div>
+
+      <div>
+        <label for="cfs-submission-rating-comment" class="form-label">Rating notes</label>
+        <div class="mt-2">
+          <textarea
+            id="cfs-submission-rating-comment"
+            name="rating_comment"
+            class="input-primary"
+            maxlength=${this.messageMaxLength}
+            rows="3"
+            placeholder=${hasRating ? "Add notes for other admins..." : "Select a star rating to add notes."}
+            .value=${this._ratingComment}
+            @input=${(event) => this._onRatingCommentInput(event)}
+            ?disabled=${!hasRating}
+          ></textarea>
+        </div>
+        <p class="form-legend">Visible only to group admins reviewing submissions.</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders all ratings for the current submission.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderRatingsList() {
+    const ratings = Array.isArray(this._submission?.ratings) ? this._submission.ratings : [];
+    if (!ratings.length) {
+      return html`
+        <div class="border-t border-stone-200 pt-5 mt-5">
+          <div class="form-label">Ratings</div>
+          <p class="text-sm text-stone-500 mt-2">No ratings yet.</p>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="border-t border-stone-200 pt-5 mt-5">
+        <div class="form-label">Ratings</div>
+        <div class="mt-3 space-y-3">
+          ${ratings.map((rating) => {
+            const comments = String(rating?.comments || "").trim();
+            const stars = Number(rating?.stars || 0);
+
+            return html`
+              <div class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+                <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  ${rating?.reviewer
+                    ? this._renderPersonRow(rating.reviewer)
+                    : html`<div class="text-sm text-stone-500">Unknown reviewer</div>`}
+                  <div class="inline-flex items-center gap-2">
+                    ${this._renderReadOnlyStars(stars)}
+                    <span class="text-sm text-stone-600">${stars}/5</span>
+                  </div>
+                </div>
+                ${comments
+                  ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
+                  : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`}
+              </div>
+            `;
+          })}
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -625,6 +840,7 @@ export class ReviewSubmissionModal extends LitWrapper {
                           </div>
                         `
                       : ""}
+                    ${this._renderRatingEditor()}
 
                     <div>
                       <label for="cfs-submission-message" class="form-label">
@@ -650,6 +866,8 @@ export class ReviewSubmissionModal extends LitWrapper {
                     </div>
                   </div>
                 </div>
+
+                ${this._renderRatingsList()}
 
                 <div class="flex items-center justify-end gap-3 pt-3 mt-4 border-t border-stone-100">
                   <button

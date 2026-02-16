@@ -60,6 +60,7 @@ pub(crate) async fn list_page(
         navigation_links,
         refresh_url,
         selected_event_cfs_label_ids: filters.label_ids.clone(),
+        sort: filters.sort.clone().unwrap_or_else(|| "created-desc".to_string()),
         total: submissions.total,
         limit: filters.limit,
         offset: filters.offset,
@@ -420,6 +421,8 @@ mod tests {
             label_ids: vec![],
             status_id: "approved".to_string(),
             action_required_message: Some("Please update your slides.".to_string()),
+            rating_comment: None,
+            rating_stars: None,
         };
         let form_data = serde_qs::to_string(&update).unwrap();
         let notification_data =

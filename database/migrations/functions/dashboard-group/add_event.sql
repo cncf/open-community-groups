@@ -77,6 +77,19 @@ begin
         if jsonb_array_length(p_event->'cfs_labels') > 200 then
             raise exception 'too many cfs labels';
         end if;
+
+        if exists (
+            select 1
+            from (
+                select nullif(cfs_label->>'name', '') as cfs_label_name
+                from jsonb_array_elements(p_event->'cfs_labels') as cfs_label
+            ) cfs_labels
+            where cfs_labels.cfs_label_name is not null
+            group by cfs_labels.cfs_label_name
+            having count(*) > 1
+        ) then
+            raise exception 'duplicate cfs label names';
+        end if;
     end if;
 
     -- Insert event with unique slug generation and collision retry

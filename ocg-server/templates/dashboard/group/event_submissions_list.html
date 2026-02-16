@@ -11,34 +11,50 @@ description = "Review and manage call for speakers submissions.") -}}
      hx-target="#submissions-content"
      hx-swap="innerHTML"></div>
 
-{% if !event_cfs_labels.is_empty() -%}
-  <div class="mt-6">
-    <form id="submissions-filters-form"
-          class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-4"
-          hx-get="/dashboard/group/events/{{ event_id }}/submissions"
-          hx-target="#submissions-content"
-          hx-swap="innerHTML"
-          hx-indicator="#dashboard-spinner">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+<div class="mt-6">
+  <form id="submissions-filters-form"
+        class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-4"
+        hx-get="/dashboard/group/events/{{ event_id }}/submissions"
+        hx-target="#submissions-content"
+        hx-swap="innerHTML"
+        hx-indicator="#dashboard-spinner">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+      {% if !event_cfs_labels.is_empty() -%}
         <div class="flex-1">
           <label for="submissions-label-filter" class="form-label">Filter by labels</label>
           <div class="mt-2">
             <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels"></cfs-label-selector>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button type="submit" class="btn-primary">Apply</button>
-          <button type="button"
-                  class="btn-primary-outline"
-                  hx-get="/dashboard/group/events/{{ event_id }}/submissions"
-                  hx-target="#submissions-content"
-                  hx-swap="innerHTML"
-                  hx-indicator="#dashboard-spinner">Clear</button>
+      {% endif -%}
+      <div class="w-full lg:w-56">
+        <label for="submissions-sort" class="form-label">Sort by</label>
+        <div class="mt-2">
+          <select id="submissions-sort" name="sort" class="input-primary">
+            <option value="created-desc"
+                    {% if sort == "created-desc" %}selected{% endif %}>Submitted (newest)</option>
+            <option value="created-asc" {% if sort == "created-asc" %}selected{% endif %}>Submitted (oldest)</option>
+            <option value="ratings-count-desc"
+                    {% if sort == "ratings-count-desc" %}selected{% endif %}>Ratings count (high to low)</option>
+            <option value="ratings-count-asc"
+                    {% if sort == "ratings-count-asc" %}selected{% endif %}>Ratings count (low to high)</option>
+            <option value="stars-desc" {% if sort == "stars-desc" %}selected{% endif %}>Stars (high to low)</option>
+            <option value="stars-asc" {% if sort == "stars-asc" %}selected{% endif %}>Stars (low to high)</option>
+          </select>
         </div>
       </div>
-    </form>
-  </div>
-{% endif -%}
+      <div class="flex items-center gap-2">
+        <button type="submit" class="btn-primary">Apply</button>
+        <button type="button"
+                class="btn-primary-outline"
+                hx-get="/dashboard/group/events/{{ event_id }}/submissions"
+                hx-target="#submissions-content"
+                hx-swap="innerHTML"
+                hx-indicator="#dashboard-spinner">Clear</button>
+      </div>
+    </div>
+  </form>
+</div>
 
 <div class="mt-10">
   <div class="relative overflow-visible">
@@ -48,14 +64,15 @@ description = "Review and manage call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Speaker</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Ratings</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Submitted</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-24"></th>
         </tr>
       </thead>
       <tbody>
         {% if submissions.is_empty() -%}
           <tr class="bg-white border-b border-stone-200">
-            <td class="px-8 py-16 text-center" colspan="5">
+            <td class="px-8 py-16 text-center" colspan="6">
               <div class="flex flex-col items-center justify-center min-h-[125px]">
                 <div class="text-lg lg:text-xl">No submissions have been received yet.</div>
               </div>
@@ -92,12 +109,24 @@ description = "Review and manage call for speakers submissions.") -}}
                 {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                {% if let Some(updated_at) = &submission.updated_at -%}
-                  {{ updated_at.format("%b %d, %Y") }}
+                <div class="font-medium text-stone-900">
+                  {{ submission.ratings_count }}
+                  {% if submission.ratings_count == 1 -%}
+                    rating
+                  {% else -%}
+                    ratings
+                  {% endif -%}
+                </div>
+                {% if let Some(average_rating) = submission.average_rating -%}
+                  <div class="mt-1 inline-flex items-center gap-1 text-stone-700">
+                    <span>{{ average_rating }}</span>
+                    <div class="svg-icon size-3 icon-star bg-amber-500"></div>
+                  </div>
                 {% else -%}
-                  {{ submission.created_at.format("%b %d, %Y") }}
+                  <div class="mt-1 text-xs text-stone-400">No ratings yet</div>
                 {% endif -%}
               </td>
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ submission.created_at.format("%b %d, %Y") }}</td>
               <td class="px-3 xl:px-5 py-4">
                 <button type="button"
                         class="btn-tertiary p-2"

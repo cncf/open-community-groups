@@ -10,6 +10,7 @@ declare
     v_notify boolean;
     v_previous_action_required_message text;
     v_previous_status_id text;
+    v_rating_stars int;
 begin
     -- Validate submission status provided
     if p_submission->>'status_id' is null
@@ -41,6 +42,15 @@ begin
             if found then
                 raise exception 'invalid event CFS labels';
             end if;
+        end if;
+    end if;
+
+    -- Validate rating payload (`0` clears; `1`-`5` sets rating)
+    if p_submission ? 'rating_stars' then
+        v_rating_stars := (p_submission->>'rating_stars')::int;
+
+        if v_rating_stars < 0 or v_rating_stars > 5 then
+            raise exception 'invalid rating stars';
         end if;
     end if;
 
@@ -87,6 +97,32 @@ begin
             select p_cfs_submission_id, input_label_id::uuid
             from jsonb_array_elements_text(p_submission->'label_ids') as input_label_id
             group by input_label_id::uuid;
+        end if;
+    end if;
+
+    -- Upsert or remove the reviewer rating
+    if p_submission ? 'rating_stars' then
+        if v_rating_stars = 0 then
+            delete from cfs_submission_rating
+            where cfs_submission_id = p_cfs_submission_id
+            and reviewer_id = p_reviewer_id;
+        else
+            insert into cfs_submission_rating (
+                comments,
+                cfs_submission_id,
+                reviewer_id,
+                stars
+            ) values (
+                nullif(p_submission->>'rating_comment', ''),
+                p_cfs_submission_id,
+                p_reviewer_id,
+                v_rating_stars
+            )
+            on conflict (cfs_submission_id, reviewer_id)
+            do update set
+                comments = excluded.comments,
+                stars = excluded.stars,
+                updated_at = current_timestamp;
         end if;
     end if;
 

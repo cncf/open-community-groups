@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -235,6 +235,108 @@ select is(
     ),
     jsonb_build_array(:'label2ID'::uuid),
     'Should replace submission labels'
+);
+
+-- Should return false when only rating changes
+select is(
+    (
+        select update_cfs_submission(
+            :'reviewerID'::uuid,
+            :'eventID'::uuid,
+            :'submissionID'::uuid,
+            jsonb_build_object(
+                'action_required_message', 'Need more info',
+                'status_id', 'information-requested',
+                'rating_comment', 'Needs a stronger conclusion',
+                'rating_stars', 4
+            )
+        )
+    ),
+    false,
+    'Should return false when only rating changes'
+);
+
+-- Should upsert reviewer rating
+select is(
+    (
+        select row_to_json(r)::jsonb
+        from (
+            select comments, stars
+            from cfs_submission_rating
+            where cfs_submission_id = :'submissionID'::uuid
+            and reviewer_id = :'reviewerID'::uuid
+        ) r
+    ),
+    jsonb_build_object(
+        'comments', 'Needs a stronger conclusion',
+        'stars', 4
+    ),
+    'Should upsert reviewer rating'
+);
+
+-- Should update reviewer rating without duplicating rows
+select update_cfs_submission(
+    :'reviewerID'::uuid,
+    :'eventID'::uuid,
+    :'submissionID'::uuid,
+    jsonb_build_object(
+        'action_required_message', 'Need more info',
+        'status_id', 'information-requested',
+        'rating_comment', 'Great improvements',
+        'rating_stars', 5
+    )
+);
+
+select is(
+    (
+        select count(*)::int
+        from cfs_submission_rating
+        where cfs_submission_id = :'submissionID'::uuid
+        and reviewer_id = :'reviewerID'::uuid
+    ),
+    1,
+    'Should update reviewer rating without duplicating rows'
+);
+
+-- Should clear reviewer rating when stars are zero
+select update_cfs_submission(
+    :'reviewerID'::uuid,
+    :'eventID'::uuid,
+    :'submissionID'::uuid,
+    jsonb_build_object(
+        'action_required_message', 'Need more info',
+        'status_id', 'information-requested',
+        'rating_stars', 0
+    )
+);
+
+select is(
+    (
+        select count(*)::int
+        from cfs_submission_rating
+        where cfs_submission_id = :'submissionID'::uuid
+        and reviewer_id = :'reviewerID'::uuid
+    ),
+    0,
+    'Should clear reviewer rating when stars are zero'
+);
+
+-- Should reject invalid rating stars
+select throws_ok(
+    format(
+        $$select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::jsonb
+        )$$,
+        :'reviewerID',
+        :'eventID',
+        :'submissionID',
+        '{"action_required_message":"Need more info","status_id":"information-requested","rating_stars":6}'
+    ),
+    'invalid rating stars',
+    'Should reject invalid rating stars'
 );
 
 -- Should reject status changes for linked submissions
