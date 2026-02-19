@@ -310,7 +310,9 @@ export class CfsLabelsEditor extends LitWrapper {
                   <div class="relative shrink-0">
                     <button
                       type="button"
-                      class="inline-flex size-[38px] items-center justify-center rounded-full border border-stone-200 bg-white hover:bg-stone-50"
+                      class="inline-flex size-[38px] items-center justify-center rounded-full border transition hover:ring-1 hover:ring-stone-200"
+                      style="--label-color:${row.color ||
+                      "transparent"};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                       title="Pick label color"
                       aria-label="Pick label color. Selected color is ${row.color}"
                       aria-expanded=${isColorPopoverOpen}
@@ -319,7 +321,7 @@ export class CfsLabelsEditor extends LitWrapper {
                       @click=${() => this._toggleColorPopover(row._row_id)}
                     >
                       <span
-                        class="inline-flex size-[30px] rounded-full border border-white"
+                        class="inline-flex size-[22px] rounded-full"
                         style="background-color:${row.color || "transparent"};"
                       ></span>
                     </button>
@@ -340,10 +342,10 @@ export class CfsLabelsEditor extends LitWrapper {
                                   return html`
                                     <button
                                       type="button"
-                                      class="inline-flex h-8 w-8 items-center justify-center rounded-full border ${selected
-                                        ? "border-stone-700 ring-1 ring-stone-300"
-                                        : "border-stone-200 hover:border-stone-500"}"
-                                      style="background-color:${color};"
+                                      class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${selected
+                                        ? "ring-2 ring-stone-300"
+                                        : "hover:ring-1 hover:ring-stone-200"}"
+                                      style="--label-color:${color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                                       title="${color}"
                                       role="option"
                                       aria-selected=${selected}
@@ -352,7 +354,7 @@ export class CfsLabelsEditor extends LitWrapper {
                                       @click=${() => this._setRowColor(row._row_id, color)}
                                     >
                                       ${selected
-                                        ? html`<div class="svg-icon size-3 icon-check bg-stone-700"></div>`
+                                        ? html`<div class="svg-icon size-3 icon-check bg-black"></div>`
                                         : ""}
                                     </button>
                                   `;

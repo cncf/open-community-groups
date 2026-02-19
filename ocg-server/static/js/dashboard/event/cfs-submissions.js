@@ -4,6 +4,7 @@ import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import "/static/js/common/cfs-label-selector.js";
 import "/static/js/common/logo-image.js";
+import "/static/js/common/rating-stars.js";
 
 const MODAL_ELEMENT_ID = "review-submission-modal";
 const OPEN_ACTION = "open-cfs-submission-modal";
@@ -11,11 +12,11 @@ const DATA_KEY = "cfsSubmissionModalReady";
 const APPROVED_SUBMISSIONS_EVENT = "event-approved-submissions-updated";
 const SUBMISSIONS_CONTENT_ID = "submissions-content";
 const SUBMISSIONS_FILTER_ID = "submissions-label-filter";
-const STAR_PATH =
-  "M259.3 17.8L194 150.2 47.9 171.5c-26.2 3.8-36.7 36.1-17.7 54.6l105.7 103-25 145.5" +
-  "c-4.5 26.3 23.2 46 46.4 33.7L288 439.6l130.7 68.7c23.2 12.2 50.9-7.4 46.4-33.7" +
-  "l-25-145.5 105.7-103c19-18.5 8.5-50.8-17.7-54.6L382 150.2 316.7 17.8" +
-  "c-11.7-23.6-45.6-23.9-57.4 0z";
+const REVIEW_TABS = {
+  DETAILS: "details",
+  DECISION: "decision",
+  RATINGS: "ratings",
+};
 
 /**
  * ReviewSubmissionModal renders and handles the CFS submission review modal.
@@ -38,6 +39,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       _message: { type: String },
       _ratingComment: { type: String },
       _ratingStars: { type: Number },
+      _activeTab: { type: String },
       _selectedLabelIds: { type: Array },
       _statusId: { type: String },
       _submission: { type: Object },
@@ -56,9 +58,11 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._message = "";
     this._ratingComment = "";
     this._ratingStars = 0;
+    this._activeTab = REVIEW_TABS.DETAILS;
     this._selectedLabelIds = [];
     this._statusId = "";
     this._submission = null;
+    this._initialFormSnapshot = "";
     this._afterRequestHandler = null;
     this._onKeydown = this._onKeydown.bind(this);
   }
@@ -95,10 +99,12 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._message = submission.action_required_message || "";
     this._ratingComment = currentUserRating?.comments || "";
     this._ratingStars = Number(currentUserRating?.stars || 0);
+    this._activeTab = REVIEW_TABS.DETAILS;
     this._selectedLabelIds = (submission.labels || [])
       .map((label) => String(label?.event_cfs_label_id || ""))
       .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
     this._statusId = submission.linked_session_id ? "approved" : String(submission.status_id || "");
+    this._initialFormSnapshot = this._buildFormStateSnapshot();
     this._isOpen = true;
     if (shouldLockScroll) {
       lockBodyScroll();
@@ -118,8 +124,10 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._message = "";
     this._ratingComment = "";
     this._ratingStars = 0;
+    this._activeTab = REVIEW_TABS.DETAILS;
     this._selectedLabelIds = [];
     this._statusId = "";
+    this._initialFormSnapshot = "";
     this._removeAfterRequestListener();
     unlockBodyScroll();
   }
@@ -341,6 +349,84 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
+   * Builds a stable snapshot for mutable form values.
+   * @returns {string}
+   */
+  _buildFormStateSnapshot() {
+    const selectedLabelIds = [...this._selectedLabelIds].sort();
+    return JSON.stringify({
+      message: this._message,
+      ratingComment: this._ratingComment,
+      ratingStars: this._ratingStars,
+      selectedLabelIds,
+      statusId: this._statusId,
+    });
+  }
+
+  /**
+   * Checks whether there are pending changes that require saving.
+   * @returns {boolean}
+   */
+  _hasPendingChanges() {
+    if (!this._isOpen || !this._submission) {
+      return false;
+    }
+    return this._buildFormStateSnapshot() !== this._initialFormSnapshot;
+  }
+
+  /**
+   * Returns the ratings list for the current submission.
+   * @returns {Array<Object>}
+   */
+  _getSubmissionRatings() {
+    return Array.isArray(this._submission?.ratings) ? this._submission.ratings : [];
+  }
+
+  /**
+   * Returns ratings created by other reviewers.
+   * @returns {Array<Object>}
+   */
+  _getOtherTeamRatings() {
+    const ratings = this._getSubmissionRatings();
+    const currentUserId = String(this.currentUserId || "");
+    if (!currentUserId) {
+      return ratings;
+    }
+    return ratings.filter((rating) => String(rating?.reviewer?.user_id || "") !== currentUserId);
+  }
+
+  /**
+   * Resolves ratings count for the current submission.
+   * @returns {number}
+   */
+  _getRatingsCount() {
+    const ratingsCount = Number(this._submission?.ratings_count);
+    if (Number.isFinite(ratingsCount) && ratingsCount >= 0) {
+      return ratingsCount;
+    }
+    return this._getSubmissionRatings().length;
+  }
+
+  /**
+   * Resolves average rating for the current submission.
+   * @returns {number}
+   */
+  _getAverageRating() {
+    const averageRating = Number(this._submission?.average_rating);
+    if (Number.isFinite(averageRating)) {
+      return averageRating;
+    }
+
+    const ratings = this._getSubmissionRatings();
+    if (ratings.length === 0) {
+      return 0;
+    }
+
+    const total = ratings.reduce((sum, rating) => sum + Number(rating?.stars || 0), 0);
+    return total / ratings.length;
+  }
+
+  /**
    * Clears the selected rating and rating comment.
    */
   _clearRating() {
@@ -381,38 +467,8 @@ export class ReviewSubmissionModal extends LitWrapper {
     this._hoverRatingStars = 0;
   }
 
-  /**
-   * Renders a single star icon.
-   * @param {boolean} isFilled
-   * @param {string} size
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderStarIcon(isFilled, size = "size-5") {
-    return html`
-      <svg class=${size} viewBox="0 0 576 512" aria-hidden="true">
-        <path
-          d=${STAR_PATH}
-          fill=${isFilled ? "#F59E0B" : "transparent"}
-          stroke="#F59E0B"
-          stroke-linejoin="round"
-          stroke-width="24"
-        ></path>
-      </svg>
-    `;
-  }
-
-  /**
-   * Renders stars for an existing rating.
-   * @param {number} stars
-   * @returns {import("lit").TemplateResult}
-   */
-  _renderReadOnlyStars(stars) {
-    const selectedStars = Number(stars || 0);
-    return html`
-      <div class="inline-flex items-center gap-1">
-        ${[1, 2, 3, 4, 5].map((star) => this._renderStarIcon(star <= selectedStars, "size-4"))}
-      </div>
-    `;
+  _renderStarIcon(size = "size-5", color = "bg-amber-500") {
+    return html`<div class="svg-icon ${size} icon-star ${color} shrink-0" aria-hidden="true"></div>`;
   }
 
   /**
@@ -425,7 +481,7 @@ export class ReviewSubmissionModal extends LitWrapper {
 
     return html`
       <div>
-        <label class="form-label">Internal rating</label>
+        <label class="form-label">Your rating</label>
         <div class="mt-2 flex flex-wrap items-center gap-2" @mouseleave=${() => this._onRatingStarsLeave()}>
           ${[1, 2, 3, 4, 5].map((star) => {
             const isFilled = star <= highlightedStars;
@@ -439,7 +495,7 @@ export class ReviewSubmissionModal extends LitWrapper {
                 @mouseenter=${() => this._onRatingStarEnter(star)}
               >
                 <span class="sr-only">${star} ${star === 1 ? "star" : "stars"}</span>
-                ${this._renderStarIcon(isFilled, "size-6")}
+                ${this._renderStarIcon("size-6", isFilled ? "bg-amber-500" : "bg-stone-300")}
               </button>
             `;
           })}
@@ -453,12 +509,10 @@ export class ReviewSubmissionModal extends LitWrapper {
           </button>
           <input type="hidden" name="rating_stars" .value=${String(this._ratingStars)} />
         </div>
-        <p class="form-legend mt-2">Internal only. Speakers never see this rating.</p>
       </div>
 
       <div>
-        <label for="cfs-submission-rating-comment" class="form-label">Rating notes</label>
-        <div class="mt-2">
+        <div>
           <textarea
             id="cfs-submission-rating-comment"
             name="rating_comment"
@@ -466,12 +520,13 @@ export class ReviewSubmissionModal extends LitWrapper {
             maxlength=${this.messageMaxLength}
             rows="3"
             placeholder=${hasRating ? "Add notes for other admins..." : "Select a star rating to add notes."}
+            aria-label="Your rating notes"
             .value=${this._ratingComment}
             @input=${(event) => this._onRatingCommentInput(event)}
             ?disabled=${!hasRating}
           ></textarea>
         </div>
-        <p class="form-legend">Visible only to group admins reviewing submissions.</p>
+        <p class="form-legend mt-2">Ratings are internal only. Speakers never see ratings or rating notes.</p>
       </div>
     `;
   }
@@ -481,38 +536,40 @@ export class ReviewSubmissionModal extends LitWrapper {
    * @returns {import("lit").TemplateResult}
    */
   _renderRatingsList() {
-    const ratings = Array.isArray(this._submission?.ratings) ? this._submission.ratings : [];
+    const ratings = this._getOtherTeamRatings();
     if (!ratings.length) {
       return html`
-        <div class="border-t border-stone-200 pt-5 mt-5">
-          <div class="form-label">Ratings</div>
-          <p class="text-sm text-stone-500 mt-2">No ratings yet.</p>
+        <div>
+          <div class="form-label">Other team ratings</div>
+          <p class="text-sm text-stone-500 mt-2">No ratings yet from other team members.</p>
         </div>
       `;
     }
 
     return html`
-      <div class="border-t border-stone-200 pt-5 mt-5">
-        <div class="form-label">Ratings</div>
+      <div>
+        <div class="form-label">Other team ratings</div>
         <div class="mt-3 space-y-3">
           ${ratings.map((rating) => {
             const comments = String(rating?.comments || "").trim();
             const stars = Number(rating?.stars || 0);
 
             return html`
-              <div class="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
-                <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  ${rating?.reviewer
-                    ? this._renderPersonRow(rating.reviewer)
-                    : html`<div class="text-sm text-stone-500">Unknown reviewer</div>`}
-                  <div class="inline-flex items-center gap-2">
-                    ${this._renderReadOnlyStars(stars)}
-                    <span class="text-sm text-stone-600">${stars}/5</span>
+              <div class="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div class="min-w-0 flex-1">
+                    ${rating?.reviewer
+                      ? this._renderPersonRow(rating.reviewer)
+                      : html`<div class="text-sm text-stone-500">Unknown reviewer</div>`}
+                    ${comments
+                      ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
+                      : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`}
+                  </div>
+                  <div class="inline-flex items-center gap-2 whitespace-nowrap md:shrink-0">
+                    <rating-stars .averageRating=${stars} size="size-5"></rating-stars>
+                    <span class="text-sm text-stone-600 leading-none">${stars}/5</span>
                   </div>
                 </div>
-                ${comments
-                  ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
-                  : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`}
               </div>
             `;
           })}
@@ -574,6 +631,149 @@ export class ReviewSubmissionModal extends LitWrapper {
             </div>
           `
         : ""}
+    `;
+  }
+
+  /**
+   * Renders labels editor for the details tab.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderDetailsLabels() {
+    if (this.labels.length === 0) {
+      return html``;
+    }
+
+    return html`
+      <div>
+        <label for="cfs-submission-labels" class="form-label">Labels</label>
+        <div class="mt-2">
+          <cfs-label-selector
+            id="cfs-submission-labels"
+            name="label_ids"
+            .labels=${this.labels}
+            .selected=${this._selectedLabelIds}
+            max-selected="10"
+            placeholder="Search labels"
+            @change=${(event) => this._onLabelsChange(event)}
+          ></cfs-label-selector>
+        </div>
+        <p class="form-legend">Use labels to keep submissions organized by category.</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders submission details panel.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderDetailsPanel() {
+    const isActive = this._activeTab === REVIEW_TABS.DETAILS;
+    const proposal = this._submission?.session_proposal || {};
+    const coSpeaker = proposal?.co_speaker;
+
+    return html`
+      <section
+        id="cfs-submission-tabpanel-details"
+        role="tabpanel"
+        class="pt-5 space-y-8"
+        ?hidden=${!isActive}
+      >
+        <div class="flex flex-col md:flex-row gap-6">
+          <div class="flex-1 space-y-4 min-w-0">
+            <div>
+              <div class="proposal-section-title">Title</div>
+              <div class="mt-2 text-lg text-stone-800 font-medium">${proposal?.title || ""}</div>
+            </div>
+
+            <div>
+              <div class="proposal-section-title">Description</div>
+              <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-700 text-sm/6 markdown">
+                ${proposal?.description_html
+                  ? unsafeHTML(proposal.description_html)
+                  : proposal?.description || ""}
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
+            ${this._renderProposalMeta(proposal)}
+
+            <div>
+              <div class="proposal-section-title">Speaker</div>
+              <div class="mt-2">
+                ${this._submission?.speaker ? this._renderPersonRow(this._submission.speaker) : ""}
+              </div>
+            </div>
+
+            ${coSpeaker
+              ? html`
+                  <div>
+                    <div class="proposal-section-title">Co-speaker</div>
+                    <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
+                  </div>
+                `
+              : ""}
+          </div>
+        </div>
+
+        <div class="border-t border-stone-200 pt-5">${this._renderDetailsLabels()}</div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders ratings summary card.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderRatingsSummaryCard() {
+    const ratingsCount = this._getRatingsCount();
+    const averageRating = this._getAverageRating();
+    const averageRatingText = Number.isInteger(averageRating)
+      ? String(averageRating)
+      : averageRating.toFixed(1);
+
+    return html`
+      <div class="rounded-lg border border-stone-200 bg-stone-50/70 px-4 py-3">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="shrink-0">
+            <div class="text-3xl font-semibold leading-none text-stone-800 text-center">
+              ${ratingsCount > 0 ? averageRatingText : "-"}
+            </div>
+            <div class="text-xs text-stone-500 text-center">out of 5</div>
+          </div>
+          <div class="sm:border-l sm:border-stone-200 sm:pl-4 min-w-0">
+            <div class="form-label text-stone-700">Summary rating</div>
+            <div class="mt-1">
+              <rating-stars
+                .averageRating=${ratingsCount > 0 ? averageRating : 0}
+                size="size-5"
+              ></rating-stars>
+            </div>
+            <div class="mt-1 text-sm text-stone-600">
+              (${ratingsCount} ${ratingsCount === 1 ? "rating" : "ratings"})
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders pending changes alert.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderPendingChangesAlert() {
+    if (!this._hasPendingChanges()) {
+      return html``;
+    }
+
+    return html`
+      <div
+        class="inline-flex items-center gap-3 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-primary-900"
+      >
+        <div class="svg-icon size-4 bg-primary-700 icon-clock shrink-0"></div>
+        <p class="text-sm">You have pending changes. Click Save to apply these updates.</p>
+      </div>
     `;
   }
 
@@ -669,6 +869,144 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
+   * Sets the active review tab.
+   * @param {string} tabId
+   */
+  _setActiveTab(tabId) {
+    if (tabId !== REVIEW_TABS.DETAILS && tabId !== REVIEW_TABS.DECISION && tabId !== REVIEW_TABS.RATINGS) {
+      return;
+    }
+    this._activeTab = tabId;
+  }
+
+  /**
+   * Renders the review tabs navigation.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderReviewTabsNavigation() {
+    const isDetailsActive = this._activeTab === REVIEW_TABS.DETAILS;
+    const isDecisionActive = this._activeTab === REVIEW_TABS.DECISION;
+    const isRatingsActive = this._activeTab === REVIEW_TABS.RATINGS;
+
+    return html`
+      <ul
+        class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200"
+        role="tablist"
+        aria-label="Submission review tabs"
+      >
+        <li>
+          <button
+            type="button"
+            role="tab"
+            aria-controls="cfs-submission-tabpanel-details"
+            aria-selected=${isDetailsActive ? "true" : "false"}
+            data-active=${isDetailsActive ? "true" : "false"}
+            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-32"
+            @click=${() => this._setActiveTab(REVIEW_TABS.DETAILS)}
+          >
+            Details
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            role="tab"
+            aria-controls="cfs-submission-tabpanel-ratings"
+            aria-selected=${isRatingsActive ? "true" : "false"}
+            data-active=${isRatingsActive ? "true" : "false"}
+            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-32"
+            @click=${() => this._setActiveTab(REVIEW_TABS.RATINGS)}
+          >
+            Ratings
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            role="tab"
+            aria-controls="cfs-submission-tabpanel-decision"
+            aria-selected=${isDecisionActive ? "true" : "false"}
+            data-active=${isDecisionActive ? "true" : "false"}
+            class="cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap w-32"
+            @click=${() => this._setActiveTab(REVIEW_TABS.DECISION)}
+          >
+            Decision
+          </button>
+        </li>
+      </ul>
+    `;
+  }
+
+  /**
+   * Renders decision fields panel.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderDecisionPanel() {
+    const isActive = this._activeTab === REVIEW_TABS.DECISION;
+    return html`
+      <section
+        id="cfs-submission-tabpanel-decision"
+        role="tabpanel"
+        class="pt-5 space-y-8"
+        ?hidden=${!isActive}
+      >
+        <div>
+          <label class="form-label">Decision</label>
+          <div class="mt-3">${this._renderStatusBoxes()}</div>
+          ${this._isLinkedToSession()
+            ? html`
+                <p class="form-legend mt-2">
+                  This submission is linked to a session. Unlink it from the session before choosing a
+                  non-approved status.
+                </p>
+              `
+            : ""}
+        </div>
+
+        <div>
+          <label for="cfs-submission-message" class="form-label">
+            Message for speaker ${this._isMessageRequired() ? html`<span class="asterisk">*</span>` : ""}
+          </label>
+          <div class="mt-2">
+            <textarea
+              id="cfs-submission-message"
+              name="action_required_message"
+              class="input-primary"
+              maxlength=${this.messageMaxLength}
+              rows="3"
+              placeholder="Add a note for the speaker..."
+              .value=${this._message}
+              @input=${(event) => this._onMessageInput(event)}
+              ?required=${this._isMessageRequired()}
+            ></textarea>
+          </div>
+          <p class="form-legend">
+            Required when requesting changes. Explain what information or changes are needed.
+          </p>
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * Renders ratings fields panel.
+   * @returns {import("lit").TemplateResult}
+   */
+  _renderRatingsPanel() {
+    const isActive = this._activeTab === REVIEW_TABS.RATINGS;
+    return html`
+      <section
+        id="cfs-submission-tabpanel-ratings"
+        role="tabpanel"
+        class="pt-5 space-y-8"
+        ?hidden=${!isActive}
+      >
+        ${this._renderRatingsSummaryCard()} ${this._renderRatingEditor()} ${this._renderRatingsList()}
+      </section>
+    `;
+  }
+
+  /**
    * Renders status selection boxes.
    * @returns {import("lit").TemplateResult}
    */
@@ -727,9 +1065,7 @@ export class ReviewSubmissionModal extends LitWrapper {
       return html``;
     }
 
-    const proposal = this._submission.session_proposal || {};
     const submissionEndpoint = this._buildSubmissionEndpoint();
-    const coSpeaker = proposal?.co_speaker;
 
     return html`
       <div
@@ -742,9 +1078,9 @@ export class ReviewSubmissionModal extends LitWrapper {
           class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"
           @click=${() => this.close()}
         ></div>
-        <div class="relative p-4 w-full max-w-5xl max-h-[90vh]">
-          <div class="relative bg-white rounded-2xl shadow-lg max-h-[90vh] flex flex-col">
-            <div class="flex items-center justify-between p-5 border-b border-stone-200">
+        <div class="relative p-4 w-full max-w-5xl h-[90vh]">
+          <div class="relative bg-white rounded-2xl shadow-lg h-full flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between p-5 border-b border-stone-200 shrink-0">
               <h3 id="cfs-submission-modal-title" class="text-xl font-semibold text-stone-900">
                 Review submission
               </h3>
@@ -760,116 +1096,23 @@ export class ReviewSubmissionModal extends LitWrapper {
               </button>
             </div>
 
-            <div class="px-8 py-5 overflow-y-auto">
-              <form
-                id="cfs-submission-form"
-                hx-put=${submissionEndpoint}
-                hx-swap="none"
-                hx-indicator="#dashboard-spinner"
-                hx-disabled-elt="#cfs-submission-submit"
-              >
-                <div class="flex flex-col md:flex-row gap-6">
-                  <div class="flex-1 space-y-4 min-w-0">
-                    <div>
-                      <div class="proposal-section-title">Title</div>
-                      <div class="mt-2 text-lg text-stone-800 font-medium">${proposal?.title || ""}</div>
-                    </div>
+            <form
+              id="cfs-submission-form"
+              class="flex min-h-0 flex-1 flex-col"
+              hx-put=${submissionEndpoint}
+              hx-swap="none"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="#cfs-submission-submit"
+            >
+              <div class="px-8 pt-5 shrink-0">${this._renderReviewTabsNavigation()}</div>
 
-                    <div>
-                      <div class="proposal-section-title">Description</div>
-                      <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-700 text-sm/6 markdown">
-                        ${proposal?.description_html
-                          ? unsafeHTML(proposal.description_html)
-                          : proposal?.description || ""}
-                      </div>
-                    </div>
-                  </div>
+              <div class="px-8 py-5 min-h-0 flex-1 overflow-y-auto">
+                ${this._renderDetailsPanel()} ${this._renderRatingsPanel()} ${this._renderDecisionPanel()}
+              </div>
 
-                  <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
-                    ${this._renderProposalMeta(proposal)}
-
-                    <div>
-                      <div class="proposal-section-title">Speaker</div>
-                      <div class="mt-2">
-                        ${this._submission?.speaker ? this._renderPersonRow(this._submission.speaker) : ""}
-                      </div>
-                    </div>
-
-                    ${coSpeaker
-                      ? html`
-                          <div>
-                            <div class="proposal-section-title">Co-speaker</div>
-                            <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
-                          </div>
-                        `
-                      : ""}
-                  </div>
-                </div>
-
-                <div class="border-t border-stone-200 pt-5 mt-5">
-                  <div class="space-y-5">
-                    <div>
-                      <label class="form-label">Decision</label>
-                      <div class="mt-3">${this._renderStatusBoxes()}</div>
-                      ${this._isLinkedToSession()
-                        ? html`
-                            <p class="form-legend mt-2">
-                              This submission is linked to a session. Unlink it from the session before
-                              choosing a non-approved status.
-                            </p>
-                          `
-                        : ""}
-                    </div>
-
-                    ${this.labels.length > 0
-                      ? html`
-                          <div>
-                            <label for="cfs-submission-labels" class="form-label">Labels</label>
-                            <div class="mt-2">
-                              <cfs-label-selector
-                                id="cfs-submission-labels"
-                                name="label_ids"
-                                .labels=${this.labels}
-                                .selected=${this._selectedLabelIds}
-                                max-selected="10"
-                                placeholder="Search labels"
-                                @change=${(event) => this._onLabelsChange(event)}
-                              ></cfs-label-selector>
-                            </div>
-                            <p class="form-legend">Use labels to keep submissions organized by category.</p>
-                          </div>
-                        `
-                      : ""}
-                    ${this._renderRatingEditor()}
-
-                    <div>
-                      <label for="cfs-submission-message" class="form-label">
-                        Message for speaker
-                        ${this._isMessageRequired() ? html`<span class="asterisk">*</span>` : ""}
-                      </label>
-                      <div class="mt-2">
-                        <textarea
-                          id="cfs-submission-message"
-                          name="action_required_message"
-                          class="input-primary"
-                          maxlength=${this.messageMaxLength}
-                          rows="3"
-                          placeholder="Add a note for the speaker..."
-                          .value=${this._message}
-                          @input=${(e) => this._onMessageInput(e)}
-                          ?required=${this._isMessageRequired()}
-                        ></textarea>
-                      </div>
-                      <p class="form-legend">
-                        Required when requesting changes. Explain what information or changes are needed.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                ${this._renderRatingsList()}
-
-                <div class="flex items-center justify-end gap-3 pt-3 mt-4 border-t border-stone-100">
+              <div class="px-8 pb-5 pt-3 border-t border-stone-100 shrink-0">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="min-w-0">${this._renderPendingChangesAlert()}</div>
                   <button
                     id="cfs-submission-submit"
                     type="submit"
@@ -879,8 +1122,8 @@ export class ReviewSubmissionModal extends LitWrapper {
                     Save
                   </button>
                 </div>
-              </form>
-            </div>
+              </div>
+            </form>
           </div>
         </div>
       </div>

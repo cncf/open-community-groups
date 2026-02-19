@@ -219,6 +219,21 @@ export class CfsLabelSelector extends LitWrapper {
   }
 
   /**
+   * Closes dropdown when clicking the trigger while already open.
+   * @param {PointerEvent} event
+   */
+  _handleInputPointerDown(event) {
+    if (this.disabled) {
+      return;
+    }
+
+    if (this._isOpen) {
+      event.preventDefault();
+      this._closeDropdown();
+    }
+  }
+
+  /**
    * Normalizes labels input.
    */
   _normalizeLabels() {
@@ -439,6 +454,7 @@ export class CfsLabelSelector extends LitWrapper {
             spellcheck="false"
             .value=${this._query}
             ?disabled=${inputDisabled}
+            @pointerdown=${(event) => this._handleInputPointerDown(event)}
             @focus=${() => this._handleFocus()}
             @input=${(event) => this._handleSearchInput(event)}
           />

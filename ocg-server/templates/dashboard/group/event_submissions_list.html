@@ -108,7 +108,17 @@ description = "Review and manage call for speakers submissions.") -}}
                 {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                <div class="font-medium text-stone-900">
+                {% if let Some(average_rating) = submission.average_rating -%}
+                  <div class="mt-1 inline-flex items-center gap-2 text-stone-700">
+                    <rating-stars average-rating="{{ average_rating }}" size="size-3"></rating-stars>
+                    <span class="text-sm leading-none">{{ average_rating }}</span>
+                  </div>
+                {% else -%}
+                  <div class="mt-1 inline-flex items-center gap-2 text-stone-500">
+                    <rating-stars average-rating="0" size="size-3"></rating-stars>
+                  </div>
+                {% endif -%}
+                <div class="mt-1 text-xs text-stone-500">
                   {{ submission.ratings_count }}
                   {% if submission.ratings_count == 1 -%}
                     rating
@@ -116,14 +126,6 @@ description = "Review and manage call for speakers submissions.") -}}
                     ratings
                   {% endif -%}
                 </div>
-                {% if let Some(average_rating) = submission.average_rating -%}
-                  <div class="mt-1 inline-flex items-center gap-1 text-stone-700">
-                    <span>{{ average_rating }}</span>
-                    <div class="svg-icon size-3 icon-star bg-amber-500"></div>
-                  </div>
-                {% else -%}
-                  <div class="mt-1 text-xs text-stone-400">No ratings yet</div>
-                {% endif -%}
               </td>
               <td class="px-3 xl:px-5 py-4 whitespace-nowrap">{{ submission.created_at.format("%b %d, %Y") }}</td>
               <td class="px-3 xl:px-5 py-4">
