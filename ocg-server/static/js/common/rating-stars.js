@@ -45,7 +45,6 @@ export class RatingStars extends LitWrapper {
 
   render() {
     const rating = this._normalizedRating();
-    const overlayWidth = `${(rating / 5) * 100}%`;
     const ratingLabel = `${rating.toFixed(2)} out of 5 stars`;
 
     return html`
@@ -55,12 +54,17 @@ export class RatingStars extends LitWrapper {
         aria-label=${ratingLabel}
       >
         <div class="inline-flex items-center gap-1">
-          ${[0, 1, 2, 3, 4].map(() => this._renderStar("bg-stone-300"))}
-        </div>
-        <div class="absolute inset-y-0 left-0 overflow-hidden" style="width:${overlayWidth};">
-          <div class="inline-flex items-center gap-1">
-            ${[0, 1, 2, 3, 4].map(() => this._renderStar("bg-amber-500"))}
-          </div>
+          ${[0, 1, 2, 3, 4].map((index) => {
+            const starFillPercent = Math.max(0, Math.min(1, rating - index)) * 100;
+            return html`
+              <div class="relative">
+                ${this._renderStar("bg-stone-300")}
+                <div class="absolute inset-y-0 left-0 overflow-hidden" style="width:${starFillPercent}%;">
+                  ${this._renderStar("bg-amber-500")}
+                </div>
+              </div>
+            `;
+          })}
         </div>
       </div>
     `;

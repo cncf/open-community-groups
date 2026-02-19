@@ -386,16 +386,17 @@
         {# End CFS description -#}
 
         {# CFS labels -#}
-        <div class="col-span-4">
+        <div class="col-span-full">
           <label for="cfs-labels-editor" class="form-label">Submission labels</label>
           <div class="mt-2">
-            <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}"></cfs-labels-editor>
+            <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}">
+            <p slot="legend" class="form-legend">
+              Optional labels help categorize submissions.
+              Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
+              <span class="font-semibold">/</span> as the separator for consistency.
+            </p>
+            </cfs-labels-editor>
           </div>
-          <p class="form-legend mt-1">
-            Optional labels help categorize submissions.
-            Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
-            <span class="font-semibold">/</span> as the separator for consistency.
-          </p>
         </div>
         {# End CFS labels -#}
       </div>

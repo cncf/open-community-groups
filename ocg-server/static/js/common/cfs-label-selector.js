@@ -15,6 +15,7 @@ const DEFAULT_PLACEHOLDER = "Search labels";
  */
 export class CfsLabelSelector extends LitWrapper {
   static properties = {
+    compact: { type: Boolean, reflect: true },
     disabled: { type: Boolean, reflect: true },
     labels: { type: Array, attribute: "labels" },
     maxSelected: { type: Number, attribute: "max-selected" },
@@ -29,6 +30,7 @@ export class CfsLabelSelector extends LitWrapper {
 
   constructor() {
     super();
+    this.compact = false;
     this.disabled = false;
     this.labels = [];
     this.maxSelected = 0;
@@ -437,6 +439,10 @@ export class CfsLabelSelector extends LitWrapper {
     const selectedLabels = this._selectedLabels;
     const selectionLimitReached = !this._canAddSelection();
     const inputDisabled = this.disabled || this.labels.length === 0;
+    const selectedChipClass = this.compact
+      ? "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium text-stone-900"
+      : "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium text-stone-900";
+    const selectedChipIconSizeClass = this.compact ? "size-2.5" : "size-3";
 
     return html`
       <div class="space-y-3">
@@ -530,7 +536,7 @@ export class CfsLabelSelector extends LitWrapper {
                     const eventCfsLabelId = String(label.event_cfs_label_id);
                     return html`
                       <span
-                        class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium text-stone-900"
+                        class=${selectedChipClass}
                         style="--label-color:${label.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                         title=${label.name}
                       >
@@ -542,7 +548,7 @@ export class CfsLabelSelector extends LitWrapper {
                           ?disabled=${this.disabled}
                           aria-label="Remove ${label.name}"
                         >
-                          <div class="svg-icon size-3 icon-close bg-current"></div>
+                          <div class="svg-icon ${selectedChipIconSizeClass} icon-close bg-current"></div>
                         </button>
                       </span>
                     `;

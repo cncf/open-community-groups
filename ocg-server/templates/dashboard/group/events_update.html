@@ -413,14 +413,16 @@
         {# CFS labels -#}
         <div class="col-span-full">
           <label for="cfs-labels-editor" class="form-label">Submission labels</label>
-          <div class="w-1/2 mt-2">
-            <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" labels="{{ event.cfs_labels|json }}" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}"></cfs-labels-editor>
+          <div class="mt-2">
+            <cfs-labels-editor id="cfs-labels-editor" field-name="cfs_labels" labels="{{ event.cfs_labels|json }}" max-items="{{ crate::validation::MAX_LEN_EVENT_LABELS_PER_EVENT }}" colors="{{ crate::validation::CFS_LABEL_COLORS|json }}">
+            <p slot="legend" class="form-legend">
+              Editing an existing label renames it in all submissions that use it.
+              If you need a different label without renaming existing ones, remove the old label and add a new one.
+              Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
+              <span class="font-semibold">/</span> as the separator for consistency.
+            </p>
+            </cfs-labels-editor>
           </div>
-          <p class="form-legend mt-1">
-            If you need a different category, create a new label instead.
-            Use prefixes like <span class="font-semibold">track / ai + ml</span> and keep
-            <span class="font-semibold">/</span> as the separator for consistency.
-          </p>
         </div>
         {# End CFS labels -#}
       </div>

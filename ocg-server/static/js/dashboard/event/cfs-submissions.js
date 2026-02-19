@@ -416,14 +416,7 @@ export class ReviewSubmissionModal extends LitWrapper {
     if (Number.isFinite(averageRating)) {
       return averageRating;
     }
-
-    const ratings = this._getSubmissionRatings();
-    if (ratings.length === 0) {
-      return 0;
-    }
-
-    const total = ratings.reduce((sum, rating) => sum + Number(rating?.stars || 0), 0);
-    return total / ratings.length;
+    return 0;
   }
 
   /**

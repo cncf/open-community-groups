@@ -18,12 +18,12 @@ description = "Review and manage call for speakers submissions.") -}}
         hx-target="#submissions-content"
         hx-swap="innerHTML"
         hx-indicator="#dashboard-spinner">
-    <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
       {% if !event_cfs_labels.is_empty() -%}
-        <div class="flex-1">
+        <div class="flex-1 min-w-0">
           <label for="submissions-label-filter" class="form-label">Filter by labels</label>
           <div class="mt-2">
-            <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels"></cfs-label-selector>
+            <cfs-label-selector id="submissions-label-filter" name="label_ids" labels="{{ event_cfs_labels|json }}" selected="{{ selected_event_cfs_label_ids|json }}" placeholder="Search labels" compact></cfs-label-selector>
           </div>
         </div>
       {% endif -%}
@@ -43,7 +43,7 @@ description = "Review and manage call for speakers submissions.") -}}
           </select>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 lg:pt-7">
         <button type="submit" class="btn-primary">Apply</button>
         <button type="button"
                 class="btn-primary-outline"

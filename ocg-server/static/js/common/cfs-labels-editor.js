@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat, unsafeHTML } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -7,6 +7,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  * @property {Array<string>} colors Available color palette
  * @property {boolean} disabled Whether edits are disabled
  * @property {string} fieldName Base field name for submitted labels
+ * @property {string} legend Helper text rendered under the label rows
  * @property {Array<Object>} labels Initial labels to render
  * @property {number} maxItems Maximum labels allowed
  */
@@ -15,6 +16,7 @@ export class CfsLabelsEditor extends LitWrapper {
     colors: { type: Array, attribute: "colors" },
     disabled: { type: Boolean, reflect: true },
     fieldName: { type: String, attribute: "field-name" },
+    legend: { type: String, attribute: "legend" },
     labels: { type: Array, attribute: "labels" },
     maxItems: { type: Number, attribute: "max-items" },
 
@@ -27,6 +29,7 @@ export class CfsLabelsEditor extends LitWrapper {
     this.colors = [];
     this.disabled = false;
     this.fieldName = "cfs_labels";
+    this.legend = "";
     this.labels = [];
     this.maxItems = 200;
 
@@ -34,9 +37,11 @@ export class CfsLabelsEditor extends LitWrapper {
     this._rows = [];
     this._nextId = 0;
     this._documentClickHandler = null;
+    this._legendHtml = "";
   }
 
   connectedCallback() {
+    this._captureLegendHtml();
     super.connectedCallback();
     this._applyInitialLabels(this.labels);
   }
@@ -271,9 +276,16 @@ export class CfsLabelsEditor extends LitWrapper {
     this._documentClickHandler = null;
   }
 
+  _captureLegendHtml() {
+    const legendNode = this.querySelector('[slot="legend"]');
+    this._legendHtml = String(legendNode?.innerHTML || "").trim();
+  }
+
   render() {
     const maxReached = this._isMaxReached();
     const paletteColors = this._paletteColors;
+    const helperLegend = String(this.legend || "").trim();
+    const hasCustomLegend = this._legendHtml.length > 0;
 
     return html`
       <div class="space-y-4">
@@ -290,7 +302,7 @@ export class CfsLabelsEditor extends LitWrapper {
                 trimmedName.length === 0 &&
                 String(row.event_cfs_label_id || "").length === 0);
             return html`
-              <div class="py-1">
+              <div class="w-full md:w-1/2 py-1">
                 <div class="flex items-center gap-2">
                   <div class="flex-1">
                     <label class="sr-only" for="cfs-label-name-${row._row_id}">Label</label>
@@ -399,18 +411,27 @@ export class CfsLabelsEditor extends LitWrapper {
             `;
           },
         )}
+        ${hasCustomLegend || helperLegend
+          ? html`
+              <div class="w-full">
+                <p class="form-legend">${hasCustomLegend ? unsafeHTML(this._legendHtml) : helperLegend}</p>
+              </div>
+            `
+          : ""}
 
-        <button
-          type="button"
-          class="btn-primary-outline btn-mini"
-          ?disabled=${this.disabled || maxReached}
-          @click=${() => this._addRow()}
-        >
-          Add label
-        </button>
+        <div class="w-full md:w-1/2">
+          <button
+            type="button"
+            class="btn-primary-outline btn-mini"
+            ?disabled=${this.disabled || maxReached}
+            @click=${() => this._addRow()}
+          >
+            Add label
+          </button>
+        </div>
 
         ${maxReached
-          ? html`<p class="form-legend">Maximum number of labels reached (${this.maxItems}).</p>`
+          ? html`<p class="form-legend w-full">Maximum number of labels reached (${this.maxItems}).</p>`
           : ""}
       </div>
     `;
