@@ -453,13 +453,10 @@ export class CfsLabelSelector extends LitWrapper {
                 </button>
               `
             : ""}
-        </div>
-
-        ${this._isOpen
-          ? html`
-              <div class="relative">
+          ${this._isOpen
+            ? html`
                 <ul
-                  class="absolute left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
+                  class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
                   role="listbox"
                 >
                   ${filteredLabels.length > 0
@@ -504,9 +501,9 @@ export class CfsLabelSelector extends LitWrapper {
                       )
                     : html`<li class="px-3 py-2 text-sm text-stone-500">No labels found</li>`}
                 </ul>
-              </div>
-            `
-          : ""}
+              `
+            : ""}
+        </div>
         ${selectedLabels.length > 0
           ? html`
               <div class="flex flex-wrap gap-2">
