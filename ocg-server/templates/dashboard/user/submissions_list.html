@@ -17,8 +17,8 @@ description = "Track and manage your call for speakers submissions.") -}}
       <colgroup>
         <col />
         <col />
-        <col class="hidden xl:table-column w-[200px] xl:w-[220px]" />
-        <col class="hidden xl:table-column w-32" />
+        <col class="hidden xl:table-column w-[220px]" />
+        <col class="hidden 2xl:table-column w-32" />
         <col class="w-24" />
       </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
@@ -26,7 +26,7 @@ description = "Track and manage your call for speakers submissions.") -}}
           <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
         </tr>
       </thead>
@@ -68,7 +68,7 @@ description = "Track and manage your call for speakers submissions.") -}}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
                 {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(updated_at) = &submission.updated_at -%}
                   {{ updated_at.format("%b %d, %Y") }}
                 {% else -%}
