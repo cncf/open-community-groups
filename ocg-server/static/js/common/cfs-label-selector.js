@@ -7,6 +7,8 @@ const DEFAULT_PLACEHOLDER = "Search labels";
  * CfsLabelSelector renders a searchable multi-select for CFS labels.
  *
  * @property {boolean} disabled Whether interactions are disabled
+ * @property {boolean} closeOnSelect Whether dropdown closes after selecting a label
+ * @property {string} legend Helper text displayed under the input
  * @property {Array<Object>} labels Available labels for selection
  * @property {number} maxSelected Maximum number of labels allowed (0 means unlimited)
  * @property {string} name Form field base name used for hidden inputs
@@ -15,8 +17,10 @@ const DEFAULT_PLACEHOLDER = "Search labels";
  */
 export class CfsLabelSelector extends LitWrapper {
   static properties = {
+    closeOnSelect: { type: Boolean, attribute: "close-on-select", reflect: true },
     compact: { type: Boolean, reflect: true },
     disabled: { type: Boolean, reflect: true },
+    legend: { type: String, attribute: "legend" },
     labels: { type: Array, attribute: "labels" },
     maxSelected: { type: Number, attribute: "max-selected" },
     name: { type: String, attribute: "name" },
@@ -31,8 +35,10 @@ export class CfsLabelSelector extends LitWrapper {
 
   constructor() {
     super();
+    this.closeOnSelect = false;
     this.compact = false;
     this.disabled = false;
+    this.legend = "";
     this.labels = [];
     this.maxSelected = 0;
     this.name = "label_ids";
@@ -383,19 +389,25 @@ export class CfsLabelSelector extends LitWrapper {
       return;
     }
 
+    let selectionChanged = false;
     const alreadySelected = this.selected.includes(eventCfsLabelId);
     if (alreadySelected) {
       this.selected = this.selected.filter((value) => value !== eventCfsLabelId);
+      selectionChanged = true;
       this._emitChange();
-      return;
+    } else {
+      if (!this._canAddSelection()) {
+        return;
+      }
+
+      this.selected = [...this.selected, eventCfsLabelId];
+      selectionChanged = true;
+      this._emitChange();
     }
 
-    if (!this._canAddSelection()) {
-      return;
+    if (selectionChanged && this.closeOnSelect) {
+      this._closeDropdown();
     }
-
-    this.selected = [...this.selected, eventCfsLabelId];
-    this._emitChange();
   }
 
   /**
@@ -460,51 +472,84 @@ export class CfsLabelSelector extends LitWrapper {
     const selectedChipIconSizeClass = this.compact ? "size-2.5" : "size-3";
     const inputPlaceholder =
       selectedLabels.length === 0 ? this.placeholder || DEFAULT_PLACEHOLDER : "Add labels";
+    const legendText = String(this.legend || "").trim();
 
     return html`
       <div class=${this.selectedInInput ? "space-y-0" : "space-y-3"}>
-        <div class="relative">
-          <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-search bg-stone-300"></div>
-          </div>
-          ${this.selectedInInput
-            ? html`
-                <div
-                  class="input-primary min-h-[42px] w-full ps-9 pe-2 py-1 flex flex-wrap items-center gap-1.5"
-                >
-                  ${selectedLabels.length > 0
-                    ? repeat(
-                        selectedLabels,
-                        (label) => label.event_cfs_label_id,
-                        (label) => {
-                          const eventCfsLabelId = String(label.event_cfs_label_id);
-                          return html`
-                            <span
-                              class=${selectedChipClass}
-                              style="--label-color:${label.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
-                              title=${label.name}
-                            >
-                              <span class="truncate max-w-[160px]">${label.name}</span>
-                              <button
-                                type="button"
-                                class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
-                                @click=${(event) => this._removeSelection(eventCfsLabelId, event)}
-                                ?disabled=${this.disabled}
-                                aria-label="Remove ${label.name}"
+        <div>
+          <div class="relative">
+            <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+              <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+            </div>
+            ${this.selectedInInput
+              ? html`
+                  <div
+                    class="input-primary min-h-[42px] w-full ps-9 pe-2 py-1 flex flex-wrap items-center gap-1.5"
+                  >
+                    ${selectedLabels.length > 0
+                      ? repeat(
+                          selectedLabels,
+                          (label) => label.event_cfs_label_id,
+                          (label) => {
+                            const eventCfsLabelId = String(label.event_cfs_label_id);
+                            return html`
+                              <span
+                                class=${selectedChipClass}
+                                style="--label-color:${label.color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
+                                title=${label.name}
                               >
-                                <div
-                                  class="svg-icon ${selectedChipIconSizeClass} icon-close bg-current"
-                                ></div>
-                              </button>
-                            </span>
-                          `;
-                        },
-                      )
-                    : ""}
+                                <span class="truncate max-w-[160px]">${label.name}</span>
+                                <button
+                                  type="button"
+                                  class="inline-flex size-3 items-center justify-center rounded-full border-0 bg-transparent text-stone-700 hover:text-stone-900"
+                                  @click=${(event) => this._removeSelection(eventCfsLabelId, event)}
+                                  ?disabled=${this.disabled}
+                                  aria-label="Remove ${label.name}"
+                                >
+                                  <div
+                                    class="svg-icon ${selectedChipIconSizeClass} icon-close bg-current"
+                                  ></div>
+                                </button>
+                              </span>
+                            `;
+                          },
+                        )
+                      : ""}
+                    <input
+                      type="search"
+                      class="min-w-[120px] flex-1 border-0 bg-transparent p-0 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-0"
+                      placeholder=${inputPlaceholder}
+                      autocomplete="off"
+                      autocorrect="off"
+                      autocapitalize="off"
+                      spellcheck="false"
+                      .value=${this._query}
+                      ?disabled=${inputDisabled}
+                      @pointerdown=${(event) => this._handleInputPointerDown(event)}
+                      @focus=${() => this._handleFocus()}
+                      @input=${(event) => this._handleSearchInput(event)}
+                    />
+                    ${selectedLabels.length > 0
+                      ? html`
+                          <button
+                            type="button"
+                            class="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent p-1 text-stone-400 hover:text-stone-700"
+                            @click=${(event) => this._clearSelections(event)}
+                            ?disabled=${this.disabled}
+                            aria-label="Clear selected labels"
+                            title="Clear selected labels"
+                          >
+                            <div class="svg-icon size-4 icon-close bg-current"></div>
+                          </button>
+                        `
+                      : ""}
+                  </div>
+                `
+              : html`
                   <input
                     type="search"
-                    class="min-w-[120px] flex-1 border-0 bg-transparent p-0 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-0"
-                    placeholder=${inputPlaceholder}
+                    class="input-primary w-full ps-9 pe-9"
+                    placeholder=${this.placeholder || DEFAULT_PLACEHOLDER}
                     autocomplete="off"
                     autocorrect="off"
                     autocapitalize="off"
@@ -515,99 +560,70 @@ export class CfsLabelSelector extends LitWrapper {
                     @focus=${() => this._handleFocus()}
                     @input=${(event) => this._handleSearchInput(event)}
                   />
-                  ${selectedLabels.length > 0
-                    ? html`
-                        <button
-                          type="button"
-                          class="inline-flex shrink-0 items-center justify-center rounded-full bg-transparent p-1 text-stone-400 hover:text-stone-700"
-                          @click=${(event) => this._clearSelections(event)}
-                          ?disabled=${this.disabled}
-                          aria-label="Clear selected labels"
-                          title="Clear selected labels"
-                        >
-                          <div class="svg-icon size-4 icon-close bg-current"></div>
-                        </button>
-                      `
-                    : ""}
-                </div>
-              `
-            : html`
-                <input
-                  type="search"
-                  class="input-primary w-full ps-9 pe-9"
-                  placeholder=${this.placeholder || DEFAULT_PLACEHOLDER}
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  .value=${this._query}
-                  ?disabled=${inputDisabled}
-                  @pointerdown=${(event) => this._handleInputPointerDown(event)}
-                  @focus=${() => this._handleFocus()}
-                  @input=${(event) => this._handleSearchInput(event)}
-                />
-              `}
-          ${this._query && !this.selectedInInput
-            ? html`
-                <button
-                  type="button"
-                  class="absolute inset-y-0 end-0 flex items-center pe-3 text-stone-400 hover:text-stone-700"
-                  @click=${() => this._clearQuery()}
-                >
-                  <div class="svg-icon size-4 icon-close bg-current"></div>
-                </button>
-              `
-            : ""}
-          ${this._isOpen
-            ? html`
-                <ul
-                  class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
-                  role="listbox"
-                >
-                  ${filteredLabels.length > 0
-                    ? repeat(
-                        filteredLabels,
-                        (label) => label.event_cfs_label_id,
-                        (label, index) => {
-                          const eventCfsLabelId = String(label.event_cfs_label_id);
-                          const isActive = this._activeIndex === index;
-                          const isSelected = this.selected.includes(eventCfsLabelId);
-                          const isDisabled = this.disabled || (selectionLimitReached && !isSelected);
+                `}
+            ${this._query && !this.selectedInInput
+              ? html`
+                  <button
+                    type="button"
+                    class="absolute inset-y-0 end-0 flex items-center pe-3 text-stone-400 hover:text-stone-700"
+                    @click=${() => this._clearQuery()}
+                  >
+                    <div class="svg-icon size-4 icon-close bg-current"></div>
+                  </button>
+                `
+              : ""}
+            ${this._isOpen
+              ? html`
+                  <ul
+                    class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
+                    role="listbox"
+                  >
+                    ${filteredLabels.length > 0
+                      ? repeat(
+                          filteredLabels,
+                          (label) => label.event_cfs_label_id,
+                          (label, index) => {
+                            const eventCfsLabelId = String(label.event_cfs_label_id);
+                            const isActive = this._activeIndex === index;
+                            const isSelected = this.selected.includes(eventCfsLabelId);
+                            const isDisabled = this.disabled || (selectionLimitReached && !isSelected);
 
-                          return html`
-                            <li role="presentation">
-                              <button
-                                type="button"
-                                class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm ${isActive
-                                  ? "bg-stone-50"
-                                  : "hover:bg-stone-50"} ${isDisabled
-                                  ? "cursor-not-allowed opacity-60"
-                                  : "cursor-pointer"}"
-                                role="option"
-                                aria-selected=${isSelected}
-                                ?disabled=${isDisabled}
-                                @click=${() => this._toggleSelection(eventCfsLabelId)}
-                                @mouseover=${() => (this._activeIndex = index)}
-                              >
-                                <span class="flex items-center gap-2 min-w-0">
-                                  <span
-                                    class="inline-flex size-2.5 rounded-full border border-stone-500/20"
-                                    style="background-color:${label.color};"
-                                  ></span>
-                                  <span class="truncate text-stone-800">${label.name}</span>
-                                </span>
-                                ${isSelected
-                                  ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>`
-                                  : ""}
-                              </button>
-                            </li>
-                          `;
-                        },
-                      )
-                    : html`<li class="px-3 py-2 text-sm text-stone-500">No labels found</li>`}
-                </ul>
-              `
-            : ""}
+                            return html`
+                              <li role="presentation">
+                                <button
+                                  type="button"
+                                  class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm ${isActive
+                                    ? "bg-stone-50"
+                                    : "hover:bg-stone-50"} ${isDisabled
+                                    ? "cursor-not-allowed opacity-60"
+                                    : "cursor-pointer"}"
+                                  role="option"
+                                  aria-selected=${isSelected}
+                                  ?disabled=${isDisabled}
+                                  @click=${() => this._toggleSelection(eventCfsLabelId)}
+                                  @mouseover=${() => (this._activeIndex = index)}
+                                >
+                                  <span class="flex items-center gap-2 min-w-0">
+                                    <span
+                                      class="inline-flex size-2.5 rounded-full border border-stone-500/20"
+                                      style="background-color:${label.color};"
+                                    ></span>
+                                    <span class="truncate text-stone-800">${label.name}</span>
+                                  </span>
+                                  ${isSelected
+                                    ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>`
+                                    : ""}
+                                </button>
+                              </li>
+                            `;
+                          },
+                        )
+                      : html`<li class="px-3 py-2 text-sm text-stone-500">No labels found</li>`}
+                  </ul>
+                `
+              : ""}
+          </div>
+          ${legendText ? html`<p class="form-legend mt-2">${legendText}</p>` : ""}
         </div>
         ${!this.selectedInInput && selectedLabels.length > 0
           ? html`

@@ -494,7 +494,7 @@ export class ReviewSubmissionModal extends LitWrapper {
           })}
           <button
             type="button"
-            class="btn-tertiary text-xs px-2 py-1"
+            class="btn-primary-outline btn-mini inline-flex items-center justify-center self-center"
             @click=${() => this._clearRating()}
             ?disabled=${!hasRating}
           >
@@ -558,9 +558,8 @@ export class ReviewSubmissionModal extends LitWrapper {
                       ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
                       : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`}
                   </div>
-                  <div class="inline-flex items-center gap-2 whitespace-nowrap md:shrink-0">
+                  <div class="inline-flex items-center whitespace-nowrap md:shrink-0">
                     <rating-stars .averageRating=${stars} size="size-5"></rating-stars>
-                    <span class="text-sm text-stone-600 leading-none">${stars}/5</span>
                   </div>
                 </div>
               </div>
@@ -645,12 +644,13 @@ export class ReviewSubmissionModal extends LitWrapper {
             name="label_ids"
             .labels=${this.labels}
             .selected=${this._selectedLabelIds}
+            close-on-select
             max-selected="10"
+            legend="Add labels to categorize this submission for your review team."
             placeholder="Search labels"
             @change=${(event) => this._onLabelsChange(event)}
           ></cfs-label-selector>
         </div>
-        <p class="form-legend">Use labels to keep submissions organized by category.</p>
       </div>
     `;
   }
@@ -727,14 +727,14 @@ export class ReviewSubmissionModal extends LitWrapper {
 
     return html`
       <div class="rounded-lg border border-stone-200 bg-stone-50/70 px-4 py-3">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div class="shrink-0">
             <div class="text-3xl font-semibold leading-none text-stone-800 text-center">
               ${ratingsCount > 0 ? averageRatingText : "-"}
             </div>
             <div class="text-xs text-stone-500 text-center">out of 5</div>
           </div>
-          <div class="sm:border-l sm:border-stone-200 sm:pl-4 min-w-0">
+          <div class="sm:border-l sm:border-stone-200 sm:pl-5 min-w-0">
             <div class="form-label text-stone-700">Summary rating</div>
             <div class="mt-1">
               <rating-stars

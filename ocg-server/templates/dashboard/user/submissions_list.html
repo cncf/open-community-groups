@@ -13,13 +13,20 @@ description = "Track and manage your call for speakers submissions.") -}}
 
 <div>
   <div class="relative overflow-visible">
-    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+    <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+      <colgroup>
+        <col />
+        <col />
+        <col class="hidden xl:table-column w-[200px] xl:w-[220px]" />
+        <col class="hidden xl:table-column w-32" />
+        <col class="w-24" />
+      </colgroup>
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
           <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Updated</th>
           <th scope="col" class="px-3 xl:px-5 py-3 w-32"></th>
         </tr>
       </thead>
@@ -42,7 +49,7 @@ description = "Track and manage your call for speakers submissions.") -}}
                    class="font-medium text-stone-900 hover:underline line-clamp-1">
                   {{ submission.event.name }}
                 </a>
-                <div class="text-xs text-stone-400">{{ submission.event.group_name }}</div>
+                <div class="text-xs text-stone-400 truncate">{{ submission.event.group_name }}</div>
               </td>
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-1">{{ submission.session_proposal.title }}</div>
@@ -53,25 +60,15 @@ description = "Track and manage your call for speakers submissions.") -}}
                     {% endfor -%}
                   </div>
                 {% endif -%}
-              </td>
-              <td class="px-3 xl:px-5 py-4">
-                <div class="inline-flex items-center gap-2">
-                  {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
-                  {% if let Some(message) = &submission.action_required_message -%}
-                    <span class="relative inline-flex">
-                      <button type="button"
-                              class="inline-flex items-center justify-center size-5 border rounded-full {{ badges::submission_status_action_required_icon_button_styles(status_id = submission.status_id) }}"
-                              data-action="open-action-required-modal"
-                              data-action-required-message="{{ message }}"
-                              aria-label="View action required details">
-                        <div class="svg-icon size-2.5 icon-info {{ badges::submission_status_action_required_icon_styles(status_id = submission.status_id) }}">
-                        </div>
-                      </button>
-                    </span>
-                  {% endif -%}
+                <div class="mt-2 xl:hidden inline-flex items-center gap-2">
+                  <span class="text-xs text-stone-400 uppercase">Status</span>
+                  {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
                 </div>
               </td>
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
+                {{ badges::submission_status_with_action_required(status_id = submission.status_id, label = submission.status_name, action_required_message = submission.action_required_message, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
+              </td>
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(updated_at) = &submission.updated_at -%}
                   {{ updated_at.format("%b %d, %Y") }}
                 {% else -%}
